@@ -1,0 +1,15 @@
+- Simpler naming scheme for functions
+- BMI2
+-- Check for AVX on MSVC
+-- Implement 2D methods
+- Test suite
+-- Unroll some loops
+-- Do LUT trash test
+
+- Cycles time test
+- Linear test: start randomly in domain
+- Random test: test permutations
+
+- early termination methods
+- add more LUT sizes (LUT8, for example)
+- Better printout, extract to CSV

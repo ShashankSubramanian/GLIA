@@ -1,0 +1,7 @@
+makefile
+results/
+*.bin
+*.nc
+obj/
+bin/
+brain_data/
