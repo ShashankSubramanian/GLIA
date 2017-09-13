@@ -1,4 +1,3 @@
-makefile
 results/
 *.bin
 *.nc
