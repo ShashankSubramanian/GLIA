@@ -12,12 +12,18 @@ DiffCoef::DiffCoef (NMisc *n_misc) {
 	ierr = VecDuplicate (kxx_, &kyz_);									
 	ierr = VecDuplicate (kxx_, &kzz_);	
 
+	temp_ = new Vec[7];
+	for (int i = 0; i < 7; i++) {
+		ierr = VecDuplicate (kxx_, &temp_[i]);
+		ierr = VecSet (temp_[i] , 0);
+	}
+
 	ierr = VecSet (kxx_ , 0);											
 	ierr = VecSet (kxy_ , 0);											
 	ierr = VecSet (kxz_ , 0);											 
 	ierr = VecSet (kyy_ , 0);											
 	ierr = VecSet (kyz_ , 0);											
-	ierr = VecSet (kzz_ , 0);			
+	ierr = VecSet (kzz_ , 0);		
 
 	smooth_flag_ = 0;
 }
@@ -54,29 +60,81 @@ PetscErrorCode DiffCoef::smooth (NMisc *n_misc) {
 	ierr = VecGetArray (kyz_, &kyz_ptr);								CHKERRQ (ierr);
 	ierr = VecGetArray (kzz_, &kzz_ptr);								CHKERRQ (ierr);
 
-	// ierr = weierstrass_smoother (kxx_ptr, kxx_ptr, &n_misc, sigma);
- //    ierr = weierstrass_smoother (kxy_ptr, kxy_ptr, &n_misc, sigma);
- //    ierr = weierstrass_smoother (kxz_ptr, kxz_ptr, &n_misc, sigma);
- //    ierr = weierstrass_smoother (kyy_ptr, kyy_ptr, &n_misc, sigma);
- //    ierr = weierstrass_smoother (kyz_ptr, kyz_ptr, &n_misc, sigma);
- //    ierr = weierstrass_smoother (kzz_ptr, kzz_ptr, &n_misc, sigma);
+	ierr = weierstrassSmoother (kxx_ptr, kxx_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (kxy_ptr, kxy_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (kxz_ptr, kxz_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (kyy_ptr, kyy_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (kyz_ptr, kyz_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (kzz_ptr, kzz_ptr, n_misc, sigma);
 
-    ierr = VecRestoreArray (kxx_, &kxx_ptr);								CHKERRQ (ierr);
-	ierr = VecRestoreArray (kxy_, &kxy_ptr);								CHKERRQ (ierr);
-	ierr = VecRestoreArray (kxz_, &kxz_ptr);								CHKERRQ (ierr);
-	ierr = VecRestoreArray (kyy_, &kyy_ptr);								CHKERRQ (ierr);
-	ierr = VecRestoreArray (kyz_, &kyz_ptr);								CHKERRQ (ierr);
-	ierr = VecRestoreArray (kzz_, &kzz_ptr);								CHKERRQ (ierr);
+    ierr = VecRestoreArray (kxx_, &kxx_ptr);							CHKERRQ (ierr);
+	ierr = VecRestoreArray (kxy_, &kxy_ptr);							CHKERRQ (ierr);
+	ierr = VecRestoreArray (kxz_, &kxz_ptr);							CHKERRQ (ierr);
+	ierr = VecRestoreArray (kyy_, &kyy_ptr);							CHKERRQ (ierr);
+	ierr = VecRestoreArray (kyz_, &kyz_ptr);							CHKERRQ (ierr);
+	ierr = VecRestoreArray (kzz_, &kzz_ptr);							CHKERRQ (ierr);
 
 	return ierr;
 }
 
+PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
+	PetscErrorCode ierr = 0;
+	for (int i = 1; i < 4; i++) {
+		ierr = VecSet (temp_[i] , 0);									CHKERRQ (ierr);
+	}
+	//X 
+	ierr = VecPointwiseMult (temp_[0], kxx_, x);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[1], 1.0, temp_[0]);							CHKERRQ (ierr);
+	ierr = VecPointwiseMult (temp_[0], kxy_, y);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[1], 1.0, temp_[0]);							CHKERRQ (ierr);
+	ierr = VecPointwiseMult (temp_[0], kxz_, z);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[1], 1.0, temp_[0]);							CHKERRQ (ierr);
+
+	//Y
+	ierr = VecPointwiseMult (temp_[0], kxy_, x);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[2], 1.0, temp_[0]);							CHKERRQ (ierr);
+	ierr = VecPointwiseMult (temp_[0], kyy_, y);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[2], 1.0, temp_[0]);							CHKERRQ (ierr);
+	ierr = VecPointwiseMult (temp_[0], kyz_, z);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[2], 1.0, temp_[0]);							CHKERRQ (ierr);
+
+	//Z
+	ierr = VecPointwiseMult (temp_[0], kxz_, x);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[3], 1.0, temp_[0]);							CHKERRQ (ierr);
+	ierr = VecPointwiseMult (temp_[0], kyz_, y);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[3], 1.0, temp_[0]);							CHKERRQ (ierr);
+	ierr = VecPointwiseMult (temp_[0], kzz_, z);						CHKERRQ (ierr);
+	ierr = VecAXPY (temp_[3], 1.0, temp_[0]);							CHKERRQ (ierr);
+
+	return ierr;
+}
+
+PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
+	PetscErrorCode ierr = 0;
+	std::bitset<3> XYZ;
+	XYZ[0] = 1;
+	XYZ[1] = 1;
+	XYZ[2] = 1;
+
+	double *timer = NULL;   //Used for calling accfft routines
+
+	accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, timer);
+	ierr = applyK (temp_[4], temp_[5], temp_[6]);
+	accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, timer);
+
+	return ierr;
+}
+
+
 DiffCoef::~DiffCoef () {
 	PetscErrorCode ierr;
+	int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 	ierr = VecDestroy (&kxx_);											
 	ierr = VecDestroy (&kxy_);											
 	ierr = VecDestroy (&kxz_);											
 	ierr = VecDestroy (&kyy_);											
 	ierr = VecDestroy (&kyz_);											
-	ierr = VecDestroy (&kzz_);											
+	ierr = VecDestroy (&kzz_);	
 }

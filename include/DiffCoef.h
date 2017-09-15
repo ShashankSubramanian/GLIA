@@ -20,8 +20,12 @@ class DiffCoef {
 		Vec kyz_;
 		Vec kzz_;
 
+		Vec *temp_;
+
 		PetscErrorCode setValues (double k_scale, MatProp *mat_prop, NMisc *n_misc);
 		PetscErrorCode smooth (NMisc *n_misc);
+		PetscErrorCode applyK (Vec x, Vec y, Vec z);
+		PetscErrorCode applyD (Vec dc, Vec c, accfft_plan *plan);
 
 		~DiffCoef ();
 };

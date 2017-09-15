@@ -32,7 +32,7 @@
 //Rewrite variables according to standard conventions
 
 
-int weierstrassSmoother(double * Wc, double *c, NMisc* N_Misc, double sigma) {
+int weierstrassSmoother(double * Wc, double *c, NMisc *N_Misc, double sigma) {
 	MPI_Comm c_comm = N_Misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank(c_comm, &procid);

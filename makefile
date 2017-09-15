@@ -48,6 +48,8 @@ SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/MatProp.cpp \
 		  $(SRCDIR)/reaction.cpp \
 		  $(SRCDIR)/weierstrassSmoother.cpp \
+		  $(SRCDIR)/DiffSolver.cpp \
+		  $(SRCDIR)/Utils.cpp \
 
 GPU_SOURCES =		 
 ifeq ($(BUILD_GPU), 1)

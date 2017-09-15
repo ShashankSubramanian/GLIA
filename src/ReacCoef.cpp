@@ -33,7 +33,7 @@ PetscErrorCode ReacCoef::smooth (NMisc *n_misc) {
 
 	double *rho_vec_ptr;
 	ierr = VecGetArray (rho_vec_, &rho_vec_ptr);							CHKERRQ (ierr);
-	// ierr = weierstrassSmoother (rho_vec_ptr, rho_vec_ptr, &n_misc, sigma); 
+	ierr = weierstrassSmoother (rho_vec_ptr, rho_vec_ptr, n_misc, sigma); 
 	ierr = VecRestoreArray (rho_vec_, &rho_vec_ptr);							CHKERRQ (ierr);
 
 	return ierr;

@@ -39,7 +39,7 @@ void dataIn (double *A, NMisc* n_misc, const char *fname) {
 	return;
 }
 
-void dataIn (Vec &A, NMisc *n_misc, const char *fname) {
+void dataIn (Vec A, NMisc *n_misc, const char *fname) {
   double *a_ptr;
   PetscErrorCode ierr;
   ierr = VecGetArray (A, &a_ptr);							

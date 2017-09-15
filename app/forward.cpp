@@ -56,8 +56,8 @@ int main (int argc, char** argv) {
 
 PetscErrorCode setupNmisc ( NMisc *n_misc) {
 	PetscErrorCode ierr = 0;
-	double dt = 0.01;
-	double time_horizon = 1;
+	double dt = 0.02;
+	double time_horizon = 0.2;
 	double np = 27;
 
 	n_misc->dt_ = dt;
@@ -69,13 +69,14 @@ PetscErrorCode setupNmisc ( NMisc *n_misc) {
 
 PetscErrorCode setupTumor (Tumor *tumor, NMisc *n_misc) {
     PetscErrorCode ierr;
-	double k = 0.0;
-	double rho = 8.0;
+	double k = 0.1;
+	double rho = 4.0;
 	double user_cm[3];
-	double p_scale = 0.8;
+	double p_scale = 0.2;
+	user_cm[0] = 4.0;
 	user_cm[1] = 2.03;
 	user_cm[2] = 2.07;
-	user_cm[0] = 4.0;
+	
 
 	Vec p;
 	ierr = VecCreate (PETSC_COMM_WORLD, &p); 							CHKERRQ (ierr);

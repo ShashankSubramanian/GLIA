@@ -38,7 +38,7 @@ void dataOut (double *A, NMisc *n_misc, const char *fname) {
 	return;
 }
 
-void dataOut (Vec &A, NMisc *n_misc, const char *fname) {
+void dataOut (Vec A, NMisc *n_misc, const char *fname) {
   double *a_ptr;
   PetscErrorCode ierr;
   ierr = VecGetArray (A, &a_ptr);							

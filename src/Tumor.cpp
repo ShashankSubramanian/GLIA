@@ -42,11 +42,14 @@ PetscErrorCode Tumor::runForward (NMisc *n_misc) {
 	double dt = n_misc->dt_;
 	int nt = n_misc->time_horizon_ / dt;
 
+	DiffSolver *diff_solver;
+	diff_solver = new DiffSolver (n_misc, this->k_);
+
 	ierr = VecCopy (c_0_, c_t_);										CHKERRQ (ierr);
 	for (int i = 0; i < nt; i++) {
-		// ierr = diffuse (c_t_, n_misc, this, dt / 2.0);
+		diff_solver->solve (c_t_, dt / 2.0);
 		ierr = reaction (c_t_, n_misc, this, dt);
-		// ierr = diffuse (c_t_, n_misc, this, dt / 2.0);
+		diff_solver->solve (c_t_, dt / 2.0);
 	}
 
 	dataOut (c_t_, n_misc, "results/CT.nc");

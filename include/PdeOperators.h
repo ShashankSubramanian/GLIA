@@ -8,6 +8,5 @@
 
 
 PetscErrorCode reaction (Vec c_t, NMisc *n_misc, Tumor *tumor, double dt);
-int weierstrassSmoother (double *Wc, double *c, NMisc *n_misc, double sigma); //TODO: Clean up .cpp file
 
 #endif
