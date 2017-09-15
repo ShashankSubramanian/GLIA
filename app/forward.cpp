@@ -52,6 +52,11 @@ int main (int argc, char** argv) {
 	//Run forward solve
 	tumor->runForward (n_misc);
 
+	accfft_destroy_plan (plan);
+	delete (tumor);
+	delete (n_misc);
+
+	PetscFinalize ();
 }
 
 PetscErrorCode setupNmisc ( NMisc *n_misc) {

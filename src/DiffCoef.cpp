@@ -118,9 +118,16 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 
 	double *timer = NULL;   //Used for calling accfft routines
 
+	/*For debug*/
+	int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    /*End Debug context*/
+
 	accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, timer);
 	ierr = applyK (temp_[4], temp_[5], temp_[6]);
 	accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, timer);
+
 
 	return ierr;
 }
