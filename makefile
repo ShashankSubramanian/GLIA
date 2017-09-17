@@ -50,6 +50,8 @@ SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/weierstrassSmoother.cpp \
 		  $(SRCDIR)/DiffSolver.cpp \
 		  $(SRCDIR)/Utils.cpp \
+		  $(SRCDIR)/PdeOperators.cpp \
+		  $(SRCDIR)/TumorSolverInterface.cpp \
 
 GPU_SOURCES =		 
 ifeq ($(BUILD_GPU), 1)

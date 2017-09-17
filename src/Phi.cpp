@@ -165,5 +165,8 @@ PetscErrorCode Phi::apply (Vec out, Vec p, NMisc *n_misc) {
 }
 
 Phi::~Phi () {
-	VecDestroyVecs (np_, &phi_vec_);
+	PetscErrorCode ierr = 0;
+	for (int i = 0; i < np_; i++) {
+		ierr = VecDestroy (&phi_vec_[i]);
+	}
 }

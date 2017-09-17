@@ -4,6 +4,7 @@
 
 #include "Utils.h"
 #include "Tumor.h"
+#include "TumorSolverInterface.h"
 #include "PdeOperators.h"
 
 #include <iostream>
@@ -11,12 +12,13 @@
 #include <cmath>
 #include <limits>
 
-static char help[] = "ITP Edema";
+static char help[] = "Forward Driver";
 
 PetscErrorCode setupNmisc (NMisc *n_misc);
 PetscErrorCode setupTumor (Tumor *tumor, NMisc *n_misc);
 
 int main (int argc, char** argv) {
+ /* ACCFFT, PETSC setup begin */
     google::InitGoogleLogging (argv[0]);
     PetscErrorCode ierr;
     PetscInitialize (&argc, &argv, (char*) 0, help);
@@ -42,27 +44,39 @@ int main (int argc, char** argv) {
 	accfft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
     accfft_free (c_0);
     accfft_free (c_hat);
+/* ACCFFT, PETSC setup end */
 
+/* --------------------------------------------------------------------------------------------------------------*/
+	    
 	NMisc *n_misc = new NMisc (n, isize, istart, plan, c_comm);
 	ierr = setupNmisc (n_misc);
 
 	Tumor *tumor = new Tumor (n_misc);
 	ierr = setupTumor (tumor, n_misc);
 
-	//Run forward solve
-	tumor->runForward (n_misc);
+	PdeOperators *pde_operators = new PdeOperatorsRD (tumor, n_misc);   //Simple Reaction - Diffusion model
+	TumorSolverInterface *solver_interface = new TumorSolverInterface (tumor);
+	solver_interface->solveForward (pde_operators, n_misc);
+
+/* --------------------------------------------------------------------------------------------------------------*/
+/* Free Memory Begin */
 
 	accfft_destroy_plan (plan);
+
+	delete (solver_interface);
+	delete (pde_operators);
+
 	delete (tumor);
 	delete (n_misc);
 
+/* Free Memory End */
 	PetscFinalize ();
 }
 
 PetscErrorCode setupNmisc ( NMisc *n_misc) {
 	PetscErrorCode ierr = 0;
 	double dt = 0.02;
-	double time_horizon = 0.2;
+	double time_horizon = 0.1;
 	double np = 27;
 
 	n_misc->dt_ = dt;

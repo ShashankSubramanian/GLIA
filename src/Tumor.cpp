@@ -1,7 +1,5 @@
 #include "Tumor.h"
 
-#include "PdeOperators.h"
-
 Tumor::Tumor (NMisc *n_misc) {
 	PetscErrorCode ierr = 0;
 	mat_prop_ = new MatProp (n_misc);
@@ -33,26 +31,6 @@ PetscErrorCode Tumor::setValues (double k, double rho, double *user_cm, Vec p, N
 	ierr = phi_->apply(c_0_, p_, n_misc);
 
 	dataOut (c_0_, n_misc, "results/C0.nc");
-
-	return ierr;
-}
-
-PetscErrorCode Tumor::runForward (NMisc *n_misc) {
-	PetscErrorCode ierr = 0;
-	double dt = n_misc->dt_;
-	int nt = n_misc->time_horizon_ / dt;
-
-	DiffSolver *diff_solver;
-	diff_solver = new DiffSolver (n_misc, this->k_);
-
-	ierr = VecCopy (c_0_, c_t_);										CHKERRQ (ierr);
-	for (int i = 0; i < nt; i++) {
-		diff_solver->solve (c_t_, dt / 2.0);
-		ierr = reaction (c_t_, n_misc, this, dt);
-		diff_solver->solve (c_t_, dt / 2.0);
-	}
-
-	dataOut (c_t_, n_misc, "results/CT.nc");
 
 	return ierr;
 }

@@ -12,8 +12,6 @@ Tumor class
 #include "Phi.h"
 #include "Obs.h"
 
-#include "DiffSolver.h"
-
 #include <mpi.h>
 #include <omp.h>
 
