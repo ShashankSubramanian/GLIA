@@ -11,10 +11,35 @@
 #include <glog/logging.h>
 #include <math.h>
 
-#define ParLOG if(procid==0) LOG(INFO)
-
 class NMisc {
 	public:
+		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm) 
+				: rd_ (1)   //Reaction Diffusion
+				, dt_ (0.02)
+				, time_horizon_ (0.04)
+				, np_ (8)
+				, k_ (0.1)
+				, rho_ (8)
+				, p_scale_ (1.0)		
+		{
+			user_cm_[0] = 4.0;
+			user_cm_[1] = 2.03;
+			user_cm_[2] = 2.07;
+
+			memcpy (n_, n, 3 * sizeof(int));
+			memcpy (isize_, isize, 3 * sizeof(int));
+			memcpy (istart_, istart, 3 * sizeof(int));
+
+			plan_ = plan;
+			c_comm_ = c_comm;
+			accfft_alloc_max_ = plan->alloc_max;
+
+			n_global_ = n[0] * n[1] * n[2];
+			n_local_ = isize[0] * isize[1] * isize[2];
+			h_[0] = M_PI * 2 / n[0];
+			h_[1] = M_PI * 2 / n[1];
+		  	h_[2] = M_PI * 2 / n[2];
+		}
 		int n_[3];
 		int isize_[3];
 		int istart_[3];
@@ -24,6 +49,13 @@ class NMisc {
 		double time_horizon_;
 		double dt_;
 
+		int rd_;
+
+		double k_;
+		double rho_;
+		double user_cm_[3];
+		double p_scale_;
+
 		int64_t accfft_alloc_max_;
 		int64_t n_local_;
 		int64_t n_global_;
@@ -31,24 +63,6 @@ class NMisc {
 		accfft_plan *plan_;
 		MPI_Comm c_comm_;
 
-		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm) {
-			memcpy (n_, n, 3 * sizeof(int));
-			memcpy (isize_, isize, 3 * sizeof(int));
-			memcpy (istart_, istart, 3 * sizeof(int));
-
-			plan_ = plan;
-			c_comm_ = c_comm;
-			accfft_alloc_max_ = plan->alloc_max;
-
-			dt_ = 0;
-			time_horizon_ = 0;
-			np_ = 0;
-			n_global_ = n[0] * n[1] * n[2];
-			n_local_ = isize[0] * isize[1] * isize[2];
-			h_[0] = M_PI * 2 / n[0];
-			h_[1] = M_PI * 2 / n[1];
-		  	h_[2] = M_PI * 2 / n[2];
-		}
 };
 
 int weierstrassSmoother (double *Wc, double *c, NMisc *n_misc, double sigma); //TODO: Clean up .cpp file

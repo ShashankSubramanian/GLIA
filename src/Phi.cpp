@@ -39,7 +39,7 @@ PetscErrorCode Phi::setValues (double *user_cm, MatProp *mat_prop, NMisc *n_misc
 		ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
     	ierr = VecGetArray (phi_vec_[i], &phi_ptr);								CHKERRQ (ierr);
-		ierr = weierstrassSmoother(phi_ptr, phi_ptr, n_misc, sigma_smooth);		
+		ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc, sigma_smooth);		
 		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);	
 
 		ierr = VecGetArray (phi_vec_[i], &phi_ptr);								CHKERRQ (ierr);

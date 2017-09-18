@@ -48,63 +48,16 @@ int main (int argc, char** argv) {
 
 /* --------------------------------------------------------------------------------------------------------------*/
 	    
-	NMisc *n_misc = new NMisc (n, isize, istart, plan, c_comm);
-	ierr = setupNmisc (n_misc);
-
-	Tumor *tumor = new Tumor (n_misc);
-	ierr = setupTumor (tumor, n_misc);
-
-	PdeOperators *pde_operators = new PdeOperatorsRD (tumor, n_misc);   //Simple Reaction - Diffusion model
-	TumorSolverInterface *solver_interface = new TumorSolverInterface (tumor, pde_operators);
+	NMisc *n_misc = new NMisc (n, isize, istart, plan, c_comm);   //This class contains all required parameters
+	TumorSolverInterface *solver_interface = new TumorSolverInterface (n_misc);
 	solver_interface->solveForward (n_misc);
 
 /* --------------------------------------------------------------------------------------------------------------*/
 /* Free Memory Begin */
-
 	accfft_destroy_plan (plan);
-
 	delete (solver_interface);
-	delete (pde_operators);
-
-	delete (tumor);
 	delete (n_misc);
-
 /* Free Memory End */
+
 	PetscFinalize ();
-}
-
-PetscErrorCode setupNmisc ( NMisc *n_misc) {
-	PetscErrorCode ierr = 0;
-	double dt = 0.02;
-	double time_horizon = 0.1;
-	double np = 27;
-
-	n_misc->dt_ = dt;
-	n_misc->time_horizon_ = time_horizon;
-	n_misc->np_ = np;
-
-	return ierr;
-}
-
-PetscErrorCode setupTumor (Tumor *tumor, NMisc *n_misc) {
-    PetscErrorCode ierr;
-	double k = 0.1;
-	double rho = 4.0;
-	double user_cm[3];
-	double p_scale = 0.2;
-	user_cm[0] = 4.0;
-	user_cm[1] = 2.03;
-	user_cm[2] = 2.07;
-	
-
-	Vec p;
-	ierr = VecCreate (PETSC_COMM_WORLD, &p); 							CHKERRQ (ierr);
-	ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);					CHKERRQ (ierr);
-	ierr = VecSetFromOptions (p);										CHKERRQ (ierr);
-
-	ierr = VecSet (p, p_scale);											CHKERRQ (ierr);
-
-	ierr = tumor->setValues (k, rho, user_cm, p, n_misc);		
-
-	return ierr;
 }

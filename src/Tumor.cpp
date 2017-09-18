@@ -38,7 +38,8 @@ PetscErrorCode Tumor::setValues (double k, double rho, double *user_cm, Vec p, N
 Tumor::~Tumor () {
 	PetscErrorCode ierr;
 	ierr = VecDestroy (&c_t_);											
-	ierr = VecDestroy (&c_0_);											
+	ierr = VecDestroy (&c_0_);		
+	ierr = VecDestroy (&p_);										
 	delete (k_);
 	delete (rho_);
 	delete (mat_prop_);
