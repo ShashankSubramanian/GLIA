@@ -7,14 +7,16 @@
 
 class TumorSolverInterface {
 	public :
-		TumorSolverInterface (Tumor *tumor) : tumor_(tumor) {}
+		TumorSolverInterface (Tumor *tumor, PdeOperators *pde_operators)
+								: tumor_(tumor) 
+								, pde_operators_(pde_operators) {}
 
-		Tumor *tumor_;
-
-		PetscErrorCode solveForward (PdeOperators *pde_operators, NMisc *n_misc);
-		// PetscErrorCode solveInverse (DiffOperators *diff_operators, NMisc *n_misc);
+		PetscErrorCode solveForward (NMisc *n_misc);
 
 		~TumorSolverInterface () {}
+	private :
+		Tumor *tumor_;
+		PdeOperators *pde_operators_;
 };
 
 #endif

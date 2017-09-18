@@ -55,8 +55,8 @@ int main (int argc, char** argv) {
 	ierr = setupTumor (tumor, n_misc);
 
 	PdeOperators *pde_operators = new PdeOperatorsRD (tumor, n_misc);   //Simple Reaction - Diffusion model
-	TumorSolverInterface *solver_interface = new TumorSolverInterface (tumor);
-	solver_interface->solveForward (pde_operators, n_misc);
+	TumorSolverInterface *solver_interface = new TumorSolverInterface (tumor, pde_operators);
+	solver_interface->solveForward (n_misc);
 
 /* --------------------------------------------------------------------------------------------------------------*/
 /* Free Memory Begin */

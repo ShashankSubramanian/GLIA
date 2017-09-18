@@ -1,8 +1,8 @@
 #include "TumorSolverInterface.h"
 
-PetscErrorCode TumorSolverInterface::solveForward (PdeOperators *pde_operators, NMisc *n_misc) {
+PetscErrorCode TumorSolverInterface::solveForward (NMisc *n_misc) {
 	PetscErrorCode ierr = 0;
-	ierr = pde_operators->solveState (n_misc);
+	ierr = pde_operators_->solveState (n_misc);
 	return ierr;
 }
 
