@@ -87,3 +87,15 @@ void accumulateTimers(double* tacc, double* tloc, double selfexec) {
 	tacc[5] += tloc[5];
 	tacc[6] += tloc[6];
 }
+
+/* definition of tumor assert */
+void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg)
+{
+    if (!expr)
+    {
+        std::cerr << "Assert failed:\t" << msg << "\n"
+            << "Expected:\t" << expr_str << "\n"
+            << "Source:\t\t" << file << ", line " << line << "\n";
+        abort();
+    }
+}

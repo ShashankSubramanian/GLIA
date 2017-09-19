@@ -93,4 +93,15 @@ void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, doub
 /* helper function for timer accumulation */
 void accumulateTimers(double* tacc, double* tloc, double selfexec);
 
+
+/* definition of tumor assert */
+#ifndef NDEBUG
+#   define TU_assert(Expr, Msg) \
+    __TU_assert(#Expr, Expr, __FILE__, __LINE__, Msg)
+#else
+#   define TU_assert(Expr, Msg) ;
 #endif
+void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
+
+
+#endif // end _UTILS_H
