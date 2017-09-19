@@ -3,21 +3,21 @@
 
 #include "DerivativeOperators.h"
 
-struct Ctx {
-	DerivativeOperators *derivative_operators_;
-	NMisc *n_misc_;
+struct CtxInv {
+	std::shared_ptr<DerivativeOperators> derivative_operators_;
+	std::shared_ptr<NMisc> n_misc_;
 };
 
 class InvSolver {
 	public :
-		InvSolver (PdeOperators pde_operators, NMisc *n_misc) {}
+		InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc);
 
 		Tao tao_;
 		Mat A_;
 
 		PetscErrorCode solve ();
 
-		~InvSolver () {}
+		~InvSolver ();
 };
 
 #endif

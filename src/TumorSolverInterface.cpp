@@ -15,10 +15,10 @@ TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc) : n_m
 
 	if (n_misc->rd_) {
 		pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc); 
-		// derivative_operators_ = std::make_shared <DerivativeOperatorsRD> (pde_operators_);
+		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc);
 	}
 
-	// inv_solver_ = new InvSolver (derivative_operators_, n_misc);
+	inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc);
 
 	//TODO : Is this required ?!
 	// ierr = VecDestroy (&p);
@@ -27,6 +27,12 @@ TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc) : n_m
 PetscErrorCode TumorSolverInterface::solveForward () {
 	PetscErrorCode ierr = 0;
 	ierr = pde_operators_->solveState ();
+	return ierr;
+}
+
+PetscErrorCode TumorSolverInterface::solveInverse () {
+	PetscErrorCode ierr = 0;
+	ierr = inv_solver_->solve ();
 	return ierr;
 }
 

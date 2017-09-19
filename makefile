@@ -51,6 +51,8 @@ SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/DiffSolver.cpp \
 		  $(SRCDIR)/Utils.cpp \
 		  $(SRCDIR)/PdeOperators.cpp \
+		  $(SRCDIR)/DerivativeOperators.cpp \
+		  $(SRCDIR)/InvSolver.cpp \
 		  $(SRCDIR)/TumorSolverInterface.cpp \
 
 GPU_SOURCES =		 
