@@ -18,14 +18,14 @@
 
 class NMisc {
 	public:
-		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm) 
+		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm)
 				: rd_ (1)   //Reaction Diffusion
 				, dt_ (0.02)
 				, time_horizon_ (0.04)
 				, np_ (8)
 				, k_ (0.1)
 				, rho_ (8)
-				, p_scale_ (1.0)		
+				, p_scale_ (1.0)
 		{
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
@@ -81,5 +81,7 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
 void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
+
+void accumulateTimers(double* tacc, double* tloc, double selfexec);
 
 #endif

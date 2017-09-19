@@ -31,3 +31,14 @@ void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, doub
 	ierr = VecRestoreArray (dy, &dy_ptr);
 	ierr = VecRestoreArray (dz, &dz_ptr);
 }
+
+void accumulateTimers(double* tacc, double* tloc, double selfexec) {
+	tloc[5] = selfexec;
+	tacc[0] += tloc[0];
+	tacc[1] += tloc[1];
+	tacc[2] += tloc[2];
+	tacc[3] += tloc[3];
+	tacc[4] += tloc[4];
+	tacc[5] += tloc[5];
+	tacc[6] += tloc[6];
+}
