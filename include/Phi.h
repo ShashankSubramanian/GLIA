@@ -20,6 +20,7 @@ class Phi {
 		PetscErrorCode phiMesh (double *center);
 		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);
 		PetscErrorCode apply (Vec out, Vec p);
+		PetscErrorCode applyTranspose (Vec pout, Vec in);
 
 		~Phi ();
 };

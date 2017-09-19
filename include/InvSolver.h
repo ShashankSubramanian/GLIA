@@ -10,14 +10,22 @@ struct CtxInv {
 
 class InvSolver {
 	public :
-		InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc);
+		InvSolver (
+			std::shared_ptr <DerivativeOperators> derivative_operators = {},
+			std::shared_ptr <NMisc> n_misc = {});
+    ~InvSolver ();
 
-		Tao tao_;
-		Mat A_;
+		PetscErrorCode initialize(
+			std::shared_ptr <DerivativeOperators> derivative_operators,
+			std::shared_ptr <NMisc> n_misc);
 
 		PetscErrorCode solve ();
 
-		~InvSolver ();
+	private:
+		bool initialized_;
+		Tao tao_;
+		Mat A_;
+		shared_ptr<CtxInv> itctx_;
 };
 
 #endif

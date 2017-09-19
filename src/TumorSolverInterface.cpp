@@ -41,17 +41,17 @@ PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc) {
 
   // cleanup
   ierr = VecDestroy (&p); CHKERRQ(ierr);
-	PetscFunctionReturn;
+	PetscFunctionReturn(0);
 }
 
 PetscErrorCode TumorSolverInterface::solveForward () {
 	PetscErrorCode ierr = 0;
 	ierr = pde_operators_->solveState ();
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
 PetscErrorCode TumorSolverInterface::solveInverse () {
 	PetscErrorCode ierr = 0;
 	ierr = inv_solver_->solve ();
-	return ierr;
+	PetscFunctionReturn(0);
 }

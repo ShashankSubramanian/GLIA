@@ -1,6 +1,7 @@
 #include "Tumor.h"
 
 Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
 	mat_prop_ = std::make_shared<MatProp> (n_misc);
@@ -32,7 +33,7 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
   if(n_misc->writeOutput_)
 	  dataOut (c_0_, n_misc, "results/C0.nc");
 
-	return PetscFunctionReturn;
+	PetscFunctionReturn(0);
 }
 
 Tumor::~Tumor () {

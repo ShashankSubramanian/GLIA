@@ -2,48 +2,71 @@
 
 PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y);
 
-InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc) {
+InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc)
+:
+  initialized_(false),
+  itctx_()
+  {
+	  PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    if(derivative_operators_ != nullptr && n_misc != nullptr) {
+      ierr = initialize(derivative_operators, n_misc) CHKERRQ(ierr);
+	  }
+}
+
+PetscErrorCode initialize(std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc) {
+  PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	CtxInv *ctx = new CtxInv ();
+	if(initialized_) PetscFunctionReturn(0);
+
+	itctx_ = std::make_shared<CtxInv>();
 	ctx->derivative_operators_ = derivative_operators;
 	ctx->n_misc_ = n_misc;
 
-	ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx, &A_);	
-	ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) hessianMatVec);														 
+	ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx.get(), &A_);
+	ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) hessianMatVec);
 
 	ierr = TaoCreate (PETSC_COMM_WORLD, &tao_);
 	ierr = TaoSetType (tao_, "nls");
 	ierr = TaoSetFromOptions (tao_);
-}
+
+  initialized_ = true;
+	PetscFunctionReturn(0);
+	}
 
 PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	CtxInv *ctx;
 	ierr = MatShellGetContext (A, &ctx);						CHKERRQ (ierr);
 	ierr = ctx->derivative_operators_->evaluateHessian (x, y);
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
-PetscErrorCode formHessian (Tao tao, Vec x, Mat H, Mat precH, void *ptr) {    
+PetscErrorCode formHessian (Tao tao, Vec x, Mat H, Mat precH, void *ptr) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
-PetscErrorCode formGradient (Tao tao, Vec x, Vec dJ, void *ptr) {    
+PetscErrorCode formGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	CtxInv *ctx = (CtxInv *) ptr;
+	CtxInv *ctx = reinterpret_cast<CtxInv*>(ptr);
 	ierr = ctx->derivative_operators_->evaluateGradient (dJ, x);
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
-PetscErrorCode formFunction (Tao tao, Vec x, PetscReal *J, void *ptr) {    
+PetscErrorCode formFunction (Tao tao, Vec x, PetscReal *J, void *ptr) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	CtxInv *ctx = (CtxInv *) ptr;
+	CtxInv *ctx = reinterpret_cast<CtxInv*>(ptr);
 	ierr = ctx->derivative_operators_->evaluateObjective (J, x);
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
 PetscErrorCode InvSolver::solve () {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	CtxInv *ctx;
 	ierr = MatShellGetContext (A_, &ctx);															CHKERRQ (ierr);
@@ -59,11 +82,12 @@ PetscErrorCode InvSolver::solve () {
 
 	ierr = TaoSetHessianRoutine (tao_, A_, A_, formHessian, (void*) ctx);							CHKERRQ (ierr);
 
-	// ierr = TaoSolve (tao);																			CHKERRQ (ierr); 
-	return ierr;
+	// ierr = TaoSolve (tao);																			CHKERRQ (ierr);
+	PetscFunctionReturn(0);
 }
 
 InvSolver::~InvSolver () {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	ierr = TaoDestroy (&tao_);
 	ierr = MatDestroy (&A_);

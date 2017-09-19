@@ -1,6 +1,7 @@
 #include "PdeOperators.h"
 
 PetscErrorCode PdeOperatorsRD::solveState () {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	double dt = n_misc_->dt_;
 	int nt = n_misc_->time_horizon_ / dt;
@@ -14,5 +15,5 @@ PetscErrorCode PdeOperatorsRD::solveState () {
 
 	dataOut (tumor_->c_t_, n_misc_, "results/CT.nc");
 
-	return ierr;
+	PetscFunctionReturn(0);
 }

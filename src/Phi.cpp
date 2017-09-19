@@ -1,6 +1,7 @@
 #include "Phi.h"
 
 Phi::Phi (std::shared_ptr<NMisc> n_misc) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr;
 
 	sigma_ = 0.2;
@@ -9,20 +10,21 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) {
 
 	phi_vec_ = (Vec *) malloc (sizeof (Vec *) * np_);
 
-	ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);							
-	ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);		
-	ierr = VecSetFromOptions (phi_vec_[0]);										
+	ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
+	ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);
+	ierr = VecSetFromOptions (phi_vec_[0]);
 
 	for (int i = 1; i < np_; i++) {
-		ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);							
+		ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
 	}
 
 	for (int i = 0; i < np_; i++) {
-		ierr = VecSet (phi_vec_[i], 0);											
+		ierr = VecSet (phi_vec_[i], 0);
 	}
 }
 
 PetscErrorCode Phi::setValues (double *user_cm, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr;
 	memcpy (cm_, user_cm, 3 * sizeof(double));
 	double center[3 * np_];
@@ -32,39 +34,40 @@ PetscErrorCode Phi::setValues (double *user_cm, std::shared_ptr<MatProp> mat_pro
 	ierr = phiMesh (center);
 
 	for (int i = 0; i < np_; i++) {
-		ierr = VecGetArray (phi_vec_[i], &phi_ptr);								CHKERRQ (ierr);	
+		ierr = VecGetArray (phi_vec_[i], &phi_ptr);								CHKERRQ (ierr);
 		initialize (phi_ptr, n_misc, &center[3 * i]);
-		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);	
+		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);
 
 		ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
     	ierr = VecGetArray (phi_vec_[i], &phi_ptr);								CHKERRQ (ierr);
-		ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc, sigma_smooth);		
-		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);	
+		ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc, sigma_smooth);
+		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);
 
 		ierr = VecGetArray (phi_vec_[i], &phi_ptr);								CHKERRQ (ierr);
     	dataOut (phi_ptr, n_misc, "results/phi.nc");
-		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);	
+		ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);							CHKERRQ (ierr);
 	}
 
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
 PetscErrorCode Phi::phiMesh (double *center) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	int h = round (std::pow (np_, 1.0 / 3.0));
 
 	double space[3];
 
-	space[0] =  1.5 * sigma_; 
-	space[1] =  1.5 * sigma_; 
-	space[2] =  1.5 * sigma_; 
+	space[0] =  1.5 * sigma_;
+	space[1] =  1.5 * sigma_;
+	space[2] =  1.5 * sigma_;
 
 	if (np_ == 1) {
 		center[0] = cm_[0];
 		center[1] = cm_[1];
 		center[2] = cm_[2];
-		return ierr;
+		PetscFunctionReturn(0);
 	}
 
 	if (np_ % 2 == 1) {
@@ -77,7 +80,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
 					center[ptr + 2] = k * space[2] + cm_[2];
 					ptr += 3;
 		    	}
-	} 
+	}
 	else if (np_ % 2 == 0) {
 		int ptr = 0;
 		for (int k = -(h) / 2; k <= (h) / 2; k++)
@@ -92,10 +95,11 @@ PetscErrorCode Phi::phiMesh (double *center) {
 		   		 }
 	}
 
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
 PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	double twopi = 2.0 * M_PI;
 	const double R = std::sqrt(2.) * sigma_; //0.05*twopi;
@@ -117,15 +121,17 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
 				out[ptr] = std::exp(-ratio * ratio);
 
 	    	}
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode Phi::apply (Vec out, Vec p) {
+	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	double * pg_ptr;
 	Vec pg;
-	ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);							CHKERRQ (ierr);	
-	ierr = VecSetFromOptions (pg);												CHKERRQ (ierr);	
-	
+	ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);							CHKERRQ (ierr);
+	ierr = VecSetFromOptions (pg);												CHKERRQ (ierr);
+
 	{
 		VecScatter scatter; /* scatter context */
 		IS from, to; /* index sets that define the scatter */
@@ -136,10 +142,10 @@ PetscErrorCode Phi::apply (Vec out, Vec p) {
 		}
 		ierr = ISCreateGeneral (PETSC_COMM_SELF, np_, idx_from, PETSC_COPY_VALUES,  &from);			CHKERRQ (ierr);
 		ierr = ISCreateGeneral (PETSC_COMM_SELF, np_, idx_to, PETSC_COPY_VALUES, &to);				CHKERRQ (ierr);
-		ierr = VecScatterCreate (p, from, pg, to, &scatter);										CHKERRQ (ierr);			
+		ierr = VecScatterCreate (p, from, pg, to, &scatter);										CHKERRQ (ierr);
 		ierr = VecScatterBegin (scatter, p, pg, INSERT_VALUES, SCATTER_FORWARD);					CHKERRQ (ierr);
 		ierr = VecScatterEnd (scatter, p, pg, INSERT_VALUES, SCATTER_FORWARD);						CHKERRQ (ierr);
-		ierr = ISDestroy (&from);																	CHKERRQ (ierr);	
+		ierr = ISDestroy (&from);																	CHKERRQ (ierr);
 		ierr = ISDestroy (&to);																		CHKERRQ (ierr);
 		ierr = VecScatterDestroy (&scatter);														CHKERRQ (ierr);
 	}
@@ -161,7 +167,7 @@ PetscErrorCode Phi::apply (Vec out, Vec p) {
 	ierr = VecDestroy (&dummy);																		CHKERRQ (ierr);
 	ierr = VecDestroy (&pg);																		CHKERRQ (ierr);
 
-	return ierr;
+	PetscFunctionReturn(0);
 }
 
 Phi::~Phi () {
