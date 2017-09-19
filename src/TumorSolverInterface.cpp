@@ -33,7 +33,7 @@ PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc) {
   // create pde and derivative operators
 	if (n_misc->rd_) {
 		pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
-		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc);
+		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor);
 	}
   // create tumor inverse solver
 	inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc);

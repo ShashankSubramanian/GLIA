@@ -4,6 +4,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
+    
+
     PetscFunctionReturn(0);
 }
 PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x){

@@ -139,10 +139,10 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 DiffCoef::~DiffCoef () {
     PetscFunctionBegin;
     PetscErrorCode ierr;
-    ierr = VecDestroy (&kxx_);                          CHKERRQ (ierr);
-    ierr = VecDestroy (&kxy_);                          CHKERRQ (ierr);
-    ierr = VecDestroy (&kxz_);                          CHKERRQ (ierr);
-    ierr = VecDestroy (&kyy_);                          CHKERRQ (ierr);
-    ierr = VecDestroy (&kyz_);                          CHKERRQ (ierr);
-    ierr = VecDestroy (&kzz_);                          CHKERRQ (ierr);
+    ierr = VecDestroy (&kxx_);                          
+    ierr = VecDestroy (&kxy_);                          
+    ierr = VecDestroy (&kxz_);                          
+    ierr = VecDestroy (&kyy_);                         
+    ierr = VecDestroy (&kyz_);                          
+    ierr = VecDestroy (&kzz_);                          
 }
