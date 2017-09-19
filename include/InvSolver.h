@@ -116,7 +116,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr);
 PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr);
 PetscErrorCode dispTaoConvReason(TaoConvergedReason flag, std::string& solverstatus);
 
-PetscErrorCode setTaoOptions(Tao* tao, Tumor* tumor, InverseTumorContext* ctx);
+PetscErrorCode setTaoOptions(Tao* tao, CtxInv* ctx);
 
 //PetscErrorCode AnalyticFormGradient(Tao, Vec, Vec, void*);
 //PetscErrorCode Analytic_HessianMatVec(Mat, Vec, Vec);
