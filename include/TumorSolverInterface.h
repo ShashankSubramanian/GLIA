@@ -16,13 +16,17 @@ class TumorSolverInterface {
 
 		/** @brief Solves the forward tumor problem, given initial concentration
 	   *         and tumor parameters
-	   *  @param shared_ptr<Image> c_0  - initial tumor concentration
-	   *  @param shared_ptr<Image> c_T, - target tumor concentration after simulation
+	   *  @param Vec c0  - initial tumor concentration
+	   *  @param Vec cT  - target tumor concentration after simulation
 	   */
-		PetscErrorCode solveForward (std::shared_ptr<Image> c0, std::shared_ptr<Image> c1);
+		PetscErrorCode solveForward (Vec c0, Vec cT);
 
-		/// @brief Solves the inverse tumor problem using Tao, given target concentration
-		PetscErrorCode solveInverse (std::shared_ptr<Image> d1, std::shared_ptr<TumorParameter> g);
+		/** @brief Solves the inverse tumor problem using Tao, given target concentration
+		 *
+		 *  @param Vec d1     - tumor inverse target data
+		 *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
+		 */
+		PetscErrorCode solveInverse (Vec d1, Vec p_rec);
 
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess(Vec p);
