@@ -26,8 +26,8 @@ class NMisc {
 				, k_ (0.1)
 				, rho_ (8)
 				, p_scale_ (1.0)
-				, beta_ (1e-2)
-				, writeOutput (1)
+				, beta_ (1e-2)	
+				, writeOutput_ (1)	
 		{
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
@@ -57,11 +57,13 @@ class NMisc {
 		double dt_;
 
 		int rd_;
+		int writeOutput_;
 
 		double k_;
 		double rho_;
 		double user_cm_[3];
 		double p_scale_;
+		double beta_;
 
 		int64_t accfft_alloc_max_;
 		int64_t n_local_;

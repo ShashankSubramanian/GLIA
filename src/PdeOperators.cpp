@@ -57,7 +57,8 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     int nt = n_misc_->time_horizon_ / dt;
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                                        CHKERRQ (ierr);
-    ierr = VecCopy (tumor_->c_0_, c_[0]);                                               CHKERRQ (ierr);
+    if (linearized == 0)
+        ierr = VecCopy (tumor_->c_0_, c_[0]);                                           CHKERRQ (ierr);
     for (int i = 0; i < nt; i++) {
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
         ierr = reaction (linearized, i);
@@ -91,8 +92,10 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
             alph = (c_ptr[i] * factor + 1 - c_ptr[i]);
             p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
         }
-        else {
-            
+        else { //Gauss - Newton method
+            factor = std::exp (rho_ptr[i] * dt);
+            alph = (c_ptr[i] * factor + 1 - c_ptr[i]);
+            p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
         }
     }
 
