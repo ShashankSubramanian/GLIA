@@ -13,11 +13,11 @@ PetscErrorCode reaction (Vec c_t, std::shared_ptr<NMisc> n_misc, std::shared_ptr
 class PdeOperators {
 	public:
 		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
-			// diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
+			diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
 		}
 
 		std::shared_ptr<Tumor> tumor_;
-		// std::shared_ptr<DiffSolver> diff_solver_;
+		std::shared_ptr<DiffSolver> diff_solver_;
 		std::shared_ptr<NMisc> n_misc_;
 
 		virtual PetscErrorCode solveState () = 0;
