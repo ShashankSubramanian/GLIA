@@ -4,7 +4,7 @@
 #include <limits>
 #include "DerivativeOperators.h"
 #include "PdeOperators.h"
-#include "utils.h"
+#include "Utils.h"
 #include "EventTimings.hpp"
 #include "IO.hpp"
 
@@ -313,14 +313,14 @@ PetscErrorCode optimizationMonitor(Tao tao, void* ptr){
   std::stringstream s;
   if (its == 0) {
     s << " Itr"  << "     J" << "            ||g||_2" << "      step";
-    ierr = coupling::cplMSG(""); CHKERRQ(ierr);
-    ierr = coupling::cplMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    ierr = tuMSG(""); CHKERRQ(ierr);
+    ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
   s << " " << std::scientific << std::setprecision(4) << std::setfill('0') << std::setw(3)<< its
     << "     " << std::scientific << std::setprecision(4) << J
     << "     " << std::scientific << std::setprecision(4) << gnorm
     << "     " << std::scientific << std::setprecision(4) << step;
-  ierr = coupling::cplMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
 	/*
 	#ifdef MONITOR_ITP_TIME_HISTORY
@@ -474,7 +474,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ctx->gradnorm0 = norm_gref;
 		//ctx->gradnorm0 = gnorm;
 		ctx->updateGradNorm0 = false;
-		ierr = coupling::cplMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
+		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
 		ierr = VecDestroy(&dJ); CHKERRQ(ierr);
 	}
@@ -486,14 +486,14 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	ctx->convergenceMessage.clear();
 	// check for NaN value
 	if (PetscIsInfOrNanReal(J)) {
-			ierr = coupling::cplMSGwarn("objective is NaN"); CHKERRQ(ierr);
+			ierr = tuMSGwarn("objective is NaN"); CHKERRQ(ierr);
 			ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN); CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);
 	}
 
 	// check for NaN value
 	if (PetscIsInfOrNanReal(gnorm)) {
-			ierr = coupling::cplMSGwarn("||g|| is NaN"); CHKERRQ(ierr);
+			ierr = tuMSGwarn("||g|| is NaN"); CHKERRQ(ierr);
 			ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN); CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);
 	}
@@ -507,12 +507,12 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	if (iter >= miniter) {
 		if (verbosity > 1) {
 				ss << "step size in linesearch: " << std::scientific << step;
-				ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+				ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 				ss.str(std::string()); ss.clear();
 		}
 		if (step < minstep) {
 				ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
-				ierr = coupling::cplMSGwarn(ss.str()); CHKERRQ(ierr);
+				ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
 				ss.str(std::string()); ss.clear();
 				ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL); CHKERRQ(ierr);
 				PetscFunctionReturn(ierr);
@@ -527,7 +527,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 			 << std::right << std::scientific << gnorm << "    <    "
 			 << std::left << std::setw(14) << gttol*g0norm << " = " << "tol";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// ||g_k||_2 < tol
@@ -539,7 +539,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 				<< std::right << std::scientific << gnorm << "    <    "
 				<< std::left << std::setw(14) << gatol << " = " << "tol";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// iteration number exceeds limit
@@ -551,7 +551,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 				<< std::right << iter  << "    >    "
 				<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// store objective function value
@@ -566,7 +566,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 			// if the gradient is zero, we should terminate immediately
 			if (gnorm == 0) {
 					ss << "||g|| = " << std::scientific << 0.0 << " < " << gatol  << " = " << "bound";
-					ierr = coupling::cplMSGwarn(ss.str()); CHKERRQ(ierr);
+					ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
 					ss.str(std::string()); ss.clear();
 					ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL); CHKERRQ(ierr);
 					PetscFunctionReturn(ierr);
@@ -635,7 +635,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
 		ctx->gradnorm0 = norm_gref;
 		ctx->updateGradNorm0 = false;
-		ierr = coupling::cplMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
+		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
 		ierr = VecDestroy(&dJ); CHKERRQ(ierr);
 	}
@@ -667,14 +667,14 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	ctx->convergenceMessage.clear();
 	// check for NaN value
 	if (PetscIsInfOrNanReal(jx)) {
-			ierr = coupling::cplMSGwarn("objective is NaN"); CHKERRQ(ierr);
+			ierr = tuMSGwarn("objective is NaN"); CHKERRQ(ierr);
 			ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN); CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);
 	}
 
 	// check for NaN value
 	if (PetscIsInfOrNanReal(gnorm)) {
-			ierr = coupling::cplMSGwarn("||g|| is NaN"); CHKERRQ(ierr);
+			ierr = tuMSGwarn("||g|| is NaN"); CHKERRQ(ierr);
 			ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN); CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);
 	}
@@ -700,7 +700,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 			 << std::right << std::scientific << std::abs(jxold-jx) << "    <    "
 			 << std::left << std::setw(14) << tolj*theta << " = " << "tol*|1+J|";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// ||dx|| < sqrt(tolj)*(1+||x||)
@@ -711,7 +711,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 			 << std::right << std::scientific << normdx << "    <    "
 			 << std::left << std::setw(14) << tolx*(1+normx) << " = " << "sqrt(tol)*(1+||x||)";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// ||g_k||_2 < cbrt(tolj)*abs(1+Jc)
@@ -722,7 +722,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 				<< std::right << std::scientific << gnorm << "    <    "
 				<< std::left << std::setw(14) << tolg*theta << " = " << "cbrt(tol)*|1+J|";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// ||g_k||_2 < tol
@@ -733,7 +733,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 				<< std::right << std::scientific << gnorm << "    <    "
 				<< std::left << std::setw(14) << gatol << " = " << "tol";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		if (gnorm < gtolbound*g0norm) {
@@ -743,7 +743,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 				<< std::right << gnorm  << "    >    "
 				<< std::left << std::setw(14) << gtolbound*g0norm << " = " << "kappa*||g0||";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		if (iter > maxiter) {
@@ -753,7 +753,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 				<< std::right << iter  << "    >    "
 				<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		if (iter > iterbound) {
@@ -763,7 +763,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 				<< std::right << iter  << "    >    "
 				<< std::left << std::setw(14) << iterbound << " = " << "iterbound";
 		ctx->convergenceMessage.push_back(ss.str());
-		ierr = coupling::cplMSGstd(ss.str()); CHKERRQ(ierr);
+		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
 		// store objective function value
@@ -790,7 +790,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		// if the gradient is zero, we should terminate immediately
 		if (gnorm == 0) {
 				ss << "||g|| = " << std::scientific << 0.0 << " < " << gatol  << " = " << "bound";
-				ierr = coupling::cplMSGwarn(ss.str()); CHKERRQ(ierr);
+				ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
 				ss.str(std::string()); ss.clear();
 				ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL); CHKERRQ(ierr);
 				PetscFunctionReturn(ierr);
@@ -813,73 +813,73 @@ PetscErrorCode dispTaoConvReason(TaoConvergedReason flag, std::string& solversta
       case TAO_CONVERGED_GATOL:
       {
           msg = "solver converged: ||g(x)|| <= tol";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_CONVERGED_GRTOL:
       {
           msg = "solver converged: ||g(x)||/J(x) <= tol";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_CONVERGED_GTTOL:
       {
           msg = "solver converged: ||g(x)||/||g(x0)|| <= tol";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_CONVERGED_STEPTOL:
       {
           msg = "step size too small";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_CONVERGED_MINF:
       {
           msg = "objective value to small";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_CONVERGED_USER:
       {
           msg = "solver converged";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_DIVERGED_MAXITS:
       {
           msg = "maximum number of iterations reached";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_DIVERGED_NAN:
       {
           msg = "numerical problems (NAN detected)";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_DIVERGED_MAXFCN:
       {
           msg = "maximal number of function evaluations reached";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_DIVERGED_LS_FAILURE:
       {
           msg = "line search failed";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_DIVERGED_TR_REDUCTION:
       {
           msg = "trust region failed";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_DIVERGED_USER:
       {
           msg = "user defined divergence criterion met";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
       case TAO_CONTINUE_ITERATING:
@@ -890,7 +890,7 @@ PetscErrorCode dispTaoConvReason(TaoConvergedReason flag, std::string& solversta
       default:
       {
           msg = "convergence reason not defined";
-          ierr = coupling::cplMSGwarn(msg); CHKERRQ(ierr);
+          ierr = tuMSGwarn(msg); CHKERRQ(ierr);
           break;
       }
   }
@@ -998,11 +998,11 @@ PetscErrorCode setTaoOptions(Tao* tao, CtxInv* ctx){
   ierr = TaoLineSearchSetType(linesearch, "armijo");
 
   std::stringstream s;
-  coupling::cplMSGstd(" parameters (optimizer):");
-  coupling::cplMSGstd(" tolerances (stopping conditions):");
-  s << "   gatol: "<< ctx->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ coupling::cplMSGstd(s.str()); s.str(""); s.clear();
-  s << "   grtol: "<< ctx->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ coupling::cplMSGstd(s.str()); s.str(""); s.clear();
-  s << "   gttol: "<< ctx->gttol;  /*pout(s.str(), cplctx->_fileOutput);*/ coupling::cplMSGstd(s.str()); s.str(""); s.clear();
+  tuMSGstd(" parameters (optimizer):");
+  tuMSGstd(" tolerances (stopping conditions):");
+  s << "   gatol: "<< ctx->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
+  s << "   grtol: "<< ctx->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
+  s << "   gttol: "<< ctx->gttol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
 
   ierr = TaoSetFromOptions(tao);
 

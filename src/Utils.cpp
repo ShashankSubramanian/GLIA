@@ -1,5 +1,50 @@
 #include "Utils.h"
 
+PetscErrorCode tuMSG(std::string msg, int size, bool parlog) {
+	PetscFunctionBegin;
+  PetscErrorCode ierr;
+  std::string color = "\x1b[1;34;40m";
+  ierr = _tuMSG(msg, color, size, parlog); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode tuMSGstd(std::string msg, int size, bool parlog) {
+  PetscErrorCode ierr;
+  std::string color = "\x1b[37;40m";
+  ierr = _tuMSG(msg, color, size, parlog); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode tuMSGwarn(std::string msg, int size, bool parlog) {
+  PetscErrorCode ierr;
+  std::string color = "\x1b[1;31;40m";
+  ierr = _tuMSG(msg, color, size, parlog); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode _tuMSG(std::string msg, std::string color, int size, bool parlog) {
+    PetscErrorCode ierr = 0;
+    std::stringstream ss;
+    PetscFunctionBegin;
+
+    int procid, nprocs;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+
+    ss << std::left << std::setw(size)<< msg;
+    msg = color+"[ "  + ss.str() + "]\x1b[0m\n";
+    //msg = "\x1b[1;34;40m[ "  + ss.str() + "]\x1b[0m\n";
+
+    // display message
+    if(parlog) {
+      ParLOG<<msg;
+    } else {
+      ierr = PetscPrintf(PETSC_COMM_WORLD,msg.c_str()); CHKERRQ(ierr);
+    }
+
+    PetscFunctionReturn(0);
+}
+
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers) {
 	PetscErrorCode ierr = 0;
 	double *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;

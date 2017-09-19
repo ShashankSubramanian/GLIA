@@ -26,8 +26,8 @@ class NMisc {
 				, k_ (0.1)
 				, rho_ (8)
 				, p_scale_ (1.0)
-				, beta_ (1e-2)	
-				, writeOutput (1)	
+				, beta_ (1e-2)
+				, writeOutput (1)
 		{
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
@@ -75,15 +75,22 @@ class NMisc {
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 
 //Read/Write function prototypes
-
 void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 
+/* helper methods for print out to console */
+PetscErrorCode tuMSG(std::string msg, int size = 98, bool parlog = false);
+PetscErrorCode tuMSGstd(std::string msg, int size = 98, bool parlog = false);
+PetscErrorCode tuMSGwarn(std::string msg, int size = 98, bool parlog = false);
+PetscErrorCode _tuMSG(std::string msg, std::string color, int size, bool parlog);
+
+/* accfft differential operators */
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
 void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
 
+/* helper function for timer accumulation */
 void accumulateTimers(double* tacc, double* tloc, double selfexec);
 
 #endif
