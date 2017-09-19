@@ -31,8 +31,8 @@ class Tumor {
 		Vec c_t_;
 		Vec c_0_;
 
-		PetscErrorCode setValues (Vec p, std::shared_ptr<NMisc> n_misc);
-		
+		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc);
+
 		~Tumor ();
 };
 
