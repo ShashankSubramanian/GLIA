@@ -13,9 +13,13 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
 	ierr = VecSetSizes (c_t_, n_misc->n_local_, n_misc->n_global_);
 	ierr = VecSetFromOptions (c_t_);
 	ierr = VecDuplicate (c_t_, &c_0_);
+	ierr = VecDuplicate (p_t_, &c_0_);
+	ierr = VecDuplicate (p_0_, &c_0_);
 
 	ierr = VecSet (c_t_, 0);
 	ierr = VecSet (c_0_, 0);
+	ierr = VecSet (p_0_, 0);
+	ierr = VecSet (p_t_, 0);
 }
 
 PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
@@ -30,8 +34,8 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
 	ierr = phi_->setValues (n_misc->user_cm_, mat_prop_, n_misc);
 	ierr = phi_->apply(c_0_, p_);
 
-  if(n_misc->writeOutput_)
-	  dataOut (c_0_, n_misc, "results/C0.nc");
+  	if(n_misc->writeOutput_)
+		dataOut (c_0_, n_misc, "results/C0.nc");
 
 	PetscFunctionReturn(0);
 }
@@ -40,5 +44,7 @@ Tumor::~Tumor () {
 	PetscErrorCode ierr;
 	ierr = VecDestroy (&c_t_);
 	ierr = VecDestroy (&c_0_);
+	ierr = VecDestroy (&p_t_);
+	ierr = VecDestroy (&p_0_);
 	ierr = VecDestroy (&p_);
 }

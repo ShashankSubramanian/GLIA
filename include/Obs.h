@@ -12,8 +12,8 @@ class Obs {
 		double threshold_;
 		Vec filter_;
 
-		PetscErrorCode setFilter (Vec &custom_filter);
-		PetscErrorCode apply (Vec &y, Vec x);
+		PetscErrorCode setFilter (Vec custom_filter);
+		PetscErrorCode apply (Vec y, Vec x);
 		// PetscErrorCode apply_transpose (double *y, double *x);
 
 

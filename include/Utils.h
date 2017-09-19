@@ -26,6 +26,8 @@ class NMisc {
 				, k_ (0.1)
 				, rho_ (8)
 				, p_scale_ (1.0)
+				, beta_ (1e-2)	
+				, writeOutput (1)	
 		{
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;

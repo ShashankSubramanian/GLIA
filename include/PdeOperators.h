@@ -8,8 +8,6 @@
 #include <mpi.h>
 #include <omp.h>
 
-PetscErrorCode reaction (Vec c_t, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, double dt);
-
 class PdeOperators {
 	public:
 		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
@@ -20,20 +18,23 @@ class PdeOperators {
 		std::shared_ptr<DiffSolver> diff_solver_;
 		std::shared_ptr<NMisc> n_misc_;
 
-		virtual PetscErrorCode solveState () = 0;
-		// virtual PetscErrorCode solveAdjoint () = 0;
+		virtual PetscErrorCode solveState (int linearized) = 0;
+		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
 
 		virtual ~PdeOperators () {}
 };
 
 class PdeOperatorsRD : public PdeOperators {
 	public:
-		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperators (tumor, n_misc) {}
+		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
 
-		PetscErrorCode solveState ();
-		// PetscErrorCode solveAdjoint ();
+		Vec *c_;
 
-		~PdeOperatorsRD () {}
+		PetscErrorCode solveState (int linearized);
+		PetscErrorCode reaction (int linearized, int i);
+		PetscErrorCode solveAdjoint (int linearized);
+
+		~PdeOperatorsRD ();
 };
 
 
