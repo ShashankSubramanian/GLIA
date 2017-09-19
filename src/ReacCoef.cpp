@@ -1,6 +1,6 @@
 #include "ReacCoef.h"
 
-ReacCoef::ReacCoef (NMisc *n_misc) {
+ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &rho_vec_);							
 	ierr = VecSetSizes (rho_vec_, n_misc->n_local_, n_misc->n_global_);		
@@ -10,7 +10,7 @@ ReacCoef::ReacCoef (NMisc *n_misc) {
 	smooth_flag_ = 0;
 }
 
-PetscErrorCode ReacCoef::setValues (double rho_scale, MatProp *mat_prop, NMisc *n_misc) {
+PetscErrorCode ReacCoef::setValues (double rho_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr;
     rho_scale_ = rho_scale;
 	double dr_dm_gm = rho_scale;        //GM
@@ -27,7 +27,7 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, MatProp *mat_prop, NMisc *
  	return ierr;
 }
 
-PetscErrorCode ReacCoef::smooth (NMisc *n_misc) {
+PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	double sigma = 2.0 * M_PI / n_misc->n_[0];
 

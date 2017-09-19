@@ -2,7 +2,7 @@
 #include "PdeOperators.h"
 #include "Tumor.h"
 
-PetscErrorCode reaction (Vec c_t, NMisc *n_misc, Tumor *tumor, double dt) {
+PetscErrorCode reaction (Vec c_t, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, double dt) {
 	PetscErrorCode ierr = 0;
 	double *c_t_ptr, *rho_ptr;
 	double factor, alph;

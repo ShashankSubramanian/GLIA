@@ -1,6 +1,6 @@
 #include "Obs.h"
 
-Obs::Obs (NMisc *n_misc, Vec data, double obs_thr) {
+Obs::Obs (std::shared_ptr<NMisc> n_misc, Vec data, double obs_thr) {
 	threshold_ = obs_thr;
 
 	PetscErrorCode ierr;

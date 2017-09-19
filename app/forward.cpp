@@ -14,9 +14,6 @@
 
 static char help[] = "Forward Driver";
 
-PetscErrorCode setupNmisc (NMisc *n_misc);
-PetscErrorCode setupTumor (Tumor *tumor, NMisc *n_misc);
-
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
     google::InitGoogleLogging (argv[0]);
@@ -48,16 +45,11 @@ int main (int argc, char** argv) {
 
 /* --------------------------------------------------------------------------------------------------------------*/
 	    
-	NMisc *n_misc = new NMisc (n, isize, istart, plan, c_comm);   //This class contains all required parameters
-	TumorSolverInterface *solver_interface = new TumorSolverInterface (n_misc);
-	solver_interface->solveForward (n_misc);
+	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, istart, plan, c_comm);   //This class contains all required parameters
+	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
+	ierr = solver_interface->solveForward ();
 
 /* --------------------------------------------------------------------------------------------------------------*/
-/* Free Memory Begin */
 	accfft_destroy_plan (plan);
-	delete (solver_interface);
-	delete (n_misc);
-/* Free Memory End */
-
 	PetscFinalize ();
 }

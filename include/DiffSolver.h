@@ -7,7 +7,7 @@
 #include <omp.h>
 
 struct Ctx {
-	DiffCoef *k_;
+	std::shared_ptr<DiffCoef> k_;
 	accfft_plan *plan_;
 	double dt_;
 	Vec temp_;
@@ -15,7 +15,7 @@ struct Ctx {
 
 class DiffSolver {
 	public:
-		DiffSolver (NMisc *n_misc, DiffCoef *k);
+		DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k);
 
 		KSP ksp_;
 		Mat A_;
@@ -25,7 +25,7 @@ class DiffSolver {
 		static PetscErrorCode operatorA (Mat A, Vec x, Vec y);
 		PetscErrorCode solve (Vec c, double dt);
 
-		~DiffSolver ();
+		virtual ~DiffSolver ();
 		
 };
 

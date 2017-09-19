@@ -6,10 +6,15 @@
 #define OMP_NUM_THREADS 16
 
 #include <petsc.h>
+#include "petsctao.h"
 #include <accfft.h>
 #include <accfft_operators.h>
 #include <glog/logging.h>
 #include <math.h>
+#include <memory>
+
+#include <iostream>
+
 
 class NMisc {
 	public:
@@ -65,14 +70,14 @@ class NMisc {
 
 };
 
-int weierstrassSmoother (double *Wc, double *c, NMisc *n_misc, double sigma); //TODO: Clean up .cpp file
+int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 
 //Read/Write function prototypes
 
-void dataIn (double *A, NMisc* n_misc, const char *fname);
-void dataIn (Vec A, NMisc *n_misc, const char *fname);
-void dataOut (double *A, NMisc *n_misc, const char *fname);
-void dataOut (Vec A, NMisc *n_misc, const char *fname);
+void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
+void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
 void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);

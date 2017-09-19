@@ -18,22 +18,21 @@ Tumor class
 
 class Tumor {
 	public:
-		Tumor (NMisc *n_misc);
+		Tumor (std::shared_ptr<NMisc> n_misc);
 
-		DiffCoef *k_;
-		ReacCoef *rho_;
-		Phi *phi_;
-		Obs *obs_;
+		std::shared_ptr<DiffCoef> k_;
+		std::shared_ptr<ReacCoef> rho_;
+		std::shared_ptr<Phi> phi_;
+		// std::shared_ptr<Obs> obs_;
 
-		MatProp *mat_prop_;
+		std::shared_ptr<MatProp> mat_prop_;
 
 		Vec p_;
 		Vec c_t_;
 		Vec c_0_;
 
-		PetscErrorCode setValues (double k, double rho, double *user_cm, Vec p, NMisc *n_misc);
-		PetscErrorCode runForward (NMisc *n_misc); //TODO -- Time history class to be added; Is it necesary?
-
+		PetscErrorCode setValues (Vec p, std::shared_ptr<NMisc> n_misc);
+		
 		~Tumor ();
 };
 

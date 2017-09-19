@@ -1,6 +1,6 @@
 #include "MatProp.h"
 
-MatProp::MatProp (NMisc *n_misc) {
+MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &gm_);							
 	ierr = VecSetSizes (gm_, n_misc->n_local_, n_misc->n_global_);		
@@ -18,7 +18,7 @@ MatProp::MatProp (NMisc *n_misc) {
 	ierr = VecSet (filter_ , 0);				
 }
 
-PetscErrorCode MatProp::setValues (NMisc *n_misc) {
+PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
 	ierr = VecGetArray (gm_, &gm_ptr);										CHKERRQ (ierr);

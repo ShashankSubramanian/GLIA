@@ -7,7 +7,7 @@
 
 class Obs {
 	public:
-		Obs (NMisc *n_misc, Vec data, double obs_thr);
+		Obs (std::shared_ptr<NMisc> n_misc, Vec data, double obs_thr);
 
 		double threshold_;
 		Vec filter_;

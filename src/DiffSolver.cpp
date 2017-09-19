@@ -1,6 +1,6 @@
 #include "DiffSolver.h"
 
-DiffSolver::DiffSolver (NMisc *n_misc, DiffCoef *k) {
+DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k) {
 	PetscErrorCode ierr = 0;
 	Ctx *ctx = new Ctx ();
 	ctx->k_ = k;

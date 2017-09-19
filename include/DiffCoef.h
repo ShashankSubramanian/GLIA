@@ -8,7 +8,7 @@
 
 class DiffCoef {
 	public:
-		DiffCoef (NMisc *n_misc);
+		DiffCoef (std::shared_ptr<NMisc> n_misc);
 
 		double k_scale_;
 		int smooth_flag_;
@@ -22,8 +22,8 @@ class DiffCoef {
 
 		Vec *temp_;
 
-		PetscErrorCode setValues (double k_scale, MatProp *mat_prop, NMisc *n_misc);
-		PetscErrorCode smooth (NMisc *n_misc);
+		PetscErrorCode setValues (double k_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);
 		PetscErrorCode applyD (Vec dc, Vec c, accfft_plan *plan);
 

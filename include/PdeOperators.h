@@ -8,31 +8,30 @@
 #include <mpi.h>
 #include <omp.h>
 
-PetscErrorCode reaction (Vec c_t, NMisc *n_misc, Tumor *tumor, double dt);
+PetscErrorCode reaction (Vec c_t, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, double dt);
 
 class PdeOperators {
 	public:
-		PdeOperators (Tumor *tumor, NMisc *n_misc) : tumor_(tumor) {
-			diff_solver_ = new DiffSolver (n_misc, tumor->k_);
+		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
+			// diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
 		}
 
-		Tumor *tumor_;
-		DiffSolver *diff_solver_;
+		std::shared_ptr<Tumor> tumor_;
+		// std::shared_ptr<DiffSolver> diff_solver_;
+		std::shared_ptr<NMisc> n_misc_;
 
-		virtual PetscErrorCode solveState (NMisc *n_misc) = 0;
-		// virtual PetscErrorCode solveAdjoint (NMisc *n_misc) = 0;
+		virtual PetscErrorCode solveState () = 0;
+		// virtual PetscErrorCode solveAdjoint () = 0;
 
-		~PdeOperators () {
-			delete (diff_solver_);
-		}
+		virtual ~PdeOperators () {}
 };
 
 class PdeOperatorsRD : public PdeOperators {
 	public:
-		PdeOperatorsRD (Tumor *tumor, NMisc *n_misc) : PdeOperators (tumor, n_misc) {}
+		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperators (tumor, n_misc) {}
 
-		PetscErrorCode solveState (NMisc *n_misc);
-		// PetscErrorCode solveAdjoint (NMisc *n_misc);
+		PetscErrorCode solveState ();
+		// PetscErrorCode solveAdjoint ();
 
 		~PdeOperatorsRD () {}
 };

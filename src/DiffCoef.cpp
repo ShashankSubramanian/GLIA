@@ -1,6 +1,6 @@
 #include "DiffCoef.h"
 
-DiffCoef::DiffCoef (NMisc *n_misc) {
+DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &kxx_);							
 	ierr = VecSetSizes (kxx_, n_misc->n_local_, n_misc->n_global_);		
@@ -28,7 +28,7 @@ DiffCoef::DiffCoef (NMisc *n_misc) {
 	smooth_flag_ = 0;
 }
 
-PetscErrorCode DiffCoef::setValues (double k_scale, MatProp *mat_prop, NMisc *n_misc) {
+PetscErrorCode DiffCoef::setValues (double k_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr;
     k_scale_ = k_scale;
 	double dk_dm_gm =  k_scale / 5.0;        //GM
@@ -48,7 +48,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, MatProp *mat_prop, NMisc *n_
  	return ierr;
 } 
 
-PetscErrorCode DiffCoef::smooth (NMisc *n_misc) {
+PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	double sigma = 2.0 * M_PI / n_misc->n_[0];
 	double *kxx_ptr, *kxy_ptr, *kxz_ptr, *kyy_ptr, *kyz_ptr, *kzz_ptr;
@@ -135,9 +135,6 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 
 DiffCoef::~DiffCoef () {
 	PetscErrorCode ierr;
-	int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 	ierr = VecDestroy (&kxx_);											
 	ierr = VecDestroy (&kxy_);											
 	ierr = VecDestroy (&kxz_);											

@@ -1,6 +1,6 @@
 #include "Phi.h"
 
-Phi::Phi (NMisc *n_misc) {
+Phi::Phi (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 
 	sigma_ = 0.2;
@@ -22,7 +22,7 @@ Phi::Phi (NMisc *n_misc) {
 	}
 }
 
-PetscErrorCode Phi::setValues (double *user_cm, MatProp *mat_prop, NMisc *n_misc) {
+PetscErrorCode Phi::setValues (double *user_cm, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	memcpy (cm_, user_cm, 3 * sizeof(double));
 	double center[3 * np_];
@@ -95,7 +95,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
 	return ierr;
 }
 
-PetscErrorCode Phi::initialize (double *out, NMisc *n_misc, double *center) {
+PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
 	PetscErrorCode ierr = 0;
 	double twopi = 2.0 * M_PI;
 	const double R = std::sqrt(2.) * sigma_; //0.05*twopi;
@@ -119,7 +119,7 @@ PetscErrorCode Phi::initialize (double *out, NMisc *n_misc, double *center) {
 	    	}
 }
 
-PetscErrorCode Phi::apply (Vec out, Vec p, NMisc *n_misc) {
+PetscErrorCode Phi::apply (Vec out, Vec p) {
 	PetscErrorCode ierr = 0;
 	double * pg_ptr;
 	Vec pg;

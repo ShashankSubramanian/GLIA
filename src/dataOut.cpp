@@ -16,7 +16,7 @@ static bool isLittleEndian () {
 	return (numPtr[0] == 1);
 }
 
-void dataOut (double *A, NMisc *n_misc, const char *fname) {
+void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Comm c_comm = n_misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank(c_comm, &procid);
@@ -38,7 +38,7 @@ void dataOut (double *A, NMisc *n_misc, const char *fname) {
 	return;
 }
 
-void dataOut (Vec A, NMisc *n_misc, const char *fname) {
+void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
   double *a_ptr;
   PetscErrorCode ierr;
   ierr = VecGetArray (A, &a_ptr);							

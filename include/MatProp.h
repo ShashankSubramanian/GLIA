@@ -7,7 +7,7 @@
 
 class MatProp {
 	public:
-		MatProp (NMisc *n_misc);
+		MatProp (std::shared_ptr<NMisc> n_misc);
 
 		Vec gm_;
 		Vec wm_;
@@ -18,7 +18,7 @@ class MatProp {
 		double force_factor_;
 		double edema_threshold_;	
 
-		PetscErrorCode setValues (NMisc *n_misc);
+		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
 
 		~MatProp ();
 };

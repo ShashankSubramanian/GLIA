@@ -8,7 +8,7 @@
 
 class Phi {
 	public:
-		Phi (NMisc *n_misc);
+		Phi (std::shared_ptr<NMisc> n_misc);
 
 		Vec *phi_vec_;
 
@@ -16,10 +16,10 @@ class Phi {
 		double cm_[3];
 		int np_, n_local_;
 
-		PetscErrorCode setValues (double *user_cm, MatProp *mat_prop, NMisc *n_misc);
+		PetscErrorCode setValues (double *user_cm, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode phiMesh (double *center);
-		PetscErrorCode initialize (double *out, NMisc *n_misc, double *center);
-		PetscErrorCode apply (Vec out, Vec p, NMisc *n_misc);
+		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);
+		PetscErrorCode apply (Vec out, Vec p);
 
 		~Phi ();
 };
