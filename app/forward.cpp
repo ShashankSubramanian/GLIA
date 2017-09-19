@@ -44,10 +44,12 @@ int main (int argc, char** argv) {
 /* ACCFFT, PETSC setup end */
 
 /* --------------------------------------------------------------------------------------------------------------*/
-	    
+	   
+{ 
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, istart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 	ierr = solver_interface->solveForward ();
+}
 
 /* --------------------------------------------------------------------------------------------------------------*/
 	accfft_destroy_plan (plan);
