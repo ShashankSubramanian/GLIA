@@ -6,13 +6,27 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 #include "EventTimings.hpp"
-#include "IO.hpp"
 
-PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y);
-
+/**
+ *  ***********************************
+ */
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc)
 :
   initialized_(false),
+	optTolGrad_(1E-3),
+	betap_(0),
+	updateRefGradITPSolver_(true),
+	refgradITPSolver_(1.),
+	data_(),
+	data_gradeval_(),
+	solverstatus_(""),
+	nbNewtonIt_(-1),
+	nbKrylovIt_(-1),
+	//_tumor(),
+	itctx_(),
+	tao_(),
+	//params_(),
+	tumor_(),
   itctx_()
   {
 	  PetscFunctionBegin;
@@ -22,16 +36,22 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 	  }
 }
 
-PetscErrorCode InvSolver::initialize(std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc) {
+/**
+ *  ***********************************
+ */
+PetscErrorCode InvSolver::initialize(
+	std::shared_ptr <DerivativeOperators> derivative_operators,
+	std::shared_ptr <NMisc> n_misc) {
+
   PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	if(initialized_) PetscFunctionReturn(0);
 
 	itctx_ = std::make_shared<CtxInv>();
-	ctx->derivative_operators_ = derivative_operators;
-	ctx->n_misc_ = n_misc;
+	itctx_->derivative_operators_ = derivative_operators;
+	itctx_->n_misc_ = n_misc;
 
-	ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx.get(), &A_);
+	ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, itctx_.get(), &A_);
 	ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) hessianMatVec);
 
 	ierr = TaoCreate (PETSC_COMM_WORLD, &tao_);
@@ -42,27 +62,84 @@ PetscErrorCode InvSolver::initialize(std::shared_ptr <DerivativeOperators> deriv
 	PetscFunctionReturn(0);
 }
 
+/**
+ *  ***********************************
+ */
 PetscErrorCode InvSolver::solve () {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	CtxInv *ctx;
-	ierr = MatShellGetContext (A_, &ctx);															CHKERRQ (ierr);
-	ierr = TaoSetObjectiveRoutine (tao_, formFunction, (void*) ctx);								CHKERRQ (ierr);
-	ierr = TaoSetGradientRoutine (tao_, formGradient, (void*) ctx);									CHKERRQ (ierr);
+  TU_assert(initialized_, "InvSolver::solve(): InvSolver needs to be initialized.")
+  TU_assert(data_ != nullptr, "InvSolver:solve(): requires non-null input data for inversion.");
+	TU_assert(data_gradeval_ != nullptr, "InvSolver:solve(): requires non-null input data for gradient evaluation.");
+
+  /* === observed data === */
+	// apply observer on ground truth, store observed data in d
+	err = tumor_->obs_->apply(data_, data_);                             CHKERRQ(ierr);
+	// smooth observed data
+  ScalarType *d_ptr;
+	ierr = VecGetArray(data_, &d_ptr);                                   CHKERRQ(ierr);
+  ierr = weierstrass_smoother(d_ptr, d_ptr, itctx_->n_misc_, 0.0003);  CHKERRQ(ierr);
+	//static int it = 0; it++;
+	//std::stringstream ss; ss<<"_it-"<<it;
+	//std::string s("files/cpl/ITdata"+ss.str()+".nc");
+	//DataOut(d_ptr, itctx_->n_misc_, s.c_str());
+
+	/* Add Noise */
+  Vec noise; double * noise_ptr;
+  ierr = VecCreate(PETSC_COMM_WORLD, &noise);                          CHKERRQ(ierr);
+  ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_); CHKERRQ(ierr);
+  ierr = VecSetFromOptions(noise);                                     CHKERRQ(ierr);
+  ierr = VecSetRandom(noise, NULL);                                    CHKERRQ(ierr);
+  ierr = VecGetArray(noise, &noise_ptr);                               CHKERRQ(ierr);
+  for (int i = 0; i < itctx_->n_misc_->n_local_; ++i){
+    d_ptr[i] += noise_ptr[i] * 0.0;
+    noise_ptr[i] = d_ptr[i];                                           //just to measure d norm
+  }
+  ierr = VecRestoreArray(noise, &noise_ptr);                           CHKERRQ(ierr);
+	ierr = VecRestoreArray(data_, &d_ptr);                               CHKERRQ(ierr);
+	PetscScalar max, min;                                                // compute d-norm
+  PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
+  ierr = VecNorm(noise, NORM_2, &d_norm);                              CHKERRQ(ierr);
+  ierr = VecMax(noise, NULL, &max);                                    CHKERRQ(ierr);
+  ierr = VecMin(noise, NULL, &min);                                    CHKERRQ(ierr);
+  ierr = VecAXPY(noise, -1.0, data_;                                   CHKERRQ(ierr);
+  ierr = VecNorm(noise, NORM_2, &d_errorl2norm);                       CHKERRQ(ierr);
+  ierr = VecNorm(noise, NORM_INFINITY, &d_errorInfnorm);               CHKERRQ(ierr);
+	std::stringstream s;
+  s << "data (ITP), with noise: l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  s << "IT data error due to thresholding and smoothing: l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+
+	/* solve for a initial guess */
+	//solveForParameters(data.get(), _tumor->N_Misc_, _tumor->phi_, timers, &_tumor->p_true_);
+
+	_solverstatus = "";
+  _nbNewtonIt = -1;
+  _nbKrylovIt = -1;
+  //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
+
+
+/*
+	CtxInv *itctx;
+	ierr = MatShellGetContext (A_, &itctx);															 CHKERRQ (ierr);
+	ierr = TaoSetObjectiveRoutine (tao_, formFunction, (void*) itctx);   CHKERRQ (ierr);
+	ierr = TaoSetGradientRoutine (tao_, formGradient, (void*) itctx);    CHKERRQ (ierr);
 
 	double ga_tol, gr_tol, gt_tol;
-	ierr = TaoGetTolerances (tao_, &ga_tol, &gr_tol, &gt_tol);										CHKERRQ (ierr);
+	ierr = TaoGetTolerances (tao_, &ga_tol, &gr_tol, &gt_tol);           CHKERRQ (ierr);
 	ga_tol = 1e-6;
 	gr_tol = 1e-6;
 	gt_tol = 1e-6;
-	ierr = TaoSetTolerances (tao_, ga_tol, gr_tol, gt_tol);											CHKERRQ (ierr);
+	ierr = TaoSetTolerances (tao_, ga_tol, gr_tol, gt_tol);              CHKERRQ (ierr);
 
-	ierr = TaoSetHessianRoutine (tao_, A_, A_, formHessian, (void*) ctx);							CHKERRQ (ierr);
-
+	ierr = TaoSetHessianRoutine (tao_, A_, A_, formHessian, (void*) itctx); CHKERRQ (ierr);
+*/
 	// ierr = TaoSolve (tao);																			CHKERRQ (ierr);
 	PetscFunctionReturn(0);
 }
 
+/**
+ *  ***********************************
+ */
 InvSolver::~InvSolver () {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;

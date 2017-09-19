@@ -42,12 +42,12 @@ struct CtxInv {
 	int verbosity;               // controls verbosity of inverse solver
 
 	/* additional data */
-	//std::shared_ptr<Tumor> tumor;            // to access tumor parameters and eval J, dJ, d2J
+	std::shared_ptr<Tumor> tumor;            // to access tumor parameters and eval J, dJ, d2J
 	Vec data;   // data for tumor inversion
 	Vec data_gradeval; // data only for gradient evaluation (may differ)
 	CtxInv()
 	:
-		//tumor(),
+		tumor(),
 		data(nullptr),
 		data_gradeval(nullptr),
 		convergenceMessage()
@@ -94,12 +94,49 @@ class InvSolver {
 		PetscErrorCode solve ();
 
 	private:
+		/// @brief true if tumor adapter is correctly initialized. mendatory
 		bool initialized_;
+
+    /// @breif regularization parameter for tumor inverse solve
+		double betap_;
+
+		/// @brief l2 gradient tolerance for optimization
+    double optTolGrad_;
+
+    /// @brief gives information about the termination reason of inverse tumor TAO solver
+		std::string solverstatus_;
+
+    /// @brief stores the number of required Newton iterations for the last inverse tumor solve
+		int nbNewtonIt_;
+
+		/// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+		int int nbKrylovIt_;
+
+		/* @brief flag indicates that update of reference gradient for the relative
+	   *        convergence crit. for ITP Newton iteration is neccessary. This should
+	   *        only change when beta_reg is changed, as we do warmstarts.
+	   */
+		bool updateRefGradITPSolver_;
+		double refgradITPSolver_;
+
+    /// @brief data d1 for tumor inversion (memory managed from outside)
+		Vec data_;
+
+		/// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
+		Vec data_gradeval_;
+
+    /// @brief petsc tao object, thet solves the inverse problem
 		Tao tao_;
+
+    /// @brief petsc matrix object for hessian matrix
 		Mat A_;
+
+		std::shared_ptr<Tumor> tumor_;
+
 		shared_ptr<CtxInv> itctx_;
 };
 
+// ============================= non-class methods used for TAO ============================
 PetscErrorCode evaluateObjectiveFunction(Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient(Tao, Vec, Vec, void*);
 PetscErrorCode evaluateObjectiveFunctionAndGradient(Tao, Vec, PetscReal *, Vec, void *);
@@ -115,7 +152,6 @@ PetscErrorCode preKrylovSolve(KSP ksp, Vec b, Vec x, void* ptr);
 PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr);
 PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr);
 PetscErrorCode dispTaoConvReason(TaoConvergedReason flag, std::string& solverstatus);
-
 PetscErrorCode setTaoOptions(Tao* tao, CtxInv* ctx);
 
 //PetscErrorCode AnalyticFormGradient(Tao, Vec, Vec, void*);
