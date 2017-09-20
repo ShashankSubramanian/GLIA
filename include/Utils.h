@@ -18,6 +18,57 @@
 #include <iostream>
 
 
+enum {QDFS = 0, SLFS = 1};
+
+struct OptimizerSettings {
+	double beta;                 /// @brief regularization parameter
+	double opttolgrad;           /// @brief l2 gradient tolerance for optimization
+	double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
+	double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
+	double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
+	int    newton_maxit;         /// @brief maximum number of allowed newton iterations
+	int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
+	int    newton_minit;         /// @brief minimum number of newton steps
+	int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
+	int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
+	int    verbosity;            /// @brief controls verbosity of solver
+
+	OptimizerSettings()
+	:
+	beta(1E-3),
+	opttolgrad(1E-3),
+	gtolbound(0.8),
+	grtol(1E-12),
+	gatol(1E-6),
+	newton_maxit(20),
+	krylov_maxit(30),
+	newton_minit(1),
+	iterbound(200),
+	fseqtype(SLFS),
+	verbosity(1)
+	{}
+};
+
+struct OptimizerFeedback {
+	int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
+	int nb_krylov_it;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+  std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
+  double gradnorm;             /// @brief final gradient norm
+	double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
+  bool converged;              /// @brief true if solver converged within bounds
+
+	OptimizerFeedback()
+	:
+	nb_newton_it(-1),
+	nb_krylov_it(-1),
+	solverstatus(),
+	gradnorm(0.),
+	gradnorm0(0.),
+	converged(false)
+	{}
+};
+
+
 class NMisc {
 	public:
 		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm)
@@ -28,6 +79,7 @@ class NMisc {
 				, k_ (0.1)
 				, rho_ (8)
 				, p_scale_ (1.0)
+				, noise_scale_(0.0)
 				, beta_ (1e-2)
 				, writeOutput_ (1)
 				, verbosity_ (1)
@@ -70,6 +122,7 @@ class NMisc {
 		double rho_;
 		double user_cm_[3];
 		double p_scale_;
+		double noise_scale_;
 		double beta_;
 
 		std::array<double, 7> timers_;

@@ -16,21 +16,18 @@ InvSolver::InvSolver (
   std::shared_ptr <Tumor> tumor)
 :
   initialized_(false),
-	betap_(0),
 	data_(),
 	data_gradeval_(),
-	prec_(),
-	tao_(),
-	H_(),
 	optsettings_(),
 	optfeedback_(),
   itctx_()
   {
 	  PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-		tao_ = nullptr;
-		H_   = nullptr;
-    if(derivative_operators != nullptr && n_misc != nullptr) {
+		tao_  = nullptr;
+		H_    = nullptr;
+    prec_ = nullptr;
+    if(derivative_operators != nullptr && n_misc != nullptr && tumor != nullptr) {
       initialize(derivative_operators, n_misc, tumor);
 	  }
 }
@@ -53,6 +50,10 @@ PetscErrorCode InvSolver::initialize(
   itctx_->tumor_ = tumor;
   itctx_->optsettings_ = this->optsettings_;
   itctx_->optfeedback_ = this->optfeedback_;
+
+  // allocate memory for prec_
+  ierr = VecDuplicate(tumor->p_, &prec_); CHKERRQ(ierr);
+  ierr = VecSet(prec_, 0.0);                    CHKERRQ(ierr);
 
   // set up routine to compute the hessian matrix vector product
   if(H_ == nullptr) {
@@ -102,7 +103,7 @@ PetscErrorCode InvSolver::solve () {
   ierr = VecSetRandom(noise, NULL);                                    CHKERRQ(ierr);
   ierr = VecGetArray(noise, &noise_ptr);                               CHKERRQ(ierr);
   for (int i = 0; i < itctx_->n_misc_->n_local_; ++i){
-    d_ptr[i] += noise_ptr[i] * 0.0;
+    d_ptr[i] += noise_ptr[i] * itctx_->n_misc_->noise_scale_;
     noise_ptr[i] = d_ptr[i];                                           //just to measure d norm
   }
   ierr = VecRestoreArray(noise, &noise_ptr);                           CHKERRQ(ierr);
@@ -136,6 +137,7 @@ PetscErrorCode InvSolver::solve () {
     ierr = VecSet(itctx_->tmp, 0.0);                                   CHKERRQ(ierr);
   }                                                                    // reset with zero for new ITP solve
   ierr = VecSet(itctx_->c0old, 0.0);                                   CHKERRQ(ierr);
+  itctx_->n_misc_->beta_             = itctx_->optsettings_->beta;     // set beta for this inverse solver call
   itctx_->is_ksp_gradnorm_set        = false;
   itctx_->optfeedback_->converged    = false;
   itctx_->optfeedback_->solverstatus = "";
@@ -148,11 +150,6 @@ PetscErrorCode InvSolver::solve () {
 	ierr = setTaoOptions(tao_, itctx_.get());                            CHKERRQ(ierr);
 	ierr = TaoSetHessianRoutine(tao_, H_, H_, matfreeHessian, (void *) itctx_.get()); CHKERRQ(ierr);
 
-	/*
-	EventRegistry::clear();
-	EventRegistry::initialize();
-	*/
-
 	/* === solve === */
   // --------
   Event e1("solve-tumor-inverse-tao");
@@ -161,14 +158,6 @@ PetscErrorCode InvSolver::solve () {
   e1.addTimings(itctx_->n_misc_->timers_);
   e1.stop();
   // --------
-  /*
-	EventRegistry::finalize();
-	if(procid == 0) {
-	 EventRegistry r;
-	 r.print();
-	 r.print("EventTimings_taoinv.log", true);
-	}
-	*/
 
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector(tao_, &p);                        CHKERRQ(ierr);
@@ -201,8 +190,8 @@ PetscErrorCode InvSolver::solve () {
  *  ***********************************
  */
 InvSolver::~InvSolver () {
-	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
+  ierr = VecDestroy(&prec_);
 	ierr = TaoDestroy (&tao_);
 	ierr = MatDestroy (&H_);
 }

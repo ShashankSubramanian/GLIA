@@ -4,6 +4,7 @@
 TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc)
 :
 initialized_(false),
+optimizer_settings_changed_(false),
 n_misc_ (n_misc),
 tumor_(),
 pde_operators_(),
@@ -51,9 +52,39 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec c0, Vec cT) {
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::solveInverse (Vec d1, Vec p_rec) {
+PetscErrorCode TumorSolverInterface::solveInverse (Vec d1, Vec prec) {
 	PetscErrorCode ierr = 0;
-	// TODO: COPY copy d1 to data, take care of p_rec
+	TU_assert(inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
+
+  if(!optimizer_settings_changed_) {
+    ierr = tuMSGwarn(" Tumor inverse solver running with default settings."); CHKERRQ(ierr);
+	}
+  // set target data for inversion
+	inv_solver_->setData(d1);
+	inv_solver_->setDataGradient(d1);
+	// solve
 	ierr = inv_solver_->solve ();
+
+  // pass the reconstructed p vector to the caller (deep copy)
+	ierr= VecCopy(inv_solver_->getPrec(), prec); CHKERRQ(ierr);
 	PetscFunctionReturn(0);
+}
+
+void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset) {
+	PetscErrorCode ierr = 0;
+	TU_assert(inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
+  TU_assert(optset != nullptr, "ITumorSolverInterface::setOptimizerSettings(): requires non-null input.");
+
+	inv_solver_->getOptSettings()->beta          = optset->beta;
+	inv_solver_->getOptSettings()->opttolgrad    = optset->opttolgrad;
+	inv_solver_->getOptSettings()->gtolbound     = optset->gtolbound;
+	inv_solver_->getOptSettings()->grtol         = optset->grtol;
+	inv_solver_->getOptSettings()->gatol         = optset->gatol;
+	inv_solver_->getOptSettings()->newton_maxit  = optset->newton_maxit;
+	inv_solver_->getOptSettings()->krylov_maxit  = optset->krylov_maxit;
+	inv_solver_->getOptSettings()->iterbound     = optset->iterbound;
+	inv_solver_->getOptSettings()->fseqtype      = optset->fseqtype;
+	inv_solver_->getOptSettings()->verbosity     = optset->verbosity;
+
+	optimizer_settings_changed_ = true;
 }

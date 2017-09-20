@@ -41,6 +41,9 @@ class TumorSolverInterface {
     /// @brief true if TumorSolverInterface is initialized and ready to use
 		bool isInitialized() {return initialized_;}
 
+    /// @brief updates/sets the optimizer settings
+		void setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset);
+
 
     //  ---------  getter functions -------------
     /// @brief returns the tumor shared ptr
@@ -52,6 +55,7 @@ class TumorSolverInterface {
 
 	private :
 	  bool initialized_;
+		bool optimizer_settings_changed_;
 		std::shared_ptr<NMisc> n_misc_;
 		std::shared_ptr<Tumor> tumor_;
 		std::shared_ptr<PdeOperators> pde_operators_;

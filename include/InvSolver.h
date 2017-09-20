@@ -5,54 +5,7 @@
 #include "petsctao.h"
 #include "accfft.h"
 #include "DerivativeOperators.h"
-
-enum {QDFS = 0, SLFS = 1};
-
-struct OptimizerSettings {
-	double opttolgrad;           /// @brief l2 gradient tolerance for optimization
-	double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
-	double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
-	double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
-	int    newton_maxit;         /// @brief maximum number of allowed newton iterations
-	int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
-	int    newton_minit;         /// @brief minimum number of newton steps
-	int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
-	int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
-	int    verbosity;            /// @brief controls verbosity of solver
-
-	OptimizerSettings()
-	:
-	opttolgrad(1E-3),
-	gtolbound(0.8),
-	grtol(1E-12),
-	gatol(1E-6),
-	newton_maxit(20),
-	krylov_maxit(30),
-	newton_minit(1),
-	iterbound(200),
-	fseqtype(SLFS),
-	verbosity(1)
-	{}
-};
-
-struct OptimizerFeedback {
-	int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
-	int nb_krylov_it;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
-  std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
-  double gradnorm;             /// @brief final gradient norm
-	double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
-  bool converged;              /// @brief true if solver converged within bounds
-
-	OptimizerFeedback()
-	:
-	nb_newton_it(-1),
-	nb_krylov_it(-1),
-	solverstatus(),
-	gradnorm(0.),
-	gradnorm0(0.),
-	converged(false)
-	{}
-};
+#include "Utils.h"
 
 struct CtxInv {
 
@@ -129,19 +82,19 @@ class InvSolver {
 
 		PetscErrorCode solve ();
 
-    // setter functions
-    void setOptSettings(std::shared_ptr<OptimizerSettings> optset) {optsettings_ = optset;}
+		// setter functions
+		void setData(Vec d) {data_ = d;}
+		void setDataGradient(Vec d) {data_gradeval_ = d;}
 
 		// getter functions
 		std::shared_ptr<OptimizerSettings> getOptSettings() {return optsettings_;}
 		std::shared_ptr<OptimizerFeedback> getOptFeedback() {return optfeedback_;}
+		bool isInitialized() {return initialized_;}
+		Vec getPrec() {return prec_;}
 
 	private:
 		/// @brief true if tumor adapter is correctly initialized. mendatory
 		bool initialized_;
-
-    /// @breif regularization parameter for tumor inverse solve
-		double betap_;
 
     /// @brief data d1 for tumor inversion (memory managed from outside)
 		Vec data_;
