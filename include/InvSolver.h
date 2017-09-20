@@ -10,51 +10,68 @@ enum {QDFS = 0, SLFS = 1};
 
 struct OptimizerSettings {
 	double opttolgrad;           /// @brief l2 gradient tolerance for optimization
+	double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
 	int    newton_maxit;         /// @brief maximum number of allowed newton iterations
 	int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
+	int    newton_minit;         /// @brief minimum number of newton steps
 	int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
+	int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
 	int    verbosity;            /// @brief controls verbosity of solver
 
 	OptimizerSettings()
 	:
 	opttolgrad(1E-3),
+	gtolbound(0.8),
 	newton_maxit(20),
 	krylov_maxit(30),
+	newton_minit(1),
 	iterbound(500),
+	fseqtype(SLFS),
 	verbosity(1)
 	{}
 };
 
 struct OptimizerFeedback {
-	int nbNewtonIt;              /// @brief stores the number of required Newton iterations for the last inverse tumor solve
-	int nbKrylovIt;              /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+	int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
+	int nb_krylov_it;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
   std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
   double gradnorm;             /// @brief final gradient norm
+	double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
   bool converged;              /// @brief true if solver converged within bounds
 
 	OptimizerFeedback()
 	:
-	nbNewtonIt(-1),
-	nbKrylovIt(-1),
+	nb_newton_it(-1),
+	nb_krylov_it(-1),
 	solverstatus(),
 	gradnorm(0.),
+	gradnorm0(0.),
 	converged(false)
 	{}
 };
 
 struct CtxInv {
+
 	/* evalJ evalDJ, eval D2J */
 	std::shared_ptr<DerivativeOperators> derivative_operators_;
+	/// @brief common settings/ parameters
 	std::shared_ptr<NMisc> n_misc_;
+	/// @brief accumulates all tumor related fields and methods
+	std::shared_ptr<Tumor> tumor_;
+  /// @brief keeps all the settings, tollerances, maxits for optimization
+	std::shared_ptr<OptimizerSettings>  optsettings_;
+	/// @brief keeps all the information that is feedbacked to the calling routine
+	std::shared_ptr<OptimizerFeedback> optfeedback_;
 
 	/* reference values gradient */
-	double KSPgradnorm0; // reference gradient for hessian PCG
+	double ksp_gradnorm0; // reference gradient for hessian PCG
 	double gradnorm0;           // norm of initial gradient (with p = intial guess)
 
 	/* optimization options/settings */
 	double gttol;               // used: relative gradient reduction
 	double gatol;               // absolute tolerance for gradient
 	double grtol;               // relative tolerance for gradient
+
 	double gtolbound;           // minimum reduction of gradient (even if maxiter hit earlier)
 	int krylov_maxit;           // maximum number of iterations for hessian PCG
 	int newton_maxit;           // maximum number of newton steps
@@ -63,37 +80,38 @@ struct CtxInv {
 	int fseqtype;               // type of forcing sequence (quadratic, superlinear)
 
 	/* steering of reference gradeint reset */
-	bool isKSPgradnorm_set;  // if false, update reference gradient norm for hessian PCG
-	bool updateReferenceGradient;        // if true, update reference gradient for optimization
+	bool is_ksp_gradnorm_set;   // if false, update reference gradient norm for hessian PCG
+	bool update_reference_gradient;  // if true, update reference gradient for optimization
 
 	/* optimization state */
-	int nbKrylovIt;              // count (accumulated) number of PCG iterations
-	int nbNewtonIt;              // count number of newton steps
-	double jvalold;              // old value of objective function (previous newton iteration)
-	Vec c0old, tmp;              // previous initial condition \Phi p^k-1 and tmp vec
-	std::vector<std::string> convergenceMessage; // convergence message
-	bool converged;              // true if solver converged
-	int verbosity;               // controls verbosity of inverse solver
+	int nb_krylov_it;              // count (accumulated) number of PCG iterations
+	int nb_newton_it;              // count number of newton steps
+	double jvalold;                // old value of objective function (previous newton iteration)
+	Vec c0old, tmp;                // previous initial condition \Phi p^k-1 and tmp vec
+	std::vector<std::string> convergence_message; // convergence message
+	bool converged;                // true if solver converged
+	int verbosity;                 // controls verbosity of inverse solver
 
 	/* additional data */
-	std::shared_ptr<Tumor> tumor;            // to access tumor parameters and eval J, dJ, d2J
 	Vec data;   // data for tumor inversion
 	Vec data_gradeval; // data only for gradient evaluation (may differ)
 	CtxInv()
 	:
-		tumor(),
-		data(nullptr),
-		data_gradeval(nullptr),
-		convergenceMessage()
+	    derivative_operators_()
+		, n_misc_()
+		, tumor_()
+		, data(nullptr)
+		, data_gradeval(nullptr)
+		, convergence_message()
 	{
-		KSPgradnorm0 = 1.;
+		ksp_gradnorm0 = 1.;
 		gradnorm0 = 1.;
 		gttol = 1e-3;
 		gatol = 1e-6;
 		grtol = 1e-12;
 		gtolbound = 0.8;
-		nbKrylovIt = 0;
-		nbNewtonIt = 0;
+		nb_krylov_it = 0;
+		nb_newton_it = 0;
 		iterbound = 200;
 		fseqtype = SLFS;
 		jvalold = 0;
@@ -103,8 +121,8 @@ struct CtxInv {
 		krylov_maxit = 1000;
 		newton_maxit = 1000;
 		newton_minit = 1;
-		isKSPgradnorm_set = false;
-		updateReferenceGradient = true;
+		is_ksp_gradnorm_set = false;
+		update_reference_gradient = true;
 		verbosity = 1;
 	}
 
@@ -118,12 +136,14 @@ class InvSolver {
 	public :
 		InvSolver (
 			std::shared_ptr <DerivativeOperators> derivative_operators = {},
-			std::shared_ptr <NMisc> n_misc = {});
+			std::shared_ptr <NMisc> n_misc = {},
+			std::shared_ptr <Tumor> tumor = {});
     ~InvSolver ();
 
 		PetscErrorCode initialize(
 			std::shared_ptr <DerivativeOperators> derivative_operators,
-			std::shared_ptr <NMisc> n_misc);
+			std::shared_ptr <NMisc> n_misc,
+		  std::shared_ptr <Tumor> tumor);
 
 		PetscErrorCode solve ();
 
@@ -147,6 +167,7 @@ class InvSolver {
 		/// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
 		Vec data_gradeval_;
 
+    /// @brief holds a copy of the reconstructed p vector
 		Vec prec_;
 
     /// @brief petsc tao object, thet solves the inverse problem
@@ -157,7 +178,6 @@ class InvSolver {
 
     std::shared_ptr<OptimizerSettings> optsettings_;
 		std::shared_ptr<OptimizerFeedback> optfeedback_;
-		std::shared_ptr<Tumor> tumor_;
 		std::shared_ptr<CtxInv> itctx_;
 };
 

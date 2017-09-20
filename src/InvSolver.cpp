@@ -10,7 +10,10 @@
 /**
  *  ***********************************
  */
-InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc)
+InvSolver::InvSolver (
+  std::shared_ptr <DerivativeOperators> derivative_operators,
+  std::shared_ptr <NMisc> n_misc,
+  std::shared_ptr <Tumor> tumor)
 :
   initialized_(false),
 	betap_(0),
@@ -21,7 +24,6 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 	H_(),
 	optsettings_(),
 	optfeedback_(),
-	tumor_(),
   itctx_()
   {
 	  PetscFunctionBegin;
@@ -29,7 +31,7 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 		tao_ = nullptr;
 		H_   = nullptr;
     if(derivative_operators != nullptr && n_misc != nullptr) {
-      initialize(derivative_operators, n_misc);
+      initialize(derivative_operators, n_misc, tumor);
 	  }
 }
 
@@ -38,7 +40,8 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
  */
 PetscErrorCode InvSolver::initialize(
 	std::shared_ptr <DerivativeOperators> derivative_operators,
-	std::shared_ptr <NMisc> n_misc) {
+	std::shared_ptr <NMisc> n_misc,
+  std::shared_ptr <Tumor> tumor) {
 
   PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
@@ -47,6 +50,7 @@ PetscErrorCode InvSolver::initialize(
 	itctx_ = std::make_shared<CtxInv>();
 	itctx_->derivative_operators_ = derivative_operators;
 	itctx_->n_misc_ = n_misc;
+  itctx_->tumor_ = tumor;
 
   // set up routine to compute the hessian matrix vector product
   if(H_ == nullptr) {
@@ -78,11 +82,11 @@ PetscErrorCode InvSolver::solve () {
 
   /* === observed data === */
 	// apply observer on ground truth, store observed data in d
-	ierr = tumor_->obs_->apply(data_, data_);                             CHKERRQ(ierr);
+	ierr = itctx_->tumor_->obs_->apply(data_, data_);                    CHKERRQ(ierr);
 	// smooth observed data
   PetscScalar *d_ptr;
 	ierr = VecGetArray(data_, &d_ptr);                                   CHKERRQ(ierr);
-  ierr = weierstrassSmoother(d_ptr, d_ptr, itctx_->n_misc_, 0.0003);  CHKERRQ(ierr);
+  ierr = weierstrassSmoother(d_ptr, d_ptr, itctx_->n_misc_, 0.0003);   CHKERRQ(ierr);
 	//static int it = 0; it++;
 	//std::stringstream ss; ss<<"_it-"<<it;
 	//std::string s("files/cpl/ITdata"+ss.str()+".nc");
@@ -115,11 +119,11 @@ PetscErrorCode InvSolver::solve () {
   s << "IT data error due to thresholding and smoothing: l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
 	/* === solve for a initial guess === */
-	//solveForParameters(data.get(), _tumor->N_Misc_, _tumor->phi_, timers, &_tumor->p_true_);
+	//solveForParameters(data.get(), itctx_->n_misc_, itctx_->tumor_->phi_, itctx_->n_misc_->timers_, &itctx_->tumor_->p_true_);
 
 	optfeedback_->solverstatus = "";
-  optfeedback_->nbNewtonIt = -1;
-  optfeedback_->nbKrylovIt = -1;
+  optfeedback_->nb_newton_it = -1;
+  optfeedback_->nb_krylov_it = -1;
   //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
 
   /* === initialize inverse tumor context === */
@@ -132,7 +136,7 @@ PetscErrorCode InvSolver::solve () {
     ierr = VecSet(itctx_->tmp, 0.0);                                   CHKERRQ(ierr);
   }                                                                    // reset with zero for new ITP solve
   ierr = VecSet(itctx_->c0old, 0.0);                                   CHKERRQ(ierr);
-  itctx_->isKSPgradnorm_set = false;
+  itctx_->is_ksp_gradnorm_set = false;
   itctx_->converged     = false;
   itctx_->gttol         = optsettings_->opttolgrad;
   itctx_->grtol         = 1e-12;
@@ -141,9 +145,8 @@ PetscErrorCode InvSolver::solve () {
   itctx_->krylov_maxit  = optsettings_->krylov_maxit;
   itctx_->iterbound     = optsettings_->iterbound;
   itctx_->newton_minit  = 1;
-  itctx_->nbNewtonIt    = 0;
-  itctx_->nbKrylovIt    = 0;
-  itctx_->tumor         = tumor_;
+  itctx_->nb_newton_it    = 0;
+  itctx_->nb_krylov_it    = 0;
   itctx_->data          = data_;
   itctx_->data_gradeval = data_gradeval_;
   itctx_->verbosity     = optsettings_->verbosity;
@@ -160,7 +163,7 @@ PetscErrorCode InvSolver::solve () {
 	/* === solve === */
   // --------
   Event e1("solve-tumor-inverse-tao");
-  //resetTimers(tumor_->timers_);
+  //resetTimers(itctx->n_misc_->timers_);
   ierr = TaoSolve(tao_);                                               CHKERRQ(ierr);
   e1.addTimings(itctx_->n_misc_->timers_);
   e1.stop();
@@ -188,12 +191,12 @@ PetscErrorCode InvSolver::solve () {
 
 	/* display convergence reason: */
 	ierr = dispTaoConvReason(reason, optfeedback_->solverstatus);         CHKERRQ(ierr);
-	optfeedback_->nbNewtonIt = itctx_->nbNewtonIt;
-	optfeedback_->nbKrylovIt = itctx_->nbKrylovIt;
+	optfeedback_->nb_newton_it = itctx_->nb_newton_it;
+	optfeedback_->nb_krylov_it = itctx_->nb_krylov_it;
 	optfeedback_->converged  = itctx_->converged;
 
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
-	itctx_->updateReferenceGradient = false;
+	itctx_->update_reference_gradient = false;
 
 	// reset vectors (remember, memory managed on caller side):
 	data_ = nullptr;
@@ -411,13 +414,8 @@ PetscErrorCode applyPreconditioner(void* ptr, Vec x, Vec pinvx){
 	// === PRECONDITIONER CURRENTLY DISABLED ===
   PetscFunctionReturn(0);
 
-	// apply hessian
-	ierr = itctx->derivative_operators_->evaluateHessian(pinvx, x);
-	/*
-  D2J_prec(pinvx, x, itctx->tumor->beta_, itctx->tumor->N_Misc_,
-      itctx->tumor->K_, itctx->tumor->Rho_, itctx->tumor.get(),
-      itctx->tumor->phi_, itctx->tumor->O_, t, itctx->tumor->t_history_);
-  */
+	// apply hessian preconditioner
+	//ierr = itctx->derivative_operators_->evaluateHessian(pinvx, x);
 
 	// timing
 	self_exec_time += MPI_Wtime();
@@ -451,7 +449,7 @@ PetscErrorCode optimizationMonitor(Tao tao, void* ptr){
   // and termination reason
   ierr = TaoGetSolutionStatus(tao, &its, &J, &gnorm, &cnorm, &step, &flag); CHKERRQ(ierr);
 	// accumulate number of newton iterations
-  itctx->nbNewtonIt++;
+  itctx->nb_newton_it++;
 
 	// print out Newton iteration information
   std::stringstream s;
@@ -465,29 +463,6 @@ PetscErrorCode optimizationMonitor(Tao tao, void* ptr){
     << "     " << std::scientific << std::setprecision(4) << gnorm
     << "     " << std::scientific << std::setprecision(4) << step;
   ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-
-	/*
-	#ifdef MONITOR_ITP_TIME_HISTORY
-	  Vec p; ierr = TaoGetSolutionVector(tao, &p); CHKERRQ(ierr);
-	  static int printoutcounter = 0;
-	  printoutcounter++;
-	  std::stringstream s; s<<"afterNewton_it_"<<printoutcounter;
-	  Vec dJ, Hs;
-	  // We can get dJ from Tao solver as well but it is better not to pollute that
-	  ierr = VecDuplicate(p, &dJ);
-	  ierr = VecDuplicate(p, &Hs);
-	  // This is an optional step to avoid potential dirty data in t_history_
-	  // itctx->tumor->t_history_->Reset();
-	  // DJ(dJ, p, ptr_d, itctx->tumor->beta_, *itctx->tumor->N_Misc_, itctx->tumor->K_, itctx->tumor->Rho_, itctx->tumor->phi_,
-	  //     itctx->tumor->O_, timings, itctx->tumor->t_history_);
-	  // D2J(Hs, p, itctx->tumor->beta_, *itctx->tumor->N_Misc_, itctx->tumor->K_, itctx->tumor->Rho_, itctx->tumor->phi_,
-	  //    itctx->tumor->O_, timings, itctx->tumor->t_history_);
-	  itctx->tumor->t_history_->PrintOut(s.str().c_str());
-	  itctx->tumor->t_history_->PrintNorms();
-	  VecDestroy(&dJ);
-	  VecDestroy(&Hs);
-	#endif
-	*/
 
 	PetscFunctionReturn(0);
 }
@@ -509,7 +484,7 @@ PetscErrorCode hessianKSPMonitor(KSP ksp, PetscInt n,PetscReal rnorm, void *ptr)
 	Vec x;
 	ierr = KSPBuildSolution(ksp,NULL,&x);CHKERRQ(ierr); // build solution vector
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
-	itctx->nbKrylovIt++;                                // accumulate number of krylov iterations
+	itctx->nb_krylov_it++;                                // accumulate number of krylov iterations
 	// ierr = PetscPrintf(PETSC_COMM_WORLD,"iteration %D solution vector:\n",n);CHKERRQ(ierr);
   // ierr = VecView(x,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
   //ierr = PetscPrintf(PETSC_COMM_WORLD,"iteration %D KSP Residual norm %14.12e \n",n,rnorm);CHKERRQ(ierr);
@@ -542,11 +517,11 @@ PetscErrorCode preKrylovSolve(KSP ksp, Vec b, Vec x, void* ptr){
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
 	ierr = VecNorm(b, NORM_2, &gnorm); CHKERRQ(ierr);   // compute gradient norm
 
-	if(! itctx->isKSPgradnorm_set) {                // set initial gradient norm
-		itctx->KSPgradnorm0 = gnorm;               // for KSP Hessian solver
-		itctx->isKSPgradnorm_set = true;
+	if(! itctx->is_ksp_gradnorm_set) {                // set initial gradient norm
+		itctx->ksp_gradnorm0 = gnorm;               // for KSP Hessian solver
+		itctx->is_ksp_gradnorm_set = true;
 	}
-	g0norm = itctx->KSPgradnorm0;                  // get reference gradient
+	g0norm = itctx->ksp_gradnorm0;                  // get reference gradient
 	gnorm /= g0norm;                                    // normalize gradient
 	                                                    // get tolerances
   ierr = KSPGetTolerances(ksp, &reltol, &abstol, &divtol, &maxit); CHKERRQ(ierr);
@@ -605,11 +580,11 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL); CHKERRQ(ierr);
 
 	// update/set reference gradient (with p = initial-guess)
-	if(ctx->updateReferenceGradient) {
+	if(ctx->update_reference_gradient) {
 		Vec p0, dJ;
 		double norm_gref = 0.;
-		ierr = VecDuplicate(ctx->tumor->p_, &p0); CHKERRQ(ierr);
-		ierr = VecDuplicate(ctx->tumor->p_, &dJ); CHKERRQ(ierr);
+		ierr = VecDuplicate(ctx->tumor_->p_, &p0); CHKERRQ(ierr);
+		ierr = VecDuplicate(ctx->tumor_->p_, &dJ); CHKERRQ(ierr);
 		ierr = VecSet(p0, 0.); CHKERRQ(ierr);
 		ierr = VecSet(dJ, 0.); CHKERRQ(ierr);
 		// evaluate reference gradient for initial guess p = 0 * ones(Np)
@@ -617,7 +592,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
 		ctx->gradnorm0 = norm_gref;
 		//ctx->gradnorm0 = gnorm;
-		ctx->updateReferenceGradient = false;
+		ctx->update_reference_gradient = false;
 		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
 		ierr = VecDestroy(&dJ); CHKERRQ(ierr);
@@ -627,7 +602,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	g0norm = ctx->gradnorm0;
 	g0norm = (g0norm > 0.0) ? g0norm : 1.0;
 
-	ctx->convergenceMessage.clear();
+	ctx->convergence_message.clear();
 	// check for NaN value
 	if (PetscIsInfOrNanReal(J)) {
 			ierr = tuMSGwarn("objective is NaN"); CHKERRQ(ierr);
@@ -670,7 +645,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ss << "  " << stop[0] << "    ||g|| = " << std::setw(14)
 			 << std::right << std::scientific << gnorm << "    <    "
 			 << std::left << std::setw(14) << gttol*g0norm << " = " << "tol";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -682,7 +657,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ss  << "  " << stop[1] << "    ||g|| = " << std::setw(14)
 				<< std::right << std::scientific << gnorm << "    <    "
 				<< std::left << std::setw(14) << gatol << " = " << "tol";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -694,7 +669,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ss  << "  " << stop[2] << "     iter = " << std::setw(14)
 				<< std::right << iter  << "    >    "
 				<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -767,18 +742,18 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	ierr = TaoGetSolutionVector(tao, &x); CHKERRQ(ierr);
 
 	// update/set reference gradient (with p = initial-guess)
-	if(ctx->updateReferenceGradient) {
+	if(ctx->update_reference_gradient) {
 		Vec p0, dJ;
 		double norm_gref = 0.;
-		ierr = VecDuplicate(ctx->tumor->p_, &p0); CHKERRQ(ierr);
-		ierr = VecDuplicate(ctx->tumor->p_, &dJ); CHKERRQ(ierr);
+		ierr = VecDuplicate(ctx->tumor_->p_, &p0); CHKERRQ(ierr);
+		ierr = VecDuplicate(ctx->tumor_->p_, &dJ); CHKERRQ(ierr);
 		ierr = VecSet(p0, 0.); CHKERRQ(ierr);
 		ierr = VecSet(dJ, 0.); CHKERRQ(ierr);
 		// evaluate reference gradient for initial guess p = 0 * ones(Np)
 		evaluateGradient(tao, p0, dJ, (void*) ctx);
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
 		ctx->gradnorm0 = norm_gref;
-		ctx->updateReferenceGradient = false;
+		ctx->update_reference_gradient = false;
 		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
 		ierr = VecDestroy(&dJ); CHKERRQ(ierr);
@@ -800,7 +775,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	// compute theta
 	theta = 1.0 + std::abs(jx);
 	// compute norm(\Phi x^k - \Phi x^k-1) and norm(\Phi x^k)
-	ierr = ctx->tumor->phi_->apply(ctx->tmp, x);  CHKERRQ(ierr);  // comp \Phi x
+	ierr = ctx->tumor_->phi_->apply(ctx->tmp, x);  CHKERRQ(ierr);  // comp \Phi x
 	ierr = VecNorm(ctx->tmp, NORM_2, &normx);     CHKERRQ(ierr);  // comp norm \Phi x
 	ierr = VecAXPY(ctx->c0old, -1, ctx->tmp);     CHKERRQ(ierr);  // comp dx
 	ierr = VecNorm(ctx->c0old, NORM_2, &normdx);  CHKERRQ(ierr);  // comp norm \Phi dx
@@ -808,7 +783,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	// get old objective function value
 	jxold = ctx->jvalold;
 
-	ctx->convergenceMessage.clear();
+	ctx->convergence_message.clear();
 	// check for NaN value
 	if (PetscIsInfOrNanReal(jx)) {
 			ierr = tuMSGwarn("objective is NaN"); CHKERRQ(ierr);
@@ -843,7 +818,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss << "  " << stop[0] << "    |dJ|  = " << std::setw(14)
 			 << std::right << std::scientific << std::abs(jxold-jx) << "    <    "
 			 << std::left << std::setw(14) << tolj*theta << " = " << "tol*|1+J|";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -854,7 +829,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss << "  " << stop[1] << "    |dx|  = " << std::setw(14)
 			 << std::right << std::scientific << normdx << "    <    "
 			 << std::left << std::setw(14) << tolx*(1+normx) << " = " << "sqrt(tol)*(1+||x||)";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -865,7 +840,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss  << "  " << stop[2] << "    ||g|| = " << std::setw(14)
 				<< std::right << std::scientific << gnorm << "    <    "
 				<< std::left << std::setw(14) << tolg*theta << " = " << "cbrt(tol)*|1+J|";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -876,7 +851,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss  << "  " << stop[3] << "    ||g|| = " << std::setw(14)
 				<< std::right << std::scientific << gnorm << "    <    "
 				<< std::left << std::setw(14) << gatol << " = " << "tol";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -886,7 +861,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss  << "  " << stop[4] << "    ||g|| = " << std::setw(14)
 				<< std::right << gnorm  << "    >    "
 				<< std::left << std::setw(14) << gtolbound*g0norm << " = " << "kappa*||g0||";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -896,7 +871,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss  << "  " << stop[5] << "    iter  = " << std::setw(14)
 				<< std::right << iter  << "    >    "
 				<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -906,7 +881,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		ss  << "  " << stop[6] << "    iter  = " << std::setw(14)
 				<< std::right << iter  << "    >    "
 				<< std::left << std::setw(14) << iterbound << " = " << "iterbound";
-		ctx->convergenceMessage.push_back(ss.str());
+		ctx->convergence_message.push_back(ss.str());
 		ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 		ss.str(std::string()); ss.clear();
 
@@ -1085,7 +1060,7 @@ PetscErrorCode setTaoOptions(Tao tao, CtxInv* ctx){
   // parse options user has set
   ierr = TaoSetFromOptions(tao);
   // set the initial vector
-  ierr = TaoSetInitialVector(tao, ctx->tumor->p_);
+  ierr = TaoSetInitialVector(tao, ctx->tumor_->p_);
   // set routine for evaluating the objective
   ierr = TaoSetObjectiveRoutine(tao, evaluateObjectiveFunction, (void*) ctx);
   // set routine for evaluating the Gradient
