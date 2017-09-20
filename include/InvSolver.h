@@ -93,6 +93,11 @@ class InvSolver {
 
 		PetscErrorCode solve ();
 
+    // setter functions
+		void setOpttolGrad(double d) {optTolGrad_ = d;}
+
+		// getter functions
+
 	private:
 		/// @brief true if tumor adapter is correctly initialized. mendatory
 		bool initialized_;
@@ -110,7 +115,7 @@ class InvSolver {
 		int nbNewtonIt_;
 
 		/// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
-		int int nbKrylovIt_;
+		int nbKrylovIt_;
 
 		/* @brief flag indicates that update of reference gradient for the relative
 	   *        convergence crit. for ITP Newton iteration is neccessary. This should
@@ -125,11 +130,13 @@ class InvSolver {
 		/// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
 		Vec data_gradeval_;
 
+		Vec prec_;
+
     /// @brief petsc tao object, thet solves the inverse problem
 		Tao tao_;
 
     /// @brief petsc matrix object for hessian matrix
-		Mat A_;
+		Mat H_;
 
 		std::shared_ptr<Tumor> tumor_;
 

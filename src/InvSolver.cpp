@@ -19,18 +19,22 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 	refgradITPSolver_(1.),
 	data_(),
 	data_gradeval_(),
+	prec_(),
 	solverstatus_(""),
 	nbNewtonIt_(-1),
 	nbKrylovIt_(-1),
 	//_tumor(),
 	itctx_(),
 	tao_(),
+	H_(),
 	//params_(),
 	tumor_(),
   itctx_()
   {
 	  PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+		tao_ = nullptr;
+		A_   = nullptr;
     if(derivative_operators_ != nullptr && n_misc != nullptr) {
       ierr = initialize(derivative_operators, n_misc) CHKERRQ(ierr);
 	  }
@@ -51,12 +55,17 @@ PetscErrorCode InvSolver::initialize(
 	itctx_->derivative_operators_ = derivative_operators;
 	itctx_->n_misc_ = n_misc;
 
-	ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, itctx_.get(), &A_);
-	ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) hessianMatVec);
-
-	ierr = TaoCreate (PETSC_COMM_WORLD, &tao_);
-	ierr = TaoSetType (tao_, "nls");
-	ierr = TaoSetFromOptions (tao_);
+  // set up routine to compute the hessian matrix vector product
+  if(H_ == nullptr) {
+		int nH = tumor->N_Misc_->Np_;
+		ierr = MatCreateShell(MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, nH, nH, (void*) itctx_.get(), &H_);
+		ierr = MatShellSetOperation(H_, MATOP_MULT, (void (*)(void))hessianMatVec);
+		ierr = MatSetOption(H_, MAT_SYMMETRIC, PETSC_TRUE);
+  }
+	// create TAO solver object
+	if(tao_ == nullptr){
+		ierr = TaoCreate(MPI_COMM_WORLD, &tao_);
+	}
 
   initialized_ = true;
 	PetscFunctionReturn(0);
@@ -71,6 +80,7 @@ PetscErrorCode InvSolver::solve () {
   TU_assert(initialized_, "InvSolver::solve(): InvSolver needs to be initialized.")
   TU_assert(data_ != nullptr, "InvSolver:solve(): requires non-null input data for inversion.");
 	TU_assert(data_gradeval_ != nullptr, "InvSolver:solve(): requires non-null input data for gradient evaluation.");
+	TU_assert(prec_ != nullptr, "InvSolver:solve(): requires non-null p_rec vector to be set");
 
   /* === observed data === */
 	// apply observer on ground truth, store observed data in d
@@ -84,7 +94,7 @@ PetscErrorCode InvSolver::solve () {
 	//std::string s("files/cpl/ITdata"+ss.str()+".nc");
 	//DataOut(d_ptr, itctx_->n_misc_, s.c_str());
 
-	/* Add Noise */
+	/* === Add Noise === */
   Vec noise; double * noise_ptr;
   ierr = VecCreate(PETSC_COMM_WORLD, &noise);                          CHKERRQ(ierr);
   ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_); CHKERRQ(ierr);
@@ -97,6 +107,7 @@ PetscErrorCode InvSolver::solve () {
   }
   ierr = VecRestoreArray(noise, &noise_ptr);                           CHKERRQ(ierr);
 	ierr = VecRestoreArray(data_, &d_ptr);                               CHKERRQ(ierr);
+
 	PetscScalar max, min;                                                // compute d-norm
   PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
   ierr = VecNorm(noise, NORM_2, &d_norm);                              CHKERRQ(ierr);
@@ -109,7 +120,7 @@ PetscErrorCode InvSolver::solve () {
   s << "data (ITP), with noise: l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   s << "IT data error due to thresholding and smoothing: l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
-	/* solve for a initial guess */
+	/* === solve for a initial guess === */
 	//solveForParameters(data.get(), _tumor->N_Misc_, _tumor->phi_, timers, &_tumor->p_true_);
 
 	_solverstatus = "";
@@ -117,25 +128,86 @@ PetscErrorCode InvSolver::solve () {
   _nbKrylovIt = -1;
   //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
 
+  /* === initialize inverse tumor context === */
+	if (_itctx->c0old == nullptr) {
+    ierr = VecDuplicate(data_, &_itctx->c0old);                        CHKERRQ(ierr);
+    ierr = VecSet(_itctx->c0old, 0.0);                                 CHKERRQ(ierr);
+  }
+  if (_itctx->tmp == nullptr) {
+    ierr = VecDuplicate(data_, &_itctx->tmp);                          CHKERRQ(ierr);
+    ierr = VecSet(_itctx->tmp, 0.0);                                   CHKERRQ(ierr);
+  }
+  ierr = VecSet(_itctx->c0old, 0.0);                                   CHKERRQ(ierr); // reset with zero for new ITP solve
+  _itctx->isGradNorm0HessianSet = false;
+  _itctx->converged = false;
+  _itctx->updateGradNorm0 = updateRefGradITPSolver_;
+  _itctx->gradnorm0 = refgradITPSolver_;
+  _itctx->gttol = optTolGrad_; // TODO
+  _itctx->grtol = 1e-12;
+  _itctx->gatol = 1e-6;
+  _itctx->newton_maxit = _params->getNewtonMaxitTu(); // TODO
+  _itctx->krylov_maxit = _params->getKrylovMaxitTu(); // TODO^
+  _itctx->iterbound = 500;//_params->getKrylovMaxitTu();
+  _itctx->newton_minit = 1;
+  _itctx->nbNewtonIt = 0;
+  _itctx->nbKrylovIt = 0;
+  _itctx->tumor = tumor_;
+  _itctx->data = data_;
+  _itctx->data_gradeval = data_gradeval_;
+  _itctx->verbosity = itctx_->n_misc_->verbosity_; // TODO
 
-/*
-	CtxInv *itctx;
-	ierr = MatShellGetContext (A_, &itctx);															 CHKERRQ (ierr);
-	ierr = TaoSetObjectiveRoutine (tao_, formFunction, (void*) itctx);   CHKERRQ (ierr);
-	ierr = TaoSetGradientRoutine (tao_, formGradient, (void*) itctx);    CHKERRQ (ierr);
+  /* === set TAO options === */
+	ierr = setTaoOptions(tao_, _itctx.get());                            CHKERRQ(ierr);
+	ierr = TaoSetHessianRoutine(tao_, H_, H_, matfreeHessian, (void *) itctx_.get()); CHKERRQ(ierr);
 
-	double ga_tol, gr_tol, gt_tol;
-	ierr = TaoGetTolerances (tao_, &ga_tol, &gr_tol, &gt_tol);           CHKERRQ (ierr);
-	ga_tol = 1e-6;
-	gr_tol = 1e-6;
-	gt_tol = 1e-6;
-	ierr = TaoSetTolerances (tao_, ga_tol, gr_tol, gt_tol);              CHKERRQ (ierr);
+	/*
+	EventRegistry::clear();
+	EventRegistry::initialize();
+	*/
 
-	ierr = TaoSetHessianRoutine (tao_, A_, A_, formHessian, (void*) itctx); CHKERRQ (ierr);
-*/
-	// ierr = TaoSolve (tao);																			CHKERRQ (ierr);
+	/* === solve === */
+  // --------
+  Event e1("solve-tumor-inverse-tao");
+  //resetTimers(tumor_->timers_);
+  ierr = TaoSolve(tao_);                                               CHKERRQ(ierr);
+  e1.addTimings(&tumor_->timers_[0]);
+  e1.stop();
+  // --------
+  /*
+	EventRegistry::finalize();
+	if(procid == 0) {
+	 EventRegistry r;
+	 r.print();
+	 r.print("EventTimings_taoinv.log", true);
+	}
+	*/
+
+	/* === get solution === */
+	Vec p; ierr = TaoGetSolutionVector(tao_, &p);                        CHKERRQ(ierr);
+	ierr = VecCopy(p, prec_);                                            CHKERRQ(ierr);
+
+	/* Get information on termination */
+	TaoConvergedReason reason;
+	TaoGetConvergedReason(tao_, &reason);
+
+	/* get solution status */
+	//ScalarType J, gnorm, step;
+	//ierr = TaoGetSolutionStatus(_tao, &_nbNewtonIt, &J, &gnorm, NULL, &step, NULL); CHKERRQ(ierr);
+
+	/* display convergence reason: */
+	ierr = DispTaoConvReason(reason, solverstatus_);                      CHKERRQ(ierr);
+	nbNewtonIt_ = _itctx->nbNewtonIt;
+	nbKrylovIt_ = _itctx->nbKrylovIt;
+
+	// only update if triggered from outside, i.e., if new information to the ITP solver is present
+	updateRefGradITPSolver_ = false;
+	// save the reference gradient for the next inverse solve
+	refgradITPSolver_ = itctx_->gradnorm0;
+
 	PetscFunctionReturn(0);
 }
+
+
 
 /**
  *  ***********************************
@@ -1106,12 +1178,6 @@ PetscErrorCode setTaoOptions(Tao* tao, CtxInv* ctx){
 
 	// set the routine to evaluate the objective and compute the gradient
   ierr = TaoSetObjectiveAndGradientRoutine(tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);
-  // set up routine to compute the hessian matrix vector product
-  Mat H; int nH = tumor->N_Misc_->Np_;
-	ierr = MatCreateShell(MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, nH, nH, (void*) ctx, &H);
-	ierr = MatShellSetOperation(H, MATOP_MULT, (void (*)(void))HessianMatVec);
-  ierr = MatSetOption(H, MAT_SYMMETRIC, PETSC_TRUE);
-  ierr = TaoSetHessianRoutine(tao, H, H, matfreeHessian, (void *) ctx);
 
   // set monitor function
   ierr = TaoSetMonitor(tao, OptimizationMonitor, (void *) ctx, NULL);

@@ -88,6 +88,11 @@ void accumulateTimers(double* tacc, double* tloc, double selfexec) {
 	tacc[6] += tloc[6];
 }
 
+void resetTimers(double* t) {
+	t[0] = 0; t[1] = 0; t[2] = 0; t[3] = 0;
+	t[4] = 0; t[5] = 0; t[6] = 0; t[7] = 0;
+}
+
 /* definition of tumor assert */
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg)
 {
