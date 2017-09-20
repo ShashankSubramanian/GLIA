@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 #include <cstring>
+#include <array>
 #include "mpi.h"
 
 /// Represents an event that can be started and stopped.
@@ -63,9 +64,9 @@ public:
   /// Adds the value to the propety.
   void addProp(std::string property, double value);
 
-  void addTimings(double *timings);
+  void addTimings(std::array<double, 7>& timings);
 
-  double _timers[7] = {0};
+  std::array<double, 7> _timers{ {0,0,0,0,0,0,0} };
 private:
   Clock::time_point starttime;
   Clock::time_point stoptime;
@@ -98,7 +99,7 @@ public:
   int getCount();
 
   /// get accfft timers
-  double* getTimers();
+  std::array<double, 7>& getTimers();
 
   /// get total accfft time
   double getMaxAccfftTotalTime();
@@ -121,7 +122,7 @@ private:
   Event::Clock::duration total = Event::Clock::duration::zero();
   Event::Clock::duration max   = Event::Clock::duration::min();
   Event::Clock::duration min   = Event::Clock::duration::max();
-  double _timers[7] = {0};
+  std::array<double, 7> _timers{ {0,0,0,0,0,0,0} };
   double _accfft_total_time = 0;
 };
 

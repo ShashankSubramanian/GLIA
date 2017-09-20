@@ -74,7 +74,7 @@ void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, doub
 	ierr = VecRestoreArray (dz, &dz_ptr);
 }
 
-void accumulateTimers(double* tacc, double* tloc, double selfexec) {
+void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec) {
 	tloc[5] = selfexec;
 	tacc[0] += tloc[0];
 	tacc[1] += tloc[1];
@@ -85,7 +85,7 @@ void accumulateTimers(double* tacc, double* tloc, double selfexec) {
 	tacc[6] += tloc[6];
 }
 
-void resetTimers(double* t) {
+void resetTimers(std::array<double, 7>& t) {
 	t[0] = 0; t[1] = 0; t[2] = 0; t[3] = 0;
 	t[4] = 0; t[5] = 0; t[6] = 0; t[7] = 0;
 }

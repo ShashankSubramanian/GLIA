@@ -30,6 +30,7 @@ class NMisc {
 				, p_scale_ (1.0)
 				, beta_ (1e-2)
 				, writeOutput_ (1)
+				, verbosity_ (1)
 		{
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
@@ -47,7 +48,10 @@ class NMisc {
 			n_local_ = isize[0] * isize[1] * isize[2];
 			h_[0] = M_PI * 2 / n[0];
 			h_[1] = M_PI * 2 / n[1];
-		  	h_[2] = M_PI * 2 / n[2];
+      h_[2] = M_PI * 2 / n[2];
+
+			for(int i=0; i < 7; ++i)
+			  timers_[i] = 0;
 		}
 		int n_[3];
 		int isize_[3];
@@ -60,12 +64,15 @@ class NMisc {
 
 		int rd_;
 		int writeOutput_;
+		int verbosity_;
 
 		double k_;
 		double rho_;
 		double user_cm_[3];
 		double p_scale_;
 		double beta_;
+
+		std::array<double, 7> timers_;
 
 		int64_t accfft_alloc_max_;
 		int64_t n_local_;
@@ -95,15 +102,16 @@ void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, 
 void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
 
 /* helper function for timer accumulation */
-void accumulateTimers(double* tacc, double* tloc, double selfexec);
+void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec);
+void resetTimers(std::array<double, 7>& t);
 
 
 /* definition of tumor assert */
 #ifndef NDEBUG
 #   define TU_assert(Expr, Msg) \
-    __TU_assert(#Expr, Expr, __FILE__, __LINE__, Msg)
+    __TU_assert(#Expr, Expr, __FILE__, __LINE__, Msg);
 #else
-#   define TU_assert(Expr, Msg) ;
+#   define TU_assert(Expr, Msg);
 #endif
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 

@@ -101,8 +101,8 @@ void Event::addProp(std::string property, double value)
   properties[property] += value;
 }
 
-void Event::addTimings(double *timings) {
-  std::memcpy(_timers, timings, sizeof(double) * 7);
+void Event::addTimings(std::array<double, 7>& timings) {
+  std::memcpy(_timers.data(), timings.data(), sizeof(double) * 7);
 }
 
 Event::Clock::duration Event::getDuration()
@@ -168,9 +168,9 @@ int EventData::getCount()
 
 void EventData::compMaxProcTime()
 {
-  double gtimers[7] = {0};
-  MPI_Reduce(_timers, gtimers, 7, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  std::memcpy(_timers, gtimers, sizeof(double) * 7);
+  std::array<double, 7> gtimers{ {0,0,0,0,0,0,0} };
+  MPI_Reduce(_timers.data(), gtimers.data(), 7, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  std::memcpy(_timers.data(), gtimers.data(), sizeof(double) * 7);
 }
 
 void EventData::compMaxAccfftTotalTime()
@@ -180,7 +180,7 @@ void EventData::compMaxAccfftTotalTime()
   _accfft_total_time = g_accfft_total_time;
 }
 
-double* EventData::getTimers()
+std::array<double, 7>& EventData::getTimers()
 {
   return _timers;
 }
