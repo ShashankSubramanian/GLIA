@@ -14,6 +14,7 @@ inv_solver_() {
 	PetscErrorCode ierr = 0;
 	if(n_misc != nullptr)
 	  initialize(n_misc);
+	inv_solver_ = std::make_shared<InvSolver> ();
 }
 
 PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) {
@@ -37,7 +38,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
 		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
 	}
   // create tumor inverse solver
-	inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc);
+	inv_solver_->initialize(derivative_operators_, n_misc, tumor_);
   initialized_ = true;
 
   // cleanup
@@ -55,11 +56,10 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec c0, Vec cT) {
 PetscErrorCode TumorSolverInterface::solveInverse (Vec d1, Vec prec) {
 	PetscErrorCode ierr = 0;
 	TU_assert(inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
-
   if(!optimizer_settings_changed_) {
     ierr = tuMSGwarn(" Tumor inverse solver running with default settings."); CHKERRQ(ierr);
 	}
-  // set target data for inversion
+  // set target data for inversion (just sets the vector, no deep copy)
 	inv_solver_->setData(d1);
 	inv_solver_->setDataGradient(d1);
 	// solve
