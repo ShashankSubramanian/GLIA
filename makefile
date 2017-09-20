@@ -54,6 +54,7 @@ SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/DerivativeOperators.cpp \
 		  $(SRCDIR)/InvSolver.cpp \
 		  $(SRCDIR)/TumorSolverInterface.cpp \
+		  $(SRCDIR)/EventTimings.cpp \
 
 GPU_SOURCES =		 
 ifeq ($(BUILD_GPU), 1)
