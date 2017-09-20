@@ -11,6 +11,8 @@ enum {QDFS = 0, SLFS = 1};
 struct OptimizerSettings {
 	double opttolgrad;           /// @brief l2 gradient tolerance for optimization
 	double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
+	double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
+	double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
 	int    newton_maxit;         /// @brief maximum number of allowed newton iterations
 	int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
 	int    newton_minit;         /// @brief minimum number of newton steps
@@ -22,6 +24,8 @@ struct OptimizerSettings {
 	:
 	opttolgrad(1E-3),
 	gtolbound(0.8),
+	grtol(1E-12),
+	gatol(1E-6),
 	newton_maxit(20),
 	krylov_maxit(30),
 	newton_minit(1),

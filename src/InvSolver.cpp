@@ -51,6 +51,8 @@ PetscErrorCode InvSolver::initialize(
 	itctx_->derivative_operators_ = derivative_operators;
 	itctx_->n_misc_ = n_misc;
   itctx_->tumor_ = tumor;
+  itctx_->optsettings_ = this->optsettings_;
+  itctx_->optfeedback_ = this->optfeedback_;
 
   // set up routine to compute the hessian matrix vector product
   if(H_ == nullptr) {
@@ -134,17 +136,13 @@ PetscErrorCode InvSolver::solve () {
     ierr = VecSet(itctx_->tmp, 0.0);                                   CHKERRQ(ierr);
   }                                                                    // reset with zero for new ITP solve
   ierr = VecSet(itctx_->c0old, 0.0);                                   CHKERRQ(ierr);
-  itctx_->is_ksp_gradnorm_set = false;
-  itctx_->optfeedback_->converged     = false;
-  itctx_->gttol         = optsettings_->opttolgrad;
-  itctx_->grtol         = 1e-12;
-  itctx_->gatol         = 1e-6;
+  itctx_->is_ksp_gradnorm_set        = false;
+  itctx_->optfeedback_->converged    = false;
   itctx_->optfeedback_->solverstatus = "";
   itctx_->optfeedback_->nb_newton_it = 0;
   itctx_->optfeedback_->nb_krylov_it = 0;
-
-  itctx_->data          = data_;
-  itctx_->data_gradeval = data_gradeval_;
+  itctx_->data                       = data_;
+  itctx_->data_gradeval              = data_gradeval_;
 
   /* === set TAO options === */
 	ierr = setTaoOptions(tao_, itctx_.get());                            CHKERRQ(ierr);
@@ -1094,9 +1092,9 @@ PetscErrorCode setTaoOptions(Tao tao, CtxInv* ctx){
 
 	// set tolerances
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
-  ierr = TaoSetTolerances(tao, ctx->gatol, ctx->grtol, ctx->gttol);
+  ierr = TaoSetTolerances(tao, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad);
 #else
-  ierr = TaoSetTolerances(tao, 1E-12, 1E-12, ctx->gatol, ctx->grtol, ctx->gttol);
+  ierr = TaoSetTolerances(tao, 1E-12, 1E-12, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad);
 #endif
   ierr = TaoSetMaximumIterations(tao, ctx->optsettings_->newton_maxit);
 
@@ -1111,9 +1109,9 @@ PetscErrorCode setTaoOptions(Tao tao, CtxInv* ctx){
   std::stringstream s;
   tuMSGstd(" parameters (optimizer):");
   tuMSGstd(" tolerances (stopping conditions):");
-  s << "   gatol: "<< ctx->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-  s << "   grtol: "<< ctx->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-  s << "   gttol: "<< ctx->gttol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
+  s << "   gatol: "<< ctx->optsettings_->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
+  s << "   grtol: "<< ctx->optsettings_->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
+  s << "   gttol: "<< ctx->optsettings_->opttolgrad;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
 
   ierr = TaoSetFromOptions(tao);
 
