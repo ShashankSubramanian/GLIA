@@ -26,9 +26,9 @@ struct OptimizerSettings {
 };
 
 struct OptimizerFeedback {
-	int nbNewtonIt;              /// @brief number of taken newton iterations
-	int nbKrylovIt;              /// @brief number of taken krylov iterations
-  std::string solverstatus;    /// @brief solver status message
+	int nbNewtonIt;              /// @brief stores the number of required Newton iterations for the last inverse tumor solve
+	int nbKrylovIt;              /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+  std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
   double gradnorm;             /// @brief final gradient norm
   bool converged;              /// @brief true if solver converged within bounds
 
@@ -49,7 +49,7 @@ struct CtxInv {
 
 	/* reference values gradient */
 	double KSPgradnorm0; // reference gradient for hessian PCG
-	double gradnorm0;           // norm of initial gradient (with p = intiial guess)
+	double gradnorm0;           // norm of initial gradient (with p = intial guess)
 
 	/* optimization options/settings */
 	double gttol;               // used: relative gradient reduction
@@ -131,6 +131,8 @@ class InvSolver {
     void setOptSettings(std::shared_ptr<OptimizerSettings> optset) {optsettings_ = optset;}
 
 		// getter functions
+		std::shared_ptr<OptimizerSettings> getOptSettings() {return optsettings_;}
+		std::shared_ptr<OptimizerFeedback> getOptFeedback() {return optfeedback_;}
 
 	private:
 		/// @brief true if tumor adapter is correctly initialized. mendatory
@@ -138,18 +140,6 @@ class InvSolver {
 
     /// @breif regularization parameter for tumor inverse solve
 		double betap_;
-
-    /// @brief gives information about the termination reason of inverse tumor TAO solver
-		std::string solverstatus_;
-
-    /// @brief stores the number of required Newton iterations for the last inverse tumor solve
-		int nbNewtonIt_;
-
-		/// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
-		int nbKrylovIt_;
-
-		//bool updateReferenceGradient_;
-		//double gradnorm0_itp;
 
     /// @brief data d1 for tumor inversion (memory managed from outside)
 		Vec data_;
@@ -166,6 +156,7 @@ class InvSolver {
 		Mat H_;
 
     std::shared_ptr<OptimizerSettings> optsettings_;
+		std::shared_ptr<OptimizerFeedback> optfeedback_;
 		std::shared_ptr<Tumor> tumor_;
 		shared_ptr<CtxInv> itctx_;
 };

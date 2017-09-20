@@ -19,15 +19,13 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 	data_(),
 	data_gradeval_(),
 	prec_(),
-	solverstatus_(""),
-	nbNewtonIt_(-1),
-	nbKrylovIt_(-1),
 	//_tumor(),
 	itctx_(),
 	tao_(),
 	H_(),
 	//params_(),
 	optsettings_(),
+	optfeedback_(),
 	tumor_(),
   itctx_()
   {
@@ -124,7 +122,7 @@ PetscErrorCode InvSolver::solve () {
 	/* === solve for a initial guess === */
 	//solveForParameters(data.get(), _tumor->N_Misc_, _tumor->phi_, timers, &_tumor->p_true_);
 
-	_solverstatus = "";
+	optfeedback_->solverstatus = "";
   _nbNewtonIt = -1;
   _nbKrylovIt = -1;
   //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
@@ -190,23 +188,21 @@ PetscErrorCode InvSolver::solve () {
 	TaoGetConvergedReason(tao_, &reason);
 
 	/* get solution status */
-	//ScalarType J, gnorm, step;
-	//ierr = TaoGetSolutionStatus(_tao, &_nbNewtonIt, &J, &gnorm, NULL, &step, NULL); CHKERRQ(ierr);
+	ScalarType J, gnorm, xdiff;
+	ierr = TaoGetSolutionStatus(tao_, NULL, &J, &optfeedback_->gradnorm, NULL, &xdiff, NULL); CHKERRQ(ierr);
 
 	/* display convergence reason: */
-	ierr = DispTaoConvReason(reason, solverstatus_);                      CHKERRQ(ierr);
-	nbNewtonIt_ = _itctx->nbNewtonIt;
-	nbKrylovIt_ = _itctx->nbKrylovIt;
+	ierr = DispTaoConvReason(reason, optfeedback_->solverstatus);         CHKERRQ(ierr);
+	optfeedback_->nbNewtonIt = _itctx->nbNewtonIt;
+	optfeedback_->nbKrylovIt = _itctx->nbKrylovIt;
+	optfeedback_->converged  = _itctx->converged;
 
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
 	_itctx->updateReferenceGradient = false;
-	// save the reference gradient for the next inverse solve
-	//gradnorm0_itp = itctx_->gradnorm0;
 
 	// reset vectors (remember, memory managed on caller side):
 	data_ = nullptr;
 	data_gradeval_ = nullptr;
-	optsettings_ = nullptr;
 
 	PetscFunctionReturn(0);
 }
