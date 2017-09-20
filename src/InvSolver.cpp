@@ -13,10 +13,9 @@
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc)
 :
   initialized_(false),
-	optTolGrad_(1E-3),
+	opttolgrad_(1E-3),
 	betap_(0),
-	updateRefGradITPSolver_(true),
-	refgradITPSolver_(1.),
+	updateReferenceGradient_(true),
 	data_(),
 	data_gradeval_(),
 	prec_(),
@@ -28,6 +27,7 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 	tao_(),
 	H_(),
 	//params_(),
+	optsettings_(),
 	tumor_(),
   itctx_()
   {
@@ -81,6 +81,7 @@ PetscErrorCode InvSolver::solve () {
   TU_assert(data_ != nullptr, "InvSolver:solve(): requires non-null input data for inversion.");
 	TU_assert(data_gradeval_ != nullptr, "InvSolver:solve(): requires non-null input data for gradient evaluation.");
 	TU_assert(prec_ != nullptr, "InvSolver:solve(): requires non-null p_rec vector to be set");
+	TU_assert(optsettings_ != nullptr, "InvSolver:solve(): requires non-null optimizer settings to be passed.");
 
   /* === observed data === */
 	// apply observer on ground truth, store observed data in d
@@ -136,25 +137,23 @@ PetscErrorCode InvSolver::solve () {
   if (_itctx->tmp == nullptr) {
     ierr = VecDuplicate(data_, &_itctx->tmp);                          CHKERRQ(ierr);
     ierr = VecSet(_itctx->tmp, 0.0);                                   CHKERRQ(ierr);
-  }
-  ierr = VecSet(_itctx->c0old, 0.0);                                   CHKERRQ(ierr); // reset with zero for new ITP solve
-  _itctx->isGradNorm0HessianSet = false;
-  _itctx->converged = false;
-  _itctx->updateGradNorm0 = updateRefGradITPSolver_;
-  _itctx->gradnorm0 = refgradITPSolver_;
-  _itctx->gttol = optTolGrad_; // TODO
-  _itctx->grtol = 1e-12;
-  _itctx->gatol = 1e-6;
-  _itctx->newton_maxit = _params->getNewtonMaxitTu(); // TODO
-  _itctx->krylov_maxit = _params->getKrylovMaxitTu(); // TODO^
-  _itctx->iterbound = 500;//_params->getKrylovMaxitTu();
-  _itctx->newton_minit = 1;
-  _itctx->nbNewtonIt = 0;
-  _itctx->nbKrylovIt = 0;
-  _itctx->tumor = tumor_;
-  _itctx->data = data_;
+  }                                                                    // reset with zero for new ITP solve
+  ierr = VecSet(_itctx->c0old, 0.0);                                   CHKERRQ(ierr);
+  _itctx->isKSPgradnorm_set = false;
+  _itctx->converged     = false;
+  _itctx->gttol         = optsettings_->opttolgrad;
+  _itctx->grtol         = 1e-12;
+  _itctx->gatol         = 1e-6;
+  _itctx->newton_maxit  = optsettings_->newton_maxit;
+  _itctx->krylov_maxit  = optsettings_->krylov_maxit;
+  _itctx->iterbound     = optsettings_->iterbound;
+  _itctx->newton_minit  = 1;
+  _itctx->nbNewtonIt    = 0;
+  _itctx->nbKrylovIt    = 0;
+  _itctx->tumor         = tumor_;
+  _itctx->data          = data_;
   _itctx->data_gradeval = data_gradeval_;
-  _itctx->verbosity = itctx_->n_misc_->verbosity_; // TODO
+  _itctx->verbosity     = optsettings_->verbosity;
 
   /* === set TAO options === */
 	ierr = setTaoOptions(tao_, _itctx.get());                            CHKERRQ(ierr);
@@ -200,9 +199,14 @@ PetscErrorCode InvSolver::solve () {
 	nbKrylovIt_ = _itctx->nbKrylovIt;
 
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
-	updateRefGradITPSolver_ = false;
+	_itctx->updateReferenceGradient = false;
 	// save the reference gradient for the next inverse solve
-	refgradITPSolver_ = itctx_->gradnorm0;
+	//gradnorm0_itp = itctx_->gradnorm0;
+
+	// reset vectors (remember, memory managed on caller side):
+	data_ = nullptr;
+	data_gradeval_ = nullptr;
+	optsettings_ = nullptr;
 
 	PetscFunctionReturn(0);
 }
@@ -547,11 +551,11 @@ PetscErrorCode preKrylovSolve(KSP ksp, Vec b, Vec x, void* ptr){
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
 	ierr = VecNorm(b, NORM_2, &gnorm); CHKERRQ(ierr);   // compute gradient norm
 
-	if(! itctx->isGradNorm0HessianSet) {                // set initial gradient norm
-		itctx->gradnorm0_HessianCG = gnorm;               // for KSP Hessian solver
-		itctx->isGradNorm0HessianSet = true;
+	if(! itctx->isKSPgradnorm_set) {                // set initial gradient norm
+		itctx->KSPgradnorm0 = gnorm;               // for KSP Hessian solver
+		itctx->isKSPgradnorm_set = true;
 	}
-	g0norm = ctx->gradnorm0_HessianCG;                  // get reference gradient
+	g0norm = ctx->KSPgradnorm0;                  // get reference gradient
 	gnorm /= g0norm;                                    // normalize gradient
 	                                                    // get tolerances
   ierr = KSPGetTolerances(ksp, &reltol, &abstol, &divtol, &maxit); CHKERRQ(ierr);
@@ -610,7 +614,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL); CHKERRQ(ierr);
 
 	// update/set reference gradient (with p = initial-guess)
-	if(ctx->updateGradNorm0) {
+	if(ctx->updateReferenceGradient) {
 		Vec p0, dJ;
 		double norm_gref = 0.;
 		ierr = VecDuplicate(ctx->tumor->p_initguess_, &p0); CHKERRQ(ierr);
@@ -622,7 +626,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
 		ctx->gradnorm0 = norm_gref;
 		//ctx->gradnorm0 = gnorm;
-		ctx->updateGradNorm0 = false;
+		ctx->updateReferenceGradient = false;
 		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
 		ierr = VecDestroy(&dJ); CHKERRQ(ierr);
@@ -772,7 +776,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	ierr = TaoGetSolutionVector(tao, &x); CHKERRQ(ierr);
 
 	// update/set reference gradient (with p = initial-guess)
-	if(ctx->updateGradNorm0) {
+	if(ctx->updateReferenceGradient) {
 		Vec p0, dJ;
 		double norm_gref = 0.;
 		ierr = VecDuplicate(ctx->tumor->p_initguess_, &p0); CHKERRQ(ierr);
@@ -783,7 +787,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		evaluateGradient(tao, p0, dJ, (void*) ctx);
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
 		ctx->gradnorm0 = norm_gref;
-		ctx->updateGradNorm0 = false;
+		ctx->updateReferenceGradient = false;
 		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
 		ierr = VecDestroy(&dJ); CHKERRQ(ierr);

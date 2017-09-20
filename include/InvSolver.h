@@ -8,13 +8,47 @@
 
 enum {QDFS = 0, SLFS = 1};
 
+struct OptimizerSettings {
+	double opttolgrad;           /// @brief l2 gradient tolerance for optimization
+	int    newton_maxit;         /// @brief maximum number of allowed newton iterations
+	int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
+	int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
+	int    verbosity;            /// @brief controls verbosity of solver
+
+	OptimizerSettings()
+	:
+	opttolgrad(1E-3),
+	newton_maxit(20),
+	krylov_maxit(30),
+	iterbound(500),
+	verbosity(1),
+	{}
+};
+
+struct OptimizerFeedback {
+	int nbNewtonIt;              /// @brief number of taken newton iterations
+	int nbKrylovIt;              /// @brief number of taken krylov iterations
+  std::string solverstatus;    /// @brief solver status message
+  double gradnorm;             /// @brief final gradient norm
+  bool converged;              /// @brief true if solver converged within bounds
+
+	OptimizerFeedback()
+	:
+	nbNewtonIt(-1),
+	nbKrylovIt(-1),
+	solverstatus(30),
+	gradnorm(0.),
+	converged(false)
+	{}
+};
+
 struct CtxInv {
 	/* evalJ evalDJ, eval D2J */
 	std::shared_ptr<DerivativeOperators> derivative_operators_;
 	std::shared_ptr<NMisc> n_misc_;
 
 	/* reference values gradient */
-	double gradnorm0_HessianCG; // reference gradient for hessian PCG
+	double KSPgradnorm0; // reference gradient for hessian PCG
 	double gradnorm0;           // norm of initial gradient (with p = intiial guess)
 
 	/* optimization options/settings */
@@ -29,8 +63,8 @@ struct CtxInv {
 	int fseqtype;               // type of forcing sequence (quadratic, superlinear)
 
 	/* steering of reference gradeint reset */
-	bool isGradNorm0HessianSet;  // if false, update reference gradient norm for hessian PCG
-	bool updateGradNorm0;        // if true, update reference gradient for optimization
+	bool isKSPgradnorm_set;  // if false, update reference gradient norm for hessian PCG
+	bool updateReferenceGradient;        // if true, update reference gradient for optimization
 
 	/* optimization state */
 	int nbKrylovIt;              // count (accumulated) number of PCG iterations
@@ -52,7 +86,7 @@ struct CtxInv {
 		data_gradeval(nullptr),
 		convergenceMessage()
 	{
-		gradnorm0_HessianCG = 1.;
+		KSPgradnorm0 = 1.;
 		gradnorm0 = 1.;
 		gttol = 1e-3;
 		gatol = 1e-6;
@@ -69,8 +103,8 @@ struct CtxInv {
 		krylov_maxit = 1000;
 		newton_maxit = 1000;
 		newton_minit = 1;
-		isGradNorm0HessianSet = false;
-		updateGradNorm0 = true;
+		isKSPgradnorm_set = false;
+		updateReferenceGradient = true;
 		verbosity = 1;
 	}
 
@@ -94,7 +128,7 @@ class InvSolver {
 		PetscErrorCode solve ();
 
     // setter functions
-		void setOpttolGrad(double d) {optTolGrad_ = d;}
+    void setOptSettings(std::shared_ptr<OptimizerSettings> optset) {optsettings_ = optset;}
 
 		// getter functions
 
@@ -105,9 +139,6 @@ class InvSolver {
     /// @breif regularization parameter for tumor inverse solve
 		double betap_;
 
-		/// @brief l2 gradient tolerance for optimization
-    double optTolGrad_;
-
     /// @brief gives information about the termination reason of inverse tumor TAO solver
 		std::string solverstatus_;
 
@@ -117,12 +148,8 @@ class InvSolver {
 		/// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
 		int nbKrylovIt_;
 
-		/* @brief flag indicates that update of reference gradient for the relative
-	   *        convergence crit. for ITP Newton iteration is neccessary. This should
-	   *        only change when beta_reg is changed, as we do warmstarts.
-	   */
-		bool updateRefGradITPSolver_;
-		double refgradITPSolver_;
+		//bool updateReferenceGradient_;
+		//double gradnorm0_itp;
 
     /// @brief data d1 for tumor inversion (memory managed from outside)
 		Vec data_;
@@ -138,8 +165,8 @@ class InvSolver {
     /// @brief petsc matrix object for hessian matrix
 		Mat H_;
 
+    std::shared_ptr<OptimizerSettings> optsettings_;
 		std::shared_ptr<Tumor> tumor_;
-
 		shared_ptr<CtxInv> itctx_;
 };
 
