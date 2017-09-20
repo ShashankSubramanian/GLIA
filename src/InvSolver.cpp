@@ -121,9 +121,7 @@ PetscErrorCode InvSolver::solve () {
 	/* === solve for a initial guess === */
 	//solveForParameters(data.get(), itctx_->n_misc_, itctx_->tumor_->phi_, itctx_->n_misc_->timers_, &itctx_->tumor_->p_true_);
 
-	optfeedback_->solverstatus = "";
-  optfeedback_->nb_newton_it = -1;
-  optfeedback_->nb_krylov_it = -1;
+
   //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
 
   /* === initialize inverse tumor context === */
@@ -137,19 +135,16 @@ PetscErrorCode InvSolver::solve () {
   }                                                                    // reset with zero for new ITP solve
   ierr = VecSet(itctx_->c0old, 0.0);                                   CHKERRQ(ierr);
   itctx_->is_ksp_gradnorm_set = false;
-  itctx_->converged     = false;
+  itctx_->optfeedback_->converged     = false;
   itctx_->gttol         = optsettings_->opttolgrad;
   itctx_->grtol         = 1e-12;
   itctx_->gatol         = 1e-6;
-  itctx_->newton_maxit  = optsettings_->newton_maxit;
-  itctx_->krylov_maxit  = optsettings_->krylov_maxit;
-  itctx_->iterbound     = optsettings_->iterbound;
-  itctx_->newton_minit  = 1;
-  itctx_->nb_newton_it    = 0;
-  itctx_->nb_krylov_it    = 0;
+  itctx_->optfeedback_->solverstatus = "";
+  itctx_->optfeedback_->nb_newton_it = 0;
+  itctx_->optfeedback_->nb_krylov_it = 0;
+
   itctx_->data          = data_;
   itctx_->data_gradeval = data_gradeval_;
-  itctx_->verbosity     = optsettings_->verbosity;
 
   /* === set TAO options === */
 	ierr = setTaoOptions(tao_, itctx_.get());                            CHKERRQ(ierr);
@@ -187,13 +182,10 @@ PetscErrorCode InvSolver::solve () {
 
 	/* get solution status */
 	PetscScalar J, gnorm, xdiff;
-	ierr = TaoGetSolutionStatus(tao_, NULL, &J, &optfeedback_->gradnorm, NULL, &xdiff, NULL); CHKERRQ(ierr);
+	ierr = TaoGetSolutionStatus(tao_, NULL, &J, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL); CHKERRQ(ierr);
 
 	/* display convergence reason: */
-	ierr = dispTaoConvReason(reason, optfeedback_->solverstatus);         CHKERRQ(ierr);
-	optfeedback_->nb_newton_it = itctx_->nb_newton_it;
-	optfeedback_->nb_krylov_it = itctx_->nb_krylov_it;
-	optfeedback_->converged  = itctx_->converged;
+	ierr = dispTaoConvReason(reason, itctx_->optfeedback_->solverstatus);         CHKERRQ(ierr);
 
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
 	itctx_->update_reference_gradient = false;
@@ -271,7 +263,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 	ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
 
-	if (itctx->n_misc_->verbosity_ > 1) {
+	if (itctx->optsettings_->verbosity > 1) {
     double gnorm;
     ierr = VecNorm(dJ, NORM_2, &gnorm); CHKERRQ(ierr);
     PetscPrintf(MPI_COMM_WORLD, " norm of gradient ||g||_2 = %e\n", gnorm);
@@ -341,7 +333,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	// eval hessian
 	ierr = itctx->derivative_operators_->evaluateHessian (y, x);
 
-	if (itctx->n_misc_->verbosity_ > 1) {
+	if (itctx->optsettings_->verbosity > 1) {
     PetscPrintf(MPI_COMM_WORLD, " applying hessian done!\n");
     double xnorm;
     ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
@@ -449,7 +441,7 @@ PetscErrorCode optimizationMonitor(Tao tao, void* ptr){
   // and termination reason
   ierr = TaoGetSolutionStatus(tao, &its, &J, &gnorm, &cnorm, &step, &flag); CHKERRQ(ierr);
 	// accumulate number of newton iterations
-  itctx->nb_newton_it++;
+  itctx->optfeedback_->nb_newton_it++;
 
 	// print out Newton iteration information
   std::stringstream s;
@@ -484,7 +476,7 @@ PetscErrorCode hessianKSPMonitor(KSP ksp, PetscInt n,PetscReal rnorm, void *ptr)
 	Vec x;
 	ierr = KSPBuildSolution(ksp,NULL,&x);CHKERRQ(ierr); // build solution vector
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
-	itctx->nb_krylov_it++;                                // accumulate number of krylov iterations
+	itctx->optfeedback_->nb_krylov_it++;                 // accumulate number of krylov iterations
 	// ierr = PetscPrintf(PETSC_COMM_WORLD,"iteration %D solution vector:\n",n);CHKERRQ(ierr);
   // ierr = VecView(x,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
   //ierr = PetscPrintf(PETSC_COMM_WORLD,"iteration %D KSP Residual norm %14.12e \n",n,rnorm);CHKERRQ(ierr);
@@ -530,7 +522,7 @@ PetscErrorCode preKrylovSolve(KSP ksp, Vec b, Vec x, void* ptr){
 
   // user forcing sequence to estimate adequate tolerance for solution of
 	//  KKT system (Eisenstat-Walker)
-	if (itctx->fseqtype == QDFS) {
+	if (itctx->optsettings_->fseqtype == QDFS) {
 		// assuming quadratic convergence (we do not solver more accurately than 12 digits)
 		reltol = PetscMax(lowergradbound, PetscMin(uppergradbound, gnorm));
 	} else {
@@ -565,10 +557,10 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	std::stringstream ss, sc;
 
   CtxInv *ctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
-  verbosity = ctx->verbosity;
+  verbosity = ctx->optsettings_->verbosity;
 	minstep = std::pow(2.0, 10.0);
 	minstep = 1.0 / minstep;
-	miniter = ctx->newton_minit;
+	miniter = ctx->optsettings_->newton_minit;
 	// get tolerances
 	#if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
 	    ierr = TaoGetTolerances(tao, &gatol, &grtol, &gttol); CHKERRQ(ierr);
@@ -590,7 +582,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		// evaluate reference gradient for initial guess p = 0 * ones(Np)
 		evaluateGradient(tao, p0, dJ, (void*) ctx);
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
-		ctx->gradnorm0 = norm_gref;
+		ctx->optfeedback_->gradnorm0 = norm_gref;
 		//ctx->gradnorm0 = gnorm;
 		ctx->update_reference_gradient = false;
 		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
@@ -599,7 +591,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 	}
 
 	// get initial gradient
-	g0norm = ctx->gradnorm0;
+	g0norm = ctx->optfeedback_->gradnorm0;
 	g0norm = (g0norm > 0.0) ? g0norm : 1.0;
 
 	ctx->convergence_message.clear();
@@ -622,7 +614,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 
 	// only check convergence criteria after a certain number of iterations
 	stop[0] = false; stop[1] = false; stop[2] = false;
-	ctx->converged = false;
+	ctx->optfeedback_->converged = false;
 	if (iter >= miniter) {
 		if (verbosity > 1) {
 				ss << "step size in linesearch: " << std::scientific << step;
@@ -677,7 +669,7 @@ PetscErrorCode checkConvergenceGrad(Tao tao, void* ptr){
 		ctx->jvalold = J;
 
 		if (stop[0] || stop[1] || stop[2]) {
-				ctx->converged = true;
+				ctx->optfeedback_->converged = true;
 				PetscFunctionReturn(ierr);
 		}
 
@@ -723,10 +715,10 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	// get minstep and miniter
 	minstep = std::pow(2.0, 10.0);
 	minstep = 1.0 / minstep;
-	miniter = ctx->newton_minit;
-	iterbound = ctx->iterbound;
+	miniter = ctx->optsettings_->newton_minit;
+	iterbound = ctx->optsettings_->iterbound;
 	// get lower bound for gradient
-	gtolbound = ctx->gtolbound;
+	gtolbound = ctx->optsettings_->gtolbound;
 
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
 	ierr = TaoGetTolerances(tao, &gatol, &grtol, &gttol); CHKERRQ(ierr);
@@ -752,7 +744,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 		// evaluate reference gradient for initial guess p = 0 * ones(Np)
 		evaluateGradient(tao, p0, dJ, (void*) ctx);
 		ierr = VecNorm(dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
-		ctx->gradnorm0 = norm_gref;
+		ctx->optfeedback_->gradnorm0 = norm_gref;
 		ctx->update_reference_gradient = false;
 		ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
 		ierr = VecDestroy(&p0); CHKERRQ(ierr);
@@ -760,7 +752,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 	}
 
 	// get initial gradient
-	g0norm = ctx->gradnorm0;
+	g0norm = ctx->optfeedback_->gradnorm0;
 	g0norm = (g0norm > 0.0) ? g0norm : 1.0;
 
 	// compute tolerances for stopping conditions
@@ -800,7 +792,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 
 	ierr = PetscPrintf(MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
 
-	ctx->converged = false;
+	ctx->optfeedback_->converged = false;
 	// initialize flags for stopping conditions
 	for (int i = 0; i < nstop; ++i) stop[i] = false;
 
@@ -890,19 +882,19 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void* ptr){
 
 		if (stop[0] && stop[1] && stop[2]) {
 				ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER); CHKERRQ(ierr);
-				ctx->converged = true;
+				ctx->optfeedback_->converged = true;
 				PetscFunctionReturn(ierr);
 		} else if (stop[3]) {
 				ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL); CHKERRQ(ierr);
-				ctx->converged = true;
+				ctx->optfeedback_->converged = true;
 				PetscFunctionReturn(ierr);
 		} else if (stop[4] && stop[5]) {
 				ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_MAXITS); CHKERRQ(ierr);
-				ctx->converged = true;
+				ctx->optfeedback_->converged = true;
 				PetscFunctionReturn(ierr);
 		} else if (stop[6]) {
 				ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_MAXITS); CHKERRQ(ierr);
-				ctx->converged = true;
+				ctx->optfeedback_->converged = true;
 				PetscFunctionReturn(ierr);
 		}
 } else {
@@ -1106,7 +1098,7 @@ PetscErrorCode setTaoOptions(Tao tao, CtxInv* ctx){
 #else
   ierr = TaoSetTolerances(tao, 1E-12, 1E-12, ctx->gatol, ctx->grtol, ctx->gttol);
 #endif
-  ierr = TaoSetMaximumIterations(tao, ctx->newton_maxit);
+  ierr = TaoSetMaximumIterations(tao, ctx->optsettings_->newton_maxit);
 
   // set adapted convergence test for warm-starts
   ierr = TaoSetConvergenceTest(tao, checkConvergenceGrad, ctx);
@@ -1131,7 +1123,7 @@ PetscErrorCode setTaoOptions(Tao tao, CtxInv* ctx){
   if (ksp != PETSC_NULL) {
     ierr = KSPSetOptionsPrefix(ksp, "opt_");            // set prefix to control sets and monitors
 		                                                    // set default tolerance to 1E-6
-    ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx->krylov_maxit);
+    ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx->optsettings_->krylov_maxit);
     KSPSetPreSolve(ksp, preKrylovSolve, ctx);           // to use Eisenstat/Walker convergence crit.
     ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx, 0); // monitor
   }

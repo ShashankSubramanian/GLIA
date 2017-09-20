@@ -25,7 +25,7 @@ struct OptimizerSettings {
 	newton_maxit(20),
 	krylov_maxit(30),
 	newton_minit(1),
-	iterbound(500),
+	iterbound(200),
 	fseqtype(SLFS),
 	verbosity(1)
 	{}
@@ -65,36 +65,25 @@ struct CtxInv {
 
 	/* reference values gradient */
 	double ksp_gradnorm0; // reference gradient for hessian PCG
-	double gradnorm0;           // norm of initial gradient (with p = intial guess)
 
 	/* optimization options/settings */
 	double gttol;               // used: relative gradient reduction
 	double gatol;               // absolute tolerance for gradient
 	double grtol;               // relative tolerance for gradient
 
-	double gtolbound;           // minimum reduction of gradient (even if maxiter hit earlier)
-	int krylov_maxit;           // maximum number of iterations for hessian PCG
-	int newton_maxit;           // maximum number of newton steps
-	int newton_minit;           // minimum number of newton steps
-	int iterbound;              // upper bound on newton iterations
-	int fseqtype;               // type of forcing sequence (quadratic, superlinear)
-
 	/* steering of reference gradeint reset */
 	bool is_ksp_gradnorm_set;   // if false, update reference gradient norm for hessian PCG
 	bool update_reference_gradient;  // if true, update reference gradient for optimization
 
 	/* optimization state */
-	int nb_krylov_it;              // count (accumulated) number of PCG iterations
-	int nb_newton_it;              // count number of newton steps
-	double jvalold;                // old value of objective function (previous newton iteration)
-	Vec c0old, tmp;                // previous initial condition \Phi p^k-1 and tmp vec
+	double jvalold;               // old value of objective function (previous newton iteration)
+	Vec c0old, tmp;               // previous initial condition \Phi p^k-1 and tmp vec
 	std::vector<std::string> convergence_message; // convergence message
-	bool converged;                // true if solver converged
-	int verbosity;                 // controls verbosity of inverse solver
+	int verbosity;                // controls verbosity of inverse solver
 
 	/* additional data */
-	Vec data;   // data for tumor inversion
-	Vec data_gradeval; // data only for gradient evaluation (may differ)
+	Vec data;                     // data for tumor inversion
+	Vec data_gradeval;            // data only for gradient evaluation (may differ)
 	CtxInv()
 	:
 	    derivative_operators_()
@@ -105,25 +94,14 @@ struct CtxInv {
 		, convergence_message()
 	{
 		ksp_gradnorm0 = 1.;
-		gradnorm0 = 1.;
 		gttol = 1e-3;
 		gatol = 1e-6;
 		grtol = 1e-12;
-		gtolbound = 0.8;
-		nb_krylov_it = 0;
-		nb_newton_it = 0;
-		iterbound = 200;
-		fseqtype = SLFS;
 		jvalold = 0;
 		c0old = nullptr;
 		tmp = nullptr;
-		converged = false;
-		krylov_maxit = 1000;
-		newton_maxit = 1000;
-		newton_minit = 1;
 		is_ksp_gradnorm_set = false;
 		update_reference_gradient = true;
-		verbosity = 1;
 	}
 
 	~CtxInv() {
