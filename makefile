@@ -46,7 +46,6 @@ SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/Obs.cpp \
 		  $(SRCDIR)/Tumor.cpp \
 		  $(SRCDIR)/MatProp.cpp \
-		  $(SRCDIR)/reaction.cpp \
 		  $(SRCDIR)/weierstrassSmoother.cpp \
 		  $(SRCDIR)/DiffSolver.cpp \
 		  $(SRCDIR)/Utils.cpp \

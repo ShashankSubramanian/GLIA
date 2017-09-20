@@ -5,7 +5,8 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
         : PdeOperators (tumor, n_misc) {
 
     PetscErrorCode ierr = 0;
-    int nt = n_misc->time_horizon_ / n_misc->dt_;
+    double dt = n_misc_->dt_;
+    int nt = n_misc->time_horizon_ / dt;
     c_ = (Vec *) malloc (sizeof (Vec *) * (nt + 1));    //Stores all (nt + 1) tumor concentrations for adjoint eqns
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
@@ -24,6 +25,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     double *c_t_ptr, *rho_ptr;
     double *c_ptr;
     double factor, alph;
+    double dt = n_misc_->dt_;
     ierr = VecGetArray (tumor_->c_t_, &c_t_ptr);                     CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 
@@ -69,7 +71,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             ierr = VecCopy (tumor_->c_t_, c_[i+1]);                                     CHKERRQ (ierr);
     }
 
-    if(n_misc->writeOutput_)
+    if(n_misc_->writeOutput_)
         dataOut (tumor_->c_t_, n_misc_, "results/CT.nc");
 
     PetscFunctionReturn (0);
@@ -81,7 +83,8 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     double *p_0_ptr, *rho_ptr;
     double *c_ptr;
     double factor, alph;
-    ierr = VecGetArray (tumor_->p_0, &p_0_ptr);                     CHKERRQ (ierr);
+    double dt = n_misc_->dt_;
+    ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                     CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 
     ierr = VecGetArray (c_[iter], &c_ptr);                          CHKERRQ (ierr);
@@ -99,7 +102,7 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
         }
     }
 
-    ierr = VecRestoreArray (tumor_->p_0, &p_0_ptr);                 CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
 
     ierr = VecRestoreArray (c_[iter], &c_ptr);                      CHKERRQ (ierr);

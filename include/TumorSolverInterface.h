@@ -36,7 +36,7 @@ class TumorSolverInterface {
 		 *         A additional filter, that filters the admissable area for tumor
 		 *         growth has to be passed (updates the \Phi filter)
 		 */
-		PetscErrorCode updateTumorCoefficients(std::shared_ptr<MatProp> geometry, shared_ptr<TumorParameter> g = {});
+		PetscErrorCode updateTumorCoefficients(std::shared_ptr<MatProp> geometry, Vec p);
 
     /// @brief true if TumorSolverInterface is initialized and ready to use
 		bool isInitialized() {return initialized_;}
@@ -46,7 +46,7 @@ class TumorSolverInterface {
     /// @brief returns the tumor shared ptr
 		std::shared_ptr<Tumor> getTumor() { return tumor_; }
 		/// @brief returns the context for the inverse tumor solver
-	  std::shared_ptr<InverseTumorContext> getITctx();// {return itctx_;}
+	  std::shared_ptr<CtxInv> getITctx();// {return itctx_;}
 
 		~TumorSolverInterface () {}
 

@@ -33,7 +33,7 @@ int main (int argc, char** argv) {
     MPI_Comm c_comm;
 	int c_dims[2] = { 0 };
 	accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
-	
+
 	int isize[3], osize[3], istart[3], ostart[3];
 	int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
 	double *c_0 = (double*) accfft_alloc (alloc_max);
@@ -44,11 +44,11 @@ int main (int argc, char** argv) {
 /* ACCFFT, PETSC setup end */
 
 /* --------------------------------------------------------------------------------------------------------------*/
-	   
-{ 
+
+{
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, istart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
-	ierr = solver_interface->solveForward ();
+	ierr = solver_interface->solveForward (nullptr , nullptr); // TODO fix that
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/

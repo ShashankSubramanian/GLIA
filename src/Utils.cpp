@@ -1,28 +1,28 @@
 #include "Utils.h"
 
-PetscErrorCode tuMSG(std::string msg, int size, bool parlog) {
+PetscErrorCode tuMSG(std::string msg, int size) {
 	PetscFunctionBegin;
   PetscErrorCode ierr;
   std::string color = "\x1b[1;34;40m";
-  ierr = _tuMSG(msg, color, size, parlog); CHKERRQ(ierr);
+  ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode tuMSGstd(std::string msg, int size, bool parlog) {
+PetscErrorCode tuMSGstd(std::string msg, int size) {
   PetscErrorCode ierr;
   std::string color = "\x1b[37;40m";
-  ierr = _tuMSG(msg, color, size, parlog); CHKERRQ(ierr);
+  ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode tuMSGwarn(std::string msg, int size, bool parlog) {
+PetscErrorCode tuMSGwarn(std::string msg, int size) {
   PetscErrorCode ierr;
   std::string color = "\x1b[1;31;40m";
-  ierr = _tuMSG(msg, color, size, parlog); CHKERRQ(ierr);
+  ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode _tuMSG(std::string msg, std::string color, int size, bool parlog) {
+PetscErrorCode _tuMSG(std::string msg, std::string color, int size) {
     PetscErrorCode ierr = 0;
     std::stringstream ss;
     PetscFunctionBegin;
@@ -36,11 +36,8 @@ PetscErrorCode _tuMSG(std::string msg, std::string color, int size, bool parlog)
     //msg = "\x1b[1;34;40m[ "  + ss.str() + "]\x1b[0m\n";
 
     // display message
-    if(parlog) {
-      ParLOG<<msg;
-    } else {
-      ierr = PetscPrintf(PETSC_COMM_WORLD,msg.c_str()); CHKERRQ(ierr);
-    }
+    ierr = PetscPrintf(PETSC_COMM_WORLD,msg.c_str()); CHKERRQ(ierr);
+
 
     PetscFunctionReturn(0);
 }

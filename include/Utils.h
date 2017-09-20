@@ -85,10 +85,10 @@ void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 
 /* helper methods for print out to console */
-PetscErrorCode tuMSG(std::string msg, int size = 98, bool parlog = false);
-PetscErrorCode tuMSGstd(std::string msg, int size = 98, bool parlog = false);
-PetscErrorCode tuMSGwarn(std::string msg, int size = 98, bool parlog = false);
-PetscErrorCode _tuMSG(std::string msg, std::string color, int size, bool parlog);
+PetscErrorCode tuMSG(std::string msg, int size = 98);
+PetscErrorCode tuMSGstd(std::string msg, int size = 98);
+PetscErrorCode tuMSGwarn(std::string msg, int size = 98);
+PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
 /* accfft differential operators */
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);

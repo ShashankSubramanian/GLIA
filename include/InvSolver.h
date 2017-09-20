@@ -21,7 +21,7 @@ struct OptimizerSettings {
 	newton_maxit(20),
 	krylov_maxit(30),
 	iterbound(500),
-	verbosity(1),
+	verbosity(1)
 	{}
 };
 
@@ -36,7 +36,7 @@ struct OptimizerFeedback {
 	:
 	nbNewtonIt(-1),
 	nbKrylovIt(-1),
-	solverstatus(30),
+	solverstatus(),
 	gradnorm(0.),
 	converged(false)
 	{}
@@ -158,7 +158,7 @@ class InvSolver {
     std::shared_ptr<OptimizerSettings> optsettings_;
 		std::shared_ptr<OptimizerFeedback> optfeedback_;
 		std::shared_ptr<Tumor> tumor_;
-		shared_ptr<CtxInv> itctx_;
+		std::shared_ptr<CtxInv> itctx_;
 };
 
 // ============================= non-class methods used for TAO ============================

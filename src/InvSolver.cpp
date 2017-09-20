@@ -13,17 +13,12 @@
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc)
 :
   initialized_(false),
-	opttolgrad_(1E-3),
 	betap_(0),
-	updateReferenceGradient_(true),
 	data_(),
 	data_gradeval_(),
 	prec_(),
-	//_tumor(),
-	itctx_(),
 	tao_(),
 	H_(),
-	//params_(),
 	optsettings_(),
 	optfeedback_(),
 	tumor_(),
@@ -32,8 +27,8 @@ InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators
 	  PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 		tao_ = nullptr;
-		A_   = nullptr;
-    if(derivative_operators_ != nullptr && n_misc != nullptr) {
+		H_   = nullptr;
+    if(derivative_operators != nullptr && n_misc != nullptr) {
       ierr = initialize(derivative_operators, n_misc) CHKERRQ(ierr);
 	  }
 }
@@ -242,7 +237,7 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
   double t[7] = {0}; double self_exec_time = -MPI_Wtime();
 
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
-	ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data->get());
+	ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
 
   // timing
 	self_exec_time += MPI_Wtime();
@@ -271,7 +266,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
 	double t[7] = {0}; double self_exec_time = -MPI_Wtime();
 
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
-	ierr = ctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval->get());
+	ierr = ctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
 
 	if (itctx->n_misc_->verbosity_ > 1) {
     double gnorm;
@@ -341,7 +336,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 
 	// eval hessian
-	ierr = ctx->derivative_operators_->evaluateHessian (x, y);
+	ierr = ctx->derivative_operators_->evaluateHessian (y, x);
 
 	if (itctx->n_misc_->verbosity_ > 1) {
     PetscPrintf(MPI_COMM_WORLD, " applying hessian done!\n");

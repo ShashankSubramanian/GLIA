@@ -12,10 +12,10 @@ inv_solver_() {
 
 	PetscErrorCode ierr = 0;
 	if(n_misc != nullptr)
-	  ierr = initialize(nmisc); CHKERRQ(ierr);
+	  initialize(n_misc);
 }
 
-PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -33,7 +33,7 @@ PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc) {
   // create pde and derivative operators
 	if (n_misc->rd_) {
 		pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
-		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor);
+		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
 	}
   // create tumor inverse solver
 	inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc);
@@ -44,14 +44,16 @@ PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::solveForward () {
+PetscErrorCode TumorSolverInterface::solveForward (Vec c0, Vec cT) {
 	PetscErrorCode ierr = 0;
-	ierr = pde_operators_->solveState ();
+	// TODO: use c0, use cT COPY
+	ierr = pde_operators_->solveState (0);
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::solveInverse () {
+PetscErrorCode TumorSolverInterface::solveInverse (Vec d1, Vec p_rec) {
 	PetscErrorCode ierr = 0;
+	// TODO: COPY copy d1 to data, take care of p_rec
 	ierr = inv_solver_->solve ();
 	PetscFunctionReturn(0);
 }

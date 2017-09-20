@@ -32,6 +32,7 @@ class PdeOperatorsRD : public PdeOperators {
 
 		PetscErrorCode solveState (int linearized);
 		PetscErrorCode reaction (int linearized, int i);
+		PetscErrorCode reactionAdjoint (int linearized, int i);
 		PetscErrorCode solveAdjoint (int linearized);
 
 		~PdeOperatorsRD ();
