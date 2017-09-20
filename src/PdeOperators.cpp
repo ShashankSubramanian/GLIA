@@ -24,7 +24,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     double *c_t_ptr, *rho_ptr;
     double *c_ptr;
     double factor, alph;
-    ierr = VecGetArray (tumor_->c_t, &c_t_ptr);                     CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->c_t_, &c_t_ptr);                     CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 
     ierr = VecGetArray (c_[iter], &c_ptr);                          CHKERRQ (ierr);
@@ -42,7 +42,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
         }
     }
 
-    ierr = VecRestoreArray (tumor_->c_t, &c_t_ptr);                 CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
 
     ierr = VecRestoreArray (c_[iter], &c_ptr);                      CHKERRQ (ierr);

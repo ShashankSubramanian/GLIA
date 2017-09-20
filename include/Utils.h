@@ -6,6 +6,8 @@
 #define OMP_NUM_THREADS 16
 
 #include <petsc.h>
+#include <stdlib.h>
+#include <iomanip>
 #include "petsctao.h"
 #include <accfft.h>
 #include <accfft_operators.h>
@@ -26,8 +28,8 @@ class NMisc {
 				, k_ (0.1)
 				, rho_ (8)
 				, p_scale_ (1.0)
-				, beta_ (1e-2)	
-				, writeOutput_ (1)	
+				, beta_ (1e-2)
+				, writeOutput_ (1)
 		{
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
