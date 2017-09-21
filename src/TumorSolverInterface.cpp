@@ -117,13 +117,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     // timing
     Event e("update-tumor-coefficients");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
-    /*
-    tumor_->k_->k_scale = tumor_params->diff_coeff_scale;
-    //tumor_->k_->kf_scale_ = tumor_params->diff_coefficient_anisotropic;
-    tumor_->rho_ = tumor_params->reaction_coeff_scale;
-    tumor_->diff_ratio_ = tumor_params->diffusion_ratio;
-    tumor_->reac_ratio_ = tumor_params->reaction_ratio;
-    */
+
     // update matprob, deep copy of probability maps
 		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_);         CHKERRQ(ierr); }
 		else                   { ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);         CHKERRQ(ierr); }

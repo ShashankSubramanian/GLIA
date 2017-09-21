@@ -38,7 +38,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     k_glm_wm_ratio_ = k_glm_wm_ratio;
 
     double dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
-    double dk_dm_wm  = k_scale;                          //WM
+    double dk_dm_wm  = k_scale;                         //WM
     double dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
     // if ratios <= 0, only diffuse in white matter
     dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
