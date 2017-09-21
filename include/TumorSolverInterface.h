@@ -19,14 +19,14 @@ class TumorSolverInterface {
 	   *  @param Vec c0  - initial tumor concentration
 	   *  @param Vec cT  - target tumor concentration after simulation
 	   */
-		PetscErrorCode solveForward (Vec c0, Vec cT);
+		PetscErrorCode solveForward (Vec cT, Vec c0);
 
 		/** @brief Solves the inverse tumor problem using Tao, given target concentration
 		 *
 		 *  @param Vec d1     - tumor inverse target data
 		 *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
 		 */
-		PetscErrorCode solveInverse (Vec d1, Vec p_rec);
+		PetscErrorCode solveInverse (Vec prec, Vec d1, Vec d1g = {});
 
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess(Vec p);

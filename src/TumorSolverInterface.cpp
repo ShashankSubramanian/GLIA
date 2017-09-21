@@ -25,12 +25,12 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
 
   // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
 	Vec p;
-	ierr = VecCreate (PETSC_COMM_WORLD, &p);
-	ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);
-	ierr = VecSetFromOptions (p);
-	ierr = VecSet (p, n_misc->p_scale_);
+	ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ(ierr);
+	ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ(ierr);
+	ierr = VecSetFromOptions (p);                               CHKERRQ(ierr);
+	ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ(ierr);
 
-	ierr = tumor_->initialize (p, n_misc);
+	ierr = tumor_->initialize (p, n_misc);                      CHKERRQ(ierr);
 
   // create pde and derivative operators
 	if (n_misc->rd_) {
@@ -38,7 +38,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
 		derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
 	}
   // create tumor inverse solver
-	inv_solver_->initialize(derivative_operators_, n_misc, tumor_);
+	ierr = inv_solver_->initialize(derivative_operators_, n_misc, tumor_);  CHKERRQ(ierr);
   initialized_ = true;
 
   // cleanup
@@ -46,14 +46,20 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::solveForward (Vec c0, Vec cT) {
+// TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
+PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0) {
 	PetscErrorCode ierr = 0;
-	// TODO: use c0, use cT COPY
-	ierr = pde_operators_->solveState (0);
+  // set the initial condition
+	ierr = VecCopy (c0, tumor_->c_0_);                            CHKERRQ (ierr);
+	// solve forward
+	ierr = pde_operators_->solveState (0);                        CHKERRQ (ierr);
+	// get solution
+	ierr = VecCopy (tumor_->c_t_, cT);                            CHKERRQ (ierr);
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::solveInverse (Vec d1, Vec prec) {
+// TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
+PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
 	PetscErrorCode ierr = 0;
 	TU_assert(inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
   if(!optimizer_settings_changed_) {
@@ -61,7 +67,8 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec d1, Vec prec) {
 	}
   // set target data for inversion (just sets the vector, no deep copy)
 	inv_solver_->setData(d1);
-	inv_solver_->setDataGradient(d1);
+	if(d1g == nullptr) d1g = d1;
+	inv_solver_->setDataGradient(d1g);
 	// solve
 	ierr = inv_solver_->solve ();
 
