@@ -7,9 +7,6 @@
 #include "Utils.h"
 #include "EventTimings.hpp"
 
-/**
- *  ***********************************
- */
 InvSolver::InvSolver (
   std::shared_ptr <DerivativeOperators> derivative_operators,
   std::shared_ptr <NMisc> n_misc,
