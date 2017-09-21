@@ -36,7 +36,7 @@ class TumorSolverInterface {
 		 *         A additional filter, that filters the admissable area for tumor
 		 *         growth has to be passed (updates the \Phi filter)
 		 */
-		PetscErrorCode updateTumorCoefficients(std::shared_ptr<MatProp> geometry, Vec p);
+		PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorParameters> tumor_params);
 
     /// @brief true if TumorSolverInterface is initialized and ready to use
 		bool isInitialized() {return initialized_;}

@@ -1,4 +1,5 @@
 #include "TumorSolverInterface.h"
+#include "EventTimings.hpp"
 
 
 TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc)
@@ -94,4 +95,55 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
 	inv_solver_->getOptSettings()->verbosity     = optset->verbosity;
 
 	optimizer_settings_changed_ = true;
+}
+
+PetscErrorCode TumorSolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorParameters> tumor_params) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+	TU_assert(initialized_, "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
+	TU_assert(wm != nullptr, "TumorSolverInterface::updateTumorCoefficients(): WM needs to be non-null.");
+	TU_assert(gm != nullptr, "TumorSolverInterface::updateTumorCoefficients(): GM needs to be non-null.");
+	TU_assert(csf != nullptr, "TumorSolverInterface::updateTumorCoefficients(): CSF needs to be non-null.");
+	TU_assert(glm != nullptr, "TumorSolverInterface::updateTumorCoefficients(): GLM needs to be non-null.");
+	TU_assert(filter != nullptr, "TumorSolverInterface::updateTumorCoefficients(): Filter needs to be non-null.");
+  // timing
+	Event e("update-tumor-coefficients");
+	std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime();
+
+  /*
+  tumor_->k_->k_scale = tumor_params->diff_coeff_scale;
+	//tumor_->k_->kf_scale_ = tumor_params->diff_coefficient_anisotropic;
+	tumor_->rho_ = tumor_params->reaction_coeff_scale;
+	tumor_->diff_ratio_ = tumor_params->diffusion_ratio;
+	tumor_->reac_ratio_ = tumor_params->reaction_ratio;
+ */
+
+ /*
+
+  // update diffusion coefficient
+  tumor_->k_->setValues(
+		tumor_params->diff_coeff_scale,
+	  tumor_params->diffusion_ratio,
+		wm, gm, glm, filter,
+	  n_misc_); CHKERRQ(ierr);
+
+  // update reaction coefficient
+	tumor_->rho_->setValues(
+		tumor_params->reaction_coeff_scale,
+	  tumor_params->reac_ratio,
+		wm, gm, glm, filter,
+	  n_misc_); CHKERRQ(ierr);
+
+	// update mesh of Gaussians, new phi spacing, center, sigma
+	tumor_->phi_-> setValues (
+		tumor_params->phi_center_of_mass,
+		tumor_params->phi_sigma,
+		tumor_params->phi_spacing_factor,
+		filter, n_misc_); CHKERRQ(ierr);
+ */
+
+	// timing
+	self_exec_time += MPI_Wtime(); t[5] = self_exec_time;
+	e.addTimings(t); e.stop();
+	PetscFunctionReturn(0);
 }
