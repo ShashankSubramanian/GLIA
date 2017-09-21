@@ -56,7 +56,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert (inv_solver_->isInitialized (), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
-    if(!optimizer_settings_changed_) {
+    if (!optimizer_settings_changed_) {
         ierr = tuMSGwarn (" Tumor inverse solver running with default settings.");              CHKERRQ (ierr);
     }
     // set target data for inversion (just sets the vector, no deep copy)
@@ -75,11 +75,10 @@ PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, Vec p, Vec data_gra
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	TU_assert (initialized_, "TumorSolverInterface::computeGradient(): TumorSolverInterface needs to be initialized.")
-  //_tumor->t_history_->Reset();
-
-  // compute gradient for given data 'data_gradeval' and control variable 'p'
-  ierr = derivative_operators_->evaluateGradient(dJ, p, data_gradeval); CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+    //_tumor->t_history_->Reset();
+    // compute gradient for given data 'data_gradeval' and control variable 'p'
+    ierr = derivative_operators_->evaluateGradient(dJ, p, data_gradeval); CHKERRQ(ierr);
+    PetscFunctionReturn(0);
 }
 
 void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset) {
@@ -102,7 +101,7 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
 PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
   PetscErrorCode ierr;
   TU_assert (p != nullptr,                  "TumorSolverInterface::setInitialGuess(): requires non-null input.");
-  ierr = VecCopy(p, tumor_->p_); CHKERRQ(ierr);
+  ierr = VecCopy (p, tumor_->p_); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -117,7 +116,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     TU_assert(filter != nullptr, "TumorSolverInterface::updateTumorCoefficients(): Filter needs to be non-null.");
     // timing
     Event e("update-tumor-coefficients");
-    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime();
+    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     /*
     tumor_->k_->k_scale = tumor_params->diff_coeff_scale;
     //tumor_->k_->kf_scale_ = tumor_params->diff_coefficient_anisotropic;
@@ -125,20 +124,17 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     tumor_->diff_ratio_ = tumor_params->diffusion_ratio;
     tumor_->reac_ratio_ = tumor_params->reaction_ratio;
     */
-
     // update matprob, deep copy of probability maps
-		if(wm != nullptr)      { ierr = VecCopy(wm, tumor_->mat_prop_->wm_); CHKERRQ(ierr); }
-		else                   { ierr = VecSet(tumor_->mat_prop_->wm_, 0.0); CHKERRQ(ierr); }
-		if(gm != nullptr)      { ierr = VecCopy(gm, tumor_->mat_prop_->gm_); CHKERRQ(ierr); }
-		else                   { ierr = VecSet(tumor_->mat_prop_->gm_, 0.0); CHKERRQ(ierr); }
-		if(csf != nullptr)     { ierr = VecCopy(csf, tumor_->mat_prop_->csf_); CHKERRQ(ierr); }
-		else                   { ierr = VecSet(tumor_->mat_prop_->csf_, 0.0); CHKERRQ(ierr); }
-		if(glm != nullptr)     { ierr = VecCopy(gm, tumor_->mat_prop_->glm_); CHKERRQ(ierr); }
-		else                   { ierr = VecSet(tumor_->mat_prop_->glm_, 0.0); CHKERRQ(ierr); }
-		if(filter != nullptr)  { ierr = VecCopy(filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
-		else                   { ierr = VecSet(tumor_->mat_prop_->filter_, 0.0); CHKERRQ(ierr); }
-
-
+		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_);         CHKERRQ(ierr); }
+		else                   { ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);         CHKERRQ(ierr); }
+		if(gm != nullptr)      { ierr = VecCopy (gm, tumor_->mat_prop_->gm_);         CHKERRQ(ierr); }
+		else                   { ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);         CHKERRQ(ierr); }
+		if(csf != nullptr)     { ierr = VecCopy (csf, tumor_->mat_prop_->csf_);       CHKERRQ(ierr); }
+		else                   { ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);        CHKERRQ(ierr); }
+		if(glm != nullptr)     { ierr = VecCopy (gm, tumor_->mat_prop_->glm_);        CHKERRQ(ierr); }
+		else                   { ierr = VecSet (tumor_->mat_prop_->glm_, 0.0);        CHKERRQ(ierr); }
+		if(filter != nullptr)  { ierr = VecCopy (filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
+		else                   { ierr = VecSet (tumor_->mat_prop_->filter_, 0.0);     CHKERRQ(ierr); }
     // update diffusion coefficient
     tumor_->k_->setValues (tumor_params->diff_coeff_scale, tumor_params->diffusion_ratio_gm_wm, tumor_params->diffusion_ratio_glm_wm,
                             tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
