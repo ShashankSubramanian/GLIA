@@ -71,10 +71,21 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionReturn (0);
 }
 
+PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, Vec p, Vec data_gradeval) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+	TU_assert (initialized_, "TumorSolverInterface::computeGradient(): TumorSolverInterface needs to be initialized.")
+  //_tumor->t_history_->Reset();
+
+  // compute gradient for given data 'data_gradeval' and control variable 'p'
+  ierr = derivative_operators_->evaluateGradient(dJ, p, data_gradeval); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset) {
     PetscErrorCode ierr = 0;
     TU_assert (inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
-    TU_assert (optset != nullptr, "ITumorSolverInterface::setOptimizerSettings(): requires non-null input.");
+    TU_assert (optset != nullptr,            "TumorSolverInterface::setOptimizerSettings(): requires non-null input.");
     inv_solver_->getOptSettings ()->beta          = optset->beta;
     inv_solver_->getOptSettings ()->opttolgrad    = optset->opttolgrad;
     inv_solver_->getOptSettings ()->gtolbound     = optset->gtolbound;
@@ -86,6 +97,13 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
     inv_solver_->getOptSettings ()->fseqtype      = optset->fseqtype;
     inv_solver_->getOptSettings ()->verbosity     = optset->verbosity;
     optimizer_settings_changed_ = true;
+}
+
+PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
+  PetscErrorCode ierr;
+  TU_assert (p != nullptr,                  "TumorSolverInterface::setInitialGuess(): requires non-null input.");
+  ierr = VecCopy(p, tumor_->p_); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorParameters> tumor_params) {
@@ -120,28 +138,31 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
 		if(filter != nullptr)  { ierr = VecCopy(filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
 		else                   { ierr = VecSet(tumor_->mat_prop_->filter_, 0.0); CHKERRQ(ierr); }
 
-    /*
+
     // update diffusion coefficient
     tumor_->k_->setValues(
-    tumor_params->diff_coeff_scale,
-    tumor_params->diffusion_ratio,
-    mat_prop,
-    n_misc_); CHKERRQ (ierr);
+      tumor_params->diff_coeff_scale,
+      tumor_params->diffusion_ratio_gm_wm,
+			tumor_params->diffusion_ratio_glm_wm,
+      tumor_->mat_prop_,
+      n_misc_); CHKERRQ (ierr);
 
     // update reaction coefficient
     tumor_->rho_->setValues(
-    tumor_params->reaction_coeff_scale,
-    tumor_params->reac_ratio,
-    mat_prop,
-    n_misc_); CHKERRQ (ierr);
+      tumor_params->reaction_coeff_scale,
+      tumor_params->reaction_ratio_gm_wm,
+			tumor_params->reaction_ratio_glm_wm,
+      tumor_->mat_prop_,
+      n_misc_); CHKERRQ (ierr);
 
     // update mesh of Gaussians, new phi spacing, center, sigma
     tumor_->phi_-> setValues (
-    tumor_params->phi_center_of_mass,
-    tumor_params->phi_sigma,
-    tumor_params->phi_spacing_factor,
-    mat_prop, n_misc_); CHKERRQ (ierr);
-    */
+      tumor_params->phi_center_of_mass,
+      tumor_params->phi_sigma,
+      tmor_params->phi_spacing_factor,
+      tumor_->mat_prop_,
+			n_misc_); CHKERRQ (ierr);
+
     // timing
     self_exec_time += MPI_Wtime ();
     t[5] = self_exec_time;
