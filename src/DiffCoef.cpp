@@ -1,6 +1,12 @@
 #include "DiffCoef.h"
 
-DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) {
+DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc)
+:
+    k_scale_(1E-2)
+  , k_gm_wm_ratio_(1.0 / 5.0)
+  , k_glm_wm_ratio_(3.0 / 5.0)
+  , smooth_flag_(0)
+  {
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &kxx_);
     ierr = VecSetSizes (kxx_, n_misc->n_local_, n_misc->n_global_);
@@ -24,17 +30,21 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) {
     ierr = VecSet (kyy_ , 0);
     ierr = VecSet (kyz_ , 0);
     ierr = VecSet (kzz_ , 0);
-
-    smooth_flag_ = 0;
 }
 
-PetscErrorCode DiffCoef::setValues (double k_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
   PetscFunctionBegin;
     PetscErrorCode ierr;
-  k_scale_ = k_scale;
-    double dk_dm_gm =  k_scale / 5.0;        //GM
-    double dk_dm_wm = k_scale;               //WM
-    double dk_dm_glm = 3.0 / 5.0 * k_scale;  //GLM
+    k_scale_ = k_scale;
+    k_gm_wm_ratio_  = k_gm_wm_ratio;
+    k_glm_wm_ratio_ = k_glm_wm_ratio;
+
+    double dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
+    double dk_dm_wm  = k_scale;                          //WM
+    double dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
+    // if ratios <= 0, only diffuse in white matter
+    dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
+    dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
     ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
     ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
@@ -42,6 +52,9 @@ PetscErrorCode DiffCoef::setValues (double k_scale, std::shared_ptr<MatProp> mat
 
     ierr = VecCopy (kxx_, kyy_);                                        CHKERRQ (ierr);
     ierr = VecCopy (kxx_, kzz_);                                        CHKERRQ (ierr);
+
+    // TODO: scaling with sum of filter
+    // TODO: what about averages for preconditioner?
 
     if (smooth_flag_) {
         ierr = this->smooth (n_misc); CHKERRQ (ierr);
@@ -139,10 +152,10 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 DiffCoef::~DiffCoef () {
     PetscFunctionBegin;
     PetscErrorCode ierr;
-    ierr = VecDestroy (&kxx_);                          
-    ierr = VecDestroy (&kxy_);                          
-    ierr = VecDestroy (&kxz_);                          
-    ierr = VecDestroy (&kyy_);                         
-    ierr = VecDestroy (&kyz_);                          
-    ierr = VecDestroy (&kzz_);                          
+    ierr = VecDestroy (&kxx_);
+    ierr = VecDestroy (&kxy_);
+    ierr = VecDestroy (&kxz_);
+    ierr = VecDestroy (&kyy_);
+    ierr = VecDestroy (&kyz_);
+    ierr = VecDestroy (&kzz_);
 }

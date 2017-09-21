@@ -40,15 +40,15 @@ class TumorSolverInterface {
 		void setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset);
 		//  ---------  getter functions -------------
 		/// @brief returns the tumor shared ptr
-		std::shared_ptr<Tumor> getTumor () { 
-			return tumor_; 
+		std::shared_ptr<Tumor> getTumor () {
+			return tumor_;
 		}
 		/// @brief returns the context for the inverse tumor solver
 		std::shared_ptr<CtxInv> getITctx ();// {return itctx_;}
 		~TumorSolverInterface () {}
 
 	private :
-	  	bool initialized_;
+	  bool initialized_;
 		bool optimizer_settings_changed_;
 		std::shared_ptr<NMisc> n_misc_;
 		std::shared_ptr<Tumor> tumor_;

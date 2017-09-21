@@ -61,7 +61,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     }
     // set target data for inversion (just sets the vector, no deep copy)
     inv_solver_->setData(d1);
-    if (d1g == nullptr) 
+    if (d1g == nullptr)
         d1g = d1;
     inv_solver_->setDataGradient(d1g);
     // solve
@@ -91,11 +91,11 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
 PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorParameters> tumor_params) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    TU_assert(initialized_, "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
-    TU_assert(wm != nullptr, "TumorSolverInterface::updateTumorCoefficients(): WM needs to be non-null.");
-    TU_assert(gm != nullptr, "TumorSolverInterface::updateTumorCoefficients(): GM needs to be non-null.");
-    TU_assert(csf != nullptr, "TumorSolverInterface::updateTumorCoefficients(): CSF needs to be non-null.");
-    TU_assert(glm != nullptr, "TumorSolverInterface::updateTumorCoefficients(): GLM needs to be non-null.");
+    TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
+    TU_assert(wm != nullptr,     "TumorSolverInterface::updateTumorCoefficients(): WM needs to be non-null.");
+    TU_assert(gm != nullptr,     "TumorSolverInterface::updateTumorCoefficients(): GM needs to be non-null.");
+    TU_assert(csf != nullptr,    "TumorSolverInterface::updateTumorCoefficients(): CSF needs to be non-null.");
+    TU_assert(glm != nullptr,    "TumorSolverInterface::updateTumorCoefficients(): GLM needs to be non-null.");
     TU_assert(filter != nullptr, "TumorSolverInterface::updateTumorCoefficients(): Filter needs to be non-null.");
     // timing
     Event e("update-tumor-coefficients");
@@ -107,19 +107,32 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     tumor_->diff_ratio_ = tumor_params->diffusion_ratio;
     tumor_->reac_ratio_ = tumor_params->reaction_ratio;
     */
+
+    // update matprob, deep copy of probability maps
+		if(wm != nullptr)      { ierr = VecCopy(wm, tumor_->mat_prop_->wm_); CHKERRQ(ierr); }
+		else                   { ierr = VecSet(tumor_->mat_prop_->wm_, 0.0); CHKERRQ(ierr); }
+		if(gm != nullptr)      { ierr = VecCopy(gm, tumor_->mat_prop_->gm_); CHKERRQ(ierr); }
+		else                   { ierr = VecSet(tumor_->mat_prop_->gm_, 0.0); CHKERRQ(ierr); }
+		if(csf != nullptr)     { ierr = VecCopy(csf, tumor_->mat_prop_->csf_); CHKERRQ(ierr); }
+		else                   { ierr = VecSet(tumor_->mat_prop_->csf_, 0.0); CHKERRQ(ierr); }
+		if(glm != nullptr)     { ierr = VecCopy(gm, tumor_->mat_prop_->glm_); CHKERRQ(ierr); }
+		else                   { ierr = VecSet(tumor_->mat_prop_->glm_, 0.0); CHKERRQ(ierr); }
+		if(filter != nullptr)  { ierr = VecCopy(filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
+		else                   { ierr = VecSet(tumor_->mat_prop_->filter_, 0.0); CHKERRQ(ierr); }
+
     /*
     // update diffusion coefficient
     tumor_->k_->setValues(
     tumor_params->diff_coeff_scale,
     tumor_params->diffusion_ratio,
-    wm, gm, glm, filter,
+    mat_prop,
     n_misc_); CHKERRQ (ierr);
 
     // update reaction coefficient
     tumor_->rho_->setValues(
     tumor_params->reaction_coeff_scale,
     tumor_params->reac_ratio,
-    wm, gm, glm, filter,
+    mat_prop,
     n_misc_); CHKERRQ (ierr);
 
     // update mesh of Gaussians, new phi spacing, center, sigma
@@ -127,12 +140,12 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     tumor_params->phi_center_of_mass,
     tumor_params->phi_sigma,
     tumor_params->phi_spacing_factor,
-    filter, n_misc_); CHKERRQ (ierr);
+    mat_prop, n_misc_); CHKERRQ (ierr);
     */
     // timing
-    self_exec_time += MPI_Wtime (); 
+    self_exec_time += MPI_Wtime ();
     t[5] = self_exec_time;
-    e.addTimings (t); 
+    e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
 }
