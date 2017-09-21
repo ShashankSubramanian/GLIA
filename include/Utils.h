@@ -69,7 +69,7 @@ struct OptimizerFeedback {
 };
 
 struct TumorParameters {
-	double diff_coeff_scale;      /// @brief (scalar) diffusion rate
+	double diff_coeff_scale;        /// @brief (scalar) diffusion rate
 	double diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
 	double reaction_coeff_scale;  /// @brief (scalar) reaction rate
 	double diffusion_ratio;       /// @brief ratio of diffusion coefficient between wm and gm
@@ -78,15 +78,16 @@ struct TumorParameters {
 	std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
 	double phi_spacing_factor;    /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
 	double phi_sigma;             /// @brief standard deviation of Gaussians
-
-	TumorParameters ()
-	:
-	diff_coeff_scale (1E-2),
-	diff_coeff_scale_anisotropic (0.0),
-	reaction_coeff_scale (15),
-	diffusion_ratio (10),
-	reaction_ratio (5),
-	rho_linear (0),
+ 
+	TumorParameters () :
+	diff_coeff_scale(1E-2),
+	diff_coeff_scale_anisotropic(0.0),
+	reaction_coeff_scale(15),
+	diffusion_ratio_gm_wm(1.0 / 10.0),
+	diffusion_ratio_glm_wm(0.0),
+	reaction_ratio_gm_wm(1.0 / 5.0),
+	reaction_ratio_glm_wm(0.0),
+	rho_linear(0),
 	phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
 	phi_spacing_factor (1.5),
 	phi_sigma (PETSC_PI/10)
@@ -110,6 +111,7 @@ class NMisc {
 		, verbosity_ (1)
 		, k_gm_wm_ratio_(1.0 / 3.0)
 		, k_glm_wm_ratio_(3.0 / 5.0) {
+			
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
 			user_cm_[2] = 2.07;
