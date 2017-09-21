@@ -15,7 +15,7 @@ class ReacCoef {
 		double rho_scale_;
 		Vec rho_vec_;
 
-		PetscErrorCode setValues (double rho_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode setValues (double rho_scale, double r_gm_wm_ratio, double r_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 
 		~ReacCoef ();

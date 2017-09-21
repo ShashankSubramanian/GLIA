@@ -13,10 +13,11 @@ class Phi {
 		Vec *phi_vec_;
 
 		double sigma_;
+		double spacing_factor_;
 		double cm_[3];
 		int np_, n_local_;
 
-		PetscErrorCode setValues (std::array<double, 3>& user_cm, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode setValues (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode phiMesh (double *center);
 		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);
 		PetscErrorCode apply (Vec out, Vec p);

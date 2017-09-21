@@ -140,28 +140,14 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
 
 
     // update diffusion coefficient
-    tumor_->k_->setValues(
-      tumor_params->diff_coeff_scale,
-      tumor_params->diffusion_ratio_gm_wm,
-			tumor_params->diffusion_ratio_glm_wm,
-      tumor_->mat_prop_,
-      n_misc_); CHKERRQ (ierr);
-
+    tumor_->k_->setValues (tumor_params->diff_coeff_scale, tumor_params->diffusion_ratio_gm_wm, tumor_params->diffusion_ratio_glm_wm,
+                            tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
     // update reaction coefficient
-    tumor_->rho_->setValues(
-      tumor_params->reaction_coeff_scale,
-      tumor_params->reaction_ratio_gm_wm,
-			tumor_params->reaction_ratio_glm_wm,
-      tumor_->mat_prop_,
-      n_misc_); CHKERRQ (ierr);
-
+    tumor_->rho_->setValues (tumor_params->reaction_coeff_scale, tumor_params->reaction_ratio_gm_wm, tumor_params->reaction_ratio_glm_wm,
+                            tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
     // update mesh of Gaussians, new phi spacing, center, sigma
-    tumor_->phi_-> setValues (
-      tumor_params->phi_center_of_mass,
-      tumor_params->phi_sigma,
-      tmor_params->phi_spacing_factor,
-      tumor_->mat_prop_,
-			n_misc_); CHKERRQ (ierr);
+    tumor_->phi_->setValues (tumor_params->phi_center_of_mass, tumor_params->phi_sigma, tumor_params->phi_spacing_factor,
+                            tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
 
     // timing
     self_exec_time += MPI_Wtime ();

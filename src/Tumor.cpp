@@ -24,14 +24,14 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
 
 PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr = 0;
-    ierr = mat_prop_->setValues (n_misc);                                                                        CHKERRQ (ierr);
-    ierr = k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, mat_prop_, n_misc);         CHKERRQ (ierr);
-    ierr = rho_->setValues (n_misc->rho_, mat_prop_, n_misc);                                                    CHKERRQ (ierr);
+    ierr = mat_prop_->setValues (n_misc);                                                                                   CHKERRQ (ierr);
+    ierr = k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, mat_prop_, n_misc);         
+    ierr = rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, mat_prop_, n_misc);                                                    CHKERRQ (ierr);
 
     ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
     ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
 
-    ierr = phi_->setValues (n_misc->user_cm_, mat_prop_, n_misc); CHKERRQ (ierr);
+    ierr = phi_->setValues (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, mat_prop_, n_misc);          CHKERRQ (ierr);
     ierr = phi_->apply(c_0_, p_);                                 CHKERRQ (ierr);
 
     if(n_misc->writeOutput_)

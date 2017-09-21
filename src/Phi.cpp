@@ -23,13 +23,16 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) {
     }
 }
 
-PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     memcpy (cm_, user_cm.data(), 3 * sizeof(double));
     double center[3 * np_];
     double *phi_ptr;
     double sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
+
+    sigma_ = sigma;
+    spacing_factor_ = spacing_factor;
 
     ierr = phiMesh (center);
 
@@ -59,9 +62,9 @@ PetscErrorCode Phi::phiMesh (double *center) {
 
     double space[3];
 
-    space[0] =  1.5 * sigma_;
-    space[1] =  1.5 * sigma_;
-    space[2] =  1.5 * sigma_;
+    space[0] =  spacing_factor_ * sigma_;
+    space[1] =  spacing_factor_ * sigma_;
+    space[2] =  spacing_factor_ * sigma_;
 
     if (np_ == 1) {
         center[0] = cm_[0];

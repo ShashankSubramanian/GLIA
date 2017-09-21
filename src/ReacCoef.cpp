@@ -10,13 +10,16 @@ ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc) {
     smooth_flag_ = 0;
 }
 
-PetscErrorCode ReacCoef::setValues (double rho_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, double r_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
-  PetscErrorCode ierr;
-  rho_scale_ = rho_scale;
-    double dr_dm_gm = rho_scale;        //GM
-    double dr_dm_wm = rho_scale;        //WM
-    double dr_dm_glm = 0.0;              //GLM
+    PetscErrorCode ierr;
+    rho_scale_ = rho_scale;
+    double dr_dm_gm = rho_scale * r_gm_wm_ratio;                //GM
+    double dr_dm_wm = rho_scale;                                //WM
+    double dr_dm_glm = rho_scale * r_glm_wm_ratio;              //GLM
+
+    dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
+    dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
 
     ierr = VecAXPY (rho_vec_, dr_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
     ierr = VecAXPY (rho_vec_, dr_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
