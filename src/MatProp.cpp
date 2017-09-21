@@ -29,13 +29,13 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	ierr = VecGetArray (filter_, &filter_ptr);            CHKERRQ (ierr);
 
 
-	  dataIn (gm_ptr, n_misc, "gray_matter.nc");
-	  dataIn (wm_ptr, n_misc, "white_matter.nc");
-	  dataIn (csf_ptr, n_misc, "csf.nc");
-	  dataIn (glm_ptr, n_misc, "glial_matter.nc");
-	  dataIn (filter_ptr, n_misc, "filter_zero.nc");
+	dataIn (gm_ptr, n_misc, "gray_matter.nc");
+	dataIn (wm_ptr, n_misc, "white_matter.nc");
+	dataIn (csf_ptr, n_misc, "csf.nc");
+	dataIn (glm_ptr, n_misc, "glial_matter.nc");
+	dataIn (filter_ptr, n_misc, "filter_zero.nc");
 
-  if(n_misc->writeOutput_) {
+	if(n_misc->writeOutput_) {
 		dataOut (gm_ptr, n_misc, "results/gray_matter.nc");
 		dataOut (wm_ptr, n_misc, "results/white_matter.nc");
 		dataOut (csf_ptr, n_misc, "results/csf.nc");
@@ -49,7 +49,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	ierr = VecRestoreArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 	ierr = VecRestoreArray (filter_, &filter_ptr);            CHKERRQ (ierr);
 
-  PetscFunctionReturn(0);
+	PetscFunctionReturn(0);
 }
 
 MatProp::~MatProp() {

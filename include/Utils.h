@@ -106,7 +106,8 @@ class NMisc {
 		, np_ (8)
 		, k_ (0.1)
 		, rho_ (8)
-		, p_scale_ (1.0)
+		, p_scale_ (0.8)
+		, p_scale_true_ (1.0)
 		, noise_scale_(0.0)
 		, beta_ (1e-2)
 		, writeOutput_ (1)
@@ -160,6 +161,7 @@ class NMisc {
 		double rho_;
 		std::array<double, 3> user_cm_;
 		double p_scale_;
+		double p_scale_true_;
 		double noise_scale_;
 		double beta_;
 
@@ -178,6 +180,7 @@ class NMisc {
 };
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
+PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
 
 //Read/Write function prototypes
 void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);

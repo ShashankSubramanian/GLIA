@@ -24,10 +24,10 @@ itctx_() {
     }
 }
 
-PetscErrorCode InvSolver::initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) {
+PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    if(initialized_) 
+    if (initialized_) 
         PetscFunctionReturn (0);
     itctx_ = std::make_shared<CtxInv> ();
     itctx_->derivative_operators_ = derivative_operators;
@@ -39,14 +39,14 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr <DerivativeOperators> deri
     ierr = VecDuplicate (tumor->p_, &prec_);                                             CHKERRQ(ierr);
     ierr = VecSet (prec_, 0.0);                                                          CHKERRQ(ierr);
     // set up routine to compute the hessian matrix vector product
-    if(H_ == nullptr) {
-    int np = n_misc->np_;
+    if (H_ == nullptr) {
+        int np = n_misc->np_;
         ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
         ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);     CHKERRQ(ierr);
         ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                             CHKERRQ(ierr);
     }   
     // create TAO solver object
-    if(tao_ == nullptr) {
+    if( tao_ == nullptr) {
         ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
     }
     initialized_ = true;

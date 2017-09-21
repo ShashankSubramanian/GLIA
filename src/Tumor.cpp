@@ -13,8 +13,8 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
     ierr = VecSetSizes (c_t_, n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (c_t_);
     ierr = VecDuplicate (c_t_, &c_0_);
-    ierr = VecDuplicate (p_t_, &c_0_);
-    ierr = VecDuplicate (p_0_, &c_0_);
+    ierr = VecDuplicate (c_t_, &p_0_);
+    ierr = VecDuplicate (c_0_, &p_t_);
 
     ierr = VecSet (c_t_, 0);
     ierr = VecSet (c_0_, 0);
@@ -23,21 +23,31 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
 }
 
 PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    ierr = mat_prop_->setValues (n_misc);                                                                                   CHKERRQ (ierr);
-    ierr = k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, mat_prop_, n_misc);         
-    ierr = rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, mat_prop_, n_misc);                                                    CHKERRQ (ierr);
-
+    ierr = mat_prop_->setValues (n_misc);                                                                                   
+    ierr = k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, mat_prop_, n_misc);    
+    ierr = rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, mat_prop_, n_misc);                                                    
     ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
     ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
+    ierr = VecCopy (p, p_true_);                                  CHKERRQ (ierr);
 
-    ierr = phi_->setValues (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, mat_prop_, n_misc);          CHKERRQ (ierr);
-    ierr = phi_->apply(c_0_, p_);                                 CHKERRQ (ierr);
+    ierr = phi_->setValues (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, mat_prop_, n_misc);          
+    ierr = phi_->apply(c_0_, p_);                                 
 
+    ierr = enforcePositivity (c_0_, n_misc);
     if(n_misc->writeOutput_)
         dataOut (c_0_, n_misc, "results/C0.nc");
 
     PetscFunctionReturn(0);
+}
+
+PetscErrorCode Tumor::setTrueP (double p_scale) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    ierr = VecSet (p_true_, p_scale);                               CHKERRQ (ierr);
+    PetscFunctionReturn (0);
 }
 
 Tumor::~Tumor () {

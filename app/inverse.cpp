@@ -3,6 +3,8 @@
 
 static char help[] = "Inverse Driver";
 
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
     google::InitGoogleLogging (argv[0]);
@@ -35,8 +37,8 @@ int main (int argc, char** argv) {
 
 	Vec c_0, c_t;
 	PetscErrorCode ierr = 0;
-	ierr = generateSyntheticData (&c_0, &c_t, solver_interface);
-	ierr = solver_interface->solveForward (nullptr , nullptr); // TODO fix that
+	ierr = generateSyntheticData (c_0, c_t, solver_interface, n_misc);
+	// ierr = solver_interface->solveForward (nullptr , nullptr); // TODO fix that
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
@@ -44,13 +46,13 @@ int main (int argc, char** argv) {
 	PetscFinalize ();
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, std::shared_ptr<TumorSolverInterface> solver_interface) {
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
-	std::shared_ptr<NMisc> n_misc = solver_interface->n_misc_;
+	PetscErrorCode ierr = 0;
 	ierr = VecCreate (PETSC_COMM_WORLD, &c_t);								CHKERRQ (ierr);
 	ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);			CHKERRQ (ierr);
 	ierr = VecSetFromOptions (c_t);											CHKERRQ (ierr);
-	ierr = VecDuplicate (c_t, &c_0_);										CHKERRQ (ierr);
+	ierr = VecDuplicate (c_t, &c_0);											CHKERRQ (ierr);
 
 	ierr = VecSet (c_t, 0);													CHKERRQ (ierr);
 	ierr = VecSet (c_0, 0);													CHKERRQ (ierr);
@@ -58,6 +60,6 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, std::shared_ptr<TumorS
 	std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 	ierr = tumor->setTrueP (n_misc->p_scale_true_);
 	ierr = tumor->phi_->apply (c_0, tumor->p_true_);
-	ierr = solver_interface->solveForward (c_0, c_t);
-	PetscFunctioReturn (0);
+	ierr = solver_interface->solveForward (c_t, c_0);
+	PetscFunctionReturn (0);
 }

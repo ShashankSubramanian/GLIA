@@ -36,7 +36,7 @@ LDFLAGS+=-L$(CUDA_DIR)/lib64 -lcudart
 endif
 
 TARGET_BIN= $(BINDIR)/forward
-
+TARGET_BIN+= $(BINDIR)/inverse
 
 SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/dataOut.cpp \

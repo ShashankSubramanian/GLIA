@@ -1,6 +1,5 @@
 #include "PdeOperators.h"
 
-
 PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc)
         : PdeOperators (tumor, n_misc) {
 
@@ -26,7 +25,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     double *c_ptr;
     double factor, alph;
     double dt = n_misc_->dt_;
-    ierr = VecGetArray (tumor_->c_t_, &c_t_ptr);                     CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->c_t_, &c_t_ptr);                    CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 
     ierr = VecGetArray (c_[iter], &c_ptr);                          CHKERRQ (ierr);
@@ -44,7 +43,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
         }
     }
 
-    ierr = VecRestoreArray (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->c_t_, &c_t_ptr);                CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
 
     ierr = VecRestoreArray (c_[iter], &c_ptr);                      CHKERRQ (ierr);
@@ -58,6 +57,9 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     double dt = n_misc_->dt_;
     int nt = n_misc_->time_horizon_ / dt;
 
+    //enforce positivity : hack
+    ierr = enforcePositivity (tumor_->c_0_, n_misc_);  
+
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                                        CHKERRQ (ierr);
     if (linearized == 0)
         ierr = VecCopy (tumor_->c_0_, c_[0]);                                           CHKERRQ (ierr);
@@ -65,6 +67,9 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
         ierr = reaction (linearized, i);
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
+
+        //enforce positivity : hack
+        ierr = enforcePositivity (tumor_->c_t_, n_misc_);    
 
         //Copy current conc to use for the adjoint equation
         if (linearized == 0)
@@ -85,9 +90,9 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     double factor, alph;
     double dt = n_misc_->dt_;
     ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                     CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);           CHKERRQ (ierr);
 
-    ierr = VecGetArray (c_[iter], &c_ptr);                          CHKERRQ (ierr);
+    ierr = VecGetArray (c_[iter], &c_ptr);                           CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
         if (linearized == 1) {
@@ -103,9 +108,9 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     }
 
     ierr = VecRestoreArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
 
-    ierr = VecRestoreArray (c_[iter], &c_ptr);                      CHKERRQ (ierr);
+    ierr = VecRestoreArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }
@@ -116,7 +121,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     double dt = n_misc_->dt_;
     int nt = n_misc_->time_horizon_ / dt;
 
-    ierr = VecCopy (tumor_->p_t_, tumor_->p_0_);                                        CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->p_t_, tumor_->p_0_);                     CHKERRQ (ierr);
     for (int i = 0; i < nt; i++) {
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
         ierr = reactionAdjoint (linearized, i);
@@ -132,4 +137,17 @@ PdeOperatorsRD::~PdeOperatorsRD () {
     for (int i = 0; i < nt + 1; i++) {
         ierr = VecDestroy (&c_[i]);
     }
+}
+
+PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    double *c_ptr;
+    ierr = VecGetArray (c, &c_ptr);                                 CHKERRQ (ierr);
+    for (int i = 0; i < n_misc->n_local_; i++) {
+        c_ptr[i] = (c_ptr[i] < 0.0) ? 0.0 : c_ptr[i];
+        c_ptr[i] = (c_ptr[i] > 1.0) ? 1.0 : c_ptr[i];
+    }
+    ierr = VecRestoreArray (c, &c_ptr);                             CHKERRQ (ierr);
+    PetscFunctionReturn (0);
 }

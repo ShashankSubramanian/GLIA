@@ -4,7 +4,6 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
 
-    sigma_ = 0.2;
     np_ = n_misc->np_;
     n_local_ = n_misc->n_local_;
 

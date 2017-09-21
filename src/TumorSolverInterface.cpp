@@ -12,7 +12,6 @@ inv_solver_ () {
     PetscErrorCode ierr = 0;
     if (n_misc != nullptr)
         initialize (n_misc);
-    inv_solver_ = std::make_shared<InvSolver> ();
 }
 
 PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) {
@@ -32,7 +31,8 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
     // create tumor inverse solver
-    ierr = inv_solver_->initialize(derivative_operators_, n_misc, tumor_);      CHKERRQ (ierr);
+    inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
+    ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);      
     initialized_ = true;
     // cleanup
     ierr = VecDestroy (&p);                                     CHKERRQ (ierr);
@@ -71,13 +71,13 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, Vec p, Vec data_gradeval) {
+PetscErrorCode TumorSolverInterface::computeGradient (Vec dJ, Vec p, Vec data_gradeval) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	TU_assert (initialized_, "TumorSolverInterface::computeGradient(): TumorSolverInterface needs to be initialized.")
     //_tumor->t_history_->Reset();
     // compute gradient for given data 'data_gradeval' and control variable 'p'
-    ierr = derivative_operators_->evaluateGradient(dJ, p, data_gradeval); CHKERRQ(ierr);
+    ierr = derivative_operators_->evaluateGradient (dJ, p, data_gradeval); CHKERRQ(ierr);
     PetscFunctionReturn(0);
 }
 
