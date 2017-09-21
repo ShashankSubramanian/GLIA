@@ -806,71 +806,71 @@ PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &msg) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	switch (flag) {
-      case TAO_CONVERGED_GATOL {
+      case TAO_CONVERGED_GATOL : {
           msg = "solver converged: ||g(x)|| <= tol";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_CONVERGED_GRTOL {
+      case TAO_CONVERGED_GRTOL : {
           msg = "solver converged: ||g(x)||/J(x) <= tol";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_CONVERGED_GTTOL {
+      case TAO_CONVERGED_GTTOL : {
           msg = "solver converged: ||g(x)||/||g(x0)|| <= tol";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_CONVERGED_STEPTOL {
+      case TAO_CONVERGED_STEPTOL : {
           msg = "step size too small";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_CONVERGED_MINF {
+      case TAO_CONVERGED_MINF : {
           msg = "objective value to small";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_CONVERGED_USER {
+      case TAO_CONVERGED_USER : {
           msg = "solver converged";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_DIVERGED_MAXITS {
+      case TAO_DIVERGED_MAXITS : {
           msg = "maximum number of iterations reached";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_DIVERGED_NAN {
+      case TAO_DIVERGED_NAN : {
           msg = "numerical problems (NAN detected)";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_DIVERGED_MAXFCN {
+      case TAO_DIVERGED_MAXFCN : {
           msg = "maximal number of function evaluations reached";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_DIVERGED_LS_FAILURE {
+      case TAO_DIVERGED_LS_FAILURE : {
           msg = "line search failed";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_DIVERGED_TR_REDUCTION {
+      case TAO_DIVERGED_TR_REDUCTION : {
           msg = "trust region failed";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_DIVERGED_USER {
+      case TAO_DIVERGED_USER : {
           msg = "user defined divergence criterion met";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
-      case TAO_CONTINUE_ITERATING {
+      case TAO_CONTINUE_ITERATING : {
           // display nothing
           break;
       }
-      default {
+      default : {
           msg = "convergence reason not defined";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
