@@ -3,7 +3,7 @@
 
 #define BRAIN
 #define ALIGNMENT 32
-#define OMP_NUM_THREADS 16
+// #define POSITIVITY
 
 #include <petsc.h>
 #include <stdlib.h>
@@ -102,11 +102,11 @@ class NMisc {
 		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm)
 		: rd_ (1)   //Reaction Diffusion
 		, dt_ (0.02)
-		, time_horizon_ (0.04)
+		, time_horizon_ (0.32)
 		, np_ (8)
 		, k_ (0.1)
 		, rho_ (8)
-		, p_scale_ (0.8)
+		, p_scale_ (0.0)
 		, p_scale_true_ (1.0)
 		, noise_scale_(0.0)
 		, beta_ (1e-2)

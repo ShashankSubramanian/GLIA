@@ -58,6 +58,7 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
 PetscErrorCode InvSolver::solve () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    EventRegistry::initialize ();
     TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
     TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
     TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
@@ -146,6 +147,19 @@ PetscErrorCode InvSolver::solve () {
 	// reset vectors (remember, memory managed on caller side):
 	data_ = nullptr;
 	data_gradeval_ = nullptr;
+
+
+    EventRegistry::finalize ();
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    if (procid == 0) {
+        EventRegistry r;
+        r.print ();
+        r.print ("EventsTimings.log", true);
+    }
+
 	PetscFunctionReturn (0);
 }
 
@@ -330,11 +344,11 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     char msg[256];
     std::string statusmsg;
     TaoConvergedReason flag;
-    CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+    CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
     // get current iteration, objective value, norm of gradient, norm of
     // norm of contraint, step length / trust region readius of iteratore
     // and termination reason
-    ierr = TaoGetSolutionStatus(tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
+    ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
     // print out Newton iteration information
@@ -346,14 +360,15 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s.str (""); 
         s.clear ();
     }
-    s << " " << std::scientific << std::setprecision(4) << std::setfill('0') << std::setw(3)<< its
+    s << "\n" <<" " << std::scientific << std::setprecision(4) << std::setfill('0') << std::setw(3)<< its
     << "     " << std::scientific << std::setprecision(4) << J
     << "     " << std::scientific << std::setprecision(4) << gnorm
     << "     " << std::scientific << std::setprecision(4) << step;
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr); 
     s.str (""); 
     s.clear ();
-
+    ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
+    itctx->optfeedback_->nb_krylov_it = 0;
     PetscFunctionReturn (0);
 }
 
@@ -371,7 +386,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt n,PetscReal rnorm, void *ptr
 	PetscErrorCode ierr = 0;
 
 	Vec x;
-	ierr = KSPBuildSolution (ksp,NULL,&x);                                 CHKERRQ(ierr); // build solution vector
+	ierr = KSPBuildSolution (ksp,NULL,&x);                                                                          CHKERRQ(ierr); 
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
 	itctx->optfeedback_->nb_krylov_it++;                 // accumulate number of krylov iterations
     // ierr = PetscPrintf (PETSC_COMM_WORLD,"iteration %D solution vector:\n",n);CHKERRQ(ierr);
@@ -489,15 +504,15 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ctx->convergence_message.clear();
     // check for NaN value
     if (PetscIsInfOrNanReal(J)) {
-    		ierr = tuMSGwarn ("objective is NaN");                                        CHKERRQ(ierr);
-    		ierr = TaoSetConvergedReason (tao, TAO_DIVERGED_NAN);                         CHKERRQ(ierr);
-    		PetscFunctionReturn (ierr);
+		ierr = tuMSGwarn ("objective is NaN");                                        CHKERRQ(ierr);
+		ierr = TaoSetConvergedReason (tao, TAO_DIVERGED_NAN);                         CHKERRQ(ierr);
+		PetscFunctionReturn (ierr);
     }
     // check for NaN value
     if (PetscIsInfOrNanReal(gnorm)) {
-    		ierr = tuMSGwarn("||g|| is NaN");                                             CHKERRQ(ierr);
-    		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                          CHKERRQ(ierr);
-    		PetscFunctionReturn(ierr);
+		ierr = tuMSGwarn("||g|| is NaN");                                             CHKERRQ(ierr);
+		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                          CHKERRQ(ierr);
+		PetscFunctionReturn(ierr);
     }
     if(verbosity >= 2) {
     	ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
@@ -510,13 +525,13 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     			ss << "step size in linesearch: " << std::scientific << step;
     			ierr = tuMSGstd(ss.str());                                                CHKERRQ(ierr);
     			ss.str(std::string()); 
-        ss.clear();
+                ss.clear();
     	}
     	if (step < minstep) {
     			ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
     			ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
     			ss.str(std::string()); 
-        ss.clear();
+                ss.clear();
     			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);                 CHKERRQ(ierr);
     			PetscFunctionReturn(ierr);
     	}
@@ -570,7 +585,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 			ss << "||g|| = " << std::scientific << 0.0 << " < " << gatol  << " = " << "bound";
 			ierr = tuMSGwarn(ss.str());                                                   CHKERRQ(ierr);
 			ss.str(std::string()); 
-        ss.clear();
+            ss.clear();
 			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                       CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);
 		}

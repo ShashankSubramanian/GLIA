@@ -1,6 +1,7 @@
 results/
 *.bin
 *.nc
+*.log
 obj/
 bin/
 brain_data/

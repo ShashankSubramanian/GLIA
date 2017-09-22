@@ -58,7 +58,9 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     int nt = n_misc_->time_horizon_ / dt;
 
     //enforce positivity : hack
-    ierr = enforcePositivity (tumor_->c_0_, n_misc_);  
+    #ifdef POSITIVITY
+        ierr = enforcePositivity (tumor_->c_0_, n_misc_);  
+    #endif
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                                        CHKERRQ (ierr);
     if (linearized == 0)
@@ -69,7 +71,9 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
 
         //enforce positivity : hack
-        ierr = enforcePositivity (tumor_->c_t_, n_misc_);    
+        #ifdef POSITIVITY
+            ierr = enforcePositivity (tumor_->c_t_, n_misc_); 
+        #endif   
 
         //Copy current conc to use for the adjoint equation
         if (linearized == 0)
