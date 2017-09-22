@@ -60,10 +60,10 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         ierr = tuMSGwarn (" Tumor inverse solver running with default settings.");              CHKERRQ (ierr);
     }
     // set target data for inversion (just sets the vector, no deep copy)
-    inv_solver_->setData(d1);
+    inv_solver_->setData (d1);
     if (d1g == nullptr)
         d1g = d1;
-    inv_solver_->setDataGradient(d1g);
+    inv_solver_->setDataGradient (d1g);
     // solve
     ierr = inv_solver_->solve ();
     // pass the reconstructed p vector to the caller (deep copy)

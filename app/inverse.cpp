@@ -3,7 +3,7 @@
 
 static char help[] = "Inverse Driver";
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -35,10 +35,12 @@ int main (int argc, char** argv) {
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, istart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
-	Vec c_0, c_t;
+	Vec c_0, c_t, p_rec;
 	PetscErrorCode ierr = 0;
-	ierr = generateSyntheticData (c_0, c_t, solver_interface, n_misc);
-	// ierr = solver_interface->solveForward (nullptr , nullptr); // TODO fix that
+	PCOUT << "Generating Synthetic Data --->" << std::endl;
+	ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
+	PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
+	ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
@@ -46,13 +48,18 @@ int main (int argc, char** argv) {
 	PetscFinalize ();
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
+	//Create p_rec
+	ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);							CHKERRQ (ierr);
+	ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);					CHKERRQ (ierr);
+	ierr = VecSetFromOptions (p_rec);										CHKERRQ (ierr);
+
 	ierr = VecCreate (PETSC_COMM_WORLD, &c_t);								CHKERRQ (ierr);
 	ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);			CHKERRQ (ierr);
 	ierr = VecSetFromOptions (c_t);											CHKERRQ (ierr);
-	ierr = VecDuplicate (c_t, &c_0);											CHKERRQ (ierr);
+	ierr = VecDuplicate (c_t, &c_0);										CHKERRQ (ierr);
 
 	ierr = VecSet (c_t, 0);													CHKERRQ (ierr);
 	ierr = VecSet (c_0, 0);													CHKERRQ (ierr);
