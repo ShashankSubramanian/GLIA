@@ -30,6 +30,7 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     if (initialized_) 
         PetscFunctionReturn (0);
     optsettings_ = std::make_shared<OptimizerSettings> ();
+    optfeedback_ = std::make_shared<OptimizerFeedback> ();
     itctx_ = std::make_shared<CtxInv> ();
     itctx_->derivative_operators_ = derivative_operators;
     itctx_->n_misc_ = n_misc;
@@ -57,7 +58,6 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
 PetscErrorCode InvSolver::solve () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    std::cout << "Solve entered" << std::endl;
     TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
     TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
     TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
@@ -65,7 +65,6 @@ PetscErrorCode InvSolver::solve () {
     TU_assert (optsettings_ != nullptr, "InvSolver:solve (): requires non-null optimizer settings to be passed.");
     /* === observed data === */
     // apply observer on ground truth, store observed data in d
-    std::cout << "Solve entered" << std::endl;
     ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
     // smooth observed data
     PetscScalar *d_ptr;

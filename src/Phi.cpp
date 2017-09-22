@@ -178,12 +178,17 @@ PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
 
     PetscScalar values[np_];
     int low, high;
-
+    double *pout_ptr;
+    ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
     ierr = VecMTDot (in, np_, phi_vec_, values);                                                    CHKERRQ (ierr);
     ierr = VecGetOwnershipRange (pout, &low, &high);                                                CHKERRQ (ierr);
     for (int i = low; i < high; i++) {
-        ierr = VecSetValues (pout, 1, &i, &values[i], INSERT_VALUES);                               CHKERRQ (ierr);
+        pout_ptr[i - low] = values[i];
+        // ierr = VecSetValues (pout, 1, &i, &values[i], INSERT_VALUES);                               CHKERRQ (ierr);
     }
+    ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
+    // ierr = VecAssemblyBegin (pout);                                                                 CHKERRQ (ierr);
+    // ierr = VecAssemblyEnd (pout);                                                                   CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }

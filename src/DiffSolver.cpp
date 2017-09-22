@@ -38,11 +38,6 @@ PetscErrorCode DiffSolver::operatorA (Mat A, Vec x, Vec y) {    //y = Ax
 
 PetscErrorCode DiffSolver::solve (Vec c, double dt) {
 	PetscErrorCode ierr = 0;
-	/*For debug*/
-	int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    /*End Debug context*/
 
 	Ctx *ctx;
 	ierr = MatShellGetContext (A_, &ctx);						CHKERRQ (ierr);
@@ -61,7 +56,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
 	//Debug
 	int itr;
 	ierr = KSPGetIterationNumber (ksp_, &itr);					CHKERRQ (ierr);
-	PCOUT << "Diffusion solver iterations: " << itr << std::endl;
+	
 	PetscFunctionReturn(0);
 }
 

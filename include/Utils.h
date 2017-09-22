@@ -117,7 +117,8 @@ class NMisc {
 		, r_gm_wm_ratio_ (1.0)
 		, r_glm_wm_ratio_ (0.0) 
 		, phi_sigma_ (0.2)
-		, phi_spacing_factor_ (1.5) {
+		, phi_spacing_factor_ (1.5) 
+		, obs_threshold_ (0.0) {
 
 			user_cm_[0] = 4.0;
 			user_cm_[1] = 2.03;
@@ -167,6 +168,8 @@ class NMisc {
 
 		double phi_sigma_;
 		double phi_spacing_factor_;
+
+		double obs_threshold_;
 
 		std::array<double, 7> timers_;
 

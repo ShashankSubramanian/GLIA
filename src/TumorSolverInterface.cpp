@@ -59,6 +59,10 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     if (!optimizer_settings_changed_) {
         ierr = tuMSGwarn (" Tumor inverse solver running with default settings.");              CHKERRQ (ierr);
     }
+    
+    // set the observation operator filter : default filter
+    ierr = tumor_->obs_->setDefaultFilter (d1);
+
     // set target data for inversion (just sets the vector, no deep copy)
     inv_solver_->setData (d1);
     if (d1g == nullptr)

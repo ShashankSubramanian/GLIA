@@ -8,6 +8,7 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
     k_ = std::make_shared<DiffCoef> (n_misc);
     rho_ = std::make_shared<ReacCoef> (n_misc);
     phi_ = std::make_shared<Phi> (n_misc);
+    obs_ = std::make_shared<Obs> (n_misc);
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t_);                  
     ierr = VecSetSizes (c_t_, n_misc->n_local_, n_misc->n_global_);
@@ -49,6 +50,7 @@ PetscErrorCode Tumor::setTrueP (double p_scale) {
     ierr = VecSet (p_true_, p_scale);                               CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
+
 
 Tumor::~Tumor () {
     PetscErrorCode ierr;
