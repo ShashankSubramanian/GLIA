@@ -22,7 +22,16 @@ class DiffCoef {
 		Vec kyz_;
 		Vec kzz_;
 
+		double kxx_avg_;
+		double kxy_avg_;
+		double kxz_avg_;
+		double kyy_avg_;
+		double kyz_avg_;
+		double kzz_avg_;
+		double filter_avg_;
+
 		Vec *temp_;
+		double *temp_accfft_;
 
 		PetscErrorCode setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);

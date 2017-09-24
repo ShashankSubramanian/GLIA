@@ -37,13 +37,6 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
     ierr = phi_->setValues (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, mat_prop_, n_misc);          
     ierr = phi_->apply(c_0_, p_);                                 
 
-    #ifdef POSITIVITY
-        ierr = enforcePositivity (c_0_, n_misc);
-    #endif
-        
-    if(n_misc->writeOutput_)
-        dataOut (c_0_, n_misc, "results/C0.nc");
-
     PetscFunctionReturn(0);
 }
 

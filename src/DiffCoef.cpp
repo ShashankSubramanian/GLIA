@@ -4,7 +4,8 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
   k_scale_(1E-2)
 , k_gm_wm_ratio_(1.0 / 5.0)
 , k_glm_wm_ratio_(3.0 / 5.0)
-, smooth_flag_(0) {
+, smooth_flag_(0)
+, filter_avg_ (0.0) {
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &kxx_);
     ierr = VecSetSizes (kxx_, n_misc->n_local_, n_misc->n_global_);
@@ -22,16 +23,20 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
         ierr = VecSet (temp_[i] , 0);
     }
 
+    temp_accfft_ = (double * ) accfft_alloc (n_misc->accfft_alloc_max_);
+
     ierr = VecSet (kxx_ , 0);
     ierr = VecSet (kxy_ , 0);
     ierr = VecSet (kxz_ , 0);
     ierr = VecSet (kyy_ , 0);
     ierr = VecSet (kyz_ , 0);
     ierr = VecSet (kzz_ , 0);
+
+    kxx_avg_ = kxy_avg_ = kxz_avg_ = kyy_avg_ = kyz_avg_ = kzz_avg_ = 0.0;
 }
 
 PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
-  PetscFunctionBegin;
+    PetscFunctionBegin;
     PetscErrorCode ierr;
     k_scale_ = k_scale;
     k_gm_wm_ratio_  = k_gm_wm_ratio;
@@ -51,12 +56,25 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     ierr = VecCopy (kxx_, kyy_);                                        CHKERRQ (ierr);
     ierr = VecCopy (kxx_, kzz_);                                        CHKERRQ (ierr);
 
-    // TODO: scaling with sum of filter
-    // TODO: what about averages for preconditioner?
+    //Average diff coeff values for preconditioner for diffusion solve
+    ierr = VecSum (kxx_, &kxx_avg_);                                    CHKERRQ (ierr);
+    ierr = VecSum (kxy_, &kxy_avg_);                                    CHKERRQ (ierr);
+    ierr = VecSum (kxz_, &kxz_avg_);                                    CHKERRQ (ierr);
+    ierr = VecSum (kyy_, &kyy_avg_);                                    CHKERRQ (ierr);
+    ierr = VecSum (kyz_, &kyz_avg_);                                    CHKERRQ (ierr);
+    ierr = VecSum (kzz_, &kzz_avg_);                                    CHKERRQ (ierr);
+    ierr = VecSum (mat_prop->filter_, &filter_avg_);                    CHKERRQ (ierr);
+
+    kxx_avg_ *= 1.0 / filter_avg_;
+    kxy_avg_ *= 1.0 / filter_avg_;
+    kxz_avg_ *= 1.0 / filter_avg_;
+    kyy_avg_ *= 1.0 / filter_avg_;
+    kyz_avg_ *= 1.0 / filter_avg_;
+    kzz_avg_ *= 1.0 / filter_avg_;
 
     if (smooth_flag_) {
         ierr = this->smooth (n_misc); CHKERRQ (ierr);
-  }
+    }
 
     PetscFunctionReturn(0);
 }
@@ -156,4 +174,9 @@ DiffCoef::~DiffCoef () {
     ierr = VecDestroy (&kyy_);
     ierr = VecDestroy (&kyz_);
     ierr = VecDestroy (&kzz_);
+    for (int i = 0; i < 7; i++) {
+        ierr = VecDestroy (&temp_[i]);
+    }
+    delete[] temp_;
+    accfft_free (temp_accfft_);
 }

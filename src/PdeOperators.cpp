@@ -80,9 +80,6 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             ierr = VecCopy (tumor_->c_t_, c_[i+1]);                                     CHKERRQ (ierr);
     }
 
-    if(n_misc_->writeOutput_)
-        dataOut (tumor_->c_t_, n_misc_, "results/CT.nc");
-
     PetscFunctionReturn (0);
 }
 

@@ -14,7 +14,7 @@
 #include <glog/logging.h>
 #include <math.h>
 #include <memory>
-
+#include <complex>
 #include <iostream>
 
 
@@ -99,7 +99,7 @@ struct TumorParameters {
 
 class NMisc {
 	public:
-		NMisc (int *n, int *isize, int *istart, accfft_plan *plan, MPI_Comm c_comm)
+		NMisc (int *n, int *isize, int *osize, int *istart, accfft_plan *plan, MPI_Comm c_comm)
 		: rd_ (1)   //Reaction Diffusion
 		, dt_ (0.02)
 		, time_horizon_ (0.32)
@@ -126,6 +126,7 @@ class NMisc {
 
 			memcpy (n_, n, 3 * sizeof(int));
 			memcpy (isize_, isize, 3 * sizeof(int));
+			memcpy (osize_, osize, 3 * sizeof(int));
 			memcpy (istart_, istart, 3 * sizeof(int));
 
 			plan_ = plan;
@@ -143,6 +144,7 @@ class NMisc {
 		}
 		int n_[3];
 		int isize_[3];
+		int osize_[3];
 		int istart_[3];
 		double h_[3];
 

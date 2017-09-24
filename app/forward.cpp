@@ -46,7 +46,7 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
-	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, istart, plan, c_comm);   //This class contains all required parameters
+	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 	ierr = solver_interface->solveForward (nullptr , nullptr); // TODO fix that
 }

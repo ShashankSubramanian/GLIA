@@ -8,9 +8,11 @@
 
 struct Ctx {
 	std::shared_ptr<DiffCoef> k_;
+	std::shared_ptr<NMisc> n_misc_;
 	accfft_plan *plan_;
 	double dt_;
 	Vec temp_;
+	double *precfactor_;
 };
 
 class DiffSolver {
@@ -20,13 +22,19 @@ class DiffSolver {
 		KSP ksp_;
 		Mat A_;
 
+		PC pc_;
+
 		Vec rhs_;
 
-		static PetscErrorCode operatorA (Mat A, Vec x, Vec y);
 		PetscErrorCode solve (Vec c, double dt);
 
 		virtual ~DiffSolver ();
 		
 };
+
+//Helper functions for KSP solve
+PetscErrorCode operatorA (Mat A, Vec x, Vec y);
+PetscErrorCode precFactor (double *precfactor, Ctx *ctx);
+PetscErrorCode applyPC (PC pc, Vec x, Vec y);
 
 #endif

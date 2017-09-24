@@ -32,7 +32,7 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
-	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, istart, plan, c_comm);   //This class contains all required parameters
+	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
 	Vec c_0, c_t, p_rec;
@@ -40,7 +40,7 @@ int main (int argc, char** argv) {
 	PCOUT << "Generating Synthetic Data --->" << std::endl;
 	ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
 	PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
-	ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
+	// ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
@@ -67,6 +67,13 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 	std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 	ierr = tumor->setTrueP (n_misc->p_scale_true_);
 	ierr = tumor->phi_->apply (c_0, tumor->p_true_);
+
+	#ifdef POSITIVITY
+        ierr = enforcePositivity (c_0, n_misc);
+    #endif
+	if (n_misc->writeOutput_) 
+        dataOut (c_0, n_misc, "results/c0.nc");
+
 	ierr = solver_interface->solveForward (c_t, c_0);
 
 	//Smooth data
@@ -75,5 +82,9 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 	ierr = VecGetArray (c_t, &c_t_ptr);										CHKERRQ (ierr);
 	ierr = weierstrassSmoother (c_t_ptr, c_t_ptr, n_misc, sigma_smooth);
 	ierr = VecRestoreArray (c_t, &c_t_ptr);								    CHKERRQ (ierr);
+
+	if (n_misc->writeOutput_)
+        dataOut (c_t, n_misc, "results/data.nc");
+
 	PetscFunctionReturn (0);
 }
