@@ -49,12 +49,42 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
     dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
-    ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
-    ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
-    ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);                   CHKERRQ (ierr);
+    #ifndef BRAIN
+        double *kxx_ptr, *kyy_ptr, *kzz_ptr;
+        ierr = VecGetArray (kxx_, &kxx_ptr);                                CHKERRQ (ierr);
+        ierr = VecGetArray (kyy_, &kyy_ptr);                                CHKERRQ (ierr);
+        ierr = VecGetArray (kzz_, &kzz_ptr);                                CHKERRQ (ierr);
+        int64_t X, Y, Z, index;
+        double amp = std::min (1.0, k_scale);
+        double freq = 2.0;
+        for (int x = 0; x < n_misc->isize_[0]; x++) {
+            for (int y = 0; y < n_misc->isize_[1]; y++) {
+                for (int z = 0; z < n_misc->isize_[2]; z++) {
+                    X = n_misc->istart_[0] + x;
+                    Y = n_misc->istart_[1] + y;
+                    Z = n_misc->istart_[2] + z;
 
-    ierr = VecCopy (kxx_, kyy_);                                        CHKERRQ (ierr);
-    ierr = VecCopy (kxx_, kzz_);                                        CHKERRQ (ierr);
+                    index = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
+
+                    kxx_ptr[index] = k_scale + amp * sin (freq * 2.0 * M_PI / n_misc->n_[0] * X)
+                                                   * sin (freq * 2.0 * M_PI / n_misc->n_[1] * Y)
+                                                   * sin (freq * 2.0 * M_PI / n_misc->n_[2] * Z);
+                    kyy_ptr[index] = kxx_ptr[index];
+                    kzz_ptr[index] = kzz_ptr[index];
+                }
+            }
+        }
+        ierr = VecRestoreArray (kxx_, &kxx_ptr);                            CHKERRQ (ierr);
+        ierr = VecRestoreArray (kyy_, &kyy_ptr);                            CHKERRQ (ierr);
+        ierr = VecRestoreArray (kzz_, &kzz_ptr);                            CHKERRQ (ierr);
+    #else
+        ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
+        ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
+        ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);                   CHKERRQ (ierr);
+
+        ierr = VecCopy (kxx_, kyy_);                                        CHKERRQ (ierr);
+        ierr = VecCopy (kxx_, kzz_);                                        CHKERRQ (ierr);
+    #endif
 
     //Average diff coeff values for preconditioner for diffusion solve
     ierr = VecSum (kxx_, &kxx_avg_);                                    CHKERRQ (ierr);

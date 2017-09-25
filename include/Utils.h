@@ -1,7 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-#define BRAIN
+// #define BRAIN
 #define ALIGNMENT 32
 // #define POSITIVITY
 
@@ -16,6 +16,7 @@
 #include <memory>
 #include <complex>
 #include <iostream>
+#include <algorithm>
 
 
 enum {QDFS = 0, SLFS = 1};
@@ -99,7 +100,7 @@ struct TumorParameters {
 
 class NMisc {
 	public:
-		NMisc (int *n, int *isize, int *osize, int *istart, accfft_plan *plan, MPI_Comm c_comm)
+		NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm)
 		: rd_ (1)   //Reaction Diffusion
 		, dt_ (0.02)
 		, time_horizon_ (0.32)
@@ -128,6 +129,7 @@ class NMisc {
 			memcpy (isize_, isize, 3 * sizeof(int));
 			memcpy (osize_, osize, 3 * sizeof(int));
 			memcpy (istart_, istart, 3 * sizeof(int));
+			memcpy (ostart_, ostart, 3 * sizeof(int));
 
 			plan_ = plan;
 			c_comm_ = c_comm;
@@ -146,6 +148,7 @@ class NMisc {
 		int isize_[3];
 		int osize_[3];
 		int istart_[3];
+		int ostart_[3];
 		double h_[3];
 
 		int np_;

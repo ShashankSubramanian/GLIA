@@ -32,7 +32,7 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
-	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, plan, c_comm);   //This class contains all required parameters
+	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
 	Vec c_0, c_t, p_rec;

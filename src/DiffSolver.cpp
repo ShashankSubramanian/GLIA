@@ -21,12 +21,12 @@ DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef>
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
-    ierr = KSPGetPC (ksp_, &pc_);
-    ierr = PCSetType (pc_, PCSHELL);
-    ierr = PCShellSetApply (pc_, applyPC);
-    ierr = PCShellSetContext (pc_, ctx);
-    ierr = KSPSetFromOptions (ksp_);
-    ierr = KSPSetUp (ksp_);
+    // ierr = KSPGetPC (ksp_, &pc_);
+    // ierr = PCSetType (pc_, PCSHELL);
+    // ierr = PCShellSetApply (pc_, applyPC);
+    // ierr = PCShellSetContext (pc_, ctx);
+    // ierr = KSPSetFromOptions (ksp_);
+    // ierr = KSPSetUp (ksp_);
 
 
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
@@ -65,9 +65,9 @@ PetscErrorCode precFactor (double *precfactor, Ctx *ctx) {
     for (int x = 0; x < n_misc->osize_[0]; x++) {
         for (int y = 0; y < n_misc->osize_[1]; y++) {
             for (int z = 0; z < n_misc->osize_[2]; z++){
-                X = n_misc->osize_[0] + x;
-                Y = n_misc->osize_[1] + y;
-                Z = n_misc->osize_[2] + z;
+                X = n_misc->ostart_[0] + x;
+                Y = n_misc->ostart_[1] + y;
+                Z = n_misc->ostart_[2] + z;
 
                 wx = X;
                 wy = Y;
