@@ -55,7 +55,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         ierr = VecGetArray (kyy_, &kyy_ptr);                                CHKERRQ (ierr);
         ierr = VecGetArray (kzz_, &kzz_ptr);                                CHKERRQ (ierr);
         int64_t X, Y, Z, index;
-        double amp = std::min (1.0, k_scale);
+        double amp = std::min (0.0, k_scale);                   //SNAFU: Diffcoef is constant
         double freq = 2.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {

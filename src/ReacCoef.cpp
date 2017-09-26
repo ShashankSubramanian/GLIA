@@ -25,7 +25,7 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
         double *rho_vec_ptr;
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);                            CHKERRQ (ierr);
         int64_t X, Y, Z, index;
-        double amp = std::min (1.0, rho_scale);
+        double amp = std::min (0.0, rho_scale);
         double freq = 2.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {

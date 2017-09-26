@@ -4,6 +4,7 @@
 static char help[] = "Inverse Driver";
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -38,9 +39,13 @@ int main (int argc, char** argv) {
 	Vec c_0, c_t, p_rec;
 	PetscErrorCode ierr = 0;
 	PCOUT << "Generating Synthetic Data --->" << std::endl;
-	ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
+	#ifdef BRAIN
+		ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
+	#else
+		ierr = generateSinusoidalData (c_t, n_misc);
+	#endif
 	PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
-	// ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
+	ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
@@ -78,7 +83,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
 	//Smooth data
 	double *c_t_ptr;
-	double sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
+	double sigma_smooth = 10.0 * M_PI / n_misc->n_[0];
 	ierr = VecGetArray (c_t, &c_t_ptr);										CHKERRQ (ierr);
 	ierr = weierstrassSmoother (c_t_ptr, c_t_ptr, n_misc, sigma_smooth);
 	ierr = VecRestoreArray (c_t, &c_t_ptr);								    CHKERRQ (ierr);
@@ -87,4 +92,36 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         dataOut (c_t, n_misc, "results/data.nc");
 
 	PetscFunctionReturn (0);
+}
+
+PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+	//Create data vector
+	ierr = VecCreate (PETSC_COMM_WORLD, &d);								CHKERRQ (ierr);
+	ierr = VecSetSizes (d, n_misc->n_local_, n_misc->n_global_);			CHKERRQ (ierr);
+	ierr = VecSetFromOptions (d);											CHKERRQ (ierr);
+	ierr = VecSet (d, 0);													CHKERRQ (ierr);
+
+	double *d_ptr;
+	ierr = VecGetArray (d, &d_ptr);											CHKERRQ (ierr);
+	int64_t X, Y, Z, index;
+	double freq = 4.0;
+	for (int x = 0; x < n_misc->isize_[0]; x++) {
+        for (int y = 0; y < n_misc->isize_[1]; y++) {
+            for (int z = 0; z < n_misc->isize_[2]; z++) {
+                X = n_misc->istart_[0] + x;
+                Y = n_misc->istart_[1] + y;
+                Z = n_misc->istart_[2] + z;
+
+                index = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
+
+                d_ptr[index] = 1.0 * sin (freq * 2.0 * M_PI / n_misc->n_[0] * X)
+                                               * sin (freq * 2.0 * M_PI / n_misc->n_[1] * Y)
+                                               * sin (freq * 2.0 * M_PI / n_misc->n_[2] * Z);
+            }
+        }
+    }
+    ierr = VecRestoreArray (d, &d_ptr);										CHKERRQ (ierr);
+    PetscFunctionReturn (0);
 }
