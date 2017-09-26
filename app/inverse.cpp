@@ -42,7 +42,8 @@ int main (int argc, char** argv) {
 	#ifdef BRAIN
 		ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
 	#else
-		ierr = generateSinusoidalData (c_t, n_misc);
+		// ierr = generateSinusoidalData (c_t, n_misc);
+		ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
 	#endif
 	PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 	ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
@@ -83,7 +84,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
 	//Smooth data
 	double *c_t_ptr;
-	double sigma_smooth = 10.0 * M_PI / n_misc->n_[0];
+	double sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
 	ierr = VecGetArray (c_t, &c_t_ptr);										CHKERRQ (ierr);
 	ierr = weierstrassSmoother (c_t_ptr, c_t_ptr, n_misc, sigma_smooth);
 	ierr = VecRestoreArray (c_t, &c_t_ptr);								    CHKERRQ (ierr);
@@ -95,6 +96,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 }
 
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc) {
+	//TODO: Useless function?
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	//Create data vector

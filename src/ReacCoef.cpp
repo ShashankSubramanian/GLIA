@@ -52,6 +52,8 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     if (smooth_flag_)
         this->smooth (n_misc);
 
+    dataOut (rho_vec_, n_misc, "results/rho.nc");
+
     PetscFunctionReturn(0);
 }
 

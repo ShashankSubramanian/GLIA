@@ -7,12 +7,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     //TODO:  Data not added
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr); //TODO : declare obs_ member in tumor
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr); 
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
-    ierr = VecNorm (temp_, NORM_2, J);                              CHKERRQ (ierr);
+    ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
 
     PetscReal reg;
-    ierr = VecNorm (tumor_->c_0_, NORM_2, &reg);                    CHKERRQ (ierr);
+    ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);               CHKERRQ (ierr);
     reg *= 0.5 * n_misc_->beta_;
 
     (*J) *= 0.5;

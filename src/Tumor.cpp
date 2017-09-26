@@ -32,7 +32,6 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc) {
     ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
     ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
     ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
-    ierr = VecCopy (p, p_true_);                                  CHKERRQ (ierr);
 
     ierr = phi_->setValues (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, mat_prop_, n_misc);          
     ierr = phi_->apply(c_0_, p_);                                 
@@ -55,4 +54,5 @@ Tumor::~Tumor () {
     ierr = VecDestroy (&p_t_);
     ierr = VecDestroy (&p_0_);
     ierr = VecDestroy (&p_);
+    ierr = VecDestroy (&p_true_);
 }

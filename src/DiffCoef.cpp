@@ -106,6 +106,9 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         ierr = this->smooth (n_misc); CHKERRQ (ierr);
     }
 
+    //DEBUG
+    dataOut (kxx_, n_misc, "results/kxx.nc");
+
     PetscFunctionReturn(0);
 }
 

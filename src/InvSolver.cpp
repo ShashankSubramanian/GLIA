@@ -69,14 +69,16 @@ PetscErrorCode InvSolver::solve () {
     ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
     // smooth observed data
     PetscScalar *d_ptr;
+    double sigma_smooth;
+    sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
     ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
-    ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
+    ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, sigma_smooth);           CHKERRQ(ierr);
     //static int it = 0; it++;
     //std::stringstream ss; ss<<"_it-"<<it;
     //std::string s("files/cpl/ITdata"+ss.str()+".nc");
     //DataOut(d_ptr, itctx_->n_misc_, s.c_str());
     /* === Add Noise === */
-    Vec noise; double * noise_ptr;
+    Vec noise; double *noise_ptr;
     ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
     ierr = VecSetFromOptions(noise);                                                    CHKERRQ(ierr);
