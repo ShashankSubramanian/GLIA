@@ -32,7 +32,7 @@
 //Rewrite variables according to standard conventions
 
 
-int weierstrassSmoother(double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, double sigma) {
+int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, double sigma) {
 	MPI_Comm c_comm = N_Misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank(c_comm, &procid);
@@ -83,6 +83,16 @@ int weierstrassSmoother(double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, d
 					ptr = i * isize[1] * isize[2] + j * isize[2] + k;
 					f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
 							+ std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+
+					f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
+							+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+
+					f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+							+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+
+					f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+							+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+
 					if (f[ptr] != f[ptr])
 						f[ptr] = 0.; // To avoid Nan
 					sum_th[thid] += f[ptr];

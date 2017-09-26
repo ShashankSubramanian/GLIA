@@ -5,6 +5,7 @@ static char help[] = "Inverse Driver";
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -36,22 +37,47 @@ int main (int argc, char** argv) {
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
-	Vec c_0, c_t, p_rec;
+	Vec c_0, data, p_rec;
 	PetscErrorCode ierr = 0;
 	PCOUT << "Generating Synthetic Data --->" << std::endl;
-	#ifdef BRAIN
-		ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
-	#else
-		// ierr = generateSinusoidalData (c_t, n_misc);
-		ierr = generateSyntheticData (c_0, c_t, p_rec, solver_interface, n_misc);
-	#endif
+	ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
 	PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
-	ierr = solver_interface->solveInverse (p_rec, c_t, nullptr);
+
+	ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+
+	double l2_rel_error;
+	ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
+	PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
 	accfft_destroy_plan (plan);
 	PetscFinalize ();
+}
+
+PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+	Vec c_rec_0, c_rec; 
+	double data_norm;
+	ierr = VecDuplicate (data, &c_rec_0);									CHKERRQ (ierr);
+	ierr = VecDuplicate (data, &c_rec);										CHKERRQ (ierr);
+	std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+	ierr = tumor->phi_->apply (c_rec_0, p_rec);	
+
+	#ifdef POSITIVITY
+        ierr = enforcePositivity (c_rec_0, n_misc);
+    #endif
+
+    ierr = solver_interface->solveForward (c_rec, c_rec_0);
+	if (n_misc->writeOutput_) 
+		dataOut (c_rec, n_misc, "results/CRecon.nc");
+
+	ierr = VecAXPY (c_rec, -1.0, data);										CHKERRQ (ierr);	
+	ierr = VecNorm (data, NORM_2, &data_norm);								CHKERRQ (ierr);			
+	ierr = VecNorm (c_rec, NORM_2, &error_norm);							CHKERRQ (ierr);	
+	error_norm /= data_norm;
+	PetscFunctionReturn (0);
 }
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
