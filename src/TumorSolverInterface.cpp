@@ -17,7 +17,10 @@ inv_solver_ () {
 PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+   if (initialized_) PetscFunctionReturn (0);
+
     tumor_ = std::make_shared<Tumor> (n_misc);
+    n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
     ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
@@ -32,11 +35,50 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
     }
     // create tumor inverse solver
     inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
-    ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);      
+    ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
     initialized_ = true;
     // cleanup
     ierr = VecDestroy (&p);                                     CHKERRQ (ierr);
     PetscFunctionReturn (0);
+}
+
+PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
+
+    bool npchanged = n_misc_->np_ != tumor_params->np;
+    bool rdchanged = n_misc_->rd_ != tumor_params->reaction_diffusion_model;
+
+    if (rdchanged) {
+      // TODO delete old pde_operators_ and derivative_operators_ and create new ones
+    }
+
+    // TODO re-initialize InvSolver, i.e. H matrix, p_rec vectores etc..
+
+    n_misc_->rd_ = tumor_params->reaction_diffusion_model;
+    n_misc_->dt_ = tumor_params->time_step_size;
+    n_misc_->nt_ = tumor_params->time_steps;
+    n_misc_->time_horizon_ = tumor_params->time_horizon;
+    n_misc_->np_ = tumor_params->np;
+    n_misc_->beta_ = tumor_params->betap;
+    n_misc_->writeOutput_ = tumor_params->writeOutput;
+    n_misc_->verbosity_ = tumor_params->verbosity;
+    n_misc_->obs_threshold_ = tumor_params->obs_threshold;
+    n_misc_->k_ = tumor_params->diff_coeff_scale;
+    n_misc_->kf_ = tumor_params->diff_coeff_scale_anisotropic;
+    n_misc_->rho_ = tumor_params->reaction_coeff_scale;
+    n_misc_->k_gm_wm_ratio_ = tumor_params->diffusion_ratio_gm_wm;
+    n_misc_->k_glm_wm_ratio_ = tumor_params->diffusion_ratio_glm_wm;
+    n_misc_->r_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
+    n_misc_->r_glm_wm_ratio_ = tumor_params->reaction_ratio_glm_wm;
+    n_misc_->user_cm_ = tumor_params->phi_center_of_mass;
+    n_misc_->phi_spacing_factor_ = tumor_params->phi_spacing_factor;
+    n_misc_->phi_sigma_ = tumor_params->phi_sigma;
+
+    ierr = tumor_->setParams (p, n_misc_, npchanged);                      CHKERRQ (ierr);
+
+    PetscFunctionReturn(0);
 }
 
 // TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
@@ -59,7 +101,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     if (!optimizer_settings_changed_) {
         ierr = tuMSGwarn (" Tumor inverse solver running with default settings.");              CHKERRQ (ierr);
     }
-    
+
     // set the observation operator filter : default filter
     ierr = tumor_->obs_->setDefaultFilter (d1);
 
@@ -109,7 +151,7 @@ PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorParameters> tumor_params) {
+PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")

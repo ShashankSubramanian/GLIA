@@ -12,6 +12,8 @@ class TumorSolverInterface {
 		TumorSolverInterface (std::shared_ptr<NMisc> n_misc = {});
 		/// @brief initializes the TumorSolverInterface
 		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc);
+
+		PetscErrorCode setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params)
 		/** @brief Solves the forward tumor problem, given initial concentration
 		*         and tumor parameters
 		*  @param Vec c0  - initial tumor concentration
@@ -31,7 +33,7 @@ class TumorSolverInterface {
 		 *         A additional filter, that filters the admissable area for tumor
 		 *         growth has to be passed (updates the \Phi filter)
 		 */
-		PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorParameters> tumor_params);
+		PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params);
 		/// @brief evaluates gradient for given control variable p and data
 		PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
 		/// @brief true if TumorSolverInterface is initialized and ready to use
