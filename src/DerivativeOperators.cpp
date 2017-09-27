@@ -19,6 +19,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     PetscFunctionReturn(0);
 }
+
 PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -41,6 +42,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
     PetscFunctionReturn(0);
 }
+
 PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;

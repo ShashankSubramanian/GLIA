@@ -5,7 +5,7 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
 
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
-    int nt = n_misc->time_horizon_ / dt;
+    int nt = n_misc->nt_;
     c_ = (Vec *) malloc (sizeof (Vec *) * (nt + 1));    //Stores all (nt + 1) tumor concentrations for adjoint eqns
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
@@ -55,7 +55,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
-    int nt = n_misc_->time_horizon_ / dt;
+    int nt = n_misc_->nt_;
 
     //enforce positivity : hack
     #ifdef POSITIVITY
@@ -120,7 +120,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
-    int nt = n_misc_->time_horizon_ / dt;
+    int nt = n_misc_->nt_;
 
     ierr = VecCopy (tumor_->p_t_, tumor_->p_0_);                     CHKERRQ (ierr);
     for (int i = 0; i < nt; i++) {
@@ -134,7 +134,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
 
 PdeOperatorsRD::~PdeOperatorsRD () {
     PetscErrorCode ierr = 0;
-    int nt = n_misc_->time_horizon_ / n_misc_->dt_;
+    int nt = n_misc_->nt_;
     for (int i = 0; i < nt + 1; i++) {
         ierr = VecDestroy (&c_[i]);
     }
