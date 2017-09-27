@@ -72,7 +72,7 @@ PetscErrorCode InvSolver::solve () {
     double sigma_smooth;
     sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
     ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
-    ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, sigma_smooth);           CHKERRQ(ierr);
+    // ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, sigma_smooth);           CHKERRQ(ierr);
     //static int it = 0; it++;
     //std::stringstream ss; ss<<"_it-"<<it;
     //std::string s("files/cpl/ITdata"+ss.str()+".nc");
@@ -362,10 +362,10 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s.str (""); 
         s.clear ();
     }
-    s << "\n" <<" " << std::scientific << std::setprecision(4) << std::setfill('0') << std::setw(3)<< its
-    << "     " << std::scientific << std::setprecision(4) << J
-    << "     " << std::scientific << std::setprecision(4) << gnorm
-    << "     " << std::scientific << std::setprecision(4) << step;
+    s << "\n" <<" " << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(3)<< its
+    << "     " << std::scientific << std::setprecision(5) << J
+    << "     " << std::scientific << std::setprecision(5) << gnorm
+    << "     " << std::scientific << std::setprecision(5) << step;
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr); 
     s.str (""); 
     s.clear ();

@@ -70,7 +70,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
                                                    * sin (freq * 2.0 * M_PI / n_misc->n_[1] * Y)
                                                    * sin (freq * 2.0 * M_PI / n_misc->n_[2] * Z);
                     kyy_ptr[index] = kxx_ptr[index];
-                    kzz_ptr[index] = kzz_ptr[index];
+                    kzz_ptr[index] = kxx_ptr[index];
                 }
             }
         }
@@ -147,6 +147,7 @@ PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     for (int i = 1; i < 4; i++) {
         ierr = VecSet (temp_[i] , 0);                                   CHKERRQ (ierr);
     }
+
     //X
     ierr = VecPointwiseMult (temp_[0], kxx_, x);                        CHKERRQ (ierr);
     ierr = VecAXPY (temp_[1], 1.0, temp_[0]);                           CHKERRQ (ierr);
@@ -184,14 +185,8 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 
     double *timer = NULL;   //Used for calling accfft routines
 
-    /*For debug*/
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    /*End Debug context*/
-
     accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, timer);
-    ierr = applyK (temp_[4], temp_[5], temp_[6]); CHKERRQ (ierr);
+    ierr = applyK (temp_[4], temp_[5], temp_[6]); 
     accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, timer);
 
     PetscFunctionReturn(0);

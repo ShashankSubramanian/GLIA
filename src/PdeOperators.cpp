@@ -38,7 +38,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
         }
         else {
             factor = std::exp (rho_ptr[i] * dt);
-            alph = (c_ptr[i] * factor + 1 - c_ptr[i]);
+            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
             c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
         }
     }
@@ -77,7 +77,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
         //Copy current conc to use for the adjoint equation
         if (linearized == 0)
-            ierr = VecCopy (tumor_->c_t_, c_[i+1]);                                     CHKERRQ (ierr);
+            ierr = VecCopy (tumor_->c_t_, c_[i + 1]);                                   CHKERRQ (ierr);
     }
 
     PetscFunctionReturn (0);
@@ -98,12 +98,12 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     for (int i = 0; i < n_misc_->n_local_; i++) {
         if (linearized == 1) {
             factor = std::exp (rho_ptr[i] * dt);
-            alph = (c_ptr[i] * factor + 1 - c_ptr[i]);
+            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
             p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
         }
         else { //Gauss - Newton method
             factor = std::exp (rho_ptr[i] * dt);
-            alph = (c_ptr[i] * factor + 1 - c_ptr[i]);
+            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
             p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
         }
     }
@@ -125,7 +125,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     ierr = VecCopy (tumor_->p_t_, tumor_->p_0_);                     CHKERRQ (ierr);
     for (int i = 0; i < nt; i++) {
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
-        ierr = reactionAdjoint (linearized, nt - i);
+        ierr = reactionAdjoint (linearized, nt - i - 1);
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
     }
 

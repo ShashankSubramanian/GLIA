@@ -118,6 +118,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 	if (n_misc->writeOutput_)
         dataOut (c_t, n_misc, "results/data.nc");
 
+
 	PetscFunctionReturn (0);
 }
 

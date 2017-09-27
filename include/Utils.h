@@ -75,14 +75,14 @@ struct TumorSettings {
 	int    time_steps;
 	double time_horizon;
 	int    np;
-  double betap;
+  	double betap;
 	bool   writeOutput;
 	int    verbosity;
 	double obs_threshold;
 	double diff_coeff_scale;        /// @brief (scalar) diffusion rate
 	double diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
 	double reaction_coeff_scale;    /// @brief (scalar) reaction rate
-  double diffusion_ratio_gm_wm;   /// @brief ratio of diffusion coefficient between wm and gm
+  	double diffusion_ratio_gm_wm;   /// @brief ratio of diffusion coefficient between wm and gm
 	double diffusion_ratio_glm_wm;  /// @brief ratio of diffusion coefficient between wm and gm
  	double reaction_ratio_gm_wm;    /// @brief ratio of reaction coefficient between wm and gm
  	double reaction_ratio_glm_wm;   /// @brief ratio of reaction coefficient between wm and gm
@@ -123,27 +123,33 @@ class NMisc {
 		, dt_ (0.02)
 		, nt_(16)
 		, time_horizon_ (0.32)
-		, np_ (8)
+		, np_ (1)
 		, k_ (0.1)
 		, kf_(0.0)
 		, rho_ (8)
 		, p_scale_ (0.0)
 		, p_scale_true_ (1.0)
 		, noise_scale_(0.0)
-		, beta_ (1e-2)
+		, beta_ (1e-3)
 		, writeOutput_ (1)
 		, verbosity_ (1)
 		, k_gm_wm_ratio_ (1.0 / 3.0)
 		, k_glm_wm_ratio_ (3.0 / 5.0)
 		, r_gm_wm_ratio_ (1.0)
-		, r_glm_wm_ratio_ (0.0)
-		, phi_sigma_ (0.2)
-		, phi_spacing_factor_ (1.5)
+		, r_glm_wm_ratio_ (0.0) 
+		, phi_sigma_ (PETSC_PI / 10)
+		, phi_spacing_factor_ (1.5) 
 		, obs_threshold_ (0.0) {
 
-			user_cm_[0] = 4.0;
-			user_cm_[1] = 2.03;
-			user_cm_[2] = 2.07;
+			#ifdef BRAIN
+				user_cm_[0] = 4.0;
+				user_cm_[1] = 2.03;
+				user_cm_[2] = 2.07;
+			#else
+				user_cm_[0] = M_PI;
+				user_cm_[1] = M_PI;
+				user_cm_[2] = M_PI;
+			#endif
 
 			memcpy (n_, n, 3 * sizeof(int));
 			memcpy (isize_, isize, 3 * sizeof(int));

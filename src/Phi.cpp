@@ -42,9 +42,11 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
  
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
-        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc, sigma_smooth);
-        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+        #ifdef BRAIN
+            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+            ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc, sigma_smooth);
+            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+        #endif
 
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
         dataOut (phi_ptr, n_misc, "results/phi.nc");

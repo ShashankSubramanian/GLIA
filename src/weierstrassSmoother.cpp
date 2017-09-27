@@ -84,14 +84,14 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 					f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
 							+ std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 
-					f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
-							+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+					// f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
+					// 		+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
 
-					f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-							+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+					// f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+					// 		+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
 
-					f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-							+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+					// f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+					// 		+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 
 					if (f[ptr] != f[ptr])
 						f[ptr] = 0.; // To avoid Nan

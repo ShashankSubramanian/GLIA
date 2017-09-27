@@ -138,7 +138,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     }
     double alph = 1.0 / 2.0 * ctx->dt_;
     ierr = VecCopy (c, rhs_);                                   CHKERRQ (ierr);
-    ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);
+    ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);  
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);
 
     //KSP solve
