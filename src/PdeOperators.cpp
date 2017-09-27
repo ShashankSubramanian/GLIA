@@ -125,7 +125,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     ierr = VecCopy (tumor_->p_t_, tumor_->p_0_);                     CHKERRQ (ierr);
     for (int i = 0; i < nt; i++) {
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
-        ierr = reactionAdjoint (linearized, i);
+        ierr = reactionAdjoint (linearized, nt - i);
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
     }
 

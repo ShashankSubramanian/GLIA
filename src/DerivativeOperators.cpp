@@ -4,7 +4,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    //TODO:  Data not added
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr); 

@@ -45,7 +45,7 @@ int main (int argc, char** argv) {
 
 	ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 
-	double l2_rel_error;
+	double l2_rel_error = 0.0;
 	ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
 	PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
 }
@@ -109,11 +109,11 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 	ierr = solver_interface->solveForward (c_t, c_0);
 
 	//Smooth data
-	double *c_t_ptr;
-	double sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
-	ierr = VecGetArray (c_t, &c_t_ptr);										CHKERRQ (ierr);
-	ierr = weierstrassSmoother (c_t_ptr, c_t_ptr, n_misc, sigma_smooth);
-	ierr = VecRestoreArray (c_t, &c_t_ptr);								    CHKERRQ (ierr);
+	// double *c_t_ptr;
+	// double sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
+	// ierr = VecGetArray (c_t, &c_t_ptr);										CHKERRQ (ierr);
+	// ierr = weierstrassSmoother (c_t_ptr, c_t_ptr, n_misc, sigma_smooth);
+	// ierr = VecRestoreArray (c_t, &c_t_ptr);								    CHKERRQ (ierr);
 
 	if (n_misc->writeOutput_)
         dataOut (c_t, n_misc, "results/data.nc");
