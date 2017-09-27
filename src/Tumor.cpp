@@ -50,7 +50,7 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
       ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
       ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
       // re-create phi mesh (deletes old instance and creates new instance)
-      pih_ = std::shared_ptr<Phi> (n_misc);
+      phi_ = std::make_shared<Phi> (n_misc);
     }
     ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
     ierr = VecCopy (p, p_true_);                                  CHKERRQ (ierr);

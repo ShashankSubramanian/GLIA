@@ -13,7 +13,7 @@ class TumorSolverInterface {
 		/// @brief initializes the TumorSolverInterface
 		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc);
 
-		PetscErrorCode setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params)
+		PetscErrorCode setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params);
 		/** @brief Solves the forward tumor problem, given initial concentration
 		*         and tumor parameters
 		*  @param Vec c0  - initial tumor concentration
