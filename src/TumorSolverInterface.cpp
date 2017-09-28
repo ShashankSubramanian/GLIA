@@ -72,15 +72,15 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     n_misc_->phi_spacing_factor_ = tumor_params->phi_spacing_factor;
     n_misc_->phi_sigma_ = tumor_params->phi_sigma;
     // ++ re-initialize Tumor ++
-    ierr = tumor_->setParams (p, n_misc_, npchanged);                         CHKERRQ (ierr);
+    ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
     // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
     // invcludes re-allocating time history for adjoint,
     if (rdchanged || npchanged | ntchanged) {
-      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
-      derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
+      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+      derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
-    inv_solver_->setParams(derivative_operators_, n_misc, tumor_, npchanged); CHKERRQ (ierr);
+    inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);   CHKERRQ (ierr);
 
     PetscFunctionReturn(0);
 }
