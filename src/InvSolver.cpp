@@ -27,7 +27,7 @@ itctx_() {
 PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    if (initialized_) 
+    if (initialized_)
         PetscFunctionReturn (0);
     optsettings_ = std::make_shared<OptimizerSettings> ();
     optfeedback_ = std::make_shared<OptimizerFeedback> ();
@@ -46,12 +46,34 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
         ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
         ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);     CHKERRQ(ierr);
         ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                             CHKERRQ(ierr);
-    }   
+    }
     // create TAO solver object
     if( tao_ == nullptr) {
         ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
     }
     initialized_ = true;
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    itctx_->derivative_operators_ = derivative_operators;
+    itctx_->n_misc_ = n_misc;
+    itctx_->tumor_ = tumor;
+    // re-allocate memory
+    if (npchanged){                                      // re-allocate memory for prec_
+      if(prec_ != nullptr) {ierr = VecDestroy (&prec_);                                    CHKERRQ(ierr);}
+      ierr = VecDuplicate (tumor->p_, &prec_);                                             CHKERRQ(ierr);
+      ierr = VecSet (prec_, 0.0);                                                          CHKERRQ(ierr);
+                                                        // re-allocate memory for H
+      if(H_ != nullptr) {ierr = MatDestroy (&H_);                                          CHKERRQ(ierr);}
+      ierr = MatDestroy (&H_);
+      int np = n_misc->np_;
+      ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+      ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);        CHKERRQ(ierr);
+      ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                CHKERRQ(ierr);
+    }
     PetscFunctionReturn (0);
 }
 
@@ -187,13 +209,13 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	Event e ("tao-evaluate-objective-tumor");
-    std::array<double, 7> t = {0}; 
+    std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 	ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
 	self_exec_time += MPI_Wtime ();
 	accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
-    e.addTimings (t); 
+    e.addTimings (t);
     e.stop ();
 	PetscFunctionReturn (0);
 }
@@ -211,7 +233,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tao-evaluate-gradient-tumor");
-    std::array<double, 7> t = {0}; 
+    std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
@@ -222,7 +244,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     }
     self_exec_time += MPI_Wtime ();
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
-    e.addTimings (t); 
+    e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
 }
@@ -256,7 +278,7 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec p, PetscReal *
 PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	
+
     Event e ("tao-hessian-matvec-tumor");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     // get context
@@ -314,7 +336,7 @@ PetscErrorCode applyPreconditioner (void *ptr, Vec x, Vec pinvx) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tao-apply-hessian-preconditioner");
-    std::array<double, 7> t = {0}; 
+    std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     double *ptr_pinvx = NULL, *ptr_x = NULL;
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
@@ -358,16 +380,16 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     if (its == 0) {
         s << " Itr"  << "     J" << "            ||g||_2" << "      step";
         ierr = tuMSG ("");                                                         CHKERRQ(ierr);
-        ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr); 
-        s.str (""); 
+        ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
+        s.str ("");
         s.clear ();
     }
     s << "\n" <<" " << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(3)<< its
     << "     " << std::scientific << std::setprecision(5) << J
     << "     " << std::scientific << std::setprecision(5) << gnorm
     << "     " << std::scientific << std::setprecision(5) << step;
-    ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr); 
-    s.str (""); 
+    ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
+    s.str ("");
     s.clear ();
     ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     itctx->optfeedback_->nb_krylov_it = 0;
@@ -388,7 +410,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt n,PetscReal rnorm, void *ptr
 	PetscErrorCode ierr = 0;
 
 	Vec x;
-	ierr = KSPBuildSolution (ksp,NULL,&x);                                                                          CHKERRQ(ierr); 
+	ierr = KSPBuildSolution (ksp,NULL,&x);                                                                          CHKERRQ(ierr);
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
 	itctx->optfeedback_->nb_krylov_it++;                 // accumulate number of krylov iterations
     // ierr = PetscPrintf (PETSC_COMM_WORLD,"iteration %D solution vector:\n",n);CHKERRQ(ierr);
@@ -436,7 +458,7 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr) {
     if (itctx->optsettings_->fseqtype == QDFS) {
     	// assuming quadratic convergence (we do not solver more accurately than 12 digits)
     	reltol = PetscMax(lowergradbound, PetscMin(uppergradbound, gnorm));
-    } 
+    }
     else {
     	// assuming superlinear convergence (we do not solver  more accurately than 12 digitis)
     	reltol = PetscMax (lowergradbound, PetscMin (uppergradbound, std::sqrt(gnorm)));
@@ -526,13 +548,13 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     	if (verbosity > 1) {
     			ss << "step size in linesearch: " << std::scientific << step;
     			ierr = tuMSGstd(ss.str());                                                CHKERRQ(ierr);
-    			ss.str(std::string()); 
+    			ss.str(std::string());
                 ss.clear();
     	}
     	if (step < minstep) {
     			ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
     			ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
-    			ss.str(std::string()); 
+    			ss.str(std::string());
                 ss.clear();
     			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);                 CHKERRQ(ierr);
     			PetscFunctionReturn(ierr);
@@ -547,7 +569,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		<< std::left << std::setw(14) << gttol*g0norm << " = " << "tol";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                        CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
     	// ||g_k||_2 < tol
     	if (gnorm < gatol) {
@@ -559,7 +581,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		<< std::left << std::setw(14) << gatol << " = " << "tol";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                        CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
     	// iteration number exceeds limit
     	if (iter > maxiter) {
@@ -571,7 +593,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                        CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
     	// store objective function value
     	ctx->jvalold = J;
@@ -580,13 +602,13 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     		PetscFunctionReturn(ierr);
     	}
 
-    } 
+    }
     else {
 		// if the gradient is zero, we should terminate immediately
 		if (gnorm == 0) {
 			ss << "||g|| = " << std::scientific << 0.0 << " < " << gatol  << " = " << "bound";
 			ierr = tuMSGwarn(ss.str());                                                   CHKERRQ(ierr);
-			ss.str(std::string()); 
+			ss.str(std::string());
             ss.clear();
 			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                       CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);
@@ -695,7 +717,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
     ctx->optfeedback_->converged = false;
     // initialize flags for stopping conditions
-    for (int i = 0; i < nstop; i++) 
+    for (int i = 0; i < nstop; i++)
         stop[i] = false;
     // only check convergence criteria after a certain number of iterations
     if (iter >= miniter && iter > 1) {
@@ -712,7 +734,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
         << std::left << std::setw(14) << tolj*theta << " = " << "tol*|1+J|";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
     	// ||dx|| < sqrt(tolj)*(1+||x||)
     	if (normdx < tolx*(1+normx)) {
@@ -723,7 +745,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
         << std::left << std::setw(14) << tolx*(1+normx) << " = " << "sqrt(tol)*(1+||x||)";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
     	// ||g_k||_2 < cbrt(tolj)*abs(1+Jc)
     	if (gnorm < tolg*theta) {
@@ -734,7 +756,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
         << std::left << std::setw(14) << tolg*theta << " = " << "cbrt(tol)*|1+J|";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
     	// ||g_k||_2 < tol
     	if (gnorm < gatol) {
@@ -745,7 +767,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     	<< std::left << std::setw(14) << gatol << " = " << "tol";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
 
     	if (gnorm < gtolbound*g0norm) {
@@ -756,7 +778,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
 		<< std::left << std::setw(14) << gtolbound*g0norm << " = " << "kappa*||g0||";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
 
     	if (iter > maxiter) {
@@ -767,7 +789,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
 		<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
 
     	if (iter > iterbound) {
@@ -778,7 +800,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
 		<< std::left << std::setw(14) << iterbound << " = " << "iterbound";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
-    	ss.str(std::string()); 
+    	ss.str(std::string());
         ss.clear();
 
     	// store objective function value
@@ -801,13 +823,13 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
 			ctx->optfeedback_->converged = true;
 			PetscFunctionReturn(ierr);
     	}
-    } 
+    }
     else {
     	// if the gradient is zero, we should terminate immediately
     	if (gnorm == 0) {
 			ss << "||g|| = " << std::scientific << 0.0 << " < " << gatol  << " = " << "bound";
 			ierr = tuMSGwarn(ss.str());                                                 CHKERRQ(ierr);
-			ss.str(std::string()); 
+			ss.str(std::string());
             ss.clear();
 			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                     CHKERRQ(ierr);
 			PetscFunctionReturn(ierr);

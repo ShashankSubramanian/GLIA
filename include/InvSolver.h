@@ -55,12 +55,12 @@ struct CtxInv {
 
     ~CtxInv () {
         if (c0old != nullptr) {
-            VecDestroy (&c0old); 
-            c0old = nullptr; 
+            VecDestroy (&c0old);
+            c0old = nullptr;
         }
         if (tmp != nullptr) {
-            VecDestroy (&tmp);   
-            tmp = nullptr; 
+            VecDestroy (&tmp);
+            tmp = nullptr;
         }
     }
 };
@@ -69,6 +69,7 @@ class InvSolver {
     public :
         InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
         PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
+        PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
         PetscErrorCode solve ();
         // setter functions
         void setData (Vec d) {data_ = d;}
