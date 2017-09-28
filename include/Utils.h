@@ -1,7 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-// #define BRAIN
+#define BRAIN
 #define ALIGNMENT 32
 // #define POSITIVITY
 
@@ -132,10 +132,10 @@ class NMisc {
         , beta_ (1e-3)
         , writeOutput_ (1)
         , verbosity_ (1)
-        , k_gm_wm_ratio_ (1.0 / 3.0)
-        , k_glm_wm_ratio_ (3.0 / 5.0)
+        , k_gm_wm_ratio_ (1.0 / 10.0)
+        , k_glm_wm_ratio_ (0.0)
         , r_gm_wm_ratio_ (1.0)
-        , r_glm_wm_ratio_ (0.0) 
+        , r_glm_wm_ratio_ (1.0) 
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5) 
         , obs_threshold_ (0.0) {
