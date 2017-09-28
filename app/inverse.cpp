@@ -1,7 +1,9 @@
 #include "Utils.h"
 #include "TumorSolverInterface.h"
 
-static char help[] = "Inverse Driver";
+static char help[] = "Inverse Driver \
+\n Testcase 1 - Constant reaction and diffusion coefficient \
+\n Testcase 2 - Sinusoidal reaction and diffusion coefficient";
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
@@ -15,10 +17,37 @@ int main (int argc, char** argv) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     int n[3];
     n[0] = 64;
     n[1] = 64;
     n[2] = 64;
+    int testcase = 0;
+
+    PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
+    PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
+    PetscOptionsInt ("-ny", "NY", "", n[1], &n[1], NULL);
+    PetscOptionsInt ("-nz", "NZ", "", n[2], &n[2], NULL);
+    PetscOptionsInt ("-testcase", "Test Cases", "", testcase, &testcase, NULL);
+    PetscOptionsEnd ();
+
+    PCOUT << " ----- Grid Size: " << n[0] << "x" << n[1] << "x" << n[2] << " ---- " << std::endl;
+    switch (testcase) {
+        case CONSTCOEF: {
+            PCOUT << " ----- Test Case 1: No brain, Constant reaction and diffusion ---- " << std::endl;
+            break;
+        }
+        case SINECOEF: {
+            PCOUT << " ----- Test Case 2: No brain, Sinusoidal reaction and diffusion ---- " << std::endl;
+            break;
+        }
+        case BRAIN: {
+            PCOUT << " ----- Full brain test ---- " << std::endl;
+            break;
+        }
+        default: break;
+    }
+
     accfft_init();
     MPI_Comm c_comm;
     int c_dims[2] = { 0 };
@@ -34,7 +63,7 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
-    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm);   //This class contains all required parameters
+    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
     Vec c_0, data, p_rec;

@@ -21,11 +21,16 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
     dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
 
-    #ifndef BRAIN
+    if (n_misc->testcase_ != BRAIN) {
         double *rho_vec_ptr;
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);                            CHKERRQ (ierr);
         int64_t X, Y, Z, index;
-        double amp = std::min (1.0, rho_scale);
+        double amp;
+        if (n_misc->testcase_ == CONSTCOEF)
+            amp = 0.0;    
+        else if (n_misc->testcase_ == SINECOEF)
+            amp = std::min (1.0, rho_scale_); 
+        
         double freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {
@@ -43,11 +48,12 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
             }
         }
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);                            CHKERRQ (ierr);
-    #else
+    }
+    else {
         ierr = VecAXPY (rho_vec_, dr_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (rho_vec_, dr_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (rho_vec_, dr_dm_glm, mat_prop->glm_);                   CHKERRQ (ierr);
-    #endif
+    }
 
     if (smooth_flag_)
         this->smooth (n_misc);

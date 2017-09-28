@@ -1,7 +1,6 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-#define BRAIN
 #define ALIGNMENT 32
 // #define POSITIVITY
 
@@ -20,6 +19,7 @@
 
 
 enum {QDFS = 0, SLFS = 1};
+enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -37,7 +37,7 @@ struct OptimizerSettings {
     OptimizerSettings ()
     :
     beta (1E-3),
-    opttolgrad (1E-6),
+    opttolgrad (1E-4),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
@@ -118,7 +118,7 @@ struct TumorSettings {
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase)
         : rd_ (1)   //Reaction Diffusion
         , dt_ (0.02)
         , nt_(16)
@@ -138,18 +138,20 @@ class NMisc {
         , r_glm_wm_ratio_ (1.0) 
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5) 
-        , obs_threshold_ (0.0) {
+        , obs_threshold_ (0.0) 
+        , testcase_ (testcase) {
 
             time_horizon_ = nt_ * dt_;
-            #ifdef BRAIN
+            if (testcase_ == BRAIN) {
                 user_cm_[0] = 4.0;
                 user_cm_[1] = 2.03;
                 user_cm_[2] = 2.07;
-            #else
+            }
+            else {
                 user_cm_[0] = M_PI;
                 user_cm_[1] = M_PI;
                 user_cm_[2] = M_PI;
-            #endif
+            }
 
             memcpy (n_, n, 3 * sizeof(int));
             memcpy (isize_, isize, 3 * sizeof(int));
@@ -170,6 +172,8 @@ class NMisc {
             for(int i=0; i < 7; ++i)
                 timers_[i] = 0;
         }
+
+        int testcase_;
         int n_[3];
         int isize_[3];
         int osize_[3];

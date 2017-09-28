@@ -22,9 +22,10 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr;
 	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
-	#ifndef BRAIN
+	if (n_misc->testcase_ != BRAIN) {
 		ierr = VecSet (filter_, 1.0);						  CHKERRQ (ierr);
-	#else
+	}
+	else {
 		ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 		ierr = VecGetArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 		ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
@@ -51,7 +52,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 		ierr = VecRestoreArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
 		ierr = VecRestoreArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 		ierr = VecRestoreArray (filter_, &filter_ptr);            CHKERRQ (ierr);
-	#endif
+	}
 
 	PetscFunctionReturn(0);
 }

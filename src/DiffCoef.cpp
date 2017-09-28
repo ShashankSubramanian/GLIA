@@ -49,13 +49,18 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
     dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
-    #ifndef BRAIN
+    if (n_misc->testcase_ != BRAIN) {
         double *kxx_ptr, *kyy_ptr, *kzz_ptr;
         ierr = VecGetArray (kxx_, &kxx_ptr);                                CHKERRQ (ierr);
         ierr = VecGetArray (kyy_, &kyy_ptr);                                CHKERRQ (ierr);
         ierr = VecGetArray (kzz_, &kzz_ptr);                                CHKERRQ (ierr);
         int64_t X, Y, Z, index;
-        double amp = std::min (1.0, k_scale);                  
+        double amp;
+        if (n_misc->testcase_ == CONSTCOEF)
+            amp = 0.0;    
+        else if (n_misc->testcase_ == SINECOEF)
+            amp = std::min (1.0, k_scale_); 
+
         double freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {
@@ -77,14 +82,15 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         ierr = VecRestoreArray (kxx_, &kxx_ptr);                            CHKERRQ (ierr);
         ierr = VecRestoreArray (kyy_, &kyy_ptr);                            CHKERRQ (ierr);
         ierr = VecRestoreArray (kzz_, &kzz_ptr);                            CHKERRQ (ierr);
-    #else
+    }
+    else {
         ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);                   CHKERRQ (ierr);
 
         ierr = VecCopy (kxx_, kyy_);                                        CHKERRQ (ierr);
         ierr = VecCopy (kxx_, kzz_);                                        CHKERRQ (ierr);
-    #endif
+    }
 
     //Average diff coeff values for preconditioner for diffusion solve
     ierr = VecSum (kxx_, &kxx_avg_);                                    CHKERRQ (ierr);
