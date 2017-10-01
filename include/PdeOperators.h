@@ -29,6 +29,7 @@ class PdeOperatorsRD : public PdeOperators {
 		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
 
 		Vec *c_;
+		Vec temp_;
 
 		PetscErrorCode solveState (int linearized);
 		PetscErrorCode reaction (int linearized, int i);
