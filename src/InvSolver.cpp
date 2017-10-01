@@ -95,7 +95,7 @@ PetscErrorCode InvSolver::solve () {
     sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
     ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
     //SNAFU
-    ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, sigma_smooth);           CHKERRQ(ierr);
+    // ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, sigma_smooth);           CHKERRQ(ierr);
     //static int it = 0; it++;
     //std::stringstream ss; ss<<"_it-"<<it;
     //std::string s("files/cpl/ITdata"+ss.str()+".nc");

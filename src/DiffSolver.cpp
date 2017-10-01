@@ -21,12 +21,12 @@ DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef>
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
-    // ierr = KSPGetPC (ksp_, &pc_);
-    // ierr = PCSetType (pc_, PCSHELL);
-    // ierr = PCShellSetApply (pc_, applyPC);
-    // ierr = PCShellSetContext (pc_, ctx);
-    // ierr = KSPSetFromOptions (ksp_);
-    // ierr = KSPSetUp (ksp_);
+    ierr = KSPGetPC (ksp_, &pc_);
+    ierr = PCSetType (pc_, PCSHELL);
+    ierr = PCShellSetApply (pc_, applyPC);
+    ierr = PCShellSetContext (pc_, ctx);
+    ierr = KSPSetFromOptions (ksp_);
+    ierr = KSPSetUp (ksp_);
 
 
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
@@ -89,7 +89,7 @@ PetscErrorCode precFactor (double *precfactor, Ctx *ctx) {
                     wz = 0;
 
                 index = x * n_misc->osize_[1] * n_misc->osize_[2] + y * n_misc->osize_[2] + z;
-                precfactor[index] = (1 + 0.5 * n_misc->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
+                precfactor[index] = (1 + 0.25 * ctx->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
                                         + 2.0 * kxz_avg * wx * wz + 2.0 * kyz_avg * wy * wz + kyy_avg * wy * wy
                                                         + kzz_avg * wz *wz));
                 if (precfactor[index] == 0) 
