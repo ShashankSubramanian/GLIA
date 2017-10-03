@@ -14,6 +14,8 @@ ifneq ($(CUDA_DIR),)
 INCDIR+= -I$(CUDA_DIR)/include/
 endif
 APPDIR = ./app
+TIMINGSDIR = ./3rdparty/timings/
+INCDIR+= -I$(TIMINGSDIR)
 
 PSC_INC = -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include  
 PSC_LIB = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
@@ -49,8 +51,8 @@ SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/DerivativeOperators.cpp \
 		  $(SRCDIR)/InvSolver.cpp \
 		  $(SRCDIR)/TumorSolverInterface.cpp \
-		  $(SRCDIR)/EventTimings.cpp \
 		  $(SRCDIR)/Utils.cpp \
+		  $(TIMINGSDIR)/EventTimings.cpp \
 
 GPU_SOURCES =		 
 ifeq ($(BUILD_GPU), 1)
