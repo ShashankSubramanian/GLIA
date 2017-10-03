@@ -11,7 +11,6 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
-    google::InitGoogleLogging (argv[0]);
     PetscErrorCode ierr;
     PetscInitialize (&argc, &argv, (char*) 0, help);
     int procid, nprocs;
@@ -91,7 +90,7 @@ int main (int argc, char** argv) {
 PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    Vec c_rec_0, c_rec; 
+    Vec c_rec_0, c_rec;
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -101,7 +100,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->phi_->apply (c_rec_0, p_rec); 
+    ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_rec_0, n_misc);
@@ -118,12 +117,12 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     ierr = tumor->obs_->apply (c_rec, c_rec);   //Apply observation to reconstructed C to compare
                                                 //values to data
 
-    if (n_misc->writeOutput_) 
+    if (n_misc->writeOutput_)
         dataOut (c_rec, n_misc, "results/CRecon.nc");
 
-    ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr); 
-    ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);         
-    ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr); 
+    ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
+    ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
+    ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
 
     error_norm /= data_norm;
     PetscFunctionReturn (0);
@@ -152,7 +151,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
     #endif
-    if (n_misc->writeOutput_) 
+    if (n_misc->writeOutput_)
         dataOut (c_0, n_misc, "results/c0.nc");
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
@@ -162,4 +161,3 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     PetscFunctionReturn (0);
 }
-

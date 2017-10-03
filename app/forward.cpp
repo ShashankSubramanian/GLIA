@@ -16,7 +16,6 @@ static char help[] = "Forward Driver";
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
-    google::InitGoogleLogging (argv[0]);
     PetscErrorCode ierr;
     PetscInitialize (&argc, &argv, (char*) 0, help);
 
