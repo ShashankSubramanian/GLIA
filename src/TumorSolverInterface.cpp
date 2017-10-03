@@ -155,6 +155,12 @@ PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode TumorSolverInterface::setInitialGuess(double d) {
+  PetscErrorCode ierr;
+  ierr = VecSet (tumor_->p_, d); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;

@@ -74,9 +74,12 @@ class InvSolver {
         // setter functions
         void setData (Vec d) {data_ = d;}
         void setDataGradient (Vec d) {data_gradeval_ = d;}
+        void updateReferenceGradient (bool b) {if (_itctx != nullptr) _itctx->update_reference_gradient = 0;}
+        void setOptFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {optfeedback_ = optfeed; itctx_->optfeedback_ = optfeed;}
         // getter functions
         std::shared_ptr<OptimizerSettings> getOptSettings () {return optsettings_;}
         std::shared_ptr<OptimizerFeedback> getOptFeedback () {return optfeedback_;}
+        std::shared_ptr<CtxInv> getInverseSolverContext() {return itctx_;}
         bool isInitialized () {return initialized_;}
         Vec getPrec () {return prec_;}
         ~InvSolver ();
