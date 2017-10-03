@@ -28,7 +28,7 @@ class TumorSolverInterface {
 		PetscErrorCode solveInverse (Vec prec, Vec d1, Vec d1g = {});
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess (Vec p);
-		PetscErrorCode setInitialGuess(double d)
+		PetscErrorCode setInitialGuess(double d);
 		/** @brief updates the reaction and diffusion coefficients depending on
 		 *         the probability maps for GRAY MATTER, WHITE MATTER and CSF.
 		 *         A additional filter, that filters the admissable area for tumor
@@ -46,7 +46,7 @@ class TumorSolverInterface {
 		/// @brief sets the optimization feedback ptr in inv_solver, overrides old ptr
 		void setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {inv_solver_->setOptFeedback(optfeed);}
 		// defines whether or not we have to update the reference gradeient for the inverse solve
-		void updateReferenceGradient (bool b) {if (inv_solver_ != nullptr) {inv_solver_->updateReferenceGradient(b);}
+		void updateReferenceGradient (bool b) {if (inv_solver_ != nullptr) inv_solver_->updateReferenceGradient(b);}
 		//  ---------  getter functions -------------
 		/// @brief returns the tumor shared ptr
 		std::shared_ptr<Tumor> getTumor () {
