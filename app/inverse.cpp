@@ -93,6 +93,10 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     PetscErrorCode ierr = 0;
     Vec c_rec_0, c_rec; 
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     double data_norm;
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
@@ -108,7 +112,8 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     double max, min;
     ierr = VecMax (c_rec, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_rec, NULL, &min);                                      CHKERRQ (ierr);
-    std::cout << "\nC Reconstructed Max and Min (Before Observation) : " << max << " " << min << std::endl;
+
+    PCOUT << "\nC Reconstructed Max and Min (Before Observation) : " << max << " " << min << std::endl;
 
     ierr = tumor->obs_->apply (c_rec, c_rec);   //Apply observation to reconstructed C to compare
                                                 //values to data

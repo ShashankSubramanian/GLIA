@@ -1,9 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-#define ALIGNMENT 32
 // #define POSITIVITY
-
 #include <petsc.h>
 #include <stdlib.h>
 #include <iomanip>
@@ -16,6 +14,16 @@
 #include <complex>
 #include <iostream>
 #include <algorithm>
+#include <mpi.h>
+#include <stdio.h>
+#include <fstream>
+#include <sstream>
+#include <stdint.h>
+#include <omp.h>
+#include <complex>
+#include <cmath>
+#include <accfft_utils.h>
+
 
 
 enum {QDFS = 0, SLFS = 1};

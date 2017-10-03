@@ -39,14 +39,11 @@ TARGET_BIN= $(BINDIR)/forward
 TARGET_BIN+= $(BINDIR)/inverse
 
 SOURCES = $(SRCDIR)/DiffCoef.cpp\
-		  $(SRCDIR)/dataOut.cpp \
-		  $(SRCDIR)/dataIn.cpp \
 		  $(SRCDIR)/ReacCoef.cpp \
 		  $(SRCDIR)/Phi.cpp \
 		  $(SRCDIR)/Obs.cpp \
 		  $(SRCDIR)/Tumor.cpp \
 		  $(SRCDIR)/MatProp.cpp \
-		  $(SRCDIR)/weierstrassSmoother.cpp \
 		  $(SRCDIR)/DiffSolver.cpp \
 		  $(SRCDIR)/PdeOperators.cpp \
 		  $(SRCDIR)/DerivativeOperators.cpp \

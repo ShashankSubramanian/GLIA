@@ -6,14 +6,14 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
     int nt = n_misc->nt_;
-    c_ = (Vec *) malloc (sizeof (Vec *) * (nt + 1));    //Stores all (nt + 1) tumor concentrations for adjoint eqns
+    c_ = (Vec *) malloc (sizeof (Vec *) * (nt));    //Stores all (nt) tumor concentrations for adjoint eqns
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (c_[0]);
-    for (int i = 1; i < nt + 1; i++) {
+    for (int i = 1; i < nt; i++) {
         ierr = VecDuplicate (c_[0], &c_[i]);
     }
-    for (int i = 0; i < nt + 1; i++) {
+    for (int i = 0; i < nt; i++) {
         ierr = VecSet (c_[i], 0);
     }
 }
@@ -63,10 +63,13 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     #endif
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                                        CHKERRQ (ierr);
-    if (linearized == 0)
-        ierr = VecCopy (tumor_->c_0_, c_[0]);                                           CHKERRQ (ierr);
+    
     for (int i = 0; i < nt; i++) {
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
+        //Copy current conc to use for the adjoint equation
+        if (linearized == 0) {
+            ierr = VecCopy (tumor_->c_t_, c_[i]);                                       CHKERRQ (ierr);
+        }
         ierr = reaction (linearized, i);
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
 
@@ -74,10 +77,6 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         #ifdef POSITIVITY
             ierr = enforcePositivity (tumor_->c_t_, n_misc_); 
         #endif   
-
-        //Copy current conc to use for the adjoint equation
-        if (linearized == 0)
-            ierr = VecCopy (tumor_->c_t_, c_[i + 1]);                                   CHKERRQ (ierr);
     }
 
     PetscFunctionReturn (0);
@@ -92,7 +91,6 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     double dt = n_misc_->dt_;
     ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                     CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);           CHKERRQ (ierr);
-
     ierr = VecGetArray (c_[iter], &c_ptr);                           CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
@@ -112,7 +110,6 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
 
     ierr = VecRestoreArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
-
     PetscFunctionReturn (0);
 }
 
@@ -135,7 +132,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
 PdeOperatorsRD::~PdeOperatorsRD () {
     PetscErrorCode ierr = 0;
     int nt = n_misc_->nt_;
-    for (int i = 0; i < nt + 1; i++) {
+    for (int i = 0; i < nt; i++) {
         ierr = VecDestroy (&c_[i]);
     }
 }
