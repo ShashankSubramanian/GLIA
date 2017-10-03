@@ -126,7 +126,7 @@ struct TumorSettings {
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
         : rd_ (1)   //Reaction Diffusion
         , dt_ (0.02)
         , nt_(16)
@@ -143,10 +143,10 @@ class NMisc {
         , k_gm_wm_ratio_ (1.0 / 10.0)
         , k_glm_wm_ratio_ (0.0)
         , r_gm_wm_ratio_ (1.0)
-        , r_glm_wm_ratio_ (1.0) 
+        , r_glm_wm_ratio_ (1.0)
         , phi_sigma_ (PETSC_PI / 10)
-        , phi_spacing_factor_ (1.5) 
-        , obs_threshold_ (0.0) 
+        , phi_spacing_factor_ (1.5)
+        , obs_threshold_ (0.0)
         , testcase_ (testcase) {
 
             time_horizon_ = nt_ * dt_;
@@ -245,11 +245,6 @@ PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 /* accfft differential operators */
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
 void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
-
-/* helper function for timer accumulation */
-void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec);
-void resetTimers(std::array<double, 7>& t);
-
 
 /* definition of tumor assert */
 #ifndef NDEBUG

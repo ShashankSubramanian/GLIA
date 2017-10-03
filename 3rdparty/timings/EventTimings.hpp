@@ -26,6 +26,12 @@
 #include <array>
 #include "mpi.h"
 
+
+/* helper function for timer accumulation */
+void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec);
+void resetTimers(std::array<double, 7>& t);
+
+
 /// Represents an event that can be started and stopped.
 /** Additionally to the duration there is a special property that can be set for a event.
 A property is a a key-value pair with a numerical value that can be used to trace certain events,

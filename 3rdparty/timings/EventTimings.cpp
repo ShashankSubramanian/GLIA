@@ -29,6 +29,24 @@
 #include <map>
 #include <chrono>
 
+
+void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec) {
+	tloc[5] = selfexec;
+	tacc[0] += tloc[0];
+	tacc[1] += tloc[1];
+	tacc[2] += tloc[2];
+	tacc[3] += tloc[3];
+	tacc[4] += tloc[4];
+	tacc[5] += tloc[5];
+	tacc[6] += tloc[6];
+}
+
+void resetTimers(std::array<double, 7>& t) {
+	t[0] = 0; t[1] = 0; t[2] = 0; t[3] = 0;
+	t[4] = 0; t[5] = 0; t[6] = 0; t[7] = 0;
+}
+
+
 Event::Event(std::string eventName, Clock::duration eventDuration)
   : name(eventName),
     duration(eventDuration),

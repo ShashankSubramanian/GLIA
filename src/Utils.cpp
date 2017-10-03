@@ -74,22 +74,6 @@ void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, doub
 	ierr = VecRestoreArray (dz, &dz_ptr);
 }
 
-void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec) {
-	tloc[5] = selfexec;
-	tacc[0] += tloc[0];
-	tacc[1] += tloc[1];
-	tacc[2] += tloc[2];
-	tacc[3] += tloc[3];
-	tacc[4] += tloc[4];
-	tacc[5] += tloc[5];
-	tacc[6] += tloc[6];
-}
-
-void resetTimers(std::array<double, 7>& t) {
-	t[0] = 0; t[1] = 0; t[2] = 0; t[3] = 0;
-	t[4] = 0; t[5] = 0; t[6] = 0; t[7] = 0;
-}
-
 /* definition of tumor assert */
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg)
 {
@@ -126,7 +110,7 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 
 	std::stringstream str;
 	const char *prefix = "./brain_data/";
-	str << prefix << "/" << n_misc->n_[0] << "/" << fname;	
+	str << prefix << "/" << n_misc->n_[0] << "/" << fname;
 	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
 	return;
 }
@@ -134,9 +118,9 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	double *a_ptr;
 	PetscErrorCode ierr;
-	ierr = VecGetArray (A, &a_ptr);							
+	ierr = VecGetArray (A, &a_ptr);
 	dataIn(a_ptr, n_misc, fname);
-	ierr = VecRestoreArray (A, &a_ptr);						
+	ierr = VecRestoreArray (A, &a_ptr);
 }
 
 void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
@@ -164,9 +148,9 @@ void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	double *a_ptr;
 	PetscErrorCode ierr;
-	ierr = VecGetArray (A, &a_ptr);							
+	ierr = VecGetArray (A, &a_ptr);
 	dataOut (a_ptr, n_misc, fname);
-	ierr = VecRestoreArray (A, &a_ptr);						
+	ierr = VecRestoreArray (A, &a_ptr);
 }
 
 //TODO
