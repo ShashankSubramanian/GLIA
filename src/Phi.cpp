@@ -48,9 +48,9 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         }
 
-        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        dataOut (phi_ptr, n_misc, "results/phi.nc");
-        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+        if(n_misc->writeOutput_) {
+            dataOut (phi_vec_[i], n_misc, "results/phi.nc");
+        }
     }
 
     PetscFunctionReturn(0);
