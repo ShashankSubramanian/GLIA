@@ -5,7 +5,6 @@
 #include "DerivativeOperators.h"
 #include "PdeOperators.h"
 #include "Utils.h"
-#include "EventTimings.hpp"
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) :
 initialized_(false),
@@ -80,7 +79,7 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
 PetscErrorCode InvSolver::solve () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    EventRegistry::initialize ();
+
     TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
     TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
     TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
@@ -150,11 +149,8 @@ PetscErrorCode InvSolver::solve () {
     ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get());    CHKERRQ(ierr);
     /* === solve === */
     // --------
-    Event e1 ("solve-tumor-inverse-tao");
     //resetTimers(itctx->n_misc_->timers_);
     ierr = TaoSolve (tao_);                                                               CHKERRQ(ierr);
-    e1.addTimings (itctx_->n_misc_->timers_);
-    e1.stop ();
     // --------
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                         CHKERRQ(ierr);
@@ -172,18 +168,6 @@ PetscErrorCode InvSolver::solve () {
 	// reset vectors (remember, memory managed on caller side):
 	data_ = nullptr;
 	data_gradeval_ = nullptr;
-
-
-    EventRegistry::finalize ();
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
-    if (procid == 0) {
-        EventRegistry r;
-        r.print ();
-        r.print ("EventsTimings.log", true);
-    }
 
 	PetscFunctionReturn (0);
 }

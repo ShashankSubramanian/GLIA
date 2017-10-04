@@ -62,6 +62,8 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
+    EventRegistry::initialize ();
+    Event e1 ("solve-tumor-inverse-tao");
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
@@ -80,6 +82,15 @@ int main (int argc, char** argv) {
     double l2_rel_error = 0.0;
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
+
+    e1.addTimings (n_misc->timers_);
+    e1.stop ();
+    EventRegistry::finalize ();
+    if (procid == 0) {
+        EventRegistry r;
+        r.print ();
+        r.print ("EventsTimings.log", true);
+    }
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
