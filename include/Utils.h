@@ -137,7 +137,7 @@ class NMisc {
         , p_scale_true_ (1.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)
-        , writeOutput_ (1)
+        , writeOutput_ (0)
         , verbosity_ (1)
         , k_gm_wm_ratio_ (1.0 / 10.0)
         , k_glm_wm_ratio_ (0.0)
