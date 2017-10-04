@@ -8,7 +8,6 @@
 #include "petsctao.h"
 #include <accfft.h>
 #include <accfft_operators.h>
-#include <glog/logging.h>
 #include <math.h>
 #include <memory>
 #include <complex>
