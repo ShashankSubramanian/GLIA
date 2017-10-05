@@ -268,7 +268,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
-    ierr = MatShellGetContext (A, &ptr);						              CHKERRQ (ierr);
+    ierr = MatShellGetContext (A, &ptr);						             CHKERRQ (ierr);
     CtxInv *itctx = reinterpret_cast<CtxInv*>( ptr);
     // eval hessian
     ierr = itctx->derivative_operators_->evaluateHessian (y, x);
@@ -363,16 +363,18 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // print out Newton iteration information
     std::stringstream s;
     if (its == 0) {
-        s << " Itr"  << "     J" << "            ||g||_2" << "      step";
+        s << std::setw(3)  << " Itr" << std::setw(10) << " J " << std::setw(10) << " ||g||_2 "
+          << std::setw(3)  << " ||g||_2 / ||g0||_2 " << std::setw(10) << " step ";
         ierr = tuMSG ("");                                                         CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
         s.str ("");
         s.clear ();
     }
-    s << "\n" <<" " << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(3)<< its
-    << "     " << std::scientific << std::setprecision(5) << J
-    << "     " << std::scientific << std::setprecision(5) << gnorm
-    << "     " << std::scientific << std::setprecision(5) << step;
+    s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(3)<< its
+      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << J
+      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << gnorm
+      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << gnorm/itctx->optfeedback_->gradnorm0
+      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << step;
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
@@ -523,7 +525,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                          CHKERRQ(ierr);
 		PetscFunctionReturn(ierr);
     }
-    if(verbosity >= 2) {
+    if(verbosity >= 1) {
     	ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
     }
     // only check convergence criteria after a certain number of iterations
