@@ -1,7 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-// #define POSITIVITY
+#define POSITIVITY
 #include <petsc.h>
 #include <stdlib.h>
 #include <iomanip>
@@ -128,10 +128,10 @@ class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
         : rd_ (1)   //Reaction Diffusion
-        , dt_ (0.02)
-        , nt_(16)
+        , dt_ (0.16)
+        , nt_(1)
         , np_ (1)
-        , k_ (0.1)
+        , k_ (0.0)
         , kf_(0.0)
         , rho_ (8)
         , p_scale_ (0.0)

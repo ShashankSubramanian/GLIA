@@ -113,10 +113,6 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
-    #ifdef POSITIVITY
-        ierr = enforcePositivity (c_rec_0, n_misc);
-    #endif
-
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
     double max, min;
