@@ -376,7 +376,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s.str ("");
         s.clear ();
     }
-    s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its std::setfill('')
+    s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill('')
       << "     " << std::scientific << std::setprecision(5) << std::setw(15) << J
       << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm/itctx->optfeedback_->gradnorm0
       << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm
