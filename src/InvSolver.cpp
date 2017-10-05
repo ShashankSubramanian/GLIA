@@ -363,18 +363,19 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // print out Newton iteration information
     std::stringstream s;
     if (its == 0) {
-        s << std::setw(3)  << " Itr" << std::setw(10) << " J " << std::setw(10) << " ||g||_2 "
-          << std::setw(3)  << " ||g||_2 / ||g0||_2 " << std::setw(10) << " step ";
+        s << std::setw(3)  << " iter"              << "     " << std::setw(15) << "objective (abs)" << "     "
+          << std::setw(15) << "||gradient||_2,rel" << "     " << std::setw(15) << "||gradient||_2"  << "     "
+          << std::setw(15) << "step";
         ierr = tuMSG ("");                                                         CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
         s.str ("");
         s.clear ();
     }
     s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(3)<< its
-      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << J
-      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << gnorm
-      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << gnorm/itctx->optfeedback_->gradnorm0
-      << "     " << std::scientific << std::setprecision(5) << std::setw(10) << step;
+      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << J
+      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm/itctx->optfeedback_->gradnorm0
+      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm
+      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << step;
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
