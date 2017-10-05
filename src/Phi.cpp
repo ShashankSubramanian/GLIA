@@ -39,7 +39,7 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
         initialize (phi_ptr, n_misc, &center[3 * i]);
         ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
- 
+
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
         if (n_misc->testcase_ == BRAIN) {  //BRAIN
@@ -59,9 +59,17 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
 PetscErrorCode Phi::phiMesh (double *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    int nprocs, procid;
+	  MPI_Comm_rank(c_comm, &procid);
+    MPI_Comm_size(c_comm, &nprocs);
     int h = round (std::pow (np_, 1.0 / 3.0));
-
     double space[3];
+
+    #ifdef VISUALIZE_PHI
+     std::stringstream phivis;
+     phivis <<" sigma = "<<sigma_<<", spacing = "<<phiSpacingFactor_ * sigma_<<std::endl;
+     phivis <<" centers = ["<<std::endl;
+   #endif
 
     space[0] =  spacing_factor_ * sigma_;
     space[1] =  spacing_factor_ * sigma_;
@@ -73,7 +81,6 @@ PetscErrorCode Phi::phiMesh (double *center) {
         center[2] = cm_[2];
         PetscFunctionReturn(0);
     }
-
     if (np_ % 2 == 1) {
         int ptr = 0;
         for (int k = -(h - 1) / 2; k <= (h - 1) / 2; k++)
@@ -82,6 +89,9 @@ PetscErrorCode Phi::phiMesh (double *center) {
                     center[ptr + 0] = i * space[0] + cm_[0];
                     center[ptr + 1] = j * space[1] + cm_[1];
                     center[ptr + 2] = k * space[2] + cm_[2];
+                    #ifdef VISUALIZE_PHI
+                     phivis << " " << center[ptr + 0] <<", " << center[ptr + 1] << ", "  << center[ptr + 2] << std::endl;
+                    #endif
                     ptr += 3;
                 }
     }
@@ -94,10 +104,25 @@ PetscErrorCode Phi::phiMesh (double *center) {
                         center[ptr + 0] = i * space[0] + cm_[0];
                         center[ptr + 1] = j * space[1] + cm_[1];
                         center[ptr + 2] = k * space[2] + cm_[2];
+                        #ifdef VISUALIZE_PHI
+                         phivis << " " << center[ptr + 0] <<", " << center[ptr + 1] << ", "  << center[ptr + 2] <<std::endl;
+                        #endif
                         ptr += 3;
                     }
                  }
     }
+    #ifdef VISUALIZE_PHI
+    phivis << "];"<<std::endl;
+    std::fstream phifile;
+    static int ct = 0;
+    if(procid == 0) {
+      std::stringstream ssct; ssct<<ct;
+      phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+      phifile << phivis.str()<<std::endl;
+      phifile.close();
+      ct++;
+    }
+    #endif
 
     PetscFunctionReturn(0);
 }
