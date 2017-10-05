@@ -366,7 +366,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s << std::setw(3)  << " iter"              << "     " << std::setw(15) << "objective (abs)" << "     "
           << std::setw(15) << "||gradient||_2,rel" << "     " << std::setw(15) << "||gradient||_2"  << "     "
           << std::setw(15) << "step";
-        ierr = tuMSG ("");                                                         CHKERRQ(ierr);
+        ierr = tuMSG (" starting optimization, TAO's Gauß-Newton");                                                         CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
         s.str ("");
         s.clear ();
@@ -379,8 +379,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
-    ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
-    itctx->optfeedback_->nb_krylov_it = 0;
+    //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
+    //itctx->optfeedback_->nb_krylov_it = 0;
     PetscFunctionReturn (0);
 }
 
@@ -393,17 +393,27 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
 	. PetscRela rnorm  l2-norm (preconditioned) of residual
   . void *ptr        optional user defined context
  */
-PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt n,PetscReal rnorm, void *ptr) {
+PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Vec x;
-	ierr = KSPBuildSolution (ksp,NULL,&x);                                                                          CHKERRQ(ierr);
+	Vec x: int maxit; PetscScalar divtol, abstol, reltol;
+	ierr = KSPBuildSolution (ksp,NULL,&x);
+  ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
-	itctx->optfeedback_->nb_krylov_it++;                 // accumulate number of krylov iterations
-    // ierr = PetscPrintf (PETSC_COMM_WORLD,"iteration %D solution vector:\n",n);CHKERRQ(ierr);
-    // ierr = VecView(x,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-    //ierr = PetscPrintf (PETSC_COMM_WORLD,"iteration %D KSP Residual norm %14.12e \n",n,rnorm);CHKERRQ(ierr);
+	itctx->optfeedback_->nb_krylov_it++;                // accumulate number of krylov iterations
+
+  std::stringstream s;
+  if (its == 0) {
+      s << std::setw(3)  << " PCG:" << " computing solution of hessian system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+  }
+  s << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+  ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+  s.str (""); s.clear ();
 	PetscFunctionReturn (0);
 }
 
@@ -454,9 +464,9 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr) {
     // overwrite tolerances with estimate
     ierr = KSPSetTolerances (ksp, reltol, abstol, divtol, maxit);                       CHKERRQ(ierr);
 
-    if (procid == 0){
-    	std::cout << " ksp rel-tol (Eisenstat/Walker): " << reltol << ", grad0norm: " << g0norm<<", gnorm/grad0norm: " << gnorm << std::endl;
-    }
+    //if (procid == 0){
+    //	std::cout << " ksp rel-tol (Eisenstat/Walker): " << reltol << ", grad0norm: " << g0norm<<", gnorm/grad0norm: " << gnorm << std::endl;
+    //}
     PetscFunctionReturn (0);
 }
 /* ------------------------------------------------------------------- */
@@ -526,9 +536,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                          CHKERRQ(ierr);
 		PetscFunctionReturn(ierr);
     }
-    if(verbosity >= 1) {
-    	ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
-    }
+    //if(verbosity >= 1) {
+    //	ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
+    //}
     // only check convergence criteria after a certain number of iterations
     stop[0] = false; stop[1] = false; stop[2] = false;
     ctx->optfeedback_->converged = false;
@@ -580,7 +590,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		<< std::right << iter  << "    >    "
 		<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
     	ctx->convergence_message.push_back(ss.str());
-    	ierr = tuMSGstd(ss.str());                                                        CHKERRQ(ierr);
+      if(verbosity >= 3) {
+    	  ierr = tuMSGstd(ss.str());                                                  CHKERRQ(ierr);
+      }
     	ss.str(std::string());
         ss.clear();
     	// store objective function value
