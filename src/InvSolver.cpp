@@ -397,7 +397,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Vec x: int maxit; PetscScalar divtol, abstol, reltol;
+	Vec x; int maxit; PetscScalar divtol, abstol, reltol;
 	ierr = KSPBuildSolution (ksp,NULL,&x);
   ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
