@@ -366,9 +366,9 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // print out Newton iteration information
     std::stringstream s;
     if (its == 0) {
-        s << std::setw(4)  << " iter"              << "     " << std::setw(15) << "objective (abs)" << "     "
-          << std::setw(15) << "||gradient||_2,rel" << "     " << std::setw(15) << "||gradient||_2"  << "     "
-          << std::setw(15) << "step";
+        s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
+          << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
+          << std::setw(18) << "step";
         ierr = tuMSG (" starting optimization, TAO's Gauß-Newton");                CHKERRQ(ierr);
         ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
@@ -377,10 +377,10 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s.clear ();
     }
     s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
-      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << J
-      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm/itctx->optfeedback_->gradnorm0
-      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm
-      << "     " << std::scientific << std::setprecision(5) << std::setw(15) << step;
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->optfeedback_->gradnorm0
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step;
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
