@@ -163,6 +163,9 @@ PetscErrorCode InvSolver::solve () {
 	ierr = TaoGetSolutionStatus (tao_, NULL, &J, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
 	/* display convergence reason: */
 	ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
+  ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+  ierr = tuMSGstd (" optimization done"); CHKERRQ(ierr);
+  ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
 	itctx_->update_reference_gradient = false;
 	// reset vectors (remember, memory managed on caller side):
@@ -363,15 +366,17 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // print out Newton iteration information
     std::stringstream s;
     if (its == 0) {
-        s << std::setw(3)  << " iter"              << "     " << std::setw(15) << "objective (abs)" << "     "
+        s << std::setw(4)  << " iter"              << "     " << std::setw(15) << "objective (abs)" << "     "
           << std::setw(15) << "||gradient||_2,rel" << "     " << std::setw(15) << "||gradient||_2"  << "     "
           << std::setw(15) << "step";
-        ierr = tuMSG (" starting optimization, TAO's Gauß-Newton");                                                         CHKERRQ(ierr);
+        ierr = tuMSG (" starting optimization, TAO's Gauß-Newton");                CHKERRQ(ierr);
+        ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
+        ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         s.str ("");
         s.clear ();
     }
-    s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(3)<< its
+    s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its std::setfill('')
       << "     " << std::scientific << std::setprecision(5) << std::setw(15) << J
       << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm/itctx->optfeedback_->gradnorm0
       << "     " << std::scientific << std::setprecision(5) << std::setw(15) << gnorm
@@ -410,7 +415,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
       ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
       s.str (""); s.clear ();
   }
-  s << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+  s << std::setw(3)  << " PCG:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
     << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
   s.str (""); s.clear ();
@@ -566,7 +571,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		<< std::right << std::scientific << gnorm << "    <    "
 		<< std::left << std::setw(14) << gttol*g0norm << " = " << "tol";
     	ctx->convergence_message.push_back(ss.str());
-    	ierr = tuMSGstd(ss.str());                                                        CHKERRQ(ierr);
+      if(verbosity >= 3) {
+    	  ierr = tuMSGstd(ss.str());                                                  CHKERRQ(ierr);
+      }
     	ss.str(std::string());
         ss.clear();
     	// ||g_k||_2 < tol
@@ -578,7 +585,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 		<< std::right << std::scientific << gnorm << "    <    "
 		<< std::left << std::setw(14) << gatol << " = " << "tol";
     	ctx->convergence_message.push_back(ss.str());
-    	ierr = tuMSGstd(ss.str());                                                        CHKERRQ(ierr);
+      if(verbosity >= 3) {
+    	  ierr = tuMSGstd(ss.str());                                                  CHKERRQ(ierr);
+      }
     	ss.str(std::string());
         ss.clear();
     	// iteration number exceeds limit
