@@ -1,4 +1,4 @@
-spacing_factor_#include "Phi.h"
+#include "Phi.h"
 
 Phi::Phi (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
