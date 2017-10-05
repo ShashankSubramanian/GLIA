@@ -1,4 +1,4 @@
-#include "Phi.h"
+spacing_factor_#include "Phi.h"
 
 Phi::Phi (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
@@ -60,14 +60,14 @@ PetscErrorCode Phi::phiMesh (double *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     int nprocs, procid;
-	  MPI_Comm_rank(c_comm, &procid);
-    MPI_Comm_size(c_comm, &nprocs);
+	  MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
+    MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
     int h = round (std::pow (np_, 1.0 / 3.0));
     double space[3];
 
     #ifdef VISUALIZE_PHI
      std::stringstream phivis;
-     phivis <<" sigma = "<<sigma_<<", spacing = "<<phiSpacingFactor_ * sigma_<<std::endl;
+     phivis <<" sigma = "<<sigma_<<", spacing = "<<spacing_factor_ * sigma_<<std::endl;
      phivis <<" centers = ["<<std::endl;
    #endif
 
