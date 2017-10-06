@@ -1,7 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-#define POSITIVITY
+//#define POSITIVITY
 #include <petsc.h>
 #include <stdlib.h>
 #include <iomanip>
