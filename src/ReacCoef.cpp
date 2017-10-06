@@ -50,6 +50,7 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);                            CHKERRQ (ierr);
     }
     else {
+        ierr = VecSet (rho_vec_, 0.0);                                          CHKERRQ (ierr);
         ierr = VecAXPY (rho_vec_, dr_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (rho_vec_, dr_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (rho_vec_, dr_dm_glm, mat_prop->glm_);                   CHKERRQ (ierr);
@@ -59,7 +60,7 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
         this->smooth (n_misc);
 
     PetscScalar norm_rho;
-    ierr = VecNorm (rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
+    ierr = VecNorm (PETSC_COMM_WORLD, rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
     ierr = PetscPrintf("nor mof rho: %e", norm_rho);
     PetscFunctionReturn(0);
 }

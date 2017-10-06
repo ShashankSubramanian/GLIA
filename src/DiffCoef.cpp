@@ -57,9 +57,9 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         int64_t X, Y, Z, index;
         double amp;
         if (n_misc->testcase_ == CONSTCOEF)
-            amp = 0.0;    
+            amp = 0.0;
         else if (n_misc->testcase_ == SINECOEF)
-            amp = std::min (1.0, k_scale_); 
+            amp = std::min (1.0, k_scale_);
 
         double freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
@@ -84,6 +84,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         ierr = VecRestoreArray (kzz_, &kzz_ptr);                            CHKERRQ (ierr);
     }
     else {
+        ierr = VecSet  (kxx_, 0.0);                                         CHKERRQ (ierr);
         ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);                     CHKERRQ (ierr);
         ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);                   CHKERRQ (ierr);
@@ -189,7 +190,7 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
     double *timer = NULL;   //Used for calling accfft routines
 
     accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, timer);
-    ierr = applyK (temp_[4], temp_[5], temp_[6]); 
+    ierr = applyK (temp_[4], temp_[5], temp_[6]);
     accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, timer);
 
     PetscFunctionReturn(0);
