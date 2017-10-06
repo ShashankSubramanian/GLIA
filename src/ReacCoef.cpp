@@ -60,8 +60,8 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
         this->smooth (n_misc);
 
     PetscScalar norm_rho;
-    ierr = VecNorm (PETSC_COMM_WORLD, rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
-    ierr = PetscPrintf("nor mof rho: %e", norm_rho);
+    ierr = VecNorm (rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
+    ierr = PetscPrintf(PETSC_COMM_WORLD, "nor mof rho: %e", norm_rho);
     PetscFunctionReturn(0);
 }
 
