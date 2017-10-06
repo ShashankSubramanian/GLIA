@@ -27,10 +27,10 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
         int64_t X, Y, Z, index;
         double amp;
         if (n_misc->testcase_ == CONSTCOEF)
-            amp = 0.0;    
+            amp = 0.0;
         else if (n_misc->testcase_ == SINECOEF)
-            amp = std::min (1.0, rho_scale_); 
-        
+            amp = std::min (1.0, rho_scale_);
+
         double freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {
@@ -58,7 +58,9 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     if (smooth_flag_)
         this->smooth (n_misc);
 
-
+    PetscScalar norm_rho;
+    ierr = VecNorm (rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
+    ierr = PetscPrintf("nor mof rho: %e", norm_rho);
     PetscFunctionReturn(0);
 }
 
