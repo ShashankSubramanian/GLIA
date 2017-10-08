@@ -25,7 +25,7 @@ class PdeOperators {
 		virtual ~PdeOperators () {}
 
 
-		private:
+	protected:
 			/// @brief local copy of nt, bc if parameters change, pdeOperators needs to
 			/// be re-constructed. However, the destructor has to use the nt value that
 			/// was used upon construction of that object, not the changed value in nmisc
