@@ -59,9 +59,9 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     if (smooth_flag_)
         this->smooth (n_misc);
 
-    PetscScalar norm_rho;
-    ierr = VecNorm (rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_WORLD, "nor mof rho: %e", norm_rho);
+    //PetscScalar norm_rho;
+    //ierr = VecNorm (rho_vec_, NORM_2, &norm_rho); CHKERRQ(ierr);
+    //ierr = PetscPrintf(PETSC_COMM_WORLD, "\nnorm of rho: \n%e", norm_rho);
     PetscFunctionReturn(0);
 }
 
