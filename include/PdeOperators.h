@@ -23,6 +23,13 @@ class PdeOperators {
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
 
 		virtual ~PdeOperators () {}
+
+
+		private:
+			/// @brief local copy of nt, bc if parameters change, pdeOperators needs to
+			/// be re-constructed. However, the destructor has to use the nt value that
+			/// was used upon construction of that object, not the changed value in nmisc
+			int nt_;
 };
 
 class PdeOperatorsRD : public PdeOperators {
@@ -38,11 +45,6 @@ class PdeOperatorsRD : public PdeOperators {
 
 		~PdeOperatorsRD ();
 
-	private:
-		/// @brief local copy of nt, bc if parameters change, pdeOperators needs to
-		/// be re-constructed. However, the destructor has to use the nt value that
-		/// was used upon construction of that object, not the changed value in nmisc
-		int nt_;
 };
 
 
