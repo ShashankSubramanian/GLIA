@@ -67,7 +67,6 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
       ierr = VecSet (prec_, 0.0);                                                          CHKERRQ(ierr);
                                                         // re-allocate memory for H
       if(H_ != nullptr) {ierr = MatDestroy (&H_);                                          CHKERRQ(ierr);}
-      ierr = MatDestroy (&H_);
       int np = n_misc->np_;
       ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
       ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);        CHKERRQ(ierr);
