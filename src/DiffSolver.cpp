@@ -1,17 +1,19 @@
 #include "DiffSolver.h"
 
-DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k) {
+DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k)
+:
+ctx_() {
     PetscErrorCode ierr = 0;
-    Ctx *ctx = new Ctx ();
-    ctx->k_ = k;
-    ctx->n_misc_ = n_misc;
-    ctx->dt_ = n_misc->dt_;
-    ctx->plan_ = n_misc->plan_;
-    ctx->temp_ = k->temp_[0];
-    ctx->precfactor_ = k->temp_accfft_;
-    ierr = precFactor (ctx->precfactor_, ctx);
+    ctx_ = std::make_shared<Ctx> ();
+    ctx_->k_ = k;
+    ctx_->n_misc_ = n_misc;
+    ctx_->dt_ = n_misc->dt_;
+    ctx_->plan_ = n_misc->plan_;
+    ctx_->temp_ = k->temp_[0];
+    ctx_->precfactor_ = k->temp_accfft_;
+    ierr = precFactor (ctx_->precfactor_, ctx_);
 
-    ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx, &A_);
+    ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorA);
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
@@ -24,7 +26,7 @@ DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef>
     ierr = KSPGetPC (ksp_, &pc_);
     ierr = PCSetType (pc_, PCSHELL);
     ierr = PCShellSetApply (pc_, applyPC);
-    ierr = PCShellSetContext (pc_, ctx);
+    ierr = PCShellSetContext (pc_, ctx_.get());
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
@@ -48,7 +50,7 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionReturn(0);;
 }
 
-PetscErrorCode precFactor (double *precfactor, Ctx *ctx) {
+PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx) {
     PetscFunctionBegin;
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
@@ -92,7 +94,7 @@ PetscErrorCode precFactor (double *precfactor, Ctx *ctx) {
                 precfactor[index] = (1 + 0.25 * ctx->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
                                         + 2.0 * kxz_avg * wx * wz + 2.0 * kyz_avg * wy * wz + kyy_avg * wy * wy
                                                         + kzz_avg * wz *wz));
-                if (precfactor[index] == 0) 
+                if (precfactor[index] == 0)
                     precfactor[index] = factor;
                 else
                     precfactor[index] = factor / precfactor[index];
@@ -138,7 +140,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     }
     double alph = 1.0 / 2.0 * ctx->dt_;
     ierr = VecCopy (c, rhs_);                                   CHKERRQ (ierr);
-    ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);  
+    ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);
 
     //KSP solve
@@ -147,7 +149,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     //Debug
     int itr;
     ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
-    
+
     PetscFunctionReturn(0);
 }
 
