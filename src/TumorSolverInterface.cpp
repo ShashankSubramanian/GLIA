@@ -75,7 +75,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
     // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
     // invcludes re-allocating time history for adjoint,
-    if (n_misc->rd_ && (rdchanged || npchanged || ntchanged)) {
+    if (n_misc_->rd_ && (rdchanged || npchanged || ntchanged)) {
       pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
