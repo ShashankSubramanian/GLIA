@@ -93,10 +93,6 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         ierr = VecCopy (kxx_, kzz_);                                        CHKERRQ (ierr);
     }
 
-    PetscScalar norm_k;
-    ierr = VecNorm (kxx_, NORM_2, &norm_k); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_WORLD, "\nnorm of kxx: \n%e", norm_k);
-
     //Average diff coeff values for preconditioner for diffusion solve
     ierr = VecSum (kxx_, &kxx_avg_);                                    CHKERRQ (ierr);
     ierr = VecSum (kxy_, &kxy_avg_);                                    CHKERRQ (ierr);
