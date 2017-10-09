@@ -50,17 +50,70 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionReturn(0);;
 }
 
-PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx) {
+// PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx) {
+//     PetscFunctionBegin;
+//     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+//     int64_t X, Y, Z, wx, wy, wz, index;
+//     double kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
+//     kxx_avg = ctx->k_->kxx_avg_;
+//     kxy_avg = ctx->k_->kxy_avg_;
+//     kxz_avg = ctx->k_->kxz_avg_;
+//     kyy_avg = ctx->k_->kyy_avg_;
+//     kyz_avg = ctx->k_->kyz_avg_;
+//     kzz_avg = ctx->k_->kzz_avg_;
+//
+//     double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
+//
+//     for (int x = 0; x < n_misc->osize_[0]; x++) {
+//         for (int y = 0; y < n_misc->osize_[1]; y++) {
+//             for (int z = 0; z < n_misc->osize_[2]; z++){
+//                 X = n_misc->ostart_[0] + x;
+//                 Y = n_misc->ostart_[1] + y;
+//                 Z = n_misc->ostart_[2] + z;
+//
+//                 wx = X;
+//                 wy = Y;
+//                 wz = Z;
+//
+//                 if (X > n_misc->n_[0] / 2.0)
+//                     wx -= n_misc->n_[0];
+//                 if (X == n_misc->n_[0] / 2.0)
+//                     wx = 0;
+//
+//                 if (Y > n_misc->n_[1] / 2.0)
+//                     wy -= n_misc->n_[1];
+//                 if (Y == n_misc->n_[1] / 2.0)
+//                     wy = 0;
+//
+//                 if (Z > n_misc->n_[2] / 2.0)
+//                     wz -= n_misc->n_[2];
+//                 if (Z == n_misc->n_[2] / 2.0)
+//                     wz = 0;
+//
+//                 index = x * n_misc->osize_[1] * n_misc->osize_[2] + y * n_misc->osize_[2] + z;
+//                 precfactor[index] = (1 + 0.25 * ctx->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
+//                                         + 2.0 * kxz_avg * wx * wz + 2.0 * kyz_avg * wy * wz + kyy_avg * wy * wy
+//                                                         + kzz_avg * wz *wz));
+//                 if (precfactor[index] == 0)
+//                     precfactor[index] = factor;
+//                 else
+//                     precfactor[index] = factor / precfactor[index];
+//             }
+//         }
+//     }
+//     PetscFunctionReturn (0);
+// }
+PetscErrorCode DiffSolver::precFactor () {
     PetscFunctionBegin;
-    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+    std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
     double kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
-    kxx_avg = ctx->k_->kxx_avg_;
-    kxy_avg = ctx->k_->kxy_avg_;
-    kxz_avg = ctx->k_->kxz_avg_;
-    kyy_avg = ctx->k_->kyy_avg_;
-    kyz_avg = ctx->k_->kyz_avg_;
-    kzz_avg = ctx->k_->kzz_avg_;
+    kxx_avg = ctx_->k_->kxx_avg_;
+    kxy_avg = ctx_->k_->kxy_avg_;
+    kxz_avg = ctx_->k_->kxz_avg_;
+    kyy_avg = ctx_->k_->kyy_avg_;
+    kyz_avg = ctx_->k_->kyz_avg_;
+    kzz_avg = ctx_->k_->kzz_avg_;
 
     double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
 
@@ -91,13 +144,13 @@ PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx) {
                     wz = 0;
 
                 index = x * n_misc->osize_[1] * n_misc->osize_[2] + y * n_misc->osize_[2] + z;
-                precfactor[index] = (1 + 0.25 * ctx->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
+                ctx_->prefactor_[index] = (1 + 0.25 * ctx_->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
                                         + 2.0 * kxz_avg * wx * wz + 2.0 * kyz_avg * wy * wz + kyy_avg * wy * wy
                                                         + kzz_avg * wz *wz));
-                if (precfactor[index] == 0)
-                    precfactor[index] = factor;
+                if (ctx_->prefactor_[index] == 0)
+                    ctx_->prefactor_[index] = factor;
                 else
-                    precfactor[index] = factor / precfactor[index];
+                    ctx_->prefactor_[index] = factor / ctx_->prefactor_[index];
             }
         }
     }

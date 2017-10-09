@@ -194,6 +194,8 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     // update mesh of Gaussians, new phi spacing, center, sigma
     tumor_->phi_->setValues (tumor_params->phi_center_of_mass, tumor_params->phi_sigma, tumor_params->phi_spacing_factor,
                             tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
+    // need to update prefactors for dissusion KSP preconditioner, as k changed
+    pde_operators_->diff_solver_->precFactor();
 
     // timing
     self_exec_time += MPI_Wtime ();

@@ -29,6 +29,7 @@ class DiffSolver {
 		std::shared_ptr<Ctx> ctx_;
 
 		PetscErrorCode solve (Vec c, double dt);
+		PetscErrorCode precFactor ();
 
 		virtual ~DiffSolver ();
 
