@@ -144,13 +144,13 @@ PetscErrorCode DiffSolver::precFactor () {
                     wz = 0;
 
                 index = x * n_misc->osize_[1] * n_misc->osize_[2] + y * n_misc->osize_[2] + z;
-                ctx_->prefactor_[index] = (1 + 0.25 * ctx_->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
+                ctx_->precfactor_[index] = (1 + 0.25 * ctx_->dt_ * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
                                         + 2.0 * kxz_avg * wx * wz + 2.0 * kyz_avg * wy * wz + kyy_avg * wy * wy
                                                         + kzz_avg * wz *wz));
-                if (ctx_->prefactor_[index] == 0)
-                    ctx_->prefactor_[index] = factor;
+                if (ctx_->precfactor_[index] == 0)
+                    ctx_->precfactor_[index] = factor;
                 else
-                    ctx_->prefactor_[index] = factor / ctx_->prefactor_[index];
+                    ctx_->precfactor_[index] = factor / ctx_->precfactor_[index];
             }
         }
     }
