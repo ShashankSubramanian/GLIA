@@ -11,7 +11,8 @@ ctx_() {
     ctx_->plan_ = n_misc->plan_;
     ctx_->temp_ = k->temp_[0];
     ctx_->precfactor_ = k->temp_accfft_;
-    ierr = precFactor (ctx_->precfactor_, ctx_);
+    // ierr = precFactor (ctx_->precfactor_, ctx_);
+    ierr = precFactor ();
 
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorA);
