@@ -74,6 +74,11 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
                     kxx_ptr[index] = k_scale + amp * sin (freq * 2.0 * M_PI / n_misc->n_[0] * X)
                                                    * sin (freq * 2.0 * M_PI / n_misc->n_[1] * Y)
                                                    * sin (freq * 2.0 * M_PI / n_misc->n_[2] * Z);
+
+                    // kxx_ptr[index] = 1E-2 + 0.5 * sin (2.0 * M_PI / n_misc->n_[0] * X) * cos (2.0 * M_PI / n_misc->n_[1] * Y)
+                    //                             + 0.5 + 1E-3 * (1 - 0.5 * sin (2.0 * M_PI / n_misc->n_[0] * X) * cos (2.0 * M_PI / n_misc->n_[1] * Y)
+                    //                                     + 0.5);
+
                     kyy_ptr[index] = kxx_ptr[index];
                     kzz_ptr[index] = kxx_ptr[index];
                 }
