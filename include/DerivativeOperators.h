@@ -23,10 +23,7 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 
-		~DerivativeOperators () {
-			VecDestroy (&temp_);
-			VecDestroy (&ptemp_);
-		}
+		virtual ~DerivativeOperators () {}
 };
 
 class DerivativeOperatorsRD : public DerivativeOperators {
@@ -39,7 +36,10 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
 
-		~DerivativeOperatorsRD () {}
+		~DerivativeOperatorsRD () { 
+			VecDestroy (&temp_);
+			VecDestroy (&ptemp_);
+		}
 };
 
 #endif
