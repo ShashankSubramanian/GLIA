@@ -54,9 +54,9 @@ class DerivativeOperatorsRDObj : public DerivativeOperatorsRD {
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 
 		virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;}
+			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg; PetscFunctionReturn(0);}
 		virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg;}
+			mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg; PetscFunctionReturn(0);}
 
 		virtual ~DerivativeOperatorsRDObj () {}
 

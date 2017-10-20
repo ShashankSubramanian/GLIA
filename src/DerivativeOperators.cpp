@@ -112,8 +112,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     (*J) += reg;
 
     // re-set reference and template pointer to nullptr
-    mR_wm_ = nullptr; mR_gm_ = nullptr; mR_csf_ = nullptr; mR_glm_ = nullptr; mR_bg_ = nullptr;
-    mT_wm_ = nullptr; mT_gm_ = nullptr; mT_csf_ = nullptr; mT_glm_ = nullptr; mT_bg_ = nullptr;
+//    mR_wm_ = nullptr; mR_gm_ = nullptr; mR_csf_ = nullptr; mR_glm_ = nullptr; mR_bg_ = nullptr;
+//    mT_wm_ = nullptr; mT_gm_ = nullptr; mT_csf_ = nullptr; mT_glm_ = nullptr; mT_bg_ = nullptr;
 
     PetscFunctionReturn(0);
 }

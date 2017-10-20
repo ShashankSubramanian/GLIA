@@ -31,10 +31,10 @@ class TumorSolverInterface {
 		PetscErrorCode setInitialGuess(double d);
 
 		PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			derivative_operators_->setDistMeassureReferenceImage(wm, gm, csf, glm, bg);
+                  return derivative_operators_->setDistMeassureReferenceImage(wm, gm, csf, glm, bg);
 		}
 		PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			derivative_operators_->setDistMeassureTemplateImage(wm, gm, csf, glm, bg);
+	          return derivative_operators_->setDistMeassureTemplateImage(wm, gm, csf, glm, bg);
 		}
 		/** @brief updates the reaction and diffusion coefficients depending on
 		 *         the probability maps for GRAY MATTER, WHITE MATTER and CSF.
