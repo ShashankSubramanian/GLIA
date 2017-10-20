@@ -23,8 +23,8 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 
-                virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
-                virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
+    virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
+    virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
 
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
@@ -41,6 +41,9 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
+
+		virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
+    virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
 
 		virtual ~DerivativeOperatorsRD () {}
 };
