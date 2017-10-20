@@ -229,6 +229,7 @@ class NMisc {
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
+PetscErrorCoce geometricCoupling(Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_bg, Vec c1, std::shared_ptr<NMisc> nmisc);
 
 //Read/Write function prototypes
 void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);

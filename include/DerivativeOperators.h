@@ -23,7 +23,7 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 
-		~DerivativeOperators () {
+		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
 			VecDestroy (&ptemp_);
 		}
@@ -35,11 +35,35 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 				std::shared_ptr<Tumor> tumor)
 			 : DerivativeOperators (pde_operators, n_misc, tumor) {}
 
-		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
-		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
-		PetscErrorCode evaluateHessian (Vec y, Vec x);
+		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
+		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+		virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
 
-		~DerivativeOperatorsRD () {}
+		virtual ~DerivativeOperatorsRD () {}
+};
+
+class DerivativeOperatorsRDObj : public DerivativeOperatorsRD {
+	public :
+		DerivativeOperatorsRDObj (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
+				std::shared_ptr<Tumor> tumor)
+			 : DerivativeOperators (pde_operators, n_misc, tumor) {}
+
+		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
+		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+		virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
+
+		PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg}
+		PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+			mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg}
+
+		virtual ~DerivativeOperatorsRD () {}
+
+	private:
+		/// @brief reference image for brain difference measure || mR - mT||^2 (memory from outsie;)
+		Vec mR_wm_, mR_gm_, mR_csf_, mR_glm_, mR_bg_;
+		/// @brief tmeplate image for brain difference measure || mR - mT||^2 (memory from outsie;)
+		Vec mT_wm_, mT_gm_, mT_csf_, mT_glm_, mT_bg_;
 };
 
 #endif

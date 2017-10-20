@@ -262,3 +262,33 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 
 	return 0;
 }
+
+
+
+PetscErrorCoce geometricCoupling(Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_bg, Vec c1, std::shared_ptr<NMisc> nmisc) {
+	PetscErrorCode ierr:
+	PetscFunctionBegin;
+	ScalarType *ptr_wm, *ptr_gm, *ptr_csf, *ptr_glm, *ptr_bg, *ptr_tu;
+	PetscScalar sum = 0;
+  if(mR_wm  != nullptr) {ierr = VecGetArray(mR_wm, &ptr_wm);      CHKERRQ(ierr);}
+	if(mR_gm  != nullptr) {ierr = VecGetArray(mR_gm, &ptr_gm);      CHKERRQ(ierr);}
+	if(mR_csf != nullptr) {ierr = VecGetArray(mR_csf, &ptr_csf);    CHKERRQ(ierr);}
+	if(mR_glm != nullptr) {ierr = VecGetArray(mR_bg, &ptr_bg);      CHKERRQ(ierr);}
+	if(mR_bg  != nullptr) {ierr = VecGetArray(c1, &ptr_tu);         CHKERRQ(ierr);}
+
+	for (IntType j = 0; j < nmisc->n_local_; j++) {
+		sum = 0;
+    if(mR_gm   != nullptr) {ptr_gm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum =+ ptr_gm[j];}
+		if(mR_csf  != nullptr) {ptr_csf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum =+ ptr_csf[j];}
+		if(mR_glm  != nullptr) {ptr_glm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum =+ ptr_glm[j];}
+		if(mR_bg   != nullptr) {ptr_bg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum =+ ptr_bg[j];}
+		wm_ptr[j]  = 1. - (sum + ptr_tu[j]);
+	}
+	if(mR_wm  != nullptr) {ierr = VecRestoreArray(mR_wm, &ptr_wm);  CHKERRQ(ierr);}
+	if(mR_gm  != nullptr) {ierr = VecRestoreArray(mR_gm, &ptr_gm);  CHKERRQ(ierr);}
+	if(mR_csf != nullptr) {ierr = VecRestoreArray(mR_csf, &ptr_csf);CHKERRQ(ierr);}
+	if(mR_glm != nullptr) {ierr = VecRestoreArray(mR_bg, &ptr_bg);  CHKERRQ(ierr);}
+	if(mR_bg  != nullptr) {ierr = VecRestoreArray(c1, &ptr_tu);     CHKERRQ(ierr);}
+
+	PetscFunctionReturn(0);
+}
