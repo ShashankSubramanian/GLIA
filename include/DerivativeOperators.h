@@ -23,6 +23,9 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 
+                virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
+                virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
+
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
 			VecDestroy (&ptemp_);
@@ -46,18 +49,16 @@ class DerivativeOperatorsRDObj : public DerivativeOperatorsRD {
 	public :
 		DerivativeOperatorsRDObj (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
 				std::shared_ptr<Tumor> tumor)
-			 : DerivativeOperators (pde_operators, n_misc, tumor) {}
+			 : DerivativeOperatorsRD (pde_operators, n_misc, tumor) {}
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
-		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
-		virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
 
-		PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg}
-		PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg}
+		virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;}
+		virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+			mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg;}
 
-		virtual ~DerivativeOperatorsRD () {}
+		virtual ~DerivativeOperatorsRDObj () {}
 
 	private:
 		/// @brief reference image for brain difference measure || mR - mT||^2 (memory from outsie;)

@@ -80,7 +80,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
     // geometric coupling, update probability maps
-    ierr = geometricCoupling(mR_wm_, mR_gm_, mR_csf_, mR_bg_, tumor_->c_t_, n_misc_);  CHKERRQ (ierr);
+    ierr = geometricCoupling(mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_, tumor_->c_t_, n_misc_);  CHKERRQ (ierr);
     // evaluate tumor distance meassure || c(1) - d ||
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = VecDot (temp_, temp_, &misfit_tu);                       CHKERRQ (ierr);
@@ -105,10 +105,10 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);               CHKERRQ (ierr);
     reg *= 0.5 * n_misc_->beta_;
 
-    misfit_reg  = mis_wm + mis_gm + mis_csf + mis_glm;
-    misfit_reg *= 0.5;
+    misfit_brain  = mis_wm + mis_gm + mis_csf + mis_glm;
+    misfit_brain *= 0.5;
     misfit_tu  *= 0.5;
-    (*J) = misfit_tu + misfit_reg;
+    (*J) = misfit_tu + misfit_brain;
     (*J) += reg;
 
     // re-set reference and template pointer to nullptr
