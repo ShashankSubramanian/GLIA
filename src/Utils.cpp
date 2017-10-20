@@ -273,8 +273,9 @@ PetscErrorCode geometricCoupling(Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, V
         if(mR_wm  != nullptr) {ierr = VecGetArray(mR_wm, &ptr_wm);      CHKERRQ(ierr);}
 	if(mR_gm  != nullptr) {ierr = VecGetArray(mR_gm, &ptr_gm);      CHKERRQ(ierr);}
 	if(mR_csf != nullptr) {ierr = VecGetArray(mR_csf, &ptr_csf);    CHKERRQ(ierr);}
-	if(mR_glm != nullptr) {ierr = VecGetArray(mR_bg, &ptr_bg);      CHKERRQ(ierr);}
-	if(mR_bg  != nullptr) {ierr = VecGetArray(c1, &ptr_tu);         CHKERRQ(ierr);}
+	if(mR_glm != nullptr) {ierr = VecGetArray(mR_glm, &ptr_glm);    CHKERRQ(ierr);}
+	if(mR_bg  != nullptr) {ierr = VecGetArray(mR_bg, &ptr_bg);      CHKERRQ(ierr);}
+	if(c1     != nullptr) {ierr = VecGetArray(c1, &ptr_tu);         CHKERRQ(ierr);}
 
 	for (PetscInt j = 0; j < nmisc->n_local_; j++) {
 		sum = 0;
@@ -287,8 +288,9 @@ PetscErrorCode geometricCoupling(Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, V
 	if(mR_wm  != nullptr) {ierr = VecRestoreArray(mR_wm, &ptr_wm);  CHKERRQ(ierr);}
 	if(mR_gm  != nullptr) {ierr = VecRestoreArray(mR_gm, &ptr_gm);  CHKERRQ(ierr);}
 	if(mR_csf != nullptr) {ierr = VecRestoreArray(mR_csf, &ptr_csf);CHKERRQ(ierr);}
-	if(mR_glm != nullptr) {ierr = VecRestoreArray(mR_bg, &ptr_bg);  CHKERRQ(ierr);}
-	if(mR_bg  != nullptr) {ierr = VecRestoreArray(c1, &ptr_tu);     CHKERRQ(ierr);}
+	if(mR_glm != nullptr) {ierr = VecRestoreArray(mR_glm, &ptr_glm);CHKERRQ(ierr);}
+	if(mR_bg  != nullptr) {ierr = VecRestoreArray(mR_bg, &ptr_bg);  CHKERRQ(ierr);}
+	if(c1     != nullptr) {ierr = VecRestoreArray(c1, &ptr_tu);     CHKERRQ(ierr);}
 
 	PetscFunctionReturn(0);
 }

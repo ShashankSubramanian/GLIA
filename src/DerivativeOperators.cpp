@@ -106,6 +106,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     reg *= 0.5 * n_misc_->beta_;
 
     misfit_brain  = mis_wm + mis_gm + mis_csf + mis_glm;
+PetscPrintf(PETSC_COMM_WORLD," evaluateObjective mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, mis(BRAIN): %1.6e, mis(TU): %1.6e, regularization: %1.6e \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm, .5*misfit_brain, misfit_tu*0.5, reg);
     misfit_brain *= 0.5;
     misfit_tu  *= 0.5;
     (*J) = misfit_tu + misfit_brain;
