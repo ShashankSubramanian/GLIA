@@ -25,6 +25,7 @@ class DerivativeOperators {
 
     virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
     virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
+		virtual PetscErrorCode setGeometricCouplingAdjoint(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) = 0;
 
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
