@@ -50,7 +50,7 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 	public :
 		DerivativeOperatorsRDObj (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
 				std::shared_ptr<Tumor> tumor)
-			 : DerivativeOperatorsRD (pde_operators, n_misc, tumor) {}
+			 : DerivativeOperators (pde_operators, n_misc, tumor) {}
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
