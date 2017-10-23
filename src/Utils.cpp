@@ -272,21 +272,21 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	PetscFunctionBegin;
 	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
 	// \xi = mT - mR  (as opposed to mismatch ||mR - mT||)
-	if(mR_wm_ != nullptr) {
-		ierr = VecWAXPY (xi_wm_, -1.0, mR_wm_, mT_wm_);              CHKERRQ (ierr);
-		ierr = VecDot (xi_wm_, xi_wm_, &mis_wm);                     CHKERRQ (ierr);
+	if(mR_wm != nullptr) {
+		ierr = VecWAXPY (xi_wm, -1.0, mR_wm, mT_wm);                 CHKERRQ (ierr);
+		ierr = VecDot (xi_wm, xi_wm, &mis_wm);                       CHKERRQ (ierr);
 	}
 	if(mR_gm_ != nullptr) {
-		ierr = VecWAXPY (xi_gm_, -1.0, mR_gm_, mT_gm_);              CHKERRQ (ierr);
-		ierr = VecDot (xi_gm_, xi_gm_, &mis_gm);                     CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_gm, -1.0, mR_gm, mT_gm);                 CHKERRQ (ierr);
+		ierr = VecDot (xi_gm, xi_gm, &mis_gm);                       CHKERRQ (ierr);
 	}
 	if(mR_csf_ != nullptr) {
-		ierr = VecWAXPY (xi_csf_, -1.0, mR_csf_, mT_csf_);           CHKERRQ (ierr);
-		ierr = VecDot (xi_csf_, xi_csf_, &mis_csf);                  CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_csf, -1.0, mR_csf, mT_csf);              CHKERRQ (ierr);
+		ierr = VecDot (xi_csf, xi_csf, &mis_csf);                    CHKERRQ (ierr);
 	}
 	if(mR_glm_ != nullptr) {
-		ierr = VecWAXPY (xi_glm_, -1.0, mR_glm_, mT_glm_);           CHKERRQ (ierr);
-		ierr = VecDot (xi_glm_, xi_glm_, &mis_glm);                  CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_glm, -1.0, mR_glm, mT_glm);              CHKERRQ (ierr);
+		ierr = VecDot (xi_glm, xi_glm, &mis_glm);                    CHKERRQ (ierr);
 	}
 	sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
 	PetscPrintf(PETSC_COMM_WORLD," evaluateObjective mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, ", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
