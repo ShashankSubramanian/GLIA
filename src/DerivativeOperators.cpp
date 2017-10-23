@@ -80,7 +80,10 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
     // geometric coupling, update probability maps
-    ierr = geometricCoupling(mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_, tumor_->c_t_, n_misc_);  CHKERRQ (ierr);
+    ierr = geometricCoupling(
+      xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_,
+      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
+      tumor_->c_t_, n_misc_);                                       CHKERRQ (ierr);
     // evaluate tumor distance meassure || c(1) - d ||
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = VecDot (temp_, temp_, &misfit_tu);                       CHKERRQ (ierr);
@@ -97,7 +100,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     misfit_tu  *= 0.5;
     (*J) = misfit_tu + misfit_brain;
     (*J) += reg;
-    PetscPrintf(PETSC_COMM_WORLD," evaluateObjective mis(BRAIN): %1.6e, mis(TU): %1.6e, regularization: %1.6e, J: %1.6e \n",misfit_brain, misfit_tu, reg, *J);
+    PetscPrintf(PETSC_COMM_WORLD," evalObj: %1.6e, mis(TU): %1.6e, regularization: %1.6e, J: %1.6e \n",misfit_brain, misfit_tu, reg, *J);
     PetscFunctionReturn(0);
 }
 
@@ -113,6 +116,10 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
+    ierr = geometricCoupling(
+      xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_,
+      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
+      tumor_->c_t_, n_misc_);                                       CHKERRQ (ierr);
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
     geometricCouplingAdjoint(&misfit_brain,
       xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_,

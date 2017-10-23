@@ -289,7 +289,7 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 		ierr = VecDot (xi_glm, xi_glm, &mis_glm);                    CHKERRQ (ierr);
 	}
 	*sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
-	PetscPrintf(PETSC_COMM_WORLD," evaluateObjective mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, ", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
+	PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, ", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
 	PetscFunctionReturn(0);
 }
 
