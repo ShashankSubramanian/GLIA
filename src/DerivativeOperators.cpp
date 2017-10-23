@@ -125,20 +125,20 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);
     // compute xi * mA0, add    -\xi * mA0 to adjoint final cond.
     if(mR_wm_ != nullptr) {
-  		ierr = VecPointwiseMult (xi_wm, xi_wm_, mR_wm_);              CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_wm);                   CHKERRQ (ierr);
+  		ierr = VecPointwiseMult (xi_wm_, xi_wm_, mR_wm_);             CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_wm_);                  CHKERRQ (ierr);
   	}
   	if(mR_gm_ != nullptr) {
-      ierr = VecPointwiseMult (xi_gm, xi_gm_, mR_gm_);              CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_gm);                   CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_gm_, xi_gm_, mR_gm_);             CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_gm_);                  CHKERRQ (ierr);
   	}
   	if(mR_csf_ != nullptr) {
-      ierr = VecPointwiseMult (xi_csf, xi_csf_, mR_csf_);           CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_csf);                  CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_csf_, xi_csf_, mR_csf_);          CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_csf_);                 CHKERRQ (ierr);
   	}
   	if(mR_glm_ != nullptr) {
-      ierr = VecPointwiseMult (xi_glm, xi_glm_, mR_glm_);           CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_glm);                  CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_glm_, xi_glm_, mR_glm_);          CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_glm_);                 CHKERRQ (ierr);
   	}
     // solve adjoint equation with specified final condition
     ierr = pde_operators_->solveAdjoint (1);
@@ -163,24 +163,24 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     // alpha(1) = - O^TO \tilde{c(1)} - mA0 mA0 \tilde{c(1)}
     if(mR_wm_ != nullptr) {
-  		ierr = VecPointwiseMult (xi_wm, mR_wm_, mR_wm_);              CHKERRQ (ierr);
-      ierr = VecPointwiseMult (xi_wm, xi_wm, tumor_->c_t_);         CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_wm);                   CHKERRQ (ierr);
+  		ierr = VecPointwiseMult (xi_wm_, mR_wm_, mR_wm_);             CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_wm_, xi_wm_, tumor_->c_t_);       CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_wm_);                  CHKERRQ (ierr);
   	}
   	if(mR_gm_ != nullptr) {
-      ierr = VecPointwiseMult (xi_gm, mR_gm_, mR_gm_);              CHKERRQ (ierr);
-      ierr = VecPointwiseMult (xi_gm, xi_gm, tumor_->c_t_);         CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_gm);                   CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_gm_, mR_gm_, mR_gm_);             CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_gm_, xi_gm_, tumor_->c_t_);       CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_gm_);                  CHKERRQ (ierr);
   	}
   	if(mR_csf_ != nullptr) {
-      ierr = VecPointwiseMult (xi_csf, mR_csf_, mR_csf_);           CHKERRQ (ierr);
-      ierr = VecPointwiseMult (xi_csf, xi_csf, tumor_->c_t_);       CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_csf);                  CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_csf_, mR_csf_, mR_csf_);          CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_csf_, xi_csf_, tumor_->c_t_);     CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_csf_);                 CHKERRQ (ierr);
   	}
   	if(mR_glm_ != nullptr) {
-      ierr = VecPointwiseMult (xi_glm, mR_glm_, mR_glm_);           CHKERRQ (ierr);
-      ierr = VecPointwiseMult (xi_glm, xi_glm, tumor_->c_t_);       CHKERRQ (ierr);
-      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_glm);                  CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_glm_, mR_glm_, mR_glm_);          CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_glm_, xi_glm_, tumor_->c_t_);     CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_glm_);                 CHKERRQ (ierr);
   	}
 
     ierr = pde_operators_->solveAdjoint (2);
