@@ -271,21 +271,26 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
 	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+	// on input, xi is mA0(1-c(1))
 	// \xi = mT - mR  (as opposed to mismatch ||mR - mT||)
 	if(mR_wm != nullptr) {
-		ierr = VecWAXPY (xi_wm, -1.0, mR_wm, mT_wm);                 CHKERRQ (ierr);
+		ierr = VecAXPY (xi_wm, -1.0, mT_wm);                         CHKERRQ (ierr);
+		ierr = VecScale (xi_wm, -1.0);                               CHKERRQ (ierr);
 		ierr = VecDot (xi_wm, xi_wm, &mis_wm);                       CHKERRQ (ierr);
 	}
 	if(mR_gm != nullptr) {
-		ierr = VecWAXPY (xi_gm, -1.0, mR_gm, mT_gm);                 CHKERRQ (ierr);
+		ierr = VecAXPY (xi_gm, -1.0, mT_gm);                         CHKERRQ (ierr);
+		ierr = VecScale (xi_gm, -1.0);                               CHKERRQ (ierr);
 		ierr = VecDot (xi_gm, xi_gm, &mis_gm);                       CHKERRQ (ierr);
 	}
 	if(mR_csf != nullptr) {
-		ierr = VecWAXPY (xi_csf, -1.0, mR_csf, mT_csf);              CHKERRQ (ierr);
+		ierr = VecAXPY (xi_csf, -1.0, mT_csf);                       CHKERRQ (ierr);
+		ierr = VecScale (xi_csf, -1.0);                              CHKERRQ (ierr);
 		ierr = VecDot (xi_csf, xi_csf, &mis_csf);                    CHKERRQ (ierr);
 	}
 	if(mR_glm != nullptr) {
-		ierr = VecWAXPY (xi_glm, -1.0, mR_glm, mT_glm);              CHKERRQ (ierr);
+		ierr = VecAXPY (xi_glm, -1.0, mT_glm);                       CHKERRQ (ierr);
+		ierr = VecScale (xi_glm, -1.0);                              CHKERRQ (ierr);
 		ierr = VecDot (xi_glm, xi_glm, &mis_glm);                    CHKERRQ (ierr);
 	}
 	*sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
