@@ -115,8 +115,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
     geometricCouplingAdjoint(&misfit_brain,
-      xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_
-      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_
+      xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_,
+      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
       mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);
     // compute xi * mA0, add    -\xi * mA0 to adjoint final cond.
     if(mR_wm_ != nullptr) {
