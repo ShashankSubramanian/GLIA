@@ -264,28 +264,29 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 }
 
 
-PetscErrorCode computeMisfit(PetscScalar *sqrdl2norm,
+PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
 	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
 	Vec mT_wm, Vec mT_gm, Vec mT_csf, Vec mT_glm, Vec mT_bg) {
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
 	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+	// \xi = mT - mR  (as opposed to mismatch ||mR - mT||)
 	if(mR_wm_ != nullptr) {
-		ierr = VecWAXPY (xi_wm_, -1.0, mT_wm_, mR_wm_);                        CHKERRQ (ierr);
-		ierr = VecDot (xi_wm_, xi_wm_, &mis_wm);                      CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_wm_, -1.0, mR_wm_, mT_wm_);              CHKERRQ (ierr);
+		ierr = VecDot (xi_wm_, xi_wm_, &mis_wm);                     CHKERRQ (ierr);
 	}
 	if(mR_gm_ != nullptr) {
-		ierr = VecWAXPY (xi_gm_, -1.0, mT_gm_, mR_gm_);                        CHKERRQ (ierr);
-		ierr = VecDot (xi_gm_, xi_gm_, &mis_gm);                      CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_gm_, -1.0, mR_gm_, mT_gm_);              CHKERRQ (ierr);
+		ierr = VecDot (xi_gm_, xi_gm_, &mis_gm);                     CHKERRQ (ierr);
 	}
 	if(mR_csf_ != nullptr) {
-		ierr = VecWAXPY (xi_csf_, -1.0, mT_csf_, mR_csf_);                      CHKERRQ (ierr);
-		ierr = VecDot (xi_csf_, xi_csf_, &mis_csf);                   CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_csf_, -1.0, mR_csf_, mT_csf_);           CHKERRQ (ierr);
+		ierr = VecDot (xi_csf_, xi_csf_, &mis_csf);                  CHKERRQ (ierr);
 	}
 	if(mR_glm_ != nullptr) {
-		ierr = VecWAXPY (xi_glm_, -1.0, mT_glm_, mR_glm_);                      CHKERRQ (ierr);
-		ierr = VecDot (xi_glm_, xi_glm_, &mis_glm);                   CHKERRQ (ierr);
+		ierr = VecWAXPY (xi_glm_, -1.0, mR_glm_, mT_glm_);           CHKERRQ (ierr);
+		ierr = VecDot (xi_glm_, xi_glm_, &mis_glm);                  CHKERRQ (ierr);
 	}
 	sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
 	PetscPrintf(PETSC_COMM_WORLD," evaluateObjective mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, ", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);

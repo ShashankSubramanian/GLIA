@@ -230,7 +230,7 @@ class NMisc {
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode geometricCoupling(Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg, Vec c1, std::shared_ptr<NMisc> nmisc);
-PetscErrorCode computeMisfit(PetscScalar *sqrdl2norm,
+PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
 	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
 	Vec mT_wm, Vec mT_gm, Vec mT_csf, Vec mT_glm, Vec mT_bg);

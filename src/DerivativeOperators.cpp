@@ -85,7 +85,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = VecDot (temp_, temp_, &misfit_tu);                       CHKERRQ (ierr);
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
-    computeMisfit(&misfit_brain,
+    geometricCouplingAdjoint(&misfit_brain,
       xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_
       mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_
       mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);
@@ -118,13 +118,12 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
-    // TODO: axpy p_t_ = p_t_ - \xi mA0
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
-    computeMisfit(&misfit_brain,
+    geometricCouplingAdjoint(&misfit_brain,
       xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_
       mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_
       mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);
-    // compute xi * mA0
+    // compute xi * mA0, add    -\xi * mA0 to adjoint final cond.
     if(mR_wm_ != nullptr) {
   		ierr = VecPointwiseMult (xi_wm, xi_wm_, mR_wm_);              CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, xi_wm);                   CHKERRQ (ierr);
@@ -158,14 +157,33 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (1);
-
+    // alpha(1) = - O^TO \tilde{c(1)}
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
-    // TODO right here: - (mA0)^2 * c_ct_
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
+    // alpha(1) = - O^TO \tilde{c(1)} - mA0 mA0 \tilde{c(1)}
+    if(mR_wm_ != nullptr) {
+  		ierr = VecPointwiseMult (xi_wm, mR_wm_, mR_wm_);              CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_wm, xi_wm, tumor_->c_t_);         CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_wm);                   CHKERRQ (ierr);
+  	}
+  	if(mR_gm_ != nullptr) {
+      ierr = VecPointwiseMult (xi_gm, mR_gm_, mR_gm_);              CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_gm, xi_gm, tumor_->c_t_);         CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_gm);                   CHKERRQ (ierr);
+  	}
+  	if(mR_csf_ != nullptr) {
+      ierr = VecPointwiseMult (xi_csf, mR_csf_, mR_csf_);           CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_csf, xi_csf, tumor_->c_t_);       CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_csf);                  CHKERRQ (ierr);
+  	}
+  	if(mR_glm_ != nullptr) {
+      ierr = VecPointwiseMult (xi_glm, mR_glm_, mR_glm_);           CHKERRQ (ierr);
+      ierr = VecPointwiseMult (xi_glm, xi_glm, tumor_->c_t_);       CHKERRQ (ierr);
+      ierr = VecAXPY (tumor_->p_t_, -1.0, xi_glm);                  CHKERRQ (ierr);
+  	}
 
     ierr = pde_operators_->solveAdjoint (2);
-
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
     ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);
     ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
