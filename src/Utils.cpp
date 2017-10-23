@@ -293,7 +293,10 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode geometricCoupling(Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg, Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg, Vec c1, std::shared_ptr<NMisc> nmisc) {
+PetscErrorCode geometricCoupling(
+	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
+	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
+	Vec c1, std::shared_ptr<NMisc> nmisc) {
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
 	PetscScalar *ptr_wm, *ptr_gm, *ptr_csf, *ptr_glm, *ptr_bg, *ptr_tu;
