@@ -54,8 +54,8 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 			 : DerivativeOperators (pde_operators, n_misc, tumor) {}
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
-		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
-    virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
+	  virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+	  virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
 
 		virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
 			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg; PetscFunctionReturn(0);}

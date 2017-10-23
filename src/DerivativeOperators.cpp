@@ -86,8 +86,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     ierr = VecDot (temp_, temp_, &misfit_tu);                       CHKERRQ (ierr);
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
     geometricCouplingAdjoint(&misfit_brain,
-      xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_
-      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_
+      xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_,
+      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
       mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);
     // compute regularization
     ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);               CHKERRQ (ierr);
@@ -98,11 +98,6 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     (*J) = misfit_tu + misfit_brain;
     (*J) += reg;
     PetscPrintf(PETSC_COMM_WORLD," evaluateObjective mis(BRAIN): %1.6e, mis(TU): %1.6e, regularization: %1.6e, J: %1.6e \n",misfit_brain, misfit_tu, reg, *J);
-
-    // re-set reference and template pointer to nullptr
-//    mR_wm_ = nullptr; mR_gm_ = nullptr; mR_csf_ = nullptr; mR_glm_ = nullptr; mR_bg_ = nullptr;
-//    mT_wm_ = nullptr; mT_gm_ = nullptr; mT_csf_ = nullptr; mT_glm_ = nullptr; mT_bg_ = nullptr;
-
     PetscFunctionReturn(0);
 }
 
