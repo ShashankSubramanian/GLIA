@@ -100,7 +100,9 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     misfit_tu  *= 0.5;
     (*J) = misfit_tu + misfit_brain;
     (*J) += reg;
-    PetscPrintf(PETSC_COMM_WORLD," evalObj: mis(BRAIN) %1.6e, mis(TU): %1.6e, regularization: %1.6e, J: %1.6e \n",misfit_brain, misfit_tu, reg, *J);
+
+    std::stringstream s;
+    s << "  J(v) = Dm(v,c) + Dc(c) + S(c0) = "<< (*J) <<" + " << misfit_brain <<" + "<< misfit_tu<<" + "<<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     PetscFunctionReturn(0);
 }
 

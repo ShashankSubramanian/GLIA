@@ -3,21 +3,21 @@
 PetscErrorCode tuMSG(std::string msg, int size) {
 	PetscFunctionBegin;
   PetscErrorCode ierr;
-  std::string color = "\x1b[1;34;40m";
+  std::string color = "\x1b[1;34;m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode tuMSGstd(std::string msg, int size) {
   PetscErrorCode ierr;
-  std::string color = "\x1b[37;40m";
+  std::string color = "\x1b[37;m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode tuMSGwarn(std::string msg, int size) {
   PetscErrorCode ierr;
-  std::string color = "\x1b[1;31;40m";
+  std::string color = "\x1b[1;31;m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -294,7 +294,7 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 		ierr = VecDot (xi_glm, xi_glm, &mis_glm);                    CHKERRQ (ierr);
 	}
 	*sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
-	PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
+	//PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
 	PetscFunctionReturn(0);
 }
 
