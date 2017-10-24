@@ -99,10 +99,11 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     misfit_brain *= 0.5;
     misfit_tu  *= 0.5;
     (*J) = misfit_tu + misfit_brain;
+    (*J) *= 1./nc_;
     (*J) += reg;
 
     std::stringstream s;
-    s << "  J(v) = Dm(v,c) + Dc(c) + S(c0) = "<< (*J) <<" + " << misfit_brain <<" + "<< misfit_tu<<" + "<<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    s << "  J(v) = Dm(v,c) + Dc(c) + S(c0) = "<< std::setprecision(12) << (*J) <<" = " << std::setprecision(12) <<misfit_brain * 1./nc_ <<" + "<< std::setprecision(12)<< misfit_tu * 1./nc_ <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     PetscFunctionReturn(0);
 }
 
@@ -144,6 +145,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = VecPointwiseMult (temp_, xi_glm_, mR_glm_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
+    err = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
     // solve adjoint equation with specified final condition
     ierr = pde_operators_->solveAdjoint (1);
     // evaluate gradient
@@ -187,6 +189,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
 
+    err = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (2);                     CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);       CHKERRQ (ierr);

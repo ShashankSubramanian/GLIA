@@ -58,7 +58,9 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 	  virtual PetscErrorCode evaluateHessian (Vec y, Vec x);
 
 		virtual PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg; PetscFunctionReturn(0);}
+			mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;
+      nc_ = (wm != nulltpr) + (gm != nulltpr) + (csf != nulltpr) + (glm != nulltpr); PetscFunctionReturn(0);
+		}
 		virtual PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
 			mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg; PetscFunctionReturn(0);}
 	  virtual PetscErrorCode setGeometricCouplingAdjoint(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
@@ -74,6 +76,8 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 		Vec mT_wm_, mT_gm_, mT_csf_, mT_glm_, mT_bg_;
 		/// @brief tmeplate image for brain difference measure || mR - mT||^2 (memory from outsie;)
 		Vec xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_;
+    // / number of components in objective function
+		int nc_;
 };
 
 #endif
