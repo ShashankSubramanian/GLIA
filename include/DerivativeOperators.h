@@ -51,6 +51,7 @@ class DerivativeOperatorsPos : public DerivativeOperators {
 				std::shared_ptr<Tumor> tumor)
 			 : DerivativeOperators (pde_operators, n_misc, tumor) {
                 VecDuplicate (temp_, &temp_phip_);
+                VecDuplicate (temp_, &temp_phiptilde_);
              }
 
         Vec temp_phip_;

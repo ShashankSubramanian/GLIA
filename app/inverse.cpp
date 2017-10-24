@@ -113,6 +113,16 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
+    double *c0_ptr;
+
+    if (n_misc->pos_) {
+        ierr = VecGetArray (c_rec_0, &c0_ptr);                              CHKERRQ (ierr);
+        for (int i = 0; i < n_misc->n_local_; i++) {
+            c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
+        }
+        ierr = VecRestoreArray (c_rec_0, &c0_ptr);                          CHKERRQ (ierr);
+    }
+
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
     double max, min;
@@ -138,6 +148,10 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     //Create p_rec
     ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
     ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
@@ -155,11 +169,27 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = tumor->setTrueP (n_misc->p_scale_true_);
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
+    double *c0_ptr;
+
+    if (n_misc->pos_) {
+        ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
+        for (int i = 0; i < n_misc->n_local_; i++) {
+            c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
+        }
+        ierr = VecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
+    }
+
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
     #endif
     if (n_misc->writeOutput_)
         dataOut (c_0, n_misc, "results/c0.nc");
+
+    double max, min;
+    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
+
+    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
 

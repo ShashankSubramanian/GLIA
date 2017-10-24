@@ -129,14 +129,14 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
         : rd_ (0)   //Reaction Diffusion --  No positivity
         , pos_ (1)  //Positivity
-        , dt_ (0.16)
-        , nt_(1)
-        , np_ (1)
-        , k_ (0.0)
+        , dt_ (0.01)
+        , nt_(16)
+        , np_ (8)
+        , k_ (0.1)
         , kf_(0.0)
         , rho_ (8)
         , p_scale_ (0.0)
-        , p_scale_true_ (1.0)
+        , p_scale_true_ (10.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)
         , writeOutput_ (0)
@@ -147,7 +147,7 @@ class NMisc {
         , r_glm_wm_ratio_ (1.0)
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5)
-        , obs_threshold_ (0.0)
+        , obs_threshold_ (-1.0)
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
         , testcase_ (testcase) {
