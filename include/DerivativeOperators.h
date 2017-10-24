@@ -42,4 +42,21 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		~DerivativeOperatorsRD () {}
 };
 
+class DerivativeOperatorsPos : public DerivativeOperators {
+	public :
+		DerivativeOperatorsPos (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
+				std::shared_ptr<Tumor> tumor)
+			 : DerivativeOperators (pde_operators, n_misc, tumor) {
+                VecDuplicate (temp_, &temp_phip_);
+             }
+
+        Vec temp_phip_;
+
+		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
+		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateHessian (Vec y, Vec x);
+
+		~DerivativeOperatorsPos () {}
+};
+
 #endif

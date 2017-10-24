@@ -127,7 +127,8 @@ struct TumorSettings {
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
-        : rd_ (1)   //Reaction Diffusion
+        : rd_ (0)   //Reaction Diffusion --  No positivity
+        , pos_ (1)  //Positivity
         , dt_ (0.16)
         , nt_(1)
         , np_ (1)
@@ -147,6 +148,8 @@ class NMisc {
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5)
         , obs_threshold_ (0.0)
+        , exp_shift_ (10.0)
+        , penalty_ (1E-4)
         , testcase_ (testcase) {
 
             time_horizon_ = nt_ * dt_;
@@ -195,8 +198,12 @@ class NMisc {
         int nt_;
 
         int rd_;
+        int pos_;
         int writeOutput_;
         int verbosity_;
+
+        double exp_shift_;
+        double penalty_;
 
         double k_;
         double kf_;
