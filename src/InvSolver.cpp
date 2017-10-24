@@ -223,6 +223,8 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+    ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
+
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
     if (itctx->optsettings_->verbosity > 1) {
         double gnorm;

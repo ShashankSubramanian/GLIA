@@ -33,6 +33,10 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
+    if (n_misc->pos_) {
+        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc, tumor_);
+    }
     // create tumor inverse solver
     inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
     ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
@@ -78,6 +82,10 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     if (n_misc_->rd_ && (rdchanged || npchanged || ntchanged)) {
       pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
+    }
+    if (n_misc_->pos_ && (rdchanged || npchanged || ntchanged)) {
+      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+      derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
     inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);   CHKERRQ (ierr);
