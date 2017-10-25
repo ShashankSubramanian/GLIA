@@ -115,7 +115,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
 
     double *c0_ptr;
 
-    if (n_misc->pos_) {
+    if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_rec_0, &c0_ptr);                              CHKERRQ (ierr);
         for (int i = 0; i < n_misc->n_local_; i++) {
             c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
@@ -171,7 +171,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     double *c0_ptr;
 
-    if (n_misc->pos_) {
+    if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
         for (int i = 0; i < n_misc->n_local_; i++) {
             c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));

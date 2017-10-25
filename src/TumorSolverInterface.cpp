@@ -29,11 +29,11 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
     ierr = tumor_->initialize (p, n_misc);                      CHKERRQ (ierr);
     // create pde and derivative operators
-    if (n_misc->rd_) {
+    if (n_misc->model_ == 1) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
-    if (n_misc->pos_) {
+    if (n_misc->model_ == 2) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
         derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc, tumor_);
     }
@@ -53,10 +53,10 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
 
     // if one of these parameters has changed, we need to re-allocate maemory
     bool npchanged = n_misc_->np_ != tumor_params->np;
-    bool rdchanged = n_misc_->rd_ != tumor_params->reaction_diffusion_model;
+    bool rdchanged = n_misc_->model_ != tumor_params->reaction_diffusion_model;
     bool ntchanged = n_misc_->nt_ != tumor_params->time_steps;
     // ++ re-initialize nmisc ==
-    n_misc_->rd_ = tumor_params->reaction_diffusion_model;
+    n_misc_->model_ = tumor_params->reaction_diffusion_model;
     n_misc_->dt_ = tumor_params->time_step_size;
     n_misc_->nt_ = tumor_params->time_steps;
     n_misc_->time_horizon_ = tumor_params->time_horizon;
@@ -79,11 +79,11 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
     // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
     // invcludes re-allocating time history for adjoint,
-    if (n_misc_->rd_ && (rdchanged || npchanged || ntchanged)) {
+    if (n_misc_->model_ == 1 && (rdchanged || npchanged || ntchanged)) {
       pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
-    if (n_misc_->pos_ && (rdchanged || npchanged || ntchanged)) {
+    if (n_misc_->model_ == 2 && (rdchanged || npchanged || ntchanged)) {
       pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
     }
