@@ -145,7 +145,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = VecPointwiseMult (temp_, xi_glm_, mR_glm_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-    err = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
+    ierr = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
     // solve adjoint equation with specified final condition
     ierr = pde_operators_->solveAdjoint (1);
     // evaluate gradient
@@ -189,7 +189,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
 
-    err = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
+    ierr = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (2);                     CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);       CHKERRQ (ierr);
