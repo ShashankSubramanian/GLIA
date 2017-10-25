@@ -45,7 +45,7 @@ struct OptimizerSettings {
     OptimizerSettings ()
     :
     beta (1E-3),
-    opttolgrad (1E-4),
+    opttolgrad (1E-3),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
@@ -54,7 +54,7 @@ struct OptimizerSettings {
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    verbosity (2)
+    verbosity (1)
     {}
 };
 
