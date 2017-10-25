@@ -321,10 +321,10 @@ PetscErrorCode geometricCoupling(
   // m = m0(1-c(1))
 	for (PetscInt j = 0; j < nmisc->n_local_; j++) {
 		sum = 0;
-    if(mR_gm   != nullptr) {ptr_xigm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum =+ ptr_gm[j];}
-		if(mR_csf  != nullptr) {ptr_xicsf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum =+ ptr_csf[j];}
-		if(mR_glm  != nullptr) {ptr_xiglm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum =+ ptr_glm[j];}
-		if(mR_bg   != nullptr) {ptr_xibg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum =+ ptr_bg[j];}
+    if(mR_gm   != nullptr) {ptr_xigm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum += ptr_gm[j];}
+		if(mR_csf  != nullptr) {ptr_xicsf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum += ptr_csf[j];}
+		if(mR_glm  != nullptr) {ptr_xiglm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum += ptr_glm[j];}
+		if(mR_bg   != nullptr) {ptr_xibg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum += ptr_bg[j];}
 		if(mR_wm   != nullptr) {ptr_xiwm[j]  = 1. - (sum + ptr_tu[j]);}
 	}
 	if(mR_wm  != nullptr) {ierr = VecRestoreArray(mR_wm,  &ptr_wm);    CHKERRQ(ierr);}
