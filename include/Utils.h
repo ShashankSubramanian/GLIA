@@ -54,7 +54,7 @@ struct OptimizerSettings {
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    verbosity (1)
+    verbosity (2)
     {}
 };
 
@@ -128,13 +128,13 @@ class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
         : model_ (2)   //Reaction Diffusion --  1 , Positivity -- 2
-        , dt_ (0.01)
-        , nt_(16)
-        , np_ (8)
-        , k_ (0.1)
+        , dt_ (0.16)
+        , nt_(1)
+        , np_ (1)
+        , k_ (0.0)
         , kf_(0.0)
         , rho_ (8)
-        , p_scale_ (0.0)
+        , p_scale_ (100.0)
         , p_scale_true_ (10.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)

@@ -119,6 +119,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
     ierr = sigmoid (tumor_->c_0_, temp_phip_);  
     ierr = pde_operators_->solveState (0);
 
+
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
 
@@ -134,9 +135,14 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
         temp_ptr[i] = (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
                         (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
                         (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
-                        exp(-temp_ptr[i] + n_misc_->exp_shift_);
+                        exp(-temp_ptr[i] + n_misc_->exp_shift_); 
+
+        if (std::isnan(temp_ptr[i])) {
+            temp_ptr[i] = 0.0;
+        }  
     }
     ierr = VecRestoreArray (temp_, &temp_ptr);                      CHKERRQ (ierr);
+
     ierr = tumor_->phi_->applyTranspose (ptemp_, temp_);
     ierr = VecScale (ptemp_, n_misc_->beta_);                       CHKERRQ (ierr);
 
@@ -150,14 +156,18 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
                         (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
                         (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
                         exp(-temp_ptr[i] + n_misc_->exp_shift_);
+        if (std::isnan(temp_ptr[i])) {
+            temp_ptr[i] = 0.0;
+        }                
     }
+
+
     ierr = VecRestoreArray (temp_, &temp_ptr);                      CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->p_0_, &p_ptr);                  CHKERRQ (ierr);
 
     ierr = tumor_->phi_->applyTranspose (ptemp_, temp_);
     ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
     ierr = VecAXPY (dJ, n_misc_->penalty_, x);                      CHKERRQ (ierr);
-
 
     PetscFunctionReturn(0);
 }
@@ -174,6 +184,9 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x){
         temp_ptr[i] = (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
                         (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
                         exp(-temp_ptr[i] + n_misc_->exp_shift_);
+        if (std::isnan(temp_ptr[i])) {
+            temp_ptr[i] = 1.0;
+        }
     }
     ierr = VecRestoreArray (tumor_->c_0_, &temp_ptr);               CHKERRQ (ierr);
     ierr = tumor_->phi_->apply (temp_phiptilde_, x);                CHKERRQ (ierr);
@@ -199,6 +212,10 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x){
                         exp(-phip_ptr[i] + n_misc_->exp_shift_) *
                         phiptilde_ptr[i];
 
+        if (std::isnan(temp_ptr[i])) {
+            temp_ptr[i] = 0.0;
+        }   
+
         temp_ptr[i] += 3.0 * n_misc_->beta_ * 
                         (1 / (1 + exp(-phip_ptr[i] + n_misc_->exp_shift_))) *
                         (1 / (1 + exp(-phip_ptr[i] + n_misc_->exp_shift_))) *
@@ -208,10 +225,18 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x){
                         exp(-phip_ptr[i] + n_misc_->exp_shift_) *
                         phiptilde_ptr[i];
 
+        if (std::isnan(temp_ptr[i])) {
+            temp_ptr[i] = 0.0;
+        }   
+
         temp_ptr[i] += -p_ptr[i] * 
                         (1 / (1 + exp(-phip_ptr[i] + n_misc_->exp_shift_))) *
                         (1 / (1 + exp(-phip_ptr[i] + n_misc_->exp_shift_))) *
                         exp(-phip_ptr[i] + n_misc_->exp_shift_);
+
+        if (std::isnan(temp_ptr[i])) {
+            temp_ptr[i] = 0.0;
+        }   
     }
     ierr = VecRestoreArray (temp_phip_, &phip_ptr);                  CHKERRQ (ierr);
     ierr = VecRestoreArray (temp_phiptilde_, &phiptilde_ptr);        CHKERRQ (ierr);

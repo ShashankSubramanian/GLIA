@@ -514,7 +514,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     	double norm_gref = 0.;
     	ierr = VecDuplicate (ctx->tumor_->p_, &p0);                                        CHKERRQ(ierr);
     	ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                                        CHKERRQ(ierr);
-    	ierr = VecSet (p0, 0.); CHKERRQ(ierr);
+    	ierr = VecSet (p0, ctx->n_misc_->p_scale_); CHKERRQ(ierr);
     	ierr = VecSet (dJ, 0.); CHKERRQ(ierr);
     	// evaluate reference gradient for initial guess p = 0 * ones(Np)
     	evaluateGradient(tao, p0, dJ, (void*) ctx);
