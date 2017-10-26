@@ -193,7 +193,12 @@ env.Append(CPPPATH = [os.path.join( PETSC_DIR, "include"),
 env.Append(LIBPATH = [os.path.join( PETSC_DIR, "lib"),
                       os.path.join( PETSC_DIR, PETSC_ARCH, "lib")])
 
-if env["platform"] != "hazelhen":
+if env["platform"] == "hazelhen":
+  # do nothing
+  pass
+elif env["platform"] == "lonestar":
+  uniqueCheckLib(conf, "petsc")
+else:
   uniqueCheckLib(conf, "petsc")
   uniqueCheckLib(conf, "f2clapack")
   uniqueCheckLib(conf, "f2cblas")

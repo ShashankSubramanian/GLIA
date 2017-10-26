@@ -37,6 +37,10 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
         derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc, tumor_);
     }
+    if (n_misc->model_ == 3) {
+        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc, tumor_);
+    }
     // create tumor inverse solver
     inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
     ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
@@ -53,10 +57,10 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
 
     // if one of these parameters has changed, we need to re-allocate maemory
     bool npchanged = n_misc_->np_ != tumor_params->np;
-    bool rdchanged = n_misc_->model_ != tumor_params->reaction_diffusion_model;
+    bool rdchanged = n_misc_->model_ != tumor_params->tumor_model;
     bool ntchanged = n_misc_->nt_ != tumor_params->time_steps;
     // ++ re-initialize nmisc ==
-    n_misc_->model_ = tumor_params->reaction_diffusion_model;
+    n_misc_->model_ = tumor_params->tumor_model;
     n_misc_->dt_ = tumor_params->time_step_size;
     n_misc_->nt_ = tumor_params->time_steps;
     n_misc_->time_horizon_ = tumor_params->time_horizon;
@@ -86,6 +90,10 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     if (n_misc_->model_ == 2 && (rdchanged || npchanged || ntchanged)) {
       pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
+    }
+    if (n_misc_->model_ == 3 && (rdchanged || npchanged || ntchanged)) {
+      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+      derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
     inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);   CHKERRQ (ierr);

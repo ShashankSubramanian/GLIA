@@ -78,7 +78,7 @@ struct OptimizerFeedback {
 };
 
 struct TumorSettings {
-    int    reaction_diffusion_model;
+    int    tumor_model;
     double time_step_size;
     int    time_steps;
     double time_horizon;
@@ -100,7 +100,7 @@ struct TumorSettings {
     double phi_sigma;               /// @brief standard deviation of Gaussians
 
     TumorSettings () :
-    reaction_diffusion_model(1),
+    tumor_model(1),
     time_step_size(0.01),
     time_steps(16),
     time_horizon(0.16),
@@ -127,7 +127,8 @@ struct TumorSettings {
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
-        : model_ (2)   //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (3)   //Reaction Diffusion --  1 , Positivity -- 2
+                       // Modified Obj -- 3
         , dt_ (0.16)
         , nt_(1)
         , np_ (1)
@@ -234,6 +235,11 @@ class NMisc {
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode geometricCoupling(Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg, Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg, Vec c1, std::shared_ptr<NMisc> nmisc);
+PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
+	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
+	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
+	Vec mT_wm, Vec mT_gm, Vec mT_csf, Vec mT_glm, Vec mT_bg);
 
 //Read/Write function prototypes
 void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
