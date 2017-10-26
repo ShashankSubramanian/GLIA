@@ -49,10 +49,10 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
 
     // if one of these parameters has changed, we need to re-allocate maemory
     bool npchanged = n_misc_->np_ != tumor_params->np;
-    bool rdchanged = n_misc_->rd_ != tumor_params->reaction_diffusion_model;
+    bool rdchanged = n_misc_->rd_ != tumor_params->tumor_model;
     bool ntchanged = n_misc_->nt_ != tumor_params->time_steps;
     // ++ re-initialize nmisc ==
-    n_misc_->rd_ = tumor_params->reaction_diffusion_model;
+    n_misc_->rd_ = tumor_params->tumor_model;
     n_misc_->dt_ = tumor_params->time_step_size;
     n_misc_->nt_ = tumor_params->time_steps;
     n_misc_->time_horizon_ = tumor_params->time_horizon;

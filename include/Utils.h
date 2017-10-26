@@ -78,7 +78,7 @@ struct OptimizerFeedback {
 };
 
 struct TumorSettings {
-    int    reaction_diffusion_model;
+    int    tumor_model;
     double time_step_size;
     int    time_steps;
     double time_horizon;
@@ -100,7 +100,7 @@ struct TumorSettings {
     double phi_sigma;               /// @brief standard deviation of Gaussians
 
     TumorSettings () :
-    reaction_diffusion_model(1),
+    tumor_model(1),
     time_step_size(0.01),
     time_steps(16),
     time_horizon(0.16),
