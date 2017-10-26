@@ -130,7 +130,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);                CHKERRQ (ierr);
     // compute xi * mA0, add    -\xi * mA0 to adjoint final cond.
     if(mR_wm_ != nullptr) {
-  		ierr = VecPointwiseMult (temp_, xi_wm_, mR_wm_);           CHKERRQ (ierr);
+  		ierr = VecPointwiseMult (temp_, xi_wm_, mR_wm_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
   	if(mR_gm_ != nullptr) {
@@ -145,7 +145,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = VecPointwiseMult (temp_, xi_glm_, mR_glm_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-    ierr = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
+    ierr = VecScale (tumor_->p_t_, 1.0/nc_);                     CHKERRQ (ierr);
     // solve adjoint equation with specified final condition
     ierr = pde_operators_->solveAdjoint (1);
     // evaluate gradient
@@ -169,7 +169,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
     // alpha(1) = - O^TO \tilde{c(1)} - mA0 mA0 \tilde{c(1)}
     if(mR_wm_ != nullptr) {
-  		ierr = VecPointwiseMult (temp_, mR_wm_, mR_wm_);           CHKERRQ (ierr);
+  		ierr = VecPointwiseMult (temp_, mR_wm_, mR_wm_);         CHKERRQ (ierr);
       ierr = VecPointwiseMult (temp_, temp_, tumor_->c_t_);      CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
@@ -189,7 +189,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
 
-    ierr = VecScale (tumor_->p_t_, 1.0/nc_);                      CHKERRQ (ierr);
+    ierr = VecScale (tumor_->p_t_, 1.0/nc_);                     CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (2);                     CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);       CHKERRQ (ierr);
