@@ -195,6 +195,7 @@ env.Append(LIBPATH = [os.path.join( PETSC_DIR, "lib"),
 
 if env["platform"] == "hazelhen":
   # do nothing
+  pass
 elif env["platform"] == "lonestar":
   uniqueCheckLib(conf, "petsc")
 else:
