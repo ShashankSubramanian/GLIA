@@ -127,7 +127,7 @@ struct TumorSettings {
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
-        : model_ (3)   //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.16)
         , nt_(1)
