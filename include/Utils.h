@@ -129,10 +129,10 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
         : model_ (2)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.01)
-        , nt_(16)
+        , dt_ (0.16)
+        , nt_(1)
         , np_ (1)
-        , k_ (0.1)
+        , k_ (0.0)
         , kf_(0.0)
         , rho_ (15)
         , p_scale_ (0.0)

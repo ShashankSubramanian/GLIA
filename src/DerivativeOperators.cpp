@@ -425,7 +425,7 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
         J_taylor *= h[i];
         J_taylor +=  J_p;
         diff = std::abs(J - J_taylor);
-        PCOUT << "|J - J_taylor|: " << diff << "  log(diff) : " << log(diff) << std::endl;
+        PCOUT << "|J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
     }
     PetscFunctionReturn (0);
 }
