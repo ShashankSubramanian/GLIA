@@ -135,7 +135,7 @@ class NMisc {
         , k_ (0.1)
         , kf_(0.0)
         , rho_ (15)
-        , p_scale_ (100.0)
+        , p_scale_ (0.0)
         , p_scale_true_ (100.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)

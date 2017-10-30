@@ -395,6 +395,11 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PCOUT << "\n----- Gradient check with taylor expansion ----- " << std::endl;
 
+    double norm;
+    ierr = VecNorm (p, NORM_2, &norm);                          CHKERRQ (ierr);
+
+    PCOUT << "Gradient check performed at p with norm: " << norm << std::endl;
+
     double h[7] = {0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6};
     double J, J_taylor, J_p, diff;
 

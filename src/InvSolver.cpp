@@ -150,7 +150,7 @@ PetscErrorCode InvSolver::solve () {
     // --------
     //resetTimers(itctx->n_misc_->timers_);
     //Gradient check begin
-    itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
+    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
     //Gradient check end
     ierr = TaoSolve (tao_);                                                               CHKERRQ(ierr);
     // --------
@@ -165,9 +165,9 @@ PetscErrorCode InvSolver::solve () {
 	ierr = TaoGetSolutionStatus (tao_, NULL, &J, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
 	/* display convergence reason: */
 	ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
-  ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-  ierr = tuMSGstd (" optimization done"); CHKERRQ(ierr);
-  ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+    ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+    ierr = tuMSGstd (" optimization done"); CHKERRQ(ierr);
+    ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
 	itctx_->update_reference_gradient = false;
 	// reset vectors (remember, memory managed on caller side):
@@ -390,6 +390,9 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     s.clear ();
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
+    //Gradient check begin
+    ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
+    //Gradient check end
     PetscFunctionReturn (0);
 }
 
@@ -408,21 +411,21 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
 
 	Vec x; int maxit; PetscScalar divtol, abstol, reltol;
 	ierr = KSPBuildSolution (ksp,NULL,&x);
-  ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
 	itctx->optfeedback_->nb_krylov_it++;                // accumulate number of krylov iterations
 
-  std::stringstream s;
-  if (its == 0) {
+    std::stringstream s;
+    if (its == 0) {
       s << std::setw(3)  << " PCG:" << " computing solution of hessian system (tol="
         << std::scientific << std::setprecision(5) << reltol << ")";
       ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
       s.str (""); s.clear ();
-  }
-  s << std::setw(3)  << " PCG:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    }
+    s << std::setw(3)  << " PCG:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
     << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
-  ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
-  s.str (""); s.clear ();
+    ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    s.str (""); s.clear ();
 	PetscFunctionReturn (0);
 }
 
