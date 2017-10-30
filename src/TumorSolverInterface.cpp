@@ -26,7 +26,14 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
     ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
     ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
     ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
-    ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
+//    ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
+    PetscScalar val[2] = {.9, .2};
+    PetscInt center = (int)std::floor(n_misc->np_/2.);
+    PetscInt idx[2] = {center-1, center};
+    ierr = VecSetValues(p, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(p);                                 CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(p);                                   CHKERRQ(ierr);
+
     ierr = tumor_->initialize (p, n_misc);                      CHKERRQ (ierr);
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
