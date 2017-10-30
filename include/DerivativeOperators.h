@@ -29,6 +29,8 @@ class DerivativeOperators {
         virtual PetscErrorCode setDistMeassureTemplateImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
 		virtual PetscErrorCode setGeometricCouplingAdjoint (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
 
+        PetscErrorCode checkGradient (Vec p, Vec data);
+
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
 			VecDestroy (&ptemp_);

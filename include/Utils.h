@@ -127,27 +127,27 @@ struct TumorSettings {
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
-        : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (2)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.01)
         , nt_(16)
         , np_ (1)
-        , k_ (1e-2)
+        , k_ (0.1)
         , kf_(0.0)
-        , rho_ (8)
-        , p_scale_ (0.0)
-        , p_scale_true_ (1.0)
+        , rho_ (15)
+        , p_scale_ (100.0)
+        , p_scale_true_ (100.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)
         , writeOutput_ (0)
         , verbosity_ (1)
         , k_gm_wm_ratio_ (1.0 / 10.0)
         , k_glm_wm_ratio_ (0.0)
-        , r_gm_wm_ratio_ (1.0)
+        , r_gm_wm_ratio_ (1.0 / 5.0)
         , r_glm_wm_ratio_ (1.0)
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5)
-        , obs_threshold_ (-1.0)
+        , obs_threshold_ (0.0)
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
         , testcase_ (testcase) {

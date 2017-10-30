@@ -387,3 +387,40 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     PetscFunctionReturn(0);
 }
 
+PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    PCOUT << "\n----- Gradient check with taylor expansion ----- " << std::endl;
+
+    double h[7] = {0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6};
+    double J, J_taylor, J_p, diff;
+
+    Vec dJ;
+    Vec p_tilde;
+    Vec p_new;
+    ierr = VecDuplicate (p, &dJ);                               CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &p_tilde);                          CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &p_new);                            CHKERRQ (ierr);
+
+    ierr = evaluateGradient (dJ, p, data);
+    ierr = evaluateObjective(&J_p, p, data);
+
+    PetscRandom rctx;
+    ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);         CHKERRQ (ierr);
+    ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
+    ierr = VecSetRandom (p_tilde, rctx);                        CHKERRQ (ierr);
+
+    for (int i = 0; i < 7; i++) {
+        ierr = VecWAXPY (p_new, h[i], p_tilde, p);              CHKERRQ (ierr);
+        ierr = evaluateObjective (&J, p_new, data);          
+        ierr = VecDot (dJ, p_tilde, &J_taylor);                 CHKERRQ (ierr);
+        J_taylor *= h[i];
+        J_taylor +=  J_p;
+        diff = std::abs(J - J_taylor);
+        PCOUT << "|J - J_taylor|: " << diff << "  log(diff) : " << log(diff) << std::endl;
+    }
+    PetscFunctionReturn (0);
+}
