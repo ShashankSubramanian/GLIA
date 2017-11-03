@@ -19,14 +19,16 @@ class DerivativeOperators {
 
 		Vec temp_;
 		Vec ptemp_;
-        Vec p_current_; //Current solution vector in newton iteration                                
+        Vec p_current_; //Current solution vector in newton iteration
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
+		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
 
-        virtual PetscErrorCode setDistMeassureReferenceImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
-        virtual PetscErrorCode setDistMeassureTemplateImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
+
+    virtual PetscErrorCode setDistMeassureReferenceImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
+    virtual PetscErrorCode setDistMeassureTemplateImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
 		virtual PetscErrorCode setGeometricCouplingAdjoint (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
 
 		virtual ~DerivativeOperators () {
@@ -45,7 +47,7 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
-
+		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x);
 
 		~DerivativeOperatorsRD () {}
 };
@@ -60,14 +62,14 @@ class DerivativeOperatorsPos : public DerivativeOperators {
                 VecDuplicate (temp_, &temp_phiptilde_);
              }
 
-        Vec temp_phip_;
-        Vec temp_phiptilde_;
+    Vec temp_phip_;
+    Vec temp_phiptilde_;
 
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
 
-        PetscErrorCode sigmoid (Vec, Vec);
+    PetscErrorCode sigmoid (Vec, Vec);
 
 		~DerivativeOperatorsPos () {
             VecDestroy (&temp_phip_);
@@ -86,15 +88,15 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 
         PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
         	mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;
-            nc_ = (wm != nullptr) + (gm != nullptr) + (csf != nullptr) + (glm != nullptr); 
+            nc_ = (wm != nullptr) + (gm != nullptr) + (csf != nullptr) + (glm != nullptr);
             PetscFunctionReturn(0);
         }
         PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-        	mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg; 
+        	mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg;
             PetscFunctionReturn(0);
         }
         PetscErrorCode setGeometricCouplingAdjoint(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-            xi_wm_ = wm; xi_gm_ = gm; xi_csf_ = csf; xi_glm_ = glm; xi_bg_ = bg; 
+            xi_wm_ = wm; xi_gm_ = gm; xi_csf_ = csf; xi_glm_ = glm; xi_bg_ = bg;
             PetscFunctionReturn(0);
         }
 

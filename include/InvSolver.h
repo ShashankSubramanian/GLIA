@@ -71,6 +71,7 @@ class InvSolver {
         PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
         PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
         PetscErrorCode solve ();
+        PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
         // setter functions
         void setData (Vec d) {data_ = d;}
         void setDataGradient (Vec d) {data_gradeval_ = d;}
@@ -87,6 +88,10 @@ class InvSolver {
     private:
         /// @brief true if tumor adapter is correctly initialized. mendatory
         bool initialized_;
+        /// @brief if true (and lmvm is sselected), use initial guess for Hessian (= Mat H_)
+        bool use_intial_hessian_lmvm_;
+        /// if true, use tao's lmvm (l-bfgs) solver, else, use nls (gauss-newton)
+        bool use_tao_lmvm_;
         /// @brief data d1 for tumor inversion (memory managed from outside)
         Vec data_;
         /// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
@@ -107,20 +112,16 @@ PetscErrorCode evaluateObjectiveFunction (Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient (Tao, Vec, Vec, void*);
 PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode hessianMatVec (Mat, Vec, Vec);
-PetscErrorCode hessianeProduct (void*, Vec, Vec);
+PetscErrorCode constApxHessianMatVec (Mat, Vec, Vec);
 PetscErrorCode matfreeHessian (Tao, Vec, Mat, Mat, void*);
 PetscErrorCode preconditionerMatVec (PC, Vec, Vec);
 PetscErrorCode applyPreconditioner (void*, Vec, Vec);
 PetscErrorCode optimizationMonitor (Tao tao, void *ptr);
 PetscErrorCode hessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
+PetscErrorCode constHessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
 PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr);
 PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
-PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
-//PetscErrorCode AnalyticFormGradient(Tao, Vec, Vec, void*);
-//PetscErrorCode Analytic_HessianMatVec(Mat, Vec, Vec);
-//PetscErrorCode AnalyticFormFunctionGradient(Tao, Vec, PetscReal *, Vec, void *);
-//PetscErrorCode AnalyticOptimizationMonitor(Tao tao, void *ptr);
 
 #endif
