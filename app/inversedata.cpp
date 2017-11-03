@@ -5,10 +5,8 @@ static char help[] = "Inverse Driver \
 \n Testcase 1 - Constant reaction and diffusion coefficient \
 \n Testcase 2 - Sinusoidal reaction and diffusion coefficient";
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -66,28 +64,28 @@ int main (int argc, char** argv) {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
-    std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
 
-    Vec c_0, data, p_rec;
+    Vec data, p_rec;
     PetscErrorCode ierr = 0;
-    // PCOUT << "Generating Synthetic Data --->" << std::endl;
-    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
-    // PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
-
-    //SNAFU
     PCOUT << "Read raw Data --->" << std::endl;
     ierr = readData (data, n_misc);
     PCOUT << "Data Read: Inverse solve begin --->" << std::endl;
 
+    std::shared_ptr<Phi> phi = std::make_shared<Phi> (n_misc);
+    std::shared_ptr<MatProp> mat_prop = std::make_shared<MatProp> (n_misc);
+    ierr = mat_prop->setValues (n_misc);
+    ierr = phi->setGaussians (data, mat_prop);
+
     ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
     ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
     ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
-    //SNAFU
+
+    std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, phi, mat_prop);
 
     //Solve interpolation
-    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
+    ierr = solver_interface->solveInterpolation (data, p_rec, phi, n_misc);
 
+    //Solve tumor inversion
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 
     double prec_norm;
@@ -106,24 +104,13 @@ int main (int argc, char** argv) {
         r.print ();
         r.print ("EventsTimings.log", true);
     }
+    ierr = VecDestroy (&data);                                              CHKERRQ (ierr);
+    ierr = VecDestroy (&p_rec);                                             CHKERRQ (ierr);
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
     accfft_destroy_plan (plan);
     PetscFinalize ();
-}
-
-PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-
-    ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
-    ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
-    ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
-
-    dataIn (data, n_misc, "dataFromPhiGrid.nc");
-
-    PetscFunctionReturn (0);
 }
 
 PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
@@ -165,6 +152,9 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     if (n_misc->writeOutput_)
         dataOut (c_rec, n_misc, "results/CRecon.nc");
 
+    //SNAFU
+    dataOut (c_rec, n_misc, "brain_data/64/dataFromPhiGrid.nc");
+
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
     ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
@@ -173,60 +163,15 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    //Create p_rec
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+    ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
+    ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
+    ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
-    ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
-    ierr = VecSetFromOptions (c_t);                                         CHKERRQ (ierr);
-    ierr = VecDuplicate (c_t, &c_0);                                        CHKERRQ (ierr);
-
-    ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);
-    ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
-
-    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->setTrueP (n_misc->p_scale_true_, n_misc);
-    ierr = tumor->phi_->apply (c_0, tumor->p_true_);
-
-    double *c0_ptr;
-
-    if (n_misc->model_ == 2) {
-        ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
-        for (int i = 0; i < n_misc->n_local_; i++) {
-            c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
-        }
-        ierr = VecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
-    }
-
-    #ifdef POSITIVITY
-        ierr = enforcePositivity (c_0, n_misc);
-    #endif
-    if (n_misc->writeOutput_)
-        dataOut (c_0, n_misc, "results/c0.nc");
-
-    double max, min;
-    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
-    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
-
-    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
-
-    ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
-
-    ierr = tumor->obs_->apply (c_t, c_t);
-
-    if (n_misc->writeOutput_) {
-        dataOut (c_t, n_misc, "results/data.nc");
-        dataOut (c_t, n_misc, "brain_data/64/data.nc");  //SNAFU
-    }
+    dataIn (data, n_misc, "data.nc");
 
     PetscFunctionReturn (0);
 }

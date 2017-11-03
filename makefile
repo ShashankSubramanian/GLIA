@@ -39,6 +39,7 @@ endif
 
 TARGET_BIN= $(BINDIR)/forward
 TARGET_BIN+= $(BINDIR)/inverse
+TARGET_BIN+= $(BINDIR)/inversedata
 
 SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/ReacCoef.cpp \

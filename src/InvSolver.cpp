@@ -153,6 +153,7 @@ PetscErrorCode InvSolver::solve () {
     ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
     //Gradient check end
     ierr = TaoSolve (tao_);                                                               CHKERRQ(ierr);
+
     // --------
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                         CHKERRQ(ierr);
@@ -390,9 +391,10 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     s.clear ();
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
-    //Gradient check begin
-    ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
-    //Gradient check end
+    if (itctx->n_misc_->verbosity_ > 2)
+        //Gradient check begin
+        ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
+        //Gradient check end
     PetscFunctionReturn (0);
 }
 

@@ -21,6 +21,7 @@
 #include <omp.h>
 #include <complex>
 #include <cmath>
+#include <vector>
 #include <accfft_utils.h>
 #include "EventTimings.hpp"
 
@@ -127,26 +128,26 @@ struct TumorSettings {
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
-        : model_ (2)   //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.16)
         , nt_(1)
-        , np_ (1)
+        , np_ (27)
         , k_ (0.0)
         , kf_(0.0)
         , rho_ (15)
         , p_scale_ (0.0)
-        , p_scale_true_ (100.0)
+        , p_scale_true_ (1.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)
-        , writeOutput_ (0)
+        , writeOutput_ (1)
         , verbosity_ (1)
         , k_gm_wm_ratio_ (1.0 / 10.0)
         , k_glm_wm_ratio_ (0.0)
         , r_gm_wm_ratio_ (1.0 / 5.0)
         , r_glm_wm_ratio_ (1.0)
         , phi_sigma_ (PETSC_PI / 10)
-        , phi_spacing_factor_ (1.5)
+        , phi_spacing_factor_ (2.0)
         , obs_threshold_ (0.0)
         , exp_shift_ (10.0)
         , penalty_ (1E-4)

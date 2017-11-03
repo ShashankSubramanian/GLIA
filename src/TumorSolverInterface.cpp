@@ -1,7 +1,24 @@
 #include "TumorSolverInterface.h"
 #include "EventTimings.hpp"
 
-TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc) :
+struct InterpolationContext {
+    InterpolationContext (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
+        PetscErrorCode ierr = 0;
+        ierr = VecCreate (PETSC_COMM_WORLD, &temp_);
+        ierr = VecSetSizes (temp_, n_misc->n_local_, n_misc->n_global_);
+        ierr = VecSetFromOptions (temp_);
+        ierr = VecSet (temp_, 0);
+    }
+    std::shared_ptr<Tumor> tumor_;
+    std::shared_ptr<NMisc> n_misc_;
+    Vec temp_;
+    ~InterpolationContext () {
+        PetscErrorCode ierr = 0;
+        ierr = VecDestroy (&temp_);
+    }
+};
+
+TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) :
 initialized_ (false),
 optimizer_settings_changed_ (false),
 n_misc_ (n_misc),
@@ -11,13 +28,13 @@ derivative_operators_ (),
 inv_solver_ () {
     PetscErrorCode ierr = 0;
     if (n_misc != nullptr)
-        initialize (n_misc);
+        initialize (n_misc, phi, mat_prop);
 }
 
-PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-   if (initialized_) PetscFunctionReturn (0);
+    if (initialized_) PetscFunctionReturn (0);
 
     tumor_ = std::make_shared<Tumor> (n_misc);
     n_misc_ = n_misc;
@@ -27,7 +44,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
     ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
     ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
-    ierr = tumor_->initialize (p, n_misc);                      CHKERRQ (ierr);
+    ierr = tumor_->initialize (p, n_misc, phi, mat_prop);       
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
@@ -130,10 +147,12 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     if (d1g == nullptr)
         d1g = d1;
     inv_solver_->setDataGradient (d1g);
+
     // solve
     ierr = inv_solver_->solve ();
     // pass the reconstructed p vector to the caller (deep copy)
     ierr= VecCopy (inv_solver_->getPrec(), prec);                                               CHKERRQ (ierr);
+
     PetscFunctionReturn (0);
 }
 
@@ -146,6 +165,116 @@ PetscErrorCode TumorSolverInterface::computeGradient (Vec dJ, Vec p, Vec data_gr
     ierr = derivative_operators_->evaluateGradient (dJ, p, data_gradeval); CHKERRQ(ierr);
     PetscFunctionReturn(0);
 }
+
+PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    //A = phiT * OT * O * phi
+    InterpolationContext *ctx;
+    ierr = MatShellGetContext (A, &ctx);                                CHKERRQ (ierr);
+    ierr = ctx->tumor_->phi_->apply (ctx->temp_, x);                    CHKERRQ (ierr);
+    ierr = ctx->tumor_->obs_->apply (ctx->temp_, ctx->temp_);           CHKERRQ (ierr);
+    ierr = ctx->tumor_->obs_->apply (ctx->temp_, ctx->temp_);           CHKERRQ (ierr);
+    ierr = ctx->tumor_->phi_->applyTranspose (y, ctx->temp_);           CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode interpolationKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec x; int maxit; PetscScalar divtol, abstol, reltol;
+    ierr = KSPBuildSolution (ksp,NULL,&x);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);           CHKERRQ(ierr);                                                             CHKERRQ(ierr);
+    InterpolationContext *itctx = reinterpret_cast<InterpolationContext*>(ptr);     // get user context
+
+    std::stringstream s;
+    if (its == 0) {
+      s << std::setw(3)  << " PCG:" << " computing solution of interpolation system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
+    s << std::setw(3)  << " PCG:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+    ierr = tuMSGstd (s.str());                                                  CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, std::shared_ptr<Phi> phi, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    PCOUT << " -------  Interpolation begin ---------" << std::endl;
+
+    KSP ksp;
+    Mat A;
+    Vec p, rhs;
+    Vec phi_p;
+
+    ierr = VecDuplicate (data, &phi_p);                                 CHKERRQ (ierr);
+
+    ierr = VecCreate (PETSC_COMM_WORLD, &p);                            CHKERRQ (ierr);
+    ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+    ierr = VecSetFromOptions (p);                                       CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &rhs);                                      CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &p_out);                                    CHKERRQ (ierr);
+
+    std::shared_ptr<Tumor> tumor = tumor_;
+    std::shared_ptr<InterpolationContext> ctx = std::make_shared<InterpolationContext> (n_misc_);
+    ctx->tumor_ = tumor;
+
+    ierr = KSPCreate (PETSC_COMM_WORLD, &ksp);                          CHKERRQ (ierr);
+    ierr = MatCreateShell (PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, n_misc->np_, n_misc->np_, ctx.get(), &A);      CHKERRQ (ierr);
+    ierr = MatShellSetOperation (A, MATOP_MULT, (void (*) (void))phiMult);                                              CHKERRQ (ierr);
+    ierr = KSPSetOperators (ksp, A, A);                                 CHKERRQ (ierr);
+    ierr = KSPSetTolerances (ksp, 1e-5, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);                                   CHKERRQ (ierr);
+    ierr = KSPSetType (ksp, KSPCG);                                     CHKERRQ (ierr);
+    ierr = KSPSetOptionsPrefix (ksp, "phieq_");                         CHKERRQ (ierr);
+    ierr = KSPSetFromOptions (ksp);                                     CHKERRQ (ierr);
+    ierr = KSPSetUp (ksp);                                              CHKERRQ (ierr);
+    ierr = KSPMonitorSet (ksp, interpolationKSPMonitor, ctx.get(), 0);  CHKERRQ (ierr);
+
+    //RHS -- phiT * OT * O * d
+    ierr = tumor->obs_->apply (ctx->temp_, data);                       CHKERRQ (ierr);
+    ierr = tumor->obs_->apply (ctx->temp_, ctx->temp_);                 CHKERRQ (ierr);    
+    ierr = tumor->phi_->applyTranspose (rhs, ctx->temp_);               CHKERRQ (ierr);
+
+    ierr = KSPSolve (ksp, rhs, p);                                      CHKERRQ (ierr);
+    ierr = VecCopy (p, p_out);                                          CHKERRQ (ierr);
+
+    //Compute reconstruction error
+    double error_norm, p_norm, d_norm;
+    ierr = tumor->phi_->apply (phi_p, p);                               CHKERRQ (ierr);
+    ierr = tumor->obs_->apply (phi_p, phi_p);                           CHKERRQ (ierr);
+    ierr = tumor->obs_->apply (ctx->temp_, data);                       CHKERRQ (ierr);
+    ierr = VecNorm (ctx->temp_, NORM_2, &d_norm);                       CHKERRQ (ierr);
+    ierr = VecAXPY (phi_p, -1.0, ctx->temp_);                           CHKERRQ (ierr);
+    ierr = VecNorm (phi_p, NORM_2, &error_norm);                        CHKERRQ (ierr);
+    ierr = VecNorm (p_out, NORM_2, &p_norm);                            CHKERRQ (ierr);
+
+    PCOUT << "Rel error in interpolation reconstruction: " << error_norm / d_norm << std::endl;
+    PCOUT << "Norm of reconstructed p: " << p_norm << std::endl;
+    PCOUT << " -------  Interpolation end ---------" << std::endl;
+
+    ierr = VecDestroy (&p);                                             CHKERRQ (ierr);
+    ierr = VecDestroy (&rhs);                                           CHKERRQ (ierr);
+    ierr = VecDestroy (&phi_p);                                         CHKERRQ (ierr);
+    ierr = MatDestroy (&A);                                             CHKERRQ (ierr);
+    ierr = KSPDestroy (&ksp);                                           CHKERRQ (ierr);
+
+
+    PetscFunctionReturn (0);
+}
+
 
 void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset) {
     PetscErrorCode ierr = 0;
@@ -164,14 +293,14 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
     optimizer_settings_changed_ = true;
 }
 
-PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
+PetscErrorCode TumorSolverInterface::setInitialGuess (Vec p) {
   PetscErrorCode ierr;
   TU_assert (p != nullptr,                  "TumorSolverInterface::setInitialGuess(): requires non-null input.");
   ierr = VecCopy (p, tumor_->p_); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::setInitialGuess(double d) {
+PetscErrorCode TumorSolverInterface::setInitialGuess (double d) {
   PetscErrorCode ierr;
   ierr = VecSet (tumor_->p_, d); CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -210,7 +339,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     // update mesh of Gaussians, new phi spacing, center, sigma
     tumor_->phi_->setValues (tumor_params->phi_center_of_mass, tumor_params->phi_sigma, tumor_params->phi_spacing_factor,
                             tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
-    // need to update prefactors for dissusion KSP preconditioner, as k changed
+    // need to update prefactors for diffusion KSP preconditioner, as k changed
     pde_operators_->diff_solver_->precFactor();
 
     // timing

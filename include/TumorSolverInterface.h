@@ -9,9 +9,9 @@
 
 class TumorSolverInterface {
 	public :
-		TumorSolverInterface (std::shared_ptr<NMisc> n_misc = {});
+		TumorSolverInterface (std::shared_ptr<NMisc> n_misc = {}, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		/// @brief initializes the TumorSolverInterface
-		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop);
 
 		PetscErrorCode setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params);
 		/** @brief Solves the forward tumor problem, given initial concentration
@@ -65,6 +65,8 @@ class TumorSolverInterface {
 		/// @brief returns the context for the inverse tumor solver
 		std::shared_ptr<CtxInv> getITctx () {return inv_solver_->getInverseSolverContext();}
 		~TumorSolverInterface () {}
+
+		PetscErrorCode solveInterpolation (Vec data, Vec p_rec, std::shared_ptr<Phi> phi, std::shared_ptr<NMisc> n_misc);
 
 	private :
 	  bool initialized_;
