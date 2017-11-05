@@ -225,7 +225,7 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
     num_tumor = 0;
     cube_interior = 0;
     double distance;
-    double threshold = 0.2;
+    double threshold = 0.5;
 
     int64_t ptr;
     for (int i = x - radius; i <= x + radius; i++) 

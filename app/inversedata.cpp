@@ -6,6 +6,7 @@ static char help[] = "Inverse Driver \
 \n Testcase 2 - Sinusoidal reaction and diffusion coefficient";
 
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode readDataAndAtlas (Vec &data, Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
@@ -65,15 +66,25 @@ int main (int argc, char** argv) {
     Event e1 ("solve-tumor-inverse-tao");
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
 
-    Vec data, p_rec;
+    Vec data, p_rec, wm, gm, glm, csf;
+
+    // Data read only
+    // PetscErrorCode ierr = 0;
+    // PCOUT << "Read raw Data --->" << std::endl;
+    // ierr = readData (data, n_misc);
+    // PCOUT << "Data Read: Inverse solve begin --->" << std::endl;
+    
+    //Data and altas read
     PetscErrorCode ierr = 0;
-    PCOUT << "Read raw Data --->" << std::endl;
-    ierr = readData (data, n_misc);
-    PCOUT << "Data Read: Inverse solve begin --->" << std::endl;
+    PCOUT << " ------- Reading data and atlas: --------- " << std::endl;
+    ierr = readDataAndAtlas (data, gm, wm, glm, csf, n_misc);
+    PCOUT << " ------- Data and atlas read -------- " <<std::endl;
+    
 
     std::shared_ptr<Phi> phi = std::make_shared<Phi> (n_misc);
     std::shared_ptr<MatProp> mat_prop = std::make_shared<MatProp> (n_misc);
-    ierr = mat_prop->setValues (n_misc);
+    // ierr = mat_prop->setValues (n_misc);
+    ierr = mat_prop->setValuesCustom (gm, wm, glm, csf, n_misc);
     ierr = phi->setGaussians (data, mat_prop);
 
     ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
@@ -82,6 +93,7 @@ int main (int argc, char** argv) {
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, phi, mat_prop);
 
+    exit (1);
     //Solve interpolation
     ierr = solver_interface->solveInterpolation (data, p_rec, phi, n_misc);
     // exit (1);
@@ -106,7 +118,13 @@ int main (int argc, char** argv) {
         r.print ();
         r.print ("EventsTimings.log", true);
     }
+
+    //Destroy vectors
     ierr = VecDestroy (&data);                                              CHKERRQ (ierr);
+    if (gm != nullptr) {ierr = VecDestroy (&gm);                            CHKERRQ (ierr);}
+    if (wm != nullptr) {ierr = VecDestroy (&wm);                            CHKERRQ (ierr);}
+    if (glm != nullptr) {ierr = VecDestroy (&glm);                          CHKERRQ (ierr);}
+    if (csf != nullptr) {ierr = VecDestroy (&csf);                          CHKERRQ (ierr);}
     ierr = VecDestroy (&p_rec);                                             CHKERRQ (ierr);
 }
 
@@ -115,6 +133,26 @@ int main (int argc, char** argv) {
     PetscFinalize ();
 }
 
+PetscErrorCode readDataAndAtlas (Vec &data, Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
+    ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
+    ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
+
+    ierr = VecDuplicate (data, &wm);                                        CHKERRQ (ierr);
+    ierr = VecDuplicate (data, &gm);                                        CHKERRQ (ierr);
+    ierr = VecDuplicate (data, &glm);                                       CHKERRQ (ierr);
+    ierr = VecDuplicate (data, &csf);                                       CHKERRQ (ierr);
+
+    dataIn (data, n_misc, "tu.nc");
+    dataIn (wm, n_misc, "jakob_wm.nc");
+    dataIn (gm, n_misc, "jakob_gm.nc");
+    dataIn (csf, n_misc, "jakob_csf.nc");
+
+    PetscFunctionReturn (0);
+}
 
 PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
