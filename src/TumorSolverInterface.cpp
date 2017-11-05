@@ -236,7 +236,7 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     ierr = MatCreateShell (PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, n_misc->np_, n_misc->np_, ctx.get(), &A);      CHKERRQ (ierr);
     ierr = MatShellSetOperation (A, MATOP_MULT, (void (*) (void))phiMult);                                              CHKERRQ (ierr);
     ierr = KSPSetOperators (ksp, A, A);                                 CHKERRQ (ierr);
-    ierr = KSPSetTolerances (ksp, 1e-5, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);                                   CHKERRQ (ierr);
+    ierr = KSPSetTolerances (ksp, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);                                   CHKERRQ (ierr);
     ierr = KSPSetType (ksp, KSPCG);                                     CHKERRQ (ierr);
     ierr = KSPSetOptionsPrefix (ksp, "phieq_");                         CHKERRQ (ierr);
     ierr = KSPSetFromOptions (ksp);                                     CHKERRQ (ierr);
@@ -255,6 +255,8 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     double error_norm, p_norm, d_norm;
     ierr = tumor->phi_->apply (phi_p, p);                               CHKERRQ (ierr);
     ierr = tumor->obs_->apply (phi_p, phi_p);                           CHKERRQ (ierr);
+    dataOut (phi_p, ctx->n_misc_, "results/CInterp.nc");
+
     ierr = tumor->obs_->apply (ctx->temp_, data);                       CHKERRQ (ierr);
     ierr = VecNorm (ctx->temp_, NORM_2, &d_norm);                       CHKERRQ (ierr);
     ierr = VecAXPY (phi_p, -1.0, ctx->temp_);                           CHKERRQ (ierr);

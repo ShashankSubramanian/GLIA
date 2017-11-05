@@ -9,6 +9,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -68,6 +69,10 @@ int main (int argc, char** argv) {
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
 
+    n_misc->phi_sigma_ = 0.2;
+    n_misc->phi_spacing_factor_ = 1.0;
+    createMFData (solver_interface, n_misc);
+
     Vec c_0, data, p_rec;
     PetscErrorCode ierr = 0;
     // PCOUT << "Generating Synthetic Data --->" << std::endl;
@@ -87,6 +92,8 @@ int main (int argc, char** argv) {
     //Solve interpolation
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
+
+    exit (1);
 
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 
@@ -113,6 +120,70 @@ int main (int argc, char** argv) {
     PetscFinalize ();
 }
 
+PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec p;
+    ierr = VecCreate (PETSC_COMM_WORLD, &p);                            CHKERRQ (ierr);
+    ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+    ierr = VecSetFromOptions (p);                                       CHKERRQ (ierr);
+    ierr = VecSet (p, 0.5);                                            CHKERRQ (ierr);
+
+    std::array<double, 3> cm;
+    cm[0] = 4.0; cm[1] = 2.53; cm[2] = 2.57;
+    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    ierr = tumor->phi_->setValues (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, tumor->mat_prop_, n_misc);
+    Vec c, cf;
+    ierr = VecCreate (PETSC_COMM_WORLD, &c);                            CHKERRQ (ierr);
+    ierr = VecSetSizes (c, n_misc->n_local_, n_misc->n_global_);        CHKERRQ (ierr);
+    ierr = VecSetFromOptions (c);                                       CHKERRQ (ierr);
+    ierr = VecDuplicate (c, &cf);                                       CHKERRQ (ierr);
+    ierr = VecSet (cf, 0);                                              CHKERRQ (ierr);
+
+    ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
+    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = tumor->obs_->apply (c, c);
+    ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
+
+    //---------------------------------------------------------------------------------
+    cm[0] = 4.0; cm[1] = 2.03; cm[2] = 4.07;
+    ierr = tumor->phi_->setValues (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, tumor->mat_prop_, n_misc);
+    ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
+    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = tumor->obs_->apply (c, c);
+    ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
+
+    //---------------------------------------------------------------------------------
+    cm[0] = 4.0; cm[1] = 4.03; cm[2] = 2.07;
+    ierr = tumor->phi_->setValues (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, tumor->mat_prop_, n_misc);
+    ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
+    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = tumor->obs_->apply (c, c);
+    ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
+
+    //---------------------------------------------------------------------------------
+    cm[0] = 4.0; cm[1] = 4.03; cm[2] = 4.07;
+    ierr = tumor->phi_->setValues (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, tumor->mat_prop_, n_misc);
+    ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
+    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = tumor->obs_->apply (c, c);
+    ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
+
+    // double *ptr;
+    // ierr = VecGetArray (cf, &ptr);                                      CHKERRQ (ierr);
+    // ierr = weierstrassSmoother (ptr, ptr, n_misc, 0.0003);              CHKERRQ(ierr);
+    // // for (int i = 0; i < n_misc->n_local_; i++) {
+    // //     ptr[i] = 1 / (1 + exp(-ptr[i] + 10));
+    // // }
+    // ierr = VecRestoreArray (cf, &ptr);                                  CHKERRQ (ierr);
+
+
+
+    dataOut (cf, n_misc, "brain_data/64/multifocal.nc");
+    PetscFunctionReturn (0);
+}
+
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -121,7 +192,7 @@ PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
     ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
 
-    dataIn (data, n_misc, "dataFromPhiGrid.nc");
+    dataIn (data, n_misc, "multifocal.nc");
 
     PetscFunctionReturn (0);
 }

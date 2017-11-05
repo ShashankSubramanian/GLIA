@@ -132,10 +132,10 @@ class NMisc {
                        // Modified Obj -- 3
         , dt_ (0.16)
         , nt_(1)
-        , np_ (27)
+        , np_ (8)
         , k_ (0.0)
         , kf_(0.0)
-        , rho_ (15)
+        , rho_ (8)
         , p_scale_ (0.0)
         , p_scale_true_ (1.0)
         , noise_scale_(0.0)
@@ -147,8 +147,8 @@ class NMisc {
         , r_gm_wm_ratio_ (1.0 / 5.0)
         , r_glm_wm_ratio_ (1.0)
         , phi_sigma_ (PETSC_PI / 10)
-        , phi_spacing_factor_ (2.0)
-        , obs_threshold_ (0.0)
+        , phi_spacing_factor_ (1.5)
+        , obs_threshold_ (-1.0)
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
         , testcase_ (testcase) {
@@ -156,8 +156,8 @@ class NMisc {
             time_horizon_ = nt_ * dt_;
             if (testcase_ == BRAIN) {
                 user_cm_[0] = 4.0;
-                user_cm_[1] = 2.03;
-                user_cm_[2] = 2.07;
+                user_cm_[1] = 2.53;
+                user_cm_[2] = 2.57;
             }
             else {
                 user_cm_[0] = M_PI;

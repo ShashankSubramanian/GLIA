@@ -84,6 +84,8 @@ int main (int argc, char** argv) {
 
     //Solve interpolation
     ierr = solver_interface->solveInterpolation (data, p_rec, phi, n_misc);
+    // exit (1);
+    ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
 
     //Solve tumor inversion
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
@@ -113,6 +115,7 @@ int main (int argc, char** argv) {
     PetscFinalize ();
 }
 
+
 PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -138,6 +141,8 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
         ierr = VecRestoreArray (c_rec_0, &c0_ptr);                          CHKERRQ (ierr);
     }
 
+    dataOut (c_rec_0, n_misc, "results/CRecon0.nc");
+
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
     double max, min;
@@ -153,7 +158,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
         dataOut (c_rec, n_misc, "results/CRecon.nc");
 
     //SNAFU
-    dataOut (c_rec, n_misc, "brain_data/64/dataFromPhiGrid.nc");
+    // dataOut (c_rec, n_misc, "brain_data/64/dataFromPhiGrid.nc");
 
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
@@ -171,7 +176,7 @@ PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
     ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
 
-    dataIn (data, n_misc, "data.nc");
+    dataIn (data, n_misc, "multifocal.nc");
 
     PetscFunctionReturn (0);
 }
