@@ -72,6 +72,7 @@ int main (int argc, char** argv) {
     n_misc->phi_sigma_ = 0.2;
     n_misc->phi_spacing_factor_ = 1.0;
     createMFData (solver_interface, n_misc);
+    exit (1);
 
     Vec c_0, data, p_rec;
     PetscErrorCode ierr = 0;
@@ -170,13 +171,13 @@ PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interf
     // ierr = tumor->obs_->apply (c, c);
     ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
 
-    // double *ptr;
-    // ierr = VecGetArray (cf, &ptr);                                      CHKERRQ (ierr);
-    // ierr = weierstrassSmoother (ptr, ptr, n_misc, 0.0003);              CHKERRQ(ierr);
-    // // for (int i = 0; i < n_misc->n_local_; i++) {
-    // //     ptr[i] = 1 / (1 + exp(-ptr[i] + 10));
-    // // }
-    // ierr = VecRestoreArray (cf, &ptr);                                  CHKERRQ (ierr);
+    double *ptr;
+    ierr = VecGetArray (cf, &ptr);                                      CHKERRQ (ierr);
+    ierr = weierstrassSmoother (ptr, ptr, n_misc, 0.0003);              CHKERRQ(ierr);
+    // for (int i = 0; i < n_misc->n_local_; i++) {
+    //     ptr[i] = 1 / (1 + exp(-ptr[i] + 10));
+    // }
+    ierr = VecRestoreArray (cf, &ptr);                                  CHKERRQ (ierr);
 
 
 

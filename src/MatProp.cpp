@@ -52,6 +52,11 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			dataIn (glm_ptr, n_misc, "glial_matter.nc");
 			dataIn (filter_ptr, n_misc, "filter_zero.nc");
 
+			// ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, 0.0003);
+			// ierr = weierstrassSmoother (wm_ptr, gm_ptr, n_misc, 0.0003);
+			// ierr = weierstrassSmoother (glm_ptr, gm_ptr, n_misc, 0.0003);
+			// ierr = weierstrassSmoother (csf_ptr, gm_ptr, n_misc, 0.0003);
+
 			if(n_misc->writeOutput_) {
 				dataOut (gm_ptr, n_misc, "results/gray_matter.nc");
 				dataOut (wm_ptr, n_misc, "results/white_matter.nc");

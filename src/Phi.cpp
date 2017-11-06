@@ -225,13 +225,17 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
     num_tumor = 0;
     cube_interior = 0;
     double distance;
-    double threshold = 0.5;
+    double threshold = 0.2;
 
     int64_t ptr;
     for (int i = x - radius; i <= x + radius; i++) 
         for (int j = y - radius; j <= y + radius; j++)
             for (int k = z - radius; k <= z + radius; k++) {
                 if (i < 0 || j < 0 || k < 0) continue;
+                if (i >= n_misc->isize_[0] || 
+                    j >= n_misc->isize_[1] ||
+                    k >= n_misc->isize_[2]) continue;
+                    
                 distance = sqrt ((i - x) * (i - x) + 
                                  (j - y) * (j - y) +
                                  (k - z) * (k - z));
