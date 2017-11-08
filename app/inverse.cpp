@@ -73,7 +73,13 @@ int main (int argc, char** argv) {
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
+
+    double self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> timers = {0};
+
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+
+    self_exec_time += MPI_Wtime ();
 
     double prec_norm;
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
@@ -83,7 +89,8 @@ int main (int argc, char** argv) {
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
 
-    e1.addTimings (n_misc->timers_);
+    accumulateTimers (n_misc->timers_, timers, self_exec_time);
+    e1.addTimings (timers);
     e1.stop ();
     EventRegistry::finalize ();
     if (procid == 0) {

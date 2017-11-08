@@ -150,7 +150,7 @@ PetscErrorCode InvSolver::solve () {
     // --------
     //resetTimers(itctx->n_misc_->timers_);
     //Gradient check begin
-    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
+//    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
     //Gradient check end
     ierr = TaoSolve (tao_);                                                               CHKERRQ(ierr);
     // --------

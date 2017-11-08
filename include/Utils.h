@@ -130,7 +130,7 @@ class NMisc {
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.01)
-        , nt_(16)
+        , nt_(4)
         , np_ (125)
         , k_ (0.01)
         , kf_(0.0)
