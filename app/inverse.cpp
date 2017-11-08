@@ -166,7 +166,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->setTrueP (n_misc->p_scale_true_);
+    ierr = tumor->setTrueP (n_misc->p_scale_true_, n_misc);
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     double *c0_ptr;

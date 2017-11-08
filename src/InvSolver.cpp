@@ -391,7 +391,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
     //Gradient check begin
-    ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
+//    ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }

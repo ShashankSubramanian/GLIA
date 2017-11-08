@@ -64,12 +64,21 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode Tumor::setTrueP (double p_scale) {
+
+PetscErrorCode Tumor::setTrueP (double p_scale, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    ierr = VecSet (p_true_, p_scale);                               CHKERRQ (ierr);
+    // ierr = VecSet (p_true_, p_scale);
+    // CHKERRQ (ierr);
+    PetscScalar val[2] = {.9, .2};
+    PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    PetscInt idx[2] = {center-1, center};
+    ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
     PetscFunctionReturn (0);
 }
+
 
 
 Tumor::~Tumor () {

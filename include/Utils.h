@@ -49,8 +49,8 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (20),
-    krylov_maxit (30),
+    newton_maxit (3),
+    krylov_maxit (3),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
@@ -127,16 +127,16 @@ struct TumorSettings {
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
-        : model_ (2)   //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.16)
-        , nt_(1)
-        , np_ (1)
-        , k_ (0.0)
+        , dt_ (0.01)
+        , nt_(16)
+        , np_ (125)
+        , k_ (0.01)
         , kf_(0.0)
         , rho_ (15)
         , p_scale_ (0.0)
-        , p_scale_true_ (100.0)
+        , p_scale_true_ (1.0)
         , noise_scale_(0.0)
         , beta_ (1e-3)
         , writeOutput_ (0)
@@ -147,7 +147,7 @@ class NMisc {
         , r_glm_wm_ratio_ (1.0)
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5)
-        , obs_threshold_ (0.0)
+        , obs_threshold_ (-1.0)
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
         , testcase_ (testcase) {
