@@ -26,7 +26,14 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc) 
     ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
     ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
     ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
-    ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
+//    ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
+    PetscScalar val[2] = {.9, .2};
+    PetscInt center = (int)std::floor(n_misc->np_/2.);
+    PetscInt idx[2] = {center-1, center};
+    ierr = VecSetValues(p, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(p);                                 CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(p);                                   CHKERRQ(ierr);
+
     ierr = tumor_->initialize (p, n_misc);                      CHKERRQ (ierr);
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
@@ -151,17 +158,25 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
     PetscErrorCode ierr = 0;
     TU_assert (inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
     TU_assert (optset != nullptr,            "TumorSolverInterface::setOptimizerSettings(): requires non-null input.");
-    inv_solver_->getOptSettings ()->beta          = optset->beta;
-    inv_solver_->getOptSettings ()->opttolgrad    = optset->opttolgrad;
-    inv_solver_->getOptSettings ()->gtolbound     = optset->gtolbound;
-    inv_solver_->getOptSettings ()->grtol         = optset->grtol;
-    inv_solver_->getOptSettings ()->gatol         = optset->gatol;
-    inv_solver_->getOptSettings ()->newton_maxit  = optset->newton_maxit;
-    inv_solver_->getOptSettings ()->krylov_maxit  = optset->krylov_maxit;
-    inv_solver_->getOptSettings ()->iterbound     = optset->iterbound;
-    inv_solver_->getOptSettings ()->fseqtype      = optset->fseqtype;
-    inv_solver_->getOptSettings ()->verbosity     = optset->verbosity;
+    inv_solver_->getOptSettings ()->beta             = optset->beta;
+    inv_solver_->getOptSettings ()->opttolgrad       = optset->opttolgrad;
+    inv_solver_->getOptSettings ()->gtolbound        = optset->gtolbound;
+    inv_solver_->getOptSettings ()->grtol            = optset->grtol;
+    inv_solver_->getOptSettings ()->gatol            = optset->gatol;
+    inv_solver_->getOptSettings ()->newton_maxit     = optset->newton_maxit;
+    inv_solver_->getOptSettings ()->krylov_maxit     = optset->krylov_maxit;
+    inv_solver_->getOptSettings ()->iterbound        = optset->iterbound;
+    inv_solver_->getOptSettings ()->fseqtype         = optset->fseqtype;
+    inv_solver_->getOptSettings ()->newtonsolver     = optset->newtonsolver;
+    inv_solver_->getOptSettings ()->lmvm_set_hessian = optset->lmvm_set_hessian;
+    inv_solver_->getOptSettings ()->verbosity        = optset->verbosity;
     optimizer_settings_changed_ = true;
+}
+
+PetscErrorCode TumorSolverInterface::resetTaoSolver() {
+  PetscErrorCode ierr;
+  ierr = inv_solver_->resetTao(n_misc_); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {

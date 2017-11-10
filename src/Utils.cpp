@@ -42,6 +42,21 @@ PetscErrorCode _tuMSG(std::string msg, std::string color, int size) {
     PetscFunctionReturn(0);
 }
 
+PetscErrorCode TumorStatistics::print() {
+	PetscErrorCode ierr;
+	PetscFunctionBegin;
+	std::stringstream s;
+	ierr = tuMSG ("---- statistics                                                                            ----"); CHKERRQ(ierr);
+	s << std::setw(8) << "     " << std::setw(8) << " #state " << std::setw(8) << " #adj " << std::setw(8) << " #obj "  << std::setw(8) << " #grad " << std::setw(8) << " #hess ";
+	ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(std::string()); s.clear();
+	s << std::setw(8) << " curr:" << std::setw(8) << nb_state_solves     << std::setw(8) << nb_adjoint_solves     << std::setw(8) << nb_obj_evals      << std::setw(8) << nb_grad_evals     << std::setw(8) << nb_hessian_evals;
+	ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(std::string()); s.clear();
+	s << std::setw(8) << " acc: " << std::setw(8) << nb_state_solves + nb_state_solves_acc << std::setw(8) << nb_adjoint_solves + nb_adjoint_solves_acc << std::setw(8) << nb_obj_evals + nb_obj_evals_acc  << std::setw(8) << nb_grad_evals + nb_grad_evals_acc << std::setw(8) << nb_hessian_evals + nb_hessian_evals_acc;
+	ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(std::string()); s.clear();
+	ierr = tuMSG ("----                                                                                        ----"); CHKERRQ(ierr);
+	PetscFunctionReturn(0);
+}
+
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers) {
 	PetscErrorCode ierr = 0;
 	double *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
@@ -209,14 +224,14 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 					f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
 							+ std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 
-					// f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
-					// 		+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+					 f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
+					 		+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
 
-					// f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-					// 		+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+					 f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+					 		+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
 
-					// f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-					// 		+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+					 f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+					 		+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 
 					if (f[ptr] != f[ptr])
 						f[ptr] = 0.; // To avoid Nan

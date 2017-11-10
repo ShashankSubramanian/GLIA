@@ -28,6 +28,7 @@
 
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
+enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -40,7 +41,10 @@ struct OptimizerSettings {
     int    newton_minit;         /// @brief minimum number of newton steps
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
     int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
+    int    newtonsolver;         /// @brief type of newton slver (0=GN, 1=QN, 2=GN/QN)
     int    verbosity;            /// @brief controls verbosity of solver
+    bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
+    bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
 
     OptimizerSettings ()
     :
@@ -49,11 +53,14 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (3),
-    krylov_maxit (3),
+    newton_maxit (500),
+    krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
+    newtonsolver(GAUSSNEWTON),
+    reset_tao(false),
+    lmvm_set_hessian(false),
     verbosity (1)
     {}
 };
@@ -61,6 +68,9 @@ struct OptimizerSettings {
 struct OptimizerFeedback {
     int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
     int nb_krylov_it;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+    int nb_matvecs;              /// @brief stores the number of required (accumulated) matvecs per tumor solve
+    int nb_objevals;             /// @brief stores the number of required (accumulated) objective function evaluations per tumor solve
+    int nb_gradevals;            /// @brief stores the number of required (accumulated) gradient evaluations per tumor solve
     std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
     double gradnorm;             /// @brief final gradient norm
     double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
@@ -70,6 +80,9 @@ struct OptimizerFeedback {
     :
     nb_newton_it (-1),
     nb_krylov_it (-1),
+    nb_matvecs(-1),
+    nb_objevals(-1),
+    nb_gradevals(-1),
     solverstatus (),
     gradnorm (0.),
     gradnorm0 (0.),
@@ -123,6 +136,62 @@ struct TumorSettings {
     {}
 };
 
+struct TumorStatistics {
+  int nb_state_solves;            /// @brief number of state equation solves
+  int nb_adjoint_solves;          /// @brief number of adjoint equation solves
+  int nb_grad_evals;              /// @brief number of gradient evaluations
+  int nb_obj_evals;               /// @brief number of objective evaluations
+  int nb_hessian_evals;           /// @brief number of hessian evaluations
+
+  int nb_state_solves_acc;        /// @brief number of state equation solves
+  int nb_adjoint_solves_acc;      /// @brief number of adjoint equation solves
+  int nb_grad_evals_acc;          /// @brief number of gradient evaluations
+  int nb_obj_evals_acc;           /// @brief number of objective evaluations
+  int nb_hessian_evals_acc;       /// @brief number of hessian evaluations
+
+public:
+  TumorStatistics() :
+  nb_state_solves(0),
+  nb_adjoint_solves(0),
+  nb_grad_evals(0),
+  nb_obj_evals(0),
+  nb_hessian_evals(0),
+  nb_state_solves_acc(0),
+  nb_adjoint_solves_acc(0),
+  nb_grad_evals_acc(0),
+  nb_obj_evals_acc(0),
+  nb_hessian_evals_acc(0)
+  {}
+
+  void reset() {
+    nb_state_solves_acc     += nb_state_solves;
+    nb_adjoint_solves_acc   += nb_adjoint_solves;
+    nb_grad_evals_acc       += nb_grad_evals;
+    nb_obj_evals_acc        += nb_obj_evals;
+    nb_hessian_evals_acc    += nb_hessian_evals;
+    nb_state_solves         = 0;
+    nb_adjoint_solves       = 0;
+    nb_grad_evals           = 0;
+    nb_obj_evals            = 0;
+    nb_hessian_evals        = 0;
+  }
+
+  void reset0() {
+    nb_state_solves_acc     = 0;
+    nb_adjoint_solves_acc   = 0;
+    nb_grad_evals_acc       = 0;
+    nb_obj_evals_acc        = 0;
+    nb_hessian_evals_acc    = 0;
+    nb_state_solves         = 0;
+    nb_adjoint_solves       = 0;
+    nb_grad_evals           = 0;
+    nb_obj_evals            = 0;
+    nb_hessian_evals        = 0;
+  }
+
+  PetscErrorCode print();
+};
+
 
 class NMisc {
     public:
@@ -130,11 +199,11 @@ class NMisc {
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.01)
-        , nt_(4)
+        , nt_(16)
         , np_ (125)
-        , k_ (0.01)
+        , k_ (1.0E-2)
         , kf_(0.0)
-        , rho_ (15)
+        , rho_ (10)
         , p_scale_ (0.0)
         , p_scale_true_ (1.0)
         , noise_scale_(0.0)
@@ -148,6 +217,7 @@ class NMisc {
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5)
         , obs_threshold_ (-1.0)
+        , statistics_()
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
         , testcase_ (testcase) {
@@ -222,6 +292,7 @@ class NMisc {
 
         double obs_threshold_;
 
+        TumorStatistics statistics_;
         std::array<double, 7> timers_;
 
         int64_t accfft_alloc_max_;

@@ -73,10 +73,10 @@ int main (int argc, char** argv) {
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
-
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
 
+    ierr = solver_interface->setInitialGuess(0.);
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 
     self_exec_time += MPI_Wtime ();
@@ -173,7 +173,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->setTrueP (n_misc->p_scale_true_, n_misc);
+    //ierr = tumor->setTrueP (n_misc->p_scale_true_, n_misc);
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     double *c0_ptr;
