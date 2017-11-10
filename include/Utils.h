@@ -28,6 +28,7 @@
 
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
+enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -40,7 +41,10 @@ struct OptimizerSettings {
     int    newton_minit;         /// @brief minimum number of newton steps
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
     int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
+    int    newtonsolver;         /// @brief type of newton slver (0=GN, 1=QN, 2=GN/QN)
     int    verbosity;            /// @brief controls verbosity of solver
+    bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
+    bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
 
     OptimizerSettings ()
     :
@@ -49,11 +53,14 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (20),
+    newton_maxit (500),
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
+    newtonsolver(GAUSSNEWTON),
+    reset_tao(false),
+    lmvm_set_hessian(false),
     verbosity (1)
     {}
 };
@@ -61,6 +68,9 @@ struct OptimizerSettings {
 struct OptimizerFeedback {
     int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
     int nb_krylov_it;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+    int nb_matvecs;              /// @brief stores the number of required (accumulated) matvecs per tumor solve
+    int nb_objevals;             /// @brief stores the number of required (accumulated) objective function evaluations per tumor solve
+    int nb_gradevals;            /// @brief stores the number of required (accumulated) gradient evaluations per tumor solve
     std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
     double gradnorm;             /// @brief final gradient norm
     double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
@@ -70,6 +80,9 @@ struct OptimizerFeedback {
     :
     nb_newton_it (-1),
     nb_krylov_it (-1),
+    nb_matvecs(-1),
+    nb_objevals(-1),
+    nb_gradevals(-1),
     solverstatus (),
     gradnorm (0.),
     gradnorm0 (0.),

@@ -8,8 +8,7 @@
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) :
 initialized_(false),
-use_intial_hessian_lmvm_(false),
-use_tao_lmvm_(true),
+tao_is_reset_(true),
 data_(),
 data_gradeval_(),
 optsettings_(),
@@ -46,7 +45,8 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
         int np = n_misc->np_;
         ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
         // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
-        if (use_tao_lmvm_ && use_intial_hessian_lmvm_) {
+        if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
+             itctx_->optsettings_->lmvm_set_hessian) {
           ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
           ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
         // if tao's nls (gauss-newton) method is used, define hessian matvec
@@ -58,9 +58,35 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     // create TAO solver object
     if( tao_ == nullptr) {
         ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
+        tao_is_reset_ = true;  // triggers setTaoOptions
     }
     initialized_ = true;
     PetscFunctionReturn (0);
+}
+
+PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  if(tao_ != nullptr) {ierr = TaoDestroy (&tao_); CHKERRQ(ierr); tao_ = nullptr; }
+  if(H_ != nullptr)   {ierr = MatDestroy (&H_);   CHKERRQ(ierr); H_   = nullptr; }
+  int np = n_misc->np_;
+  ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+  // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
+  if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
+       itctx_->optsettings_->lmvm_set_hessian) {
+    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
+    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
+  // if tao's nls (gauss-newton) method is used, define hessian matvec
+  } else {
+    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);   CHKERRQ(ierr);
+    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
+  }
+  // create TAO solver object
+  if( tao_ == nullptr) {
+      ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
+  }
+  tao_is_reset_ = true;  // triggers setTaoOptions
+  PetscFunctionReturn (0);
 }
 
 PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged) {
@@ -79,7 +105,8 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
       int np = n_misc->np_;
       ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
       // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
-      if (use_tao_lmvm_ && use_intial_hessian_lmvm_) {
+      if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
+           itctx_->optsettings_->lmvm_set_hessian) {
         ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
         ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
       // if tao's nls (gauss-newton) method is used, define hessian matvec
@@ -88,6 +115,7 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
         ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
       }
     }
+    tao_is_reset_ = true; // triggers setTaoOptions
     PetscFunctionReturn (0);
 }
 
@@ -157,14 +185,25 @@ PetscErrorCode InvSolver::solve () {
   itctx_->optfeedback_->solverstatus = "";
   itctx_->optfeedback_->nb_newton_it = 0;
   itctx_->optfeedback_->nb_krylov_it = 0;
+  itctx_->optfeedback_->nb_matvecs   = 0;
+  itctx_->optfeedback_->nb_objevals  = 0;
+  itctx_->optfeedback_->nb_gradevals = 0;
   itctx_->data                       = data_;
   itctx_->data_gradeval              = data_gradeval_;
+
+  // reset tao, if we want virgin TAO for every inverse solve
+  if (itctx_->optsettings_->reset_tao) {
+    ierr = resetTao(itctx_->n_misc_);                                                   CHKERRQ(ierr);
+  }
   /* === set TAO options === */
-  ierr = setTaoOptions (tao_, itctx_.get());                                            CHKERRQ(ierr);
-  if (use_tao_lmvm_ && use_intial_hessian_lmvm_) {
-    ierr = TaoLMVMSetH0 (tao_, H_);                                                     CHKERRQ(ierr);
-  } else {
-    ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get());  CHKERRQ(ierr);
+  if (tao_is_reset_) {
+    ierr = setTaoOptions (tao_, itctx_.get());                                            CHKERRQ(ierr);
+    if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
+         itctx_->optsettings_->lmvm_set_hessian) {
+      ierr = TaoLMVMSetH0 (tao_, H_);                                                     CHKERRQ(ierr);
+    } else {
+      ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get());  CHKERRQ(ierr);
+    }
   }
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
   /* === solve === */
@@ -186,7 +225,9 @@ PetscErrorCode InvSolver::solve () {
 	ierr = TaoGetSolutionStatus (tao_, NULL, &J, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
 	/* display convergence reason: */
 	ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
-  s << " optimization done: #newton-it: " << itctx_->optfeedback_->nb_newton_it << ", #krylov-it: " << itctx_->optfeedback_->nb_krylov_it << ", execution time: " << invtime;
+  s << " optimization done: #N-it: " << itctx_->optfeedback_->nb_newton_it    << ", #K-it: " << itctx_->optfeedback_->nb_krylov_it
+                      << ", #matvec: " << itctx_->optfeedback_->nb_matvecs    << ", #evalJ: " << itctx_->optfeedback_->nb_objevals
+                      << ", #evaldJ: " << itctx_->optfeedback_->nb_gradevals  << ", exec time: " << invtime;
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
   ierr = tuMSGstd (s.str());                                                                                            CHKERRQ(ierr);  s.str(""); s.clear();
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
@@ -195,6 +236,7 @@ PetscErrorCode InvSolver::solve () {
 	// reset vectors (remember, memory managed on caller side):
 	data_ = nullptr;
 	data_gradeval_ = nullptr;
+  tao_is_reset_ = false;
 
 	PetscFunctionReturn (0);
 }
@@ -224,6 +266,7 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+  itctx->optfeedback_->nb_objevals++;
 	ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
 	self_exec_time += MPI_Wtime ();
 	accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -250,6 +293,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
     ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
 
+    itctx->optfeedback_->nb_gradevals++;
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
     if (itctx->optsettings_->verbosity > 1) {
         double gnorm;
@@ -273,11 +317,30 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
   . J   - the newly evaluated function
   . dJ   - the newly evaluated gradient
  */
-PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec p, PetscReal *J, Vec dJ, void *ptr){
+PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	ierr = evaluateObjectiveFunction (tao, p, J, ptr);                     CHKERRQ(ierr);
-	ierr = evaluateGradient (tao, p, dJ, ptr);                             CHKERRQ(ierr);
+  Event e ("tao-evaluate-objective-and-gradient-tumor");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
+  CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+  ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
+
+  itctx->optfeedback_->nb_objevals++;
+  itctx->optfeedback_->nb_gradevals++;
+  ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
+  if (itctx->optsettings_->verbosity > 1) {
+      double gnorm;
+      ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
+      PetscPrintf (MPI_COMM_WORLD, " norm of gradient ||g||_2 = %e\n", gnorm);
+  }
+  self_exec_time += MPI_Wtime ();
+  accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
+  e.addTimings (t);
+  e.stop ();
+
+	//ierr = evaluateObjectiveFunction (tao, p, J, ptr);                     CHKERRQ(ierr);
+	//ierr = evaluateGradient (tao, p, dJ, ptr);                             CHKERRQ(ierr);
 	PetscFunctionReturn (0);
 }
 /* ------------------------------------------------------------------- */
@@ -300,6 +363,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
     ierr = MatShellGetContext (A, &ptr);						             CHKERRQ (ierr);
     CtxInv *itctx = reinterpret_cast<CtxInv*>( ptr);
     // eval hessian
+    itctx->optfeedback_->nb_matvecs++;
     ierr = itctx->derivative_operators_->evaluateHessian (y, x);
     if (itctx->optsettings_->verbosity > 1) {
         PetscPrintf (MPI_COMM_WORLD, " applying hessian done!\n");
@@ -422,9 +486,13 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
           << std::setw(18) << "step";
-        ierr = tuMSG (" starting optimization, TAO's Gauß-Newton");                CHKERRQ(ierr);
+        if(itctx->optsettings_->newtonsolver == QUASINEWTON) {
+          ierr = tuMSGstd (" starting optimization, TAO's LMVM");                   CHKERRQ(ierr);
+        } else {
+          ierr = tuMSGstd (" starting optimization, TAO's Gauß-Newton");            CHKERRQ(ierr);
+        }
         ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-        ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
+        ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
         ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         s.str ("");
         s.clear ();
@@ -1021,7 +1089,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     PetscErrorCode ierr = 0;
 
     TaoLineSearch linesearch;        // line-search object
-    if (use_tao_lmvm_) {
+    if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
       ierr = TaoSetType (tao, "lmvm");   CHKERRQ(ierr);   // set TAO solver type
     } else {
       ierr = TaoSetType (tao, "nls");    CHKERRQ(ierr);  // set TAO solver type
@@ -1126,7 +1194,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     /* === set the KSP Krylov solver settings === */
     KSP ksp = PETSC_NULL;
 
-    if (use_tao_lmvm_) {
+    if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
       // if (use_intial_hessian_lmvm_) {
       //   // get the ksp of H0 initial matrix
       //   ierr = TaoLMVMGetH0KSP(tao, &ksp);                                        CHKERRQ(ierr);

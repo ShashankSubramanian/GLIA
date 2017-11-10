@@ -15,6 +15,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);               CHKERRQ (ierr);
     reg *= 0.5 * n_misc_->beta_;
 
+    std::stringstream s;
+    s << "  J(v) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+
     (*J) *= 0.5;
     (*J) += reg;
 
@@ -41,6 +44,39 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
     ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
 
+    PetscFunctionReturn(0);
+}
+
+// saves on forward solve
+PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    // solve state
+    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
+    ierr = pde_operators_->solveState (0);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
+    // c(1) - d
+    ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
+    // mismatch, squared residual norm
+    ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
+    // solve adjoint
+    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+    ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
+    ierr = pde_operators_->solveAdjoint (1);
+    ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+    ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+    ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
+    // gradient
+    ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    // regularization
+    PetscReal reg;
+    ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);               CHKERRQ (ierr);
+    reg *= 0.5 * n_misc_->beta_;
+    std::stringstream s;
+    s << "  J(v) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    // objective function value
+    (*J) *= 0.5;
+    (*J) += reg;
     PetscFunctionReturn(0);
 }
 

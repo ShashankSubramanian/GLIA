@@ -23,6 +23,7 @@ class DerivativeOperators {
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
+		virtual PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data) {};
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
 
@@ -46,6 +47,7 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x);
 

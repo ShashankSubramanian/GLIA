@@ -70,6 +70,7 @@ class InvSolver {
         InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
         PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
         PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
+        PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
         PetscErrorCode solve ();
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
         // setter functions
@@ -88,10 +89,8 @@ class InvSolver {
     private:
         /// @brief true if tumor adapter is correctly initialized. mendatory
         bool initialized_;
-        /// @brief if true (and lmvm is sselected), use initial guess for Hessian (= Mat H_)
-        bool use_intial_hessian_lmvm_;
-        /// if true, use tao's lmvm (l-bfgs) solver, else, use nls (gauss-newton)
-        bool use_tao_lmvm_;
+        /// @brief true if TAO just recently got reset
+        bool tao_is_reset_;
         /// @brief data d1 for tumor inversion (memory managed from outside)
         Vec data_;
         /// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
