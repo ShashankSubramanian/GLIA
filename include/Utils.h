@@ -136,6 +136,62 @@ struct TumorSettings {
     {}
 };
 
+struct TumorStatistics {
+  int nb_state_solves;            /// @brief number of state equation solves
+  int nb_adjoint_solves;          /// @brief number of adjoint equation solves
+  int nb_grad_evals;              /// @brief number of gradient evaluations
+  int nb_obj_evals;               /// @brief number of objective evaluations
+  int nb_hessian_evals;           /// @brief number of hessian evaluations
+
+  int nb_state_solves_acc;        /// @brief number of state equation solves
+  int nb_adjoint_solves_acc;      /// @brief number of adjoint equation solves
+  int nb_grad_evals_acc;          /// @brief number of gradient evaluations
+  int nb_obj_evals_acc;           /// @brief number of objective evaluations
+  int nb_hessian_evals_acc;       /// @brief number of hessian evaluations
+
+public:
+  TumorStatistics() :
+  nb_state_solves(0),
+  nb_adjoint_solves(0),
+  nb_grad_evals(0),
+  nb_obj_evals(0),
+  nb_hessian_evals(0),
+  nb_state_solves_acc(0),
+  nb_adjoint_solves_acc(0),
+  nb_grad_evals_acc(0),
+  nb_obj_evals_acc(0),
+  nb_hessian_evals_acc(0)
+  {}
+
+  void reset() {
+    nb_state_solves_acc     += nb_state_solves;
+    nb_adjoint_solves_acc   += nb_adjoint_solves;
+    nb_grad_evals_acc       += nb_grad_evals;
+    nb_obj_evals_acc        += nb_obj_evals;
+    nb_hessian_evals_acc    += nb_hessian_evals;
+    nb_state_solves         = 0;
+    nb_adjoint_solves       = 0;
+    nb_grad_evals           = 0;
+    nb_obj_evals            = 0;
+    nb_hessian_evals        = 0;
+  }
+
+  void reset0() {
+    nb_state_solves_acc     = 0;
+    nb_adjoint_solves_acc   = 0;
+    nb_grad_evals_acc       = 0;
+    nb_obj_evals_acc        = 0;
+    nb_hessian_evals_acc    = 0;
+    nb_state_solves         = 0;
+    nb_adjoint_solves       = 0;
+    nb_grad_evals           = 0;
+    nb_obj_evals            = 0;
+    nb_hessian_evals        = 0;
+  }
+  
+  PetscErrorCode print();
+};
+
 
 class NMisc {
     public:
@@ -161,6 +217,7 @@ class NMisc {
         , phi_sigma_ (PETSC_PI / 10)
         , phi_spacing_factor_ (1.5)
         , obs_threshold_ (-1.0)
+        , statistics_()
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
         , testcase_ (testcase) {
@@ -235,6 +292,7 @@ class NMisc {
 
         double obs_threshold_;
 
+        TumorStatistics statistics_;
         std::array<double, 7> timers_;
 
         int64_t accfft_alloc_max_;

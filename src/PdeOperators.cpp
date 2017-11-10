@@ -56,6 +56,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
+    n_misc_->statistics_.nb_state_solves++;
 
     //enforce positivity : hack
     if (!linearized) {
@@ -122,6 +123,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
+    n_misc_->statistics_.nb_adjoint_solves++;
 
     ierr = VecCopy (tumor_->p_t_, tumor_->p_0_);                     CHKERRQ (ierr);
     for (int i = 0; i < nt; i++) {

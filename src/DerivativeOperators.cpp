@@ -4,6 +4,7 @@
 PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_obj_evals++;
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
@@ -27,6 +28,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_grad_evals++;
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
@@ -51,6 +53,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_obj_evals++;
+    n_misc_->statistics_.nb_grad_evals++;
+
     // solve state
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
@@ -83,6 +88,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_hessian_evals++;
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (1);
@@ -135,6 +141,7 @@ PetscErrorCode DerivativeOperatorsPos::sigmoid (Vec temp, Vec input) {
 PetscErrorCode DerivativeOperatorsPos::evaluateObjective (PetscReal *J, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_obj_evals++;
 
     ierr = tumor_->phi_->apply (temp_phip_, x);                     CHKERRQ (ierr);
     ierr = sigmoid (tumor_->c_0_, temp_phip_);
@@ -161,6 +168,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateObjective (PetscReal *J, Vec x, V
 PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_grad_evals++;
 
     ierr = tumor_->phi_->apply (temp_phip_, x);                     CHKERRQ (ierr);
     ierr = sigmoid (tumor_->c_0_, temp_phip_);
@@ -220,6 +228,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
 PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_hessian_evals++;
 
     ierr = tumor_->phi_->apply (temp_phip_, p_current_);            CHKERRQ (ierr);
     ierr = VecCopy (temp_phip_, tumor_->c_0_);                      CHKERRQ (ierr);
@@ -307,6 +316,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     TU_assert (data != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
     PetscScalar misfit_tu = 0, misfit_brain = 0;
     PetscReal reg;
+    n_misc_->statistics_.nb_obj_evals++;
 
     //compute c0
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
@@ -345,6 +355,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     PetscScalar misfit_brain;
+    n_misc_->statistics_.nb_grad_evals++;
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);                       CHKERRQ (ierr);
@@ -394,6 +405,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
 PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_hessian_evals++;
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     ierr = pde_operators_->solveState (1);                       CHKERRQ (ierr);

@@ -208,6 +208,7 @@ PetscErrorCode InvSolver::solve () {
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
   /* === solve === */
   // --------
+  itctx_->n_misc_->statistics_.reset();
   //resetTimers(itctx->n_misc_->timers_);
   ierr = TaoSolve (tao_);                                                               CHKERRQ(ierr);
   // --------
@@ -231,6 +232,9 @@ PetscErrorCode InvSolver::solve () {
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
   ierr = tuMSGstd (s.str());                                                                                            CHKERRQ(ierr);  s.str(""); s.clear();
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+  itctx_->n_misc_->statistics_.print();
+  itctx_->n_misc_->statistics_.reset();
+
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
 	itctx_->update_reference_gradient = false;
 	// reset vectors (remember, memory managed on caller side):
@@ -1179,10 +1183,13 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     // set adapted convergence test for warm-starts
     ierr = TaoSetConvergenceTest(tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
     //ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
-    // set linesearch
-    ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
-    ierr = TaoLineSearchSetType (linesearch, "armijo");                           CHKERRQ(ierr);
 
+
+    // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
+    if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
+      ierr = TaoGetLineSearch (tao, &linesearch);                                 CHKERRQ(ierr);
+      ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
+    }
     std::stringstream s;
     tuMSGstd(" parameters (optimizer):");
     tuMSGstd(" tolerances (stopping conditions):");
