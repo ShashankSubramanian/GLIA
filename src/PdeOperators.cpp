@@ -21,6 +21,10 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
 PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-reaction");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     double *c_t_ptr, *rho_ptr;
     double *c_ptr;
     double factor, alph;
@@ -45,15 +49,22 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
 
     ierr = VecRestoreArray (tumor_->c_t_, &c_t_ptr);                CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-
     ierr = VecRestoreArray (c_[iter], &c_ptr);                      CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 
 PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-solve-state");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
     n_misc_->statistics_.nb_state_solves++;
@@ -84,12 +95,20 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         }
     }
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 
 PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-reaction-adj");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     double *p_0_ptr, *rho_ptr;
     double *c_ptr;
     double factor, alph;
@@ -113,14 +132,22 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
 
     ierr = VecRestoreArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
-
     ierr = VecRestoreArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 
 PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-solve-adj");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
     n_misc_->statistics_.nb_adjoint_solves++;
@@ -132,6 +159,10 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
     }
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 

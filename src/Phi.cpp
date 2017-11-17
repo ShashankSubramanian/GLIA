@@ -25,6 +25,10 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) {
 PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
+    Event e ("tumor-phi-setvals");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     memcpy (cm_, user_cm.data(), 3 * sizeof(double));
     double center[3 * np_];
     double *phi_ptr;
@@ -53,6 +57,10 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
         }
     }
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);
 }
 
@@ -156,6 +164,10 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
 PetscErrorCode Phi::apply (Vec out, Vec p) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-phi-apply");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     double * pg_ptr;
     Vec pg;
     ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);                            CHKERRQ (ierr);
@@ -182,26 +194,29 @@ PetscErrorCode Phi::apply (Vec out, Vec p) {
     Vec dummy;
     ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
     ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-
     ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
 
     for (int i = 0; i < np_; i++) {
         ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
     }
-
     ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
-
     ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
-
     ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
     ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);
 }
 
 PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-phi-applyT");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     PetscScalar values[np_];
     int low, high;
@@ -217,6 +232,10 @@ PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
     // ierr = VecAssemblyBegin (pout);                                                                 CHKERRQ (ierr);
     // ierr = VecAssemblyEnd (pout);                                                                   CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 

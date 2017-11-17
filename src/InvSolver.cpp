@@ -269,7 +269,7 @@ InvSolver::~InvSolver () {
 PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-	Event e ("tao-evaluate-objective-tumor");
+	Event e ("tao-eval-obj-tumor");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
@@ -294,7 +294,7 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
 PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    Event e ("tao-evaluate-gradient-tumor");
+    Event e ("tao-eval-grad-tumor");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
@@ -327,7 +327,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
 PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
-  Event e ("tao-evaluate-objective-and-gradient-tumor");
+  Event e ("tao-eval-obj/grad-tumor");
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
@@ -363,7 +363,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-    Event e ("tao-hessian-matvec-tumor");
+    Event e ("tao-hess-matvec-tumor");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
@@ -397,7 +397,7 @@ PetscErrorCode constApxHessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-    Event e ("tao-lmvm-initial-hessian-matvec");
+    Event e ("tao-lmvm-init-hess--matvec");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
@@ -447,7 +447,7 @@ PetscErrorCode preconditionerMatVec (PC pinv, Vec x, Vec pinvx) {
 PetscErrorCode applyPreconditioner (void *ptr, Vec x, Vec pinvx) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    Event e ("tao-apply-hessian-preconditioner");
+    Event e ("tao-apply-hess-precond");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     double *ptr_pinvx = NULL, *ptr_x = NULL;
