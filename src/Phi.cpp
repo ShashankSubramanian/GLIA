@@ -221,9 +221,9 @@ PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
 }
 
 int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc) {
-    int flag, num_tumor, cube_interior;
+    int flag, num_tumor, gaussian_interior;
     num_tumor = 0;
-    cube_interior = 0;
+    gaussian_interior = 0;
     double distance;
     double threshold = 0.2;
 
@@ -239,20 +239,40 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
                 distance = sqrt ((i - x) * (i - x) + 
                                  (j - y) * (j - y) +
                                  (k - z) * (k - z));
-                if (distance < radius) {
+                if (distance <= radius) {
+                    gaussian_interior++;
                     ptr = i * n_misc->isize_[1] * n_misc->isize_[2] + j * n_misc->isize_[2] + k;
                     if (data[ptr] > threshold) {
                         num_tumor++;
                     }
                 }
-                cube_interior++;
             }
-    if (num_tumor > 0. * cube_interior)   
+    if (num_tumor > 0.2 * gaussian_interior)   
         flag = 1;
     else
         flag = 0;
     return flag;
 }
+
+// int isInLocalProc (int i, int j, int k) {
+//     int check = 0;
+
+// }
+
+// void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc) {
+//     int flag, num_tumor, cube_interior;
+//     num_tumor = 0;
+//     cube_interior = 0;
+//     double distance;
+//     double threshold = 0.2;
+
+//     int64_t ptr;
+//     for (int i = x - radius; i <= x + radius; i++) 
+//         for (int j = y - radius; j <= y + radius; j++)
+//             for (int k = z - radius; k <= z + radius; k++) {
+                
+//             }
+// }
 
 PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
@@ -267,7 +287,9 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     double twopi = 2.0 * M_PI;
     int64_t X, Y, Z;
     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
-    sigma_ = 2.0 * hx;
+    double h_64 = twopi / 64;
+    // sigma_ = 2.0 * hx;
+    sigma_ = h_64;
 
     double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     spacing_factor_ = 2.0;
@@ -283,14 +305,22 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
 
     PCOUT << "checkTumorExistence" << std::endl;
 
-    for (int x = 0; x < n_misc_->isize_[0]; x += space)
-        for (int y = 0; y < n_misc_->isize_[1]; y += space)
-            for (int z = 0; z < n_misc_->isize_[2]; z += space) {
+    for (int x = 0; x < n_misc_->isize_[0]; x++)
+        for (int y = 0; y < n_misc_->isize_[1]; y++)
+            for (int z = 0; z < n_misc_->isize_[2]; z++) {
                 X = n_misc_->istart_[0] + x;
                 Y = n_misc_->istart_[1] + y;
                 Z = n_misc_->istart_[2] + z;
 
-                flag = checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, n_misc_);
+                // if (x < 0 || y < 0 || z < 0 
+                //     || x >= n_misc_->isize_[0]
+                //     || y >= n_misc_->isize_[1]
+                //     || z >= n_misc_->isize_[2]) {   //Checking for out of proc centers
+                //     checkTumorExistenceOutOfProc (x, y, z, sigma_ / hx, data_ptr, n_misc_);
+                // }
+
+                if (fmod (X, space) == 0 && fmod (Y, space) == 0 && fmod (Z, space) == 0)
+                    flag = checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, n_misc_);
 
                 if (flag == 1) {
                     np_++;
@@ -358,10 +388,123 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
     }
     if(n_misc_->writeOutput_) {
-        dataOut (all_phis, n_misc_, "results/phiNew.nc");
+        dataOut (all_phis, n_misc_, "results/phiGrid.nc");
     }
     PetscFunctionReturn (0);
 }
+
+// PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
+//     PetscFunctionBegin;
+//     PetscErrorCode ierr = 0;
+
+//     int procid, nprocs;
+//     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+//     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+//     PCOUT << "----- Bounding box not set: Phis set to match data -----" << std::endl;
+
+//     double twopi = 2.0 * M_PI;
+//     int64_t X, Y, Z;
+//     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
+//     double h_64 = twopi / 64;
+//     // sigma_ = 2.0 * hx;
+//     sigma_ = h_64;
+
+//     double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
+//     spacing_factor_ = 2.0;
+//     n_misc_->phi_spacing_factor_ = spacing_factor_;
+//     double space = spacing_factor_ * sigma_ / hx;
+
+//     int flag = 0;
+//     np_ = 0;
+//     std::vector<double> center;
+
+//     double *data_ptr;
+//     ierr = VecGetArray (data, &data_ptr);                                      CHKERRQ (ierr);
+
+//     PCOUT << "checkTumorExistence" << std::endl;
+
+//     for (int x = 0; x < n_misc_->isize_[0]; x += space)
+//         for (int y = 0; y < n_misc_->isize_[1]; y += space)
+//             for (int z = 0; z < n_misc_->isize_[2]; z += space) {
+//                 X = n_misc_->istart_[0] + x;
+//                 Y = n_misc_->istart_[1] + y;
+//                 Z = n_misc_->istart_[2] + z;
+
+
+
+//                 flag = checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, n_misc_);
+
+//                 if (flag == 1) {
+//                     np_++;
+//                     center.push_back (X * hx);
+//                     center.push_back (Y * hy);
+//                     center.push_back (Z * hz);
+//                 }
+//             }    
+
+//     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
+
+
+//     int np_global;
+//     MPI_Allreduce (&np_, &np_global, 1, MPI_INT, MPI_SUM, PETSC_COMM_WORLD); 
+
+//     std::vector<int> center_size, displs, rcount;
+//     std::vector<double> center_global;
+//     center_size.resize (nprocs);
+//     displs.resize (nprocs);
+//     rcount.resize (nprocs);
+//     int size = center.size();
+//     center_global.resize (3 * np_global);
+//     MPI_Allgather (&size, 1, MPI_INT, &center_size[0], 1, MPI_INT, PETSC_COMM_WORLD);
+
+//     displs[0] = 0;
+//     rcount[0] = center_size[0];
+//     for (int i = 1; i < nprocs; i++) {
+//         displs[i] = displs[i - 1] + center_size[i - 1];
+//         rcount[i] = center_size[i];
+//     }
+//     MPI_Allgatherv (&center[0], center.size(), MPI_DOUBLE, &center_global[0], &rcount[0], &displs[0], MPI_DOUBLE, PETSC_COMM_WORLD);
+
+//     np_ = np_global;
+//     n_misc_->np_ = np_;
+//     PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
+
+//     Vec v;
+//     phi_vec_.clear();   //Clear any previously set phi_vec_
+//     for (int i = 0; i < np_; i++) {
+//         ierr = VecCreate (PETSC_COMM_WORLD, &v);                                CHKERRQ (ierr);
+//         ierr = VecSetSizes (v, n_misc_->n_local_, n_misc_->n_global_);          CHKERRQ (ierr);
+//         ierr = VecSetFromOptions (v);                                           CHKERRQ (ierr);
+//         ierr = VecSet (v, 0);                                                   CHKERRQ (ierr);
+//         phi_vec_.push_back (v);
+//     }
+
+//     double *phi_ptr;
+//     Vec all_phis;
+//     ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
+//     ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
+
+//     for (int i = 0; i < np_; i++) {
+//         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+//         initialize (phi_ptr, n_misc_, &center_global[3 * i]);
+//         ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+
+//         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
+
+//         if (n_misc_->testcase_ == BRAIN) {  //BRAIN
+//             ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+//             ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+//             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+//         }
+
+//         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
+//     }
+//     if(n_misc_->writeOutput_) {
+//         dataOut (all_phis, n_misc_, "results/phiNew.nc");
+//     }
+//     PetscFunctionReturn (0);
+// }
 
 Phi::~Phi () {
     PetscErrorCode ierr = 0;
