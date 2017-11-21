@@ -122,5 +122,6 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr);
 PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
+PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);
 
 #endif
