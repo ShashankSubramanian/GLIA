@@ -66,7 +66,7 @@ int main (int argc, char** argv) {
 {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
-    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
+    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
 
     n_misc->phi_sigma_ = 0.2;

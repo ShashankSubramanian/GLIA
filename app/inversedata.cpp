@@ -64,7 +64,7 @@ int main (int argc, char** argv) {
 {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
-    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
+    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
     Vec data, p_rec, wm, gm, glm, csf;
 

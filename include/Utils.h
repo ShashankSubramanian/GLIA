@@ -127,7 +127,7 @@ struct TumorSettings {
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.16)
@@ -166,6 +166,7 @@ class NMisc {
             }
 
             memcpy (n_, n, 3 * sizeof(int));
+            memcpy (c_dims_, c_dims, 2 * sizeof(int));
             memcpy (isize_, isize, 3 * sizeof(int));
             memcpy (osize_, osize, 3 * sizeof(int));
             memcpy (istart_, istart, 3 * sizeof(int));
@@ -191,6 +192,7 @@ class NMisc {
         int osize_[3];
         int istart_[3];
         int ostart_[3];
+        int c_dims_[2];
         double h_[3];
 
         int np_;
