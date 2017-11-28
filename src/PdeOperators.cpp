@@ -7,14 +7,20 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     double dt = n_misc_->dt_;
     int nt = n_misc->nt_;
     c_ = (Vec *) malloc (sizeof (Vec *) * (nt));    //Stores all (nt) tumor concentrations for adjoint eqns
+    p_ = (Vec *) malloc (sizeof (Vec *) * (nt));    //Stores all (nt) tumor adjoint time points
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (c_[0]);
+    ierr = VecCreate (PETSC_COMM_WORLD, &p_[0]);
+    ierr = VecSetSizes (p_[0], n_misc->n_local_, n_misc->n_global_);
+    ierr = VecSetFromOptions (p_[0]);
     for (int i = 1; i < nt; i++) {
         ierr = VecDuplicate (c_[0], &c_[i]);
+        ierr = VecDuplicate (p_[0], &p_[i]);
     }
     for (int i = 0; i < nt; i++) {
         ierr = VecSet (c_[i], 0);
+        ierr = VecSet (p_[i], 0);
     }
 }
 
@@ -157,6 +163,10 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
         ierr = reactionAdjoint (linearized, nt - i - 1);
         diff_solver_->solve (tumor_->p_0_, dt / 2.0);
+        //Copy current adjoint time point to use in additional term for moving-atlas formulation
+        if (linearized == 1) {
+            ierr = VecCopy (tumor_->p_0_, p_[i]);                                       CHKERRQ (ierr);
+        }
     }
 
     self_exec_time += MPI_Wtime();
@@ -170,6 +180,7 @@ PdeOperatorsRD::~PdeOperatorsRD () {
     PetscErrorCode ierr = 0;
     for (int i = 0; i < this->nt_; i++) {
         ierr = VecDestroy (&c_[i]);
+        ierr = VecDestroy (&p_[i]);
     }
 }
 

@@ -204,6 +204,13 @@ PetscErrorCode InvSolver::solve () {
     } else {
       ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get()); CHKERRQ(ierr);
     }
+  // no TAO reset, re-use old LMVM data
+  } else {
+    if (itctx_->optsettings_->newtonsolver == QUASINEWTON) {
+      // if TAO is not reset, prevent first step from being a gradeint descent step, use BFGS step
+      //TAO_LMVM *lmP = (TAO_LMVM *)tao->data;   // get context
+      //lmP->
+    }
   }
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
   /* === solve === */

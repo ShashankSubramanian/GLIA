@@ -36,7 +36,10 @@ class PdeOperatorsRD : public PdeOperators {
 	public:
 		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
 
+    // @brief time history of state variable
 		Vec *c_;
+		// @brief time history of adjoint variable
+		Vec *p_;
 
 		PetscErrorCode solveState (int linearized);
 		PetscErrorCode reaction (int linearized, int i);
