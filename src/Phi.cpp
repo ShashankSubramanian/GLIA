@@ -363,7 +363,7 @@ PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_pr
     n_misc_->phi_spacing_factor_ = spacing_factor_;
     double space = spacing_factor_ * sigma_ / hx;
 
-
+    PCOUT << "--- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
@@ -520,6 +520,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
+    PCOUT << "--- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
