@@ -231,10 +231,12 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
     for (int i = x - radius; i <= x + radius; i++) 
         for (int j = y - radius; j <= y + radius; j++)
             for (int k = z - radius; k <= z + radius; k++) {
-                if (i < 0 || j < 0 || k < 0) continue;   //TODO: Change this to assert statements
-                if (i >= n_misc->isize_[0] || 
-                    j >= n_misc->isize_[1] ||
-                    k >= n_misc->isize_[2]) continue;
+                if (k < 0) continue;
+                if (k >= n_misc->isize_[2]) continue;     //Dont bother in the z direction as there is no partition here 
+                assert (i >= 0 && j >= 0 && k >= 0);
+                assert (i < n_misc->isize_[0] &&
+                        j < n_misc->isize_[1] &&
+                        k < n_misc->isize_[2]);
                     
                 distance = sqrt ((i - x) * (i - x) + 
                                  (j - y) * (j - y) +
@@ -254,20 +256,20 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
     return flag;
 }
 
-int isInLocalProc (int64_t X, int64_t Y, int64_t Z) {   //Check if global index (X, Y, Z) is inside the local proc
+int isInLocalProc (int64_t X, int64_t Y, int64_t Z, std::shared_ptr<NMisc> n_misc) {   //Check if global index (X, Y, Z) is inside the local proc
     int check = 0;
     int end_x, end_y, end_z;
-    end_x = n_misc_->istart_[0] + n_misc_->isize_[0] - 1;
-    end_y = n_misc_->istart_[1] + n_misc_->isize_[1] - 1;
-    end_z = n_misc_->istart_[2] + n_misc_->isize_[2] - 1;
-    if (X < n_misc_->istart_[0] || Y < n_misc_->istart_[1] || Z < n_misc_->istart_[2]) check = 1;
-    else if (X > end_x || Y > end_y || Z > end_z) check = 1;
-    else check = 0;
+    end_x = n_misc->istart_[0] + n_misc->isize_[0] - 1;
+    end_y = n_misc->istart_[1] + n_misc->isize_[1] - 1;
+    end_z = n_misc->istart_[2] + n_misc->isize_[2] - 1;
+    if (X < n_misc->istart_[0] || Y < n_misc->istart_[1] || Z < n_misc->istart_[2]) check = 0;
+    else if (X > end_x || Y > end_y || Z > end_z) check = 0;
+    else check = 1;
     return check;
 }
 
 // Check tumor presence for boundary points and their neighbours in other procs: x,y,z are global indices
-void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int64_t> &center_comm
+void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int64_t> &center_comm,
                                    std::vector<int> &local_tumor_marker, int local_check) {
     int flag, num_tumor;
     num_tumor = 0;
@@ -275,34 +277,33 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
     double threshold = 0.2;
 
     int check_local_pos = 0;
-    std::vector<int> center_comm;
 
     int64_t ptr;
     for (int i = x - radius; i <= x + radius; i++) 
         for (int j = y - radius; j <= y + radius; j++)
             for (int k = z - radius; k <= z + radius; k++) {
-                check_local_pos = isInLocalProc (i, j, k);
+                check_local_pos = isInLocalProc (i, j, k, n_misc);
                 if (check_local_pos) {
                     distance = sqrt ((i - x) * (i - x) + 
                                      (j - y) * (j - y) +
                                      (k - z) * (k - z));
                     if (distance <= radius) {
-                        gaussian_interior++;
-                        ptr = (i - n_misc_->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (j - n_misc_->istart_[1]) * n_misc->isize_[2] + (k - n_misc_->istart_[2]); //Local index for data
+                        ptr = (i - n_misc->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (j - n_misc->istart_[1]) * n_misc->isize_[2] + (k - n_misc->istart_[2]); //Local index for data
                         if (data[ptr] > threshold) {
                             num_tumor++;
                         }
                     }
                 }
             }
-    int64_t index_g = x * n_misc_->n_[1] * n_misc_->n_[2] + y * n_misc_->n_[2] + z;
-    center_comm.push_back (index_g);
-    center_comm.push_back (num_tumor);
-
     if (local_check) {  //The center is in the local process
         //Get local index of center
-        ptr = (x - n_misc_->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (y - n_misc_->istart_[1]) * n_misc->isize_[2] + (z - n_misc_->istart_[2]);
+        ptr = (x - n_misc->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (y - n_misc->istart_[1]) * n_misc->isize_[2] + (z - n_misc->istart_[2]);
         local_tumor_marker[ptr] = num_tumor;
+    }
+    else {
+        int64_t index_g = x * n_misc->n_[1] * n_misc->n_[2] + y * n_misc->n_[2] + z;
+        center_comm.push_back (index_g);
+        center_comm.push_back (num_tumor);
     }
 }
 
@@ -318,6 +319,8 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
 
     double twopi = 2.0 * M_PI;
     int64_t X, Y, Z;
+    int ptr;
+    int gaussian_interior = 0;
     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
     double h_64 = twopi / 64;
     // sigma_ = 2.0 * hx;
@@ -327,6 +330,15 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     spacing_factor_ = 2.0;
     n_misc_->phi_spacing_factor_ = spacing_factor_;
     double space = spacing_factor_ * sigma_ / hx;
+
+    //Get gaussian volume
+    double dist = 0.0;
+    for (int i = -sigma_ / hx; i <= sigma_ / hx; i++) 
+        for (int j = -sigma_ / hx; j <= sigma_ / hx; j++)
+            for (int k = -sigma_ / hx; k <= sigma_ / hx; k++) {
+                dist = sqrt (i*i + j*j + k*k);
+                if (dist <= sigma_ / hx) gaussian_interior++;
+            }
 
     int flag = 0;
     np_ = 0;
@@ -339,29 +351,43 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     double *data_ptr;
     ierr = VecGetArray (data, &data_ptr);                                      CHKERRQ (ierr);
 
-    int start_x; start_y, start_z, end_x, end_y, end_z;
+    int start_x, start_y, start_z, end_x, end_y, end_z;
+    bool break_check =  false;
 
     //Find the global index of the first and last center in the current proc
-    for (int x = 0; x < n_misc_->isize_[0]; x++)
-        for (int y = 0; y < n_misc_->isize_[1]; y++)
+    for (int x = 0; x < n_misc_->isize_[0]; x++) {
+        for (int y = 0; y < n_misc_->isize_[1]; y++) {
             for (int z = 0; z < n_misc_->isize_[2]; z++) {
                 X = n_misc_->istart_[0] + x;
                 Y = n_misc_->istart_[1] + y;
                 Z = n_misc_->istart_[2] + z;
                 if (fmod (X, space) == 0 && fmod (Y, space) == 0 && fmod (Z, space) == 0) {
                     start_x = x; start_y = y; start_z = z;
+                    break_check = true;
                     break;
                 }
-    for (int x = n_misc_->isize_[0] - 1; x >= 0; x--)
-        for (int y = n_misc_->isize_[1] - 1; y >= 0; y--)
+            }
+            if (break_check) break;
+        }
+        if (break_check) break;
+    }
+    break_check =  false;
+    for (int x = n_misc_->isize_[0] - 1; x >= 0; x--) {
+        for (int y = n_misc_->isize_[1] - 1; y >= 0; y--) {
             for (int z = n_misc_->isize_[2] - 1; z >= 0; z--) {
                 X = n_misc_->istart_[0] + x;
                 Y = n_misc_->istart_[1] + y;
                 Z = n_misc_->istart_[2] + z;
                 if (fmod (X, space) == 0 && fmod (Y, space) == 0 && fmod (Z, space) == 0) {
                     end_x = x; end_y = y; end_z = z;
+                    break_check = true;
                     break;
                 }
+            }
+            if (break_check) break;
+        }
+        if (break_check) break;
+    }
 
     //Loop over centers in the local process
     for (int x = start_x; x <= end_x; x += space)
@@ -372,25 +398,37 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
                 Z = n_misc_->istart_[2] + z;
                 
                 if (x == start_x || y == start_y || x == end_x || y == end_y) { //Get boundary points
-                    checkTumorExistenceOutOfProc (X, Y, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 1);               //In proc
+                    checkTumorExistenceOutOfProc (X, Y, Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 1);               //In proc
                     //Out of Proc checks
-                    if (x == start_x) { //Check for left neighbor                    
-                        checkTumorExistenceOutOfProc (X - space, Y, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
+                    if (x == start_x) { //Check for left neighbor  
+                        checkTumorExistenceOutOfProc ((X - space > 0) ? (X - space) : (n_misc_->n_[0] - space), Y, Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
                     }
                     if (y == start_y) { //Check for bottom neighbor
-                        checkTumorExistenceOutOfProc (X, Y - space, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
+                        checkTumorExistenceOutOfProc (X, (Y - space > 0) ? (Y - space) : (n_misc_->n_[1] - space), Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
                     }
                     if (x == end_x) { //Check for right neighbor
-                        checkTumorExistenceOutOfProc (X + space, Y, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
+                        checkTumorExistenceOutOfProc ((X + space < n_misc_->n_[0]) ? (X + space) : space, Y, Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
                     }
                     if (y == end_y) { //Check for top neighbor
-                        checkTumorExistenceOutOfProc (X , Y + space, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
+                        checkTumorExistenceOutOfProc (X , (Y + space < n_misc_->n_[1]) ? (Y + space) : space, Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
                     }
                     //Now check for corner neighbors
-                    if (x == start_x && y == start_y) checkTumorExistenceOutOfProc (X - space , Y - space, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
-                    if (x == start_x && y == end_y)   checkTumorExistenceOutOfProc (X - space , Y + space, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
-                    if (x == end_x && y == start_y)   checkTumorExistenceOutOfProc (X + space , Y - space, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
-                    if (x == end_x && y == end_y)     checkTumorExistenceOutOfProc (X + space , Y + space, Z, sigma_ / hx, data_ptr, n_misc_, &center_comm, &local_tumor_marker, 0);
+                    if (x == start_x && y == start_y) {
+                        checkTumorExistenceOutOfProc ((X - space > 0) ? (X - space) : (n_misc_->n_[0] - space) , 
+                            (Y - space > 0) ? (Y - space) : (n_misc_->n_[1] - space), Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
+                    }
+                    if (x == start_x && y == end_y) {
+                        checkTumorExistenceOutOfProc ((X - space > 0) ? (X - space) : (n_misc_->n_[0] - space) ,
+                            (Y + space < n_misc_->n_[1]) ? (Y + space) : space, Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
+                    }
+                    if (x == end_x && y == start_y) {
+                        checkTumorExistenceOutOfProc ((X + space < n_misc_->n_[0]) ? (X + space) : space,
+                            (Y - space > 0) ? (Y - space) : (n_misc_->n_[1] - space), Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
+                    }
+                    if (x == end_x && y == end_y) {
+                        checkTumorExistenceOutOfProc ((X + space < n_misc_->n_[0]) ? (X + space) : space ,
+                            (Y + space < n_misc_->n_[1]) ? (Y + space) : space, Z, sigma_ / hx, data_ptr, n_misc_, center_comm, local_tumor_marker, 0);
+                    }
                 }
                 else { //Not a boundary center: Computation can be completed locally
                     flag = checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, n_misc_);
@@ -406,46 +444,86 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
 
     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
 
-    PCOUT << "Communication start: " << std::endl;
     MPI_Request request[16];
-    MPI_Status status;
+    MPI_Status status[16];
     //Communicate partial computation of boundary centers to neighbouring processes
-    std::vector<int> tag(8);
+    // std::vector<int> tag(8);
     std::vector<int64_t> receive_buffer(center_comm.size());
-    std::iota (std::begin(tag), std::end(tag), 0);
-    int proc_i, proc_j, procid_neigh, count;
+    // std::iota (std::begin(tag), std::end(tag), 0);              //Populate tag with ascending numbers from 0
+    int proc_i, proc_j, procid_neigh, count, neigh_i, neigh_j;
     count = 0;
     proc_i = procid / n_misc_->c_dims_[1];
-    proc_j = procid - proc_i * c_dims[1];
-    for (int ni = proc_i - 1; ni <= proc_i + 1; ni += 1)
-        for (int nj = proc_j - 1; nj <= proc_j + 1; nj += 1) {  //Get all neighboring processes
-            if (ni == 0 && nj == 0) continue;
+    proc_j = procid - proc_i * n_misc_->c_dims_[1];
+    for (int ni = proc_i - 1; ni <= proc_i + 1; ni++)
+        for (int nj = proc_j - 1; nj <= proc_j + 1; nj++) {  //Get all neighboring processes
+            //Check for boundary procs and implement periodic send and recv
+            neigh_i = ni;
+            neigh_j = nj;
+            if (neigh_i < 0) neigh_i = n_misc_->c_dims_[0] - 1;
+            if (neigh_i >= n_misc_->c_dims_[0]) neigh_i = 0;
+            if (neigh_j < 0) neigh_j = n_misc_->c_dims_[1] - 1;
+            if (neigh_j >= n_misc_->c_dims_[1]) neigh_j = 0;
+            if (neigh_i == proc_i && neigh_j == proc_j) continue;
+            
+            procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
             request[count] = MPI_REQUEST_NULL;
-            procid_neigh = ni * n_misc_->c_dims_[1] + nj;
-            MPI_Isend (&center_comm[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, tag[count], n_misc_->c_comm_, &request[count]);
+            MPI_Isend (&center_comm[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
             count++;
         }
+
     count = 0;
-    for (int ni = proc_i - 1; ni <= proc_i + 1; ni += 1)
-        for (int nj = proc_j - 1; nj <= proc_j + 1; nj += 1) {  //Get all neighboring processes
-            if (ni == 0 && nj == 0) continue;
+    proc_i = procid / n_misc_->c_dims_[1];
+    proc_j = procid - proc_i * n_misc_->c_dims_[1];
+    for (int ni = proc_i - 1; ni <= proc_i + 1; ni++)
+        for (int nj = proc_j - 1; nj <= proc_j + 1; nj++) {  //Get all neighboring processes
+            //Check for boundary procs and implement periodic send and recv
+            neigh_i = ni;
+            neigh_j = nj;
+            if (neigh_i < 0) neigh_i = n_misc_->c_dims_[0] - 1;
+            if (neigh_i >= n_misc_->c_dims_[0]) neigh_i = 0;
+            if (neigh_j < 0) neigh_j = n_misc_->c_dims_[1] - 1;
+            if (neigh_j >= n_misc_->c_dims_[1]) neigh_j = 0;
+            if (neigh_i == proc_i && neigh_j == proc_j) continue;
+
+            procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
             request[count + 8] = MPI_REQUEST_NULL;
-            procid_neigh = ni * n_misc_->c_dims_[1] + nj;
-            MPI_Irecv (&receive_buffer[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, tag[count], n_misc_->c_comm_, &request[count + 8]);
+
+            MPI_Irecv (&receive_buffer[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count + 8]);
+            //Check receive buffer for the local centers and add their value to local_tumor_marker
+            for (int i = 0; i < receive_buffer.size(); i += 2) {  //Every alternate value is a center global index
+                //Get global coordinates from global index
+                X = receive_buffer[i] / (n_misc_->n_[1] * n_misc_->n_[2]);
+                Y = fmod (receive_buffer[i], n_misc_->n_[1] * n_misc_->n_[2]) / n_misc_->n_[2];
+                Z = receive_buffer[i] - Y * n_misc_->n_[2] - X * n_misc_->n_[1] * n_misc_->n_[2];
+                flag = isInLocalProc (X, Y, Z, n_misc_);
+                if (flag) {  //The point is inside the local processor
+                    ptr = (X - n_misc_->istart_[0]) * n_misc_->isize_[1] * n_misc_->isize_[2] + (Y - n_misc_->istart_[1]) * n_misc_->isize_[2] + (Z - n_misc_->istart_[2]);
+                    local_tumor_marker[ptr] += receive_buffer[i+1];            //Add the contirbution from the neighbour to the local boundary center
+                }
+            }
             count++;
         }
 
-    for (int i = 0; i < 16; i++) {
-        
-        MPI_Wait (&request[i], &status);
+
+    MPI_Waitall (16, request, status);
+    //Add the local boundary centers to the selected centers vector
+    for (int i = 0; i < local_tumor_marker.size(); i++) {
+        if (local_tumor_marker[i] > 0.2 * gaussian_interior) {   // Boundary center with tumors in its vicinity
+            X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
+            Y = fmod (i, n_misc_->isize_[1] * n_misc_->isize_[2]) / n_misc_->isize_[2];
+            Z = i - Y * n_misc_->isize_[2] - X * n_misc_->isize_[1] * n_misc_->isize_[2];
+            X += n_misc_->istart_[0];
+            Y += n_misc_->istart_[1];
+            Z += n_misc_->istart_[2];
+            np_++;
+            center.push_back (X * hx);
+            center.push_back (Y * hy);
+            center.push_back (Z * hz);
+        }
     }
-
-
-
 
     int np_global;
     MPI_Allreduce (&np_, &np_global, 1, MPI_INT, MPI_SUM, PETSC_COMM_WORLD); 
-
     std::vector<int> center_size, displs, rcount;
     std::vector<double> center_global;
     center_size.resize (nprocs);

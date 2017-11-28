@@ -23,6 +23,7 @@
 #include <cmath>
 #include <vector>
 #include <accfft_utils.h>
+#include <assert.h>
 #include "EventTimings.hpp"
 
 
