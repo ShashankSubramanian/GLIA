@@ -25,6 +25,7 @@ class Phi {
 		PetscErrorCode apply (Vec out, Vec p);
 		PetscErrorCode applyTranspose (Vec pout, Vec in);
 		PetscErrorCode setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop);
+		PetscErrorCode setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_prop);      //This function ignores gaussians at processor intersections
 
 		~Phi ();
 };
