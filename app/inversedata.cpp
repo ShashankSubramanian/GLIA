@@ -85,8 +85,8 @@ int main (int argc, char** argv) {
     std::shared_ptr<MatProp> mat_prop = std::make_shared<MatProp> (n_misc);
     ierr = mat_prop->setValues (n_misc);
     // ierr = mat_prop->setValuesCustom (gm, wm, glm, csf, n_misc);
-    // ierr = phi->setGaussians (data, mat_prop);
-    ierr = phi->setGaussiansLocal (data, mat_prop);  //SNAFU: This function ignores distributed gaussians
+    ierr = phi->setGaussians (data, mat_prop);
+    // ierr = phi->setGaussiansLocal (data, mat_prop);  //SNAFU: This function ignores distributed gaussians
 
     ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
     ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
