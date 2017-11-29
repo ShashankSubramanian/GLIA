@@ -49,6 +49,7 @@ class TumorSolverInterface {
 		/// @brief evaluates gradient for given control variable p and data
 		PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
 		/// @brief true if TumorSolverInterface is initialized and ready to use
+
 		bool isInitialized () {
 			return initialized_;
 		}
@@ -58,6 +59,15 @@ class TumorSolverInterface {
 		void setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {inv_solver_->setOptFeedback(optfeed);}
 		// defines whether or not we have to update the reference gradeient for the inverse solve
 		void updateReferenceGradient (bool b) {if (inv_solver_ != nullptr) inv_solver_->updateReferenceGradient(b);}
+		/** @brief computes effect of varying/moving material properties, i.e.,
+		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
+		 */
+		PetscErrorCode computeVaryingMatProbContribution(Vec q) {
+			PetscErrorCode ierr;
+			if (pde_operators_ != nullptr) {
+			  ierr = pde_operators_->computeVaryingMatProbContribution(q); CHKERRQ(ierr);}
+			PetscFunctionReturn(0);
+		}
 		//  ---------  getter functions -------------
 		/// @brief returns the tumor shared ptr
 		std::shared_ptr<Tumor> getTumor () {

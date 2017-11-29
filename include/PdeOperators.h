@@ -46,6 +46,10 @@ class PdeOperatorsRD : public PdeOperators {
 		PetscErrorCode reactionAdjoint (int linearized, int i);
 		PetscErrorCode solveAdjoint (int linearized);
 
+		/** @brief computes effect of varying/moving material properties, i.e.,
+		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
+		 */
+    PetscErrorCode computeVaryingMatProbContribution(Vec q);
 		~PdeOperatorsRD ();
 
 };

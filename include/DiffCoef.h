@@ -37,7 +37,8 @@ class DiffCoef {
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);
 		PetscErrorCode applyD (Vec dc, Vec c, accfft_plan *plan);
-
+		/** @brief computes x = k_bar (grad c)^T grad \alpha, where k_bar = dK/dm */
+		PetscErrorCode compute_dKdm_gradc_gradp(Vec x, Vec c, Vec p, accfft_plan *plan);
 		~DiffCoef ();
 };
 
