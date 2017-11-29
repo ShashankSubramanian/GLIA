@@ -259,7 +259,7 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
                     }
                 }
             }
-    n_output[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = num_tumor;
+    n_output[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = num_tumor / gaussian_interior;
     if (num_tumor > n_misc->gaussian_vol_frac_ * gaussian_interior)   
         flag = 1;
     else
@@ -295,7 +295,7 @@ int checkTumorExistenceLocal (int64_t x, int64_t y, int64_t z, double radius, do
                     }
                 }
             }
-    n_output[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = num_tumor;
+    n_output[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = num_tumor / gaussian_interior;
     if (num_tumor > n_misc->gaussian_vol_frac_ * gaussian_interior)   
         flag = 1;
     else
@@ -720,7 +720,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
 
     for (int i = 0; i < local_tumor_marker.size(); i++) {
         if (local_tumor_marker[i] > 0)                                                   //Overwrite these points in the output as they haven't been counted 
-            num_top_ptr[i] = local_tumor_marker[i];                                      //For visualization
+            num_top_ptr[i] = local_tumor_marker[i] / gaussian_interior;                  //For visualization
 
         if (local_tumor_marker[i] > n_misc_->gaussian_vol_frac_ * gaussian_interior) {   // Boundary center with tumors in its vicinity
             X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
