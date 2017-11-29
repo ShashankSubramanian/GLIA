@@ -152,6 +152,8 @@ class NMisc {
         , obs_threshold_ (-1.0)
         , exp_shift_ (10.0)
         , penalty_ (1E-4)
+        , data_threshold_ (0.1)
+        , gaussian_vol_frac_ (0.0)
         , testcase_ (testcase) {
 
             time_horizon_ = nt_ * dt_;
@@ -223,6 +225,8 @@ class NMisc {
 
         double phi_sigma_;
         double phi_spacing_factor_;
+        double data_threshold_;
+        double gaussian_vol_frac_;
 
         double obs_threshold_;
 

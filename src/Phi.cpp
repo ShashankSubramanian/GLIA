@@ -225,7 +225,7 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
     num_tumor = 0;
     gaussian_interior = 0;
     double distance;
-    double threshold = 0.2;
+    double threshold = n_misc->data_threshold_;
 
     int64_t ptr;
     for (int i = x - radius; i <= x + radius; i++) 
@@ -249,7 +249,7 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
                     }
                 }
             }
-    if (num_tumor > 0.2 * gaussian_interior)   
+    if (num_tumor > n_misc->gaussian_vol_frac_ * gaussian_interior)   
         flag = 1;
     else
         flag = 0;
@@ -261,7 +261,7 @@ int checkTumorExistenceLocal (int64_t x, int64_t y, int64_t z, double radius, do
     num_tumor = 0;
     gaussian_interior = 0;
     double distance;
-    double threshold = 0.2;
+    double threshold = n_misc->data_threshold_;
 
     int64_t ptr;
     for (int i = x - radius; i <= x + radius; i++) 
@@ -283,7 +283,7 @@ int checkTumorExistenceLocal (int64_t x, int64_t y, int64_t z, double radius, do
                     }
                 }
             }
-    if (num_tumor > 0.2 * gaussian_interior)   
+    if (num_tumor > n_misc->gaussian_vol_frac_ * gaussian_interior)   
         flag = 1;
     else
         flag = 0;
@@ -704,7 +704,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     MPI_Waitall (16, request, status);
     //Add the local boundary centers to the selected centers vector
     for (int i = 0; i < local_tumor_marker.size(); i++) {
-        if (local_tumor_marker[i] > 0.2 * gaussian_interior) {   // Boundary center with tumors in its vicinity
+        if (local_tumor_marker[i] > n_misc_->gaussian_vol_frac_ * gaussian_interior) {   // Boundary center with tumors in its vicinity
             X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
             Y = fmod (i, n_misc_->isize_[1] * n_misc_->isize_[2]) / n_misc_->isize_[2];
             Z = i - Y * n_misc_->isize_[2] - X * n_misc_->isize_[1] * n_misc_->isize_[2];
