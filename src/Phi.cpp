@@ -349,6 +349,10 @@ PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_pr
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+    Vec center_output;
+    ierr = VecDuplicate (data, &center_output);                              CHKERRQ (ierr);
+    ierr = VecSet (center_output, 0);                                        CHKERRQ (ierr);
+
     PCOUT << "----- Bounding box not set: Phis set to match data, Gaussians at proc intersections are ignored -----" << std::endl;
 
     double twopi = 2.0 * M_PI;
@@ -408,7 +412,7 @@ PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_pr
         }
         if (break_check) break;
     }
-
+    double *cen_ptr;
     //Loop over centers in the local process
     for (int x = start_x; x <= end_x; x += space)
         for (int y = start_y; y <= end_y; y += space)
@@ -419,6 +423,9 @@ PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_pr
                 
                 flag = checkTumorExistenceLocal (x, y, z, sigma_ / hx, data_ptr, n_misc_);
                 if (flag == 1) {
+                    ierr = VecGetArray (center_output, &cen_ptr);               CHKERRQ (ierr);
+                    cen_ptr[x * n_misc_->isize_[1] * n_misc_->isize_[2] + y * n_misc_->isize_[2] + z] = 1;   //This is purely for visualization purposes
+                    ierr = VecRestoreArray (center_output, &cen_ptr);           CHKERRQ (ierr);  
                     np_++;
                     center.push_back (X * hx);
                     center.push_back (Y * hy);
@@ -482,6 +489,7 @@ PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_pr
         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
     }
     if(n_misc_->writeOutput_) {
+        dataOut (center_output, n_misc_, "results/phiCenters.nc");
         dataOut (all_phis, n_misc_, "results/phiGrid.nc");
     }
     PetscFunctionReturn (0);
@@ -496,6 +504,10 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     PCOUT << "----- Bounding box not set: Phis set to match data -----" << std::endl;
+    Vec center_output;
+    double *cen_ptr;
+    ierr = VecDuplicate (data, &center_output);                              CHKERRQ (ierr);
+    ierr = VecSet (center_output, 0);                                        CHKERRQ (ierr);
 
     double twopi = 2.0 * M_PI;
     int64_t X, Y, Z;
@@ -614,6 +626,9 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
                 else { //Not a boundary center: Computation can be completed locally
                     flag = checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, n_misc_);
                     if (flag == 1) {
+                        ierr = VecGetArray (center_output, &cen_ptr);               CHKERRQ (ierr);
+                        cen_ptr[x * n_misc_->isize_[1] * n_misc_->isize_[2] + y * n_misc_->isize_[2] + z] = 1;   //This is purely for visualization purposes
+                        ierr = VecRestoreArray (center_output, &cen_ptr);           CHKERRQ (ierr); 
                         np_++;
                         center.push_back (X * hx);
                         center.push_back (Y * hy);
@@ -693,9 +708,15 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
             X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
             Y = fmod (i, n_misc_->isize_[1] * n_misc_->isize_[2]) / n_misc_->isize_[2];
             Z = i - Y * n_misc_->isize_[2] - X * n_misc_->isize_[1] * n_misc_->isize_[2];
+
+            ierr = VecGetArray (center_output, &cen_ptr);               CHKERRQ (ierr);
+            cen_ptr[i] = 1;   //This is purely for visualization purposes
+            ierr = VecRestoreArray (center_output, &cen_ptr);           CHKERRQ (ierr); 
+
             X += n_misc_->istart_[0];
             Y += n_misc_->istart_[1];
             Z += n_misc_->istart_[2];
+
             np_++;
             center.push_back (X * hx);
             center.push_back (Y * hy);
