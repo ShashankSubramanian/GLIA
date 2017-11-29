@@ -593,6 +593,8 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     }
 
     //Loop over centers in the local process
+    //Domain is parallelized only in x and y direction in accordance with accfft
+    //The boundary centers in z direction are hence irrelevant
     for (int x = start_x; x <= end_x; x += space)
         for (int y = start_y; y <= end_y; y += space)
             for (int z = start_z; z <= end_z; z += space) {
