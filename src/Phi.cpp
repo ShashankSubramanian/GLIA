@@ -233,10 +233,9 @@ int isInLocalProc (int64_t X, int64_t Y, int64_t Z, std::shared_ptr<NMisc> n_mis
 }
 
 //x, y, z are local coordinates
-int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double *data, double *n_output, std::shared_ptr<NMisc> n_misc) {
-    int flag, num_tumor, gaussian_interior;
+void checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int> &local_tumor_marker) {
+    int flag, num_tumor;
     num_tumor = 0;
-    gaussian_interior = 0;
     double distance;
     double threshold = n_misc->data_threshold_;
 
@@ -252,55 +251,13 @@ int checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double 
                                  (j - y) * (j - y) +
                                  (k - z) * (k - z));
                 if (distance <= radius) {
-                    gaussian_interior++;
                     ptr = i * n_misc->isize_[1] * n_misc->isize_[2] + j * n_misc->isize_[2] + k;
                     if (data[ptr] > threshold) {
                         num_tumor++;
                     }
                 }
             }
-    n_output[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = (double) num_tumor / gaussian_interior;
-    if (num_tumor > n_misc->gaussian_vol_frac_ * gaussian_interior)   
-        flag = 1;
-    else
-        flag = 0;
-    return flag;
-}
-
-//x, y, z are local coordinates
-int checkTumorExistenceLocal (int64_t x, int64_t y, int64_t z, double radius, double *data, double *n_output, std::shared_ptr<NMisc> n_misc) {
-    int flag, num_tumor, gaussian_interior;
-    num_tumor = 0;
-    gaussian_interior = 0;
-    double distance;
-    double threshold = n_misc->data_threshold_;
-
-    int64_t ptr;
-    for (int i = x - radius; i <= x + radius; i++) 
-        for (int j = y - radius; j <= y + radius; j++)
-            for (int k = z - radius; k <= z + radius; k++) {
-                if (i < 0 || j < 0 || k < 0) continue;
-                if (i >= n_misc->isize_[0] ||
-                    j >= n_misc->isize_[1] ||
-                    k >= n_misc->isize_[2])  continue;
-                    
-                distance = sqrt ((i - x) * (i - x) + 
-                                 (j - y) * (j - y) +
-                                 (k - z) * (k - z));
-                if (distance <= radius) {
-                    gaussian_interior++;
-                    ptr = i * n_misc->isize_[1] * n_misc->isize_[2] + j * n_misc->isize_[2] + k;
-                    if (data[ptr] > threshold) {
-                        num_tumor++;
-                    }
-                }
-            }
-    n_output[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = (double) num_tumor / gaussian_interior;
-    if (num_tumor > n_misc->gaussian_vol_frac_ * gaussian_interior)   
-        flag = 1;
-    else
-        flag = 0;
-    return flag;
+    local_tumor_marker[x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z] = num_tumor;
 }
 
 // Check tumor presence for boundary points and their neighbours in other procs: x,y,z are global indices
@@ -317,6 +274,8 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
     for (int i = x - radius; i <= x + radius; i++) 
         for (int j = y - radius; j <= y + radius; j++)
             for (int k = z - radius; k <= z + radius; k++) {
+                if (k < 0) continue;
+                if (k >= n_misc->isize_[2]) continue;     //Dont bother in the z direction as there is no partition here 
                 check_local_pos = isInLocalProc (i, j, k, n_misc);
                 if (check_local_pos) {
                     distance = sqrt ((i - x) * (i - x) + 
@@ -330,6 +289,9 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
                     }
                 }
             }
+            int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     if (local_check) {  //The center is in the local process
         //Get local index of center
         ptr = (x - n_misc->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (y - n_misc->istart_[1]) * n_misc->isize_[2] + (z - n_misc->istart_[2]);
@@ -340,169 +302,6 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
         center_comm.push_back (index_g);
         center_comm.push_back (num_tumor);
     }
-}
-
-PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_prop) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
-    Vec center_output, num_tumor_output;
-    ierr = VecDuplicate (data, &center_output);                              CHKERRQ (ierr);
-    ierr = VecDuplicate (data, &num_tumor_output);                           CHKERRQ (ierr);
-    ierr = VecSet (center_output, 0);                                        CHKERRQ (ierr);
-    ierr = VecSet (num_tumor_output, 0);                                     CHKERRQ (ierr);
-
-
-    PCOUT << "----- Bounding box not set: Phis set to match data, Gaussians at proc intersections are ignored -----" << std::endl;
-
-    double twopi = 2.0 * M_PI;
-    int64_t X, Y, Z;
-    double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
-    double h_64 = twopi / 64;
-    // sigma_ = 2.0 * hx;
-    sigma_ = h_64;
-
-    double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
-    spacing_factor_ = 2.0;
-    n_misc_->phi_spacing_factor_ = spacing_factor_;
-    double space = spacing_factor_ * sigma_ / hx;
-
-    PCOUT << "--- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
-    int flag = 0;
-    np_ = 0;
-    std::vector<double> center;
-
-    double *data_ptr, *num_top_ptr;
-    ierr = VecGetArray (data, &data_ptr);                                      CHKERRQ (ierr);
-    ierr = VecGetArray (num_tumor_output, &num_top_ptr);                       CHKERRQ (ierr);
-
-    int start_x, start_y, start_z, end_x, end_y, end_z;
-    bool break_check = false;
-
-    //Find the global index of the first and last center in the current proc
-    for (int x = 0; x < n_misc_->isize_[0]; x++) {
-        for (int y = 0; y < n_misc_->isize_[1]; y++) {
-            for (int z = 0; z < n_misc_->isize_[2]; z++) {
-                X = n_misc_->istart_[0] + x;
-                Y = n_misc_->istart_[1] + y;
-                Z = n_misc_->istart_[2] + z;
-                if (fmod (X, space) == 0 && fmod (Y, space) == 0 && fmod (Z, space) == 0) {
-                    start_x = x; start_y = y; start_z = z;
-                    break_check = true;
-                    break;
-                }
-            }
-            if (break_check) break;
-        }
-        if (break_check) break;
-    }
-    break_check = false;
-    for (int x = n_misc_->isize_[0] - 1; x >= 0; x--) {
-        for (int y = n_misc_->isize_[1] - 1; y >= 0; y--) {
-            for (int z = n_misc_->isize_[2] - 1; z >= 0; z--) {
-                X = n_misc_->istart_[0] + x;
-                Y = n_misc_->istart_[1] + y;
-                Z = n_misc_->istart_[2] + z;
-                if (fmod (X, space) == 0 && fmod (Y, space) == 0 && fmod (Z, space) == 0) {
-                    end_x = x; end_y = y; end_z = z;
-                    break_check = true;
-                    break;
-                }
-            }
-            if (break_check) break;
-        }
-        if (break_check) break;
-    }
-    double *cen_ptr;
-    //Loop over centers in the local process
-    for (int x = start_x; x <= end_x; x += space)
-        for (int y = start_y; y <= end_y; y += space)
-            for (int z = start_z; z <= end_z; z += space) {
-                X = n_misc_->istart_[0] + x;
-                Y = n_misc_->istart_[1] + y;
-                Z = n_misc_->istart_[2] + z;
-                
-                flag = checkTumorExistenceLocal (x, y, z, sigma_ / hx, data_ptr, num_top_ptr, n_misc_);
-                if (flag == 1) {
-                    ierr = VecGetArray (center_output, &cen_ptr);               CHKERRQ (ierr);
-                    cen_ptr[x * n_misc_->isize_[1] * n_misc_->isize_[2] + y * n_misc_->isize_[2] + z] = 1;   //This is purely for visualization purposes
-                    ierr = VecRestoreArray (center_output, &cen_ptr);           CHKERRQ (ierr);  
-                    np_++;
-                    center.push_back (X * hx);
-                    center.push_back (Y * hy);
-                    center.push_back (Z * hz);
-                }
-            }   
-
-    ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (num_tumor_output, &num_top_ptr);                    CHKERRQ (ierr);
-
-    int np_global;
-    MPI_Allreduce (&np_, &np_global, 1, MPI_INT, MPI_SUM, PETSC_COMM_WORLD); 
-    std::vector<int> center_size, displs, rcount;
-    std::vector<double> center_global;
-    center_size.resize (nprocs);
-    displs.resize (nprocs);
-    rcount.resize (nprocs);
-    int size = center.size();
-    center_global.resize (3 * np_global);
-    MPI_Allgather (&size, 1, MPI_INT, &center_size[0], 1, MPI_INT, PETSC_COMM_WORLD);
-
-    displs[0] = 0;
-    rcount[0] = center_size[0];
-    for (int i = 1; i < nprocs; i++) {
-        displs[i] = displs[i - 1] + center_size[i - 1];
-        rcount[i] = center_size[i];
-    }
-    MPI_Allgatherv (&center[0], center.size(), MPI_DOUBLE, &center_global[0], &rcount[0], &displs[0], MPI_DOUBLE, PETSC_COMM_WORLD);
-
-    np_ = np_global;
-    n_misc_->np_ = np_;
-    PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
-
-    Vec v;
-    for (int i = 0; i < phi_vec_.size (); i++) {
-        ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
-    }
-    phi_vec_.clear();   //Clear any previously set phi_vec_
-    for (int i = 0; i < np_; i++) {
-        ierr = VecCreate (PETSC_COMM_WORLD, &v);                                CHKERRQ (ierr);
-        ierr = VecSetSizes (v, n_misc_->n_local_, n_misc_->n_global_);          CHKERRQ (ierr);
-        ierr = VecSetFromOptions (v);                                           CHKERRQ (ierr);
-        ierr = VecSet (v, 0);                                                   CHKERRQ (ierr);
-        phi_vec_.push_back (v);
-    }
-
-    double *phi_ptr;
-    Vec all_phis;
-    ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
-    ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
-
-    for (int i = 0; i < np_; i++) {
-        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        initialize (phi_ptr, n_misc_, &center_global[3 * i]);
-        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-
-        ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
-
-        if (n_misc_->testcase_ == BRAIN) {  //BRAIN
-            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-            ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
-            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-        }
-
-        ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
-    }
-    if(n_misc_->writeOutput_) {
-        dataOut (center_output, n_misc_, "results/phiCenters.nc");
-        dataOut (num_tumor_output, n_misc_, "results/phiNumTumor.nc");
-        dataOut (all_phis, n_misc_, "results/phiGrid.nc");
-    }
-    PetscFunctionReturn (0);
 }
 
 PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
@@ -640,17 +439,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
                     }
                 }
                 else { //Not a boundary center: Computation can be completed locally
-                    flag = checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, num_top_ptr, n_misc_);
-                    if (flag == 1) {
-                        ierr = VecGetArray (center_output, &cen_ptr);               CHKERRQ (ierr);
-                        cen_ptr[x * n_misc_->isize_[1] * n_misc_->isize_[2] + y * n_misc_->isize_[2] + z] = 1;   //This is purely for visualization purposes
-                        ierr = VecRestoreArray (center_output, &cen_ptr);           CHKERRQ (ierr); 
-                        np_++;
-                        center.push_back (X * hx);
-                        center.push_back (Y * hy);
-                        center.push_back (Z * hz);
-                    }
-                    //Computation complete
+                    checkTumorExistence (x, y, z, sigma_ / hx, data_ptr, n_misc_, local_tumor_marker);
                 }
             }   
 
@@ -659,8 +448,10 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     MPI_Request request[16];
     MPI_Status status[16];
     //Communicate partial computation of boundary centers to neighbouring processes
-    std::vector<int64_t> receive_buffer(8 * center_comm.size());
-    int proc_i, proc_j, procid_neigh, count, neigh_i, neigh_j;
+    std::vector<int64_t> receive_buffer(8 * center_comm.size(), 0);
+    std::vector<double> zero_vector(center_comm.size(), 0);
+    int proc_i, proc_j, procid_neigh, count, neigh_i, neigh_j, periodic_check;
+    periodic_check = 0;
     count = 0;
     proc_i = procid / n_misc_->c_dims_[1];
     proc_j = procid - proc_i * n_misc_->c_dims_[1];
@@ -669,17 +460,21 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
             //Check for boundary procs and implement periodic send and recv
             neigh_i = ni;
             neigh_j = nj;
-            if (neigh_i < 0) neigh_i = n_misc_->c_dims_[0] - 1;
-            if (neigh_i >= n_misc_->c_dims_[0]) neigh_i = 0;
-            if (neigh_j < 0) neigh_j = n_misc_->c_dims_[1] - 1;
-            if (neigh_j >= n_misc_->c_dims_[1]) neigh_j = 0;
+            if (neigh_i < 0) {neigh_i = n_misc_->c_dims_[0] - 1; periodic_check = 1;}
+            if (neigh_i >= n_misc_->c_dims_[0]) {neigh_i = 0; periodic_check = 1;}
+            if (neigh_j < 0) {neigh_j = n_misc_->c_dims_[1] - 1; periodic_check = 1;}
+            if (neigh_j >= n_misc_->c_dims_[1]) {neigh_j = 0; periodic_check = 1;}
             if (neigh_i == proc_i && neigh_j == proc_j) continue;
             
             procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
             // request[count] = MPI_REQUEST_NULL;
-            MPI_Isend (&center_comm[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
+            if (periodic_check)
+                MPI_Isend (&zero_vector[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
+            else
+                MPI_Isend (&center_comm[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
 
             count++;
+            periodic_check = 0;
         }
 
     count = 0;
@@ -719,12 +514,9 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
         }
     }
 
-    
     //Add the local boundary centers to the selected centers vector
-
     for (int i = 0; i < local_tumor_marker.size(); i++) {
-        if (local_tumor_marker[i] > 0)                                                   //Overwrite these points in the output as they haven't been counted 
-            num_top_ptr[i] = (double) local_tumor_marker[i] / gaussian_interior;                  //For visualization
+        num_top_ptr[i] = (double) local_tumor_marker[i] / gaussian_interior;                  //For visualization
 
         if (local_tumor_marker[i] > n_misc_->gaussian_vol_frac_ * gaussian_interior) {   // Boundary center with tumors in its vicinity
             X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
