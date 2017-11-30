@@ -62,10 +62,10 @@ class TumorSolverInterface {
 		/** @brief computes effect of varying/moving material properties, i.e.,
 		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
 		 */
-		PetscErrorCode computeVaryingMatProbContribution(Vec q) {
+		PetscErrorCode computeVaryingMatProbContribution(Vec q1, Vec q2, Vec q3, Vec q4) {
 			PetscErrorCode ierr;
 			if (pde_operators_ != nullptr) {
-			  ierr = pde_operators_->computeVaryingMatProbContribution(q); CHKERRQ(ierr);}
+			  ierr = pde_operators_->computeVaryingMatProbContribution(q1, q2, q3, q4); CHKERRQ(ierr);}
 			PetscFunctionReturn(0);
 		}
 		//  ---------  getter functions -------------

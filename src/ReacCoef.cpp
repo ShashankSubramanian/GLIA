@@ -77,23 +77,26 @@ PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode DiffCoef::applydRdm(Vec x) {
+PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // Event e ("tumor-reac-coeff-apply-dRdm");
   // std::array<double, 7> t = {0};
   // double self_exec_time = -MPI_Wtime ();
 
-  PetscScalar dk_dm_gm  = rho_scale_ * r_gm_wm_ratio;        //GM
-  PetscScalar dk_dm_wm  = rho_scale_;                        //WM
-  PetscScalar dk_dm_glm = rho_scale_ * r_glm_wm_ratio;       //GLM
+  PetscScalar dr_dm_gm  = rho_scale_ * r_gm_wm_ratio_;        //GM
+  PetscScalar dr_dm_wm  = rho_scale_;                        //WM
+  PetscScalar dr_dm_glm = rho_scale_ * r_glm_wm_ratio_;       //GLM
   // if ratios <= 0, only diffuse in white matter
-  dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
-  dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
+  dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
+  dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
   // compute dKdm
-  PetscScalar dKdm = dk_dm_gm + dk_dm_wm + dk_dm_glm;
-  // dK/dm * (grad c)^T grad \alpha
-  ierr = VecScale (x, dk_dm_gm);                                 CHKERRQ (ierr);
+  // compute dK/dm * (grad c)^T grad \alpha ..
+  // assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T
+  if(x1 != nullptr) {ierr = VecAXPY (x1, dr_dm_wm, input);      CHKERRQ (ierr);} // WM
+  if(x2 != nullptr) {ierr = VecAXPY (x2, dr_dm_gm, input);      CHKERRQ (ierr);} // GM
+  //if(x3 != nullptr) {ierr = VecAXPY (x3, 0, input);             CHKERRQ (ierr);} // CSF
+  if(x4 != nullptr) {ierr = VecAXPY (x4, dr_dm_glm, input);     CHKERRQ (ierr);} // GLM
 
   // self_exec_time += MPI_Wtime();
   // accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();

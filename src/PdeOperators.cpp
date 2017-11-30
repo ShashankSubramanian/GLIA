@@ -174,7 +174,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode PdeOperatorsRD::computeVaryingMatProbContribution(Vec q) {
+PetscErrorCode PdeOperatorsRD::computeVaryingMatProbContribution(Vec q1, Vec q2, Vec q3, Vec q4) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-compute-q");
@@ -184,32 +184,49 @@ PetscErrorCode PdeOperatorsRD::computeVaryingMatProbContribution(Vec q) {
   PetscScalar *c_ptr, *p_ptr, *r_ptr;
 
   // clear
-  ierr = VecSet (q , 0);                                         CHKERRQ (ierr);
+  if(q1 != nullptr) {ierr = VecSet(q1, 0.0);                     CHKERRQ(ierr);}
+  if(q2 != nullptr) {ierr = VecSet(q2, 0.0);                     CHKERRQ(ierr);}
+  if(q3 != nullptr) {ierr = VecSet(q3, 0.0);                     CHKERRQ(ierr);}
+  if(q4 != nullptr) {ierr = VecSet(q4, 0.0);                     CHKERRQ(ierr);}
   // compute numerical time integration using trapezoidal rule
   for (int i = 0; i < this->nt_; i++) {
     // integration weight for chain trapezoidal rule
-    if (j == 0 || j == this->nt_-1) integration_weight *= 0.5;
+    if (i == 0 || i == this->nt_-1) integration_weight *= 0.5;
 
     // compute x = k_bar * (grad c)^T grad \alpha, where k_bar = dK / dm
-    ierr = tumor_->k_->compute_dKdm_gradc_gradp(tumor_->k_->temp_[0], c_[i], p_[i], n_misc_->plan_); CHKERRQ(ierr);
+    ierr = tumor_->k_->compute_dKdm_gradc_gradp(
+      (q1 != nullptr) ? tumor_->work_[8]  : nullptr,
+      (q2 != nullptr) ? tumor_->work_[9]  : nullptr,
+      (q3 != nullptr) ? tumor_->work_[10] : nullptr,
+      (q4 != nullptr) ? tumor_->work_[11] : nullptr,
+      c_[i], p_[i], n_misc_->plan_);                              CHKERRQ(ierr);
+
     // compute y = c(1-c) * \alpha
     ierr = VecGetArray (c_[i], &c_ptr);                          CHKERRQ (ierr);
     ierr = VecGetArray (p_[i], &p_ptr);                          CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->k_->temp_[1], &r_ptr);           CHKERRQ (ierr);
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-      r_ptr[i] = c_ptr[i] * (1 - c_ptr[i]) * p_ptr[i];
+    ierr = VecGetArray (tumor_->k_->temp_[0], &r_ptr);           CHKERRQ (ierr);
+    for (int j = 0; j < n_misc_->n_local_; j++) {
+      r_ptr[j] = c_ptr[j] * (1 - c_ptr[j]) * p_ptr[j];
     }
     ierr = VecRestoreArray (c_[i], &c_ptr);                      CHKERRQ (ierr);
     ierr = VecRestoreArray (p_[i], &p_ptr);                      CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->k_->temp_[1], &r_ptr);       CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->k_->temp_[0], &r_ptr);       CHKERRQ (ierr);
     // compute rhp_bar * c(1-c) * \alpha, where rho_bar = dR / dm
-    ierr = tumor_->k_->applydRdm(tumor_->k_->temp_[1]);          CHKERRQ (ierr);
-    // add
-    ierr = VecAXPY (tumor_->k_->temp_[0], 1.0, tumor_->k_->temp_[1]); CHKERRQ (ierr);
+    // this function adds to q1, q2, q3, q4 vie AXPY, has to be called after the diff coeff function
+    ierr = tumor_->rho_->applydRdm(
+      (q1 != nullptr) ? tumor_->work_[8]  : nullptr,
+      (q2 != nullptr) ? tumor_->work_[9]  : nullptr,
+      (q3 != nullptr) ? tumor_->work_[10] : nullptr,
+      (q4 != nullptr) ? tumor_->work_[11] : nullptr,
+       tumor_->work_[0]);                                        CHKERRQ (ierr);
+
     // numerical time integration using trapezoidal rule
-    ierr = VecAXPY (q, integration_weight, tumor_->k_->temp_[0]);CHKERRQ (ierr);
+    if(q1 != nullptr) {ierr = VecAXPY (q1, integration_weight, tumor_->work_[8]);   CHKERRQ (ierr);}
+    if(q2 != nullptr) {ierr = VecAXPY (q2, integration_weight, tumor_->work_[9]);   CHKERRQ (ierr);}
+    if(q3 != nullptr) {ierr = VecAXPY (q3, integration_weight, tumor_->work_[10]);  CHKERRQ (ierr);}
+    if(q4 != nullptr) {ierr = VecAXPY (q4, integration_weight, tumor_->work_[11]);  CHKERRQ (ierr);}
     // use weight 1 for inner points
-    if (j == 0) integration_weight *= 0.5;
+    if (i == 0) integration_weight *= 0.5;
   }
 
   self_exec_time += MPI_Wtime();
