@@ -36,7 +36,7 @@ class Tumor {
 		Vec p_t_;
 		Vec p_0_;
 
-		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop);
+		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);
 		PetscErrorCode setTrueP (double p_scale, std::shared_ptr<NMisc> n_misc);
 

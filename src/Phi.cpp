@@ -465,6 +465,9 @@ PetscErrorCode Phi::setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_pr
     PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
 
     Vec v;
+    for (int i = 0; i < phi_vec_.size (); i++) {
+        ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
+    }
     phi_vec_.clear();   //Clear any previously set phi_vec_
     for (int i = 0; i < np_; i++) {
         ierr = VecCreate (PETSC_COMM_WORLD, &v);                                CHKERRQ (ierr);
@@ -510,7 +513,8 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    PCOUT << "----- Bounding box not set: Phis set to match data -----" << std::endl;
+    PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN ------" << std::endl;
+    PCOUT << " ----- Bounding box not set: Basis functions set to match data -----\n" << std::endl;
     Vec center_output, num_tumor_output;
     ierr = VecDuplicate (data, &center_output);                              CHKERRQ (ierr);
     ierr = VecDuplicate (data, &num_tumor_output);                           CHKERRQ (ierr);
@@ -540,7 +544,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
-    PCOUT << "--- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
+    PCOUT << " ----- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
@@ -767,7 +771,12 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
 
     Vec v;
-    phi_vec_.clear();   //Clear any previously set phi_vec_
+    //Destroy and clear any previously set phis
+    for (int i = 0; i < phi_vec_.size (); i++) {
+        ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);     
+    }
+    phi_vec_.clear();  
+
     for (int i = 0; i < np_; i++) {
         ierr = VecCreate (PETSC_COMM_WORLD, &v);                                CHKERRQ (ierr);
         ierr = VecSetSizes (v, n_misc_->n_local_, n_misc_->n_global_);          CHKERRQ (ierr);

@@ -339,8 +339,8 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     tumor_->rho_->setValues (tumor_params->reaction_coeff_scale, tumor_params->reaction_ratio_gm_wm, tumor_params->reaction_ratio_glm_wm,
                             tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
     // update mesh of Gaussians, new phi spacing, center, sigma
-    tumor_->phi_->setValues (tumor_params->phi_center_of_mass, tumor_params->phi_sigma, tumor_params->phi_spacing_factor,
-                            tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
+    //tumor_->phi_->setValues (tumor_params->phi_center_of_mass, tumor_params->phi_sigma, tumor_params->phi_spacing_factor,
+    //                        tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     pde_operators_->diff_solver_->precFactor();
 

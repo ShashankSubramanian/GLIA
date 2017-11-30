@@ -65,37 +65,30 @@ int main (int argc, char** argv) {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
-
     Vec data, p_rec, wm, gm, glm, csf;
+    PetscErrorCode ierr = 0;
+    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
+    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
 
     // Data read only
-    PetscErrorCode ierr = 0;
     PCOUT << "Read raw Data --->" << std::endl;
     ierr = readData (data, n_misc);
     PCOUT << "Data Read: Inverse solve begin --->" << std::endl;
     
     //Data and altas read
-    // PetscErrorCode ierr = 0;
     // PCOUT << " ------- Reading data and atlas: --------- " << std::endl;
     // ierr = readDataAndAtlas (data, gm, wm, glm, csf, n_misc);
-    // PCOUT << " ------- Data and atlas read -------- " <<std::endl;
-    
+    // PCOUT << " ------- Data and atlas read -------- " <<std::endl; 
 
-    std::shared_ptr<Phi> phi = std::make_shared<Phi> (n_misc);
-    std::shared_ptr<MatProp> mat_prop = std::make_shared<MatProp> (n_misc);
-    ierr = mat_prop->setValues (n_misc);
-    // ierr = mat_prop->setValuesCustom (gm, wm, glm, csf, n_misc);
-    ierr = phi->setGaussians (data, mat_prop);
-    // ierr = phi->setGaussiansLocal (data, mat_prop);  //SNAFU: This function ignores distributed gaussians
+    std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
+    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    //ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+    ierr = tumor->phi_->setGaussians (data, tumor->mat_prop_);                //Overwrites bounding box phis with custom phis
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
-
-    std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, phi, mat_prop);
 
     //Solve interpolation
-    ierr = solver_interface->solveInterpolation (data, p_rec, phi, n_misc);
+    ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
     exit (1);
     ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
 

@@ -11,7 +11,7 @@ class TumorSolverInterface {
 	public :
 		TumorSolverInterface (std::shared_ptr<NMisc> n_misc = {}, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		/// @brief initializes the TumorSolverInterface
-		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop);
+		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 
 		PetscErrorCode setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params);
 		/** @brief Solves the forward tumor problem, given initial concentration
