@@ -289,9 +289,6 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
                     }
                 }
             }
-            int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     if (local_check) {  //The center is in the local process
         //Get local index of center
         ptr = (x - n_misc->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (y - n_misc->istart_[1]) * n_misc->isize_[2] + (z - n_misc->istart_[2]);
@@ -449,7 +446,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     MPI_Status status[16];
     //Communicate partial computation of boundary centers to neighbouring processes
     std::vector<int64_t> receive_buffer(8 * center_comm.size(), 0);
-    std::vector<double> zero_vector(center_comm.size(), 0);
+    std::vector<int64_t> zero_vector(center_comm.size(), 0);
     int proc_i, proc_j, procid_neigh, count, neigh_i, neigh_j, periodic_check;
     periodic_check = 0;
     count = 0;
