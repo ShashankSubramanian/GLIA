@@ -289,6 +289,7 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
                     }
                 }
             }
+
     if (local_check) {  //The center is in the local process
         //Get local index of center
         ptr = (x - n_misc->istart_[0]) * n_misc->isize_[1] * n_misc->isize_[2] + (y - n_misc->istart_[1]) * n_misc->isize_[2] + (z - n_misc->istart_[2]);
@@ -443,7 +444,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
 
     MPI_Request request[16];
-    MPI_Status status[16];
+    for (int i = 0; i < 16; i++) request[i] = MPI_REQUEST_NULL;
     //Communicate partial computation of boundary centers to neighbouring processes
     std::vector<int64_t> receive_buffer(8 * center_comm.size(), 0);
     std::vector<int64_t> zero_vector(center_comm.size(), 0);
@@ -461,10 +462,9 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
             if (neigh_i >= n_misc_->c_dims_[0]) {neigh_i = 0; periodic_check = 1;}
             if (neigh_j < 0) {neigh_j = n_misc_->c_dims_[1] - 1; periodic_check = 1;}
             if (neigh_j >= n_misc_->c_dims_[1]) {neigh_j = 0; periodic_check = 1;}
-            if (neigh_i == proc_i && neigh_j == proc_j) continue;
+            if (neigh_i == proc_i && neigh_j == proc_j) {periodic_check = 0; continue;}
             
             procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
-            // request[count] = MPI_REQUEST_NULL;
             if (periodic_check)
                 MPI_Isend (&zero_vector[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
             else
@@ -489,14 +489,15 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
             if (neigh_i == proc_i && neigh_j == proc_j) continue;
 
             procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
-            // request[count + 8] = MPI_REQUEST_NULL;
-
             MPI_Irecv (&receive_buffer[count * center_comm.size()], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count + 8]);
             
             count++;
         }
 
-    MPI_Waitall (16, request, status);   //Wait for send and receive to complete
+    for (int i = 0; i < 16; i++) {
+        if (request[i] != MPI_REQUEST_NULL)
+            MPI_Wait (&request[i], MPI_STATUS_IGNORE);
+    }
 
     //Check receive buffer for the local centers and add their value to local_tumor_marker
     for (int i = 0; i < receive_buffer.size(); i += 2) {  //Every alternate value is a center global index
