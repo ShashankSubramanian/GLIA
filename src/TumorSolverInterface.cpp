@@ -196,11 +196,6 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
-    //TU_assert(wm != nullptr,     "TumorSolverInterface::updateTumorCoefficients(): WM needs to be non-null.");
-    //TU_assert(gm != nullptr,     "TumorSolverInterface::updateTumorCoefficients(): GM needs to be non-null.");
-    //TU_assert(csf != nullptr,    "TumorSolverInterface::updateTumorCoefficients(): CSF needs to be non-null.");
-    //TU_assert(glm != nullptr,    "TumorSolverInterface::updateTumorCoefficients(): GLM needs to be non-null.");
-    //TU_assert(filter != nullptr, "TumorSolverInterface::updateTumorCoefficients(): Filter needs to be non-null.");
     // timing
     Event e("update-tumor-coefficients");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
