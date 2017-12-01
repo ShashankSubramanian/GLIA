@@ -121,7 +121,7 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     double factor, alph;
     double dt = n_misc_->dt_;
 
-    Vec temp = tumor_->k_->temp_[0];
+    Vec temp = tumor_->work_[11];
     //reaction adjoint needs c_ at half time step. 
     ierr = VecCopy (c_[iter], temp);                            CHKERRQ (ierr);
     diff_solver_->solve (temp, dt / 2.0);

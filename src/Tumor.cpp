@@ -18,13 +18,13 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
     ierr = VecDuplicate (c_0_, &p_t_);
 
     // allocating memory for work vectors
-    work_ = new Vec[11];
-    for (int i = 0; i < 11; i++) {
+    work_ = new Vec[12];
+    for (int i = 0; i < 12; i++) {
         ierr = VecDuplicate (c_t_, &work_[i]);
         ierr = VecSet (work_[i] , 0);
     }
     // setting work vecs for diffusion coefficient (first 8)
-    k_->setWorkVecs(work_);
+    k_->setWorkVecs (work_);
 
     ierr = VecSet (c_t_, 0);
     ierr = VecSet (c_0_, 0);

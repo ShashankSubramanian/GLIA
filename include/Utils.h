@@ -200,7 +200,7 @@ class NMisc {
                        // Modified Obj -- 3
         , dt_ (0.01)
         , nt_(16)
-        , np_ (27)
+        , np_ (125)
         , k_ (1.0E-2)
         , kf_(0.0)
         , rho_ (10)

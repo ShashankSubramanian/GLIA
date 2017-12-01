@@ -37,7 +37,7 @@ class Tumor {
 		Vec p_t_;
 		Vec p_0_;
 		// work vectors
-    Vec *work_;
+    	Vec *work_;
 
 		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);
