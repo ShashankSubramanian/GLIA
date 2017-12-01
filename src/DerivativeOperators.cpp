@@ -1,6 +1,9 @@
 #include "DerivativeOperators.h"
 #include "Utils.h"
 
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========          STANDARD REACTION DIFFUSION (MP)         ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -117,10 +120,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateConstantHessianApproximation  (Vec
     PetscFunctionReturn(0);
 }
 
-//POSITIVITY
-/* ------------------------------------------------------------------------------------------ */
-/* ------------------------------------------------------------------------------------------ */
-/* ------------------------------------------------------------------------------------------ */
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========       POSITIVITY/SIGMOID PARAMETRIZATION          ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 
 PetscErrorCode DerivativeOperatorsPos::sigmoid (Vec temp, Vec input) {
     PetscFunctionBegin;
@@ -306,10 +308,10 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
     PetscFunctionReturn(0);
 }
 
-// =============================================================================
-// =============================================================================
-// =============================================================================
-
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========    REACTION DIFFUSION W/ MODIFIED OBJECTIVE (MP)  ======== #### */
+/* #### ========    REACTION DIFFUSION FOR MOVING ATLAS (MA)       ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -326,7 +328,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     // geometric coupling, update probability maps
     ierr = geometricCoupling(
       xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_,
-      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
+      m_geo_wm_, m_geo_gm_, m_geo_csf_, m_geo_glm_,  m_geo_bg_,
       tumor_->c_t_, n_misc_);                                    CHKERRQ (ierr);
     // evaluate tumor distance meassure || c(1) - d ||
     ierr = VecAXPY (temp_, -1.0, data);                          CHKERRQ (ierr);
@@ -334,8 +336,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
     geometricCouplingAdjoint(&misfit_brain,
       xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_,
-      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
-      mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);                CHKERRQ (ierr);
+      m_geo_wm_, m_geo_gm_, m_geo_csf_, m_geo_glm_,  m_geo_bg_,
+      m_data_wm_, m_data_gm_, m_data_csf_, m_data_glm_,  m_data_bg_); CHKERRQ (ierr);
     // compute regularization
     ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);            CHKERRQ (ierr);
     reg *= 0.5 * n_misc_->beta_;
@@ -366,28 +368,28 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
     ierr = geometricCoupling(
       xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_,
-      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
+      m_geo_wm_, m_geo_gm_, m_geo_csf_, m_geo_glm_,  m_geo_bg_,
       tumor_->c_t_, n_misc_);                                    CHKERRQ (ierr);
     // evaluate brain tissue distance meassure || mR - mT ||, mR = mA0(1-c), mT = patient
     geometricCouplingAdjoint(&misfit_brain,
       xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_,
-      mR_wm_, mR_gm_, mR_csf_, mR_glm_,  mR_bg_,
-      mT_wm_, mT_gm_, mT_csf_, mT_glm_,  mT_bg_);                CHKERRQ (ierr);
+      m_geo_wm_, m_geo_gm_, m_geo_csf_, m_geo_glm_,  m_geo_bg_,
+      m_data_wm_, m_data_gm_, m_data_csf_, m_data_glm_,  m_data_bg_); CHKERRQ (ierr);
     // compute xi * mA0, add    -\xi * mA0 to adjoint final cond.
-    if(mR_wm_ != nullptr) {
-  		ierr = VecPointwiseMult (temp_, xi_wm_, mR_wm_);         CHKERRQ (ierr);
+    if(m_geo_wm_ != nullptr) {
+  		ierr = VecPointwiseMult (temp_, xi_wm_, m_geo_wm_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-  	if(mR_gm_ != nullptr) {
-      ierr = VecPointwiseMult (temp_, xi_gm_, mR_gm_);           CHKERRQ (ierr);
+  	if(m_geo_gm_ != nullptr) {
+      ierr = VecPointwiseMult (temp_, xi_gm_, m_geo_gm_);           CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-  	if(mR_csf_ != nullptr) {
-      ierr = VecPointwiseMult (temp_, xi_csf_, mR_csf_);         CHKERRQ (ierr);
+  	if(m_geo_csf_ != nullptr) {
+      ierr = VecPointwiseMult (temp_, xi_csf_, m_geo_csf_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-  	if(mR_glm_ != nullptr) {
-      ierr = VecPointwiseMult (temp_, xi_glm_, mR_glm_);         CHKERRQ (ierr);
+  	if(m_geo_glm_ != nullptr) {
+      ierr = VecPointwiseMult (temp_, xi_glm_, m_geo_glm_);         CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
     ierr = VecScale (tumor_->p_t_, 1.0/nc_);                     CHKERRQ (ierr);
@@ -414,23 +416,23 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);            CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
     // alpha(1) = - O^TO \tilde{c(1)} - mA0 mA0 \tilde{c(1)}
-    if(mR_wm_ != nullptr) {
-  		ierr = VecPointwiseMult (temp_, mR_wm_, mR_wm_);         CHKERRQ (ierr);
+    if(m_geo_wm_ != nullptr) {
+  		ierr = VecPointwiseMult (temp_, m_geo_wm_, m_geo_wm_);     CHKERRQ (ierr);
       ierr = VecPointwiseMult (temp_, temp_, tumor_->c_t_);      CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-  	if(mR_gm_ != nullptr) {
-      ierr = VecPointwiseMult (temp_, mR_gm_, mR_gm_);           CHKERRQ (ierr);
+  	if(m_geo_gm_ != nullptr) {
+      ierr = VecPointwiseMult (temp_, m_geo_gm_, m_geo_gm_);     CHKERRQ (ierr);
       ierr = VecPointwiseMult (temp_, temp_, tumor_->c_t_);      CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-  	if(mR_csf_ != nullptr) {
-      ierr = VecPointwiseMult (temp_, mR_csf_, mR_csf_);         CHKERRQ (ierr);
+  	if(m_geo_csf_ != nullptr) {
+      ierr = VecPointwiseMult (temp_, m_geo_csf_, m_geo_csf_);   CHKERRQ (ierr);
       ierr = VecPointwiseMult (temp_, temp_, tumor_->c_t_);      CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
-  	if(mR_glm_ != nullptr) {
-      ierr = VecPointwiseMult (temp_, mR_glm_, mR_glm_);         CHKERRQ (ierr);
+  	if(m_geo_glm_ != nullptr) {
+      ierr = VecPointwiseMult (temp_, m_geo_glm_, m_geo_glm_);   CHKERRQ (ierr);
       ierr = VecPointwiseMult (temp_, temp_, tumor_->c_t_);      CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
@@ -445,6 +447,10 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     PetscFunctionReturn(0);
 }
 
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========                  BASE CLASS                       ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;

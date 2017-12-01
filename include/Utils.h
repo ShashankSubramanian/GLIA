@@ -306,11 +306,26 @@ class NMisc {
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode geometricCoupling(Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg, Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg, Vec c1, std::shared_ptr<NMisc> nmisc);
+
+/// @brief computes geometric tumor coupling m1 = m0(1-c(1))
+PetscErrorCode geometricCoupling(
+  Vec m1_wm, Vec m1_gm, Vec m1_csf, Vec m1_glm, Vec m1_bg,
+  Vec m0_wm, Vec m0_gm, Vec m0_csf, Vec m0_glm, Vec m0_bg,
+  Vec c1, std::shared_ptr<NMisc> nmisc);
+
+/** @brief computes difference xi = m_data - m_geo
+ *  - function assumes that on input, xi = m_geo * (1-c(1))
+ */
 PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
-	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
-	Vec mT_wm, Vec mT_gm, Vec mT_csf, Vec mT_glm, Vec mT_bg);
+	Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
+	Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg);
+
+/// @brief computes difference diff = x - y
+PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
+	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
+	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
+	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg);
 
 //Read/Write function prototypes
 void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);

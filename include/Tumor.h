@@ -27,14 +27,17 @@ class Tumor {
 
 		std::shared_ptr<MatProp> mat_prop_;
 
+    // parametrization
 		Vec p_;
 		Vec p_true_;
+		// state variables
 		Vec c_t_;
 		Vec c_0_;
-
 		//Adjoint Variables
 		Vec p_t_;
 		Vec p_0_;
+		// work vectors
+    Vec *work_;
 
 		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);

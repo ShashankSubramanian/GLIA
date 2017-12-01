@@ -17,12 +17,8 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
     ierr = VecDuplicate (kxx_, &kyz_);
     ierr = VecDuplicate (kxx_, &kzz_);
 
+    // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
     temp_ = new Vec[7];
-    for (int i = 0; i < 7; i++) {
-        ierr = VecDuplicate (kxx_, &temp_[i]);
-        ierr = VecSet (temp_[i] , 0);
-    }
-
     temp_accfft_ = (double * ) accfft_alloc (n_misc->accfft_alloc_max_);
 
     ierr = VecSet (kxx_ , 0);
@@ -33,6 +29,14 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
     ierr = VecSet (kzz_ , 0);
 
     kxx_avg_ = kxy_avg_ = kxz_avg_ = kyy_avg_ = kyz_avg_ = kzz_avg_ = 0.0;
+}
+
+PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
+  PetscErrorCode ierr;
+  for (int i = 0; i < 7; ++i){
+    temp_[i] = workvecs[i];
+  }
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
@@ -217,7 +221,8 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 }
 
 // TODO: only correct for isotropic diffusion
-PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x, Vec c, Vec p, accfft_plan *plan) {
+// TODO: assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T
+PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, accfft_plan *plan) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-diff-coeff-apply-dKdm-gradc-gradp");
@@ -234,11 +239,11 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x, Vec c, Vec p, accfft_pl
   // compute gradient of adjoint variable p(t)
   accfft_grad (temp_[4], temp_[5], temp_[6], p, plan, &XYZ, t.data());
   // scalar product (grad c)^T grad \alpha
-  ierr = VecPointwiseMult (x, temp_[1], temp_[4]);               CHKERRQ (ierr);  // c_x * \alpha_x
+  ierr = VecPointwiseMult (temp_[0], temp_[1], temp_[4]);        CHKERRQ (ierr);  // c_x * \alpha_x
   ierr = VecPointwiseMult (temp_[1], temp_[2], temp_[5]);        CHKERRQ (ierr);  // c_y * \alpha_y
-  ierr = VecAXPY (x, 1.0,  temp_[1]);                            CHKERRQ (ierr);
+  ierr = VecAXPY (temp_[0], 1.0,  temp_[1]);                     CHKERRQ (ierr);
   ierr = VecPointwiseMult (temp_[1], temp_[3], temp_[6]);        CHKERRQ (ierr);  // c_z * \alpha_z
-  ierr = VecAXPY (x, 1.0,  temp_[1]);                            CHKERRQ (ierr);
+  ierr = VecAXPY (temp_[0], 1.0,  temp_[1]);                     CHKERRQ (ierr);
 
   PetscScalar dk_dm_gm  = k_scale_ * k_gm_wm_ratio_;        //GM
   PetscScalar dk_dm_wm  = k_scale_;                         //WM
@@ -246,10 +251,24 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x, Vec c, Vec p, accfft_pl
   // if ratios <= 0, only diffuse in white matter
   dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
   dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
-  // compute dKdm
-  PetscScalar dKdm = dk_dm_gm + dk_dm_wm + dk_dm_glm;
-  // dK/dm * (grad c)^T grad \alpha
-  ierr = VecScale (x, dk_dm_gm);                                 CHKERRQ (ierr);
+  // compute dK/dm * (grad c)^T grad \alpha ..
+  // assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T
+  if(x1 != nullptr) {                                                    // WM
+    ierr = VecSet (x1 , 0.0);                                    CHKERRQ (ierr);
+    ierr = VecAXPY (x1, dk_dm_wm, temp_[0]);                     CHKERRQ (ierr);
+  }
+  if(x2 != nullptr) {                                                    // GM
+    ierr = VecSet (x2 , 0.0);                                    CHKERRQ (ierr);
+    ierr = VecAXPY (x2, dk_dm_gm, temp_[0]);                     CHKERRQ (ierr);
+  }
+  if(x3 != nullptr) {                                                    // CSF
+    ierr = VecSet (x3 , 0.0);                                    CHKERRQ (ierr);
+    //ierr = VecAXPY (x3, 0, temp_[0]);                     CHKERRQ (ierr);
+  }
+  if(x4 != nullptr) {                                                    // GLM
+    ierr = VecSet (x4 , 0.0);                                    CHKERRQ (ierr);
+    ierr = VecAXPY (x4, dk_dm_glm, temp_[0]);                    CHKERRQ (ierr);
+  }
 
   self_exec_time += MPI_Wtime();
   accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
@@ -265,9 +284,6 @@ DiffCoef::~DiffCoef () {
     ierr = VecDestroy (&kyy_);
     ierr = VecDestroy (&kyz_);
     ierr = VecDestroy (&kzz_);
-    for (int i = 0; i < 7; i++) {
-        ierr = VecDestroy (&temp_[i]);
-    }
-    delete[] temp_;
+    delete [] temp_;
     accfft_free (temp_accfft_);
 }
