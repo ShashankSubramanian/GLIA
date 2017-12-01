@@ -7,54 +7,79 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     n_local_ = n_misc->n_local_;
 
     np_ = n_misc->np_;
-    Vec v;
+    phi_vec_.resize (np_);
+    ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
+    ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);
+    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = VecSet (phi_vec_[0], 0);
     for (int i = 0; i < np_; i++) {
-        ierr = VecCreate (PETSC_COMM_WORLD, &v);
-        ierr = VecSetSizes (v, n_misc->n_local_, n_misc->n_global_);
-        ierr = VecSetFromOptions (v);
-        ierr = VecSet (v, 0);
-        phi_vec_.push_back (v);
+        ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
+        ierr = VecSet (phi_vec_[i], 0);
     }
 }
 
-PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " --------" << std::endl;
-    Event e ("tumor-phi-setvals");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
 
     memcpy (cm_, user_cm.data(), 3 * sizeof(double));
-    double center[3 * np_];
+    centers_.resize (3 * np_);
     double *phi_ptr;
     double sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
 
     sigma_ = sigma;
     spacing_factor_ = spacing_factor;
+    ierr = phiMesh (&centers_[0]);
 
-    ierr = phiMesh (center);
+    PetscFunctionReturn (0);
+}
+
+
+PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Event e ("tumor-phi-setvals");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
+
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    double *phi_ptr;
+    Vec all_phis;
+    ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
+    ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
 
     for (int i = 0; i < np_; i++) {
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        initialize (phi_ptr, n_misc, &center[3 * i]);
+        initialize (phi_ptr, n_misc_, &centers_[3 * i]);
         ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
-        if (n_misc->testcase_ == BRAIN) {  //BRAIN
+        if (n_misc_->testcase_ == BRAIN) {  //BRAIN
             ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-            ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc, sigma_smooth);
+            ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         }
 
-        if(n_misc->writeOutput_) {
-            dataOut (phi_vec_[i], n_misc, "phiBoundingBox.nc");
-        }
+        ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
     }
+
+    if (n_misc_->writeOutput_) {
+        dataOut (all_phis, n_misc_, "phiGrid.nc");
+    }
+
+    ierr = VecDestroy (&all_phis);                                             CHKERRQ (ierr);
+    
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (t, t, self_exec_time);
@@ -280,8 +305,8 @@ void checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double
 }
 
 // Check tumor presence for boundary points and their neighbours in other procs: x,y,z are global indices
-void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int64_t> &center_comm,
-                                   std::vector<int> &local_tumor_marker, int local_check) {
+
+void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int64_t> &center_comm, std::vector<int> &local_tumor_marker, int local_check) {
     int flag, num_tumor;
     num_tumor = 0;
     double distance;
@@ -321,7 +346,7 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
     }
 }
 
-PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
+PetscErrorCode Phi::setGaussians (Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -331,10 +356,8 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
 
     PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN ------" << std::endl;
     PCOUT << " ----- Bounding box not set: Basis functions set to match data -----\n" << std::endl;
-    Vec center_output, num_tumor_output;
-    ierr = VecDuplicate (data, &center_output);                              CHKERRQ (ierr);
+    Vec num_tumor_output;
     ierr = VecDuplicate (data, &num_tumor_output);                           CHKERRQ (ierr);
-    ierr = VecSet (center_output, 0);                                        CHKERRQ (ierr);
     ierr = VecSet (num_tumor_output, 0);                                     CHKERRQ (ierr);
 
     double twopi = 2.0 * M_PI;
@@ -370,7 +393,7 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
                                                                             //proc receives computation results from the neighbors.  
 
 
-    double *data_ptr, *cen_ptr, *num_top_ptr;
+    double *data_ptr, *num_top_ptr;
     ierr = VecGetArray (data, &data_ptr);                                      CHKERRQ (ierr);
     ierr = VecGetArray (num_tumor_output, &num_top_ptr);                       CHKERRQ (ierr);
 
@@ -539,11 +562,6 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
             X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
             Y = fmod (i, n_misc_->isize_[1] * n_misc_->isize_[2]) / n_misc_->isize_[2];
             Z = i - Y * n_misc_->isize_[2] - X * n_misc_->isize_[1] * n_misc_->isize_[2];
-
-            ierr = VecGetArray (center_output, &cen_ptr);               CHKERRQ (ierr);
-            cen_ptr[i] = 1;   //This is purely for visualization purposes
-            ierr = VecRestoreArray (center_output, &cen_ptr);           CHKERRQ (ierr); 
-
             X += n_misc_->istart_[0];
             Y += n_misc_->istart_[1];
             Z += n_misc_->istart_[2];
@@ -578,6 +596,9 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     np_ = np_global;
     n_misc_->np_ = np_;
     PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
+    centers_.clear ();
+    centers_.resize (3 * np_);
+    centers_ = center_global;
 
     Vec v;
     //Destroy and clear any previously set phis
@@ -586,41 +607,25 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
     }
     phi_vec_.clear();  
 
+    phi_vec_.resize (np_);
+    ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
+    ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
+    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = VecSet (phi_vec_[0], 0);
     for (int i = 0; i < np_; i++) {
-        ierr = VecCreate (PETSC_COMM_WORLD, &v);                                CHKERRQ (ierr);
-        ierr = VecSetSizes (v, n_misc_->n_local_, n_misc_->n_global_);          CHKERRQ (ierr);
-        ierr = VecSetFromOptions (v);                                           CHKERRQ (ierr);
-        ierr = VecSet (v, 0);                                                   CHKERRQ (ierr);
-        phi_vec_.push_back (v);
+        ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
+        ierr = VecSet (phi_vec_[i], 0);
     }
 
-    double *phi_ptr;
-    Vec all_phis;
-    ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
-    ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
-
-    for (int i = 0; i < np_; i++) {
-        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        initialize (phi_ptr, n_misc_, &center_global[3 * i]);
-        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-
-        ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
-
-        if (n_misc_->testcase_ == BRAIN) {  //BRAIN
-            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-            ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
-            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-        }
-
-        ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
-    }
     if(n_misc_->writeOutput_) {
-        dataOut (center_output, n_misc_, "phiCenters.nc");
         dataOut (num_tumor_output, n_misc_, "phiNumTumor.nc");
-        dataOut (all_phis, n_misc_, "phiGrid.nc");
     }
+
+    ierr = VecDestroy (&num_tumor_output);                                       CHKERRQ (ierr);
+
     PetscFunctionReturn (0);
 }
+
 
 
 Phi::~Phi () {

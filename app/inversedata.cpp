@@ -85,7 +85,8 @@ int main (int argc, char** argv) {
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     if (!n_misc->bounding_box_) {
         //ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
-        ierr = tumor->phi_->setGaussians (data, tumor->mat_prop_);                //Overwrites bounding box phis with custom phis
+        ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
+        ierr = tumor->phi_->setValues (tumor->mat_prop_);
     }
 
     //Solve interpolation

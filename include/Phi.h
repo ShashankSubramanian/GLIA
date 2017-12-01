@@ -18,14 +18,15 @@ class Phi {
 		int np_, n_local_;
 
 		std::shared_ptr<NMisc> n_misc_;
+		std::vector<double> centers_;   //Vector of centers for the gaussians
 
-		PetscErrorCode setValues (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<NMisc> n_misc);   //Bounding box
+		PetscErrorCode setGaussians (Vec data);																								//Adaptive phis
+		PetscErrorCode setValues (std::shared_ptr<MatProp> mat_prop);
 		PetscErrorCode phiMesh (double *center);
 		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);
 		PetscErrorCode apply (Vec out, Vec p);
 		PetscErrorCode applyTranspose (Vec pout, Vec in);
-		PetscErrorCode setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop);
-		PetscErrorCode setGaussiansLocal (Vec data, std::shared_ptr<MatProp> mat_prop);      //This function ignores gaussians at processor intersections
 
 		~Phi ();
 };
