@@ -28,11 +28,11 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
 
 
-    virtual PetscErrorCode setDistMeassureReferenceImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
-    virtual PetscErrorCode setDistMeassureTemplateImage (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
-		virtual PetscErrorCode setGeometricCouplingAdjoint (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
+    virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
+    virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
+		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
 
-        PetscErrorCode checkGradient (Vec p, Vec data);
+    PetscErrorCode checkGradient (Vec p, Vec data);
 
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
@@ -90,16 +90,30 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
         PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
         PetscErrorCode evaluateHessian (Vec y, Vec x);
 
-        PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-        	mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;
+        /** @brief: Sets the image vectors for the simulation geometry material properties
+				 *  - MOVING PATIENT: mA(0) (= initial helathy atlas)
+				 *  - MOVING ATLAS:   mA(1) (= initial helathy patient)
+				 */
+        PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+        	m_geo_wm_ = wm; m_geo_gm_ = gm; m_geo_csf_ = csf; m_geo_glm_ = glm; m_geo_bg_ = bg;
             nc_ = (wm != nullptr) + (gm != nullptr) + (csf != nullptr) + (glm != nullptr);
             PetscFunctionReturn(0);
         }
-        PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-        	mT_wm_ = wm; mT_gm_ = gm; mT_csf_ = csf; mT_glm_ = glm; mT_bg_ = bg;
+
+				/** @brief: Sets the image vectors for the target (patient) geometry material properties
+				 *  - MOVING PATIENT: mP(1) (= advected patient)
+				 *  - MOVING ATLAS:   mR    (= patient data)
+				 */
+        PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+        	m_data_wm_ = wm; m_data_gm_ = gm; m_data_csf_ = csf; m_data_glm_ = glm; m_data_bg_ = bg;
             PetscFunctionReturn(0);
         }
-        PetscErrorCode setGeometricCouplingAdjoint(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+
+				/** @brief: Sets the image vectors for the distance measure difference
+				 *  - MOVING PATIENT: || mA(0)(1-c(1)) - mP(1) ||^2
+				 *  - MOVING ATLAS:   || mA(1)(1-c(1)) - mR    ||^2
+				 */
+        PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
             xi_wm_ = wm; xi_gm_ = gm; xi_csf_ = csf; xi_glm_ = glm; xi_bg_ = bg;
             PetscFunctionReturn(0);
         }
@@ -107,14 +121,61 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
         ~DerivativeOperatorsRDObj () {}
 
 	private :
-		/// @brief reference image for brain difference measure || mR - mT||^2 (memory from outsie;)
-		Vec mR_wm_, mR_gm_, mR_csf_, mR_glm_, mR_bg_;
-		/// @brief tmeplate image for brain difference measure || mR - mT||^2 (memory from outsie;)
-		Vec mT_wm_, mT_gm_, mT_csf_, mT_glm_, mT_bg_;
-		/// @brief tmeplate image for brain difference measure || mR - mT||^2 (memory from outsie;)
+
+		/** @brief: Image vectors for the simulation geometry material properties (memory from outsie;)
+		 *  - MOVING PATIENT: mA(0) (= initial helathy atlas)      (reference image)
+		 *  - MOVING ATLAS:   mA(1) (= initial helathy patient)    (template image)
+		 */
+		Vec m_geo_wm_, m_geo_gm_, m_geo_csf_, m_geo_glm_, m_geo_bg_;
+		/** @brief: Image vectors for the target (patient) geometry material properties (memory from outsie;)
+	 	 *  - MOVING PATIENT: mP(1) (= advected patient)           (template image)
+		 *  - MOVING ATLAS:   mR    (= patient data)               (reference image)
+		 */
+		Vec m_data_wm_, m_data_gm_, m_data_csf_, m_data_glm_, m_data_bg_;
+
+		/** @brief: Image vectors for the distance measure difference
+		 *  - MOVING PATIENT: || mA(0)(1-c(1)) - mP(1) ||^2  (negative of the inner term)
+		 *  - MOVING ATLAS:   || mA(1)(1-c(1)) - mR    ||^2  (negative of the inner term)
+		 */
 		Vec xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_;
         // / number of components in objective function
 		int nc_;
 };
+//
+// class DerivativeOperatorsRDMovingAtlas : public DerivativeOperators {
+// 	public :
+// 		DerivativeOperatorsRDMovingAtlas (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
+// 				std::shared_ptr<Tumor> tumor) : DerivativeOperators (pde_operators, n_misc, tumor) {}
+//
+//         PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
+//         PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+//         PetscErrorCode evaluateHessian (Vec y, Vec x);
+//
+//         PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+//         	mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;
+//             nc_ = (wm != nullptr) + (gm != nullptr) + (csf != nullptr) + (glm != nullptr);
+//             PetscFunctionReturn(0);
+//         }
+//         PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+//         	mA1_wm_ = wm; mA1_gm_ = gm; mA1_csf_ = csf; mA1_glm_ = glm; mA1_bg_ = bg;
+//             PetscFunctionReturn(0);
+//         }
+//         PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+//             xi_wm_ = wm; xi_gm_ = gm; xi_csf_ = csf; xi_glm_ = glm; xi_bg_ = bg;
+//             PetscFunctionReturn(0);
+//         }
+//
+//         ~DerivativeOperatorsRDMovingAtlas () {}
+//
+// 	private :
+// 		/// @brief reference image (= patient brain) for brain difference measure || mT(1-c(1) - mR)||^2 (memory from outsie;)
+// 		Vec mR_wm_, mR_gm_, mR_csf_, mR_glm_, mR_bg_;
+// 		/// @brief template image (= healthy patient) for brain difference measure || mT(1-c(1) - mR)||^2 (memory from outsie;)
+// 		Vec mA1_wm_, mA1_gm_, mA1_csf_, mA1_glm_, mA1_bg_;
+// 		/// @brief difference image for || mT(1-c(1) - mR)||^2 (memory from outsie;)
+// 		Vec xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_;
+//         // / number of components in objective function
+// 		int nc_;
+// };
 
 #endif

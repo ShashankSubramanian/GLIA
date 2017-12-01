@@ -31,14 +31,14 @@ class TumorSolverInterface {
 		PetscErrorCode setInitialGuess(double d);
 		PetscErrorCode resetTaoSolver();
 
-		PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-      		return derivative_operators_->setDistMeassureReferenceImage(wm, gm, csf, glm, bg);
+		PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+      		return derivative_operators_->setDistMeassureSimulationGeoImages(wm, gm, csf, glm, bg);
 		}
-		PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-	    	return derivative_operators_->setDistMeassureTemplateImage(wm, gm, csf, glm, bg);
+		PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+	    	return derivative_operators_->setDistMeassureTargetDataImages(wm, gm, csf, glm, bg);
 		}
-		virtual PetscErrorCode setGeometricCouplingAdjoint(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-      		return derivative_operators_->setGeometricCouplingAdjoint(wm, gm, csf, glm, bg);
+		PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+      		return derivative_operators_->setDistMeassureDiffImages(wm, gm, csf, glm, bg);
 		}
 		/** @brief updates the reaction and diffusion coefficients depending on
 		 *         the probability maps for GRAY MATTER, WHITE MATTER and CSF.

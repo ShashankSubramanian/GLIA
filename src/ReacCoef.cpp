@@ -84,9 +84,9 @@ PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
   // std::array<double, 7> t = {0};
   // double self_exec_time = -MPI_Wtime ();
 
-  PetscScalar dr_dm_gm  = rho_scale_ * r_gm_wm_ratio_;        //GM
-  PetscScalar dr_dm_wm  = rho_scale_;                        //WM
-  PetscScalar dr_dm_glm = rho_scale_ * r_glm_wm_ratio_;       //GLM
+  PetscScalar dr_dm_gm  = rho_scale_ * r_gm_wm_ratio_;        // GM
+  PetscScalar dr_dm_wm  = rho_scale_;                         // WM
+  PetscScalar dr_dm_glm = rho_scale_ * r_glm_wm_ratio_;       // GLM
   // if ratios <= 0, only diffuse in white matter
   dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
   dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
