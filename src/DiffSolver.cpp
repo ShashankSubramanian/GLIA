@@ -40,6 +40,9 @@ ctx_() {
 PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-diffusion-ksp-matvec");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     Ctx *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
@@ -47,11 +50,20 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     double alph = -1.0 / 2.0 * ctx->dt_;
     ierr = ctx->k_->applyD (ctx->temp_, y, ctx->plan_);
     ierr = VecAXPY (y, alph, ctx->temp_);                       CHKERRQ (ierr);
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);;
 }
 
 PetscErrorCode DiffSolver::precFactor () {
     PetscFunctionBegin;
+    Event e ("tumor-diffusion-prec-factor");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
     double kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
@@ -101,13 +113,21 @@ PetscErrorCode DiffSolver::precFactor () {
             }
         }
     }
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (n_misc->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 
 PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    double *timings;
+    Event e ("tumor-diffusion-precond");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     Ctx *ctx;
     ierr = PCShellGetContext (pc, (void **) &ctx);              CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
@@ -116,22 +136,30 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
 
     Complex *c_hat = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
-    accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, timings);
+    accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
 
     std::complex<double> *c_a = (std::complex<double> *) c_hat;
     for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
         c_a[i] *= ctx->precfactor_[i];
     }
-    accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, timings);
+    accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
     ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
     accfft_free (c_hat);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (n_misc->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 
 PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-diffusion-solve");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     Ctx *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     ctx->dt_ = dt;
@@ -150,6 +178,10 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     int itr;
     ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);
 }
 

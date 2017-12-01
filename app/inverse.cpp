@@ -72,23 +72,15 @@ int main (int argc, char** argv) {
     n_misc->phi_sigma_ = 0.2;
     n_misc->phi_spacing_factor_ = 1.0;
     createMFData (solver_interface, n_misc);
+    n_misc->phi_sigma_ = PETSC_PI / 10;
+    n_misc->phi_spacing_factor_ = 1.5;
     exit (1);
 
     Vec c_0, data, p_rec;
     PetscErrorCode ierr = 0;
-    // PCOUT << "Generating Synthetic Data --->" << std::endl;
-    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
-    // PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
-
-    //SNAFU
-    PCOUT << "Read raw Data --->" << std::endl;
-    ierr = readData (data, n_misc);
-    PCOUT << "Data Read: Inverse solve begin --->" << std::endl;
-
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
-    //SNAFU
+    PCOUT << "Generating Synthetic Data --->" << std::endl;
+    ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
+    PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
     //Solve interpolation
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
@@ -96,7 +88,13 @@ int main (int argc, char** argv) {
 
     exit (1);
 
+    double self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> timers = {0};
+
+    ierr = solver_interface->setInitialGuess(0.);
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+
+    self_exec_time += MPI_Wtime ();
 
     double prec_norm;
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
@@ -106,7 +104,8 @@ int main (int argc, char** argv) {
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
 
-    e1.addTimings (n_misc->timers_);
+    accumulateTimers (n_misc->timers_, timers, self_exec_time);
+    e1.addTimings (timers);
     e1.stop ();
     EventRegistry::finalize ();
     if (procid == 0) {
@@ -179,9 +178,10 @@ PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interf
     // }
     ierr = VecRestoreArray (cf, &ptr);                                  CHKERRQ (ierr);
 
+    n_misc->writepath_ << "./brain_data/" << n_misc->n_[0] <<"/";
+    dataOut (cf, n_misc, "multifocal.nc");
+    n_misc->writepath_ << "./results/";
 
-
-    dataOut (cf, n_misc, "brain_data/64/multifocal.nc");
     PetscFunctionReturn (0);
 }
 
@@ -235,7 +235,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
                                                 //values to data
 
     if (n_misc->writeOutput_)
-        dataOut (c_rec, n_misc, "results/CRecon.nc");
+        dataOut (c_rec, n_misc, "CRecon.nc");
 
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
@@ -266,7 +266,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->setTrueP (n_misc->p_scale_true_, n_misc);
+    ierr = tumor->setTrueP (n_misc);
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     double *c0_ptr;
@@ -283,7 +283,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ierr = enforcePositivity (c_0, n_misc);
     #endif
     if (n_misc->writeOutput_)
-        dataOut (c_0, n_misc, "results/c0.nc");
+        dataOut (c_0, n_misc, "c0.nc");
 
     double max, min;
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
@@ -296,8 +296,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = tumor->obs_->apply (c_t, c_t);
 
     if (n_misc->writeOutput_) {
-        dataOut (c_t, n_misc, "results/data.nc");
-        dataOut (c_t, n_misc, "brain_data/64/data.nc");  //SNAFU
+        dataOut (c_t, n_misc, "data.nc");
     }
 
     PetscFunctionReturn (0);

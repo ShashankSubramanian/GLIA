@@ -35,6 +35,7 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
     ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
     ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
+    ierr = setTrueP (n_misc);                                     CHKERRQ (ierr);
 
     if (phi == nullptr) {
         phi_ = std::make_shared<Phi> (n_misc);
@@ -43,9 +44,6 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     else
         phi_ = phi;
     ierr = phi_->apply(c_0_, p_);
-    if (n_misc->writeOutput_) {
-        dataOut (c_0_, n_misc, "results/c0new.nc");
-    }
 
     PetscFunctionReturn(0);
 }
@@ -75,16 +73,23 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode Tumor::setTrueP (double p_scale, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    // ierr = VecSet (p_true_, p_scale);                               CHKERRQ (ierr);
     PetscScalar val[2] = {.9, .2};
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     PetscInt idx[2] = {center-1, center};
     ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
     ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
     ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
+    PetscFunctionReturn (0);
+}
+
+
+PetscErrorCode Tumor::setTrueP (Vec p) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    ierr = VecCopy (p, p_);                                           CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
 

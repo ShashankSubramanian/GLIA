@@ -29,6 +29,7 @@ class TumorSolverInterface {
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess (Vec p);
 		PetscErrorCode setInitialGuess(double d);
+		PetscErrorCode resetTaoSolver();
 
 		PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
       		return derivative_operators_->setDistMeassureReferenceImage(wm, gm, csf, glm, bg);

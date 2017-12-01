@@ -83,9 +83,10 @@ int main (int argc, char** argv) {
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    //ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
-    ierr = tumor->phi_->setGaussians (data, tumor->mat_prop_);                //Overwrites bounding box phis with custom phis
-
+    if (!n_misc->bounding_box_) {
+        //ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+        ierr = tumor->phi_->setGaussians (data, tumor->mat_prop_);                //Overwrites bounding box phis with custom phis
+    }
 
     //Solve interpolation
     ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
@@ -172,7 +173,8 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
         ierr = VecRestoreArray (c_rec_0, &c0_ptr);                          CHKERRQ (ierr);
     }
 
-    dataOut (c_rec_0, n_misc, "results/CRecon0.nc");
+    if (n_misc->writeOutput_)
+        dataOut (c_rec_0, n_misc, "CRecon0.nc");
 
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
@@ -186,10 +188,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
                                                 //values to data
 
     if (n_misc->writeOutput_)
-        dataOut (c_rec, n_misc, "results/CRecon.nc");
-
-    //SNAFU
-    // dataOut (c_rec, n_misc, "brain_data/64/dataFromPhiGrid.nc");
+        dataOut (c_rec, n_misc, "CRecon.nc");
 
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);

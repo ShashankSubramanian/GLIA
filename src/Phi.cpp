@@ -24,6 +24,10 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " --------" << std::endl;
+    Event e ("tumor-phi-setvals");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     memcpy (cm_, user_cm.data(), 3 * sizeof(double));
     double center[3 * np_];
     double *phi_ptr;
@@ -48,10 +52,14 @@ PetscErrorCode Phi::setValues (std::array<double, 3>& user_cm, double sigma, dou
         }
 
         if(n_misc->writeOutput_) {
-            dataOut (phi_vec_[i], n_misc, "results/phi.nc");
+            dataOut (phi_vec_[i], n_misc, "phiBoundingBox.nc");
         }
     }
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);
 }
 
@@ -155,6 +163,10 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
 PetscErrorCode Phi::apply (Vec out, Vec p) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-phi-apply");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     double * pg_ptr;
     Vec pg;
     ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);                            CHKERRQ (ierr);
@@ -181,26 +193,29 @@ PetscErrorCode Phi::apply (Vec out, Vec p) {
     Vec dummy;
     ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
     ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-
     ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
 
     for (int i = 0; i < np_; i++) {
         ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
     }
-
     ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
-
     ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
-
     ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
     ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);
 }
 
 PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-phi-applyT");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     PetscScalar values[np_];
     int low, high;
@@ -217,6 +232,10 @@ PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
     // ierr = VecAssemblyBegin (pout);                                                                 CHKERRQ (ierr);
     // ierr = VecAssemblyEnd (pout);                                                                   CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn (0);
 }
 
@@ -596,9 +615,9 @@ PetscErrorCode Phi::setGaussians (Vec data, std::shared_ptr<MatProp> mat_prop) {
         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
     }
     if(n_misc_->writeOutput_) {
-        dataOut (center_output, n_misc_, "results/phiCenters.nc");
-        dataOut (num_tumor_output, n_misc_, "results/phiNumTumor.nc");
-        dataOut (all_phis, n_misc_, "results/phiGrid.nc");
+        dataOut (center_output, n_misc_, "phiCenters.nc");
+        dataOut (num_tumor_output, n_misc_, "phiNumTumor.nc");
+        dataOut (all_phis, n_misc_, "phiGrid.nc");
     }
     PetscFunctionReturn (0);
 }

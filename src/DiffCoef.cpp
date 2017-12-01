@@ -153,6 +153,10 @@ PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
 
 PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     PetscErrorCode ierr = 0;
+    Event e ("tumor-diff-coeff-apply-K");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     for (int i = 1; i < 4; i++) {
         ierr = VecSet (temp_[i] , 0);                                   CHKERRQ (ierr);
     }
@@ -181,12 +185,21 @@ PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     ierr = VecPointwiseMult (temp_[0], kzz_, z);                        CHKERRQ (ierr);
     ierr = VecAXPY (temp_[3], 1.0, temp_[0]);                           CHKERRQ (ierr);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
+
     PetscFunctionReturn(0);
 }
 
 PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    Event e ("tumor-diff-coeff-apply-D");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
     std::bitset<3> XYZ;
     XYZ[0] = 1;
     XYZ[1] = 1;
@@ -198,6 +211,10 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
     ierr = applyK (temp_[4], temp_[5], temp_[6]);
     accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, timer);
 
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (t, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
     PetscFunctionReturn(0);
 }
 

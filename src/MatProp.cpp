@@ -58,11 +58,11 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			// ierr = weierstrassSmoother (csf_ptr, gm_ptr, n_misc, 0.0003);
 
 			if(n_misc->writeOutput_) {
-				dataOut (gm_ptr, n_misc, "results/gray_matter.nc");
-				dataOut (wm_ptr, n_misc, "results/white_matter.nc");
-				dataOut (csf_ptr, n_misc, "results/csf.nc");
-				dataOut (glm_ptr, n_misc, "results/glial_matter.nc");
-				dataOut (filter_ptr, n_misc, "results/filter_zero.nc");
+				dataOut (gm_ptr, n_misc, "gray_matter.nc");
+				dataOut (wm_ptr, n_misc, "white_matter.nc");
+				dataOut (csf_ptr, n_misc, "csf.nc");
+				dataOut (glm_ptr, n_misc, "glial_matter.nc");
+				dataOut (filter_ptr, n_misc, "filter_zero.nc");
 			}
 
 			ierr = VecRestoreArray (gm_, &gm_ptr);                    CHKERRQ (ierr);

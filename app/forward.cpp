@@ -47,7 +47,39 @@ int main (int argc, char** argv) {
 {
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
-	ierr = solver_interface->solveForward (nullptr , nullptr); // TODO fix that
+
+	//Create IC
+	Vec c_0, c_t;
+	ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
+    ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
+    ierr = VecSetFromOptions (c_t);                                         CHKERRQ (ierr);
+    ierr = VecDuplicate (c_t, &c_0);                                        CHKERRQ (ierr);
+
+    ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);
+    ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
+
+    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    ierr = tumor->setTrueP (n_misc);
+    ierr = tumor->phi_->apply (c_0, tumor->p_true_);
+    #ifdef POSITIVITY
+        ierr = enforcePositivity (c_0, n_misc);
+    #endif
+    double max, min;
+    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
+
+    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
+    PCOUT << "Forward solve begin" << std::endl;
+
+	ierr = solver_interface->solveForward (c_t , c_0); 
+
+	if (n_misc->writeOutput_)
+        dataOut (c_t, n_misc, "forward_data.nc");
+    PCOUT << "Forward solve done" << std::endl;
+    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+
+    PCOUT << "\nC fwd solve IC Max and Min : " << max << " " << min << std::endl;
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
