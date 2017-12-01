@@ -85,11 +85,11 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
 
     for (int i = 0; i < nt; i++) {
-        diff_solver_->solve (tumor_->c_t_, dt / 2.0);
         //Copy current conc to use for the adjoint equation
         if (linearized == 0) {
             ierr = VecCopy (tumor_->c_t_, c_[i]);                CHKERRQ (ierr);
         }
+        diff_solver_->solve (tumor_->c_t_, dt / 2.0);
         ierr = reaction (linearized, i);
         diff_solver_->solve (tumor_->c_t_, dt / 2.0);
 
@@ -115,13 +115,20 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
+
     double *p_0_ptr, *rho_ptr;
     double *c_ptr;
     double factor, alph;
     double dt = n_misc_->dt_;
+
+    Vec temp = tumor_->k_->temp_[0];
+    //reaction adjoint needs c_ at half time step. 
+    ierr = VecCopy (c_[iter], temp);                            CHKERRQ (ierr);
+    diff_solver_->solve (temp, dt / 2.0);
+
     ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+    ierr = VecGetArray (temp, &c_ptr);                           CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
         if (linearized == 1) {
@@ -138,7 +145,7 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
 
     ierr = VecRestoreArray (tumor_->p_0_, &p_0_ptr);             CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);   CHKERRQ (ierr);
-    ierr = VecRestoreArray (c_[iter], &c_ptr);                   CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp, &c_ptr);                       CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (t, t, self_exec_time);
