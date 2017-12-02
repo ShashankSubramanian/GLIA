@@ -44,7 +44,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
     ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
-    ierr = tumor_->initialize (p, n_misc, phi, mat_prop);       
+    ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
 
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
@@ -246,7 +246,7 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
 
     //RHS -- phiT * OT * O * d
     ierr = tumor->obs_->apply (ctx->temp_, data);                       CHKERRQ (ierr);
-    ierr = tumor->obs_->apply (ctx->temp_, ctx->temp_);                 CHKERRQ (ierr);    
+    ierr = tumor->obs_->apply (ctx->temp_, ctx->temp_);                 CHKERRQ (ierr);
     ierr = tumor->phi_->applyTranspose (rhs, ctx->temp_);               CHKERRQ (ierr);
 
     ierr = KSPSolve (ksp, rhs, p);                                      CHKERRQ (ierr);
@@ -348,10 +348,9 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     // update reaction coefficient
     tumor_->rho_->setValues (tumor_params->reaction_coeff_scale, tumor_params->reaction_ratio_gm_wm, tumor_params->reaction_ratio_glm_wm,
                             tumor_->mat_prop_, n_misc_);                                                    CHKERRQ (ierr);
-    // update mesh of Gaussians, new phi spacing, center, sigma
-    //tumor_->phi_->setGaussians (tumor_params->phi_center_of_mass, tumor_params->phi_sigma, tumor_params->phi_spacing_factor,
-    //                        n_misc_);                                                    CHKERRQ (ierr);
-    //tumor_->phi_->setValues (tumor_->mat_prop_);
+
+    // update the phi values, i.e., update the filter
+    tumor_->phi_->setValues (tumor_->mat_prop_);
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     pde_operators_->diff_solver_->precFactor();
 

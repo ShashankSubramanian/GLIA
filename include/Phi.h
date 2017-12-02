@@ -20,7 +20,7 @@ class Phi {
 		std::shared_ptr<NMisc> n_misc_;
 		std::vector<double> centers_;   //Vector of centers for the gaussians
 
-		PetscErrorCode setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, std::shared_ptr<NMisc> n_misc);   //Bounding box
+		PetscErrorCode setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor); //, std::shared_ptr<NMisc> n_misc);   //Bounding box
 		PetscErrorCode setGaussians (Vec data);																								//Adaptive phis
 		PetscErrorCode setValues (std::shared_ptr<MatProp> mat_prop);
 		PetscErrorCode phiMesh (double *center);
