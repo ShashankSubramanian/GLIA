@@ -97,6 +97,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     n_misc_->user_cm_ = tumor_params->phi_center_of_mass;
     n_misc_->phi_spacing_factor_ = tumor_params->phi_spacing_factor;
     n_misc_->phi_sigma_ = tumor_params->phi_sigma;
+    n_misc_->bounding_box_ = tumor_params->phi_selection_mode_bbox;
     // ++ re-initialize Tumor ++
     ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
     // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
