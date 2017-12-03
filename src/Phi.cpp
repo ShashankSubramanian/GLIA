@@ -318,9 +318,9 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
     for (int i = x - radius; i <= x + radius; i++) 
         for (int j = y - radius; j <= y + radius; j++)
             for (int k = z - radius; k <= z + radius; k++) {
-                if (k < 0) continue;
-                if (k >= n_misc->isize_[2]) continue;     //Dont bother in the z direction as there is no partition here 
                 check_local_pos = isInLocalProc (i, j, k, n_misc);
+                if (k < 0) check_local_pos = 0;
+                if (k >= n_misc->isize_[2]) check_local_pos = 0;     //Dont bother in the z direction as there is no partition here 
                 if (check_local_pos) {
                     distance = sqrt ((i - x) * (i - x) + 
                                      (j - y) * (j - y) +
@@ -485,10 +485,18 @@ PetscErrorCode Phi::setGaussians (Vec data) {
 
     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
 
+    std::vector<int> center_comm_sizes;
+    center_comm_sizes.resize (nprocs);
+    int size = center_comm.size();
+    MPI_Allgather (&size, 1, MPI_INT, &center_comm_sizes[0], 1, MPI_INT, PETSC_COMM_WORLD);
+
+    int max_center_size;    //If odd number of procs are used, the points will be distributed unevenly
+    max_center_size = *std::max_element (center_comm_sizes.begin(), center_comm_sizes.end());
+
     MPI_Request request[16];
     for (int i = 0; i < 16; i++) request[i] = MPI_REQUEST_NULL;
     //Communicate partial computation of boundary centers to neighbouring processes
-    std::vector<int64_t> receive_buffer(8 * center_comm.size(), 0);
+    std::vector<int64_t> receive_buffer(8 * max_center_size, 0);
     std::vector<int64_t> zero_vector(center_comm.size(), 0);
     int proc_i, proc_j, procid_neigh, count, neigh_i, neigh_j, periodic_check;
     periodic_check = 0;
@@ -500,6 +508,8 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             //Check for boundary procs and implement periodic send and recv
             neigh_i = ni;
             neigh_j = nj;
+            request[count] = MPI_REQUEST_NULL;
+
             if (neigh_i < 0) {neigh_i = n_misc_->c_dims_[0] - 1; periodic_check = 1;}
             if (neigh_i >= n_misc_->c_dims_[0]) {neigh_i = 0; periodic_check = 1;}
             if (neigh_j < 0) {neigh_j = n_misc_->c_dims_[1] - 1; periodic_check = 1;}
@@ -507,10 +517,13 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             if (neigh_i == proc_i && neigh_j == proc_j) {periodic_check = 0; continue;}
             
             procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
-            if (periodic_check)
+
+            if (periodic_check){
                 MPI_Isend (&zero_vector[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
-            else
+            }
+            else {
                 MPI_Isend (&center_comm[0], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count]);
+            }
 
             count++;
             periodic_check = 0;
@@ -524,6 +537,8 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             //Check for boundary procs and implement periodic send and recv
             neigh_i = ni;
             neigh_j = nj;
+            request[count + 8] = MPI_REQUEST_NULL;
+
             if (neigh_i < 0) neigh_i = n_misc_->c_dims_[0] - 1;
             if (neigh_i >= n_misc_->c_dims_[0]) neigh_i = 0;
             if (neigh_j < 0) neigh_j = n_misc_->c_dims_[1] - 1;
@@ -531,15 +546,20 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             if (neigh_i == proc_i && neigh_j == proc_j) continue;
 
             procid_neigh = neigh_i * n_misc_->c_dims_[1] + neigh_j;
-            MPI_Irecv (&receive_buffer[count * center_comm.size()], center_comm.size(), MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count + 8]);
+
+            MPI_Irecv (&receive_buffer[count * max_center_size], center_comm_sizes[procid_neigh], MPI_LONG_LONG, procid_neigh, 0, MPI_COMM_WORLD, &request[count + 8]);
             
             count++;
         }
+
+        
+    MPI_Status status;
 
     for (int i = 0; i < 16; i++) {
         if (request[i] != MPI_REQUEST_NULL)
             MPI_Wait (&request[i], MPI_STATUS_IGNORE);
     }
+
 
     //Check receive buffer for the local centers and add their value to local_tumor_marker
     for (int i = 0; i < receive_buffer.size(); i += 2) {  //Every alternate value is a center global index
@@ -548,6 +568,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         Y = fmod (receive_buffer[i], n_misc_->n_[1] * n_misc_->n_[2]) / n_misc_->n_[2];
         Z = receive_buffer[i] - Y * n_misc_->n_[2] - X * n_misc_->n_[1] * n_misc_->n_[2];
         flag = isInLocalProc (X, Y, Z, n_misc_);
+
         if (flag) {  //The point is inside the local processor
             ptr = (X - n_misc_->istart_[0]) * n_misc_->isize_[1] * n_misc_->isize_[2] + (Y - n_misc_->istart_[1]) * n_misc_->isize_[2] + (Z - n_misc_->istart_[2]);
             local_tumor_marker[ptr] += receive_buffer[i+1];            //Add the contirbution from the neighbour to the local boundary center
@@ -581,7 +602,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     center_size.resize (nprocs);
     displs.resize (nprocs);
     rcount.resize (nprocs);
-    int size = center.size();
+    size = center.size();
     center_global.resize (3 * np_global);
     MPI_Allgather (&size, 1, MPI_INT, &center_size[0], 1, MPI_INT, PETSC_COMM_WORLD);
 
