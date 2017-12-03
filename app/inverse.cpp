@@ -133,7 +133,7 @@ PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interf
     std::array<double, 3> cm;
     cm[0] = 4.0; cm[1] = 2.53; cm[2] = 2.57;
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc);
+    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     Vec c, cf;
     ierr = VecCreate (PETSC_COMM_WORLD, &c);                            CHKERRQ (ierr);
@@ -143,34 +143,34 @@ PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interf
     ierr = VecSet (cf, 0);                                              CHKERRQ (ierr);
 
     ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
-    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = solver_interface->solveForward (c, c);
     // ierr = tumor->obs_->apply (c, c);
     ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
 
     //---------------------------------------------------------------------------------
     cm[0] = 4.0; cm[1] = 2.03; cm[2] = 4.07;
-    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc);
+    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
-    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = solver_interface->solveForward (c, c);
     // ierr = tumor->obs_->apply (c, c);
     ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
 
     //---------------------------------------------------------------------------------
     cm[0] = 4.0; cm[1] = 4.03; cm[2] = 2.07;
-    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc);
+    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
-    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = solver_interface->solveForward (c, c);
     // ierr = tumor->obs_->apply (c, c);
     ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
 
     //---------------------------------------------------------------------------------
     cm[0] = 4.0; cm[1] = 4.03; cm[2] = 4.07;
-    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc);
+    ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     ierr = tumor->phi_->apply (c, p);                                   CHKERRQ (ierr);
-    // ierr = solver_interface->solveForward (c, c);  
+    // ierr = solver_interface->solveForward (c, c);
     // ierr = tumor->obs_->apply (c, c);
     ierr = VecAXPY (cf, 1.0, c);                                        CHKERRQ (ierr);
 

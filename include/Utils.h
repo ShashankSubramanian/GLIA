@@ -113,6 +113,7 @@ struct TumorSettings {
     std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
     double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     double phi_sigma;               /// @brief standard deviation of Gaussians
+    int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
 
     TumorSettings () :
     tumor_model(1),
@@ -134,7 +135,8 @@ struct TumorSettings {
     rho_linear(0),
     phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
     phi_spacing_factor (1.5),
-    phi_sigma (PETSC_PI/10)
+    phi_sigma (PETSC_PI/10),
+    phi_selection_mode_bbox(1)
     {}
 };
 
@@ -222,11 +224,11 @@ class NMisc {
         , statistics_()                         //
         , exp_shift_ (10.0)                     //Parameter for positivity shift
         , penalty_ (1E-4)                       //Parameter for positivity objective function
-        , data_threshold_ (0.1)                 //Data threshold to set custom gaussians 
+        , data_threshold_ (0.1)                 //Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.0)              //Volume fraction of gaussians to set custom basis functions
         , bounding_box_ (0)                     //Flag to set bounding box for gaussians
-        , testcase_ (testcase)                  //Testcases 
-                                {                
+        , testcase_ (testcase)                  //Testcases
+                                {
 
             time_horizon_ = nt_ * dt_;
             if (testcase_ == BRAIN) {
