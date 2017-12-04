@@ -69,12 +69,12 @@ int main (int argc, char** argv) {
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
 
-    n_misc->phi_sigma_ = 0.2;
-    n_misc->phi_spacing_factor_ = 1.0;
-    createMFData (solver_interface, n_misc);
-    n_misc->phi_sigma_ = PETSC_PI / 10;
-    n_misc->phi_spacing_factor_ = 1.5;
-    exit (1);
+    // n_misc->phi_sigma_ = 0.2;
+    // n_misc->phi_spacing_factor_ = 1.0;
+    // createMFData (solver_interface, n_misc);
+    // n_misc->phi_sigma_ = PETSC_PI / 10;
+    // n_misc->phi_spacing_factor_ = 1.5;
+    // exit (1);
 
     Vec c_0, data, p_rec;
     PetscErrorCode ierr = 0;
@@ -82,11 +82,11 @@ int main (int argc, char** argv) {
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
-    //Solve interpolation
-    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
+    // //Solve interpolation
+    // std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
 
-    exit (1);
+    // exit (1);
 
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
@@ -257,9 +257,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     //Create p_rec
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+    ierr = VecCreateSeq (PETSC_COMM_WORLD, n_misc->np_, &p_rec);                            CHKERRQ (ierr);
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);

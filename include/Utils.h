@@ -226,7 +226,7 @@ class NMisc {
         , penalty_ (1E-4)                       //Parameter for positivity objective function
         , data_threshold_ (0.1)                 //Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.0)              //Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (0)                     //Flag to set bounding box for gaussians
+        , bounding_box_ (1)                     //Flag to set bounding box for gaussians
         , testcase_ (testcase)                  //Testcases
                                 {
 

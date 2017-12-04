@@ -43,6 +43,9 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
     ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
     ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
+
+    // ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
+    
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
     ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
 
