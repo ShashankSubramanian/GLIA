@@ -68,7 +68,39 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params) {
+int TumorSolverInterface::npChangedResetComponents() {
+  PetscFunctionBegin;
+  TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
+
+  Vec p;
+  VecCreate (PETSC_COMM_WORLD, &p);
+  VecSetSizes (p, PETSC_DECIDE, n_misc_->np_);
+  VecSetFromOptions (p);
+  VecSet (p, 0.0);
+  // re-allocate p in tumor
+  tumor_->changeNP (p);
+  // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
+  // invcludes re-allocating time history for adjoint,
+  if (n_misc_->model_ == 1) {
+    pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+    derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
+  }
+  if (n_misc_->model_ == 2) {
+    pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+    derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
+  }
+  if (n_misc_->model_ == 3 ){
+    pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+    derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
+  }
+  // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
+  inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, true);
+  // cleanup
+  VecDestroy (&p);
+  return n_misc_->np_;
+}
+
+PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params = {}) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
@@ -78,26 +110,28 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     bool modelchanged = n_misc_->model_ != tumor_params->tumor_model;
     bool ntchanged = n_misc_->nt_ != tumor_params->time_steps;
     // ++ re-initialize nmisc ==
-    n_misc_->model_ = tumor_params->tumor_model;
-    n_misc_->dt_ = tumor_params->time_step_size;
-    n_misc_->nt_ = tumor_params->time_steps;
-    n_misc_->time_horizon_ = tumor_params->time_horizon;
-    n_misc_->np_ = tumor_params->np;
-    n_misc_->beta_ = tumor_params->betap;
-    n_misc_->writeOutput_ = tumor_params->writeOutput;
-    n_misc_->verbosity_ = tumor_params->verbosity;
-    n_misc_->obs_threshold_ = tumor_params->obs_threshold;
-    n_misc_->k_ = tumor_params->diff_coeff_scale;
-    n_misc_->kf_ = tumor_params->diff_coeff_scale_anisotropic;
-    n_misc_->rho_ = tumor_params->reaction_coeff_scale;
-    n_misc_->k_gm_wm_ratio_ = tumor_params->diffusion_ratio_gm_wm;
-    n_misc_->k_glm_wm_ratio_ = tumor_params->diffusion_ratio_glm_wm;
-    n_misc_->r_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
-    n_misc_->r_glm_wm_ratio_ = tumor_params->reaction_ratio_glm_wm;
-    n_misc_->user_cm_ = tumor_params->phi_center_of_mass;
-    n_misc_->phi_spacing_factor_ = tumor_params->phi_spacing_factor;
-    n_misc_->phi_sigma_ = tumor_params->phi_sigma;
-    n_misc_->bounding_box_ = tumor_params->phi_selection_mode_bbox;
+    if(tumor_params = nullptr) {
+      n_misc_->model_ = tumor_params->tumor_model;
+      n_misc_->dt_ = tumor_params->time_step_size;
+      n_misc_->nt_ = tumor_params->time_steps;
+      n_misc_->time_horizon_ = tumor_params->time_horizon;
+      n_misc_->np_ = tumor_params->np;
+      n_misc_->beta_ = tumor_params->betap;
+      n_misc_->writeOutput_ = tumor_params->writeOutput;
+      n_misc_->verbosity_ = tumor_params->verbosity;
+      n_misc_->obs_threshold_ = tumor_params->obs_threshold;
+      n_misc_->k_ = tumor_params->diff_coeff_scale;
+      n_misc_->kf_ = tumor_params->diff_coeff_scale_anisotropic;
+      n_misc_->rho_ = tumor_params->reaction_coeff_scale;
+      n_misc_->k_gm_wm_ratio_ = tumor_params->diffusion_ratio_gm_wm;
+      n_misc_->k_glm_wm_ratio_ = tumor_params->diffusion_ratio_glm_wm;
+      n_misc_->r_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
+      n_misc_->r_glm_wm_ratio_ = tumor_params->reaction_ratio_glm_wm;
+      n_misc_->user_cm_ = tumor_params->phi_center_of_mass;
+      n_misc_->phi_spacing_factor_ = tumor_params->phi_spacing_factor;
+      n_misc_->phi_sigma_ = tumor_params->phi_sigma;
+      n_misc_->bounding_box_ = tumor_params->phi_selection_mode_bbox;
+    }
     // ++ re-initialize Tumor ++
     ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
     // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed

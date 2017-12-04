@@ -746,7 +746,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
     			PetscFunctionReturn(ierr);
     	}
-      if (ls_flag != 0) {
+      if (ls_flag > 1) {
         ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
         ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
         ss.str(std::string());

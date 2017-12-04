@@ -18,23 +18,35 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     }
 }
 
-PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor) { 
+PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) { //}, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " --------" << std::endl;
 
+    sigma_ = sigma;                   n_misc_->phi_sigma_ = sigma_;
+    spacing_factor_ = spacing_factor; n_misc_->phi_spacing_factor_ = spacing_factor_;
+    np_ = np;                         n_misc_->np_ = np_;
+    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " --------" << std::endl;
+    centers_.clear ();
+    //Destroy and clear any previously set phis
+    for (int i = 0; i < phi_vec_.size (); i++) {
+        ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
+    }
+    phi_vec_.clear();
+    phi_vec_.resize (np_);
+    ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
+    ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
+    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = VecSet (phi_vec_[0], 0);
+    for (int i = 0; i < np_; i++) {
+        ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
+        ierr = VecSet (phi_vec_[i], 0);
+    }
     memcpy (cm_, user_cm.data(), 3 * sizeof(double));
     centers_.resize (3 * np_);
-    double *phi_ptr;
-    double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
-
-    sigma_ = sigma;
-    spacing_factor_ = spacing_factor;
     ierr = phiMesh (&centers_[0]);
-
     PetscFunctionReturn (0);
 }
 
@@ -320,7 +332,7 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
             for (int k = z - radius; k <= z + radius; k++) {
                 check_local_pos = isInLocalProc (i, j, k, n_misc);
                 if (k < 0) check_local_pos = 0;
-                if (k >= n_misc->isize_[2]) check_local_pos = 0;     //Dont bother in the z direction as there is no partition here 
+                if (k >= n_misc->isize_[2]) check_local_pos = 0;     //Dont bother in the z direction as there is no partition here
                 if (check_local_pos) {
                     distance = sqrt ((i - x) * (i - x) +
                                      (j - y) * (j - y) +
@@ -551,7 +563,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             count++;
         }
 
-        
+
     MPI_Status status;
 
     for (int i = 0; i < 16; i++) {
@@ -619,14 +631,11 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     centers_.clear ();
     centers_.resize (3 * np_);
     centers_ = center_global;
-
-    Vec v;
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
         ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
     }
     phi_vec_.clear();
-
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
@@ -636,13 +645,10 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
-
     if(n_misc_->writeOutput_) {
         dataOut (num_tumor_output, n_misc_, "phiNumTumor.nc");
     }
-
     ierr = VecDestroy (&num_tumor_output);                                       CHKERRQ (ierr);
-
     PetscFunctionReturn (0);
 }
 
