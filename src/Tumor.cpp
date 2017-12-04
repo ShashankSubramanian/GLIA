@@ -75,20 +75,6 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     PetscFunctionReturn(0);
 }
 
-// PetscErrorCode Tumor::changeNP (Vec p) {
-//   PetscFunctionBegin;
-//   PetscErrorCode ierr = 0;
-//
-//   // re-create p vectors
-//   if (p_ != nullptr) {ierr = VecDestroy (&p_);                  CHKERRQ (ierr);}
-//   if (p_ != nullptr) {ierr = VecDestroy (&p_true_);             CHKERRQ (ierr);}
-//   ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
-//   ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
-//   ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
-//   ierr = phi_->apply(c_0_, p_);
-//   PetscFunctionReturn(0);
-// }
-
 PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
