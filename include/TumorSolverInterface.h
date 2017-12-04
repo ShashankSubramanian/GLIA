@@ -54,6 +54,9 @@ class TumorSolverInterface {
 		bool isInitialized () {
 			return initialized_;
 		}
+		int getNumberGaussians() {
+			return n_misc_->np_;
+		}
 		/// @brief updates/sets the optimizer settings (copies settings)
 		void setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset);
 		/// @brief sets the optimization feedback ptr in inv_solver, overrides old ptr

@@ -68,49 +68,50 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     PetscFunctionReturn (0);
 }
 
-int TumorSolverInterface::npChangedResetComponents() {
-  PetscFunctionBegin;
-  TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
-
-  Vec p;
-  VecCreate (PETSC_COMM_WORLD, &p);
-  VecSetSizes (p, PETSC_DECIDE, n_misc_->np_);
-  VecSetFromOptions (p);
-  VecSet (p, 0.0);
-  // re-allocate p in tumor
-  tumor_->changeNP (p);
-  // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
-  // invcludes re-allocating time history for adjoint,
-  if (n_misc_->model_ == 1) {
-    pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
-    derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
-  }
-  if (n_misc_->model_ == 2) {
-    pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
-    derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
-  }
-  if (n_misc_->model_ == 3 ){
-    pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
-    derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
-  }
-  // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
-  inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, true);
-  // cleanup
-  VecDestroy (&p);
-  return n_misc_->np_;
-}
+// int TumorSolverInterface::npChangedResetComponents() {
+//   PetscFunctionBegin;
+//   TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
+//
+//   Vec p;
+//   VecCreate (PETSC_COMM_WORLD, &p);
+//   VecSetSizes (p, PETSC_DECIDE, n_misc_->np_);
+//   VecSetFromOptions (p);
+//   VecSet (p, 0.0);
+//   // re-allocate p in tumor
+//   tumor_->changeNP (p);
+//   // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
+//   // invcludes re-allocating time history for adjoint,
+//   if (n_misc_->model_ == 1) {
+//     pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+//     derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
+//   }
+//   if (n_misc_->model_ == 2) {
+//     pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+//     derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
+//   }
+//   if (n_misc_->model_ == 3 ){
+//     pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+//     derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
+//   }
+//   // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
+//   inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, true);
+//   // cleanup
+//   VecDestroy (&p);
+//   return n_misc_->np_;
+// }
 
 PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params = {}) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
 
-    // if one of these parameters has changed, we need to re-allocate maemory
-    bool npchanged = n_misc_->np_ != tumor_params->np;
-    bool modelchanged = n_misc_->model_ != tumor_params->tumor_model;
-    bool ntchanged = n_misc_->nt_ != tumor_params->time_steps;
+    bool npchanged = true, modelchanged = false, ntchanged = false;
     // ++ re-initialize nmisc ==
     if(tumor_params = nullptr) {
+      // if one of these parameters has changed, we need to re-allocate maemory
+      npchanged = n_misc_->np_ != tumor_params->np;
+      modelchanged = n_misc_->model_ != tumor_params->tumor_model;
+      ntchanged = n_misc_->nt_ != tumor_params->time_steps;
       n_misc_->model_ = tumor_params->tumor_model;
       n_misc_->dt_ = tumor_params->time_step_size;
       n_misc_->nt_ = tumor_params->time_steps;
