@@ -67,9 +67,8 @@ int main (int argc, char** argv) {
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
     Vec data, p_rec, wm, gm, glm, csf;
     PetscErrorCode ierr = 0;
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+
+    wm = nullptr; gm = nullptr; glm = nullptr; csf = nullptr;
 
     // Data read only
     PCOUT << "Read raw Data --->" << std::endl;
@@ -89,11 +88,16 @@ int main (int argc, char** argv) {
         ierr = tumor->phi_->setValues (tumor->mat_prop_);
     }
 
-    //Solve interpolation
-    ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
-    exit (1);
+    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
+    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
     ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
 
+    ierr = solver_interface->setParams (p_rec, nullptr);
+    //Solve interpolation
+    // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
+    
+    ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
     //Solve tumor inversion
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 

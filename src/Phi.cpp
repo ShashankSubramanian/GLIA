@@ -18,7 +18,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     }
 }
 
-PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) { //}, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) { 
     PetscFunctionBegin;
     PetscErrorCode ierr;
     int procid, nprocs;
