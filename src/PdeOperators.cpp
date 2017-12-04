@@ -122,7 +122,7 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     double dt = n_misc_->dt_;
 
     Vec temp = tumor_->work_[11];
-    //reaction adjoint needs c_ at half time step. 
+    //reaction adjoint needs c_ at half time step.
     ierr = VecCopy (c_[iter], temp);                            CHKERRQ (ierr);
     diff_solver_->solve (temp, dt / 2.0);
 
@@ -181,7 +181,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode PdeOperatorsRD::computeVaryingMatProbContribution(Vec q1, Vec q2, Vec q3, Vec q4) {
+PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-compute-q");

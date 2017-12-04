@@ -21,7 +21,7 @@ class PdeOperators {
 
 		virtual PetscErrorCode solveState (int linearized) = 0;
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
-		virtual PetscErrorCode computeVaryingMatProbContribution(Vec q1, Vec q2, Vec q3, Vec q4) = 0;
+		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) = 0;
 
 		virtual ~PdeOperators () {}
 
@@ -50,7 +50,7 @@ class PdeOperatorsRD : public PdeOperators {
 		/** @brief computes effect of varying/moving material properties, i.e.,
 		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
 		 */
-		virtual PetscErrorCode computeVaryingMatProbContribution(Vec q1, Vec q2, Vec q3, Vec q4);
+		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4);
 		virtual ~PdeOperatorsRD ();
 };
 
