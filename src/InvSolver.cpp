@@ -521,6 +521,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     s.clear ();
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
+
     //Gradient check begin
 //    ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
     //Gradient check end
@@ -752,7 +753,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
     			PetscFunctionReturn(ierr);
     	}
-      if (ls_flag != 0) {
+      if (ls_flag > 1) {
         ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
         ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
         ss.str(std::string());

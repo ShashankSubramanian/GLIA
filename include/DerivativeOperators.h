@@ -27,11 +27,9 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
 
-
     virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
     virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
 		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
-
     PetscErrorCode checkGradient (Vec p, Vec data);
 
 		virtual ~DerivativeOperators () {
@@ -66,14 +64,14 @@ class DerivativeOperatorsPos : public DerivativeOperators {
                 VecDuplicate (temp_, &temp_phiptilde_);
              }
 
-    Vec temp_phip_;
-    Vec temp_phiptilde_;
+        Vec temp_phip_;
+        Vec temp_phiptilde_;
 
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
 
-    PetscErrorCode sigmoid (Vec, Vec);
+        PetscErrorCode sigmoid (Vec, Vec);
 
 		~DerivativeOperatorsPos () {
             VecDestroy (&temp_phip_);

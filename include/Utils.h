@@ -21,7 +21,9 @@
 #include <omp.h>
 #include <complex>
 #include <cmath>
+#include <vector>
 #include <accfft_utils.h>
+#include <assert.h>
 #include "EventTimings.hpp"
 
 
@@ -111,6 +113,7 @@ struct TumorSettings {
     std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
     double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     double phi_sigma;               /// @brief standard deviation of Gaussians
+    int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
 
     TumorSettings () :
     tumor_model(1),
@@ -132,7 +135,8 @@ struct TumorSettings {
     rho_linear(0),
     phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
     phi_spacing_factor (1.5),
-    phi_sigma (PETSC_PI/10)
+    phi_sigma (PETSC_PI/10),
+    phi_selection_mode_bbox(1)
     {}
 };
 
@@ -195,38 +199,42 @@ public:
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.01)
-        , nt_(16)
-        , np_ (125)
-        , k_ (1.0E-2)
-        , kf_(0.0)
-        , rho_ (10)
-        , p_scale_ (0.0)
-        , p_scale_true_ (1.0)
-        , noise_scale_(0.0)
-        , beta_ (1e-3)
-        , writeOutput_ (0)
-        , verbosity_ (1)
-        , k_gm_wm_ratio_ (1.0 / 10.0)
-        , k_glm_wm_ratio_ (0.0)
-        , r_gm_wm_ratio_ (1.0 / 5.0)
-        , r_glm_wm_ratio_ (1.0)
-        , phi_sigma_ (PETSC_PI / 10)
-        , phi_spacing_factor_ (1.5)
-        , obs_threshold_ (-1.0)
-        , statistics_()
-        , exp_shift_ (10.0)
-        , penalty_ (1E-4)
-        , testcase_ (testcase) {
+        , dt_ (0.16)                            //Time step
+        , nt_(1)                                //Total number of time steps
+        , np_ (8)                               //Number of gaussians for bounding box
+        , k_ (0.0)                              //Isotropic diffusion coefficient
+        , kf_(0.0)                              //Anisotropic diffusion coefficient
+        , rho_ (8)                              //Reaction coefficient
+        , p_scale_ (0.0)                        //Scaling factor for initial guess
+        , p_scale_true_ (1.0)                   //Scaling factor for synthetic data generation
+        , noise_scale_(0.0)                     //Noise scale
+        , beta_ (1e-3)                          //Regularization parameter
+        , writeOutput_ (1)                      //Print flag for paraview visualization
+        , verbosity_ (1)                        //Print flag for optimization routines
+        , k_gm_wm_ratio_ (1.0 / 10.0)           //gm to wm diffusion coeff ratio
+        , k_glm_wm_ratio_ (0.0)                 //glm to wm diffusion coeff ratio
+        , r_gm_wm_ratio_ (1.0 / 5.0)            //gm to wm reaction coeff ratio
+        , r_glm_wm_ratio_ (1.0)                 //glm to wm diffusion coeff ratio
+        , phi_sigma_ (PETSC_PI / 10)            //Gaussian standard deviation for bounding box
+        , phi_spacing_factor_ (1.5)             //Gaussian spacing for bounding box
+        , obs_threshold_ (-1.0)                 //Observation threshold
+        , statistics_()                         //
+        , exp_shift_ (10.0)                     //Parameter for positivity shift
+        , penalty_ (1E-4)                       //Parameter for positivity objective function
+        , data_threshold_ (0.1)                 //Data threshold to set custom gaussians
+        , gaussian_vol_frac_ (0.0)              //Volume fraction of gaussians to set custom basis functions
+        , bounding_box_ (0)                     //Flag to set bounding box for gaussians
+        , testcase_ (testcase)                  //Testcases
+                                {
 
             time_horizon_ = nt_ * dt_;
             if (testcase_ == BRAIN) {
                 user_cm_[0] = 4.0;
-                user_cm_[1] = 2.03;
-                user_cm_[2] = 2.07;
+                user_cm_[1] = 2.53;
+                user_cm_[2] = 2.57;
             }
             else {
                 user_cm_[0] = M_PI;
@@ -235,6 +243,7 @@ class NMisc {
             }
 
             memcpy (n_, n, 3 * sizeof(int));
+            memcpy (c_dims_, c_dims, 2 * sizeof(int));
             memcpy (isize_, isize, 3 * sizeof(int));
             memcpy (osize_, osize, 3 * sizeof(int));
             memcpy (istart_, istart, 3 * sizeof(int));
@@ -252,6 +261,10 @@ class NMisc {
 
             for(int i=0; i < 7; ++i)
                 timers_[i] = 0;
+
+            //Read and write paths
+            readpath_ << "./brain_data/" << n_[0] <<"/";
+            writepath_ << "./results/";
         }
 
         int testcase_;
@@ -260,6 +273,7 @@ class NMisc {
         int osize_[3];
         int istart_[3];
         int ostart_[3];
+        int c_dims_[2];
         double h_[3];
 
         int np_;
@@ -268,6 +282,7 @@ class NMisc {
         int nt_;
 
         int model_;
+        int bounding_box_;
         int writeOutput_;
         int verbosity_;
 
@@ -289,6 +304,8 @@ class NMisc {
 
         double phi_sigma_;
         double phi_spacing_factor_;
+        double data_threshold_;
+        double gaussian_vol_frac_;
 
         double obs_threshold_;
 
@@ -301,6 +318,9 @@ class NMisc {
 
         accfft_plan *plan_;
         MPI_Comm c_comm_;
+
+        std::stringstream readpath_;
+        std::stringstream writepath_;
 
 };
 

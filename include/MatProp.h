@@ -19,6 +19,7 @@ class MatProp {
 		double edema_threshold_;	
 
 		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::shared_ptr<NMisc> n_misc);
 
 		~MatProp ();
 };

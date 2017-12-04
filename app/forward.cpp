@@ -45,7 +45,7 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
-	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, testcase);   //This class contains all required parameters
+	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
 	//Create IC
@@ -59,7 +59,7 @@ int main (int argc, char** argv) {
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->setTrueP (n_misc->p_scale_true_, n_misc);
+    ierr = tumor->setTrueP (n_misc);
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
@@ -74,7 +74,7 @@ int main (int argc, char** argv) {
 	ierr = solver_interface->solveForward (c_t , c_0); 
 
 	if (n_misc->writeOutput_)
-        dataOut (c_t, n_misc, "results/data.nc");
+        dataOut (c_t, n_misc, "forward_data.nc");
     PCOUT << "Forward solve done" << std::endl;
     ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);

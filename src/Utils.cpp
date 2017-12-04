@@ -124,8 +124,7 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
 
 	std::stringstream str;
-	const char *prefix = "./brain_data/";
-	str << prefix << "/" << n_misc->n_[0] << "/" << fname;
+	str << n_misc->readpath_.str().c_str() << fname;
 	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
 	return;
 }
@@ -152,11 +151,11 @@ void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	int *istart = n_misc->istart_;
 	int *isize = n_misc->isize_;
 
-	std::string filename;
+	std::stringstream str;
 	MPI_Offset istart_mpi[3] = { istart[0], istart[1], istart[2] };
 	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
-	filename = fname;
-	write_pnetcdf(filename, istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
+	str << n_misc->writepath_.str().c_str() << fname;
+	write_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
 	return;
 }
 
