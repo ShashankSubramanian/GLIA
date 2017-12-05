@@ -40,12 +40,15 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
+
+    #ifdef SERIAL
+    ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
+    #else
     ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
     ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
     ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
+    #endif
 
-    // ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
-    
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
     ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
 

@@ -76,14 +76,16 @@ int main (int argc, char** argv) {
     std::array<double, 7> timers = {0};
 	//Create IC
 	Vec c_0, c_t;
-    // Vec p;
-    // ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
-    // PetscScalar val[2] = {.9, .2};
-    // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
-    // PetscInt idx[2] = {center-1, center};
-    // ierr = VecSetValues(p, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
-    // ierr = VecAssemblyBegin(p);                                 CHKERRQ(ierr);
-    // ierr = VecAssemblyEnd(p);                                   CHKERRQ(ierr);
+    #ifdef SERIAL
+        Vec p;
+        ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
+        PetscScalar val[2] = {.9, .2};
+        PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+        PetscInt idx[2] = {center-1, center};
+        ierr = VecSetValues(p, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+        ierr = VecAssemblyBegin(p);                                 CHKERRQ(ierr);
+        ierr = VecAssemblyEnd(p);                                   CHKERRQ(ierr);
+    #endif
 
 	ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
@@ -96,31 +98,36 @@ int main (int argc, char** argv) {
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
 
-    ierr = tumor->setTrueP (n_misc);
-
-    
-    ierr = tumor->phi_->apply (c_0, tumor->p_true_);
-    if (n_misc->writeOutput_)
-        dataOut (c_0, n_misc, "forward_IC.nc");
-    #ifdef POSITIVITY
-        ierr = enforcePositivity (c_0, n_misc);
+    #ifdef SERIAL
+        ierr = tumor->setTrueP (p);
+    #else
+        ierr = tumor->setTrueP (n_misc);
     #endif
-    double max, min;
-    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
-    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
-    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
-    PCOUT << "Forward solve begin" << std::endl;
 
-	ierr = solver_interface->solveForward (c_t , c_0); 
+    for (int i = 0; i < 50; i++)
+        ierr = tumor->phi_->apply (c_0, tumor->p_true_);
+ //    if (n_misc->writeOutput_)
+ //        dataOut (c_0, n_misc, "forward_IC.nc");
+ //    #ifdef POSITIVITY
+ //        ierr = enforcePositivity (c_0, n_misc);
+ //    #endif
+ //    double max, min;
+ //    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
+ //    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
-	if (n_misc->writeOutput_)
-        dataOut (c_t, n_misc, "forward_data.nc");
-    PCOUT << "Forward solve done" << std::endl;
-    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
-    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+ //    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
+ //    PCOUT << "Forward solve begin" << std::endl;
 
-    PCOUT << "\nC fwd solve IC Max and Min : " << max << " " << min << std::endl;
+	// ierr = solver_interface->solveForward (c_t , c_0); 
+
+	// if (n_misc->writeOutput_)
+ //        dataOut (c_t, n_misc, "forward_data.nc");
+ //    PCOUT << "Forward solve done" << std::endl;
+ //    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
+ //    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+
+ //    PCOUT << "\nC fwd solve IC Max and Min : " << max << " " << min << std::endl;
      self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
     e1.addTimings (timers);

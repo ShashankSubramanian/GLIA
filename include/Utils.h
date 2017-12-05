@@ -2,6 +2,9 @@
 #define _UTILS_H
 
 //#define POSITIVITY
+
+//#define SERIAL
+
 #include <petsc.h>
 #include <stdlib.h>
 #include <iomanip>
