@@ -481,7 +481,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     PetscInt its;
-    PetscScalar J, gnorm, cnorm, step, D, J0, D0, gnorm0;
+    PetscScalar J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
     Vec x = nullptr;
     char msg[256];
     std::string statusmsg;
@@ -693,7 +693,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = VecSetFromOptions (g);                                               CHKERRQ (ierr);
     ierr = TaoLineSearchGetSolution(ls, x, &J, g, &step, &ls_flag);             CHKERRQ (ierr);
     // display line-search convergence reason
-    ierr = dispLineSearchStatus(tao, ctx, ls_flag);                           CHKERRQ(ierr);
+    ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
 
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
@@ -712,7 +712,8 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     	ctx->optfeedback_->gradnorm0 = norm_gref;
     	//ctx->gradnorm0 = gnorm;
     	ctx->update_reference_gradient = false;
-    	ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver."); CHKERRQ(ierr);
+      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << norm_gref;
+      ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     	ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
     	ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
     }
@@ -885,7 +886,8 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     	ierr = VecNorm (dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
     	ctx->optfeedback_->gradnorm0 = norm_gref;
     	ctx->update_reference_gradient = false;
-    	ierr = tuMSGstd("updated reference gradient for relative convergence criterion, Gauß-Newton solver.");     CHKERRQ(ierr);
+      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << norm_gref;
+    	ierr = tuMSGstd(s.str());                                                          CHKERRQ(ierr);
     	ierr = VecDestroy(&p0);                                                            CHKERRQ(ierr);
     	ierr = VecDestroy(&dJ);                                                            CHKERRQ(ierr);
     }

@@ -91,6 +91,7 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 
         PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
         PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+				PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
         PetscErrorCode evaluateHessian (Vec y, Vec x);
 
         /** @brief: Sets the image vectors for the simulation geometry material properties
