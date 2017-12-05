@@ -2,6 +2,7 @@
 #define DERIVATIVEOPERATORS_H_
 
 #include "PdeOperators.h"
+#include "Utils.h"
 
 class DerivativeOperators {
 	public :
@@ -27,9 +28,9 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
 
-    virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
-    virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
-		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {}
+    virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
+    virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
+		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
     PetscErrorCode checkGradient (Vec p, Vec data);
 
 		virtual ~DerivativeOperators () {
@@ -43,7 +44,9 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 	public :
 		DerivativeOperatorsRD (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
 				std::shared_ptr<Tumor> tumor)
-			 : DerivativeOperators (pde_operators, n_misc, tumor) {}
+			 : DerivativeOperators (pde_operators, n_misc, tumor) {
+				 tuMSGstd (" ----- Setting reaction-diffusion derivative operators --------");
+			 }
 
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
@@ -82,7 +85,9 @@ class DerivativeOperatorsPos : public DerivativeOperators {
 class DerivativeOperatorsRDObj : public DerivativeOperators {
 	public :
 		DerivativeOperatorsRDObj (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
-				std::shared_ptr<Tumor> tumor) : DerivativeOperators (pde_operators, n_misc, tumor) {}
+				std::shared_ptr<Tumor> tumor) : DerivativeOperators (pde_operators, n_misc, tumor) {
+					tuMSGstd (" ----- Setting RD derivative operators with modified objective --------");
+				}
 
         PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
         PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);

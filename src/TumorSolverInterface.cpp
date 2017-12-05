@@ -75,7 +75,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
 
     bool npchanged = true, modelchanged = false, ntchanged = false;
     // ++ re-initialize nmisc ==
-    if(tumor_params = nullptr) {
+    if(tumor_params != nullptr) {
         // if one of these parameters has changed, we need to re-allocate maemory
         npchanged = n_misc_->np_ != tumor_params->np;
         modelchanged = n_misc_->model_ != tumor_params->tumor_model;
