@@ -206,15 +206,17 @@ PetscErrorCode Phi::apply (Vec out, Vec p) {
     double self_exec_time = -MPI_Wtime ();
 
     double *pg_ptr;
-    Vec dummy;
+    Vec dummy, pg;
+    ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);                                          
+    ierr = VecCopy (p, pg);         CHKERRQ (ierr);
     ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
     ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-    ierr = VecGetArray (p, &pg_ptr);                                                               CHKERRQ (ierr);
+    ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
 
     for (int i = 0; i < np_; i++) {
         ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
     }
-    ierr = VecRestoreArray (p, &pg_ptr);                                                           CHKERRQ (ierr);
+    ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
     ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
     ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
 

@@ -42,6 +42,20 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     ierr = VecSet (prec_, 0.0);                                                          CHKERRQ(ierr);
     // set up routine to compute the hessian matrix vector product
     if (H_ == nullptr) {
+      #ifdef SERIAL
+        int np = n_misc->np_;
+        ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+        // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
+        if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
+             itctx_->optsettings_->lmvm_set_hessian) {
+          ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
+          ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
+        // if tao's nls (gauss-newton) method is used, define hessian matvec
+        } else {
+          ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);   CHKERRQ(ierr);
+          ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
+        }
+      #else
         int np = n_misc->np_;
         ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
         // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
@@ -54,10 +68,15 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
           ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);   CHKERRQ(ierr);
           ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
         }
+      #endif
     }
     // create TAO solver object
     if( tao_ == nullptr) {
+      #ifdef SERIAL
+        ierr = TaoCreate (PETSC_COMM_SELF, &tao_);
+      #else
         ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
+      #endif
         tao_is_reset_ = true;  // triggers setTaoOptions
     }
     initialized_ = true;
@@ -70,7 +89,11 @@ PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
   if(tao_ != nullptr) {ierr = TaoDestroy (&tao_); CHKERRQ(ierr); tao_ = nullptr; }
   if(H_ != nullptr)   {ierr = MatDestroy (&H_);   CHKERRQ(ierr); H_   = nullptr; }
   int np = n_misc->np_;
+  #ifdef SERIAL
+  ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+  #else
   ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+  #endif
   // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
   if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
        itctx_->optsettings_->lmvm_set_hessian) {
@@ -83,7 +106,11 @@ PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
   }
   // create TAO solver object
   if( tao_ == nullptr) {
-      ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
+      #ifdef SERIAL
+        ierr = TaoCreate (PETSC_COMM_SELF, &tao_);
+      #else
+        ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
+      #endif
   }
   tao_is_reset_ = true;  // triggers setTaoOptions
   PetscFunctionReturn (0);
@@ -103,7 +130,11 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
                                                         // re-allocate memory for H
       if(H_ != nullptr) {ierr = MatDestroy (&H_);                                          CHKERRQ(ierr);}
       int np = n_misc->np_;
+      #ifdef SERIAL
+      ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+      #else
       ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+      #endif
       // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
       if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
            itctx_->optsettings_->lmvm_set_hessian) {

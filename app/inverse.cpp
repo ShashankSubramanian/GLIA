@@ -257,7 +257,13 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     //Create p_rec
-    ierr = VecCreateSeq (PETSC_COMM_WORLD, n_misc->np_, &p_rec);                            CHKERRQ (ierr);
+    #ifdef SERIAL
+        ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p_rec);                            CHKERRQ (ierr);
+    #else
+        ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
+        ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+    #endif
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);

@@ -3,7 +3,7 @@
 
 //#define POSITIVITY
 
-//#define SERIAL
+#define SERIAL
 
 #include <petsc.h>
 #include <stdlib.h>
@@ -126,7 +126,7 @@ struct TumorSettings {
     np(27),
     betap(1E-3),
     writeOutput(false),
-    verbosity(1),
+    verbosity(0),
     obs_threshold(0.0),
     diff_coeff_scale(1E-2),
     diff_coeff_scale_anisotropic(0.0),
@@ -205,17 +205,17 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.16)                            //Time step
-        , nt_(1)                                //Total number of time steps
+        , dt_ (0.01)                            //Time step
+        , nt_(16)                                //Total number of time steps
         , np_ (8)                               //Number of gaussians for bounding box
-        , k_ (0.0)                              //Isotropic diffusion coefficient
+        , k_ (0.1)                              //Isotropic diffusion coefficient
         , kf_(0.0)                              //Anisotropic diffusion coefficient
         , rho_ (8)                              //Reaction coefficient
         , p_scale_ (0.0)                        //Scaling factor for initial guess
         , p_scale_true_ (1.0)                   //Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     //Noise scale
         , beta_ (1e-3)                          //Regularization parameter
-        , writeOutput_ (1)                      //Print flag for paraview visualization
+        , writeOutput_ (0)                      //Print flag for paraview visualization
         , verbosity_ (1)                        //Print flag for optimization routines
         , k_gm_wm_ratio_ (1.0 / 10.0)           //gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 //glm to wm diffusion coeff ratio
