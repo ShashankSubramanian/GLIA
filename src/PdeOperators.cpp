@@ -211,13 +211,13 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
     // compute y = c(1-c) * \alpha
     ierr = VecGetArray (c_[i], &c_ptr);                          CHKERRQ (ierr);
     ierr = VecGetArray (p_[i], &p_ptr);                          CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->k_->temp_[0], &r_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->work_[0], &r_ptr);               CHKERRQ (ierr);
     for (int j = 0; j < n_misc_->n_local_; j++) {
       r_ptr[j] = c_ptr[j] * (1 - c_ptr[j]) * p_ptr[j];
     }
     ierr = VecRestoreArray (c_[i], &c_ptr);                      CHKERRQ (ierr);
     ierr = VecRestoreArray (p_[i], &p_ptr);                      CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->k_->temp_[0], &r_ptr);       CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->work_[0], &r_ptr);           CHKERRQ (ierr);
     // compute rhp_bar * c(1-c) * \alpha, where rho_bar = dR / dm
     // this function adds to q1, q2, q3, q4 vie AXPY, has to be called after the diff coeff function
     ierr = tumor_->rho_->applydRdm(
@@ -237,12 +237,12 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
   }
 
   // compute norm of q, additional information, not needed
-  std::stringstream s; PetscScalar norm_q = 0, tmp = 0;
-  if(q1 != nullptr) {ierr = VecNorm (q1, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
-  if(q2 != nullptr) {ierr = VecNorm (q2, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
-  if(q3 != nullptr) {ierr = VecNorm (q3, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
-  if(q4 != nullptr) {ierr = VecNorm (q4, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
-  s << " ||q||_2 = "<<norm_q;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  std::stringstream s; PetscScalar norm_q = 0, tmp1 = 0, tmp2 = 0, tmp3 = 0, tmp4 = 0;
+  if(q1 != nullptr) {ierr = VecNorm (q1, NORM_2, &tmp1); norm_q += tmp1;            CHKERRQ (ierr);}
+  if(q2 != nullptr) {ierr = VecNorm (q2, NORM_2, &tmp2); norm_q += tmp2;            CHKERRQ (ierr);}
+  if(q3 != nullptr) {ierr = VecNorm (q3, NORM_2, &tmp3); norm_q += tmp3;            CHKERRQ (ierr);}
+  if(q4 != nullptr) {ierr = VecNorm (q4, NORM_2, &tmp4); norm_q += tmp4;            CHKERRQ (ierr);}
+  s << " ||q||_2 = l2q_1 + l2q_2 + l2q_3 + l2q_4 = " << norm_q << " = " << tmp1 << " + " << tmp2 << " + " << tmp3 << " + " << tmp4;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
   self_exec_time += MPI_Wtime();
   accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
