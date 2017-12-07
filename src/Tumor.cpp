@@ -72,7 +72,7 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
       // phi_ = std::make_shared<Phi> (n_misc);
     }
     ierr = VecCopy (p, p_);                                         CHKERRQ (ierr);
-    // ierr = VecCopy (p, p_true_);                                  CHKERRQ (ierr);
+    ierr = VecCopy (p, p_true_);                                  CHKERRQ (ierr);
 
     // set new values
     ierr = k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, mat_prop_, n_misc);

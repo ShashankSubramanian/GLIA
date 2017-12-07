@@ -236,6 +236,14 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
     if (i == 0) integration_weight *= 0.5;
   }
 
+  // compute norm of q, additional information, not needed
+  std::stringstream s; PetscScalar norm_q = 0, tmp = 0;
+  if(q1 != nullptr) {ierr = VecNorm (q1, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
+  if(q2 != nullptr) {ierr = VecNorm (q2, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
+  if(q3 != nullptr) {ierr = VecNorm (q3, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
+  if(q4 != nullptr) {ierr = VecNorm (q4, NORM_2, &tmp); norm_q=+tmp;              CHKERRQ (ierr);}
+  s << " ||q||_2 = "<<norm_q;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+
   self_exec_time += MPI_Wtime();
   accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
   PetscFunctionReturn (0);

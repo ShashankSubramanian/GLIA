@@ -401,9 +401,11 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     ierr = VecScale (dJ, n_misc_->beta_);                        CHKERRQ (ierr);
     ierr = VecAXPY (dJ, -1.0, ptemp_);                           CHKERRQ (ierr);
 
-    std::stringstream s; PetscScalar dJ_val;
+    // additional information
+    std::stringstream s; PetscScalar dJ_val = 0, norm_alpha = 0;
     ierr = VecNorm (dJ, NORM_2, &dJ_val);                         CHKERRQ(ierr);
-    s <<   "dJ(p,m) = "<< std::setprecision(12) << dJ_val;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    ierr = VecNorm (tumor_->p_0_, NORM_2, &norm_alpha);           CHKERRQ(ierr);
+    s <<   "dJ(p,m) = "<< std::setprecision(12) << dJ_val << " ||a(0)||_2 = "<<norm_alpha;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     PetscFunctionReturn(0);
 }
 

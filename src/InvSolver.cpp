@@ -1306,10 +1306,11 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
 
 
     // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
+    ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
     if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
-      ierr = TaoGetLineSearch (tao, &linesearch);                                 CHKERRQ(ierr);
       ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
     }
+    ierr = TaoLineSearchSetOptionsPrefix(linesearch,"tumor_");                    CHKERRQ(ierr);
     std::stringstream s;
     tuMSGstd(" parameters (optimizer):");
     tuMSGstd(" tolerances (stopping conditions):");
