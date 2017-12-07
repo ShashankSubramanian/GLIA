@@ -190,7 +190,8 @@ PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     ierr = VecAXPY (temp_[3], 1.0, temp_[0]);                    CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
 
@@ -214,7 +215,8 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
     accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, t.data());
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn(0);
@@ -271,7 +273,9 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   }
 
   self_exec_time += MPI_Wtime();
-  accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
+  //accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings (t); e.stop ();
   PetscFunctionReturn(0);
 }
 

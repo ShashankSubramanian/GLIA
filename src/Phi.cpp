@@ -18,7 +18,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     }
 }
 
-PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) { 
+PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     int procid, nprocs;
@@ -94,7 +94,8 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
 
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn(0);
@@ -241,7 +242,8 @@ PetscErrorCode Phi::apply (Vec out, Vec p) {
     ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn(0);
@@ -270,7 +272,8 @@ PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
     // ierr = VecAssemblyEnd (pout);                                                                   CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);

@@ -58,7 +58,8 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     ierr = VecRestoreArray (c_[iter], &c_ptr);                   CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
@@ -102,7 +103,8 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     }
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
@@ -148,7 +150,8 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     ierr = VecRestoreArray (temp, &c_ptr);                       CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
@@ -177,7 +180,9 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     }
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t); e.stop ();
     PetscFunctionReturn (0);
 }
 
@@ -245,7 +250,9 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
   s << " ||q||_2 = l2q_1 + l2q_2 + l2q_3 + l2q_4 = " << norm_q << " = " << tmp1 << " + " << tmp2 << " + " << tmp3 << " + " << tmp4;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
   self_exec_time += MPI_Wtime();
-  accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
+  //accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings (t); e.stop ();
   PetscFunctionReturn (0);
 }
 
