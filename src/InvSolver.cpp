@@ -90,9 +90,9 @@ PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
   if(H_ != nullptr)   {ierr = MatDestroy (&H_);   CHKERRQ(ierr); H_   = nullptr; }
   int np = n_misc->np_;
   #ifdef SERIAL
-  ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+    ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
   #else
-  ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+    ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
   #endif
   // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
   if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
@@ -131,9 +131,9 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
       if(H_ != nullptr) {ierr = MatDestroy (&H_);                                          CHKERRQ(ierr);}
       int np = n_misc->np_;
       #ifdef SERIAL
-      ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+        ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
       #else
-      ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+        ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
       #endif
       // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
       if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&

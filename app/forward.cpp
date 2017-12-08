@@ -105,29 +105,28 @@ int main (int argc, char** argv) {
     #endif
 
 
-    for (int i = 0; i < 50; i++)
-        ierr = tumor->phi_->apply (c_0, tumor->p_true_);
- //    if (n_misc->writeOutput_)
- //        dataOut (c_0, n_misc, "forward_IC.nc");
- //    #ifdef POSITIVITY
- //        ierr = enforcePositivity (c_0, n_misc);
- //    #endif
- //    double max, min;
- //    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
- //    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
+    ierr = tumor->phi_->apply (c_0, tumor->p_true_);
+    if (n_misc->writeOutput_)
+        dataOut (c_0, n_misc, "forward_IC.nc");
+    #ifdef POSITIVITY
+        ierr = enforcePositivity (c_0, n_misc);
+    #endif
+    double max, min;
+    ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
- //    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
- //    PCOUT << "Forward solve begin" << std::endl;
+    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
+    PCOUT << "Forward solve begin" << std::endl;
 
-	// ierr = solver_interface->solveForward (c_t , c_0); 
+	ierr = solver_interface->solveForward (c_t , c_0); 
 
-	// if (n_misc->writeOutput_)
- //        dataOut (c_t, n_misc, "forward_data.nc");
- //    PCOUT << "Forward solve done" << std::endl;
- //    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
- //    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+	if (n_misc->writeOutput_)
+        dataOut (c_t, n_misc, "forward_data.nc");
+    PCOUT << "Forward solve done" << std::endl;
+    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
 
- //    PCOUT << "\nC fwd solve IC Max and Min : " << max << " " << min << std::endl;
+    PCOUT << "\nC fwd solve IC Max and Min : " << max << " " << min << std::endl;
      self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
     e1.addTimings (timers);

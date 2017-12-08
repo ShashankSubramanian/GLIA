@@ -198,138 +198,138 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
 }
 
 #ifdef SERIAL
-PetscErrorCode Phi::apply (Vec out, Vec p) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-phi-apply");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    PetscErrorCode Phi::apply (Vec out, Vec p) {
+        PetscFunctionBegin;
+        PetscErrorCode ierr = 0;
+        Event e ("tumor-phi-apply");
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
-    double *pg_ptr;
-    Vec dummy, pg;
-    ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);                                          
-    ierr = VecCopy (p, pg);         CHKERRQ (ierr);
-    ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
-    ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-    ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
+        double *pg_ptr;
+        Vec dummy, pg;
+        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);                                          
+        ierr = VecCopy (p, pg);         CHKERRQ (ierr);
+        ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
+        ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
+        ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
 
-    for (int i = 0; i < np_; i++) {
-        ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
+        for (int i = 0; i < np_; i++) {
+            ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
+        }
+        ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
+        ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
+        ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
+
+        self_exec_time += MPI_Wtime();
+        accumulateTimers (t, t, self_exec_time);
+        e.addTimings (t);
+        e.stop ();
+        PetscFunctionReturn(0);
     }
-    ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
-    ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
-    ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
 
-    self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
-    e.addTimings (t);
-    e.stop ();
-    PetscFunctionReturn(0);
-}
+    PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
+        PetscFunctionBegin;
+        PetscErrorCode ierr = 0;
+        Event e ("tumor-phi-applyT");
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
-PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-phi-applyT");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+        PetscScalar values[np_];
+        double *pout_ptr;
+        ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
+        Vec *v = &phi_vec_[0];
+        ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
+        for (int i = 0; i < np_; i++) {
+            pout_ptr[i] = values[i];
+        }
+        ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
 
-    PetscScalar values[np_];
-    double *pout_ptr;
-    ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
-    Vec *v = &phi_vec_[0];
-    ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
-    for (int i = 0; i < np_; i++) {
-        pout_ptr[i] = values[i];
+        self_exec_time += MPI_Wtime();
+        accumulateTimers (t, t, self_exec_time);
+        e.addTimings (t);
+        e.stop ();
+        PetscFunctionReturn (0);
     }
-    ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
-
-    self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
-    e.addTimings (t);
-    e.stop ();
-    PetscFunctionReturn (0);
-}
 
 #else
-PetscErrorCode Phi::apply (Vec out, Vec p) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-phi-apply");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    PetscErrorCode Phi::apply (Vec out, Vec p) {
+        PetscFunctionBegin;
+        PetscErrorCode ierr = 0;
+        Event e ("tumor-phi-apply");
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
-    double * pg_ptr;
-    Vec pg;
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);                            CHKERRQ (ierr);
-    ierr = VecSetFromOptions (pg);                                              CHKERRQ (ierr);
+        double * pg_ptr;
+        Vec pg;
+        ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);                            CHKERRQ (ierr);
+        ierr = VecSetFromOptions (pg);                                              CHKERRQ (ierr);
 
-    {
-        VecScatter scatter; /* scatter context */
-        IS from, to; /* index sets that define the scatter */
-        int idx_from[np_], idx_to[np_];
-        for (int i = 0; i < np_; i++) {
-            idx_from[i] = i;
-            idx_to[i] = i;
+        {
+            VecScatter scatter; /* scatter context */
+            IS from, to; /* index sets that define the scatter */
+            int idx_from[np_], idx_to[np_];
+            for (int i = 0; i < np_; i++) {
+                idx_from[i] = i;
+                idx_to[i] = i;
+            }
+            ierr = ISCreateGeneral (PETSC_COMM_SELF, np_, idx_from, PETSC_COPY_VALUES,  &from);         CHKERRQ (ierr);
+            ierr = ISCreateGeneral (PETSC_COMM_SELF, np_, idx_to, PETSC_COPY_VALUES, &to);              CHKERRQ (ierr);
+            ierr = VecScatterCreate (p, from, pg, to, &scatter);                                        CHKERRQ (ierr);
+            ierr = VecScatterBegin (scatter, p, pg, INSERT_VALUES, SCATTER_FORWARD);                    CHKERRQ (ierr);
+            ierr = VecScatterEnd (scatter, p, pg, INSERT_VALUES, SCATTER_FORWARD);                      CHKERRQ (ierr);
+            ierr = ISDestroy (&from);                                                                   CHKERRQ (ierr);
+            ierr = ISDestroy (&to);                                                                     CHKERRQ (ierr);
+            ierr = VecScatterDestroy (&scatter);                                                        CHKERRQ (ierr);
         }
-        ierr = ISCreateGeneral (PETSC_COMM_SELF, np_, idx_from, PETSC_COPY_VALUES,  &from);         CHKERRQ (ierr);
-        ierr = ISCreateGeneral (PETSC_COMM_SELF, np_, idx_to, PETSC_COPY_VALUES, &to);              CHKERRQ (ierr);
-        ierr = VecScatterCreate (p, from, pg, to, &scatter);                                        CHKERRQ (ierr);
-        ierr = VecScatterBegin (scatter, p, pg, INSERT_VALUES, SCATTER_FORWARD);                    CHKERRQ (ierr);
-        ierr = VecScatterEnd (scatter, p, pg, INSERT_VALUES, SCATTER_FORWARD);                      CHKERRQ (ierr);
-        ierr = ISDestroy (&from);                                                                   CHKERRQ (ierr);
-        ierr = ISDestroy (&to);                                                                     CHKERRQ (ierr);
-        ierr = VecScatterDestroy (&scatter);                                                        CHKERRQ (ierr);
+
+        Vec dummy;
+        ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
+        ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
+        ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
+
+        for (int i = 0; i < np_; i++) {
+            ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
+        }
+        ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
+        ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
+        ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
+        ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
+
+        self_exec_time += MPI_Wtime();
+        accumulateTimers (t, t, self_exec_time);
+        e.addTimings (t);
+        e.stop ();
+        PetscFunctionReturn(0);
     }
 
-    Vec dummy;
-    ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
-    ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-    ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
+    PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
+        PetscFunctionBegin;
+        PetscErrorCode ierr = 0;
+        Event e ("tumor-phi-applyT");
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
-    for (int i = 0; i < np_; i++) {
-        ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
+        PetscScalar values[np_];
+        int low, high;
+        double *pout_ptr;
+        ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
+        Vec *v = &phi_vec_[0];
+        ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
+        ierr = VecGetOwnershipRange (pout, &low, &high);                                                CHKERRQ (ierr);
+        for (int i = low; i < high; i++) {
+            pout_ptr[i - low] = values[i];
+            // ierr = VecSetValues (pout, 1, &i, &values[i], INSERT_VALUES);                               CHKERRQ (ierr);
+        }
+        ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
+        // ierr = VecAssemblyBegin (pout);                                                                 CHKERRQ (ierr);
+        // ierr = VecAssemblyEnd (pout);                                                                   CHKERRQ (ierr);
+
+        self_exec_time += MPI_Wtime();
+        accumulateTimers (t, t, self_exec_time);
+        e.addTimings (t);
+        e.stop ();
+        PetscFunctionReturn (0);
     }
-    ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
-    ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
-    ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
-    ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
-
-    self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
-    e.addTimings (t);
-    e.stop ();
-    PetscFunctionReturn(0);
-}
-
-PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-phi-applyT");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
-
-    PetscScalar values[np_];
-    int low, high;
-    double *pout_ptr;
-    ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
-    Vec *v = &phi_vec_[0];
-    ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
-    ierr = VecGetOwnershipRange (pout, &low, &high);                                                CHKERRQ (ierr);
-    for (int i = low; i < high; i++) {
-        pout_ptr[i - low] = values[i];
-        // ierr = VecSetValues (pout, 1, &i, &values[i], INSERT_VALUES);                               CHKERRQ (ierr);
-    }
-    ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
-    // ierr = VecAssemblyBegin (pout);                                                                 CHKERRQ (ierr);
-    // ierr = VecAssemblyEnd (pout);                                                                   CHKERRQ (ierr);
-
-    self_exec_time += MPI_Wtime();
-    accumulateTimers (t, t, self_exec_time);
-    e.addTimings (t);
-    e.stop ();
-    PetscFunctionReturn (0);
-}
 #endif
 
 int isInLocalProc (int64_t X, int64_t Y, int64_t Z, std::shared_ptr<NMisc> n_misc) {   //Check if global index (X, Y, Z) is inside the local proc

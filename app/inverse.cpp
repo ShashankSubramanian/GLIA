@@ -82,11 +82,9 @@ int main (int argc, char** argv) {
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
-    // //Solve interpolation
+    //Solve interpolation
     // std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
-
-    // exit (1);
 
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};

@@ -207,9 +207,9 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 
     double *timer = NULL;   //Used for calling accfft routines
 
-    accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, timer);
+    accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, t.data());
     ierr = applyK (temp_[4], temp_[5], temp_[6]);
-    accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, timer);
+    accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, t.data());
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (t, t, self_exec_time);
