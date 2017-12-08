@@ -10,9 +10,9 @@ class DiffCoef {
 	public:
 		DiffCoef (std::shared_ptr<NMisc> n_misc);
 
-		double k_scale_;
-		double k_gm_wm_ratio_;
-		double k_glm_wm_ratio_;
+		double k_scale_;         // (= k_f * k_wm),    k_wm  := 1 (fixed)      INVERSION for k_f, k_gm, k_glm
+		double k_gm_wm_ratio_;   // (= k_f * k_gm),    k_gm  := ratio_gm_wm
+		double k_glm_wm_ratio_;  // (= k_f * k_glm),   k_glm := ratio_glm_wm
 		int smooth_flag_;
 
 		Vec kxx_;
