@@ -11,7 +11,7 @@ class DerivativeOperators {
 				: pde_operators_ (pde_operators), n_misc_ (n_misc), tumor_ (tumor) {
 					VecDuplicate (tumor_->c_0_, &temp_);
 					VecDuplicate (tumor_->p_, &ptemp_);
-                    VecDuplicate (tumor_->p_, &p_current_);
+          VecDuplicate (tumor_->p_, &p_current_);
 				}
 
 		std::shared_ptr<PdeOperators> pde_operators_;
@@ -20,7 +20,7 @@ class DerivativeOperators {
 
 		Vec temp_;
 		Vec ptemp_;
-        Vec p_current_; //Current solution vector in newton iteration
+    Vec p_current_; //Current solution vector in newton iteration
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
@@ -36,7 +36,7 @@ class DerivativeOperators {
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
 			VecDestroy (&ptemp_);
-            VecDestroy (&p_current_);
+      VecDestroy (&p_current_);
 		}
 };
 
@@ -53,9 +53,27 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x);
-
 		~DerivativeOperatorsRD () {}
+
+		//Vec work_np_;  // vector of size np to compute objective and part of gradient related to p
 };
+
+class DerivativeOperatorsRDInvertK : public DerivativeOperators {
+	public :
+		DerivativeOperatorsRDInvertK (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
+				std::shared_ptr<Tumor> tumor)
+			 : DerivativeOperatorsRDInvertK (pde_operators, n_misc, tumor) {
+				 tuMSGstd (" ----- Setting reaction-diffusion derivative operators with inversion for diffusivity --------");
+			 }
+
+		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
+		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateHessian (Vec y, Vec x);
+		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x);
+		~DerivativeOperatorsRDInvertK () {}
+};
+
 
 
 class DerivativeOperatorsPos : public DerivativeOperators {
@@ -145,41 +163,6 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
         // / number of components in objective function
 		int nc_;
 };
-//
-// class DerivativeOperatorsRDMovingAtlas : public DerivativeOperators {
-// 	public :
-// 		DerivativeOperatorsRDMovingAtlas (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
-// 				std::shared_ptr<Tumor> tumor) : DerivativeOperators (pde_operators, n_misc, tumor) {}
-//
-//         PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
-//         PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
-//         PetscErrorCode evaluateHessian (Vec y, Vec x);
-//
-//         PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-//         	mR_wm_ = wm; mR_gm_ = gm; mR_csf_ = csf; mR_glm_ = glm; mR_bg_ = bg;
-//             nc_ = (wm != nullptr) + (gm != nullptr) + (csf != nullptr) + (glm != nullptr);
-//             PetscFunctionReturn(0);
-//         }
-//         PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-//         	mA1_wm_ = wm; mA1_gm_ = gm; mA1_csf_ = csf; mA1_glm_ = glm; mA1_bg_ = bg;
-//             PetscFunctionReturn(0);
-//         }
-//         PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-//             xi_wm_ = wm; xi_gm_ = gm; xi_csf_ = csf; xi_glm_ = glm; xi_bg_ = bg;
-//             PetscFunctionReturn(0);
-//         }
-//
-//         ~DerivativeOperatorsRDMovingAtlas () {}
-//
-// 	private :
-// 		/// @brief reference image (= patient brain) for brain difference measure || mT(1-c(1) - mR)||^2 (memory from outsie;)
-// 		Vec mR_wm_, mR_gm_, mR_csf_, mR_glm_, mR_bg_;
-// 		/// @brief template image (= healthy patient) for brain difference measure || mT(1-c(1) - mR)||^2 (memory from outsie;)
-// 		Vec mA1_wm_, mA1_gm_, mA1_csf_, mA1_glm_, mA1_bg_;
-// 		/// @brief difference image for || mT(1-c(1) - mR)||^2 (memory from outsie;)
-// 		Vec xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_;
-//         // / number of components in objective function
-// 		int nc_;
-// };
+
 
 #endif

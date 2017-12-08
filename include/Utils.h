@@ -100,6 +100,7 @@ struct TumorSettings {
     int    time_steps;
     double time_horizon;
     int    np;
+    int    nk;
     double betap;
     bool   writeOutput;
     int    verbosity;
@@ -116,6 +117,7 @@ struct TumorSettings {
     double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     double phi_sigma;               /// @brief standard deviation of Gaussians
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
+    bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
 
     TumorSettings () :
     tumor_model(1),
@@ -123,6 +125,7 @@ struct TumorSettings {
     time_steps(16),
     time_horizon(0.16),
     np(27),
+    nk(2),
     betap(1E-3),
     writeOutput(false),
     verbosity(1),
@@ -138,7 +141,8 @@ struct TumorSettings {
     phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
     phi_spacing_factor (1.5),
     phi_sigma (PETSC_PI/10),
-    phi_selection_mode_bbox(1)
+    phi_selection_mode_bbox(1),
+    diffusivity_inversion(false)
     {}
 };
 
@@ -204,32 +208,35 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.16)                            //Time step
-        , nt_(1)                                //Total number of time steps
-        , np_ (8)                               //Number of gaussians for bounding box
-        , k_ (0.0)                              //Isotropic diffusion coefficient
-        , kf_(0.0)                              //Anisotropic diffusion coefficient
-        , rho_ (8)                              //Reaction coefficient
-        , p_scale_ (0.0)                        //Scaling factor for initial guess
-        , p_scale_true_ (1.0)                   //Scaling factor for synthetic data generation
-        , noise_scale_(0.0)                     //Noise scale
-        , beta_ (1e-3)                          //Regularization parameter
-        , writeOutput_ (1)                      //Print flag for paraview visualization
-        , verbosity_ (1)                        //Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 10.0)           //gm to wm diffusion coeff ratio
-        , k_glm_wm_ratio_ (0.0)                 //glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (1.0 / 5.0)            //gm to wm reaction coeff ratio
-        , r_glm_wm_ratio_ (1.0)                 //glm to wm diffusion coeff ratio
-        , phi_sigma_ (PETSC_PI / 10)            //Gaussian standard deviation for bounding box
-        , phi_spacing_factor_ (1.5)             //Gaussian spacing for bounding box
-        , obs_threshold_ (-1.0)                 //Observation threshold
+        , dt_ (0.16)                            // Time step
+        , nt_(1)                                // Total number of time steps
+        , np_ (8)                               // Number of gaussians for bounding box
+        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
+        , k_ (0.0)                              // Isotropic diffusion coefficient
+        , kf_(0.0)                              // Anisotropic diffusion coefficient
+        , rho_ (8)                              // Reaction coefficient
+        , p_scale_ (0.0)                        // Scaling factor for initial guess
+        , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
+        , noise_scale_(0.0)                     // Noise scale
+        , beta_ (1e-3)                          // Regularization parameter
+        , writeOutput_ (1)                      // Print flag for paraview visualization
+        , verbosity_ (1)                        // Print flag for optimization routines
+        , k_gm_wm_ratio_ (1.0 / 10.0)           // gm to wm diffusion coeff ratio
+        , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
+        , r_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm reaction coeff ratio
+        , r_glm_wm_ratio_ (1.0)                 // glm to wm diffusion coeff ratio
+        , phi_sigma_ (PETSC_PI / 10)            // Gaussian standard deviation for bounding box
+        , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
+        , obs_threshold_ (-1.0)                 // Observation threshold
         , statistics_()                         //
-        , exp_shift_ (10.0)                     //Parameter for positivity shift
-        , penalty_ (1E-4)                       //Parameter for positivity objective function
-        , data_threshold_ (0.1)                 //Data threshold to set custom gaussians
-        , gaussian_vol_frac_ (0.0)              //Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (0)                     //Flag to set bounding box for gaussians
-        , testcase_ (testcase)                  //Testcases
+        , exp_shift_ (10.0)                     // Parameter for positivity shift
+        , penalty_ (1E-4)                       // Parameter for positivity objective function
+        , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
+        , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
+        , bounding_box_ (0)                     // Flag to set bounding box for gaussians
+        , testcase_ (testcase)                  // Testcases
+        , nk_fixed_ (false)                     // if true, nk cannot be changed anymore
+        , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
             time_horizon_ = nt_ * dt_;
@@ -279,6 +286,7 @@ class NMisc {
         double h_[3];
 
         int np_;
+        int nk_;
         double time_horizon_;
         double dt_;
         int nt_;
@@ -310,6 +318,9 @@ class NMisc {
         double gaussian_vol_frac_;
 
         double obs_threshold_;
+
+        bool nk_fixed_;
+        bool diffusivity_inversion_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;

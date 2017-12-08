@@ -54,5 +54,4 @@ class PdeOperatorsRD : public PdeOperators {
 		virtual ~PdeOperatorsRD ();
 };
 
-
 #endif
