@@ -39,6 +39,22 @@ PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode updateIsotropicCoefficients(double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+
+  /*       k_1 = dk_dm_wm  = k_scale * 1;                     WM              */
+  /*       k_2 = dk_dm_gm  = k_scale * k_gm_wm_ratio_;        GM              */
+  /*       k_3 = dk_dm_glm = k_scale * k_glm_wm_ratio_;       GLM             */
+  // compute new ratios
+  k_scale_        = k1;
+  k_gm_wm_ratio_  = k2 / k1;
+  k_glm_wm_ratio_ = k3 / k1;
+  // and set the values
+  setValues(k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, n_misc)
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;

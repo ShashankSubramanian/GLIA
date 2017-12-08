@@ -93,7 +93,7 @@ class InvSolver {
         std::shared_ptr<OptimizerFeedback> getOptFeedback () {return optfeedback_;}
         std::shared_ptr<CtxInv> getInverseSolverContext() {return itctx_;}
         bool isInitialized () {return initialized_;}
-        Vec getPrec () {return prec_;}
+        Vec getPrec () {return xrec_;}
         ~InvSolver ();
 
     private:
@@ -106,7 +106,7 @@ class InvSolver {
         /// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
         Vec data_gradeval_;
         /// @brief holds a copy of the reconstructed p vector
-        Vec prec_;
+        Vec xrec_;
         /// @brief petsc tao object, thet solves the inverse problem
         Tao tao_;
         /// @brief petsc matrix object for hessian matrix

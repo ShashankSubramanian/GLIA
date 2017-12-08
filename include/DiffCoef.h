@@ -6,6 +6,17 @@
 #include <mpi.h>
 #include <omp.h>
 
+
+/** Diffusion koefficient is defined as follows:
+ *
+ *  \mat{k} = \sum_i k_i * m_i * I + k_a * anisotropic_tensor
+  * where k_i is defined below:
+ *
+ *  inversion for diffusivity: we invert for k_1, k_2, k_3 with
+ *       k_1 = dk_dm_wm  = k_scale * 1;                     //WM
+ *       k_2 = dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
+ *       k_3 = dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
+ */
 class DiffCoef {
 	public:
 		DiffCoef (std::shared_ptr<NMisc> n_misc);
@@ -34,6 +45,8 @@ class DiffCoef {
 		double *temp_accfft_;
 
 		PetscErrorCode setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		// needs to be called when we invert for diffusivity (in every newton iteration, calls setValues())
+		PetscErrorCode updateIsotropicCoefficients(double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setWorkVecs(Vec * workvecs);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);

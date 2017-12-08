@@ -237,7 +237,7 @@ class NMisc {
         , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
-        , nk_fixed_ (false)                     // if true, nk cannot be changed anymore
+        , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 

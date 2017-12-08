@@ -18,7 +18,7 @@ itctx_() {
     PetscErrorCode ierr = 0;
     tao_  = nullptr;
     H_    = nullptr;
-    prec_ = nullptr;
+    xrec_ = nullptr;
     if( derivative_operators != nullptr && n_misc != nullptr && tumor != nullptr) {
         initialize (derivative_operators, n_misc, tumor);
     }
@@ -37,52 +37,41 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     itctx_->tumor_ = tumor;
     itctx_->optsettings_ = this->optsettings_;
     itctx_->optfeedback_ = this->optfeedback_;
-    // allocate memory for prec_
-    ierr = VecDuplicate (tumor->p_, &prec_);                                             CHKERRQ(ierr);
-    ierr = VecSet (prec_, 0.0);                                                          CHKERRQ(ierr);
-    // set up routine to compute the hessian matrix vector product
-    if (H_ == nullptr) {
-      int np = n_misc->np_;
-      #ifdef SERIAL
-        ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);                      CHKERRQ(ierr);
-      #else
-        ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
-      #endif
-      // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
-      if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
-           itctx_->optsettings_->lmvm_set_hessian) {
-        ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
-        ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
-      // if tao's nls (gauss-newton) method is used, define hessian matvec
-      } else {
-        ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);   CHKERRQ(ierr);
-        ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
-      }
-    }
-    // create TAO solver object
-    if( tao_ == nullptr) {
-      #ifdef SERIAL
-        ierr = TaoCreate (PETSC_COMM_SELF, &tao_);
-      #else
-        ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
-      #endif
-        tao_is_reset_ = true;  // triggers setTaoOptions
-    }
+
+    // allocate memory for H, x_rec and TAO
+    ierr = allocateTaoObjects(); CHKERRQ(ierr);
+
     initialized_ = true;
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode InvSolver::allocateTaoObjects(bool initialize_tao = true) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  if(tao_ != nullptr) {ierr = TaoDestroy (&tao_); CHKERRQ(ierr); tao_ = nullptr; }
-  if(H_ != nullptr)   {ierr = MatDestroy (&H_);   CHKERRQ(ierr); H_   = nullptr; }
-  int np = n_misc->np_;
+  int np = itctx_->n_misc_->np_;
+  int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
   #ifdef SERIAL
-    ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+    // allocate memory for xrec_
+      ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                         CHKERRQ(ierr);
+    // set up routine to compute the hessian matrix vector product
+    if (H_ == nullptr) {
+      ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);}
+    // create TAO solver object
+    if( tao_ == nullptr && initialize_tao) {
+      ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions}
   #else
-    ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
+    ierr = TU_assert(!itctx_->n_misc_->diffusivity_inversion_, "Inversion for diffusifity is only implemented for SERIAL p"); CHKERRQ(ierr);
+    // allocate memory for xrec_
+    ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                           CHKERRQ(ierr);
+    // set up routine to compute the hessian matrix vector product
+    if (H_ == nullptr) {
+      ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);}
+    // create TAO solver object
+    if( tao_ == nullptr && initialize_tao) {
+      ierr = TaoCreate (MPI_COMM_WORLD, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions }
   #endif
+  ierr = VecSet (xrec_, 0.0);                                                   CHKERRQ(ierr);
+
   // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
   if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
        itctx_->optsettings_->lmvm_set_hessian) {
@@ -90,18 +79,21 @@ PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
   // if tao's nls (gauss-newton) method is used, define hessian matvec
   } else {
-    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);   CHKERRQ(ierr);
-    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
+    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);CHKERRQ(ierr);
+    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                        CHKERRQ(ierr);
   }
-  // create TAO solver object
-  if( tao_ == nullptr) {
-      #ifdef SERIAL
-        ierr = TaoCreate (PETSC_COMM_SELF, &tao_);
-      #else
-        ierr = TaoCreate (MPI_COMM_WORLD, &tao_);
-      #endif
-  }
-  tao_is_reset_ = true;  // triggers setTaoOptions
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode InvSolver::resetTao(std::shared_ptr<NMisc> n_misc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  if(tao_  != nullptr) {ierr = TaoDestroy (&tao_);  CHKERRQ(ierr); tao_  = nullptr;}
+  if(H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
+  if(xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
+
+  // allocate memory for H, x_rec and TAO
+  ierr = allocateTaoObjects(); CHKERRQ(ierr);
   PetscFunctionReturn (0);
 }
 
@@ -112,30 +104,11 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
     itctx_->n_misc_ = n_misc;
     itctx_->tumor_ = tumor;
     // re-allocate memory
-    if (npchanged){                                      // re-allocate memory for prec_
-      if(prec_ != nullptr) {ierr = VecDestroy (&prec_);                                    CHKERRQ(ierr);}
-      ierr = VecDuplicate (tumor->p_, &prec_);                                             CHKERRQ(ierr);
-      ierr = VecSet (prec_, 0.0);                                                          CHKERRQ(ierr);
-                                                        // re-allocate memory for H
-      if(H_ != nullptr) {ierr = MatDestroy (&H_);                                          CHKERRQ(ierr);}
-      int np = n_misc->np_;
-      #ifdef SERIAL
-        ierr = MatCreateShell (PETSC_COMM_SELF, np, np, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
-      #else
-        ierr = MatCreateShell (MPI_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, np, np, (void*) itctx_.get(), &H_);   CHKERRQ(ierr);
-      #endif
-      // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
-      if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
-           itctx_->optsettings_->lmvm_set_hessian) {
-        ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
-        ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
-      // if tao's nls (gauss-newton) method is used, define hessian matvec
-      } else {
-        ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);   CHKERRQ(ierr);
-        ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                           CHKERRQ(ierr);
-      }
+    if (npchanged){                              // re-allocate memory for xrec_
+      // allocate memory for H, x_rec and TAO
+      ierr = allocateTaoObjects(false); CHKERRQ(ierr);
     }
-    tao_is_reset_ = true; // triggers setTaoOptions
+    tao_is_reset_ = true;                        // triggers setTaoOptions
     PetscFunctionReturn (0);
 }
 
@@ -146,7 +119,7 @@ PetscErrorCode InvSolver::solve () {
     TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
     TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
     TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
-    TU_assert (prec_ != nullptr, "InvSolver:solve (): requires non-null p_rec vector to be set");
+    TU_assert (xrec_ != nullptr, "InvSolver:solve (): requires non-null p_rec vector to be set");
     TU_assert (optsettings_ != nullptr, "InvSolver:solve (): requires non-null optimizer settings to be passed.");
     /* === observed data === */
     // apply observer on ground truth, store observed data in d
@@ -247,7 +220,7 @@ PetscErrorCode InvSolver::solve () {
 
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                          CHKERRQ(ierr);
-	ierr = VecCopy (p, prec_);                                                              CHKERRQ(ierr);
+	ierr = VecCopy (p, xrec_);                                                              CHKERRQ(ierr);
 	/* Get information on termination */
 	TaoConvergedReason reason;
 	TaoGetConvergedReason (tao_, &reason);
@@ -277,7 +250,7 @@ PetscErrorCode InvSolver::solve () {
 
 InvSolver::~InvSolver () {
     PetscErrorCode ierr = 0;
-    ierr = VecDestroy (&prec_);
+    ierr = VecDestroy (&xrec_);
     ierr = TaoDestroy (&tao_);
     ierr = MatDestroy (&H_);
 }
@@ -686,6 +659,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     int verbosity;
     std::stringstream ss, sc;
     Vec x = nullptr, g = nullptr;
+    Vec tao_x;
     TaoLineSearch ls = nullptr;
     TaoLineSearchConvergedReason ls_flag;
 
@@ -717,6 +691,19 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
+
+    // update the isotropic part of the diffusion coefficient with the current inversion variables
+    ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
+    PetscScalar k1, k2, k3;
+    if(ctx->n_misc_->diffusivity_inversion_) {
+      #ifndef SERIAL
+        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p."); CHKERRQ(ierr);
+      #endif
+       k1 = tao_x[ctx->n_misc_->np_];
+       k2 = (ctx->n_misc_ > 1) ? tao_x[ctx->n_misc_->np_ + 1] : 0;
+       k3 = (ctx->n_misc_ > 2) ? tao_x[ctx->n_misc_->np_ + 2] : 0;
+       ierr =ctx->tumor_->k_->updateIsotropicCoefficients(k1, k2, k3, ctx->tumor_->mat_prop_, ctx->n_misc_); CHKERRQ(ierr);
+    }
 
     // update/set reference gradient (with p = initial-guess)
     if (ctx->update_reference_gradient) {

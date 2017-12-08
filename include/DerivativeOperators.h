@@ -58,23 +58,6 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		//Vec work_np_;  // vector of size np to compute objective and part of gradient related to p
 };
 
-class DerivativeOperatorsRDInvertK : public DerivativeOperators {
-	public :
-		DerivativeOperatorsRDInvertK (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
-				std::shared_ptr<Tumor> tumor)
-			 : DerivativeOperatorsRDInvertK (pde_operators, n_misc, tumor) {
-				 tuMSGstd (" ----- Setting reaction-diffusion derivative operators with inversion for diffusivity --------");
-			 }
-
-		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
-		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
-		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
-		PetscErrorCode evaluateHessian (Vec y, Vec x);
-		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x);
-		~DerivativeOperatorsRDInvertK () {}
-};
-
-
 
 class DerivativeOperatorsPos : public DerivativeOperators {
 	public :
