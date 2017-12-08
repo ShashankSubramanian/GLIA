@@ -15,6 +15,15 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
     ierr = VecDuplicate (c_t_, &p_0_);
     ierr = VecDuplicate (c_0_, &p_t_);
 
+    // allocating memory for work vectors
+    work_ = new Vec[12];
+    for (int i = 0; i < 12; i++) {
+        ierr = VecDuplicate (c_t_, &work_[i]);
+        ierr = VecSet (work_[i] , 0);
+    }
+    // setting work vecs for diffusion coefficient (first 8)
+    k_->setWorkVecs (work_);
+
     ierr = VecSet (c_t_, 0);
     ierr = VecSet (c_0_, 0);
     ierr = VecSet (p_0_, 0);
@@ -63,7 +72,7 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
       // phi_ = std::make_shared<Phi> (n_misc);
     }
     ierr = VecCopy (p, p_);                                         CHKERRQ (ierr);
-    // ierr = VecCopy (p, p_true_);                                  CHKERRQ (ierr);
+    ierr = VecCopy (p, p_true_);                                    CHKERRQ (ierr);
 
     // set new values
     ierr = k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, mat_prop_, n_misc);
@@ -104,4 +113,9 @@ Tumor::~Tumor () {
     ierr = VecDestroy (&p_0_);
     ierr = VecDestroy (&p_);
     ierr = VecDestroy (&p_true_);
+
+    for (int i = 0; i < 11; i++) {
+        ierr = VecDestroy (&work_[i]);
+    }
+    delete[] work_;
 }

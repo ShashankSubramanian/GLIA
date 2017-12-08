@@ -65,6 +65,16 @@ struct CtxInv {
     }
 };
 
+
+
+
+/** Biophysical inversion solver:
+ *  (1) inversion for p such that T( \Phi(p) ) = c(1)_target
+ *  (2) inversion for diffusivity: we invert for k_1, k_2, k_3 with
+ *       k_1 = dk_dm_wm  = k_scale * 1;                     //WM
+ *       k_2 = dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
+ *       k_3 = dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
+ */
 class InvSolver {
     public :
         InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});

@@ -33,14 +33,14 @@ class TumorSolverInterface {
 		PetscErrorCode setInitialGuess(double d);
 		PetscErrorCode resetTaoSolver();
 
-		PetscErrorCode setDistMeassureReferenceImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-      		return derivative_operators_->setDistMeassureReferenceImage(wm, gm, csf, glm, bg);
+		PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+      		return derivative_operators_->setDistMeassureSimulationGeoImages(wm, gm, csf, glm, bg);
 		}
-		PetscErrorCode setDistMeassureTemplateImage(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-	    	return derivative_operators_->setDistMeassureTemplateImage(wm, gm, csf, glm, bg);
+		PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+	    	return derivative_operators_->setDistMeassureTargetDataImages(wm, gm, csf, glm, bg);
 		}
-		virtual PetscErrorCode setGeometricCouplingAdjoint(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
-      		return derivative_operators_->setGeometricCouplingAdjoint(wm, gm, csf, glm, bg);
+		PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
+      		return derivative_operators_->setDistMeassureDiffImages(wm, gm, csf, glm, bg);
 		}
 		/** @brief updates the reaction and diffusion coefficients depending on
 		 *         the probability maps for GRAY MATTER, WHITE MATTER and CSF.
@@ -51,6 +51,7 @@ class TumorSolverInterface {
 		/// @brief evaluates gradient for given control variable p and data
 		PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
 		/// @brief true if TumorSolverInterface is initialized and ready to use
+
 		bool isInitialized () {
 			return initialized_;
 		}
@@ -63,6 +64,15 @@ class TumorSolverInterface {
 		void setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {inv_solver_->setOptFeedback(optfeed);}
 		// defines whether or not we have to update the reference gradeient for the inverse solve
 		void updateReferenceGradient (bool b) {if (inv_solver_ != nullptr) inv_solver_->updateReferenceGradient(b);}
+		/** @brief computes effect of varying/moving material properties, i.e.,
+		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
+		 */
+		PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) {
+			PetscErrorCode ierr;
+			if (pde_operators_ != nullptr) {
+			  ierr = pde_operators_->computeTumorContributionRegistration(q1, q2, q3, q4); CHKERRQ(ierr);}
+			PetscFunctionReturn(0);
+		}
 		//  ---------  getter functions -------------
 		/// @brief returns the tumor shared ptr
 		std::shared_ptr<Tumor> getTumor () {

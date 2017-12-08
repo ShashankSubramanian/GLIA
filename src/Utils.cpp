@@ -277,33 +277,63 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 	return 0;
 }
 
+/// @brief computes difference diff = x - y
+PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
+	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
+	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
+	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg) {
 
-PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
-	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
-	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
-	Vec mT_wm, Vec mT_gm, Vec mT_csf, Vec mT_glm, Vec mT_bg) {
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
 	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
-	// on input, xi is mA0(1-c(1))
-	// \xi = mT - mR  (as opposed to mismatch ||mR - mT||)
-	if(mR_wm != nullptr) {
-		ierr = VecAXPY (xi_wm, -1.0, mT_wm);                         CHKERRQ (ierr);
+	// diff = x - y
+	if(x_wm != nullptr) {
+		ierr = VecWAXPY (diff_wm, -1.0, y_wm, x_wm);                 CHKERRQ (ierr);
+		ierr = VecDot (diff_wm, diff_wm, &mis_wm);                   CHKERRQ (ierr);
+	}
+	if(x_gm != nullptr) {
+		ierr = VecWAXPY (diff_gm, -1.0, y_gm, x_gm);                 CHKERRQ (ierr);
+		ierr = VecDot (diff_gm, diff_gm, &mis_gm);                   CHKERRQ (ierr);
+	}
+	if(x_csf != nullptr) {
+		ierr = VecWAXPY (diff_csf, -1.0, y_csf, x_csf);              CHKERRQ (ierr);
+		ierr = VecDot (diff_csf, diff_csf, &mis_csf);                CHKERRQ (ierr);
+	}
+	if(x_glm != nullptr) {
+		ierr = VecWAXPY (diff_glm, -1.0, y_glm, x_glm);              CHKERRQ (ierr);
+		ierr = VecDot (diff_glm, diff_glm, &mis_glm);                CHKERRQ (ierr);
+	}
+	*sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
+	//PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
+	PetscFunctionReturn(0);
+	}
+
+	/** @brief computes difference xi = m_data - m_geo
+	 *  - function assumes that on input, xi = m_geo * (1-c(1))   */
+PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
+	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
+	Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
+	Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg) {
+	PetscErrorCode ierr;
+	PetscFunctionBegin;
+	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+	if(m_geo_wm != nullptr) {
+		ierr = VecAXPY (xi_wm, -1.0, m_data_wm);                     CHKERRQ (ierr);
 		ierr = VecScale (xi_wm, -1.0);                               CHKERRQ (ierr);
 		ierr = VecDot (xi_wm, xi_wm, &mis_wm);                       CHKERRQ (ierr);
 	}
-	if(mR_gm != nullptr) {
-		ierr = VecAXPY (xi_gm, -1.0, mT_gm);                         CHKERRQ (ierr);
+	if(m_geo_gm != nullptr) {
+		ierr = VecAXPY (xi_gm, -1.0, m_data_gm);                     CHKERRQ (ierr);
 		ierr = VecScale (xi_gm, -1.0);                               CHKERRQ (ierr);
 		ierr = VecDot (xi_gm, xi_gm, &mis_gm);                       CHKERRQ (ierr);
 	}
-	if(mR_csf != nullptr) {
-		ierr = VecAXPY (xi_csf, -1.0, mT_csf);                       CHKERRQ (ierr);
+	if(m_geo_csf != nullptr) {
+		ierr = VecAXPY (xi_csf, -1.0, m_data_csf);                   CHKERRQ (ierr);
 		ierr = VecScale (xi_csf, -1.0);                              CHKERRQ (ierr);
 		ierr = VecDot (xi_csf, xi_csf, &mis_csf);                    CHKERRQ (ierr);
 	}
-	if(mR_glm != nullptr) {
-		ierr = VecAXPY (xi_glm, -1.0, mT_glm);                       CHKERRQ (ierr);
+	if(m_geo_glm != nullptr) {
+		ierr = VecAXPY (xi_glm, -1.0, m_data_glm);                   CHKERRQ (ierr);
 		ierr = VecScale (xi_glm, -1.0);                              CHKERRQ (ierr);
 		ierr = VecDot (xi_glm, xi_glm, &mis_glm);                    CHKERRQ (ierr);
 	}
@@ -312,45 +342,46 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	PetscFunctionReturn(0);
 }
 
+/// @brief computes geometric tumor coupling m1 = m0(1-c(1))
 PetscErrorCode geometricCoupling(
-	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
-	Vec mR_wm, Vec mR_gm, Vec mR_csf, Vec mR_glm, Vec mR_bg,
+	Vec m1_wm, Vec m1_gm, Vec m1_csf, Vec m1_glm, Vec m1_bg,
+	Vec m0_wm, Vec m0_gm, Vec m0_csf, Vec m0_glm, Vec m0_bg,
 	Vec c1, std::shared_ptr<NMisc> nmisc) {
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
 	PetscScalar *ptr_wm, *ptr_gm, *ptr_csf, *ptr_glm, *ptr_bg, *ptr_tu;
-	PetscScalar *ptr_xiwm, *ptr_xigm, *ptr_xicsf, *ptr_xiglm, *ptr_xibg;
+	PetscScalar *ptr_m1_wm, *ptr_m1_gm, *ptr_m1_csf, *ptr_m1_glm, *ptr_m1_bg;
 	PetscScalar sum = 0;
-  if(mR_wm  != nullptr) {ierr = VecGetArray(mR_wm,  &ptr_wm);     CHKERRQ(ierr);}
-	if(mR_gm  != nullptr) {ierr = VecGetArray(mR_gm,  &ptr_gm);     CHKERRQ(ierr);}
-	if(mR_csf != nullptr) {ierr = VecGetArray(mR_csf, &ptr_csf);    CHKERRQ(ierr);}
-	if(mR_glm != nullptr) {ierr = VecGetArray(mR_glm, &ptr_glm);    CHKERRQ(ierr);}
-	if(mR_bg  != nullptr) {ierr = VecGetArray(mR_bg,  &ptr_bg);     CHKERRQ(ierr);}
-	if(xi_wm  != nullptr) {ierr = VecGetArray(xi_wm,  &ptr_xiwm);   CHKERRQ(ierr);}
-	if(xi_gm  != nullptr) {ierr = VecGetArray(xi_gm,  &ptr_xigm);   CHKERRQ(ierr);}
-	if(xi_csf != nullptr) {ierr = VecGetArray(xi_csf, &ptr_xicsf);  CHKERRQ(ierr);}
-	if(xi_glm != nullptr) {ierr = VecGetArray(xi_glm, &ptr_xiglm);  CHKERRQ(ierr);}
-	if(xi_bg  != nullptr) {ierr = VecGetArray(xi_bg,  &ptr_xibg);   CHKERRQ(ierr);}
+  if(m0_wm  != nullptr) {ierr = VecGetArray(m0_wm,  &ptr_wm);     CHKERRQ(ierr);}
+	if(m0_gm  != nullptr) {ierr = VecGetArray(m0_gm,  &ptr_gm);     CHKERRQ(ierr);}
+	if(m0_csf != nullptr) {ierr = VecGetArray(m0_csf, &ptr_csf);    CHKERRQ(ierr);}
+	if(m0_glm != nullptr) {ierr = VecGetArray(m0_glm, &ptr_glm);    CHKERRQ(ierr);}
+	if(m0_bg  != nullptr) {ierr = VecGetArray(m0_bg,  &ptr_bg);     CHKERRQ(ierr);}
+	if(m1_wm  != nullptr) {ierr = VecGetArray(m1_wm,  &ptr_m1_wm);  CHKERRQ(ierr);}
+	if(m1_gm  != nullptr) {ierr = VecGetArray(m1_gm,  &ptr_m1_gm);  CHKERRQ(ierr);}
+	if(m1_csf != nullptr) {ierr = VecGetArray(m1_csf, &ptr_m1_csf); CHKERRQ(ierr);}
+	if(m1_glm != nullptr) {ierr = VecGetArray(m1_glm, &ptr_m1_glm); CHKERRQ(ierr);}
+	if(m1_bg  != nullptr) {ierr = VecGetArray(m1_bg,  &ptr_m1_bg);  CHKERRQ(ierr);}
 	if(c1     != nullptr) {ierr = VecGetArray(c1,     &ptr_tu);     CHKERRQ(ierr);}
   // m = m0(1-c(1))
 	for (PetscInt j = 0; j < nmisc->n_local_; j++) {
 		sum = 0;
-    if(mR_gm   != nullptr) {ptr_xigm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum += ptr_gm[j];}
-		if(mR_csf  != nullptr) {ptr_xicsf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum += ptr_csf[j];}
-		if(mR_glm  != nullptr) {ptr_xiglm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum += ptr_glm[j];}
-		if(mR_bg   != nullptr) {ptr_xibg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum += ptr_bg[j];}
-		if(mR_wm   != nullptr) {ptr_xiwm[j]  = 1. - (sum + ptr_tu[j]);}
+    if(m0_gm   != nullptr) {ptr_m1_gm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum += ptr_gm[j];}
+		if(m0_csf  != nullptr) {ptr_m1_csf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum += ptr_csf[j];}
+		if(m0_glm  != nullptr) {ptr_m1_glm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum += ptr_glm[j];}
+		if(m0_bg   != nullptr) {ptr_m1_bg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum += ptr_bg[j];}
+		if(m0_wm   != nullptr) {ptr_m1_wm[j]  = 1. - (sum + ptr_tu[j]);}
 	}
-	if(mR_wm  != nullptr) {ierr = VecRestoreArray(mR_wm,  &ptr_wm);    CHKERRQ(ierr);}
-	if(mR_gm  != nullptr) {ierr = VecRestoreArray(mR_gm,  &ptr_gm);    CHKERRQ(ierr);}
-	if(mR_csf != nullptr) {ierr = VecRestoreArray(mR_csf, &ptr_csf);   CHKERRQ(ierr);}
-	if(mR_glm != nullptr) {ierr = VecRestoreArray(mR_glm, &ptr_glm);   CHKERRQ(ierr);}
-	if(mR_bg  != nullptr) {ierr = VecRestoreArray(mR_bg,  &ptr_bg);    CHKERRQ(ierr);}
-	if(xi_wm  != nullptr) {ierr = VecRestoreArray(xi_wm,  &ptr_xiwm);  CHKERRQ(ierr);}
-	if(xi_gm  != nullptr) {ierr = VecRestoreArray(xi_gm,  &ptr_xigm);  CHKERRQ(ierr);}
-	if(xi_csf != nullptr) {ierr = VecRestoreArray(xi_csf, &ptr_xicsf); CHKERRQ(ierr);}
-	if(xi_glm != nullptr) {ierr = VecRestoreArray(xi_glm, &ptr_xiglm); CHKERRQ(ierr);}
-	if(xi_bg  != nullptr) {ierr = VecRestoreArray(xi_bg,  &ptr_xibg);  CHKERRQ(ierr);}
+	if(m0_wm  != nullptr) {ierr = VecRestoreArray(m0_wm,  &ptr_wm);    CHKERRQ(ierr);}
+	if(m0_gm  != nullptr) {ierr = VecRestoreArray(m0_gm,  &ptr_gm);    CHKERRQ(ierr);}
+	if(m0_csf != nullptr) {ierr = VecRestoreArray(m0_csf, &ptr_csf);   CHKERRQ(ierr);}
+	if(m0_glm != nullptr) {ierr = VecRestoreArray(m0_glm, &ptr_glm);   CHKERRQ(ierr);}
+	if(m0_bg  != nullptr) {ierr = VecRestoreArray(m0_bg,  &ptr_bg);    CHKERRQ(ierr);}
+	if(m1_wm  != nullptr) {ierr = VecRestoreArray(m1_wm,  &ptr_m1_wm); CHKERRQ(ierr);}
+	if(m1_gm  != nullptr) {ierr = VecRestoreArray(m1_gm,  &ptr_m1_gm); CHKERRQ(ierr);}
+	if(m1_csf != nullptr) {ierr = VecRestoreArray(m1_csf, &ptr_m1_csf);CHKERRQ(ierr);}
+	if(m1_glm != nullptr) {ierr = VecRestoreArray(m1_glm, &ptr_m1_glm);CHKERRQ(ierr);}
+	if(m1_bg  != nullptr) {ierr = VecRestoreArray(m1_bg,  &ptr_m1_bg); CHKERRQ(ierr);}
 	if(c1     != nullptr) {ierr = VecRestoreArray(c1,     &ptr_tu);    CHKERRQ(ierr);}
   // go home
 	PetscFunctionReturn(0);
