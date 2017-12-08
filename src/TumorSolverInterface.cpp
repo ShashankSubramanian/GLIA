@@ -42,7 +42,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     Vec p;
 
     #ifdef SERIAL
-        ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
+        ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);     CHKERRQ (ierr);
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
         ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
