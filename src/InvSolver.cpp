@@ -232,8 +232,8 @@ PetscErrorCode InvSolver::solve () {
 	TaoConvergedReason reason;
 	TaoGetConvergedReason (tao_, &reason);
 	/* get solution status */
-	PetscScalar J, gnorm, xdiff;
-	ierr = TaoGetSolutionStatus (tao_, NULL, &J, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
+	PetscScalar xdiff;
+	ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
 	/* display convergence reason: */
 	ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
   s << " optimization done: #N-it: " << itctx_->optfeedback_->nb_newton_it    << ", #K-it: " << itctx_->optfeedback_->nb_krylov_it

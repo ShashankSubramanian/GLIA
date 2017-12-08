@@ -76,6 +76,7 @@ struct OptimizerFeedback {
     std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
     double gradnorm;             /// @brief final gradient norm
     double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
+    double jval;                 /// @brief orbjective function value
     bool converged;              /// @brief true if solver converged within bounds
 
     OptimizerFeedback ()
@@ -88,6 +89,7 @@ struct OptimizerFeedback {
     solverstatus (),
     gradnorm (0.),
     gradnorm0 (0.),
+    jval(0.),
     converged (false)
     {}
 };
