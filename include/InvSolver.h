@@ -79,6 +79,7 @@ class InvSolver {
     public :
         InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
         PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
+        PetscErrorCode allocateTaoObjects (bool initialize_tao = true);
         PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
         PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
         PetscErrorCode solve ();

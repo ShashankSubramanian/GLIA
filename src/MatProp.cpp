@@ -51,7 +51,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			dataIn (csf_ptr, n_misc, "csf.nc");
 			dataIn (glm_ptr, n_misc, "glial_matter.nc");
 			dataIn (filter_ptr, n_misc, "filter_zero.nc");
-			n_misc_->nk_ = 3;  // inversing for k_i for WM, GM, GLM
+			n_misc->nk_ = 3;  // inversing for k_i for WM, GM, GLM
 
 			// ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, 0.0003);
 			// ierr = weierstrassSmoother (wm_ptr, gm_ptr, n_misc, 0.0003);
@@ -82,7 +82,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	PetscErrorCode ierr = 0;
 
 	int nk = 0;
-  n_misc_->nk_ = 0;
+    n_misc->nk_ = 0;
 	if(wm != nullptr)      { ierr = VecCopy (wm, wm_); nk++;  CHKERRQ(ierr); }
 	else                   { ierr = VecSet (wm_, 0.0);        CHKERRQ(ierr); }
 	if(gm != nullptr)      { ierr = VecCopy (gm, gm_); nk++;  CHKERRQ(ierr); }
@@ -92,7 +92,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	if(glm != nullptr)     { ierr = VecCopy (gm, glm_); nk++; CHKERRQ(ierr); }
 	else                   { ierr = VecSet (glm_, 0.0);       CHKERRQ(ierr); }
 
-	if(!n_misc_->nk_fixed_) n_misc_->nk_ = nk;
+	if (!n_misc->nk_fixed_) n_misc->nk_ = nk;
 
 	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
 	ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);

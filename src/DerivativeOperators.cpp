@@ -61,18 +61,20 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     /* INVERSION FOR DIFFUSIVITY */
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
+    double integration_weight = 1.0;
     if(n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
-      for (int i = 0; i < this->nt_; i++) {
+      for (int i = 0; i < n_misc_->nt_; i++) {
         // integration weight for chain trapezoidal rule
-        if (i == 0 || i == this->nt_-1) integration_weight *= 0.5;
+        if (i == 0 || i == n_misc_->nt_- 1) integration_weight = 0.5;
+        else integration_weight = 1.0;
 
         // compute x = (grad c)^T grad \alpha
         // compute gradient of state variable c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], c_[i], n_misc_->plan_, &XYZ, t.data());
+        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
         // compute gradient of adjoint variable p(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], p_[i], n_misc_->plan_, &XYZ, t.data());
+        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -82,8 +84,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
         // numerical time integration using trapezoidal rule
         ierr = VecAXPY (temp_, integration_weight, tumor_->work_[0]); CHKERRQ (ierr);
-        // use weight 1 for inner points
-        if (i == 0) integration_weight *= 0.5;
       }
       // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
       // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
@@ -108,11 +108,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     n_misc_->statistics_.nb_obj_evals++;
     n_misc_->statistics_.nb_grad_evals++;
 
-    if(n_misc->diffusivity_inversion_) {
-      ierr = evaluateObjective (J, x, data)  CHKERRQ(ierr);
-      ierr = evaluateGradient (dJ, x, data); CHKERRQ(ierr);
+    if (n_misc_->diffusivity_inversion_) {
+      ierr = evaluateObjective (J, x, data);                          CHKERRQ(ierr);
+      ierr = evaluateGradient (dJ, x, data);                          CHKERRQ(ierr);
      // TODO: implement efficient version
-   } else {
+    } 
+    else {
       // solve state
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
       ierr = pde_operators_->solveState (0);
@@ -140,7 +141,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       (*J) *= 0.5;
       (*J) += reg;
     }
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (0);
 }
 
 PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
@@ -148,9 +149,10 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_hessian_evals++;
 
-    if(n_misc->diffusivity_inversion_) {
-      ierr = TU_assert(false, "not implemented."); CHKERRQ(ierr);
-    }else{
+    if (n_misc_->diffusivity_inversion_) {
+      TU_assert(false, "not implemented."); CHKERRQ(ierr);
+    }
+    else{
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
       ierr = pde_operators_->solveState (1);
 

@@ -19,6 +19,11 @@ class PdeOperators {
 		std::shared_ptr<DiffSolver> diff_solver_;
 		std::shared_ptr<NMisc> n_misc_;
 
+		// @brief time history of state variable
+		Vec *c_;
+		// @brief time history of adjoint variable
+		Vec *p_;
+
 		virtual PetscErrorCode solveState (int linearized) = 0;
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) = 0;
@@ -36,11 +41,6 @@ class PdeOperators {
 class PdeOperatorsRD : public PdeOperators {
 	public:
 		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
-
-    // @brief time history of state variable
-		Vec *c_;
-		// @brief time history of adjoint variable
-		Vec *p_;
 
 		virtual PetscErrorCode solveState (int linearized);
 		virtual PetscErrorCode reaction (int linearized, int i);

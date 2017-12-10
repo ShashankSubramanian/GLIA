@@ -11,7 +11,7 @@ class DerivativeOperators {
 				: pde_operators_ (pde_operators), n_misc_ (n_misc), tumor_ (tumor) {
 					VecDuplicate (tumor_->c_0_, &temp_);
 					VecDuplicate (tumor_->p_, &ptemp_);
-          VecDuplicate (tumor_->p_, &p_current_);
+                    VecDuplicate (tumor_->p_, &p_current_);
 				}
 
 		std::shared_ptr<PdeOperators> pde_operators_;
@@ -20,7 +20,7 @@ class DerivativeOperators {
 
 		Vec temp_;
 		Vec ptemp_;
-    Vec p_current_; //Current solution vector in newton iteration
+        Vec p_current_; //Current solution vector in newton iteration
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
@@ -28,15 +28,15 @@ class DerivativeOperators {
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
 
-    virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
-    virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
+        virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
+        virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
 		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
-    PetscErrorCode checkGradient (Vec p, Vec data);
+        PetscErrorCode checkGradient (Vec p, Vec data);
 
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);
 			VecDestroy (&ptemp_);
-      VecDestroy (&p_current_);
+            VecDestroy (&p_current_);
 		}
 };
 
@@ -92,7 +92,7 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 
         PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
         PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
-				PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
         PetscErrorCode evaluateHessian (Vec y, Vec x);
 
         /** @brief: Sets the image vectors for the simulation geometry material properties
