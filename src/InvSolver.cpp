@@ -686,9 +686,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = VecCreate (PETSC_COMM_WORLD, &x);                                    CHKERRQ (ierr);
     ierr = VecSetSizes (x, nl, ng);                                             CHKERRQ (ierr);
     ierr = VecSetFromOptions (x);                                               CHKERRQ (ierr);
-    ierr = VecCreate (PETSC_COMM_WORLD, &g);                                    CHKERRQ (ierr);
-    ierr = VecSetSizes (g, PETSC_DECIDE, ctx->n_misc_->np_);                    CHKERRQ (ierr);
-    ierr = VecSetFromOptions (g);                                               CHKERRQ (ierr);
+    ierr = VecDuplicate (ctx->tumor_->p_, &g);                                  CHKERRQ(ierr);
     ierr = TaoLineSearchGetSolution(ls, x, &J, g, &step, &ls_flag);             CHKERRQ (ierr);
     // display line-search convergence reason
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
@@ -737,15 +735,15 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ctx->convergence_message.clear();
     // check for NaN value
     if (PetscIsInfOrNanReal(J)) {
-		ierr = tuMSGwarn ("objective is NaN");                                      CHKERRQ(ierr);
-		ierr = TaoSetConvergedReason (tao, TAO_DIVERGED_NAN);                       CHKERRQ(ierr);
-		PetscFunctionReturn (ierr);
+  		ierr = tuMSGwarn ("objective is NaN");                                      CHKERRQ(ierr);
+  		ierr = TaoSetConvergedReason (tao, TAO_DIVERGED_NAN);                       CHKERRQ(ierr);
+  		PetscFunctionReturn (ierr);
     }
     // check for NaN value
     if (PetscIsInfOrNanReal(gnorm)) {
-		ierr = tuMSGwarn("||g|| is NaN");                                           CHKERRQ(ierr);
-		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                        CHKERRQ(ierr);
-		PetscFunctionReturn(ierr);
+  		ierr = tuMSGwarn("||g|| is NaN");                                           CHKERRQ(ierr);
+  		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                        CHKERRQ(ierr);
+  		PetscFunctionReturn(ierr);
     }
     //if(verbosity >= 1) {
     //	ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);

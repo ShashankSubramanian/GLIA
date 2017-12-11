@@ -40,9 +40,11 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
+    int np = n_misc_->np_;
+    int nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
 
     #ifdef SERIAL
-        ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);     CHKERRQ (ierr);
+        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);     CHKERRQ (ierr);
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
         ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);

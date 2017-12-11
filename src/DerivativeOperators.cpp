@@ -62,7 +62,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
     double integration_weight = 1.0;
-    if(n_misc_->diffusivity_inversion_) {
+    if (n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_; i++) {
@@ -90,7 +90,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
       ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);          CHKERRQ(ierr);
-      if(n_misc_->nk_ > 2) {
+      if (n_misc_->nk_ > 2) {
         ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
       }
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
