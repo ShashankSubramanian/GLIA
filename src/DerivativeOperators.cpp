@@ -65,9 +65,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
-      for (int i = 0; i < n_misc_->nt_; i++) {
+      for (int i = 0; i < n_misc_->nt_ + 1; i++) {
         // integration weight for chain trapezoidal rule
-        if (i == 0 || i == n_misc_->nt_- 1) integration_weight = 0.5;
+        if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
         else integration_weight = 1.0;
 
         // compute x = (grad c)^T grad \alpha
@@ -83,7 +83,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
         ierr = VecAXPY (tumor_->work_[0], 1.0,  tumor_->work_[1]);                       CHKERRQ (ierr);  // result in tumor_->work_[0]
 
         // numerical time integration using trapezoidal rule
-        ierr = VecAXPY (temp_, integration_weight, tumor_->work_[0]); CHKERRQ (ierr);
+        ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]); CHKERRQ (ierr);
       }
       // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
       // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
@@ -93,6 +93,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       if (n_misc_->nk_ > 2) {
         ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
       }
+
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
@@ -108,6 +109,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     n_misc_->statistics_.nb_obj_evals++;
     n_misc_->statistics_.nb_grad_evals++;
 
+    double *x_ptr;
     if (n_misc_->diffusivity_inversion_) {
       ierr = evaluateObjective (J, x, data);                          CHKERRQ(ierr);
       ierr = evaluateGradient (dJ, x, data);                          CHKERRQ(ierr);
@@ -152,7 +154,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     if (n_misc_->diffusivity_inversion_) {
       TU_assert(false, "not implemented."); CHKERRQ(ierr);
     }
-    else{
+    else {
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
       ierr = pde_operators_->solveState (1);
 

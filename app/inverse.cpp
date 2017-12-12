@@ -95,8 +95,16 @@ int main (int argc, char** argv) {
     self_exec_time += MPI_Wtime ();
 
     double prec_norm;
+    double *prec_ptr;
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
     PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
+    if (n_misc->diffusivity_inversion_) {
+        ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+        PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
+        PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
+        PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
+        ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+    }
 
     double l2_rel_error = 0.0;
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);

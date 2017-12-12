@@ -20,9 +20,9 @@ class PdeOperators {
 		std::shared_ptr<NMisc> n_misc_;
 
 		// @brief time history of state variable
-		Vec *c_;
+		std::vector<Vec> c_;
 		// @brief time history of adjoint variable
-		Vec *p_;
+		std::vector<Vec> p_;
 
 		virtual PetscErrorCode solveState (int linearized) = 0;
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;

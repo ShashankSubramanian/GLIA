@@ -8,3 +8,4 @@ brain_data/
 .*
 *.o
 build
+run
