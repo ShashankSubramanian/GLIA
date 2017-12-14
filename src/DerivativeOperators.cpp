@@ -83,7 +83,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
         ierr = VecAXPY (tumor_->work_[0], 1.0,  tumor_->work_[1]);                       CHKERRQ (ierr);  // result in tumor_->work_[0]
 
         // numerical time integration using trapezoidal rule
-        ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]); CHKERRQ (ierr);
+        ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
       }
       // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
       // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
@@ -152,7 +152,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     n_misc_->statistics_.nb_hessian_evals++;
 
     if (n_misc_->diffusivity_inversion_) {
-      TU_assert(false, "not implemented."); CHKERRQ(ierr);
+      TU_assert(false, "not implemented."); CHKERRQ(ierr);     
     }
     else {
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);

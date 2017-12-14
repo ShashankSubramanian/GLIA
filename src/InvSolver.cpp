@@ -6,6 +6,7 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 
+
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) :
 initialized_(false),
 tao_is_reset_(true),
@@ -117,41 +118,41 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
 }
 
 PetscErrorCode InvSolver::solve () {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
 
-    TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
-    TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
-    TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
-    TU_assert (xrec_ != nullptr, "InvSolver:solve (): requires non-null p_rec vector to be set");
-    TU_assert (optsettings_ != nullptr, "InvSolver:solve (): requires non-null optimizer settings to be passed.");
-    /* === observed data === */
-    // apply observer on ground truth, store observed data in d
-    ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
-    // smooth observed data
-    PetscScalar *d_ptr;
-    double sigma_smooth;
-    sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
-    ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
-    //SNAFU
-     ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
-    //static int it = 0; it++;
-    //std::stringstream ss; ss<<"_it-"<<it;
-    //std::string s("files/cpl/ITdata"+ss.str()+".nc");
-    //DataOut(d_ptr, itctx_->n_misc_, s.c_str());
-    /* === Add Noise === */
-    Vec noise; double *noise_ptr;
-    ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
-    ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
-    ierr = VecSetFromOptions(noise);                                                    CHKERRQ(ierr);
-    ierr = VecSetRandom(noise, NULL);                                                   CHKERRQ(ierr);
-    ierr = VecGetArray (noise, &noise_ptr);                                             CHKERRQ(ierr);
-    for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {
-        d_ptr[i] += noise_ptr[i] * itctx_->n_misc_->noise_scale_;
-        noise_ptr[i] = d_ptr[i];                                                        //just to measure d norm
-    }
-    ierr = VecRestoreArray (noise, &noise_ptr);                                         CHKERRQ(ierr);
-    ierr = VecRestoreArray (data_, &d_ptr);                                             CHKERRQ(ierr);
+  TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
+  TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
+  TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
+  TU_assert (xrec_ != nullptr, "InvSolver:solve (): requires non-null p_rec vector to be set");
+  TU_assert (optsettings_ != nullptr, "InvSolver:solve (): requires non-null optimizer settings to be passed.");
+  /* === observed data === */
+  // apply observer on ground truth, store observed data in d
+  ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
+  // smooth observed data
+  PetscScalar *d_ptr;
+  double sigma_smooth;
+  sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
+  ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
+  //SNAFU
+   ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
+  //static int it = 0; it++;
+  //std::stringstream ss; ss<<"_it-"<<it;
+  //std::string s("files/cpl/ITdata"+ss.str()+".nc");
+  //DataOut(d_ptr, itctx_->n_misc_, s.c_str());
+  /* === Add Noise === */
+  Vec noise; double *noise_ptr;
+  ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
+  ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
+  ierr = VecSetFromOptions(noise);                                                    CHKERRQ(ierr);
+  ierr = VecSetRandom(noise, NULL);                                                   CHKERRQ(ierr);
+  ierr = VecGetArray (noise, &noise_ptr);                                             CHKERRQ(ierr);
+  for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {
+      d_ptr[i] += noise_ptr[i] * itctx_->n_misc_->noise_scale_;
+      noise_ptr[i] = d_ptr[i];                                                        //just to measure d norm
+  }
+  ierr = VecRestoreArray (noise, &noise_ptr);                                         CHKERRQ(ierr);
+  ierr = VecRestoreArray (data_, &d_ptr);                                             CHKERRQ(ierr);
 	PetscScalar max, min;                                                // compute d-norm
   PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
   ierr = VecNorm (noise, NORM_2, &d_norm);                                            CHKERRQ(ierr);
@@ -520,7 +521,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //itctx->optfeedback_->nb_krylov_it = 0;
 
     //Gradient check begin
-    ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
+    // ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }
@@ -694,6 +695,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
+
     // update the isotropic part of the diffusion coefficient with the current inversion variables
     ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
     PetscScalar k1, k2, k3;
@@ -703,9 +705,6 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p."); CHKERRQ(ierr);
       #endif
       ierr = VecGetArray (tao_x, &tao_x_ptr);                                   CHKERRQ (ierr);
-
-      
-      std::cout <<"Diffusivity K: " << tao_x_ptr[ctx->n_misc_->np_] << " " << tao_x_ptr[ctx->n_misc_->np_+1] << " " << tao_x_ptr[ctx->n_misc_->np_+2] << std::endl;
 
       k1 = tao_x_ptr[ctx->n_misc_->np_];
       k2 = (ctx->n_misc_->nk_ > 1) ? tao_x_ptr[ctx->n_misc_->np_ + 1] : 0;
