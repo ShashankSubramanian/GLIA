@@ -489,7 +489,9 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // get current iteration, objective value, norm of gradient, norm of
     // norm of contraint, step length / trust region readius of iteratore
     // and termination reason
+    Vec tao_x;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
+    ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
     // print out Newton iteration information
@@ -521,7 +523,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //itctx->optfeedback_->nb_krylov_it = 0;
 
     //Gradient check begin
-    // ierr = itctx->derivative_operators_->checkGradient (itctx->tumor_->p_, itctx->data);
+     ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }
@@ -705,6 +707,13 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p."); CHKERRQ(ierr);
       #endif
       ierr = VecGetArray (tao_x, &tao_x_ptr);                                   CHKERRQ (ierr);
+
+      //Prevent diffusion coefficient from going negative -- CHECK
+      tao_x_ptr[ctx->n_misc_->np_] = tao_x_ptr[ctx->n_misc_->np_] > 0 ? tao_x_ptr[ctx->n_misc_->np_] : 0;
+      if (ctx->n_misc_->nk_ > 1) 
+        tao_x_ptr[ctx->n_misc_->np_ + 1] = tao_x_ptr[ctx->n_misc_->np_ + 1] > 0 ? tao_x_ptr[ctx->n_misc_->np_ + 1] : 0;
+      if (ctx->n_misc_->nk_ > 2) 
+        tao_x_ptr[ctx->n_misc_->np_ + 2] = tao_x_ptr[ctx->n_misc_->np_ + 2] > 0 ? tao_x_ptr[ctx->n_misc_->np_ + 2] : 0;
 
       k1 = tao_x_ptr[ctx->n_misc_->np_];
       k2 = (ctx->n_misc_->nk_ > 1) ? tao_x_ptr[ctx->n_misc_->np_ + 1] : 0;

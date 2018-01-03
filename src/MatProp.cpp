@@ -28,6 +28,8 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 
 	if (n_misc->testcase_ != BRAIN) {
 		ierr = VecSet (filter_, 1.0);						  CHKERRQ (ierr);
+		ierr = VecSet (wm_, 1.0); 							  CHKERRQ (ierr);
+		n_misc->nk_ = 1;
 	}
 	else {
 		std::stringstream str;

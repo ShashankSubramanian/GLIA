@@ -19,6 +19,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);               CHKERRQ (ierr);
     reg *= 0.5 * n_misc_->beta_;
 
+
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
@@ -93,9 +94,40 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       if (n_misc_->nk_ > 2) {
         ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
       }
-
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
+
+    // if (n_misc_->diffusivity_inversion_) {
+    //   ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
+    //   // compute numerical time integration using trapezoidal rule
+    //   for (int i = 0; i < n_misc_->nt_ + 1; i++) {
+    //     // integration weight for chain trapezoidal rule
+    //     if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
+    //     else integration_weight = 1.0;
+
+    //     // compute x = (grad c)^T grad \alpha
+    //     // compute gradient of state variable c(t)
+    //     accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+    //     ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[1], tumor_->mat_prop_->wm_);  CHKERRQ (ierr);  
+    //     ierr = VecPointwiseMult (tumor_->work_[2], tumor_->work_[2], tumor_->mat_prop_->wm_);  CHKERRQ (ierr);  
+    //     ierr = VecPointwiseMult (tumor_->work_[3], tumor_->work_[3], tumor_->mat_prop_->wm_);  CHKERRQ (ierr);  
+    //     accfft_divergence (tumor_->work_[0], tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], n_misc_->plan_, t.data());
+    //     ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);  CHKERRQ (ierr);  
+        
+
+    //     // numerical time integration using trapezoidal rule
+    //     ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
+    //   }
+    //   // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
+    //   // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
+    //   ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
+    //   ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
+    //   ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);          CHKERRQ(ierr);
+    //   if (n_misc_->nk_ > 2) {
+    //     ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
+    //   }
+    //   ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
+    // }
 
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
@@ -535,12 +567,22 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    PCOUT << "\n----- Gradient check with taylor expansion ----- " << std::endl;
+    PCOUT << "\n\n----- Gradient check with taylor expansion ----- " << std::endl;
 
     double norm;
     ierr = VecNorm (p, NORM_2, &norm);                          CHKERRQ (ierr);
 
-    PCOUT << "Gradient check performed at p with norm: " << norm << std::endl;
+    PCOUT << "Gradient check performed at x with norm: " << norm << std::endl;
+    double *x_ptr, k1, k2, k3;
+    if (n_misc_->diffusivity_inversion_) {
+      ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
+      k1 = x_ptr[n_misc_->np_];
+      k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
+      k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
+      PCOUT << "k1: " << k1 << " k2: " << k2 << " k3: " << k3 << std::endl;
+      ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
+    }
+
 
     double h[7] = {0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6};
     double J, J_taylor, J_p, diff;
@@ -556,7 +598,11 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     ierr = evaluateObjective(&J_p, p, data);
 
     PetscRandom rctx;
-    ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);         CHKERRQ (ierr);
+    #ifdef SERIAL
+      ierr = PetscRandomCreate (PETSC_COMM_SELF, &rctx);          CHKERRQ (ierr);
+    #else
+      ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);         CHKERRQ (ierr);
+    #endif
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (p_tilde, rctx);                        CHKERRQ (ierr);
 
@@ -569,5 +615,6 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
         diff = std::abs(J - J_taylor);
         PCOUT << "|J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
     }
+    PCOUT << "\n\n";
     PetscFunctionReturn (0);
 }
