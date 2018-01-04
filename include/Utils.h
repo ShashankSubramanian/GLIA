@@ -213,7 +213,7 @@ class NMisc {
         , dt_ (0.01)                            // Time step
         , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
-        , nk_ (3)                               // Number of k_i that we like to invert for (1-3)
+        , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.01)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (8)                              // Reaction coefficient
@@ -223,7 +223,7 @@ class NMisc {
         , beta_ (1e-3)                          // Regularization parameter
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 10.0)           // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (0.0 / 10.0)           // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (1.0)                 // glm to wm diffusion coeff ratio

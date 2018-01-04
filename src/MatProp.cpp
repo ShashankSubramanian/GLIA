@@ -53,7 +53,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			dataIn (csf_ptr, n_misc, "csf.nc");
 			dataIn (glm_ptr, n_misc, "glial_matter.nc");
 			dataIn (filter_ptr, n_misc, "filter_zero.nc");
-			n_misc->nk_ = 3;  // inverting for k_i for WM, GM, GLM
+			// n_misc->nk_ = 3;  // inverting for k_i for WM, GM, GLM
 
 			// ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, 0.0003);
 			// ierr = weierstrassSmoother (wm_ptr, gm_ptr, n_misc, 0.0003);

@@ -1011,8 +1011,8 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     			stop[4] = true;
     	}
     	ss  << "  " << stop[4] << "    ||g|| = " << std::setw(14)
-		<< std::right << gnorm  << "    >    "
-		<< std::left << std::setw(14) << gtolbound*g0norm << " = " << "kappa*||g0||";
+		  << std::right << gnorm  << "    >    "
+		  << std::left << std::setw(14) << gtolbound*g0norm << " = " << "kappa*||g0||";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
     	ss.str(std::string());
@@ -1022,8 +1022,8 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     			stop[5] = true;
     	}
     	ss  << "  " << stop[5] << "    iter  = " << std::setw(14)
-		<< std::right << iter  << "    >    "
-		<< std::left << std::setw(14) << maxiter << " = " << "maxiter";
+		  << std::right << iter  << "    >    "
+		  << std::left << std::setw(14) << maxiter << " = " << "maxiter";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
     	ss.str(std::string());
@@ -1033,8 +1033,8 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     			stop[6] = true;
     	}
     	ss  << "  " << stop[6] << "    iter  = " << std::setw(14)
-		<< std::right << iter  << "    >    "
-		<< std::left << std::setw(14) << iterbound << " = " << "iterbound";
+		  << std::right << iter  << "    >    "
+		  << std::left << std::setw(14) << iterbound << " = " << "iterbound";
     	ctx->convergence_message.push_back(ss.str());
     	ierr = tuMSGstd(ss.str());                                                     CHKERRQ(ierr);
     	ss.str(std::string());

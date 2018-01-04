@@ -90,13 +90,17 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
-      ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);          CHKERRQ(ierr);
+      if (n_misc_->nk_ > 1) {
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);        CHKERRQ(ierr);
+      }
       if (n_misc_->nk_ > 2) {
         ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
       }
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
+
+    /*STRONG FROM OF GRADIENT*/
     // if (n_misc_->diffusivity_inversion_) {
     //   ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
     //   // compute numerical time integration using trapezoidal rule
@@ -112,8 +116,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     //     ierr = VecPointwiseMult (tumor_->work_[2], tumor_->work_[2], tumor_->mat_prop_->wm_);  CHKERRQ (ierr);  
     //     ierr = VecPointwiseMult (tumor_->work_[3], tumor_->work_[3], tumor_->mat_prop_->wm_);  CHKERRQ (ierr);  
     //     accfft_divergence (tumor_->work_[0], tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], n_misc_->plan_, t.data());
-    //     ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);  CHKERRQ (ierr);  
-        
+    //     ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);  CHKERRQ (ierr);        
 
     //     // numerical time integration using trapezoidal rule
     //     ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
@@ -121,11 +124,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     //   // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
     //   // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
     //   ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
-    //   ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
-    //   ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);          CHKERRQ(ierr);
-    //   if (n_misc_->nk_ > 2) {
-    //     ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
-    //   }
+    //   ierr = VecSum (temp_, &x_ptr[n_misc_->np_]);                                     CHKERRQ(ierr);
+    //   x_ptr[n_misc_->np_] *= -1.0; //strong form
     //   ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     // }
 
@@ -596,6 +596,12 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
 
     ierr = evaluateGradient (dJ, p, data);
     ierr = evaluateObjective(&J_p, p, data);
+
+    //snafu
+    VecGetArray (dJ, &x_ptr);
+    PCOUT << "Gradient: " << x_ptr[n_misc_->np_] << std::endl;
+    VecRestoreArray (dJ, &x_ptr);
+    //snafu
 
     PetscRandom rctx;
     #ifdef SERIAL
