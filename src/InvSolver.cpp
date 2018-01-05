@@ -492,6 +492,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     Vec tao_x;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
+
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
     // print out Newton iteration information
@@ -523,7 +524,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //itctx->optfeedback_->nb_krylov_it = 0;
 
     //Gradient check begin
-     ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
+    //ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }
@@ -696,32 +697,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
-
-
-    // update the isotropic part of the diffusion coefficient with the current inversion variables
-    ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
-    PetscScalar k1, k2, k3;
-    double *tao_x_ptr;
-    if (ctx->n_misc_->diffusivity_inversion_) {
-      #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p."); CHKERRQ(ierr);
-      #endif
-      ierr = VecGetArray (tao_x, &tao_x_ptr);                                   CHKERRQ (ierr);
-
-      //Prevent diffusion coefficient from going negative -- CHECK
-      tao_x_ptr[ctx->n_misc_->np_] = tao_x_ptr[ctx->n_misc_->np_] > 0 ? tao_x_ptr[ctx->n_misc_->np_] : 0;
-      if (ctx->n_misc_->nk_ > 1) 
-        tao_x_ptr[ctx->n_misc_->np_ + 1] = tao_x_ptr[ctx->n_misc_->np_ + 1] > 0 ? tao_x_ptr[ctx->n_misc_->np_ + 1] : 0;
-      if (ctx->n_misc_->nk_ > 2) 
-        tao_x_ptr[ctx->n_misc_->np_ + 2] = tao_x_ptr[ctx->n_misc_->np_ + 2] > 0 ? tao_x_ptr[ctx->n_misc_->np_ + 2] : 0;
-
-      k1 = tao_x_ptr[ctx->n_misc_->np_];
-      k2 = (ctx->n_misc_->nk_ > 1) ? tao_x_ptr[ctx->n_misc_->np_ + 1] : 0;
-      k3 = (ctx->n_misc_->nk_ > 2) ? tao_x_ptr[ctx->n_misc_->np_ + 2] : 0;
-      ierr = VecRestoreArray (tao_x, &tao_x_ptr);                               CHKERRQ (ierr);
-      ierr =ctx->tumor_->k_->updateIsotropicCoefficients(k1, k2, k3, ctx->tumor_->mat_prop_, ctx->n_misc_); CHKERRQ(ierr);
-    }
-
+    
     // update/set reference gradient (with p = initial-guess)
     if (ctx->update_reference_gradient) {
     	Vec p0, dJ;

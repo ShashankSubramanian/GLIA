@@ -8,6 +8,25 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_obj_evals++;
+    double *x_ptr, k1, k2, k3;
+
+    if (n_misc_->diffusivity_inversion_) {
+      #ifndef SERIAL
+        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+      #endif
+      ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
+      //Positivity clipping in diffusio coefficient
+      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+      if (n_misc_->nk_ > 1) 
+        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+      if (n_misc_->nk_ > 2) 
+        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      k1 = x_ptr[n_misc_->np_];
+      k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
+      k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
+      ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
+      ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+    }
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
@@ -38,10 +57,28 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     Event e ("tumor-eval-grad");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
+    double k1, k2, k3;
+    
+    if (n_misc_->diffusivity_inversion_) {
+      #ifndef SERIAL
+        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+      #endif
+      ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
+      //Positivity clipping in diffusio coefficient
+      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+      if (n_misc_->nk_ > 1) 
+        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+      if (n_misc_->nk_ > 2) 
+        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      k1 = x_ptr[n_misc_->np_];
+      k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
+      k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
+      ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
+      ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+    }
 
     /* ------------------ */
     /* (1) compute grad_p */
-
     // c = Phi(p), solve state
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
@@ -583,7 +620,6 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-
     double h[7] = {0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6};
     double J, J_taylor, J_p, diff;
 
@@ -596,12 +632,6 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
 
     ierr = evaluateGradient (dJ, p, data);
     ierr = evaluateObjective(&J_p, p, data);
-
-    //snafu
-    VecGetArray (dJ, &x_ptr);
-    PCOUT << "Gradient: " << x_ptr[n_misc_->np_] << std::endl;
-    VecRestoreArray (dJ, &x_ptr);
-    //snafu
 
     PetscRandom rctx;
     #ifdef SERIAL
