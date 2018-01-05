@@ -213,7 +213,7 @@ class NMisc {
         , dt_ (0.01)                            // Time step
         , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
-        , nk_ (3)                               // Number of k_i that we like to invert for (1-3)
+        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.01)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (8)                              // Reaction coefficient
