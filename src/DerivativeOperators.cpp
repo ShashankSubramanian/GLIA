@@ -15,12 +15,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
         ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
-      //Positivity clipping in diffusio coefficient
-      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-      if (n_misc_->nk_ > 1) 
-        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-      if (n_misc_->nk_ > 2) 
-        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+        if (n_misc_->nk_ > 1) 
+          x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+        if (n_misc_->nk_ > 2) 
+          x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #endif
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
@@ -64,12 +66,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
         ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
-      //Positivity clipping in diffusio coefficient
-      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-      if (n_misc_->nk_ > 1) 
-        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-      if (n_misc_->nk_ > 2) 
-        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+        if (n_misc_->nk_ > 1) 
+          x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+        if (n_misc_->nk_ > 2) 
+          x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #endif
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
@@ -158,15 +162,18 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
         ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
-      //Positivity clipping in diffusio coefficient
-      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-      if (n_misc_->nk_ > 1) 
-        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-      if (n_misc_->nk_ > 2) 
-        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+        if (n_misc_->nk_ > 1) 
+          x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+        if (n_misc_->nk_ > 2) 
+          x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #endif
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
+      std::cout << "k: " << k1 << " " << k2 << " " << k3 << std::endl;
       ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
       ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
     }
