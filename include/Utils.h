@@ -2,7 +2,7 @@
 #define _UTILS_H
 
 //#define POSITIVITY
-#define SERIAL
+//#define SERIAL
 
 #include <petsc.h>
 #include <stdlib.h>

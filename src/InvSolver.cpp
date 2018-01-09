@@ -72,7 +72,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
     }
     // create TAO solver object
     if( tao_ == nullptr && initialize_tao) {
-      ierr = TaoCreate (MPI_COMM_WORLD, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions 
+      ierr = TaoCreate (MPI_COMM_WORLD, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
     }
   #endif
   ierr = VecSet (xrec_, 0.0);                                                   CHKERRQ(ierr);
@@ -82,7 +82,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
     ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
     // if tao's nls (gauss-newton) method is used, define hessian matvec
-  } 
+  }
   else {
     ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);         CHKERRQ(ierr);
     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
@@ -501,6 +501,9 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
           << std::setw(18) << "step";
+          if (itctx->n_misc_->diffusivity_inversion_) {
+            s << std::setw(18) << "k";
+          }
         if(itctx->optsettings_->newtonsolver == QUASINEWTON) {
           ierr = tuMSGstd (" starting optimization, TAO's LMVM");                   CHKERRQ(ierr);
         } else {
@@ -512,11 +515,19 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         s.str ("");
         s.clear ();
     }
-    s << " "     << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
+    s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->optfeedback_->gradnorm0
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step;
+      if (itctx->n_misc_->diffusivity_inversion_) {
+        double *x_ptr;
+        ierr = VecGetArray(tao_x, &x_ptr);                                         CHKERRQ(ierr);
+        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_];
+        if (itctx->n_misc_->nk_ > 1) {
+          s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_ + 1]; }
+        ierr = VecRestoreArray(tao_x, &x_ptr);                                     CHKERRQ(ierr);
+      }
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
@@ -697,7 +708,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
-    
+
     // update/set reference gradient (with p = initial-guess)
     if (ctx->update_reference_gradient) {
     	Vec p0, dJ;

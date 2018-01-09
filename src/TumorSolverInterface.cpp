@@ -340,26 +340,23 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     Event e("update-tumor-coefficients");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
 
-    int nk = 0;
     // update matprob, deep copy of probability maps
-		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_); nk++;   CHKERRQ(ierr); }
+		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_);         CHKERRQ(ierr); }
 		else                   { ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);         CHKERRQ(ierr); }
-		if(gm != nullptr)      { ierr = VecCopy (gm, tumor_->mat_prop_->gm_); nk++;   CHKERRQ(ierr); }
+		if(gm != nullptr)      { ierr = VecCopy (gm, tumor_->mat_prop_->gm_);         CHKERRQ(ierr); }
 		else                   { ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);         CHKERRQ(ierr); }
 		if(csf != nullptr)     { ierr = VecCopy (csf, tumor_->mat_prop_->csf_);       CHKERRQ(ierr); }
 		else                   { ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);        CHKERRQ(ierr); }
-		if(glm != nullptr)     { ierr = VecCopy (gm, tumor_->mat_prop_->glm_); nk++;  CHKERRQ(ierr); }
+		if(glm != nullptr)     { ierr = VecCopy (gm, tumor_->mat_prop_->glm_);        CHKERRQ(ierr); }
 		else                   { ierr = VecSet (tumor_->mat_prop_->glm_, 0.0);        CHKERRQ(ierr); }
 		if(filter != nullptr)  { ierr = VecCopy (filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
 		else                   { ierr = VecSet (tumor_->mat_prop_->filter_, 0.0);     CHKERRQ(ierr); }
 
-    // update nk, number of k_i that we would like to invert for (determined by whether we have WM, GM and GLM set)
-    if(!n_misc_->nk_fixed_) n_misc_->nk_ = nk;
-
     // don't apply k_i values coming from outside if we invert for diffusivity
     if(n_misc_->diffusivity_inversion_) {
-      tumor_params->diffusion_ratio_gm_wm = n_misc_->k_gm_wm_ratio_;
-      tumor_params->diffusion_ratio_glm_wm = n_misc_->k_glm_wm_ratio_;
+      tumor_params->diffusion_ratio_gm_wm  = tumor_->k_->k_gm_wm_ratio_;
+      tumor_params->diffusion_ratio_glm_wm = tumor_->k_->k_glm_wm_ratio_;
+      tumor_params->diff_coeff_scale       = tumor_->k_->k_scale_;
     }
 
     // update diffusion coefficient
