@@ -121,7 +121,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
         ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
     }
 
-    if (n_misc_->writeOutput_) {
+    if (n_misc->writeOutput_) {
         dataOut (kxx_, n_misc, "kxx.nc");
     }
 
