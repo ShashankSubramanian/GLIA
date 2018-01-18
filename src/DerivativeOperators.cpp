@@ -157,6 +157,10 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     double self_exec_time = -MPI_Wtime ();
     double *x_ptr, k1, k2, k3;
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
         ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
@@ -173,7 +177,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
-      std::cout << "k: " << k1 << " " << k2 << " " << k3 << std::endl;
+      PCOUT << "k: " << k1 << " " << k2 << " " << k3 << std::endl;
       ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
       ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
     }
