@@ -177,7 +177,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
-      PCOUT << "k: " << k1 << " " << k2 << " " << k3 << std::endl;
       ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
       ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
     }

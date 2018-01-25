@@ -210,9 +210,9 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
   if(q3 != nullptr) {ierr = VecSet(q3, 0.0);                     CHKERRQ(ierr);}
   if(q4 != nullptr) {ierr = VecSet(q4, 0.0);                     CHKERRQ(ierr);}
   // compute numerical time integration using trapezoidal rule
-  for (int i = 0; i < this->nt_; i++) {
+  for (int i = 0; i < this->nt_ + 1; i++) {
     // integration weight for chain trapezoidal rule
-    if (i == 0 || i == this->nt_-1) integration_weight *= 0.5;
+    if (i == 0 || i == this->nt_) integration_weight *= 0.5;
 
     // compute x = k_bar * (grad c)^T grad \alpha, where k_bar = dK / dm
     ierr = tumor_->k_->compute_dKdm_gradc_gradp(

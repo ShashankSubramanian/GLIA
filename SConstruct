@@ -153,6 +153,9 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 # enforce positivity inside tumor forward solve
 env.Append(CCFLAGS = ['-DENFORCE_POSITIVE_C'])
 
+# inversion vector p is serial, not distributed
+env.Append(CCFLAGS = ['-DSERIAL'])
+
 # print centers of phi's to file
 env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 

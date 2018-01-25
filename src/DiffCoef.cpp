@@ -61,6 +61,9 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     k_scale_ = k_scale;
     k_gm_wm_ratio_  = k_gm_wm_ratio;
     k_glm_wm_ratio_ = k_glm_wm_ratio;
+    n_misc->k_gm_wm_ratio_  = k_gm_wm_ratio_;    // update values in n_misc
+    n_misc->k_glm_wm_ratio_ = k_glm_wm_ratio_;
+    n_misc->k_              = k_scale_;
 
     double dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
     double dk_dm_wm  = k_scale;                         //WM
@@ -116,6 +119,10 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
 
         ierr = VecCopy (kxx_, kyy_);                             CHKERRQ (ierr);
         ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
+    }
+
+    if (n_misc->writeOutput_) {
+        dataOut (kxx_, n_misc, "kxx.nc");
     }
 
     //Average diff coeff values for preconditioner for diffusion solve
