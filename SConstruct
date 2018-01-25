@@ -9,11 +9,11 @@ def uniqueCheckLib(conf, lib):
         conf.env.AppendUnique(LIBS = [lib])
         return True
     else:
-        print "ERROR: Library '" + lib + "' not found!"
+        print ("ERROR: Library '" + lib + "' not found!")
         Exit(1)
 
 def errorMissingHeader(header, usage):
-    print "ERROR: Header '" + header + "' (needed for " + usage + ") not found or does not compile!"
+    print ("ERROR: Header '" + header + "' (needed for " + usage + ") not found or does not compile!")
     Exit(1)
 
 def print_options(vars):
@@ -29,7 +29,7 @@ def vprint(name, value, default=True, description = None):
     """ Pretty prints an environment variabe with value and modified or not. """
     mod = "(default)" if default else "(modified)"
     desc = "   " + description if description else ""
-    print "{0:10} {1:25} = {2!s:8}{3}".format(mod, name, value, desc)
+    print ("{0:10} {1:25} = {2!s:8}{3}".format(mod, name, value, desc))
 
 def checkset_var(varname, default):
     """ Checks if environment variable is set, use default otherwise and print the value. """
@@ -47,8 +47,8 @@ def get_real_compiler(compiler):
         try:
             output = subprocess.check_output("%s -show" % compiler, shell=True)
         except (OSError, subprocess.CalledProcessError) as e:
-            print "Error getting wrapped compiler from MPI compiler"
-            print "Command was:", e.cmd, "Output was:", e.output
+            print ("Error getting wrapped compiler from MPI compiler")
+            print ("Command was:", e.cmd, "Output was:", e.output)
         else:
             return output.split()[0]
     else:
@@ -151,16 +151,20 @@ env.Append(CCFLAGS = ['-DGAUSS_NEWTON'])
 env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
 # enforce positivity inside tumor forward solve
-env.Append(CCFLAGS = ['-DENFORCE_POSITIVE_C'])
+env.Append(CCFLAGS = ['-DPOSITIVITY'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
+
+# enforce positivity in diffusion inversion for ks
+env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
 # print centers of phi's to file
 env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 
 # avx
-env.Append(CCFLAGS = ['-march=native'])
+if env["platform"] != "stampede2":
+  env.Append(CCFLAGS = ['-march=native'])
 
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
@@ -199,7 +203,7 @@ env.Append(LIBPATH = [os.path.join( PETSC_DIR, "lib"),
 if env["platform"] == "hazelhen":
   # do nothing
   pass
-elif env["platform"] == "lonestar":
+elif env["platform"] == "lonestar" or env["platform"] == "stampede2":
   uniqueCheckLib(conf, "petsc")
 else:
   uniqueCheckLib(conf, "petsc")
@@ -243,6 +247,6 @@ symlink = env.Command(
 Default(bininv, binfwd, symlink)
 AlwaysBuild(symlink)
 
-print "Targets:   " + ", ".join([str(i) for i in BUILD_TARGETS])
-print "Buildpath: " + buildpath
+print ("Targets:   " + ", ".join([str(i) for i in BUILD_TARGETS]))
+print ("Buildpath: " + buildpath)
 print
