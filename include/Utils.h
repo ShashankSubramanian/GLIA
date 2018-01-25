@@ -2,7 +2,8 @@
 #define _UTILS_H
 
 //#define POSITIVITY
-//#define SERIAL
+#define POSITIVITY_DIFF_COEF
+#define SERIAL
 
 #include <petsc.h>
 #include <stdlib.h>

@@ -12,15 +12,17 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");     
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
-      //Positivity clipping in diffusio coefficient
-      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-      if (n_misc_->nk_ > 1) 
-        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-      if (n_misc_->nk_ > 2) 
-        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+        if (n_misc_->nk_ > 1) 
+          x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+        if (n_misc_->nk_ > 2) 
+          x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #endif
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
@@ -61,15 +63,17 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");       
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
-      //Positivity clipping in diffusio coefficient
-      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-      if (n_misc_->nk_ > 1) 
-        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-      if (n_misc_->nk_ > 2) 
-        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+        if (n_misc_->nk_ > 1) 
+          x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+        if (n_misc_->nk_ > 2) 
+          x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #endif
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
@@ -153,17 +157,23 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     double self_exec_time = -MPI_Wtime ();
     double *x_ptr, k1, k2, k3;
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");     
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
-      //Positivity clipping in diffusio coefficient
-      x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-      if (n_misc_->nk_ > 1) 
-        x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-      if (n_misc_->nk_ > 2) 
-        x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
+        if (n_misc_->nk_ > 1) 
+          x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
+        if (n_misc_->nk_ > 2) 
+          x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
+      #endif
       k1 = x_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;

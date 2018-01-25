@@ -63,7 +63,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
       ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
     }
   #else
-    ierr = TU_assert (!itctx_->n_misc_->diffusivity_inversion_, "Inversion for diffusifity is only implemented for SERIAL p"); CHKERRQ(ierr);
+    TU_assert (!itctx_->n_misc_->diffusivity_inversion_, "Inversion for diffusifity is only implemented for SERIAL p"); 
     // allocate memory for xrec_
     ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                           CHKERRQ(ierr);
     // set up routine to compute the hessian matrix vector product
