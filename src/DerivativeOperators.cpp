@@ -12,7 +12,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");     
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
       #ifdef POSITIVITY_DIFF_COEF
@@ -63,7 +63,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");       
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
       #ifdef POSITIVITY_DIFF_COEF
@@ -163,7 +163,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        ierr = TU_assert(false, "Inversion for diffusivity only supported for serial p.");       CHKERRQ(ierr);
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");     
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
       #ifdef POSITIVITY_DIFF_COEF
