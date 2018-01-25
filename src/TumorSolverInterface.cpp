@@ -85,31 +85,32 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     // ++ re-initialize nmisc ==
     if(tumor_params != nullptr) {
         // if one of these parameters has changed, we need to re-allocate maemory
-        npchanged = n_misc_->np_ != tumor_params->np;
-        modelchanged = n_misc_->model_ != tumor_params->tumor_model;
-        ntchanged = n_misc_->nt_ != tumor_params->time_steps;
-        n_misc_->model_ = tumor_params->tumor_model;
-        n_misc_->dt_ = tumor_params->time_step_size;
-        n_misc_->nt_ = tumor_params->time_steps;
-        n_misc_->time_horizon_ = tumor_params->time_horizon;
-        n_misc_->np_ = tumor_params->np;
-        n_misc_->beta_ = tumor_params->betap;
-        n_misc_->writeOutput_ = tumor_params->writeOutput;
-        n_misc_->verbosity_ = tumor_params->verbosity;
-        n_misc_->obs_threshold_ = tumor_params->obs_threshold;
-        n_misc_->k_ = tumor_params->diff_coeff_scale;
-        n_misc_->kf_ = tumor_params->diff_coeff_scale_anisotropic;
-        n_misc_->rho_ = tumor_params->reaction_coeff_scale;
-        n_misc_->k_gm_wm_ratio_ = tumor_params->diffusion_ratio_gm_wm;
-        n_misc_->k_glm_wm_ratio_ = tumor_params->diffusion_ratio_glm_wm;
-        n_misc_->r_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
-        n_misc_->r_glm_wm_ratio_ = tumor_params->reaction_ratio_glm_wm;
-        n_misc_->user_cm_ = tumor_params->phi_center_of_mass;
-        n_misc_->phi_spacing_factor_ = tumor_params->phi_spacing_factor;
-        n_misc_->phi_sigma_ = tumor_params->phi_sigma;
-        n_misc_->bounding_box_ = tumor_params->phi_selection_mode_bbox;
+        npchanged                       = n_misc_->np_ != tumor_params->np;
+        modelchanged                    = n_misc_->model_ != tumor_params->tumor_model;
+        ntchanged                       = n_misc_->nt_ != tumor_params->time_steps;
+        n_misc_->model_                 = tumor_params->tumor_model;
+        n_misc_->dt_                    = tumor_params->time_step_size;
+        n_misc_->nt_                    = tumor_params->time_steps;
+        n_misc_->time_horizon_          = tumor_params->time_horizon;
+        n_misc_->np_                    = tumor_params->np;
+        n_misc_->beta_                  = tumor_params->betap;
+        n_misc_->writeOutput_           = tumor_params->writeOutput;
+        n_misc_->verbosity_             = tumor_params->verbosity;
+        n_misc_->obs_threshold_         = tumor_params->obs_threshold;
+        n_misc_->k_                     = tumor_params->diff_coeff_scale;
+        n_misc_->kf_                    = tumor_params->diff_coeff_scale_anisotropic;
+        n_misc_->rho_                   = tumor_params->reaction_coeff_scale;
+        n_misc_->k_gm_wm_ratio_         = tumor_params->diffusion_ratio_gm_wm;
+        n_misc_->k_glm_wm_ratio_        = tumor_params->diffusion_ratio_glm_wm;
+        n_misc_->r_gm_wm_ratio_         = tumor_params->reaction_ratio_gm_wm;
+        n_misc_->r_glm_wm_ratio_        = tumor_params->reaction_ratio_glm_wm;
+        n_misc_->user_cm_               = tumor_params->phi_center_of_mass;
+        n_misc_->phi_spacing_factor_    = tumor_params->phi_spacing_factor;
+        n_misc_->phi_sigma_             = tumor_params->phi_sigma;
+        n_misc_->gaussian_vol_frac_     = tumor_params->gaussian_volume_fraction ;
+        n_misc_->bounding_box_          = tumor_params->phi_selection_mode_bbox;
         n_misc_->diffusivity_inversion_ = tumor_params->diffusivity_inversion;
-        n_misc_->nk_ = tumor_params->nk;
+        n_misc_->nk_                    = tumor_params->nk;
     }
     // ++ re-initialize Tumor ++
     ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
