@@ -111,6 +111,8 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
     // re-allocate memory
     if (npchanged){                              // re-allocate memory for xrec_
       // allocate memory for H, x_rec and TAO
+      if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
+      if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
       ierr = allocateTaoObjects(false); CHKERRQ(ierr);
     }
     tao_is_reset_ = true;                        // triggers setTaoOptions
@@ -496,6 +498,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
     // print out Newton iteration information
+
     std::stringstream s;
     if (its == 0) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
@@ -705,7 +708,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = TaoLineSearchGetSolution(ls, x, &J, g, &step, &ls_flag);             CHKERRQ (ierr);
     // display line-search convergence reason
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
-
+    // ierr = TaoLineSearchView (ls, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
@@ -765,7 +768,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
     			PetscFunctionReturn(ierr);
     	}
-      if (ls_flag > 1) {
+      if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
         ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
         ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
         ss.str(std::string());

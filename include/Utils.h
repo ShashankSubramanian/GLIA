@@ -54,7 +54,7 @@ struct OptimizerSettings {
     OptimizerSettings ()
     :
     beta (1E-3),
-    opttolgrad (1E-3),
+    opttolgrad (1E-2),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
@@ -215,7 +215,7 @@ class NMisc {
                        // Modified Obj -- 3
         , dt_ (0.01)                            // Time step
         , nt_(16)                               // Total number of time steps
-        , np_ (27)                              // Number of gaussians for bounding box
+        , np_ (8)                              // Number of gaussians for bounding box
         , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.01)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
@@ -237,7 +237,7 @@ class NMisc {
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
         , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
-        , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
+        , gaussian_vol_frac_ (0.5)              // Volume fraction of gaussians to set custom basis functions
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore

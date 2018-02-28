@@ -83,15 +83,22 @@ int main (int argc, char** argv) {
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     if (!n_misc->bounding_box_) {
-        //ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+        // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
         ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
         ierr = tumor->phi_->setValues (tumor->mat_prop_);
     }
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
-    ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
+     //Create p_rec
+    int np = n_misc->np_;
+    int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+
+    #ifdef SERIAL
+        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+    #else
+        ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
+        ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+    #endif
 
     ierr = solver_interface->setParams (p_rec, nullptr);
     //Solve interpolation
@@ -211,7 +218,7 @@ PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
     ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
 
-    dataIn (data, n_misc, "multifocal.nc");
+    dataIn (data, n_misc, "tuAAAN.nc");
 
     PetscFunctionReturn (0);
 }
