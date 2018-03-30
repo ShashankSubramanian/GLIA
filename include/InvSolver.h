@@ -26,6 +26,9 @@ struct CtxInv {
     double grtol;               // relative tolerance for gradient
     /* steering of reference gradeint reset */
     bool is_ksp_gradnorm_set;   // if false, update reference gradient norm for hessian PCG
+    bool flag_sparse;  //flag for tracking sparsity of solution when parameter continuation is used
+    double lam_right;  //Parameters for performing binary search on parameter continuation
+    double lam_left;
     bool update_reference_gradient;  // if true, update reference gradient for optimization
     bool update_reference_objective;
     /* optimization state */
@@ -51,6 +54,7 @@ struct CtxInv {
         c0old = nullptr;
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
+        flag_sparse = false;
         update_reference_gradient = true;
         update_reference_objective = true;
     }
@@ -115,7 +119,6 @@ class InvSolver {
         std::shared_ptr<OptimizerSettings> optsettings_;
         std::shared_ptr<OptimizerFeedback> optfeedback_;
         std::shared_ptr<CtxInv> itctx_;
-        // std::shared_ptr<LSCtx> lsctx_;
 };
 
 // ============================= non-class methods used for TAO ============================

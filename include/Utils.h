@@ -57,7 +57,7 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (500),
+    newton_maxit (30),
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
@@ -65,7 +65,7 @@ struct OptimizerSettings {
     newtonsolver(GAUSSNEWTON),
     reset_tao(false),
     lmvm_set_hessian(false),
-    verbosity (1)
+    verbosity (3)
     {}
 };
 
@@ -134,7 +134,7 @@ struct TumorSettings {
     nk(2),
     betap(1E-3),
     writeOutput(false),
-    verbosity(0),
+    verbosity(3),
     obs_threshold(0.0),
     diff_coeff_scale(1E-2),
     diff_coeff_scale_anisotropic(0.0),
@@ -226,7 +226,8 @@ class NMisc {
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
         , beta_ (1e-3)                          // Regularization parameter
-        , lambda_ (1e4)                        // Regularization parameter for L1
+        , lambda_ (1e4)                         // Regularization parameter for L1
+        , lambda_continuation_ (true)           // bool for parameter continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (1.0 / 10.0)           // gm to wm diffusion coeff ratio
@@ -330,6 +331,7 @@ class NMisc {
 
         bool nk_fixed_;
         bool diffusivity_inversion_;
+        bool lambda_continuation_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;

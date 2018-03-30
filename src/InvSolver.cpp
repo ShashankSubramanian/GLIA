@@ -34,20 +34,15 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     optsettings_ = std::make_shared<OptimizerSettings> ();
     optfeedback_ = std::make_shared<OptimizerFeedback> ();
     itctx_ = std::make_shared<CtxInv> ();
-    // lsctx_ = std::make_shared<LSCtx> (n_misc);
-
-    // //allocate work vectors needed for linesearch in L1
-    // #ifdef L1
-    //   ierr = VecDuplicate (tumor->p_, &lsctx_->x_work_1);         CHKERRQ (ierr);
-    //   ierr = VecDuplicate (tumor->p_, &lsctx_->x_work_2);         CHKERRQ (ierr);
-    //   ierr = VecDuplicate (tumor->p_, &lsctx_->x_sol);            CHKERRQ (ierr);
-    // #endif
-
     itctx_->derivative_operators_ = derivative_operators;
     itctx_->n_misc_ = n_misc;
     itctx_->tumor_ = tumor;
     itctx_->optsettings_ = this->optsettings_;
     itctx_->optfeedback_ = this->optfeedback_;
+
+    //Initialize variables for parameter continuation
+    itctx_->lam_right = n_misc->lambda_;
+    itctx_->lam_left = 0;
 
     // allocate memory for H, x_rec and TAO
     ierr = allocateTaoObjects(); CHKERRQ(ierr);
@@ -792,6 +787,9 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   ierr = TaoGetMaximumIterations (tao, &maxiter);                              CHKERRQ(ierr);
   ierr = TaoGetSolutionStatus (tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
+  //Get ls context
+  LSCtx *lsctx = (LSCtx*) ls->data;
+
   // update/set reference gradient (with p = initial-guess)
   if (ctx->update_reference_objective) {
     double g_percent = 0.1;
@@ -805,7 +803,8 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     ierr = VecNorm (dJ, NORM_INFINITY, &norm_g_inf);                           CHKERRQ (ierr);
     if (ctx->n_misc_->lambda_ >= norm_g_inf) {
       ctx->n_misc_->lambda_ = norm_g_inf - g_percent * norm_g_inf;
-      LSCtx *lsctx = (LSCtx*) ls->data;
+      ctx->lam_right = ctx->n_misc_->lambda_;
+      ctx->lam_left = 0;
       lsctx->lambda = ctx->n_misc_->lambda_;
     }
     //Evaluate objective for reference using the correct lambda
@@ -815,6 +814,40 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
     ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
+  }
+
+  if (ctx->n_misc_->lambda_continuation_) {
+    double sparsity = 0;
+    double sparsity_old = 0;
+    if (iter > 0) {
+      //lambda continuation
+      ierr = vecSparsity (x, sparsity);
+      ierr = vecSparsity (lsctx->x_work_2, sparsity_old);
+
+      if (sparsity >= 0.95) {//Sparse solution
+        ctx->flag_sparse = true;
+        ctx->lam_right = ctx->n_misc_->lambda_;
+        ctx->n_misc_->lambda_ = 0.5 * (ctx->lam_left + ctx->lam_right);
+        lsctx->lambda = ctx->n_misc_->lambda_;
+      }
+
+      if (sparsity < 0.95 && sparsity_old >= 0.95 && iter > 1) {
+        ctx->lam_left = ctx->n_misc_->lambda_;
+        ctx->n_misc_->lambda_ = 0.5 * (ctx->lam_left + ctx->lam_right);
+        lsctx->lambda = ctx->n_misc_->lambda_;
+      }
+
+      if (sparsity < 0.95 && sparsity_old < 0.95 && ctx->flag_sparse) {
+        ctx->lam_left = ctx->n_misc_->lambda_;
+        ctx->n_misc_->lambda_ = 0.5 * (ctx->lam_left + ctx->lam_right);
+        lsctx->lambda = ctx->n_misc_->lambda_;
+      }
+
+      ss << "Lambda continuation on: Lambda = : " << std::scientific << lsctx->lambda;
+      ierr = tuMSGstd(ss.str());                                             CHKERRQ(ierr);
+      ss.str(std::string());
+      ss.clear();
+    }
   }
   
   // check for NaN value
@@ -837,7 +870,6 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   //J_ref : ref objective
 
   PetscReal J_ref = ctx->optfeedback_->j0;
-  LSCtx *lsctx = (LSCtx*) ls->data;
   PetscReal J_old = lsctx->J_old;
   double ftol = ctx->optsettings_->ftol;
   double norm_rel, norm;
@@ -870,17 +902,19 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     ierr = VecNorm (lsctx->x_work_2, NORM_INFINITY, &norm_rel);               CHKERRQ (ierr);
     ierr = VecNorm (x, NORM_2, &norm);                                        CHKERRQ (ierr);
 
+    ss.str(std::string());
+    ss.clear();
     if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref) && norm_rel < std::sqrt (ftol) * (1 + norm)) {  //L1 convergence check for objective and solution change
       ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER);                  CHKERRQ(ierr);
       stop[0] = true;
     }
     ss  << "  " << stop[0] << "    |J_old - J| = " << std::setw(14)
         << std::right << std::scientific << std::abs (J_old - J) << "    <    "
-        << std::left << std::setw(14) << ftol << " = " << "tol";
+        << std::left << std::setw(14) << ftol * PetscAbsReal (1 + J_ref) << " = " << "tol * |1 + J_ref|";
     ctx->convergence_message.push_back(ss.str());
     ss  << "  " << stop[0] << "    ||x_old - x||_inf = " << std::setw(14)
         << std::right << std::scientific << norm_rel << "    <    "
-        << std::left << std::setw(14) << ftol << " = " << "tol";
+        << std::left << std::setw(14) << std::sqrt (ftol) * (1 + norm) << " = " << "sqrt (ftol) * (1 + norm)";
     ctx->convergence_message.push_back(ss.str());
     if(verbosity >= 3) {
       ierr = tuMSGstd(ss.str());                                              CHKERRQ(ierr);
@@ -1353,7 +1387,7 @@ PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &msg) {
           break;
       }
       case TAO_CONVERGED_USER : {
-          msg = "solver converged";
+          msg = "solver converged user";
           ierr = tuMSGwarn(msg);                                    CHKERRQ(ierr);
           break;
       }
