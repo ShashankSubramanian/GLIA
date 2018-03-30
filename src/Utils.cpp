@@ -342,6 +342,26 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 	PetscFunctionReturn(0);
 }
 
+//Hoyer measure for sparsity of a vector
+PetscErrorCode vecSparsity (Vec x, double &sparsity) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+	int size;
+	ierr = VecGetSize (x, &size);									CHKERRQ (ierr);
+	double norm_1, norm_inf;
+	ierr = VecNorm (x, NORM_1, &norm_1);							CHKERRQ (ierr);
+	ierr = VecNorm (x, NORM_INFINITY, &norm_inf);					CHKERRQ (ierr);
+
+	if (norm_inf == 0) {
+		sparsity = 1.0;
+		PetscFunctionReturn (0);
+	}
+
+	sparsity = (size - (norm_1 / norm_inf)) / (size - 1);
+
+	PetscFunctionReturn (0);
+}
+
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))
 PetscErrorCode geometricCoupling(
 	Vec m1_wm, Vec m1_gm, Vec m1_csf, Vec m1_glm, Vec m1_bg,
@@ -386,3 +406,25 @@ PetscErrorCode geometricCoupling(
   // go home
 	PetscFunctionReturn(0);
 }
+
+PetscErrorCode vecSign (Vec x) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	double *x_ptr;
+	int size;
+	ierr = VecGetSize (x, &size);		CHKERRQ (ierr);
+	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
+
+	for (int i = 0; i < size; i++) {
+		if (x_ptr[i] > 0) x_ptr[i] = 1.0;
+		else if (x_ptr[i] == 0) x_ptr[i] = 0.0;
+		else x_ptr[i] = -1.0;
+	}
+
+	ierr = VecRestoreArray (x, &x_ptr);	CHKERRQ (ierr);
+
+	PetscFunctionReturn (0);
+}
+
+

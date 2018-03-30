@@ -144,7 +144,6 @@ env.Append(LINKFLAGS = ["-fopenmp"])
 
 
 # ====== preprocessor defines, #ifdefs ========
-
 # tumor with Gauss-Newton
 env.Append(CCFLAGS = ['-DGAUSS_NEWTON'])
 
@@ -155,6 +154,9 @@ env.Append(CCFLAGS = ['-DPOSITIVITY'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
+
+# user defined tao solver for L1
+env.Append(CCFLAGS = ['-DL1'])
 
 # enforce positivity in diffusion inversion for ks
 #env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
@@ -232,7 +234,7 @@ binfwd = env.Program (
 )
 bininv = env.Program (
     target = buildpath + '/inverse',
-    source = [sourcesPGLISTR, './app/inversedata.cpp']
+    source = [sourcesPGLISTR, './app/inverse.cpp']
 )
 env.Alias("bin", bininv)
 

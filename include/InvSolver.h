@@ -27,6 +27,7 @@ struct CtxInv {
     /* steering of reference gradeint reset */
     bool is_ksp_gradnorm_set;   // if false, update reference gradient norm for hessian PCG
     bool update_reference_gradient;  // if true, update reference gradient for optimization
+    bool update_reference_objective;
     /* optimization state */
     double jvalold;               // old value of objective function (previous newton iteration)
     Vec c0old, tmp;               // previous initial condition \Phi p^k-1 and tmp vec
@@ -51,6 +52,7 @@ struct CtxInv {
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
         update_reference_gradient = true;
+        update_reference_objective = true;
     }
 
     ~CtxInv () {
@@ -64,8 +66,6 @@ struct CtxInv {
         }
     }
 };
-
-
 
 
 /** Biophysical inversion solver:
@@ -115,6 +115,7 @@ class InvSolver {
         std::shared_ptr<OptimizerSettings> optsettings_;
         std::shared_ptr<OptimizerFeedback> optfeedback_;
         std::shared_ptr<CtxInv> itctx_;
+        // std::shared_ptr<LSCtx> lsctx_;
 };
 
 // ============================= non-class methods used for TAO ============================

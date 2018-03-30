@@ -1,10 +1,6 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-//#define POSITIVITY
-//#define POSITIVITY_DIFF_COEF
-//#define SERIAL
-
 #include <petsc.h>
 #include <stdlib.h>
 #include <iomanip>
@@ -31,6 +27,7 @@
 
 
 
+
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
@@ -38,6 +35,7 @@ enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
     double opttolgrad;           /// @brief l2 gradient tolerance for optimization
+    double ftol;                 /// @brief l1 function and solution tolerance
     double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
     double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
     double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
@@ -55,6 +53,7 @@ struct OptimizerSettings {
     :
     beta (1E-3),
     opttolgrad (1E-2),
+    ftol (1E-5),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
@@ -63,12 +62,13 @@ struct OptimizerSettings {
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    newtonsolver(QUASINEWTON),
+    newtonsolver(GAUSSNEWTON),
     reset_tao(false),
     lmvm_set_hessian(false),
     verbosity (1)
     {}
 };
+
 
 struct OptimizerFeedback {
     int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
@@ -79,6 +79,7 @@ struct OptimizerFeedback {
     std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
     double gradnorm;             /// @brief final gradient norm
     double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
+    double j0;                   /// @brief initial objective : needed for L1 convergence tests
     double jval;                 /// @brief orbjective function value
     bool converged;              /// @brief true if solver converged within bounds
 
@@ -92,6 +93,7 @@ struct OptimizerFeedback {
     solverstatus (),
     gradnorm (0.),
     gradnorm0 (0.),
+    j0 (0.),
     jval(0.),
     converged (false)
     {}
@@ -216,7 +218,7 @@ class NMisc {
         , dt_ (0.01)                            // Time step
         , nt_(16)                               // Total number of time steps
         , np_ (8)                              // Number of gaussians for bounding box
-        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
+        , nk_ (0)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.01)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (8)                              // Reaction coefficient
@@ -224,6 +226,7 @@ class NMisc {
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
         , beta_ (1e-3)                          // Regularization parameter
+        , lambda_ (1e4)                        // Regularization parameter for L1
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (1.0 / 10.0)           // gm to wm diffusion coeff ratio
@@ -238,10 +241,10 @@ class NMisc {
         , penalty_ (1E-4)                       // Parameter for positivity objective function
         , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.5)              // Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (0)                     // Flag to set bounding box for gaussians
+        , bounding_box_ (1)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , diffusivity_inversion_ (true)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , diffusivity_inversion_ (false)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
             time_horizon_ = nt_ * dt_;
@@ -316,6 +319,7 @@ class NMisc {
         double p_scale_true_;
         double noise_scale_;
         double beta_;
+        double lambda_;
 
         double phi_sigma_;
         double phi_spacing_factor_;
@@ -340,6 +344,20 @@ class NMisc {
         std::stringstream readpath_;
         std::stringstream writepath_;
 
+};
+
+/** 
+    Context structure for user-defined linesearch routines needed
+    for L1 minimization problems 
+**/
+struct LSCtx {
+    Vec x_work_1;   //Temporary vector for storing steepest descent guess
+    Vec x_work_2; //Work vector
+    Vec x_sol; 
+    double sigma; //Sufficient decrease parameter
+    double lambda; //Regularization parameter for L1: Linesearch needs
+                   //this application specific info
+    PetscReal J_old;
 };
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
@@ -380,6 +398,9 @@ PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 /* accfft differential operators */
 void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
 void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
+
+PetscErrorCode vecSign (Vec x); //signum of petsc vector
+PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsity of vector
 
 /* definition of tumor assert */
 #ifndef NDEBUG

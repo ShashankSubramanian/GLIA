@@ -110,6 +110,14 @@ int main (int argc, char** argv) {
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
 
+    #ifdef L1
+        PCOUT << " --------------  RECONST P -----------------\n";
+        if (procid == 0) {
+            ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
+        }
+        PCOUT << " --------------  -------------- -----------------\n";
+    #endif
+
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
     e1.addTimings (timers);
     e1.stop ();
@@ -284,6 +292,13 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->setTrueP (n_misc);
+    #ifdef L1
+        PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
+        if (procid == 0) {
+            ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+        }
+        PCOUT << " --------------  -------------- -----------------\n";
+    #endif
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     double *c0_ptr;

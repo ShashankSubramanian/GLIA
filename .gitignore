@@ -9,3 +9,4 @@ brain_data/
 *.o
 build
 run
+*.dat
