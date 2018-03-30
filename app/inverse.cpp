@@ -241,6 +241,9 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
         ierr = VecRestoreArray (c_rec_0, &c0_ptr);                          CHKERRQ (ierr);
     }
 
+    if (n_misc->writeOutput_)
+        dataOut (c_rec_0, n_misc, "c0Recon.nc");
+
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
     double max, min;
@@ -253,7 +256,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
                                                 //values to data
 
     if (n_misc->writeOutput_)
-        dataOut (c_rec, n_misc, "CRecon.nc");
+        dataOut (c_rec, n_misc, "cRecon.nc");
 
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
@@ -315,7 +318,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ierr = enforcePositivity (c_0, n_misc);
     #endif
     if (n_misc->writeOutput_)
-        dataOut (c_0, n_misc, "c0.nc");
+        dataOut (c_0, n_misc, "c0True.nc");
 
     double max, min;
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);

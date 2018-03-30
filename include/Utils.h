@@ -233,8 +233,8 @@ class NMisc {
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (1.0)                 // glm to wm diffusion coeff ratio
-        , phi_sigma_ (PETSC_PI / 10)            // Gaussian standard deviation for bounding box
-        , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
+        , phi_sigma_ (2 * PETSC_PI / 64)        // Gaussian standard deviation for bounding box
+        , phi_spacing_factor_ (2.0)             // Gaussian spacing for bounding box
         , obs_threshold_ (-1.0)                 // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
