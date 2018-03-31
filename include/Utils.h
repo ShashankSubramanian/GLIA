@@ -218,7 +218,7 @@ class NMisc {
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.01)                            // Time step
-        , nt_(16)                               // Total number of time steps
+        , nt_(50)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (0)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.1)                             // Isotropic diffusion coefficient

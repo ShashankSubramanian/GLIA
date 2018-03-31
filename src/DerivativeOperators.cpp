@@ -100,13 +100,16 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     ierr = pde_operators_->solveAdjoint (1);
     // compute gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-    ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+    
     #ifdef L1
-      ierr = VecScale (dJ, 0);                                      CHKERRQ (ierr);
+      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
     #else
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
       ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     #endif
-    ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    
 
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
@@ -203,14 +206,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (1);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-    ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
     #ifdef L1
-      ierr = VecScale (dJ, 0);                                      CHKERRQ (ierr);
+      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
     #else
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
       ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     #endif
-    // gradient
-    ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+
     // regularization
     PetscReal reg;
     #ifdef L1

@@ -69,10 +69,10 @@ int main (int argc, char** argv) {
 
     //Generate synthetic data
     //Synthetic parameters: Overwrite n_misc 
-    double rho = 5;
+    double rho = 6;
     double k = 0.1;
     double dt = 0.01;
-    int nt = 32;
+    int nt = 100;
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
