@@ -77,6 +77,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
+
     n_misc_->statistics_.nb_state_solves++;
 
     //enforce positivity : hack

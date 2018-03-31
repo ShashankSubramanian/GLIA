@@ -66,7 +66,28 @@ int main (int argc, char** argv) {
 {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
+
+    //Generate synthetic data
+    //Synthetic parameters: Overwrite n_misc 
+    double rho = 5;
+    double k = 0.1;
+    double dt = 0.01;
+    int nt = 32;
+
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
+
+    double rho_temp, k_temp, dt_temp, nt_temp;
+    rho_temp = n_misc->rho_;
+    k_temp = n_misc->k_;
+    dt_temp = n_misc->dt_;
+    nt_temp = n_misc->nt_;
+
+    n_misc->rho_ = rho;
+    n_misc->k_ = k;
+    n_misc->dt_ = dt;
+    n_misc->nt_ = nt;
+    
+
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
 
     // n_misc->phi_sigma_ = 0.2;
@@ -82,6 +103,12 @@ int main (int argc, char** argv) {
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
+    //re-write n_misc data
+    n_misc->rho_ = rho_temp;
+    n_misc->k_ = k_temp;
+    n_misc->dt_ = dt_temp;
+    n_misc->nt_ = nt_temp;
+
     //Solve interpolation
     // std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
@@ -89,6 +116,34 @@ int main (int argc, char** argv) {
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
 
+    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    if (!n_misc->bounding_box_) {
+        // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+        ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
+        ierr = tumor->phi_->setValues (tumor->mat_prop_);
+    }
+
+     //Create p_rec
+    if (!n_misc->bounding_box_) {
+        ierr = VecDestroy (&p_rec);                                                 CHKERRQ (ierr);
+        int np = n_misc->np_;
+        int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+
+        #ifdef SERIAL
+            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+        #else
+            ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
+            ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+            ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+        #endif
+    }
+
+    ierr = solver_interface->setParams (p_rec, nullptr);
+    //Solve interpolation
+    // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
+    
+    ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
+    //Solve tumor inversion
     ierr = solver_interface->setInitialGuess(0.);
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 

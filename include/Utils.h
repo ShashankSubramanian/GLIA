@@ -36,6 +36,7 @@ struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
     double opttolgrad;           /// @brief l2 gradient tolerance for optimization
     double ftol;                 /// @brief l1 function and solution tolerance
+    double ls_minstep;           /// @brief minimum step length of linesearch
     double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
     double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
     double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
@@ -54,6 +55,7 @@ struct OptimizerSettings {
     beta (1E-3),
     opttolgrad (1E-2),
     ftol (1E-5),
+    ls_minstep (1E-9),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
@@ -217,11 +219,11 @@ class NMisc {
                        // Modified Obj -- 3
         , dt_ (0.01)                            // Time step
         , nt_(16)                               // Total number of time steps
-        , np_ (8)                              // Number of gaussians for bounding box
+        , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (0)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (0.01)                             // Isotropic diffusion coefficient
+        , k_ (0.1)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
-        , rho_ (8)                              // Reaction coefficient
+        , rho_ (10)                              // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
@@ -242,7 +244,7 @@ class NMisc {
         , penalty_ (1E-4)                       // Parameter for positivity objective function
         , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.5)              // Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (1)                     // Flag to set bounding box for gaussians
+        , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , diffusivity_inversion_ (false)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient

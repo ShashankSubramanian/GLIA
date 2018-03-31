@@ -768,8 +768,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
 
   CtxInv *ctx = reinterpret_cast<CtxInv*> (ptr);     // get user context
   verbosity = ctx->optsettings_->verbosity;
-  minstep = std::pow (2.0, 10.0);
-  minstep = 1.0 / minstep;
+  minstep = ctx->optsettings_->ls_minstep;
   miniter = ctx->optsettings_->newton_minit;
   // get tolerances
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
@@ -843,7 +842,8 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
         lsctx->lambda = ctx->n_misc_->lambda_;
       }
 
-      ss << "Lambda continuation on: Lambda = : " << std::scientific << lsctx->lambda;
+      ss << "Lambda continuation on: Lambda = : " << std::scientific << lsctx->lambda << " " << ctx->lam_left << " " 
+          << ctx->lam_right << " " << sparsity_old << " " << sparsity;
       ierr = tuMSGstd(ss.str());                                             CHKERRQ(ierr);
       ss.str(std::string());
       ss.clear();
@@ -975,8 +975,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
     CtxInv *ctx = reinterpret_cast<CtxInv*> (ptr);     // get user context
     verbosity = ctx->optsettings_->verbosity;
-    minstep = std::pow (2.0, 10.0);
-    minstep = 1.0 / minstep;
+    minstep = ctx->optsettings_->ls_minstep;
     miniter = ctx->optsettings_->newton_minit;
     // get tolerances
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
@@ -1516,12 +1515,18 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     TaoLineSearch linesearch;        // line-search object
     std::string msg;
 
+    PetscReal minstep;
+    minstep = std::pow (2.0, 10.0);
+    minstep = 1.0 / minstep;
+    itctx_->optsettings_->ls_minstep = minstep;
+
     #ifdef L1
       ierr = TaoSetType (tao, "tao_L1");   CHKERRQ (ierr);
       TaoLineSearch ls;
       ierr = TaoGetLineSearch(tao_, &ls);                                          CHKERRQ (ierr);
       LSCtx *lsctx = (LSCtx*) ls->data;
       lsctx->lambda = ctx->n_misc_->lambda_;
+      ls->stepmin = minstep;
     #else
       if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
         ierr = TaoSetType (tao, "lmvm");   CHKERRQ(ierr);   // set TAO solver type
@@ -1629,6 +1634,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     #ifndef L1   //Set other preferences for standard tao solvers
       // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
+      linesearch->stepmin = minstep;
       if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
       }

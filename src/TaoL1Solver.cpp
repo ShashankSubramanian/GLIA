@@ -141,7 +141,7 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 		PetscFunctionReturn (0);
 	} else if (ls->step < ls->stepmin) {
 		ierr = PetscInfo (ls, "Step length is below tolerance\n");		CHKERRQ (ierr);
-		ls->reason = TAOLINESEARCH_HALTED_RTOL;
+		ls->reason = TAOLINESEARCH_HALTED_LOWERBOUND;
 		PetscFunctionReturn (0);
 	}
 
