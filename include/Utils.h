@@ -53,21 +53,21 @@ struct OptimizerSettings {
     OptimizerSettings ()
     :
     beta (1E-3),
-    opttolgrad (1E-2),
+    opttolgrad (1E-3),
     ftol (1E-5),
     ls_minstep (1E-9),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (30),
+    newton_maxit (30), 
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    newtonsolver(GAUSSNEWTON),
-    reset_tao(false),
-    lmvm_set_hessian(false),
-    verbosity (3)
+    newtonsolver (GAUSSNEWTON),
+    reset_tao (false),
+    lmvm_set_hessian (false),
+    verbosity (1)
     {}
 };
 
@@ -217,8 +217,8 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.01)                            // Time step
-        , nt_(50)                               // Total number of time steps
+        , dt_ (0.02)                            // Time step
+        , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (0)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.1)                             // Isotropic diffusion coefficient
@@ -247,7 +247,8 @@ class NMisc {
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , diffusivity_inversion_ (false)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , weighted_L2_ (false)                  // Flag for weighted L2
+        , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
             time_horizon_ = nt_ * dt_;
@@ -334,6 +335,7 @@ class NMisc {
         bool nk_fixed_;
         bool diffusivity_inversion_;
         bool lambda_continuation_;
+        bool weighted_L2_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;

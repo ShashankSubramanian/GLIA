@@ -43,6 +43,7 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     ierr = rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, mat_prop_, n_misc);
     ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
     ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &weights_);                           CHKERRQ (ierr);
     ierr = VecCopy (p, p_);                                       CHKERRQ (ierr);
     ierr = setTrueP (n_misc);                                     CHKERRQ (ierr);
 
@@ -68,6 +69,7 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
       if (p_ != nullptr) {ierr = VecDestroy (&p_true_);             CHKERRQ (ierr);}
       ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
       ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
+      ierr = VecDuplicate (p, &weights_);                           CHKERRQ (ierr);
       // re-create phi mesh (deletes old instance and creates new instance)
       // phi_ = std::make_shared<Phi> (n_misc);
     }

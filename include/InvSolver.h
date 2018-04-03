@@ -19,26 +19,30 @@ struct CtxInv {
     /// @brief keeps all the information that is feedbacked to the calling routine
     std::shared_ptr<OptimizerFeedback> optfeedback_;
     /* reference values gradient */
-    double ksp_gradnorm0; // reference gradient for hessian PCG
+    double ksp_gradnorm0;            // reference gradient for hessian PCG
     /* optimization options/settings */
-    double gttol;               // used: relative gradient reduction
-    double gatol;               // absolute tolerance for gradient
-    double grtol;               // relative tolerance for gradient
+    double gttol;                    // used: relative gradient reduction
+    double gatol;                    // absolute tolerance for gradient
+    double grtol;                    // relative tolerance for gradient
     /* steering of reference gradeint reset */
-    bool is_ksp_gradnorm_set;   // if false, update reference gradient norm for hessian PCG
-    bool flag_sparse;  //flag for tracking sparsity of solution when parameter continuation is used
-    double lam_right;  //Parameters for performing binary search on parameter continuation
+    bool is_ksp_gradnorm_set;        // if false, update reference gradient norm for hessian PCG
+
+    bool flag_sparse;                //flag for tracking sparsity of solution when parameter continuation is used
+    double lam_right;                //Parameters for performing binary search on parameter continuation
     double lam_left;
+    Vec weights;                     //for weighted L2
+
+
     bool update_reference_gradient;  // if true, update reference gradient for optimization
     bool update_reference_objective;
     /* optimization state */
-    double jvalold;               // old value of objective function (previous newton iteration)
-    Vec c0old, tmp;               // previous initial condition \Phi p^k-1 and tmp vec
+    double jvalold;                 // old value of objective function (previous newton iteration)
+    Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
     std::vector<std::string> convergence_message; // convergence message
-    int verbosity;                // controls verbosity of inverse solver
+    int verbosity;                  // controls verbosity of inverse solver
     /* additional data */
-    Vec data;                     // data for tumor inversion
-    Vec data_gradeval;            // data only for gradient evaluation (may differ)
+    Vec data;                       // data for tumor inversion
+    Vec data_gradeval;              // data only for gradient evaluation (may differ)
     CtxInv () :
     derivative_operators_ ()
     , n_misc_ ()
@@ -51,6 +55,7 @@ struct CtxInv {
         gatol = 1e-6;
         grtol = 1e-12;
         jvalold = 0;
+        weights = nullptr;
         c0old = nullptr;
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
@@ -60,6 +65,10 @@ struct CtxInv {
     }
 
     ~CtxInv () {
+        if (weights != nullptr) {
+            VecDestroy (&weights);
+            weights = nullptr;
+        }
         if (c0old != nullptr) {
             VecDestroy (&c0old);
             c0old = nullptr;
@@ -88,6 +97,7 @@ class InvSolver {
         PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
         PetscErrorCode solve ();
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
+        PetscErrorCode setTaoOptionsWL2 (Tao tao, CtxInv* ctx);
         // setter functions
         void setData (Vec d) {data_ = d;}
         void setDataGradient (Vec d) {data_gradeval_ = d;}

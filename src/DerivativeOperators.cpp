@@ -37,13 +37,20 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
 
     PetscReal reg;
-    #ifdef L1
-      ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
-      reg *= n_misc_->lambda_;
-    #else
-      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+
+    if (!n_misc_->weighted_L2_) {
+      #ifdef L1
+        ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
+        reg *= n_misc_->lambda_;
+      #else
+        ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+        reg *= 0.5 * n_misc_->beta_;
+      #endif
+    } else {
+      ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
+      ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
-    #endif
+    }
 
 
     std::stringstream s;
@@ -101,14 +108,21 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     // compute gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
     
-    #ifdef L1
-      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-    #else
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
-    #endif
+
+    if (!n_misc_->weighted_L2_) {
+      #ifdef L1
+        ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+        ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+      #else
+        ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      #endif
+    } else {
+      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    }
     
 
     /* ------------------------- */
@@ -206,24 +220,36 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (1);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-    #ifdef L1
-      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-    #else
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
-    #endif
+    if (!n_misc_->weighted_L2_) {
+      #ifdef L1
+        ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+        ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+      #else
+        ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      #endif
+    } else {
+      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    }
 
     // regularization
     PetscReal reg;
-    #ifdef L1
-      ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
-      reg *= n_misc_->lambda_;
-    #else
-      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+    if (!n_misc_->weighted_L2_) {
+      #ifdef L1
+        ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
+        reg *= n_misc_->lambda_;
+      #else
+        ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+        reg *= 0.5 * n_misc_->beta_;
+      #endif
+    } else {
+      ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
+      ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
-    #endif
+    }
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     // objective function value
@@ -294,9 +320,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       ierr = pde_operators_->solveAdjoint (2);
 
       ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-      ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);
-      ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
-      ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);
+      if (n_misc_->weighted_L2_) {
+        ierr = VecPointwiseMult (y, tumor_->weights_, x);               CHKERRQ (ierr);
+        ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
+        ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);
+      } else {
+        ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);
+        ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
+        ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);
+      }
     }
     PetscFunctionReturn(0);
 }

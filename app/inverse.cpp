@@ -71,10 +71,17 @@ int main (int argc, char** argv) {
     //Synthetic parameters: Overwrite n_misc 
     double rho = 6;
     double k = 0.1;
-    double dt = 0.01;
-    int nt = 100;
+    double dt = 0.02;
+    int nt = 32;
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
+
+    n_misc->writepath_.str (std::string ()); //clear the writepath stringstream
+    #ifdef L1
+        n_misc->writepath_ << "./results/L1/";
+    #else
+        n_misc->writepath_ << "./results/L2/";
+    #endif
 
     double rho_temp, k_temp, dt_temp, nt_temp;
     rho_temp = n_misc->rho_;
@@ -121,10 +128,8 @@ int main (int argc, char** argv) {
         // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
         ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
         ierr = tumor->phi_->setValues (tumor->mat_prop_);
-    }
 
-     //Create p_rec
-    if (!n_misc->bounding_box_) {
+        //re-create p_rec
         ierr = VecDestroy (&p_rec);                                                 CHKERRQ (ierr);
         int np = n_misc->np_;
         int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
@@ -144,13 +149,39 @@ int main (int argc, char** argv) {
     
     ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
     //Solve tumor inversion
-    ierr = solver_interface->setInitialGuess(0.);
+    ierr = solver_interface->setInitialGuess (0.);
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+
+    //if L1, then solve for sparse components using weigted L2
+    double prec_norm;
+    double *prec_ptr;
+    double l2_rel_error = 0.0;
+    #ifdef L1
+        ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
+        PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
+        if (n_misc->diffusivity_inversion_) {
+            ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+            PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
+            PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
+            PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
+            ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+        }
+        ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
+        PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
+        PCOUT << " --------------  RECONST P -----------------\n";
+        if (procid == 0) {
+            ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
+        }
+        PCOUT << " --------------  -------------- -----------------\n";
+        PCOUT << " \n\n --------------- W-L2 solve for sparse components ----------------------\n\n\n";
+        n_misc->weighted_L2_ = true;                        //Begin weighted L2 
+        ierr = solver_interface->resetTaoSolver ();
+        ierr = solver_interface->setInitialGuess (p_rec);
+        ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+    #endif
 
     self_exec_time += MPI_Wtime ();
 
-    double prec_norm;
-    double *prec_ptr;
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
     PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
     if (n_misc->diffusivity_inversion_) {
@@ -161,10 +192,8 @@ int main (int argc, char** argv) {
         ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
     }
 
-    double l2_rel_error = 0.0;
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
-
     #ifdef L1
         PCOUT << " --------------  RECONST P -----------------\n";
         if (procid == 0) {

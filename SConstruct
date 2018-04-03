@@ -150,7 +150,7 @@ env.Append(CCFLAGS = ['-DGAUSS_NEWTON'])
 env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
 # enforce positivity inside tumor forward solve
-env.Append(CCFLAGS = ['-DPOSITIVITY'])
+# env.Append(CCFLAGS = ['-DPOSITIVITY'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
@@ -162,7 +162,7 @@ env.Append(CCFLAGS = ['-DL1'])
 #env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
 # print centers of phi's to file
-# env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
+env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 
 # avx
 if env["platform"] != "stampede2":
