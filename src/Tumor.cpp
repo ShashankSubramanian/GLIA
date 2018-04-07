@@ -89,6 +89,10 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
 PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    if (n_misc->np_ == 1) {
+        ierr = VecSet (p_true_, 1.0);                                 CHKERRQ (ierr);
+        PetscFunctionReturn (0);
+    }
     PetscScalar val[2] = {.9, .2}; 
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     PetscInt idx[2] = {center-1, center};

@@ -59,7 +59,7 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (30), 
+    newton_maxit (100), 
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
@@ -218,32 +218,32 @@ class NMisc {
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
         , dt_ (0.02)                            // Time step
-        , nt_(16)                               // Total number of time steps
-        , np_ (27)                              // Number of gaussians for bounding box
+        , nt_(12)                               // Total number of time steps
+        , np_ (1)                              // Number of gaussians for bounding box
         , nk_ (0)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (0.1)                             // Isotropic diffusion coefficient
+        , k_ (0.1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
-        , rho_ (10)                              // Reaction coefficient
+        , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
         , beta_ (1e-3)                          // Regularization parameter
-        , lambda_ (1e4)                         // Regularization parameter for L1
-        , lambda_continuation_ (true)           // bool for parameter continuation
+        , lambda_ (1e5)                         // Regularization parameter for L1
+        , lambda_continuation_ (false)           // bool for parameter continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 10.0)           // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm reaction coeff ratio
+        , r_gm_wm_ratio_ (1.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (1.0)                 // glm to wm diffusion coeff ratio
-        , phi_sigma_ (2 * PETSC_PI / 64)        // Gaussian standard deviation for bounding box
-        , phi_spacing_factor_ (2.0)             // Gaussian spacing for bounding box
+        , phi_sigma_ (0.1)        // Gaussian standard deviation for bounding box
+        , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
         , obs_threshold_ (-1.0)                 // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
         , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
-        , gaussian_vol_frac_ (0.5)              // Volume fraction of gaussians to set custom basis functions
+        , gaussian_vol_frac_ (0.99)              // Volume fraction of gaussians to set custom basis functions
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore

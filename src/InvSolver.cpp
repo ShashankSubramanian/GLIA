@@ -844,7 +844,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     }
     //Evaluate objective for reference using the correct lambda
     evaluateObjectiveFunction (tao, p0, &ctx->optfeedback_->j0, (void*) ctx);
-    std::stringstream s; s <<"updated reference objective for relative convergence criterion, ISTA L1 solver: " << ctx->optfeedback_->j0;
+    std::stringstream s; s <<"updated reference objective for relative convergence criterion, ISTA L1 solver: " << ctx->optfeedback_->j0 << " ; regularization : " << ctx->n_misc_->lambda_;
     ctx->update_reference_objective = false;
     ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
@@ -1544,7 +1544,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     std::string msg;
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 10.0);
+    minstep = std::pow (2.0, 25.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 
@@ -1722,7 +1722,7 @@ PetscErrorCode InvSolver::setTaoOptionsWL2 (Tao tao, CtxInv *ctx) {
     std::string msg;
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 10.0);
+    minstep = std::pow (2.0, 25.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 

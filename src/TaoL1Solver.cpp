@@ -121,19 +121,27 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	while (ls->step >= ls->stepmin) {	//Default step min is 1e-20
 		ierr = VecCopy (x, ctx->x_work_1);									CHKERRQ (ierr);
 		ierr = VecAXPY (ctx->x_work_1, -1.0 * ls->step, g);					CHKERRQ (ierr); //gradient descent guess
+
 		ierr = VecCopy (ctx->x_work_1, ctx->x_work_2);						CHKERRQ (ierr);
 		ierr = proximalOperator (ctx->x_work_2, ctx->x_work_1, ctx->lambda, ls->step); 
 		ierr = VecCopy (ctx->x_work_2, ctx->x_sol);							CHKERRQ (ierr);
+
 		//Sufficient descent criterion
 		ierr = TaoLineSearchComputeObjective (ls, ctx->x_work_2, f);	    CHKERRQ (ierr);
 		ierr = VecAXPY (ctx->x_work_2, -1.0, x);							CHKERRQ (ierr);
 		ierr = VecNorm (ctx->x_work_2, NORM_2, &norm);				    	CHKERRQ (ierr);
+
 		if (*f <= f_old - 0.5 * ctx->sigma * (1.0 / ls->step) * norm * norm) {
 			ls->reason = TAOLINESEARCH_SUCCESS;
 			break;
 		}
 		ls->step *= 0.5;
 	}
+
+	if (ls->step < 1E-1)
+		ls->initstep = ls->step * 10; //start next linesearch at one order of magnitude higher
+	else
+		ls->initstep = 1.0;
 
 	if (PetscIsInfOrNanReal (*f)) {
 		ierr = PetscInfo (ls, "Function is inf or nan\n");				CHKERRQ (ierr);
@@ -195,6 +203,7 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 	TaoCtx *ctx = (TaoCtx*) tao->data;
 	Vec x = tao->solution;
 	Vec g = tao->gradient;
+	Vec s = tao->stepdirection;
 
 	TaoLineSearchConvergedReason lsflag = TAOLINESEARCH_CONTINUE_ITERATING;
 	TaoConvergedReason reason = TAO_CONTINUE_ITERATING;
@@ -203,14 +212,15 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 	PetscInt iter = 0;
 	ierr = TaoComputeObjectiveAndGradient (tao, x, &f, g);						CHKERRQ (ierr);
 	ierr = VecNorm (g, NORM_2, &gnorm); 										CHKERRQ(ierr);
+	ierr = TaoLineSearchSetInitialStepLength (tao->linesearch, 1.0);			CHKERRQ (ierr);
+	ierr = VecCopy (g, s);														CHKERRQ (ierr);
 
 	while (1) {
 		ierr = TaoMonitor (tao, iter, f, gnorm, 0.0, steplength, &reason);		CHKERRQ (ierr);
 		if (reason != TAO_CONTINUE_ITERATING) 
 			break;
 		
-		ierr = TaoLineSearchSetInitialStepLength (tao->linesearch, 1.0);				        CHKERRQ (ierr);
-		ierr = TaoLineSearchApply (tao->linesearch, x, &f, g, g, &steplength, &lsflag);			CHKERRQ (ierr);		//Perform linesearch and update function, solution and gradient values
+		ierr = TaoLineSearchApply (tao->linesearch, x, &f, g, s, &steplength, &lsflag);		CHKERRQ (ierr);		//Perform linesearch and update function, solution and gradient values
 
 		ierr = VecNorm (g, NORM_2, &gnorm);														CHKERRQ (ierr);
 		iter++;

@@ -69,10 +69,11 @@ int main (int argc, char** argv) {
 
     //Generate synthetic data
     //Synthetic parameters: Overwrite n_misc 
+    bool overwrite_model = true;
     double rho = 6;
     double k = 0.1;
     double dt = 0.02;
-    int nt = 32;
+    int nt = 25;
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
@@ -89,10 +90,12 @@ int main (int argc, char** argv) {
     dt_temp = n_misc->dt_;
     nt_temp = n_misc->nt_;
 
-    n_misc->rho_ = rho;
-    n_misc->k_ = k;
-    n_misc->dt_ = dt;
-    n_misc->nt_ = nt;
+    if (overwrite_model) {
+        n_misc->rho_ = rho;
+        n_misc->k_ = k;
+        n_misc->dt_ = dt;
+        n_misc->nt_ = nt;
+    }
     
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
@@ -157,6 +160,9 @@ int main (int argc, char** argv) {
     double *prec_ptr;
     double l2_rel_error = 0.0;
     #ifdef L1
+        n_misc->weighted_L2_ = true; 
+    #endif
+    if (n_misc->weighted_L2_) {
         ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
         PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
         if (n_misc->diffusivity_inversion_) {
@@ -178,7 +184,7 @@ int main (int argc, char** argv) {
         ierr = solver_interface->resetTaoSolver ();
         ierr = solver_interface->setInitialGuess (p_rec);
         ierr = solver_interface->solveInverse (p_rec, data, nullptr);
-    #endif
+    }
 
     self_exec_time += MPI_Wtime ();
 
@@ -194,13 +200,11 @@ int main (int argc, char** argv) {
 
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
-    #ifdef L1
-        PCOUT << " --------------  RECONST P -----------------\n";
-        if (procid == 0) {
-            ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
-        }
-        PCOUT << " --------------  -------------- -----------------\n";
-    #endif
+    PCOUT << " --------------  RECONST P -----------------\n";
+    if (procid == 0) {
+        ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
+    }
+    PCOUT << " --------------  -------------- -----------------\n";
 
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
     e1.addTimings (timers);
@@ -379,13 +383,11 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->setTrueP (n_misc);
-    #ifdef L1
-        PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
-        if (procid == 0) {
-            ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-        }
-        PCOUT << " --------------  -------------- -----------------\n";
-    #endif
+    PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
+    if (procid == 0) {
+        ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+    }
+    PCOUT << " --------------  -------------- -----------------\n";
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     double *c0_ptr;
