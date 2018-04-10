@@ -86,6 +86,12 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
+	int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    PCOUT << "(user-defined linesearch begin)\n";
+
 	LSCtx *ctx = (LSCtx*) ls->data;
 
 	if (PetscIsInfOrNanReal (*f)) {
@@ -138,8 +144,8 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 		ls->step *= 0.5;
 	}
 
-	if (ls->step < 1E-1)
-		ls->initstep = ls->step * 10; //start next linesearch at one order of magnitude higher
+	if (ls->step < 0.25)
+		ls->initstep = ls->step * 4.0; //start next linesearch at one order of magnitude higher
 	else
 		ls->initstep = 1.0;
 
@@ -156,7 +162,6 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	ierr = VecCopy (x, ctx->x_work_2);									CHKERRQ (ierr);	//copy the old solution to work
 																						//Used in convergence tests
 	ierr = VecCopy (ctx->x_sol, x);										CHKERRQ (ierr);
-	ierr = TaoLineSearchComputeGradient (ls, x, g);						CHKERRQ (ierr);
 
 	PetscFunctionReturn (0);
 }
@@ -173,16 +178,6 @@ PetscErrorCode TaoSetup_ISTA (Tao tao) {
 	PetscFunctionReturn (0);
 }
 
-// PetscErrorCode TaoSetFromOptions_ISTA (Tao tao, void *solver) {
-// 	PetscFunctionBegin;
-// 	PetscErrorCode ierr = 0;
-// 	TaoCtx *ctx = (TaoCtx*) solver;
-// 	ctx->f_tol = 1E-5;
-// 	ctx->x_tol = 1E-5;
-// 	ierr = PetscOptionsReal ("-tao_ista_ftol", "objective function tolerance", "", ctx->f_tol, &ctx->f_tol, 0);				CHKERRQ (ierr);
-// 	ierr = PetscOptionsReal ("-tao_ista_xtol", "solution tolerance", "", ctx->x_tol, &ctx->x_tol, 0);						CHKERRQ (ierr);
-// 	PetscFunctionReturn (0);
-// }
 
 PetscErrorCode TaoView_ISTA (Tao tao, PetscViewer viewer) {
 	//TODO
@@ -219,10 +214,9 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 		ierr = TaoMonitor (tao, iter, f, gnorm, 0.0, steplength, &reason);		CHKERRQ (ierr);
 		if (reason != TAO_CONTINUE_ITERATING) 
 			break;
-		
+		ierr = TaoComputeObjectiveAndGradient (tao, x, &f, g);								CHKERRQ (ierr);
 		ierr = TaoLineSearchApply (tao->linesearch, x, &f, g, s, &steplength, &lsflag);		CHKERRQ (ierr);		//Perform linesearch and update function, solution and gradient values
-
-		ierr = VecNorm (g, NORM_2, &gnorm);														CHKERRQ (ierr);
+		ierr = VecNorm (g, NORM_2, &gnorm);												    CHKERRQ (ierr);
 		iter++;
 		tao->niter = iter;   //For some reason, TaoMonitor does not do this: manually update
 	}

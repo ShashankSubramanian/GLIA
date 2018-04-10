@@ -229,7 +229,7 @@ class NMisc {
         , noise_scale_(0.0)                     // Noise scale
         , beta_ (1e-3)                          // Regularization parameter
         , lambda_ (1e5)                         // Regularization parameter for L1
-        , lambda_continuation_ (false)           // bool for parameter continuation
+        , lambda_continuation_ (true)           // bool for parameter continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm diffusion coeff ratio

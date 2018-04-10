@@ -651,9 +651,46 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
           s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_ + 1]; }
         ierr = VecRestoreArray(tao_x, &x_ptr);                                     CHKERRQ(ierr);
       }
+
+
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
+
+    if (itctx->n_misc_->lambda_continuation_) {
+      double sparsity = 0;
+      double sparsity_old = 0;
+      if (its > 0) {
+        //lambda continuation
+        ierr = vecSparsity (tao_x, sparsity);
+        ierr = vecSparsity (lsctx->x_work_2, sparsity_old);
+
+        if (sparsity >= 0.95) {//Sparse solution
+          itctx->flag_sparse = true;
+          itctx->lam_right = itctx->n_misc_->lambda_;
+          itctx->n_misc_->lambda_ = 0.5 * (itctx->lam_left + itctx->lam_right);
+          lsctx->lambda = itctx->n_misc_->lambda_;
+        }
+
+        if (sparsity < 0.95 && sparsity_old >= 0.95 && its > 1) {
+          itctx->lam_left = itctx->n_misc_->lambda_;
+          itctx->n_misc_->lambda_ = 0.5 * (itctx->lam_left + itctx->lam_right);
+          lsctx->lambda = itctx->n_misc_->lambda_;
+        }
+
+        if (sparsity < 0.95 && sparsity_old < 0.95 && itctx->flag_sparse) {
+          itctx->lam_left = itctx->n_misc_->lambda_;
+          itctx->n_misc_->lambda_ = 0.5 * (itctx->lam_left + itctx->lam_right);
+          lsctx->lambda = itctx->n_misc_->lambda_;
+        }
+
+        s << "Lambda continuation on: Lambda = : " << std::scientific << lsctx->lambda;
+        ierr = tuMSGstd(s.str());                                             CHKERRQ(ierr);
+        s.str(std::string());
+        s.clear();
+      }
+    }
+
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
 
@@ -792,7 +829,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
 
   PetscInt its, nl, ng;
   PetscInt iter, maxiter, miniter;
-  PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep;
+  PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep, J_old;
   int verbosity;
   bool stop[2];
   std::stringstream ss, sc;
@@ -851,41 +888,6 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
   }
 
-  if (ctx->n_misc_->lambda_continuation_) {
-    double sparsity = 0;
-    double sparsity_old = 0;
-    if (iter > 0) {
-      //lambda continuation
-      ierr = vecSparsity (x, sparsity);
-      ierr = vecSparsity (lsctx->x_work_2, sparsity_old);
-
-      if (sparsity >= 0.95) {//Sparse solution
-        ctx->flag_sparse = true;
-        ctx->lam_right = ctx->n_misc_->lambda_;
-        ctx->n_misc_->lambda_ = 0.5 * (ctx->lam_left + ctx->lam_right);
-        lsctx->lambda = ctx->n_misc_->lambda_;
-      }
-
-      if (sparsity < 0.95 && sparsity_old >= 0.95 && iter > 1) {
-        ctx->lam_left = ctx->n_misc_->lambda_;
-        ctx->n_misc_->lambda_ = 0.5 * (ctx->lam_left + ctx->lam_right);
-        lsctx->lambda = ctx->n_misc_->lambda_;
-      }
-
-      if (sparsity < 0.95 && sparsity_old < 0.95 && ctx->flag_sparse) {
-        ctx->lam_left = ctx->n_misc_->lambda_;
-        ctx->n_misc_->lambda_ = 0.5 * (ctx->lam_left + ctx->lam_right);
-        lsctx->lambda = ctx->n_misc_->lambda_;
-      }
-
-      ss << "Lambda continuation on: Lambda = : " << std::scientific << lsctx->lambda << " " << ctx->lam_left << " " 
-          << ctx->lam_right << " " << sparsity_old << " " << sparsity;
-      ierr = tuMSGstd(ss.str());                                             CHKERRQ(ierr);
-      ss.str(std::string());
-      ss.clear();
-    }
-  }
-  
   // check for NaN value
   if (PetscIsInfOrNanReal(J)) {
     ierr = tuMSGwarn ("objective is NaN");                                      CHKERRQ(ierr);
@@ -906,7 +908,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   //J_ref : ref objective
 
   PetscReal J_ref = ctx->optfeedback_->j0;
-  PetscReal J_old = lsctx->J_old;
+  J_old = lsctx->J_old;
   double ftol = ctx->optsettings_->ftol;
   double norm_rel, norm;
   stop[0] = false; stop[1] = false;
