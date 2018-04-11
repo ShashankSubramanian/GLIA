@@ -36,22 +36,20 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
 
+    /*Regularization term*/
     PetscReal reg;
-
-    if (!n_misc_->weighted_L2_) {
-      #ifdef L1
-        ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
-        reg *= n_misc_->lambda_;
-      #else
-        ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
-        reg *= 0.5 * n_misc_->beta_;
-      #endif
-    } else {
+    if (n_misc_->L1_) {
+      ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
+      reg *= n_misc_->lambda_;
+    } else if (n_misc_->weighted_L2_) {
       ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
       ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
+    } else {
+      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+      reg *= 0.5 * n_misc_->beta_;
     }
-
+    
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
@@ -107,20 +105,18 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     // compute gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
     
-
-    if (!n_misc_->weighted_L2_) {
-      #ifdef L1
-        ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-        ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-      #else
-        ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
-      #endif
-    } else {
+    // gradient according to reg paramater
+    if (n_misc_->L1_) {
+      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+    } else if (n_misc_->weighted_L2_) {
       ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
       ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     }
     
 
@@ -219,36 +215,35 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (1);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-    if (!n_misc_->weighted_L2_) {
-      #ifdef L1
-        ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-        ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-      #else
-        ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
-      #endif
-    } else {
+
+    // Gradient according to reg parameter chosen
+    if (n_misc_->L1_) {
+      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+    } else if (n_misc_->weighted_L2_) {
       ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
       ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     }
 
     // regularization
     PetscReal reg;
-    if (!n_misc_->weighted_L2_) {
-      #ifdef L1
-        ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
-        reg *= n_misc_->lambda_;
-      #else
-        ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
-        reg *= 0.5 * n_misc_->beta_;
-      #endif
-    } else {
+    if (n_misc_->L1_) {
+      ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
+      reg *= n_misc_->lambda_;
+    } else if (n_misc_->weighted_L2_) {
       ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
       ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
+    } else {
+      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+      reg *= 0.5 * n_misc_->beta_;
     }
+
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     // objective function value
@@ -319,6 +314,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       ierr = pde_operators_->solveAdjoint (2);
 
       ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+
+      //No hessian info for L1 for now
       if (n_misc_->weighted_L2_) {
         ierr = VecPointwiseMult (y, tumor_->weights_, x);               CHKERRQ (ierr);
         ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);

@@ -51,21 +51,22 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  //Initialize variables for parameter continuation
-  itctx_->lam_right = itctx_->n_misc_->lambda_;
-  itctx_->lam_left = 0;
-
   int np = itctx_->n_misc_->np_;
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
-  #ifdef L1 //Register new Tao solver
-    if (!itctx_->n_misc_->weighted_L2_) //first L1 solve: Register the new solver
-      ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                                       CHKERRQ (ierr);
 
-    //create weights for w-L2 
-    if (itctx_->weights != nullptr)
+  if (itctx_->n_misc_->L1_) {//Register new Tao solver and initialize variables for parameter continuation
+    ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                                       CHKERRQ (ierr);
+    itctx_->lam_right = itctx_->n_misc_->lambda_;
+    itctx_->lam_left = 0;
+  }
+
+  if (itctx_->n_misc_->weighted_L2_) {
+    if (itctx_->weights != nullptr) {
       ierr = VecDestroy (&itctx_->weights);                                              CHKERRQ (ierr);
+    }
     ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->weights);                          CHKERRQ (ierr);
-  #endif
+  }
+
   #ifdef SERIAL
     // allocate memory for xrec_
       ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                         CHKERRQ(ierr);
@@ -213,17 +214,16 @@ PetscErrorCode InvSolver::solve () {
   }
 
   double *p_ptr, *w_ptr;
-  int size_p;
   double w = 1e5;
   double p_max;
   if (itctx_->n_misc_->weighted_L2_) {//set the weights for w-l2 solve
     itctx_->n_misc_->beta_ = 1.;
     ierr = VecGetArray (itctx_->tumor_->p_, &p_ptr);                                     CHKERRQ (ierr);
+    ierr = VecSet (itctx_->weights, 0.0);                                                CHKERRQ (ierr);
     ierr = VecGetArray (itctx_->weights, &w_ptr);                                        CHKERRQ (ierr);
-    ierr = VecGetSize (itctx_->tumor_->p_, &size_p);                                     CHKERRQ (ierr);
     ierr = VecMax (itctx_->tumor_->p_, NULL, &p_max);                                    CHKERRQ (ierr);
 
-    for (int i = 0; i < size_p; i++) {
+    for (int i = 0; i < itctx_->n_misc_->np_; i++) {
       if (p_ptr[i] > 0.1 * p_max) //nnz component (arbitrarily defined)
         w_ptr[i] = 0;
       else
@@ -237,12 +237,9 @@ PetscErrorCode InvSolver::solve () {
   /* === set TAO options === */
   if (tao_is_reset_) {
     itctx_->update_reference_gradient = true;
-    if (itctx_->n_misc_->weighted_L2_) {
-      ierr = setTaoOptionsWL2 (tao_, itctx_.get());                                      CHKERRQ(ierr);
-    }
-    else {
-      ierr = setTaoOptions (tao_, itctx_.get());                                         CHKERRQ(ierr);
-    }
+    itctx_->update_reference_objective = true;
+    ierr = setTaoOptions (tao_, itctx_.get());                                         CHKERRQ(ierr);
+    
     if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
          itctx_->optsettings_->lmvm_set_hessian) {
       ierr = TaoLMVMSetH0 (tao_, H_);                                                    CHKERRQ(ierr);
@@ -1550,14 +1547,14 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 
-    #ifdef L1
+    if (itctx_->n_misc_->L1_) {
       ierr = TaoSetType (tao, "tao_L1");   CHKERRQ (ierr);
       TaoLineSearch ls;
       ierr = TaoGetLineSearch(tao_, &ls);                                          CHKERRQ (ierr);
       LSCtx *lsctx = (LSCtx*) ls->data;
       lsctx->lambda = ctx->n_misc_->lambda_;
       ls->stepmin = minstep;
-    #else
+    } else {
       if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
         ierr = TaoSetType (tao, "lmvm");   CHKERRQ(ierr);   // set TAO solver type
       } else {
@@ -1595,7 +1592,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
           if (flag == PETSC_FALSE)
               PetscOptionsSetValue ("-tao_ntr_pc_type", "none");
       #endif
-    #endif
+    }
 
     // parse options user has set
     ierr = TaoSetFromOptions (tao);                                                 CHKERRQ(ierr);
@@ -1608,11 +1605,12 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     // set the routine to evaluate the objective and compute the gradient
     ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
     // set monitor function
-    #ifdef L1
+    if (itctx_->n_misc_->L1_) {
       ierr = TaoSetMonitor (tao, optimizationMonitorL1, (void *) ctx, NULL);        CHKERRQ(ierr);
-    #else
+    }
+    else {
       ierr = TaoSetMonitor (tao, optimizationMonitor, (void *) ctx, NULL);          CHKERRQ(ierr);
-    #endif
+    }
     // Lower and Upper Bounds
     // ierr = TaoSetVariableBounds(tao, tumor->lowerb_, tumor->upperb_);
 
@@ -1653,15 +1651,15 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     #endif
     ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->newton_maxit); CHKERRQ(ierr);
 
-    #ifdef L1
+    if (itctx_->n_misc_->L1_) {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceFun, ctx);                  CHKERRQ(ierr);
-    #else
-      // set adapted convergence test for warm-starts
+    }
+    else {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
       //ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
-    #endif
+    }
 
-    #ifndef L1   //Set other preferences for standard tao solvers
+    if (!itctx_->n_misc_->L1_) {  //Set other preferences for standard tao solvers
       // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
       linesearch->stepmin = minstep;
@@ -1712,165 +1710,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         	ierr = PCShellSetContext(pc, ctx);                                        CHKERRQ(ierr);
         }
       }
-    #endif
-    PetscFunctionReturn (0);
-}
-
-PetscErrorCode InvSolver::setTaoOptionsWL2 (Tao tao, CtxInv *ctx) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-
-    TaoLineSearch linesearch;        // line-search object
-    std::string msg;
-
-    PetscReal minstep;
-    minstep = std::pow (2.0, 25.0);
-    minstep = 1.0 / minstep;
-    itctx_->optsettings_->ls_minstep = minstep;
-
-    if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
-      ierr = TaoSetType (tao, "lmvm");   CHKERRQ(ierr);   // set TAO solver type
-    } else {
-      ierr = TaoSetType (tao, "nls");    CHKERRQ(ierr);  // set TAO solver type
-    }
-  
-    PetscBool flag = PETSC_FALSE;
-    
-    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
-        PetscOptionsHasName (NULL, NULL, "-tao_nls_pc_type", &flag);
-        if (flag == PETSC_FALSE)
-            PetscOptionsSetValue (NULL, "-tao_nls_pc_type", "none");
-    #else
-        PetscOptionsHasName (NULL, "-tao_nls_pc_type", &flag);
-        if (flag == PETSC_FALSE)
-            PetscOptionsSetValue ("-tao_nls_pc_type", "none");
-    #endif
-    flag = PETSC_FALSE;
-    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
-        PetscOptionsHasName (NULL, NULL, "-tao_nls_ksp_type", &flag);
-        if (flag == PETSC_FALSE)
-          PetscOptionsSetValue (NULL, "-tao_nls_ksp_type", "cg");
-    #else
-        PetscOptionsHasName (NULL, "-tao_nls_ksp_type", &flag);
-        if (flag == PETSC_FALSE)
-         PetscOptionsSetValue ("-tao_nls_ksp_type", "cg");
-    #endif
-    flag = PETSC_FALSE;
-    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
-        PetscOptionsHasName (NULL, NULL, "-tao_ntr_pc_type", &flag);
-        if (flag == PETSC_FALSE)
-            PetscOptionsSetValue (NULL, "-tao_ntr_pc_type", "none");
-    #else
-        PetscOptionsHasName (NULL, "-tao_ntr_pc_type", &flag);
-        if (flag == PETSC_FALSE)
-            PetscOptionsSetValue ("-tao_ntr_pc_type", "none");
-    #endif
-
-    // parse options user has set
-    ierr = TaoSetFromOptions (tao);                                                 CHKERRQ(ierr);
-    // set the initial vector
-    ierr = TaoSetInitialVector (tao, ctx->tumor_->p_);                              CHKERRQ(ierr);
-    // set routine for evaluating the objective
-    ierr = TaoSetObjectiveRoutine (tao, evaluateObjectiveFunction, (void*) ctx);    CHKERRQ(ierr);
-    // set routine for evaluating the Gradient
-    ierr = TaoSetGradientRoutine (tao, evaluateGradient, (void*) ctx);              CHKERRQ(ierr);
-    // set the routine to evaluate the objective and compute the gradient
-    ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
-    // set monitor function
-    ierr = TaoSetMonitor (tao, optimizationMonitor, (void *) ctx, NULL);            CHKERRQ(ierr);
-    // Lower and Upper Bounds
-    // ierr = TaoSetVariableBounds(tao, tumor->lowerb_, tumor->upperb_);
-
-    // TAO type from user input
-    const TaoType taotype;
-    ierr = TaoGetType (tao, &taotype);                                            CHKERRQ(ierr);
-    if (strcmp(taotype, "nls") == 0) {
-        msg = " limited memory variable metric method (unconstrained) selected\n";
-    } else if (strcmp(taotype, "ntr") == 0) {
-        msg = " Newton's method with trust region for unconstrained minimization\n";
-    } else if (strcmp(taotype, "ntl") == 0) {
-        msg = " Newton's method with trust region, line search for unconstrained minimization\n";
-    } else if (strcmp(taotype, "nls") == 0) {
-        msg = " Newton's method (line search; unconstrained) selected\n";
-    } else if (strcmp(taotype, "ntr") == 0) {
-        msg = " Newton's method (trust region; unconstrained) selected\n";
-    } else if (strcmp(taotype, "fd_test") == 0) {
-        msg = " gradient test selected\n";
-    } else if (strcmp(taotype, "cg") == 0) {
-        msg = " CG selected\n";
-    } else if (strcmp(taotype, "tron") == 0) {
-        msg = "  Newton Trust Region method chosen\n";
-    } else if (strcmp(taotype, "blmvm") == 0) {
-        msg = "  Limited memory variable metric method chosen\n";
-    } else if (strcmp(taotype, "gpcg") == 0) {
-        msg = " Newton Trust Region method for quadratic bound constrained minimization\n";
-    } else if (strcmp(taotype, "tao_L1") == 0) {
-        msg = " User defined solver for L1 minimization\n";
-    } else {
-        msg = " numerical optimization method not supported (setting default: LMVM)\n";
-        ierr = TaoSetType (tao, "lmvm");                                          CHKERRQ(ierr);
-    }
-    // set tolerances
-    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
-        ierr = TaoSetTolerances (tao, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
-    #else
-        ierr = TaoSetTolerances (tao, 1E-12, 1E-12, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
-    #endif
-    ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->newton_maxit); CHKERRQ(ierr);
-
-
-    ierr = TaoSetConvergenceTest (tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
-    //ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
-
-    // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
-    ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
-    linesearch->stepmin = minstep;
-    if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
-      ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
-    }
-    ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
-    std::stringstream s;
-    tuMSGstd(" parameters (optimizer):");
-    tuMSGstd(" tolerances (stopping conditions):");
-    s << "   gatol: "<< ctx->optsettings_->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-    s << "   grtol: "<< ctx->optsettings_->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-    s << "   gttol: "<< ctx->optsettings_->opttolgrad;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-
-    ierr = TaoSetFromOptions(tao);                                                CHKERRQ(ierr);
-    /* === set the KSP Krylov solver settings === */
-    KSP ksp = PETSC_NULL;
-
-    if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
-      // if (use_intial_hessian_lmvm_) {
-      //   // get the ksp of H0 initial matrix
-      //   ierr = TaoLMVMGetH0KSP(tao, &ksp);                                        CHKERRQ(ierr);
-      //   if (ksp != PETSC_NULL) {
-      //       ierr = KSPSetOptionsPrefix(ksp, "init-hessian_");                     CHKERRQ(ierr);
-      //       // set default tolerance to 1E-6
-      //       ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx->optsettings_->krylov_maxit); CHKERRQ(ierr);
-      //       ierr = KSPMonitorSet(ksp, constHessianKSPMonitor,ctx, 0);              CHKERRQ(ierr);
-      //   }
-      //}
-    } else {
-      // get the ksp of the optimizer (use gauss-newton-krylov)
-      ierr = TaoGetKSP(tao, &ksp);                                                CHKERRQ(ierr);
-      if (ksp != PETSC_NULL) {
-          ierr = KSPSetOptionsPrefix(ksp, "hessian_");                            CHKERRQ(ierr);
-          // set default tolerance to 1E-6
-          ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx->optsettings_->krylov_maxit); CHKERRQ(ierr);
-          // to use Eisenstat/Walker convergence crit.
-          KSPSetPreSolve (ksp, preKrylovSolve, ctx);                              CHKERRQ(ierr);
-          ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx, 0);                    CHKERRQ(ierr);
-      }
-      // set the preconditioner (we check if KSP exists, as there are also
-      // solvers that do not require a KSP solve (BFGS and friends))
-      if (ksp != PETSC_NULL) {
-        PC pc;
-        ierr = KSPGetPC(ksp, &pc);                                                CHKERRQ(ierr);
-        ierr = PCSetType (pc, PCSHELL);                                           CHKERRQ(ierr);
-        ierr = PCShellSetApply(pc, preconditionerMatVec);                         CHKERRQ(ierr);
-        ierr = PCShellSetContext(pc, ctx);                                        CHKERRQ(ierr);
-      }
     }
     PetscFunctionReturn (0);
 }
+

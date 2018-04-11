@@ -248,6 +248,7 @@ class NMisc {
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , weighted_L2_ (false)                  // Flag for weighted L2
+        , L1_ (true)                            // Flag for L1 solves
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
@@ -336,6 +337,7 @@ class NMisc {
         bool diffusivity_inversion_;
         bool lambda_continuation_;
         bool weighted_L2_;
+        bool L1_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;

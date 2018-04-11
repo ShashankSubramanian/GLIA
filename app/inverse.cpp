@@ -66,9 +66,11 @@ int main (int argc, char** argv) {
 {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
-
     //Generate synthetic data
     //Synthetic parameters: Overwrite n_misc 
+    Vec c_0, data, p_rec;
+    PetscErrorCode ierr = 0;
+    double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = true;
     double rho = 6;
     double k = 0.1;
@@ -76,15 +78,11 @@ int main (int argc, char** argv) {
     int nt = 25;
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
-
-    n_misc->writepath_.str (std::string ()); //clear the writepath stringstream
-    #ifdef L1
+    n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
+    if (n_misc->L1_)
         n_misc->writepath_ << "./results/L1/";
-    #else
+    else
         n_misc->writepath_ << "./results/L2/";
-    #endif
-
-    double rho_temp, k_temp, dt_temp, nt_temp;
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
     dt_temp = n_misc->dt_;
@@ -96,47 +94,31 @@ int main (int argc, char** argv) {
         n_misc->dt_ = dt;
         n_misc->nt_ = nt;
     }
-    
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
 
-    // n_misc->phi_sigma_ = 0.2;
-    // n_misc->phi_spacing_factor_ = 1.0;
-    // createMFData (solver_interface, n_misc);
-    // n_misc->phi_sigma_ = PETSC_PI / 10;
-    // n_misc->phi_spacing_factor_ = 1.5;
-    // exit (1);
-
-    Vec c_0, data, p_rec;
-    PetscErrorCode ierr = 0;
     PCOUT << "Generating Synthetic Data --->" << std::endl;
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
-    //re-write n_misc data
-    n_misc->rho_ = rho_temp;
+    n_misc->rho_ = rho_temp;                                                      //re-write n_misc data
     n_misc->k_ = k_temp;
     n_misc->dt_ = dt_temp;
     n_misc->nt_ = nt_temp;
-
-    //Solve interpolation
-    // std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
 
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+
     if (!n_misc->bounding_box_) {
         // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
         ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
         ierr = tumor->phi_->setValues (tumor->mat_prop_);
-
         //re-create p_rec
         ierr = VecDestroy (&p_rec);                                                 CHKERRQ (ierr);
         int np = n_misc->np_;
         int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
-
         #ifdef SERIAL
             ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
         #else
@@ -147,21 +129,22 @@ int main (int argc, char** argv) {
     }
 
     ierr = solver_interface->setParams (p_rec, nullptr);
-    //Solve interpolation
-    // ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc);
-    
-    ierr = VecSet (p_rec, 0);                                               CHKERRQ (ierr);
-    //Solve tumor inversion
+    ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
     ierr = solver_interface->setInitialGuess (0.);
-    ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+    ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
+
 
     //if L1, then solve for sparse components using weigted L2
     double prec_norm;
     double *prec_ptr;
     double l2_rel_error = 0.0;
-    #ifdef L1
-        n_misc->weighted_L2_ = true; 
-    #endif
+
+
+    if (n_misc->L1_) {
+        n_misc->weighted_L2_ = true; //Set W-L2
+        n_misc->L1_ = false;         //Unset L1 
+    }
+
     if (n_misc->weighted_L2_) {
         ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
         PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
@@ -180,13 +163,11 @@ int main (int argc, char** argv) {
         }
         PCOUT << " --------------  -------------- -----------------\n";
         PCOUT << " \n\n --------------- W-L2 solve for sparse components ----------------------\n\n\n";
-        n_misc->weighted_L2_ = true;                        //Begin weighted L2 
-        ierr = solver_interface->resetTaoSolver ();
+
+        ierr = solver_interface->resetTaoSolver ();                                 //Reset tao objects
         ierr = solver_interface->setInitialGuess (p_rec);
         ierr = solver_interface->solveInverse (p_rec, data, nullptr);
     }
-
-    self_exec_time += MPI_Wtime ();
 
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
     PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
@@ -197,7 +178,6 @@ int main (int argc, char** argv) {
         PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
         ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
     }
-
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
     PCOUT << " --------------  RECONST P -----------------\n";
@@ -206,6 +186,7 @@ int main (int argc, char** argv) {
     }
     PCOUT << " --------------  -------------- -----------------\n";
 
+    self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
     e1.addTimings (timers);
     e1.stop ();
@@ -216,7 +197,6 @@ int main (int argc, char** argv) {
         r.print ("EventsTimings.log", true);
     }
 }
-
 /* --------------------------------------------------------------------------------------------------------------*/
     accfft_destroy_plan (plan);
     PetscFinalize ();
