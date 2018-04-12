@@ -54,17 +54,17 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
   int np = itctx_->n_misc_->np_;
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
 
-  if (itctx_->n_misc_->L1_) {//Register new Tao solver and initialize variables for parameter continuation
-    ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                                       CHKERRQ (ierr);
+  if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
+    ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
     itctx_->lam_right = itctx_->n_misc_->lambda_;
     itctx_->lam_left = 0;
   }
 
-  if (itctx_->n_misc_->weighted_L2_) {
+  if (itctx_->n_misc_->regularization_norm_ == wL2) {
     if (itctx_->weights != nullptr) {
-      ierr = VecDestroy (&itctx_->weights);                                              CHKERRQ (ierr);
+      ierr = VecDestroy (&itctx_->weights);                                     CHKERRQ (ierr);
     }
-    ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->weights);                          CHKERRQ (ierr);
+    ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->weights);                 CHKERRQ (ierr);
   }
 
   #ifdef SERIAL
@@ -79,7 +79,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
       ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
     }
   #else
-    TU_assert (!itctx_->n_misc_->diffusivity_inversion_, "Inversion for diffusifity is only implemented for SERIAL p"); 
+    TU_assert (!itctx_->n_misc_->diffusivity_inversion_, "Inversion for diffusifity is only implemented for SERIAL p");
     // allocate memory for xrec_
     ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                           CHKERRQ(ierr);
     // set up routine to compute the hessian matrix vector product
@@ -216,7 +216,7 @@ PetscErrorCode InvSolver::solve () {
   double *p_ptr, *w_ptr;
   double w = 1e5;
   double p_max;
-  if (itctx_->n_misc_->weighted_L2_) {//set the weights for w-l2 solve
+  if (itctx_->n_misc_->regularization_norm_ == wL2) {//set the weights for w-l2 solve
     itctx_->n_misc_->beta_ = 1.;
     ierr = VecGetArray (itctx_->tumor_->p_, &p_ptr);                                     CHKERRQ (ierr);
     ierr = VecSet (itctx_->weights, 0.0);                                                CHKERRQ (ierr);
@@ -239,7 +239,7 @@ PetscErrorCode InvSolver::solve () {
     itctx_->update_reference_gradient = true;
     itctx_->update_reference_objective = true;
     ierr = setTaoOptions (tao_, itctx_.get());                                         CHKERRQ(ierr);
-    
+
     if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
          itctx_->optsettings_->lmvm_set_hessian) {
       ierr = TaoLMVMSetH0 (tao_, H_);                                                    CHKERRQ(ierr);
@@ -818,7 +818,7 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr) {
 }
 
 
-/* Convergence tests used for L1 regularization: Relative change in objective and solution is 
+/* Convergence tests used for L1 regularization: Relative change in objective and solution is
    monitored. Linesearch is user-defined with the tao solver */
 PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   PetscFunctionBegin;
@@ -1547,7 +1547,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 
-    if (itctx_->n_misc_->L1_) {
+    if (itctx_->n_misc_->regularization_norm_ == L1) {
       ierr = TaoSetType (tao, "tao_L1");   CHKERRQ (ierr);
       TaoLineSearch ls;
       ierr = TaoGetLineSearch(tao_, &ls);                                          CHKERRQ (ierr);
@@ -1560,9 +1560,9 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       } else {
         ierr = TaoSetType (tao, "nls");    CHKERRQ(ierr);  // set TAO solver type
       }
-    
+
       PetscBool flag = PETSC_FALSE;
-      
+
       #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
           PetscOptionsHasName (NULL, NULL, "-tao_nls_pc_type", &flag);
           if (flag == PETSC_FALSE)
@@ -1605,7 +1605,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     // set the routine to evaluate the objective and compute the gradient
     ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
     // set monitor function
-    if (itctx_->n_misc_->L1_) {
+    if (itctx_->n_misc_->regularization_norm_ == L1) {
       ierr = TaoSetMonitor (tao, optimizationMonitorL1, (void *) ctx, NULL);        CHKERRQ(ierr);
     }
     else {
@@ -1651,7 +1651,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     #endif
     ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->newton_maxit); CHKERRQ(ierr);
 
-    if (itctx_->n_misc_->L1_) {
+    if (itctx_->n_misc_->regularization_norm_ == L1) {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceFun, ctx);                  CHKERRQ(ierr);
     }
     else {
@@ -1659,7 +1659,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       //ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
     }
 
-    if (!itctx_->n_misc_->L1_) {  //Set other preferences for standard tao solvers
+    if (!itctx_->n_misc_->regularization_norm_ == L1) {  //Set other preferences for standard tao solvers
       // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
       linesearch->stepmin = minstep;
@@ -1713,4 +1713,3 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     }
     PetscFunctionReturn (0);
 }
-

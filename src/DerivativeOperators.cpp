@@ -12,15 +12,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        TU_assert(false, "Inversion for diffusivity only supported for serial p.");     
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
       #ifdef POSITIVITY_DIFF_COEF
         //Positivity clipping in diffusio coefficient
         x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-        if (n_misc_->nk_ > 1) 
+        if (n_misc_->nk_ > 1)
           x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-        if (n_misc_->nk_ > 2) 
+        if (n_misc_->nk_ > 2)
           x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
       #endif
       k1 = x_ptr[n_misc_->np_];
@@ -38,18 +38,18 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     /*Regularization term*/
     PetscReal reg;
-    if (n_misc_->L1_) {
+    if (n_misc_->regularization_norm_ == L1) {
       ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
       reg *= n_misc_->lambda_;
-    } else if (n_misc_->weighted_L2_) {
+    } else if (n_misc_->regularization_norm_ == wL2) {
       ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
       ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
-    } else {
+    } else if (n_misc_->regularization_norm_ == L2){
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
-    
+
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
@@ -69,18 +69,18 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     double k1, k2, k3;
-    
+
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        TU_assert(false, "Inversion for diffusivity only supported for serial p.");       
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
       #ifdef POSITIVITY_DIFF_COEF
         //Positivity clipping in diffusio coefficient
         x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-        if (n_misc_->nk_ > 1) 
+        if (n_misc_->nk_ > 1)
           x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-        if (n_misc_->nk_ > 2) 
+        if (n_misc_->nk_ > 2)
           x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
       #endif
       k1 = x_ptr[n_misc_->np_];
@@ -104,21 +104,21 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     ierr = pde_operators_->solveAdjoint (1);
     // compute gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-    
+
     // gradient according to reg paramater
-    if (n_misc_->L1_) {
+    if (n_misc_->regularization_norm_ == L1) {
       ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
       ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-    } else if (n_misc_->weighted_L2_) {
+    } else if (n_misc_->regularization_norm_ == wL2) {
       ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
       ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
-    } else {
+    } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
       ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     }
-    
+
 
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
@@ -184,15 +184,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
-        TU_assert(false, "Inversion for diffusivity only supported for serial p.");     
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");
       #endif
       ierr = VecGetArray (x, &x_ptr);                                       CHKERRQ (ierr);
       #ifdef POSITIVITY_DIFF_COEF
         //Positivity clipping in diffusio coefficient
         x_ptr[n_misc_->np_] = x_ptr[n_misc_->np_] > 0 ? x_ptr[n_misc_->np_] : 0;
-        if (n_misc_->nk_ > 1) 
+        if (n_misc_->nk_ > 1)
           x_ptr[n_misc_->np_ + 1] = x_ptr[n_misc_->np_ + 1] > 0 ? x_ptr[n_misc_->np_ + 1] : 0;
-        if (n_misc_->nk_ > 2) 
+        if (n_misc_->nk_ > 2)
           x_ptr[n_misc_->np_ + 2] = x_ptr[n_misc_->np_ + 2] > 0 ? x_ptr[n_misc_->np_ + 2] : 0;
       #endif
       k1 = x_ptr[n_misc_->np_];
@@ -217,14 +217,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
 
     // Gradient according to reg parameter chosen
-    if (n_misc_->L1_) {
+    if (n_misc_->regularization_norm_ == L1) {
       ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
       ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-    } else if (n_misc_->weighted_L2_) {
+    } else if (n_misc_->regularization_norm_ == wL2) {
       ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
       ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
-    } else {
+    } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
       ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
@@ -232,14 +232,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     // regularization
     PetscReal reg;
-    if (n_misc_->L1_) {
+    if (n_misc_->regularization_norm_ == L1) {
       ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
       reg *= n_misc_->lambda_;
-    } else if (n_misc_->weighted_L2_) {
+    } else if (n_misc_->regularization_norm_ == wL2) {
       ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
       ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
-    } else {
+    } else if (n_misc_->regularization_norm_ == L2){
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
@@ -251,7 +251,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     (*J) += reg;
 
     /* INVERSION FOR DIFFUSIVITY */
-    // compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt 
+    // compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt
     double integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
@@ -301,7 +301,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     n_misc_->statistics_.nb_hessian_evals++;
 
     if (n_misc_->diffusivity_inversion_) {
-      TU_assert(false, "not implemented."); CHKERRQ(ierr);     
+      TU_assert(false, "not implemented."); CHKERRQ(ierr);
     }
     else {
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
@@ -316,7 +316,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
 
       //No hessian info for L1 for now
-      if (n_misc_->weighted_L2_) {
+      if (n_misc_->regularization_norm_ == wL2) {
         ierr = VecPointwiseMult (y, tumor_->weights_, x);               CHKERRQ (ierr);
         ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
         ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);

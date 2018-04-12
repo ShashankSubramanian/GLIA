@@ -31,6 +31,7 @@
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
+enum {L1 = 0, L2 = 1, wL2 = 3};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -46,6 +47,7 @@ struct OptimizerSettings {
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
     int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
     int    newtonsolver;         /// @brief type of newton slver (0=GN, 1=QN, 2=GN/QN)
+    int    regularization_norm;  /// @brief defines the type of regularization (L1, L2, or weighted-L2)
     int    verbosity;            /// @brief controls verbosity of solver
     bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
     bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
@@ -59,12 +61,13 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (100), 
+    newton_maxit (100),
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
     newtonsolver (GAUSSNEWTON),
+    regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
     verbosity (1)
@@ -247,8 +250,9 @@ class NMisc {
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , weighted_L2_ (false)                  // Flag for weighted L2
-        , L1_ (true)                            // Flag for L1 solves
+        , regularization_norm_(L1),             // defines the tumor regularization norm, L1, L2, or weighted L2
+        // , weighted_L2_ (false)                  // Flag for weighted L2
+        // , L1_ (true)                            // Flag for L1 solves
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
@@ -305,6 +309,7 @@ class NMisc {
         int nt_;
 
         int model_;
+        int regularization_norm_;
         int bounding_box_;
         int writeOutput_;
         int verbosity_;
@@ -336,8 +341,8 @@ class NMisc {
         bool nk_fixed_;
         bool diffusivity_inversion_;
         bool lambda_continuation_;
-        bool weighted_L2_;
-        bool L1_;
+        // bool weighted_L2_;
+        // bool L1_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;
@@ -354,14 +359,14 @@ class NMisc {
 
 };
 
-/** 
+/**
     Context structure for user-defined linesearch routines needed
-    for L1 minimization problems 
+    for L1 minimization problems
 **/
 struct LSCtx {
     Vec x_work_1;   //Temporary vector for storing steepest descent guess
     Vec x_work_2; //Work vector
-    Vec x_sol; 
+    Vec x_sol;
     double sigma; //Sufficient decrease parameter
     double lambda; //Regularization parameter for L1: Linesearch needs
                    //this application specific info
