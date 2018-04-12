@@ -67,7 +67,7 @@ int main (int argc, char** argv) {
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data
-    //Synthetic parameters: Overwrite n_misc 
+    //Synthetic parameters: Overwrite n_misc
     Vec c_0, data, p_rec;
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
@@ -79,7 +79,7 @@ int main (int argc, char** argv) {
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
-    if (n_misc->L1_)
+    if (n_misc->regularization_norm_ == L1)
         n_misc->writepath_ << "./results/L1/";
     else
         n_misc->writepath_ << "./results/L2/";
@@ -140,12 +140,11 @@ int main (int argc, char** argv) {
     double l2_rel_error = 0.0;
 
 
-    if (n_misc->L1_) {
-        n_misc->weighted_L2_ = true; //Set W-L2
-        n_misc->L1_ = false;         //Unset L1 
+    if (n_misc->regularization_norm_ == L1) {
+        n_misc->regularization_norm_ = wL2; //Set W-L2
     }
 
-    if (n_misc->weighted_L2_) {
+    if (n_misc->regularization_norm_ == wL2) {
         ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
         PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
         if (n_misc->diffusivity_inversion_) {
