@@ -560,14 +560,14 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
 
     /*Regularization term*/
     if (n_misc_->regularization_norm_ == L1) {
-      ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
+      ierr = VecNorm (x, NORM_1, &reg);                           CHKERRQ (ierr);
       reg *= n_misc_->lambda_;
     } else if (n_misc_->regularization_norm_ == wL2) {
-      ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
-      ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
+      ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);      CHKERRQ (ierr);
+      ierr = VecDot (x, ptemp_, &reg);                            CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     } else if (n_misc_->regularization_norm_ == L2){
-      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);           CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
 
@@ -631,16 +631,16 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
 
     // gradient according to reg paramater
     if (n_misc_->regularization_norm_ == L1) {
-      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+      ierr = VecCopy (ptemp_, dJ);                               CHKERRQ (ierr);
+      ierr = VecScale (dJ, -1.0);                                CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == wL2) {
-      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
-      ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);         CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_);                      CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_);                      CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
     }
 
     // TODO: add inversion for diffusivity

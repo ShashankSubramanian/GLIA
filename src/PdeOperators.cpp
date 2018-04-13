@@ -233,8 +233,8 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
     ierr = VecRestoreArray (c_[i], &c_ptr);                      CHKERRQ (ierr);
     ierr = VecRestoreArray (p_[i], &p_ptr);                      CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->work_[0], &r_ptr);           CHKERRQ (ierr);
-    // compute rhp_bar * c(1-c) * \alpha, where rho_bar = dR / dm
-    // this function adds to q1, q2, q3, q4 vie AXPY, has to be called after the diff coeff function
+    // compute rho_bar * c(1-c) * \alpha, where rho_bar = dR / dm
+    // this function adds to q1, q2, q3, q4 via AXPY, has to be called after the diff coeff function
     ierr = tumor_->rho_->applydRdm(
       (q1 != nullptr) ? tumor_->work_[8]  : nullptr,
       (q2 != nullptr) ? tumor_->work_[9]  : nullptr,
