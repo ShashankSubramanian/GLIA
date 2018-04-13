@@ -131,6 +131,9 @@ int main (int argc, char** argv) {
     ierr = solver_interface->setParams (p_rec, nullptr);
     ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
     ierr = solver_interface->setInitialGuess (0.);
+    if (n_misc->regularization_norm_ == L1) {
+      n_misc->diffusivity_inversion_ = false;
+    }
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
 
 
@@ -142,6 +145,7 @@ int main (int argc, char** argv) {
 
     if (n_misc->regularization_norm_ == L1) {
         n_misc->regularization_norm_ = wL2; //Set W-L2
+        n_misc->diffusivity_inversion_ = true;  //if we want diffusivity inversion after L1
     }
 
     if (n_misc->regularization_norm_ == wL2) {

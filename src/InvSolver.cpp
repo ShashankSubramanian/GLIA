@@ -1649,6 +1649,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     #else
         ierr = TaoSetTolerances (tao, 1E-12, 1E-12, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
     #endif
+    if (itctx_->n_misc_->L1_) ctx->optsettings_->newton_maxit = 100;
     ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->newton_maxit); CHKERRQ(ierr);
 
     if (itctx_->n_misc_->regularization_norm_ == L1) {

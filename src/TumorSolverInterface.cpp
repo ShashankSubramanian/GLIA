@@ -311,7 +311,9 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
     inv_solver_->getOptSettings ()->lmvm_set_hessian    = optset->lmvm_set_hessian;
     inv_solver_->getOptSettings ()->verbosity           = optset->verbosity;
     inv_solver_->getOptSettings ()->regularization_norm = optset->regularization_norm;
+    // overwrite n_misc params
     n_misc_->regularization_norm_                       = optset->regularization_norm;
+    n_misc_->diffusivity_inversion_                     = optset->diffusivity_inversion;
     optimizer_settings_changed_ = true;
 }
 

@@ -66,7 +66,7 @@ struct OptimizerSettings {
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    newtonsolver (GAUSSNEWTON),
+    newtonsolver (QUASINEWTON),
     regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
@@ -223,7 +223,7 @@ class NMisc {
         , dt_ (0.02)                            // Time step
         , nt_(12)                               // Total number of time steps
         , np_ (1)                              // Number of gaussians for bounding box
-        , nk_ (0)                               // Number of k_i that we like to invert for (1-3)
+        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0.1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
@@ -254,6 +254,9 @@ class NMisc {
         // , weighted_L2_ (false)                  // Flag for weighted L2
         // , L1_ (true)                            // Flag for L1 solves
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , weighted_L2_ (false)                  // Flag for weighted L2
+        , L1_ (true)                            // Flag for L1 solves
+        , diffusivity_inversion_ (true)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
             time_horizon_ = nt_ * dt_;
