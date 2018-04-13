@@ -557,9 +557,20 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
       xi_wm_, xi_gm_, xi_csf_, xi_glm_,  xi_bg_,
       m_geo_wm_, m_geo_gm_, m_geo_csf_, m_geo_glm_,  m_geo_bg_,
       m_data_wm_, m_data_gm_, m_data_csf_, m_data_glm_,  m_data_bg_); CHKERRQ (ierr);
-    // compute regularization
-    ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);            CHKERRQ (ierr);
-    reg *= 0.5 * n_misc_->beta_;
+
+    /*Regularization term*/
+    if (n_misc_->regularization_norm_ == L1) {
+      ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
+      reg *= n_misc_->lambda_;
+    } else if (n_misc_->regularization_norm_ == wL2) {
+      ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
+      ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
+      reg *= 0.5 * n_misc_->beta_;
+    } else if (n_misc_->regularization_norm_ == L2){
+      ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
+      reg *= 0.5 * n_misc_->beta_;
+    }
+
     // compute objective function value
     misfit_brain *= 0.5;
     misfit_tu  *= 0.5;
@@ -617,8 +628,22 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     // evaluate gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);      CHKERRQ (ierr);
-    ierr = VecScale (dJ, n_misc_->beta_);                        CHKERRQ (ierr);
-    ierr = VecAXPY (dJ, -1.0, ptemp_);                           CHKERRQ (ierr);
+
+    // gradient according to reg paramater
+    if (n_misc_->regularization_norm_ == L1) {
+      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+    } else if (n_misc_->regularization_norm_ == wL2) {
+      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+    } else if (n_misc_->regularization_norm_ == L2){
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+    }
+
+    // TODO: add inversion for diffusivity
 
     // additional information
     std::stringstream s; PetscScalar dJ_val = 0, norm_alpha = 0;
@@ -676,8 +701,17 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     ierr = pde_operators_->solveAdjoint (2);                     CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);       CHKERRQ (ierr);
-    ierr = VecScale (y, n_misc_->beta_);                         CHKERRQ (ierr);
-    ierr = VecAXPY (y, -1.0, ptemp_);                            CHKERRQ (ierr);
+
+    //No hessian info for L1 for now
+    if (n_misc_->regularization_norm_ == wL2) {
+      ierr = VecPointwiseMult (y, tumor_->weights_, x);          CHKERRQ (ierr);
+      ierr = VecScale (y, n_misc_->beta_);                       CHKERRQ (ierr);
+      ierr = VecAXPY (y, -1.0, ptemp_);                          CHKERRQ (ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);
+      ierr = VecScale (y, n_misc_->beta_);                       CHKERRQ (ierr);
+      ierr = VecAXPY (y, -1.0, ptemp_);                          CHKERRQ (ierr);
+    }
 
     PetscFunctionReturn(0);
 }
