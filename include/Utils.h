@@ -51,6 +51,7 @@ struct OptimizerSettings {
     int    verbosity;            /// @brief controls verbosity of solver
     bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
     bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
+    bool   diffusivity_inversion;/// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
 
     OptimizerSettings ()
     :
@@ -70,6 +71,7 @@ struct OptimizerSettings {
     regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
+    diffusivity_inversion(false),
     verbosity (1)
     {}
 };
@@ -250,12 +252,7 @@ class NMisc {
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L1),             // defines the tumor regularization norm, L1, L2, or weighted L2
-        // , weighted_L2_ (false)                  // Flag for weighted L2
-        // , L1_ (true)                            // Flag for L1 solves
-        , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
-        , weighted_L2_ (false)                  // Flag for weighted L2
-        , L1_ (true)                            // Flag for L1 solves
+        , regularization_norm_(L1)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (true)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
@@ -344,8 +341,6 @@ class NMisc {
         bool nk_fixed_;
         bool diffusivity_inversion_;
         bool lambda_continuation_;
-        // bool weighted_L2_;
-        // bool L1_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;
