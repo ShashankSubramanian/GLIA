@@ -71,7 +71,7 @@ int main (int argc, char** argv) {
     Vec c_0, data, p_rec;
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
-    bool overwrite_model = true;
+    bool overwrite_model = false;
     double rho = 6;
     double k = 0.1;
     double dt = 0.02;
@@ -332,6 +332,8 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
     ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
+
+    PCOUT << "Data mismatch: " << error_norm << std::endl;
 
     error_norm /= data_norm;
     PetscFunctionReturn (0);

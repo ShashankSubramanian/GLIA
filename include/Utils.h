@@ -67,7 +67,7 @@ struct OptimizerSettings {
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    newtonsolver (QUASINEWTON),
+    newtonsolver (GAUSSNEWTON),
     regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
@@ -222,13 +222,13 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.02)                            // Time step
-        , nt_(12)                               // Total number of time steps
-        , np_ (1)                              // Number of gaussians for bounding box
+        , dt_ (0.01)                            // Time step
+        , nt_(16)                               // Total number of time steps
+        , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (0.1)                              // Isotropic diffusion coefficient
+        , k_ (0.0)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
-        , rho_ (10)                             // Reaction coefficient
+        , rho_ (15)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
@@ -249,11 +249,11 @@ class NMisc {
         , penalty_ (1E-4)                       // Parameter for positivity objective function
         , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.99)              // Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (0)                     // Flag to set bounding box for gaussians
+        , bounding_box_ (1)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L1)              // defines the tumor regularization norm, L1, L2, or weighted L2
-        , diffusivity_inversion_ (true)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , regularization_norm_(L2)              // defines the tumor regularization norm, L1, L2, or weighted L2
+        , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
             time_horizon_ = nt_ * dt_;
