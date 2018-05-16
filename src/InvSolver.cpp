@@ -545,7 +545,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     if (its == 0) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
-          << std::setw(18) << "step" << "   " << std::setw(10) << "sparsity";
+          << std::setw(18) << "step" << "   " << std::setw(10) << "sparsity"
+          << std::setw(18) << "betaL2b: " << itctx->n_misc_->beta_;
           if (itctx->n_misc_->diffusivity_inversion_) {
             s << std::setw(18) << "k";
           }

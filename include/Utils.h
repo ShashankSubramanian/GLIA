@@ -31,7 +31,7 @@
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
-enum {L1 = 0, L2 = 1, wL2 = 3};
+enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -55,7 +55,7 @@ struct OptimizerSettings {
 
     OptimizerSettings ()
     :
-    beta (1E-3),
+    beta (1E-5),
     opttolgrad (1E-3),
     ftol (1E-5),
     ls_minstep (1E-9),
@@ -226,13 +226,13 @@ class NMisc {
         , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (0.0)                              // Isotropic diffusion coefficient
+        , k_ (0.01)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (15)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
-        , beta_ (1e-3)                          // Regularization parameter
+        , beta_ (1e-5)                          // Regularization parameter
         , lambda_ (1e5)                         // Regularization parameter for L1
         , lambda_continuation_ (true)           // bool for parameter continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
@@ -252,7 +252,7 @@ class NMisc {
         , bounding_box_ (1)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L2)              // defines the tumor regularization norm, L1, L2, or weighted L2
+        , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
                                 {
 
