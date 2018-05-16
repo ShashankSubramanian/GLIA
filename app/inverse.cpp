@@ -24,12 +24,14 @@ int main (int argc, char** argv) {
     n[1] = 64;
     n[2] = 64;
     int testcase = 0;
+    double beta_user = -1.0;
 
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
     PetscOptionsInt ("-ny", "NY", "", n[1], &n[1], NULL);
     PetscOptionsInt ("-nz", "NZ", "", n[2], &n[2], NULL);
     PetscOptionsInt ("-testcase", "Test Cases", "", testcase, &testcase, NULL);
+    PetscOptionsReal ("-beta", "Tumor Regularization", "", beta_user, &beta_user, NULL);
     PetscOptionsEnd ();
 
     PCOUT << " ----- Grid Size: " << n[0] << "x" << n[1] << "x" << n[2] << " ---- " << std::endl;
@@ -78,6 +80,11 @@ int main (int argc, char** argv) {
     int nt = 25;
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
+    if (beta_user >= 0) {    //user has provided tumor reg
+        n_misc->beta_ = beta_user;
+        n_misc->beta_changed_ = true;
+    }
+
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
     if (n_misc->regularization_norm_ == L1)
         n_misc->writepath_ << "./results/L1/";

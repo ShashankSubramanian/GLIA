@@ -55,7 +55,7 @@ struct OptimizerSettings {
 
     OptimizerSettings ()
     :
-    beta (1E-5),
+    beta (1E-3),
     opttolgrad (1E-3),
     ftol (1E-5),
     ls_minstep (1E-9),
@@ -226,13 +226,13 @@ class NMisc {
         , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (0.01)                              // Isotropic diffusion coefficient
+        , k_ (0E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (15)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
-        , beta_ (1e-5)                          // Regularization parameter
+        , beta_ (1e-3)                          // Regularization parameter
         , lambda_ (1e5)                         // Regularization parameter for L1
         , lambda_continuation_ (true)           // bool for parameter continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
@@ -254,6 +254,7 @@ class NMisc {
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
                                 {
 
             time_horizon_ = nt_ * dt_;
@@ -330,6 +331,8 @@ class NMisc {
         double noise_scale_;
         double beta_;
         double lambda_;
+
+        bool beta_changed_;
 
         double phi_sigma_;
         double phi_spacing_factor_;

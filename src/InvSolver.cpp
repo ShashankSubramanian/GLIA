@@ -196,7 +196,10 @@ PetscErrorCode InvSolver::solve () {
       ierr = VecSet (itctx_->tmp, 0.0);                                                CHKERRQ(ierr);
   }                                                                                    // reset with zero for new ITP solve
   ierr = VecSet (itctx_->c0old, 0.0);                                                  CHKERRQ(ierr);
-  itctx_->n_misc_->beta_             = itctx_->optsettings_->beta;                     // set beta for this inverse solver call
+  if (itctx_->n_misc_->beta_changed_)
+      itctx_->optsettings_->beta      = itctx_->n_misc_->beta_;
+  else
+    itctx_->n_misc_->beta_             = itctx_->optsettings_->beta;                     // set beta for this inverse solver call
   itctx_->is_ksp_gradnorm_set        = false;
   itctx_->optfeedback_->converged    = false;
   itctx_->optfeedback_->solverstatus = "";
@@ -262,6 +265,9 @@ PetscErrorCode InvSolver::solve () {
   //Gradient check begin
   //    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
   //Gradient check end
+
+  s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  
   ierr = TaoSolve (tao_);                                                                CHKERRQ(ierr);
   // --------
   self_exec_time_tuninv += MPI_Wtime();
@@ -545,8 +551,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     if (its == 0) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
-          << std::setw(18) << "step" << "   " << std::setw(10) << "sparsity"
-          << std::setw(18) << "betaL2b: " << itctx->n_misc_->beta_;
+          << std::setw(18) << "step" << "   " << std::setw(10) << "sparsity";
           if (itctx->n_misc_->diffusivity_inversion_) {
             s << std::setw(18) << "k";
           }
