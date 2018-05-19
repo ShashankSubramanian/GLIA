@@ -252,7 +252,7 @@ class NMisc {
         , bounding_box_ (1)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
+        , regularization_norm_(L2)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
                                 {
