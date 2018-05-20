@@ -183,6 +183,9 @@ PetscErrorCode InvSolver::solve () {
   std::stringstream s;
   s << "data (ITP), with noise: l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   s << "IT data error due to thresholding and smoothing: l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  if (itctx_->n_misc_->writeOutput_) {
+    dataOut (data, n_misc, "data.nc");
+  }
   /* === solve for a initial guess === */
   //solveForParameters(data.get(), itctx_->n_misc_, itctx_->tumor_->phi_, itctx_->n_misc_->timers_, &itctx_->tumor_->p_true_);
   //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
