@@ -74,10 +74,10 @@ int main (int argc, char** argv) {
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = false;
-    double rho = 6;
-    double k = 0.1;
-    double dt = 0.02;
-    int nt = 25;
+    double rho = 5;
+    double k = 0;
+    double dt = 0.01;
+    int nt = 16;
 
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
     if (beta_user >= 0) {    //user has provided tumor reg
@@ -195,6 +195,17 @@ int main (int argc, char** argv) {
         ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
     }
     PCOUT << " --------------  -------------- -----------------\n";
+
+    std::stringstream sstm;
+    sstm << n_misc->writepath_ << "reconX.txt";
+    std::ofstream ofile (sstm.str());
+    //write reconstructed p into text file
+    ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+    int np = n_misc->np_;
+    int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+    for (int i = 0; i < np + nk; i++)
+        ofile << prec_ptr[i] << std::endl;
+    ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);

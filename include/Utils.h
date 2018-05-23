@@ -62,7 +62,7 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (100),
+    newton_maxit (25),
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
@@ -226,9 +226,9 @@ class NMisc {
         , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
         , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (1E-1)                              // Isotropic diffusion coefficient
+        , k_ (0E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
-        , rho_ (15)                             // Reaction coefficient
+        , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
