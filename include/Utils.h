@@ -225,8 +225,8 @@ class NMisc {
         , dt_ (0.01)                            // Time step
         , nt_(16)                               // Total number of time steps
         , np_ (27)                              // Number of gaussians for bounding box
-        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (0E-1)                              // Isotropic diffusion coefficient
+        , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
+        , k_ (1E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
@@ -237,7 +237,7 @@ class NMisc {
         , lambda_continuation_ (true)           // bool for parameter continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (0.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
@@ -252,8 +252,8 @@ class NMisc {
         , bounding_box_ (1)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L2)              // defines the tumor regularization norm, L1, L2, or weighted L2
-        , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
+        , diffusivity_inversion_ (true)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
                                 {
 

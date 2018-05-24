@@ -7,7 +7,7 @@ static char help[] = "Inverse Driver \
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode createMFData (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
@@ -25,6 +25,7 @@ int main (int argc, char** argv) {
     n[2] = 64;
     int testcase = 0;
     double beta_user = -1.0;
+    double rho_inv= -1.0;
 
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -32,6 +33,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-nz", "NZ", "", n[2], &n[2], NULL);
     PetscOptionsInt ("-testcase", "Test Cases", "", testcase, &testcase, NULL);
     PetscOptionsReal ("-beta", "Tumor Regularization", "", beta_user, &beta_user, NULL);
+    PetscOptionsReal ("-rho", "Tumor reaction coefficient", "", rho_inv, &rho_inv, NULL);
     PetscOptionsEnd ();
 
     PCOUT << " ----- Grid Size: " << n[0] << "x" << n[1] << "x" << n[2] << " ---- " << std::endl;
@@ -74,7 +76,7 @@ int main (int argc, char** argv) {
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = false;
-    double rho = 5;
+    double rho = 10;
     double k = 0;
     double dt = 0.01;
     int nt = 16;
@@ -108,7 +110,7 @@ int main (int argc, char** argv) {
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl;
 
-    n_misc->rho_ = rho_temp;                                                      //re-write n_misc data
+    n_misc->rho_ = rho_inv > -1.0 ? rho_inv : rho_temp;                                                      //re-write n_misc data
     n_misc->k_ = k_temp;
     n_misc->dt_ = dt_temp;
     n_misc->nt_ = nt_temp;
@@ -165,7 +167,7 @@ int main (int argc, char** argv) {
             PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
             ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
         }
-        ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
+        ierr = computeError (l2_rel_error, p_rec, data, c_0, solver_interface, n_misc);
         PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
         PCOUT << " --------------  RECONST P -----------------\n";
         if (procid == 0) {
@@ -188,7 +190,7 @@ int main (int argc, char** argv) {
         PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
         ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
     }
-    ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
+    ierr = computeError (l2_rel_error, p_rec, data, c_0, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
     PCOUT << " --------------  RECONST P -----------------\n";
     if (procid == 0) {
@@ -197,15 +199,17 @@ int main (int argc, char** argv) {
     PCOUT << " --------------  -------------- -----------------\n";
 
     std::stringstream sstm;
-    sstm << n_misc->writepath_ << "reconX.txt";
-    std::ofstream ofile (sstm.str());
+    sstm << n_misc->writepath_ .str().c_str() << "reconp_" << rho_inv << ".data";
+    std::ofstream ofile (sstm.str().c_str());
     //write reconstructed p into text file
-    ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
-    int np = n_misc->np_;
-    int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
-    for (int i = 0; i < np + nk; i++)
-        ofile << prec_ptr[i] << std::endl;
-    ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+    if (procid == 0) { 
+        ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+        int np = n_misc->np_;
+        int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+        for (int i = 0; i < np + nk; i++)
+            ofile << prec_ptr[i] << std::endl;
+        ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+    }
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
@@ -305,7 +309,7 @@ PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, Vec c_0_true, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Vec c_rec_0, c_rec;
@@ -346,6 +350,13 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
 
     if (n_misc->writeOutput_)
         dataOut (c_rec, n_misc, "cRecon.nc");
+
+    double error_norm_c0 = 0.0;
+    ierr = VecAXPY (c_rec_0, -1.0, c_0_true);                               CHKERRQ (ierr);
+    ierr = VecNorm (c_0_true, NORM_2, &data_norm);                          CHKERRQ (ierr);
+    ierr = VecNorm (c_rec_0, NORM_2, &error_norm_c0);                       CHKERRQ (ierr);
+    error_norm_c0 /= data_norm;
+    PCOUT << "Error norm in IC: " << error_norm_c0 << std::endl;
 
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
