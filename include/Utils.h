@@ -55,7 +55,7 @@ struct OptimizerSettings {
 
     OptimizerSettings ()
     :
-    beta (1E-3),
+    beta (0E-3),
     opttolgrad (1E-3),
     ftol (1E-5),
     ls_minstep (1E-9),
@@ -63,12 +63,12 @@ struct OptimizerSettings {
     grtol (1E-12),
     gatol (1E-6),
     newton_maxit (25),
-    krylov_maxit (30),
+    krylov_maxit (50),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    newtonsolver (GAUSSNEWTON),
-    regularization_norm (L2),
+    newtonsolver (QUASINEWTON),
+    regularization_norm (L2b),
     reset_tao (false),
     lmvm_set_hessian (false),
     diffusivity_inversion(false),
@@ -222,46 +222,50 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.01)                            // Time step
-        , nt_(16)                               // Total number of time steps
-        , np_ (27)                              // Number of gaussians for bounding box
+        , dt_ (0.5)                            // Time step
+        , nt_(1)                               // Total number of time steps
+        , np_ (1)                              // Number of gaussians for bounding box
         , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (1E-1)                              // Isotropic diffusion coefficient
+        , k_ (0E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
-        , beta_ (1e-3)                          // Regularization parameter
+        , beta_ (0e-3)                          // Regularization parameter
         , lambda_ (1e5)                         // Regularization parameter for L1
         , lambda_continuation_ (true)           // bool for parameter continuation
+        , target_sparsity_ (0.99)               // target sparsity for L1 continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (0.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , phi_sigma_ (0.1)        // Gaussian standard deviation for bounding box
+        , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
         , obs_threshold_ (-1.0)                 // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
-        , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
-        , gaussian_vol_frac_ (0.99)              // Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (1)                     // Flag to set bounding box for gaussians
+        , data_threshold_ (0.05)                 // Data threshold to set custom gaussians
+        , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
+        , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
-        , diffusivity_inversion_ (true)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
                                 {
 
             time_horizon_ = nt_ * dt_;
             if (testcase_ == BRAIN) {
-                user_cm_[0] = 4.0;
-                user_cm_[1] = 2.53;
-                user_cm_[2] = 2.57;
+                // user_cm_[0] = 4.0;
+                // user_cm_[1] = 2.53;
+                // user_cm_[2] = 2.57;
+                user_cm_[0] = 2 * M_PI / 128 * 81;//82
+                user_cm_[1] = 2 * M_PI / 128 * 63;//64
+                user_cm_[2] = 2 * M_PI / 128 * 51;//52
             }
             else {
                 user_cm_[0] = M_PI;
@@ -345,6 +349,8 @@ class NMisc {
         bool diffusivity_inversion_;
         bool lambda_continuation_;
 
+        double target_sparsity_;
+
         TumorStatistics statistics_;
         std::array<double, 7> timers_;
 
@@ -376,6 +382,7 @@ struct LSCtx {
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
 
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))
 PetscErrorCode geometricCoupling(

@@ -55,7 +55,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			dataIn (filter_ptr, n_misc, "filter_zero.nc");
 			// n_misc->nk_ = 3;  // inverting for k_i for WM, GM, GLM
 
-			double sigma_smooth = 2 * 2 * M_PI / n_misc->n_[0];
+			double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
 
 			ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
 			ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);

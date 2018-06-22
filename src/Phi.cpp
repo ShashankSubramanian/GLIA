@@ -28,7 +28,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     sigma_ = sigma;                   n_misc_->phi_sigma_ = sigma_;
     spacing_factor_ = spacing_factor; n_misc_->phi_spacing_factor_ = spacing_factor_;
     np_ = np;                         n_misc_->np_ = np_;
-    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " --------" << std::endl;
+    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " and sigma: " << sigma_ << " --------" << std::endl;
     centers_.clear ();
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
@@ -124,6 +124,18 @@ PetscErrorCode Phi::phiMesh (double *center) {
         center[0] = cm_[0];
         center[1] = cm_[1];
         center[2] = cm_[2];
+        #ifdef VISUALIZE_PHI
+        phivis << "];"<<std::endl;
+        std::fstream phifile;
+        static int ct = 0;
+        if(procid == 0) {
+          std::stringstream ssct; ssct<<ct;
+          phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+          phifile << phivis.str()<<std::endl;
+          phifile.close();
+          ct++;
+        }
+        #endif
         PetscFunctionReturn(0);
     }
     if (np_ % 2 == 1) {
@@ -437,12 +449,15 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
     double h_64 = twopi / 64;
     // sigma_ = 2.0 * hx;
-    sigma_ = h_64;
+    //snafu
+    sigma_ = hx;
 
     double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     spacing_factor_ = 2.0;
     n_misc_->phi_spacing_factor_ = spacing_factor_;
     double space = spacing_factor_ * sigma_ / hx;
+
+    // sigma_ = n_misc_->phi_sigma_;
 
     //Get gaussian volume
     double dist = 0.0;
@@ -453,7 +468,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
-    PCOUT << " ----- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
+    PCOUT << " ----- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << std::endl;
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
@@ -689,6 +704,27 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     centers_.clear ();
     centers_.resize (3 * np_);
     centers_ = center_global;
+
+    #ifdef VISUALIZE_PHI
+        std::stringstream phivis;
+        phivis <<" sigma = "<<sigma_<<", spacing = "<<spacing_factor_ * sigma_<<std::endl;
+        phivis <<" centers = ["<<std::endl;
+        for (int ptr = 0; ptr < 3 * np_; ptr += 3) {
+            phivis << " " << centers_[ptr + 0] <<", " << centers_[ptr + 1] << ", "  << centers_[ptr + 2] << std::endl;
+        }
+        phivis << "];"<<std::endl;
+        std::fstream phifile;
+        static int ct = 0;
+        if(procid == 0) {
+            std::stringstream ssct; ssct<<ct;
+            phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+            phifile << phivis.str()<<std::endl;
+            phifile.close();
+            ct++;
+        }   
+    #endif
+
+
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
         ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);

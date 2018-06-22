@@ -38,6 +38,7 @@ struct CtxInv {
     /* optimization state */
     double jvalold;                 // old value of objective function (previous newton iteration)
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
+    Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
     int verbosity;                  // controls verbosity of inverse solver
     /* additional data */
@@ -57,6 +58,7 @@ struct CtxInv {
         jvalold = 0;
         weights = nullptr;
         c0old = nullptr;
+        x_old = nullptr;
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
         flag_sparse = false;
@@ -69,6 +71,11 @@ struct CtxInv {
             VecDestroy (&weights);
             weights = nullptr;
         }
+        if (x_old != nullptr) {
+            VecDestroy (&x_old);
+            x_old = nullptr;
+        }
+            
         if (c0old != nullptr) {
             VecDestroy (&c0old);
             c0old = nullptr;
@@ -108,6 +115,11 @@ class InvSolver {
         std::shared_ptr<CtxInv> getInverseSolverContext() {return itctx_;}
         bool isInitialized () {return initialized_;}
         Vec getPrec () {return xrec_;}
+
+        std::vector<double> getInvOutParams () {
+            return out_params_;
+        }
+
         ~InvSolver ();
 
     private:
@@ -128,6 +140,8 @@ class InvSolver {
         std::shared_ptr<OptimizerSettings> optsettings_;
         std::shared_ptr<OptimizerFeedback> optfeedback_;
         std::shared_ptr<CtxInv> itctx_;
+
+        std::vector<double> out_params_;
 };
 
 // ============================= non-class methods used for TAO ============================

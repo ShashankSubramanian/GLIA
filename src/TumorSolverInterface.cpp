@@ -194,6 +194,10 @@ PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
     ierr = ctx->tumor_->obs_->apply (ctx->temp_, ctx->temp_);           CHKERRQ (ierr);
     ierr = ctx->tumor_->phi_->applyTranspose (y, ctx->temp_);           CHKERRQ (ierr);
 
+    // Regularization
+    double beta = 1e-3;
+    ierr = VecAXPY (y, beta, x);                                        CHKERRQ (ierr);
+
     PetscFunctionReturn (0);
 }
 
@@ -236,25 +240,29 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     Vec p, rhs;
     Vec phi_p;
 
-    ierr = VecDuplicate (data, &phi_p);                                 CHKERRQ (ierr);
+    int np = n_misc_->np_;
+    int nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &p);                            CHKERRQ (ierr);
-    ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-    ierr = VecSetFromOptions (p);                                       CHKERRQ (ierr);
-    ierr = VecDuplicate (p, &rhs);                                      CHKERRQ (ierr);
-    ierr = VecDuplicate (p, &p_out);                                    CHKERRQ (ierr);
+
+    ierr = VecDuplicate (data, &phi_p);                                 CHKERRQ (ierr);
+    ierr = VecDuplicate (p_out, &p);                                    CHKERRQ (ierr);
+    ierr = VecDuplicate (p_out, &rhs);                                  CHKERRQ (ierr);
+    ierr = VecSet (rhs, 0);                                             CHKERRQ (ierr);
+    ierr = VecSet (p_out, 0);                                           CHKERRQ (ierr);
+    ierr = VecSet (p, 0);                                               CHKERRQ (ierr);
 
     std::shared_ptr<Tumor> tumor = tumor_;
     std::shared_ptr<InterpolationContext> ctx = std::make_shared<InterpolationContext> (n_misc_);
     ctx->tumor_ = tumor;
 
-    ierr = KSPCreate (PETSC_COMM_WORLD, &ksp);                          CHKERRQ (ierr);
-    ierr = MatCreateShell (PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, n_misc->np_, n_misc->np_, ctx.get(), &A);      CHKERRQ (ierr);
+    ierr = KSPCreate (PETSC_COMM_SELF, &ksp);                          CHKERRQ (ierr);
+    ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, ctx.get(), &A);      CHKERRQ (ierr);
     ierr = MatShellSetOperation (A, MATOP_MULT, (void (*) (void))phiMult);                                              CHKERRQ (ierr);
     ierr = KSPSetOperators (ksp, A, A);                                 CHKERRQ (ierr);
-    ierr = KSPSetTolerances (ksp, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, 100);                                            CHKERRQ (ierr);   //Max iter is 100
+    ierr = KSPSetTolerances (ksp, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 5000);                                            CHKERRQ (ierr);   //Max iter is 100
     ierr = KSPSetType (ksp, KSPCG);                                     CHKERRQ (ierr);
     ierr = KSPSetOptionsPrefix (ksp, "phieq_");                         CHKERRQ (ierr);
+    ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE);                CHKERRQ (ierr);  // To compute the condition number
     ierr = KSPSetFromOptions (ksp);                                     CHKERRQ (ierr);
     ierr = KSPSetUp (ksp);                                              CHKERRQ (ierr);
     ierr = KSPMonitorSet (ksp, interpolationKSPMonitor, ctx.get(), 0);  CHKERRQ (ierr);
@@ -265,6 +273,10 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     ierr = tumor->phi_->applyTranspose (rhs, ctx->temp_);               CHKERRQ (ierr);
 
     ierr = KSPSolve (ksp, rhs, p);                                      CHKERRQ (ierr);
+    // Compute extreme singular values for condition number
+    double e_max, e_min;
+    ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+    PCOUT << "Condition number of PhiTPhi is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
     ierr = VecCopy (p, p_out);                                          CHKERRQ (ierr);
 
     //Compute reconstruction error
@@ -279,10 +291,29 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     ierr = VecNorm (phi_p, NORM_2, &error_norm);                        CHKERRQ (ierr);
     ierr = VecNorm (p_out, NORM_2, &p_norm);                            CHKERRQ (ierr);
 
+    double err_p0;
+    Vec p_zero;
+    ierr = VecDuplicate (p_out, &p_zero);                               CHKERRQ (ierr);
+    ierr = VecSet (p_zero, 0);                                          CHKERRQ (ierr);
+
+    ierr = tumor->phi_->apply (phi_p, p_zero);                          CHKERRQ (ierr);
+    ierr = tumor->obs_->apply (phi_p, phi_p);                           CHKERRQ (ierr);
+    ierr = VecAXPY (phi_p, -1.0, ctx->temp_);                           CHKERRQ (ierr);
+    ierr = VecNorm (phi_p, NORM_2, &err_p0);                            CHKERRQ (ierr);
+
+    PCOUT << "Data mismatch using interpolated basis is: " << error_norm << std::endl;
+    PCOUT << "Data mismatch using zero vector is: " << err_p0 << std::endl;
     PCOUT << "Rel error in interpolation reconstruction: " << error_norm / d_norm << std::endl;
     PCOUT << "Norm of reconstructed p: " << p_norm << std::endl;
     PCOUT << " -------  Interpolation end ---------" << std::endl;
 
+    // std::ofstream outfile;
+    // outfile.open ("./interperror.dat", std::ios_base::app);
+    // if (procid == 0)
+    //     outfile << n_misc->phi_sigma_ / (2 * M_PI / 64) << " " << error_norm / d_norm << " " <<  e_max / e_min << std::endl;
+    // outfile.close ();
+
+    ierr = VecDestroy (&p_zero);                                        CHKERRQ (ierr);
     ierr = VecDestroy (&p);                                             CHKERRQ (ierr);
     ierr = VecDestroy (&rhs);                                           CHKERRQ (ierr);
     ierr = VecDestroy (&phi_p);                                         CHKERRQ (ierr);

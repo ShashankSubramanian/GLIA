@@ -93,10 +93,17 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
         ierr = VecSet (p_true_, 1.0);                                 CHKERRQ (ierr);
         PetscFunctionReturn (0);
     }
-    PetscScalar val[2] = {.9, .2}; 
+    // PetscScalar val[2] = {.9, .2}; 
+    // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    // PetscInt idx[2] = {center-1, center};
+    // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
+    // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
+    // PetscFunctionReturn (0);
+    PetscScalar val = 1.0; 
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);
-    PetscInt idx[2] = {center-1, center};
-    ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    PetscInt idx = center;
+    ierr = VecSetValues(p_true_, 1, &idx, &val, INSERT_VALUES);         CHKERRQ(ierr);
     ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
     ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
     PetscFunctionReturn (0);

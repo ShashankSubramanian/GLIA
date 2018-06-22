@@ -84,6 +84,11 @@ class TumorSolverInterface {
 
 		PetscErrorCode solveInterpolation (Vec data, Vec p_rec, std::shared_ptr<Phi> phi, std::shared_ptr<NMisc> n_misc);
 
+		std::vector<double> getSolverOutParams () {
+			out_params_ = inv_solver_->getInvOutParams ();
+			return out_params_;
+		}
+
 	private :
 	  bool initialized_;
 		bool optimizer_settings_changed_;
@@ -92,6 +97,8 @@ class TumorSolverInterface {
 		std::shared_ptr<PdeOperators> pde_operators_;
 		std::shared_ptr<DerivativeOperators> derivative_operators_;
 		std::shared_ptr<InvSolver> inv_solver_;
+
+		std::vector<double> out_params_;
 };
 
 #endif
