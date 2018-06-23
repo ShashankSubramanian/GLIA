@@ -508,9 +508,9 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<
     ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
 
-    dataIn (wm, n_misc, "jakob_wm.nc");
-    dataIn (gm, n_misc, "jakob_gm.nc");
-    dataIn (csf, n_misc, "jakob_csf.nc");
+    dataIn (wm, n_misc, "atlas1_wm.nc");
+    dataIn (gm, n_misc, "atlas1_gm.nc");
+    dataIn (csf, n_misc, "atlas1_csf.nc");
 
     PetscFunctionReturn (0);
 }
