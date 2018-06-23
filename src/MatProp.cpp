@@ -93,7 +93,6 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	PetscErrorCode ierr = 0;
 
 	int nk = 0;
-    n_misc->nk_ = 0;
 	if(wm != nullptr)      { ierr = VecCopy (wm, wm_); nk++;  CHKERRQ(ierr); }
 	else                   { ierr = VecSet (wm_, 0.0);        CHKERRQ(ierr); }
 	if(gm != nullptr)      { ierr = VecCopy (gm, gm_); nk++;  CHKERRQ(ierr); }
@@ -118,7 +117,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
 	ierr = weierstrassSmoother (glm_ptr, glm_ptr, n_misc, sigma_smooth);
 	ierr = weierstrassSmoother (csf_ptr, csf_ptr, n_misc, sigma_smooth);
-			
+
 	for (int i = 0; i < n_misc->n_local_; i++) {
 		if ((wm_ptr[i] > 0.1 || gm_ptr[i] > 0.1) && csf_ptr[i] < 0.8)
 			filter_ptr[i] = 1.0;

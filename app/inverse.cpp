@@ -200,7 +200,7 @@ int main (int argc, char** argv) {
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm , csf, n_misc);       
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
-        ierr = solver_interface->setParams (p_rec, nullptr);
+        ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
