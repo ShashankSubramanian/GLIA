@@ -42,6 +42,7 @@ struct OptimizerSettings {
     double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
     double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
+    int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
     int    newton_minit;         /// @brief minimum number of newton steps
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
@@ -63,6 +64,7 @@ struct OptimizerSettings {
     grtol (1E-12),
     gatol (1E-6),
     newton_maxit (25),
+    gist_maxit (100),
     krylov_maxit (50),
     newton_minit (1),
     iterbound (200),
