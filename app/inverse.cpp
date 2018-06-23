@@ -9,7 +9,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode readDataAndAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
@@ -194,6 +194,14 @@ int main (int argc, char** argv) {
     }
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
+    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+
+    bool read_atlas = true;
+    if (read_atlas) {
+        ierr = readAtlas (wm, gm, glm , csf, n_misc);       
+        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+        ierr = solver_interface->setParams (p_rec, nullptr);
+    }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
@@ -216,7 +224,7 @@ int main (int argc, char** argv) {
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
 
-    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+
 
     if (!n_misc->bounding_box_) {
         // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas

@@ -111,6 +111,14 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
 	ierr = VecGetArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 	ierr = VecGetArray (filter_, &filter_ptr);            CHKERRQ (ierr);
+
+	double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
+
+	ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
+	ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
+	ierr = weierstrassSmoother (glm_ptr, glm_ptr, n_misc, sigma_smooth);
+	ierr = weierstrassSmoother (csf_ptr, csf_ptr, n_misc, sigma_smooth);
+			
 	for (int i = 0; i < n_misc->n_local_; i++) {
 		if ((wm_ptr[i] > 0.1 || gm_ptr[i] > 0.1) && csf_ptr[i] < 0.8)
 			filter_ptr[i] = 1.0;
