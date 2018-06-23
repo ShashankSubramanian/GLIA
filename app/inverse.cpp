@@ -170,7 +170,7 @@ int main (int argc, char** argv) {
         n_misc->gaussian_vol_frac_ = gvf;
     }
     if (sigma > -1.0) {
-        n_misc->phi_sigma_ = sigma * 2 * (2 * M_PI / n_misc->n_[0]);
+        n_misc->phi_sigma_ = sigma * (2 * M_PI / n_misc->n_[0]);
     }
     if (spacing_factor > -1.0) {
         n_misc->phi_spacing_factor_ = spacing_factor;
