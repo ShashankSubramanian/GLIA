@@ -124,6 +124,15 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 		else
 			filter_ptr[i] = 0.0;
 	}
+
+	if(n_misc->writeOutput_) {
+		dataOut (gm_ptr, n_misc, "gray_matter.nc");
+		dataOut (wm_ptr, n_misc, "white_matter.nc");
+		dataOut (csf_ptr, n_misc, "csf.nc");
+		dataOut (glm_ptr, n_misc, "glial_matter.nc");
+		dataOut (filter_ptr, n_misc, "filter_zero.nc");
+	}
+			
 	ierr = VecRestoreArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 	ierr = VecRestoreArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 	ierr = VecRestoreArray (csf_, &csf_ptr);                  CHKERRQ (ierr);

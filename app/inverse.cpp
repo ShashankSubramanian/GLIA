@@ -204,9 +204,9 @@ int main (int argc, char** argv) {
     }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
-    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+    ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
     // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
-    ierr = readData (data, c_0, p_rec, n_misc);
+    // ierr = readData (data, c_0, p_rec, n_misc);
 
     Vec data_nonoise;
     ierr = VecDuplicate (data, &data_nonoise);
