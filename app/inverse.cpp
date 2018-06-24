@@ -178,9 +178,9 @@ int main (int argc, char** argv) {
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
     if (n_misc->regularization_norm_ == L1)
-        n_misc->writepath_ << "./results/L1/tc9/atlas1/";
+        n_misc->writepath_ << "./results/L1/tc9/atlas2/";
     else
-        n_misc->writepath_ << "./results/L2/tc9/atlas1/";         
+        n_misc->writepath_ << "./results/L2/tc9/atlas2/";         
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
     dt_temp = n_misc->dt_;
@@ -204,9 +204,9 @@ int main (int argc, char** argv) {
     }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
-    ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
     // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
-    // ierr = readData (data, c_0, p_rec, n_misc);
+    ierr = readData (data, c_0, p_rec, n_misc);
 
     Vec data_nonoise;
     ierr = VecDuplicate (data, &data_nonoise);
@@ -490,8 +490,8 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
         ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
     #endif
 
-    dataIn (data, n_misc, "datacheck.nc");
-    dataIn (c_0, n_misc, "datacheck_c0.nc");
+    dataIn (data, n_misc, "data_atlas1.nc");
+    dataIn (c_0, n_misc, "data_atlas1_c0.nc");
 
     PetscFunctionReturn (0);
 }

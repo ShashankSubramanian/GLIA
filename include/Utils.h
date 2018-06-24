@@ -227,7 +227,7 @@ class NMisc {
         , dt_ (0.5)                            // Time step
         , nt_(1)                               // Total number of time steps
         , np_ (1)                              // Number of gaussians for bounding box
-        , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
+        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
@@ -240,9 +240,9 @@ class NMisc {
         , target_sparsity_ (0.99)               // target sparsity for L1 continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (1.0 / 10.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (0.0)                  // gm to wm reaction coeff ratio
+        , r_gm_wm_ratio_ (1.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
@@ -265,9 +265,9 @@ class NMisc {
                 // user_cm_[0] = 4.0;
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
-                user_cm_[0] = 2 * M_PI / 128 * 81;//82
-                user_cm_[1] = 2 * M_PI / 128 * 63;//64
-                user_cm_[2] = 2 * M_PI / 128 * 51;//52
+                user_cm_[0] = 2 * M_PI / 128 * 64;//82
+                user_cm_[1] = 2 * M_PI / 128 * 50;//64
+                user_cm_[2] = 2 * M_PI / 128 * 82;//52
             }
             else {
                 user_cm_[0] = M_PI;
