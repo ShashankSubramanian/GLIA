@@ -286,3 +286,19 @@ PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {
     ierr = VecRestoreArray (c, &c_ptr);                          CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
+
+PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    double max, min;
+    ierr = VecMax (c, NULL, &max);  CHKERRQ (ierr);
+    ierr = VecMin (c, NULL, &min);  CHKERRQ (ierr);
+    double tol = -1E-4;
+    if (max > 1 || min < tol) {
+        PCOUT << "[---------- Warning! Tumor IC is clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
+    }
+    PetscFunctionReturn (0);
+}

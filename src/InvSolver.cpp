@@ -154,10 +154,10 @@ PetscErrorCode InvSolver::solve () {
   sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
   ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
   //SNAFU
-   ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
+  ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
   //static int it = 0; it++;
   //std::stringstream ss; ss<<"_it-"<<it;
-  //std::string s("files/cpl/ITdata"+ss.str()+".nc");
+  //std::string s("files/cpl/ITdata"+ss.str()+".nc");k
   //DataOut(d_ptr, itctx_->n_misc_, s.c_str());
   /* === Add Noise === */
   Vec noise; double *noise_ptr;
@@ -174,6 +174,10 @@ PetscErrorCode InvSolver::solve () {
   ierr = VecRestoreArray (data_, &d_ptr);                                             CHKERRQ(ierr);
 	PetscScalar max, min;                                                // compute d-norm
   PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
+  #ifdef POSITIVITY
+    ierr = enforcePositivity (data_, itctx_->n_misc_);
+    ierr = enforcePositivity (noise, itctx_->n_misc_);
+  #endif
   ierr = VecNorm (noise, NORM_2, &d_norm);                                            CHKERRQ(ierr);
   ierr = VecMax (noise, NULL, &max);                                                  CHKERRQ(ierr);
   ierr = VecMin (noise, NULL, &min);                                                  CHKERRQ(ierr);
@@ -183,6 +187,9 @@ PetscErrorCode InvSolver::solve () {
   std::stringstream s;
   s << "data (ITP), with noise: l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   s << "IT data error due to thresholding and smoothing: l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  if (itctx_->n_misc_->writeOutput_) {
+    dataOut (data_, itctx_->n_misc_, "data.nc");
+  }
   /* === solve for a initial guess === */
   //solveForParameters(data.get(), itctx_->n_misc_, itctx_->tumor_->phi_, itctx_->n_misc_->timers_, &itctx_->tumor_->p_true_);
   //tumor_->t_history_->reset(); // TODO: no time history so far, if available, reset here
@@ -194,9 +201,18 @@ PetscErrorCode InvSolver::solve () {
   if (itctx_->tmp == nullptr) {
       ierr = VecDuplicate (data_, &itctx_->tmp);                                       CHKERRQ(ierr);
       ierr = VecSet (itctx_->tmp, 0.0);                                                CHKERRQ(ierr);
-  }                                                                                    // reset with zero for new ITP solve
+  }      
+  if (itctx_->x_old == nullptr)  {
+      ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->x_old);                        CHKERRQ (ierr);
+      ierr = VecCopy (itctx_->tumor_->p_, itctx_->x_old);                              CHKERRQ (ierr);
+  }                                             
+
+  // reset with zero for new ITP solve
   ierr = VecSet (itctx_->c0old, 0.0);                                                  CHKERRQ(ierr);
-  itctx_->n_misc_->beta_             = itctx_->optsettings_->beta;                     // set beta for this inverse solver call
+  if (itctx_->n_misc_->beta_changed_)
+      itctx_->optsettings_->beta      = itctx_->n_misc_->beta_;
+  else
+    itctx_->n_misc_->beta_             = itctx_->optsettings_->beta;                     // set beta for this inverse solver call
   itctx_->is_ksp_gradnorm_set        = false;
   itctx_->optfeedback_->converged    = false;
   itctx_->optfeedback_->solverstatus = "";
@@ -262,6 +278,9 @@ PetscErrorCode InvSolver::solve () {
   //Gradient check begin
   //    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
   //Gradient check end
+
+  s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  
   ierr = TaoSolve (tao_);                                                                CHKERRQ(ierr);
   // --------
   self_exec_time_tuninv += MPI_Wtime();
@@ -286,6 +305,8 @@ PetscErrorCode InvSolver::solve () {
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
   itctx_->n_misc_->statistics_.print();
   itctx_->n_misc_->statistics_.reset();
+
+  out_params_.push_back (itctx_->optfeedback_->nb_newton_it);
 
 	// only update if triggered from outside, i.e., if new information to the ITP solver is present
 	itctx_->update_reference_gradient = false;
@@ -535,17 +556,27 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // and termination reason
     Vec tao_x;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
-    ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
+    ierr = TaoGetSolutionVector(tao, &tao_x);                                       CHKERRQ(ierr);
 
+    ierr = VecAXPY (itctx->x_old, -1.0, tao_x);                                     CHKERRQ (ierr);
+
+    double dp_norm, p_norm;
+    ierr = VecNorm (itctx->x_old, NORM_INFINITY, &dp_norm);                         CHKERRQ (ierr);
+    ierr = VecNorm (tao_x, NORM_INFINITY, &p_norm);                                 CHKERRQ (ierr);
+    ierr = VecCopy (tao_x, itctx->x_old);                                           CHKERRQ (ierr);
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
     // print out Newton iteration information
+
+    ierr = itctx->tumor_->phi_->apply (itctx->tumor_->c_0_, tao_x);                 CHKERRQ (ierr);
+    //Prints a warning if tumor IC is clipped
+    ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr); 
 
     std::stringstream s;
     if (its == 0) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
-          << std::setw(18) << "step" << "   " << std::setw(10) << "sparsity";
+          << std::setw(18) << "step" << "   " << std::setw(12) << "sparsity" << std::setw(18) << "||dp||_2";
           if (itctx->n_misc_->diffusivity_inversion_) {
             s << std::setw(18) << "k";
           }
@@ -555,9 +586,9 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         } else {
           ierr = tuMSGstd (" starting optimization, TAO's Gauß-Newton");            CHKERRQ(ierr);
         }
-        ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+        ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
-        ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+        ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         s.str ("");
         s.clear ();
     }
@@ -568,7 +599,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->optfeedback_->gradnorm0
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step
-      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << sparsity;
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << sparsity
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << dp_norm / (1 + p_norm);
       if (itctx->n_misc_->diffusivity_inversion_) {
         double *x_ptr;
         ierr = VecGetArray(tao_x, &x_ptr);                                         CHKERRQ(ierr);
@@ -580,6 +612,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
+
+    
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
 
@@ -657,25 +691,26 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
     if (itctx->n_misc_->lambda_continuation_) {
       double sparsity = 0;
       double sparsity_old = 0;
+      double threshold = itctx->n_misc_->target_sparsity_;
       if (its > 0) {
         //lambda continuation
         ierr = vecSparsity (tao_x, sparsity);
         ierr = vecSparsity (lsctx->x_work_2, sparsity_old);
 
-        if (sparsity >= 0.95) {//Sparse solution
+        if (sparsity >= threshold) {//Sparse solution
           itctx->flag_sparse = true;
           itctx->lam_right = itctx->n_misc_->lambda_;
           itctx->n_misc_->lambda_ = 0.5 * (itctx->lam_left + itctx->lam_right);
           lsctx->lambda = itctx->n_misc_->lambda_;
         }
 
-        if (sparsity < 0.95 && sparsity_old >= 0.95 && its > 1) {
+        if (sparsity < threshold && sparsity_old >= threshold && its > 1) {
           itctx->lam_left = itctx->n_misc_->lambda_;
           itctx->n_misc_->lambda_ = 0.5 * (itctx->lam_left + itctx->lam_right);
           lsctx->lambda = itctx->n_misc_->lambda_;
         }
 
-        if (sparsity < 0.95 && sparsity_old < 0.95 && itctx->flag_sparse) {
+        if (sparsity < threshold && sparsity_old < threshold && itctx->flag_sparse) {
           itctx->lam_left = itctx->n_misc_->lambda_;
           itctx->n_misc_->lambda_ = 0.5 * (itctx->lam_left + itctx->lam_right);
           lsctx->lambda = itctx->n_misc_->lambda_;
@@ -727,6 +762,16 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
     << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
     ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
     s.str (""); s.clear ();
+
+    // int ksp_itr;
+    // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
+    // double e_max, e_min;
+    // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+    //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+    //   s << "Condition number of hessian is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+    //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    //   s.str (""); s.clear ();
+    // }
 	PetscFunctionReturn (0);
 }
 
@@ -797,7 +842,7 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr) {
                                                         // get tolerances
     ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);                   CHKERRQ(ierr);
     uppergradbound = 0.5;                               // assuming quadratic convergence
-    lowergradbound = 1E-2;
+    lowergradbound = 1E-10;
     // user forcing sequence to estimate adequate tolerance for solution of
     //  KKT system (Eisenstat-Walker)
     if (itctx->optsettings_->fseqtype == QDFS) {
@@ -865,19 +910,20 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     Vec p0, dJ;
     ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
     ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
-    ierr = VecSet (p0, ctx->n_misc_->p_scale_);                               CHKERRQ(ierr);
+    // ierr = VecSet (p0, ctx->n_misc_->p_scale_);                               CHKERRQ(ierr);
     ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
     //Check for infeasible lambda values
-    evaluateGradient(tao, p0, dJ, (void*) ctx);
+    evaluateGradient(tao, x, dJ, (void*) ctx);
     ierr = VecNorm (dJ, NORM_INFINITY, &norm_g_inf);                           CHKERRQ (ierr);
-    if (ctx->n_misc_->lambda_ >= norm_g_inf) {
+    
+    // if (ctx->n_misc_->lambda_ >= norm_g_inf) {
       ctx->n_misc_->lambda_ = norm_g_inf - g_percent * norm_g_inf;
       ctx->lam_right = ctx->n_misc_->lambda_;
       ctx->lam_left = 0;
       lsctx->lambda = ctx->n_misc_->lambda_;
-    }
+    // }
     //Evaluate objective for reference using the correct lambda
-    evaluateObjectiveFunction (tao, p0, &ctx->optfeedback_->j0, (void*) ctx);
+    evaluateObjectiveFunction (tao, x, &ctx->optfeedback_->j0, (void*) ctx);
     std::stringstream s; s <<"updated reference objective for relative convergence criterion, ISTA L1 solver: " << ctx->optfeedback_->j0 << " ; regularization : " << ctx->n_misc_->lambda_;
     ctx->update_reference_objective = false;
     ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
@@ -1543,7 +1589,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     std::string msg;
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 25.0);
+    minstep = std::pow (2.0, 30.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 
@@ -1644,13 +1690,18 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         ierr = TaoSetType (tao, "lmvm");                                          CHKERRQ(ierr);
     }
     // set tolerances
+    // if (itctx_->n_misc_->regularization_norm_ == wL2) ctx->optsettings_->opttolgrad = 1e-6;
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
         ierr = TaoSetTolerances (tao, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
     #else
         ierr = TaoSetTolerances (tao, 1E-12, 1E-12, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
     #endif
-    if (itctx_->n_misc_->regularization_norm_ == L1) ctx->optsettings_->newton_maxit = 100;
-    ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->newton_maxit); CHKERRQ(ierr);
+    if (itctx_->n_misc_->regularization_norm_ == L1) {
+      ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->gist_maxit); CHKERRQ(ierr);
+    }
+    else {
+      ierr = TaoSetMaximumIterations (tao, ctx->optsettings_->newton_maxit); CHKERRQ(ierr);
+    }
 
     if (itctx_->n_misc_->regularization_norm_ == L1) {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceFun, ctx);                  CHKERRQ(ierr);
@@ -1700,6 +1751,9 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
             // to use Eisenstat/Walker convergence crit.
             KSPSetPreSolve (ksp, preKrylovSolve, ctx);                              CHKERRQ(ierr);
             ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx, 0);                    CHKERRQ(ierr);
+            //snafu
+            ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE);                CHKERRQ (ierr);  // To compute the condition number
+            ierr = KSPSetFromOptions (ksp);                                     CHKERRQ (ierr);
         }
         // set the preconditioner (we check if KSP exists, as there are also
         // solvers that do not require a KSP solve (BFGS and friends))

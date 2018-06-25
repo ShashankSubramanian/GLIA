@@ -211,7 +211,11 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 	ierr = VecCopy (g, s);														CHKERRQ (ierr);
 
 	while (1) {
-		ierr = TaoMonitor (tao, iter, f, gnorm, 0.0, steplength, &reason);		CHKERRQ (ierr);
+		#if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+			ierr = TaoMonitor (tao, iter, f, gnorm, 0.0, steplength);				CHKERRQ (ierr);
+		#else
+			ierr = TaoMonitor (tao, iter, f, gnorm, 0.0, steplength, &reason);		CHKERRQ (ierr);
+		#endif
 		if (reason != TAO_CONTINUE_ITERATING) 
 			break;
 		ierr = TaoComputeObjectiveAndGradient (tao, x, &f, g);								CHKERRQ (ierr);
