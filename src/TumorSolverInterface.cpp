@@ -107,6 +107,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
         n_misc_->user_cm_               = tumor_params->phi_center_of_mass;
         n_misc_->phi_spacing_factor_    = tumor_params->phi_spacing_factor;
         n_misc_->phi_sigma_             = tumor_params->phi_sigma;
+        n_misc_->phi_sigma_data_driven_ = tumor_params->phi_sigma_data_driven;
         n_misc_->gaussian_vol_frac_     = tumor_params->gaussian_volume_fraction;
         n_misc_->target_sparsity_       = tumor_params->target_sparsity;
         n_misc_->bounding_box_          = tumor_params->phi_selection_mode_bbox;

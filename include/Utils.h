@@ -130,6 +130,7 @@ struct TumorSettings {
     std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
     double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     double phi_sigma;               /// @brief standard deviation of Gaussians
+    double phi_sigma_data_driven    /// @brief standard deviation for data driven selection of gaussians
     double gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
     double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
@@ -157,6 +158,7 @@ struct TumorSettings {
     phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
     phi_spacing_factor (1.5),
     phi_sigma (PETSC_PI/10),
+    phi_sigma_data_driven(2*PETSC_PI/256),
     gaussian_volume_fraction(0),
     target_sparsity(0.99),
     phi_selection_mode_bbox(1),
