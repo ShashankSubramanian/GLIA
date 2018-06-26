@@ -45,6 +45,9 @@ int main (int argc, char** argv) {
     double target_spars = -1.0;
     int lam_cont = 0;
 
+    double sigma_dd = -1.0;
+    double data_thres = -1.0;
+
 
     PetscBool strflg;
 
@@ -73,6 +76,9 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-gaussian_volume_fraction", "Gaussian volume fraction of data-driven radial basis", "", gvf, &gvf, NULL);
     PetscOptionsReal ("-target_sparsity", "Target sparsity of continuation", "", target_spars, &target_spars, NULL);
     PetscOptionsInt ("-lambda_continuation", "Lambda continuation", "", lam_cont, &lam_cont, NULL);
+    PetscOptionsReal ("-sigma_data_driven", "Sigma for data-driven Gaussians", "", sigma_dd, &sigma_dd, NULL);
+    PetscOptionsReal ("-threshold_data_driven", "Data threshold for data-driven Gaussians", "", data_thres, &data_thres, NULL);
+
     PetscOptionsEnd ();
 
 
@@ -174,6 +180,12 @@ int main (int argc, char** argv) {
     }
     if (spacing_factor > -1.0) {
         n_misc->phi_spacing_factor_ = spacing_factor;
+    }
+    if (sigma_dd > -1.0) {
+        n_misc->phi_sigma_data_driven_ = sigma_dd;
+    }
+    if (data_thres > -1.0) {
+        n_misc->data_threshold_ = data_thres;
     }
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream

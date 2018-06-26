@@ -245,6 +245,7 @@ class NMisc {
         , r_gm_wm_ratio_ (1.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
+        , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
         , obs_threshold_ (-1.0)                 // Observation threshold
         , statistics_()                         //
@@ -258,6 +259,7 @@ class NMisc {
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
+
                                 {
 
             time_horizon_ = nt_ * dt_;
@@ -341,6 +343,7 @@ class NMisc {
         bool beta_changed_;
 
         double phi_sigma_;
+        double phi_sigma_data_driven_;
         double phi_spacing_factor_;
         double data_threshold_;
         double gaussian_vol_frac_;

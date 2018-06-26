@@ -449,14 +449,12 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
     double h_64 = twopi / 64;
     double h_256 = twopi / 256;
-    sigma_ = h_256;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
+    sigma_ = n_misc_->phi_sigma_data_driven_;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
 
     double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     spacing_factor_ = 2.0;
     n_misc_->phi_spacing_factor_ = spacing_factor_;
     double space = spacing_factor_ * sigma_ / hx;
-
-    // sigma_ = n_misc_->phi_sigma_;
 
     //Get gaussian volume
     double dist = 0.0;
