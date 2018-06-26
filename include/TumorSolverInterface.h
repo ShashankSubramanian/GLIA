@@ -47,7 +47,7 @@ class TumorSolverInterface {
 		 *         A additional filter, that filters the admissable area for tumor
 		 *         growth has to be passed (updates the \Phi filter)
 		 */
-		PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params, bool use_nmisc);
+		PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params, bool use_nmisc = false);
 		/// @brief evaluates gradient for given control variable p and data
 		PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
 		/// @brief true if TumorSolverInterface is initialized and ready to use
