@@ -107,7 +107,8 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
         n_misc_->user_cm_               = tumor_params->phi_center_of_mass;
         n_misc_->phi_spacing_factor_    = tumor_params->phi_spacing_factor;
         n_misc_->phi_sigma_             = tumor_params->phi_sigma;
-        n_misc_->gaussian_vol_frac_     = tumor_params->gaussian_volume_fraction ;
+        n_misc_->gaussian_vol_frac_     = tumor_params->gaussian_volume_fraction;
+        n_misc_->target_sparsity_       = tumor_params->target_sparsity;
         n_misc_->bounding_box_          = tumor_params->phi_selection_mode_bbox;
         n_misc_->diffusivity_inversion_ = tumor_params->diffusivity_inversion;
         n_misc_->nk_                    = tumor_params->nk;
@@ -336,6 +337,7 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
     inv_solver_->getOptSettings ()->gatol               = optset->gatol;
     inv_solver_->getOptSettings ()->newton_maxit        = optset->newton_maxit;
     inv_solver_->getOptSettings ()->krylov_maxit        = optset->krylov_maxit;
+    inv_solver_->getOptSettings ()->gist_maxit          = optset->gist_maxit;
     inv_solver_->getOptSettings ()->iterbound           = optset->iterbound;
     inv_solver_->getOptSettings ()->fseqtype            = optset->fseqtype;
     inv_solver_->getOptSettings ()->newtonsolver        = optset->newtonsolver;
@@ -368,7 +370,7 @@ PetscErrorCode TumorSolverInterface::setInitialGuess (double d) {
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params, bool use_nmisc = false) {
+PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params, bool use_nmisc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")

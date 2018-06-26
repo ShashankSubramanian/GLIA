@@ -131,6 +131,7 @@ struct TumorSettings {
     double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     double phi_sigma;               /// @brief standard deviation of Gaussians
     double gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
+    double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
     bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
 
@@ -157,6 +158,7 @@ struct TumorSettings {
     phi_spacing_factor (1.5),
     phi_sigma (PETSC_PI/10),
     gaussian_volume_fraction(0),
+    target_sparsity(0.99),
     phi_selection_mode_bbox(1),
     diffusivity_inversion(false)
     {}
