@@ -181,18 +181,19 @@ int main (int argc, char** argv) {
     if (spacing_factor > -1.0) {
         n_misc->phi_spacing_factor_ = spacing_factor;
     }
-    if (sigma_dd > -1.0) {
-        n_misc->phi_sigma_data_driven_ = sigma_dd;
-    }
+    // if (sigma_dd > -1.0) {
+    //     n_misc->phi_sigma_data_driven_ = sigma_dd;
+    // }
+     n_misc->phi_sigma_data_driven_ = 2.0 * M_PI / 256;
     if (data_thres > -1.0) {
         n_misc->data_threshold_ = data_thres;
     }
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
     if (n_misc->regularization_norm_ == L1)
-        n_misc->writepath_ << "./results/L1/tc9/atlas2/";
+        n_misc->writepath_ << "./results/L1/tc9/atlas1/";
     else
-        n_misc->writepath_ << "./results/L2/tc9/atlas2/";         
+        n_misc->writepath_ << "./results/L2/tc9/atlas1/";         
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
     dt_temp = n_misc->dt_;

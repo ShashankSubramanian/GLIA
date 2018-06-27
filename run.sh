@@ -33,7 +33,6 @@ np=343
 fac=0.5
 space=2.0
 gvf=0.99
-sigma_dd=0.02454369261
 data_thres=0.1
 target_spars=0.99
 
@@ -54,7 +53,7 @@ cat <<EOF > submit
 #!/bin/bash
 
 #SBATCH -J ITP
-#SBATCH -o itp_${TESTCASE}_${REGTYPE}
+#SBATCH -o itp_${TESTCASE}_${REGTYPE}_atlas1
 #SBATCH -p rebels
 #SBATCH -N 1
 #SBATCH -n 20
@@ -71,7 +70,6 @@ mpirun build/last/inverse -nx ${N} -ny ${N} -nz ${N} -beta ${beta} \
 -gaussian_volume_fraction ${gvf} \
 -lambda_continuation ${lam_cont} \
 -target_sparsity ${target_spars} \
--sigma_data_driven ${sigma_dd} \
 -threshold_data_driven ${data_thres}
 EOF
 
