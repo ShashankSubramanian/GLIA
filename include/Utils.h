@@ -70,7 +70,7 @@ struct OptimizerSettings {
     iterbound (200),
     fseqtype (SLFS),
     newtonsolver (QUASINEWTON),
-    regularization_norm (L2b),
+    regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
     diffusivity_inversion(false),

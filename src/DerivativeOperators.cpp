@@ -588,6 +588,9 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);           CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
+    } else if (n_misc_->regularization_norm_ == L2b){
+      ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
+      reg *= 0.5 * n_misc_->beta_;
     }
 
     // compute objective function value
@@ -607,6 +610,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     PetscErrorCode ierr = 0;
     PetscScalar misfit_brain;
     n_misc_->statistics_.nb_grad_evals++;
+    std::stringstream s;
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);                       CHKERRQ (ierr);
@@ -642,11 +646,11 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
     ierr = VecScale (tumor_->p_t_, 1.0/nc_);                     CHKERRQ (ierr);
+
     // solve adjoint equation with specified final condition
     ierr = pde_operators_->solveAdjoint (1);
     // evaluate gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
-    ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);      CHKERRQ (ierr);
 
     // gradient according to reg paramater
     if (n_misc_->regularization_norm_ == L1) {
@@ -660,12 +664,16 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
       ierr = VecScale (dJ, n_misc_->beta_);                      CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
+    } else if (n_misc_->regularization_norm_ == L2b){
+      ierr = VecCopy (x, dJ);                                    CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_);                      CHKERRQ (ierr);
+      ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
     }
 
     // TODO: add inversion for diffusivity
 
     // additional information
-    std::stringstream s; PetscScalar dJ_val = 0, norm_alpha = 0;
+    PetscScalar dJ_val = 0, norm_alpha = 0;
     ierr = VecNorm (dJ, NORM_2, &dJ_val);                         CHKERRQ(ierr);
     ierr = VecNorm (tumor_->p_0_, NORM_2, &norm_alpha);           CHKERRQ(ierr);
     s <<   "dJ(p,m) = "<< std::setprecision(12) << dJ_val << " ||a(0)||_2 = "<<norm_alpha;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();

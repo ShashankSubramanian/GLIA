@@ -201,11 +201,11 @@ PetscErrorCode InvSolver::solve () {
   if (itctx_->tmp == nullptr) {
       ierr = VecDuplicate (data_, &itctx_->tmp);                                       CHKERRQ(ierr);
       ierr = VecSet (itctx_->tmp, 0.0);                                                CHKERRQ(ierr);
-  }      
+  }
   if (itctx_->x_old == nullptr)  {
       ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->x_old);                        CHKERRQ (ierr);
       ierr = VecCopy (itctx_->tumor_->p_, itctx_->x_old);                              CHKERRQ (ierr);
-  }                                             
+  }
 
   // reset with zero for new ITP solve
   ierr = VecSet (itctx_->c0old, 0.0);                                                  CHKERRQ(ierr);
@@ -280,7 +280,7 @@ PetscErrorCode InvSolver::solve () {
   //Gradient check end
 
   s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-  
+
   ierr = TaoSolve (tao_);                                                                CHKERRQ(ierr);
   // --------
   self_exec_time_tuninv += MPI_Wtime();
@@ -570,7 +570,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
 
     ierr = itctx->tumor_->phi_->apply (itctx->tumor_->c_0_, tao_x);                 CHKERRQ (ierr);
     //Prints a warning if tumor IC is clipped
-    ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr); 
+    ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr);
 
     std::stringstream s;
     if (its == 0) {
@@ -613,7 +613,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     s.str ("");
     s.clear ();
 
-    
+
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);
     //itctx->optfeedback_->nb_krylov_it = 0;
 
@@ -915,7 +915,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     //Check for infeasible lambda values
     evaluateGradient(tao, x, dJ, (void*) ctx);
     ierr = VecNorm (dJ, NORM_INFINITY, &norm_g_inf);                           CHKERRQ (ierr);
-    
+
     // if (ctx->n_misc_->lambda_ >= norm_g_inf) {
       ctx->n_misc_->lambda_ = norm_g_inf - g_percent * norm_g_inf;
       ctx->lam_right = ctx->n_misc_->lambda_;
@@ -1078,11 +1078,13 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
     // update/set reference gradient (with p = initial-guess)
     if (ctx->update_reference_gradient) {
-    	Vec dJ;
+    	Vec dJ, p0;
     	double norm_gref = 0.;
     	ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
+      ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
     	ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
-    	evaluateGradient(tao, x, dJ, (void*) ctx);
+      ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
+    	evaluateGradient(tao, p0, dJ, (void*) ctx);
     	ierr = VecNorm (dJ, NORM_2, &norm_gref);                                  CHKERRQ(ierr);
     	ctx->optfeedback_->gradnorm0 = norm_gref;
     	//ctx->gradnorm0 = gnorm;
@@ -1090,6 +1092,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
       std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << norm_gref;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     	ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
+      ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
     }
     // get initial gradient
     g0norm = ctx->optfeedback_->gradnorm0;

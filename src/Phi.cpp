@@ -465,7 +465,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
-    PCOUT << " ----- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << std::endl;
+    PCOUT << " ----- Phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_ << std::endl;
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
