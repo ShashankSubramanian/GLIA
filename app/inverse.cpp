@@ -182,17 +182,18 @@ int main (int argc, char** argv) {
         n_misc->phi_spacing_factor_ = spacing_factor;
     }
     if (sigma_dd > -1.0) {
-        n_misc->phi_sigma_data_driven_ = sigma_dd;
+        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / 256;
     }
+    
     if (data_thres > -1.0) {
         n_misc->data_threshold_ = data_thres;
     }
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
     if (n_misc->regularization_norm_ == L1)
-        n_misc->writepath_ << "./results/L1/tc9/atlas2/";
+        n_misc->writepath_ << "./results/L1/tc9/atlas1/";
     else
-        n_misc->writepath_ << "./results/L2/tc9/atlas2/";         
+        n_misc->writepath_ << "./results/L2/";         
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
     dt_temp = n_misc->dt_;
@@ -208,7 +209,7 @@ int main (int argc, char** argv) {
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
-    bool read_atlas = true;
+    bool read_atlas = false;
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm , csf, n_misc);       
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
@@ -216,9 +217,9 @@ int main (int argc, char** argv) {
     }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
-    ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
     // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
-    // ierr = readData (data, c_0, p_rec, n_misc);
+    ierr = readData (data, c_0, p_rec, n_misc);
 
     Vec data_nonoise;
     ierr = VecDuplicate (data, &data_nonoise);
@@ -502,8 +503,10 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
         ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
     #endif
 
-    dataIn (data, n_misc, "data_atlas1.nc");
-    dataIn (c_0, n_misc, "data_atlas1_c0.nc");
+    // dataIn (data, n_misc, "data_atlas1.nc");
+    // dataIn (c_0, n_misc, "data_atlas1_c0.nc");
+    dataIn (data, n_misc, "tu_AAAN.nc");
+    dataIn (c_0, n_misc, "tu_AAAN.nc");
 
     PetscFunctionReturn (0);
 }
