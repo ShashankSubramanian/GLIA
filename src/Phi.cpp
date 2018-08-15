@@ -109,6 +109,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
     MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
     int h = round (std::pow (np_, 1.0 / 3.0));
     double space[3];
+    double mu[3];
 
     #ifdef VISUALIZE_PHI
      std::stringstream phivis;
@@ -157,10 +158,13 @@ PetscErrorCode Phi::phiMesh (double *center) {
         for (int k = -(h) / 2; k <= (h) / 2; k++)
             for (int j = -(h) / 2; j <= (h) / 2; j++)
                 for (int i = -(h) / 2; i <= (h) / 2; i++) {
+                    mu[0] = ((i < 0) ? -1 : ((i > 0) ? 1 : 0)) * 0.5;
+                    mu[1] = ((j < 0) ? -1 : ((j > 0) ? 1 : 0)) * 0.5;
+                    mu[2] = ((k < 0) ? -1 : ((k > 0) ? 1 : 0)) * 0.5;
                     if ((i != 0) && (j != 0) && (k != 0)) {
-                        center[ptr + 0] = i * space[0] + cm_[0];
-                        center[ptr + 1] = j * space[1] + cm_[1];
-                        center[ptr + 2] = k * space[2] + cm_[2];
+                        center[ptr + 0] = (i - mu[0]) * space[0] + cm_[0];
+                        center[ptr + 1] = (j - mu[1]) * space[1] + cm_[1];
+                        center[ptr + 2] = (k - mu[2]) * space[2] + cm_[2];
                         #ifdef VISUALIZE_PHI
                          phivis << " " << center[ptr + 0] <<", " << center[ptr + 1] << ", "  << center[ptr + 2] <<std::endl;
                         #endif
@@ -220,7 +224,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
 
         double *pg_ptr;
         Vec dummy, pg;
-        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);                                          
+        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);
         ierr = VecCopy (p, pg);         CHKERRQ (ierr);
         ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
         ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
@@ -718,7 +722,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             phifile << phivis.str()<<std::endl;
             phifile.close();
             ct++;
-        }   
+        }
     #endif
 
 
