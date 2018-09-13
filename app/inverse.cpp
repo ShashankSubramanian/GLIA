@@ -135,7 +135,6 @@ int main (int argc, char** argv) {
 
     std::vector<double> out_params;
     int n_gist = 0, n_newton;
-
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
     if (beta_user >= 0) {    //user has provided tumor reg
@@ -217,9 +216,9 @@ int main (int argc, char** argv) {
     }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
-    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+    ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
     // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
-    ierr = readData (data, c_0, p_rec, n_misc);
+    // ierr = readData (data, c_0, p_rec, n_misc);
 
     Vec data_nonoise;
     ierr = VecDuplicate (data, &data_nonoise);
@@ -381,10 +380,19 @@ int main (int argc, char** argv) {
         r.print ();
         r.print ("EventsTimings.log", true);
     }
+
+    ierr = VecDestroy (&c_0);               CHKERRQ (ierr);
+    ierr = VecDestroy (&data);              CHKERRQ (ierr);
+    ierr = VecDestroy (&p_rec);             CHKERRQ (ierr);
+    ierr = VecDestroy (&data_nonoise);      CHKERRQ (ierr);
+    
 }
 /* --------------------------------------------------------------------------------------------------------------*/
     accfft_destroy_plan (plan);
-    PetscFinalize ();
+    accfft_cleanup();
+    MPI_Comm_free(&c_comm);
+    ierr = PetscFinalize ();
+    return ierr;
 }
 
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
@@ -600,6 +608,9 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     opfile.close ();
 
     error_norm /= data_norm;
+
+    ierr = VecDestroy (&c_rec_0); CHKERRQ (ierr);
+    ierr = VecDestroy (&c_rec); CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
 

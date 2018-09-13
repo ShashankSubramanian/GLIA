@@ -12,7 +12,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 0; i < np_; i++) {
+    for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
@@ -40,7 +40,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 0; i < np_; i++) {
+    for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
@@ -236,6 +236,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
         ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
         ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
+        ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
 
         self_exec_time += MPI_Wtime();
         accumulateTimers (t, t, self_exec_time);
@@ -736,7 +737,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 0; i < np_; i++) {
+    for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
@@ -754,4 +755,5 @@ Phi::~Phi () {
     for (int i = 0; i < np_; i++) {
         ierr = VecDestroy (&phi_vec_[i]);
     }
+    phi_vec_.clear();
 }

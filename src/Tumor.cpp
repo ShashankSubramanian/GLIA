@@ -127,8 +127,9 @@ Tumor::~Tumor () {
     ierr = VecDestroy (&p_);
     ierr = VecDestroy (&p_true_);
 
-    for (int i = 0; i < 11; i++) {
+    for (int i = 0; i < 12; i++) {
         ierr = VecDestroy (&work_[i]);
     }
     delete[] work_;
+    ierr = VecDestroy (&weights_);
 }

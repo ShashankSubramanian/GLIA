@@ -9,33 +9,33 @@ TESTCASE=tc
 
 ### Synthetic data parameters
 rho_data=10
-k_data=0.05
-nt_data=30
+k_data=0.01
+nt_data=15
 dt_data=0.02
 
 ### Inversion tumor parameters
 rho_inv=10
-k_inv=0.05
-nt_inv=30
+k_inv=0.0
+nt_inv=15
 dt_inv=0.02
 
 ### Interpolation flag
-interp_flag=1
+interp_flag=0
 ### Diffusivity inversion flag
-diffusivity_flag=0
+diffusivity_flag=1
 ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)
 basis_type=1
 lam_cont=1
 
 beta=0e-4
 N=256
-np=343
+np=27
 fac=2
 space=2.0
 gvf=0.99
 data_thres=0.1
 target_spars=0.99
-dd_fac=4
+dd_fac=2
 
 # space=0.09817477042
 
@@ -58,7 +58,7 @@ cat <<EOF > submit
 #SBATCH -p rebels
 #SBATCH -N 1
 #SBATCH -n 20
-#SBATCH -t 1:00:00
+#SBATCH -t 10:00:00
 
 source ~/.bashrc
 export OMP_NUM_THREADS=1

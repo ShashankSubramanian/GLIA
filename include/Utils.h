@@ -70,7 +70,7 @@ struct OptimizerSettings {
     iterbound (200),
     fseqtype (SLFS),
     newtonsolver (QUASINEWTON),
-    regularization_norm (L2),
+    regularization_norm (L2b),
     reset_tao (false),
     lmvm_set_hessian (false),
     diffusivity_inversion(false),
@@ -231,7 +231,7 @@ class NMisc {
         , dt_ (0.5)                            // Time step
         , nt_(1)                               // Total number of time steps
         , np_ (1)                              // Number of gaussians for bounding box
-        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
+        , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
         , k_ (0E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
@@ -244,7 +244,7 @@ class NMisc {
         , target_sparsity_ (0.99)               // target sparsity for L1 continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 10.0)            // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (0.0 / 10.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (1.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio

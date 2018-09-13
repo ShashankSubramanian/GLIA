@@ -315,6 +315,8 @@ PetscErrorCode InvSolver::solve () {
 	data_gradeval_ = nullptr;
   tao_is_reset_ = false;
 
+  ierr = VecDestroy (&noise); CHKERRQ (ierr);
+
 	PetscFunctionReturn (0);
 }
 
@@ -618,7 +620,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //itctx->optfeedback_->nb_krylov_it = 0;
 
     //Gradient check begin
-    //ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
+    // ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }
@@ -935,12 +937,14 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   if (PetscIsInfOrNanReal(J)) {
     ierr = tuMSGwarn ("objective is NaN");                                      CHKERRQ(ierr);
     ierr = TaoSetConvergedReason (tao, TAO_DIVERGED_NAN);                       CHKERRQ(ierr);
+    if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
     PetscFunctionReturn (ierr);
   }
   // check for NaN value
   if (PetscIsInfOrNanReal(gnorm)) {
     ierr = tuMSGwarn("||g|| is NaN");                                           CHKERRQ(ierr);
     ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                        CHKERRQ(ierr);
+    if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
     PetscFunctionReturn(ierr);
   }
   // only check convergence criteria after a certain number of iterations
@@ -968,6 +972,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
       ss.str(std::string());
       ss.clear();
       ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);              CHKERRQ(ierr);
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
       PetscFunctionReturn(ierr);
     }
     if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
@@ -976,6 +981,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
       ss.str(std::string());
       ss.clear();
       ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
       PetscFunctionReturn(ierr);
     }
 
@@ -1020,6 +1026,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     ctx->jvalold = J;
     if (stop[0] || stop[1]) {
       ctx->optfeedback_->converged = true;
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
       PetscFunctionReturn(ierr);
     }
   }
@@ -1102,12 +1109,14 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     if (PetscIsInfOrNanReal(J)) {
   		ierr = tuMSGwarn ("objective is NaN");                                      CHKERRQ(ierr);
   		ierr = TaoSetConvergedReason (tao, TAO_DIVERGED_NAN);                       CHKERRQ(ierr);
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
   		PetscFunctionReturn (ierr);
     }
     // check for NaN value
     if (PetscIsInfOrNanReal(gnorm)) {
   		ierr = tuMSGwarn("||g|| is NaN");                                           CHKERRQ(ierr);
   		ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_NAN);                        CHKERRQ(ierr);
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
   		PetscFunctionReturn(ierr);
     }
     //if(verbosity >= 1) {
@@ -1129,6 +1138,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     			ss.str(std::string());
                 ss.clear();
     			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
+          if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
     			PetscFunctionReturn(ierr);
     	}
       if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
@@ -1137,6 +1147,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         ss.str(std::string());
               ss.clear();
         ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
+        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
         PetscFunctionReturn(ierr);
       }
     	// ||g_k||_2 < tol*||g_0||
@@ -1185,6 +1196,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     	ctx->jvalold = J;
     	if (stop[0] || stop[1] || stop[2]) {
     		ctx->optfeedback_->converged = true;
+        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
     		PetscFunctionReturn(ierr);
     	}
 
@@ -1197,6 +1209,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 			ss.str(std::string());
             ss.clear();
 			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                   CHKERRQ(ierr);
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
 			PetscFunctionReturn(ierr);
 		}
     }
