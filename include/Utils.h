@@ -298,6 +298,8 @@ class NMisc {
             h_[1] = M_PI * 2 / n[1];
             h_[2] = M_PI * 2 / n[2];
 
+            lebesgue_measure_ = h_[0] * h_[1] * h_[2];
+
             for(int i=0; i < 7; ++i)
                 timers_[i] = 0;
 
@@ -314,6 +316,7 @@ class NMisc {
         int ostart_[3];
         int c_dims_[2];
         double h_[3];
+        double lebesgue_measure_;
 
         int np_;
         int nk_;

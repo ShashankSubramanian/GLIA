@@ -610,12 +610,19 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     PetscErrorCode ierr = 0;
     PetscScalar misfit_brain;
     n_misc_->statistics_.nb_grad_evals++;
+
+    PetscScalar dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
+    PetscScalar norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d =0.;
     std::stringstream s;
 
+    if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (data, NORM_2, &norm_d);          CHKERRQ (ierr);}
+
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
+    if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (tumor_->c_0_, NORM_2, &norm_c0); CHKERRQ (ierr);}
     ierr = pde_operators_->solveState (0);                       CHKERRQ (ierr);
 
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);            CHKERRQ (ierr);
+    if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (tumor_->c_t_, NORM_2, &norm_c1);  CHKERRQ (ierr);}
     ierr = VecAXPY (temp_, -1.0, data);                          CHKERRQ (ierr);
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);            CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
@@ -645,12 +652,15 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = VecPointwiseMult (temp_, xi_glm_, m_geo_glm_);      CHKERRQ (ierr);
       ierr = VecAXPY (tumor_->p_t_, -1.0, temp_);                CHKERRQ (ierr);
   	}
+    if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (tumor_->p_t_, NORM_2, &norm_adjfinal1); CHKERRQ (ierr);}
     ierr = VecScale (tumor_->p_t_, 1.0/nc_);                     CHKERRQ (ierr);
+    if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (tumor_->p_t_, NORM_2, &norm_adjfinal2); CHKERRQ (ierr);}
 
     // solve adjoint equation with specified final condition
     ierr = pde_operators_->solveAdjoint (1);
     // evaluate gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
+    if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (ptemp_, NORM_2, &norm_phiTalpha);       CHKERRQ (ierr);}
 
     // gradient according to reg paramater
     if (n_misc_->regularization_norm_ == L1) {
@@ -663,6 +673,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
       ierr = VecScale (dJ, n_misc_->beta_);                      CHKERRQ (ierr);
+      if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (dJ, NORM_2, &norm_phiTphic0);         CHKERRQ (ierr);}
       ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecCopy (x, dJ);                                    CHKERRQ (ierr);
@@ -673,10 +684,14 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     // TODO: add inversion for diffusivity
 
     // additional information
-    PetscScalar dJ_val = 0, norm_alpha = 0;
     ierr = VecNorm (dJ, NORM_2, &dJ_val);                         CHKERRQ(ierr);
     ierr = VecNorm (tumor_->p_0_, NORM_2, &norm_alpha);           CHKERRQ(ierr);
-    s <<   "dJ(p,m) = "<< std::setprecision(12) << dJ_val << " ||a(0)||_2 = "<<norm_alpha;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+
+    if (n_misc_->verbosity_ >= 2) {
+      s <<   "||phiTc0|| = " << std::scientific << std::setprecision(6) << norm_phiTphic0 << " ||phiTa(0)|| = " << std::scientific << std::setprecision(6) << norm_phiTalpha;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      s <<   "||a(1)|| = " << std::scientific << std::setprecision(6) << norm_adjfinal1 << " ||a(1)||s = " << std::scientific << std::setprecision(6) << norm_adjfinal2<< " ||c(1)|| = " << std::scientific << std::setprecision(6) << norm_c1<< " ||c(0)|| = " << std::scientific << std::setprecision(6) << norm_c0<< " ||d|| = " << std::scientific << std::setprecision(6) << norm_d;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    }
+    s <<   "dJ(p,m) = "    << std::scientific << std::setprecision(6) << dJ_val         << " ||a(0)|| = "   << std::scientific << std::setprecision(6) << norm_alpha;      ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     PetscFunctionReturn(0);
 }
 
