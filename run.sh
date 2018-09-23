@@ -10,13 +10,13 @@ TESTCASE=pc
 ### Synthetic data parameters
 rho_data=20
 k_data=0.1
-nt_data=20
+nt_data=15
 dt_data=0.02
 
 ### Inversion tumor parameters
 rho_inv=20
 k_inv=0.0
-nt_inv=20
+nt_inv=15
 dt_inv=0.02
 
 ### Interpolation flag
@@ -30,7 +30,7 @@ lam_cont=1
 beta=0e-4
 N=256
 np=27
-fac=1
+fac=2
 space=2
 gvf=0.99
 data_thres=0.1

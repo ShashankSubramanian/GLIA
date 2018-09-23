@@ -220,8 +220,8 @@ int main (int argc, char** argv) {
     }
 
     PCOUT << "Generating Synthetic Data --->" << std::endl;
-    ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
-    // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
+    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+    ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
     // ierr = readData (data, c_0, p_rec, n_misc);
 
     Vec data_nonoise;
@@ -430,9 +430,12 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     // cm[0] = 2 * M_PI / 128 * 69;//82 //Axial
     // cm[1] = 2 * M_PI / 128 * 63;//64
     // cm[2] = 2 * M_PI / 128 * 49;//52
-    cm[0] = 2 * M_PI / 128 * 69;//82 //Axial
-    cm[1] = 2 * M_PI / 128 * 81;//64
-    cm[2] = 2 * M_PI / 128 * 55;//52
+    // // cm[0] = 2 * M_PI / 128 * 69;//82 //Axial
+    // // cm[1] = 2 * M_PI / 128 * 81;//64
+    // // cm[2] = 2 * M_PI / 128 * 55;//52
+    cm[0] = 2 * M_PI / 128 * 64;//82  //Z
+    cm[1] = 2 * M_PI / 128 * 50;//64  //Y
+    cm[2] = 2 * M_PI / 128 * 46;//52  //X 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
@@ -449,9 +452,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecSet (c_temp, 0.);                                             CHKERRQ (ierr);
 
     // Second tumor location
-    cm[0] = 2 * M_PI / 128 * 69;//82
-    cm[1] = 2 * M_PI / 128 * 53;//64
-    cm[2] = 2 * M_PI / 128 * 45;//52
+    cm[0] = 2 * M_PI / 128 * 50;//82
+    cm[1] = 2 * M_PI / 128 * 65;//64
+    cm[2] = 2 * M_PI / 128 * 58;//52
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     ierr = tumor->setTrueP (n_misc);

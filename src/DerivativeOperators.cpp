@@ -45,14 +45,17 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       ierr = VecPointwiseMult (ptemp_, tumor_->weights_, x);          CHKERRQ (ierr);
       ierr = VecDot (x, ptemp_, &reg);                                CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
-    } else if (n_misc_->regularization_norm_ == L2){
+    } else if (n_misc_->regularization_norm_ == L2){  //In tumor space, so scale norm by lebesque measure
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
+      // reg *= n_misc_->lebesque_measure_;
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
 
+
+    // (*J) *= n_misc_->lebesque_measure_;
 
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();

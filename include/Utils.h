@@ -63,7 +63,7 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (30),
+    newton_maxit (35),
     gist_maxit (50),
     krylov_maxit (30),
     newton_minit (1),
@@ -271,9 +271,9 @@ class NMisc {
                 // user_cm_[0] = 4.0;
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
-                user_cm_[0] = 2 * M_PI / 128 * 64;//82
-                user_cm_[1] = 2 * M_PI / 128 * 50;//64
-                user_cm_[2] = 2 * M_PI / 128 * 82;//52
+                user_cm_[0] = 2 * M_PI / 128 * 64;//82  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 50;//64  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 82;//52  //X 
             }
             else {
                 user_cm_[0] = M_PI;
