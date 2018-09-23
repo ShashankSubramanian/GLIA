@@ -35,6 +35,7 @@ int main (int argc, char** argv) {
     int nt_data = 0.0;
     double dt_data = 0.0;
     char reg[10];
+    char results_dir[200];
     int np_user = 0;
     int interp_flag = 0;
     int diffusivity_flag = 0;
@@ -68,6 +69,8 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-dt_data", "Tumor inversion reaction coefficient", "", dt_data, &dt_data, NULL);
     PetscStrcpy (reg, "L2b"); //default reg
     PetscOptionsString ("-regularization", "Tumor regularization", "", reg, reg, 10, NULL);
+    PetscStrcpy (results_dir, "./results/check/"); //default reg
+    PetscOptionsString ("-output_dir", "Path to results directory", "", results_dir, results_dir, 200, NULL);
     PetscOptionsInt ("-interpolation", "Interpolation flag", "", interp_flag, &interp_flag, NULL);
     PetscOptionsInt ("-diffusivity_inversion", "Diffusivity inversion flag", "", diffusivity_flag, &diffusivity_flag, NULL);
     PetscOptionsInt ("-basis_type", "Radial basis type", "", basis_type, &basis_type, NULL);
@@ -181,7 +184,7 @@ int main (int argc, char** argv) {
         n_misc->phi_spacing_factor_ = spacing_factor;
     }
     if (sigma_dd > -1.0) {
-        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / 256;
+        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / n_misc->n_[0];
     }
     
     if (data_thres > -1.0) {
@@ -189,10 +192,11 @@ int main (int argc, char** argv) {
     }
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
-    if (n_misc->regularization_norm_ == L1)
-        n_misc->writepath_ << "./results/L1/tc9/atlas1/";
-    else
-        n_misc->writepath_ << "./results/L2/";         
+    // if (n_misc->regularization_norm_ == L1)
+    //     n_misc->writepath_ << "./results/L1/pc/";
+    // else
+    //     n_misc->writepath_ << "./results/L2b/pc/";       
+    n_misc->writepath_ << results_dir;  
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
     dt_temp = n_misc->dt_;
@@ -513,8 +517,8 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
 
     // dataIn (data, n_misc, "data_atlas1.nc");
     // dataIn (c_0, n_misc, "data_atlas1_c0.nc");
-    dataIn (data, n_misc, "tu_AAAN.nc");
-    dataIn (c_0, n_misc, "tu_AAAN.nc");
+    dataIn (data, n_misc, "/cpl/c1P.nc");
+    dataIn (c_0, n_misc, "/cpl/c1P.nc");
 
     PetscFunctionReturn (0);
 }
@@ -531,9 +535,12 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<
     ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
 
-    dataIn (wm, n_misc, "atlas1_wm.nc");
-    dataIn (gm, n_misc, "atlas1_gm.nc");
-    dataIn (csf, n_misc, "atlas1_csf.nc");
+    // dataIn (wm, n_misc, "atlas1_wm.nc");
+    // dataIn (gm, n_misc, "atlas1_gm.nc");
+    // dataIn (csf, n_misc, "atlas1_csf.nc");
+    dataIn (wm, n_misc, "/cpl/piP0-healthy-p-A(1,0)_it-2_wm.nc");
+    dataIn (gm, n_misc, "/cpl/piP0-healthy-p-A(1,0)_it-2_gm.nc");
+    dataIn (csf, n_misc, "/cpl/piP0-healthy-p-A(1,0)_it-2_csf.nc");
 
     PetscFunctionReturn (0);
 }
@@ -661,10 +668,10 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     }
 
     double max, min;
-    // ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
-    // ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
+    ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
+    ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
 
-    // ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
+    ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
 
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);

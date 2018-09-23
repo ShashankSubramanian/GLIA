@@ -63,9 +63,9 @@ struct OptimizerSettings {
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (25),
-    gist_maxit (100),
-    krylov_maxit (50),
+    newton_maxit (30),
+    gist_maxit (50),
+    krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
@@ -246,7 +246,7 @@ class NMisc {
         , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (0.0 / 10.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (1.0)                  // gm to wm reaction coeff ratio
+        , r_gm_wm_ratio_ (0.0 / 5.0)                  // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
         , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
