@@ -230,7 +230,7 @@ PetscErrorCode InvSolver::solve () {
   }
 
   double *p_ptr, *w_ptr;
-  double w = 1e5;
+  double w = 1.;
   double p_max;
   if (itctx_->n_misc_->regularization_norm_ == wL2) {//set the weights for w-l2 solve
     itctx_->n_misc_->beta_ = 1.;
@@ -997,11 +997,11 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
     }
     ss  << "  " << stop[0] << "    |J_old - J| = " << std::setw(14)
         << std::right << std::scientific << std::abs (J_old - J) << "    <    "
-        << std::left << std::setw(14) << ftol * PetscAbsReal (1 + J_ref) << " = " << "tol * |1 + J_ref|";
+        << std::left << std::setw(14) << ftol * PetscAbsReal (1 + J_ref) << " = " << "tol * |1 + J_ref| = " << ftol << " * |1 + " << J_ref << "|";
     ctx->convergence_message.push_back(ss.str());
     ss  << "  " << stop[0] << "    ||x_old - x||_inf = " << std::setw(14)
         << std::right << std::scientific << norm_rel << "    <    "
-        << std::left << std::setw(14) << std::sqrt (ftol) * (1 + norm) << " = " << "sqrt (ftol) * (1 + norm)";
+        << std::left << std::setw(14) << std::sqrt (ftol) * (1 + norm) << " = " << "sqrt (ftol) * (1 + ||x||_inf^k) = " << std::sqrt (ftol) << " * (1 + " << norm << ")";
     ctx->convergence_message.push_back(ss.str());
     if(verbosity >= 3) {
       ierr = tuMSGstd(ss.str());                                              CHKERRQ(ierr);

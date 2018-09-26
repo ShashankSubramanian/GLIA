@@ -5,29 +5,29 @@ REGTYPE=L1
 ### reg type
 reg_type=L1
 ### name of results sub-directory
-TESTCASE=pc
+TESTCASE=pc_lm
 
 ### Synthetic data parameters
 rho_data=20
-k_data=0.1
+k_data=0
 nt_data=15
 dt_data=0.02
 
 ### Inversion tumor parameters
 rho_inv=20
-k_inv=0.0
+k_inv=0
 nt_inv=15
 dt_inv=0.02
 
 ### Interpolation flag
 interp_flag=0
 ### Diffusivity inversion flag
-diffusivity_flag=1
+diffusivity_flag=0
 ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)
 basis_type=1
 lam_cont=1
 
-beta=0e-4
+beta=1e-4
 N=256
 np=27
 fac=2

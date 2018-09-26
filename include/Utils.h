@@ -58,12 +58,12 @@ struct OptimizerSettings {
     :
     beta (0E-3),
     opttolgrad (1E-3),
-    ftol (1E-5),
+    ftol (1E-6),
     ls_minstep (1E-9),
     gtolbound (0.8),
     grtol (1E-12),
     gatol (1E-6),
-    newton_maxit (35),
+    newton_maxit (50),
     gist_maxit (50),
     krylov_maxit (30),
     newton_minit (1),
@@ -74,7 +74,7 @@ struct OptimizerSettings {
     reset_tao (false),
     lmvm_set_hessian (false),
     diffusivity_inversion(false),
-    verbosity (1)
+    verbosity (3)
     {}
 };
 

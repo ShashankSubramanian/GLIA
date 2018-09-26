@@ -48,14 +48,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     } else if (n_misc_->regularization_norm_ == L2){  //In tumor space, so scale norm by lebesque measure
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
-      // reg *= n_misc_->lebesque_measure_;
+      reg *= n_misc_->lebesgue_measure_;
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
 
 
-    // (*J) *= n_misc_->lebesque_measure_;
+    (*J) *= n_misc_->lebesgue_measure_;
 
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
@@ -112,6 +112,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     // compute gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
 
+    // Multiply by lebesque measure
+    ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+
     // gradient according to reg paramater
     if (n_misc_->regularization_norm_ == L1) {
       ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
@@ -122,7 +125,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
@@ -163,11 +166,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
+      x_ptr[n_misc_->np_] *= n_misc_->lebesgue_measure_;
+
       if (n_misc_->nk_ > 1) {
         ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);        CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ + 1] *= n_misc_->lebesgue_measure_;
       }
       if (n_misc_->nk_ > 2) {
         ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ + 2] *= n_misc_->lebesgue_measure_;
       }
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
@@ -227,6 +234,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = pde_operators_->solveAdjoint (1);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
 
+    ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+
     // Gradient according to reg parameter chosen
     if (n_misc_->regularization_norm_ == L1) {
       ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
@@ -237,7 +246,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
       ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
@@ -257,10 +266,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);             CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
+      reg *= n_misc_->lebesgue_measure_;
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
+
+
+    (*J) *= n_misc_->lebesgue_measure_;
 
     std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
@@ -298,11 +311,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
+      x_ptr[n_misc_->np_] *= n_misc_->lebesgue_measure_;
       if (n_misc_->nk_ > 1) {
         ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);        CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ + 1] *= n_misc_->lebesgue_measure_;
       }
       if (n_misc_->nk_ > 2) {
         ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ + 2] *= n_misc_->lebesgue_measure_;
       }
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
