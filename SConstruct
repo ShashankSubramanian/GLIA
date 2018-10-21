@@ -159,7 +159,7 @@ env.Append(CCFLAGS = ['-DSERIAL'])
 env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
 # print centers of phi's to file
-env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
+# env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 
 # avx
 if env["platform"] != "stampede2":

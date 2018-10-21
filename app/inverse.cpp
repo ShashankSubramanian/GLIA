@@ -8,8 +8,8 @@ static char help[] = "Inverse Driver \
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*);
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
@@ -20,6 +20,8 @@ int main (int argc, char** argv) {
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+
+    // Input parameters (controlled from run script)
     int n[3];
     n[0] = 64;
     n[1] = 64;
@@ -35,7 +37,12 @@ int main (int argc, char** argv) {
     int nt_data = 0.0;
     double dt_data = 0.0;
     char reg[10];
-    char results_dir[200];
+    char results_dir[400];
+    char data_path[400];
+    char gm_path[400];
+    char wm_path[400];
+    char glm_path[400];
+    char csf_path[400];
     int np_user = 0;
     int interp_flag = 0;
     int diffusivity_flag = 0;
@@ -45,13 +52,17 @@ int main (int argc, char** argv) {
     double gvf = -1.0;
     double target_spars = -1.0;
     int lam_cont = 0;
-
     double sigma_dd = -1.0;
     double data_thres = -1.0;
 
+    char newton_solver[10];
+    int newton_maxit = -1; 
+    int gist_maxit = -1;
+    int krylov_maxit = -1;
+
+    int syn_flag = -1;
 
     PetscBool strflg;
-
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
     PetscOptionsInt ("-ny", "NY", "", n[1], &n[1], NULL);
@@ -69,8 +80,8 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-dt_data", "Tumor inversion reaction coefficient", "", dt_data, &dt_data, NULL);
     PetscStrcpy (reg, "L2b"); //default reg
     PetscOptionsString ("-regularization", "Tumor regularization", "", reg, reg, 10, NULL);
-    PetscStrcpy (results_dir, "./results/check/"); //default reg
-    PetscOptionsString ("-output_dir", "Path to results directory", "", results_dir, results_dir, 200, NULL);
+    PetscStrcpy (results_dir, "./results/check/"); //default 
+    PetscOptionsString ("-output_dir", "Path to results directory", "", results_dir, results_dir, 400, NULL);
     PetscOptionsInt ("-interpolation", "Interpolation flag", "", interp_flag, &interp_flag, NULL);
     PetscOptionsInt ("-diffusivity_inversion", "Diffusivity inversion flag", "", diffusivity_flag, &diffusivity_flag, NULL);
     PetscOptionsInt ("-basis_type", "Radial basis type", "", basis_type, &basis_type, NULL);
@@ -81,6 +92,18 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-lambda_continuation", "Lambda continuation", "", lam_cont, &lam_cont, NULL);
     PetscOptionsReal ("-sigma_data_driven", "Sigma for data-driven Gaussians", "", sigma_dd, &sigma_dd, NULL);
     PetscOptionsReal ("-threshold_data_driven", "Data threshold for data-driven Gaussians", "", data_thres, &data_thres, NULL);
+    PetscStrcpy (newton_solver, "QN");
+    PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
+    PetscOptionsInt ("-newton_maxit", "Newton max iterations", "", newton_maxit, &newton_maxit, NULL);
+    PetscOptionsInt ("-gist_maxit", "GIST max iterations", "", gist_maxit, &gist_maxit, NULL);
+    PetscOptionsInt ("-krylov_maxit", "Krylov max iterations", "", krylov_maxit, &krylov_maxit, NULL);
+    PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
+
+    PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
+    PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
+    PetscOptionsString ("-wm_path", "Path to WM", "", wm_path, wm_path, 400, NULL);
+    PetscOptionsString ("-csf_path", "Path to CSF", "", csf_path, csf_path, 400, NULL);
+    PetscOptionsString ("-glm_path", "Path to GLM", "", glm_path, glm_path, 400, NULL);
 
     PetscOptionsEnd ();
 
@@ -140,6 +163,8 @@ int main (int argc, char** argv) {
     int n_gist = 0, n_newton;
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
+
+    // Read input parameters (controlled from run script)
     if (beta_user >= 0) {    //user has provided tumor reg
         n_misc->beta_ = beta_user;
         n_misc->beta_changed_ = true;
@@ -191,12 +216,31 @@ int main (int argc, char** argv) {
         n_misc->data_threshold_ = data_thres;
     }
 
-    n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
-    // if (n_misc->regularization_norm_ == L1)
-    //     n_misc->writepath_ << "./results/L1/pc/";
-    // else
-    //     n_misc->writepath_ << "./results/L2b/pc/";       
+    PetscStrcmp ("QN", newton_solver, &strflg);
+    if (strflg) {
+        n_misc->newton_solver_ = QUASINEWTON;
+    }
+    PetscStrcmp ("GN", newton_solver, &strflg);
+    if (strflg) {
+        n_misc->newton_solver_ = GAUSSNEWTON;
+    }
+
+    if (newton_maxit != -1.0) {
+        n_misc->newton_maxit_ = newton_maxit;
+    }
+
+    if (gist_maxit != -1.0) {
+        n_misc->gist_maxit_ = gist_maxit;
+    }
+
+    if (krylov_maxit != -1.0) {
+        n_misc->krylov_maxit_ = krylov_maxit;
+    }
+
+
+    n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
     n_misc->writepath_ << results_dir;  
+
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
     dt_temp = n_misc->dt_;
@@ -212,17 +256,29 @@ int main (int argc, char** argv) {
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
-    bool read_atlas = false;
+    // Set optimization flags of tumor solver from input script
+    solver_interface->getInvSolver()->getOptSettings ()->newton_maxit = n_misc->newton_maxit_;
+    solver_interface->getInvSolver()->getOptSettings ()->newtonsolver = n_misc->newton_solver_;
+    solver_interface->getInvSolver()->getOptSettings ()->gist_maxit = n_misc->gist_maxit_;
+    solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
+
+
+
+
+    bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
-        ierr = readAtlas (wm, gm, glm , csf, n_misc);       
+        ierr = readAtlas (wm, gm, glm , csf, n_misc, gm_path, wm_path, csf_path, glm_path);       
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
 
-    PCOUT << "Generating Synthetic Data --->" << std::endl;
-    // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
-    ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
-    // ierr = readData (data, c_0, p_rec, n_misc);
+    if (syn_flag == 1) {
+        PCOUT << "Generating Synthetic Data --->" << std::endl;
+        ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+        // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
+    } else {
+        ierr = readData (data, c_0, p_rec, n_misc, data_path);
+    }
 
     Vec data_nonoise;
     ierr = VecDuplicate (data, &data_nonoise);
@@ -496,7 +552,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char *data_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -518,15 +574,13 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
         ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
     #endif
 
-    // dataIn (data, n_misc, "data_atlas1.nc");
-    // dataIn (c_0, n_misc, "data_atlas1_c0.nc");
-    dataIn (data, n_misc, "/cpl/c1P.nc");
-    dataIn (c_0, n_misc, "/cpl/c1P.nc");
+    dataIn (data, n_misc, data_path);
+    dataIn (c_0, n_misc, data_path);    // c0 does not exist for real data, set it to data itself
 
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc, char *gm_path, char *wm_path, char *csf_path, char *glm_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -537,13 +591,15 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<
     ierr = VecDuplicate (gm, &wm);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
+    ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
 
-    // dataIn (wm, n_misc, "atlas1_wm.nc");
-    // dataIn (gm, n_misc, "atlas1_gm.nc");
-    // dataIn (csf, n_misc, "atlas1_csf.nc");
-    dataIn (wm, n_misc, "/cpl/piP0-healthy-p-A(1,0)_it-2_wm.nc");
-    dataIn (gm, n_misc, "/cpl/piP0-healthy-p-A(1,0)_it-2_gm.nc");
-    dataIn (csf, n_misc, "/cpl/piP0-healthy-p-A(1,0)_it-2_csf.nc");
+    dataIn (wm, n_misc, wm_path);
+    dataIn (gm, n_misc, gm_path);
+    dataIn (csf, n_misc, csf_path);
+    // dataIn (glm, n_misc, glm_path);
+
+    // Assume glm is in csf 
+    ierr = VecSet (glm, 0.);                                              CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }

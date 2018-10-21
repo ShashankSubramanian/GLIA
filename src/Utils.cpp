@@ -124,7 +124,8 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
 
 	std::stringstream str;
-	str << n_misc->readpath_.str().c_str() << fname;
+	// str << n_misc->readpath_.str().c_str() << fname;
+	str << fname;
 	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
 	return;
 }

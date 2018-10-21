@@ -66,7 +66,8 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     if (npchanged) {
       // re-create p vectors
       if (p_ != nullptr) {ierr = VecDestroy (&p_);                  CHKERRQ (ierr);}
-      if (p_ != nullptr) {ierr = VecDestroy (&p_true_);             CHKERRQ (ierr);}
+      if (p_true_ != nullptr) {ierr = VecDestroy (&p_true_);        CHKERRQ (ierr);}
+      if (weights_ != nullptr) {ierr = VecDestroy (&weights_);      CHKERRQ (ierr);}
       ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
       ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
       ierr = VecDuplicate (p, &weights_);                           CHKERRQ (ierr);

@@ -74,7 +74,7 @@ struct OptimizerSettings {
     reset_tao (false),
     lmvm_set_hessian (false),
     diffusivity_inversion(false),
-    verbosity (3)
+    verbosity (1)
     {}
 };
 
@@ -263,8 +263,12 @@ class NMisc {
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
-
+        , newton_solver_ (QUASINEWTON)           // Newton solver type
+        , newton_maxit_ (30)                    // Newton max itr
+        , gist_maxit_ (50)                      // GIST max itr
+        , krylov_maxit_ (30)                    // Krylov max itr
                                 {
+
 
             time_horizon_ = nt_ * dt_;
             if (testcase_ == BRAIN) {
@@ -375,6 +379,8 @@ class NMisc {
 
         std::stringstream readpath_;
         std::stringstream writepath_;
+
+        int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
 
 };
 

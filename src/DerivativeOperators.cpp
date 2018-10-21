@@ -348,6 +348,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       ierr = pde_operators_->solveAdjoint (2);
 
       ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
 
       //No hessian info for L1 for now
       if (n_misc_->regularization_norm_ == wL2) {
@@ -360,7 +361,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
         ierr = VecAXPY (y, -1.0, ptemp_);                            CHKERRQ (ierr);
       } else {
         ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);
-        ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
+        ierr = VecScale (y, n_misc_->beta_ * n_misc_->lebesgue_measure_);                            CHKERRQ (ierr);
         ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);
       }
     }

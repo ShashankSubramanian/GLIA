@@ -46,14 +46,19 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
 			ierr = VecGetArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 			ierr = VecGetArray (filter_, &filter_ptr);            CHKERRQ (ierr);
-
-
-			dataIn (gm_ptr, n_misc, "gray_matter.nc");
-			dataIn (wm_ptr, n_misc, "white_matter.nc");
-			dataIn (csf_ptr, n_misc, "csf.nc");
-			dataIn (glm_ptr, n_misc, "glial_matter.nc");
-			dataIn (filter_ptr, n_misc, "filter_zero.nc");
-			// n_misc->nk_ = 3;  // inverting for k_i for WM, GM, GLM
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/gray_matter.nc";
+			dataIn (gm_ptr, n_misc, str.str().c_str());
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/white_matter.nc";
+			dataIn (wm_ptr, n_misc, str.str().c_str());
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/csf.nc";
+			dataIn (csf_ptr, n_misc, str.str().c_str());
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/glial_matter.nc";
+			dataIn (glm_ptr, n_misc, str.str().c_str());
+			
 
 			double sigma_smooth = 1.2 * 2 * M_PI / n_misc->n_[0];
 

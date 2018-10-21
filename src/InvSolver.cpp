@@ -54,11 +54,11 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
   int np = itctx_->n_misc_->np_;
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
 
-  if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
-    ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
-    itctx_->lam_right = itctx_->n_misc_->lambda_;
-    itctx_->lam_left = 0;
-  }
+  // if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
+  ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
+  itctx_->lam_right = itctx_->n_misc_->lambda_;
+  itctx_->lam_left = 0;
+  // }
 
   if (itctx_->n_misc_->regularization_norm_ == wL2) {
     if (itctx_->weights != nullptr) {
