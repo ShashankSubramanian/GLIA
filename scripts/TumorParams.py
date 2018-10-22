@@ -106,6 +106,8 @@ def getTumorRunCmd(params):
 	else:
 		print ('Default N = {} used').format(N)
 
+	## Error checking done by petsc/outside
+
 	if 'results_path' in params:
 		results_path = params['results_path']
 		if not os.path.exists(results_path):
