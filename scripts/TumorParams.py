@@ -112,11 +112,9 @@ def getTumorRunCmd(params):
 			print ('Results path does not exist, making the required folders and sub-folders...\n')
 			os.makedirs(results_path)
 	
-
 	if 'data_path' in params:
 		data_path = params['data_path']
-		if not os.path.exists(data_path):
-			print('Data path does not exist!\n')
+		print('Tumor data path = {}').format(data_path)
 	else:
 		if not os.path.exists(data_path):
 			if not create_synthetic:
@@ -124,11 +122,10 @@ def getTumorRunCmd(params):
 				error_flag = 1
 		else:
 			print ('Default datapath = {} used').format(data_path)
-
+			
 	if 'gm_path' in params:
 		gm_path = params['gm_path']
-		if not os.path.exists(gm_path):
-			print('Altas gray matter path does not exist!\n')
+		print('Gray matter path = {}').format(gm_path)
 	else:
 		if not os.path.exists(gm_path):
 			print('Default atlas gray matter path does not exist and no input path provided!\n')
@@ -138,8 +135,7 @@ def getTumorRunCmd(params):
 
 	if 'wm_path' in params:
 		wm_path = params['wm_path']
-		if not os.path.exists(wm_path):
-			print('Altas white matter path does not exist!\n')
+		print('White matter path = {}').format(wm_path)
 	else:
 		if not os.path.exists(wm_path):
 			print('Default atlas white matter path does not exist and no input path provided!\n')
@@ -147,10 +143,10 @@ def getTumorRunCmd(params):
 		else:
 			print ('Default atlas white matter path = {} used').format(wm_path)
 
+
 	if 'csf_path' in params:
-		gm_path = params['csf_path']
-		if not os.path.exists(csf_path):
-			print('Altas csf path does not exist!\n')
+		csf_path = params['csf_path']
+		print('CSF path = {}').format(csf_path)
 	else:
 		if not os.path.exists(csf_path):
 			print('Default atlas csf path does not exist and no input path provided!\n')
