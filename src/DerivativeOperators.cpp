@@ -607,15 +607,15 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
       reg *= 0.5 * n_misc_->beta_;
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = VecDot (tumor_->c_0_, tumor_->c_0_, &reg);           CHKERRQ (ierr);
-      reg *= 0.5 * n_misc_->beta_;
+      reg *= 0.5 * n_misc_->beta_ * n_misc_->lebesgue_measure_;
     } else if (n_misc_->regularization_norm_ == L2b){
       ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
 
     // compute objective function value
-    misfit_brain *= 0.5;
-    misfit_tu  *= 0.5;
+    misfit_brain *= 0.5 * n_misc_->lebesgue_measure_;
+    misfit_tu  *= 0.5 * n_misc_->lebesgue_measure_;
     (*J) = misfit_tu + misfit_brain;
     (*J) *= 1./nc_;
     (*J) += reg;
@@ -680,6 +680,9 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
     ierr = pde_operators_->solveAdjoint (1);
     // evaluate gradient
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
+
+    ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+
     if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (ptemp_, NORM_2, &norm_phiTalpha);       CHKERRQ (ierr);}
 
     // gradient according to reg paramater
@@ -692,7 +695,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec da
       ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2){
       ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_);                      CHKERRQ (ierr);
+      ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                      CHKERRQ (ierr);
       if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (dJ, NORM_2, &norm_phiTphic0);         CHKERRQ (ierr);}
       ierr = VecAXPY (dJ, -1.0, ptemp_);                         CHKERRQ (ierr);
     } else if (n_misc_->regularization_norm_ == L2b){
@@ -762,16 +765,20 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     ierr = VecScale (tumor_->p_t_, 1.0/nc_);                     CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (2);                     CHKERRQ (ierr);
     ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);  CHKERRQ (ierr);
-    ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);       CHKERRQ (ierr);
+    ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
 
     //No hessian info for L1 for now
     if (n_misc_->regularization_norm_ == wL2) {
       ierr = VecPointwiseMult (y, tumor_->weights_, x);          CHKERRQ (ierr);
       ierr = VecScale (y, n_misc_->beta_);                       CHKERRQ (ierr);
       ierr = VecAXPY (y, -1.0, ptemp_);                          CHKERRQ (ierr);
+    } else if (n_misc_->regularization_norm_ == L2b){
+        ierr = VecCopy (x, y);                                       CHKERRQ (ierr);
+        ierr = VecScale (y, n_misc_->beta_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (y, -1.0, ptemp_);                            CHKERRQ (ierr);
     } else {
       ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);
-      ierr = VecScale (y, n_misc_->beta_);                       CHKERRQ (ierr);
+      ierr = VecScale (y, n_misc_->beta_ * n_misc_->lebesgue_measure_);                       CHKERRQ (ierr);
       ierr = VecAXPY (y, -1.0, ptemp_);                          CHKERRQ (ierr);
     }
 
@@ -836,5 +843,11 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
         PCOUT << "|J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
     }
     PCOUT << "\n\n";
+
+    ierr = VecDestroy (&dJ);               CHKERRQ (ierr);
+    ierr = VecDestroy (&p_tilde);          CHKERRQ (ierr);
+    ierr = VecDestroy (&p_new);            CHKERRQ (ierr);
+    ierr = PetscRandomDestroy (&rctx);     CHKERRQ (ierr);
+
     PetscFunctionReturn (0);
 }

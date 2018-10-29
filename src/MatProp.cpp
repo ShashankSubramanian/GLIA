@@ -9,13 +9,16 @@ MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
 	ierr = VecDuplicate (gm_, &wm_);
 	ierr = VecDuplicate (gm_, &csf_);
 	ierr = VecDuplicate (gm_, &glm_);
+	ierr = VecDuplicate (gm_, &bg_);
 	ierr = VecDuplicate (gm_, &filter_);
 
 	ierr = VecSet (gm_ , 0);
 	ierr = VecSet (wm_ , 0);
 	ierr = VecSet (csf_ , 0);
 	ierr = VecSet (glm_ , 0);
+	ierr = VecSet (bg_, 0);
 	ierr = VecSet (filter_ , 0);
+
 }
 
 PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
@@ -93,7 +96,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -104,24 +107,19 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	else                   { ierr = VecSet (gm_, 0.0);        CHKERRQ(ierr); }
 	if(csf != nullptr)     { ierr = VecCopy (csf, csf_);      CHKERRQ(ierr); }
 	else                   { ierr = VecSet (csf_, 0.0);       CHKERRQ(ierr); }
-	if(glm != nullptr)     { ierr = VecCopy (gm, glm_); nk++; CHKERRQ(ierr); }
+	if(glm != nullptr)     { ierr = VecCopy (glm, glm_); nk++; CHKERRQ(ierr); }
 	else                   { ierr = VecSet (glm_, 0.0);       CHKERRQ(ierr); }
-
+	if(bg != nullptr)      { ierr = VecCopy (bg, bg_);		  CHKERRQ(ierr); }
+	else                   { ierr = VecSet (bg_, 0.0);       CHKERRQ(ierr); }
 	if (!n_misc->nk_fixed_) n_misc->nk_ = nk;
 
-	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
+	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr, *bg_ptr;
 	ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 	ierr = VecGetArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 	ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
 	ierr = VecGetArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 	ierr = VecGetArray (filter_, &filter_ptr);            CHKERRQ (ierr);
-
-	double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
-
-	ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
-	ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
-	ierr = weierstrassSmoother (glm_ptr, glm_ptr, n_misc, sigma_smooth);
-	ierr = weierstrassSmoother (csf_ptr, csf_ptr, n_misc, sigma_smooth);
+	ierr = VecGetArray (bg_, &bg_ptr);					  CHKERRQ (ierr);
 
 	for (int i = 0; i < n_misc->n_local_; i++) {
 		if ((wm_ptr[i] > 0.1 || gm_ptr[i] > 0.1) && csf_ptr[i] < 0.8)
@@ -136,6 +134,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 		dataOut (csf_ptr, n_misc, "csf.nc");
 		dataOut (glm_ptr, n_misc, "glial_matter.nc");
 		dataOut (filter_ptr, n_misc, "filter_zero.nc");
+		dataOut (bg_ptr, n_misc, "bg.nc");
 	}
 			
 	ierr = VecRestoreArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
@@ -143,6 +142,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::
 	ierr = VecRestoreArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
 	ierr = VecRestoreArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 	ierr = VecRestoreArray (filter_, &filter_ptr);            CHKERRQ (ierr);
+	ierr = VecRestoreArray (bg_, &bg_ptr);					  CHKERRQ (ierr);
 	PetscFunctionReturn (0);
 }
 
@@ -152,5 +152,6 @@ MatProp::~MatProp() {
 	ierr = VecDestroy (&wm_);
 	ierr = VecDestroy (&csf_);
 	ierr = VecDestroy (&glm_);
+	ierr = VecDestroy (&bg_);
 	ierr = VecDestroy (&filter_);
 }

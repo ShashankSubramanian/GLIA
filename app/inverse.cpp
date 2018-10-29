@@ -5,12 +5,42 @@ static char help[] = "Inverse Driver \
 \n Testcase 1 - Constant reaction and diffusion coefficient \
 \n Testcase 2 - Sinusoidal reaction and diffusion coefficient";
 
+
+struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissues of patient -- Only used if model is full objective
+    Vec gm, wm, csf, glm, bg;
+    Vec gm_data, wm_data, csf_data, glm_data, bg_data;
+    Vec xi_gm, xi_wm, xi_csf, xi_glm, xi_bg;
+
+    HealthyProbMaps (Vec gm_in, Vec wm_in, Vec csf_in, Vec glm_in, Vec bg_in) {
+        gm = gm_in; wm = wm_in; csf = csf_in; glm = glm_in; bg = bg_in;
+        VecDuplicate (gm, &gm_data); VecDuplicate (gm, &xi_gm);
+        VecDuplicate (gm, &wm_data); VecDuplicate (gm, &xi_wm);
+        VecDuplicate (gm, &csf_data); VecDuplicate (gm, &xi_csf);
+        VecDuplicate (gm, &bg_data); VecDuplicate (gm, &xi_bg);
+    }
+
+    ~HealthyProbMaps () {
+        PetscErrorCode ierr = 0;
+        ierr = VecDestroy (&gm_data);              
+        ierr = VecDestroy (&wm_data);           
+        ierr = VecDestroy (&csf_data);               
+        ierr = VecDestroy (&bg_data);                
+        ierr = VecDestroy (&xi_gm);             
+        ierr = VecDestroy (&xi_wm);             
+        ierr = VecDestroy (&xi_csf);        
+        ierr = VecDestroy (&xi_bg);             
+    }
+};
+
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*);
-PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
+
+
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -61,12 +91,14 @@ int main (int argc, char** argv) {
     int krylov_maxit = -1;
 
     int syn_flag = -1;
+    int model = -1;
 
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
     PetscOptionsInt ("-ny", "NY", "", n[1], &n[1], NULL);
     PetscOptionsInt ("-nz", "NZ", "", n[2], &n[2], NULL);
+    PetscOptionsInt ("-model", "model", "", model, &model, NULL);
     PetscOptionsInt ("-number_gaussians", "Tumor np", "", np_user, &np_user, NULL);
     PetscOptionsInt ("-testcase", "Test Cases", "", testcase, &testcase, NULL);
     PetscOptionsReal ("-beta", "Tumor Regularization", "", beta_user, &beta_user, NULL);
@@ -144,7 +176,8 @@ int main (int argc, char** argv) {
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data
     //Synthetic parameters: Overwrite n_misc
-    Vec c_0, data, p_rec, wm, gm, glm, csf;
+    Vec c_0, data, p_rec, wm, gm, glm, csf, bg;
+
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = true; //don't change -- controlled from the run script
@@ -237,6 +270,9 @@ int main (int argc, char** argv) {
         n_misc->krylov_maxit_ = krylov_maxit;
     }
 
+    if (model != -1) {
+        n_misc->model_ = model;
+    }
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
     n_misc->writepath_ << results_dir;  
@@ -262,15 +298,13 @@ int main (int argc, char** argv) {
     solver_interface->getInvSolver()->getOptSettings ()->gist_maxit = n_misc->gist_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
 
-
-
-
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
-        ierr = readAtlas (wm, gm, glm , csf, n_misc, gm_path, wm_path, csf_path, glm_path);       
-        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+        ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, gm_path, wm_path, csf_path, glm_path);     
+        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
+    std::shared_ptr<HealthyProbMaps> h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
 
     if (syn_flag == 1) {
         PCOUT << "Generating Synthetic Data --->" << std::endl;
@@ -284,6 +318,7 @@ int main (int argc, char** argv) {
     ierr = VecDuplicate (data, &data_nonoise);
     ierr = VecCopy (data, data_nonoise);
 
+
     PCOUT << "Data Generated: Inverse solve begin --->" << std::endl; 
 
     n_misc->rho_ = rho_inv;                                              
@@ -295,8 +330,6 @@ int main (int argc, char** argv) {
     PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
-
-
 
     if (!n_misc->bounding_box_) {
         // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
@@ -314,6 +347,10 @@ int main (int argc, char** argv) {
             ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
         #endif
         ierr = solver_interface->setParams (p_rec, nullptr);
+    }
+
+    if (n_misc->model_ == 3) {// Modified objective
+        setDistMeasuresFullObj (solver_interface, h_maps, data);
     }
 
     ierr = tumor->rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);
@@ -446,6 +483,12 @@ int main (int argc, char** argv) {
     ierr = VecDestroy (&p_rec);             CHKERRQ (ierr);
     ierr = VecDestroy (&data_nonoise);      CHKERRQ (ierr);
     
+
+    if (gm != nullptr) {ierr = VecDestroy (&gm); CHKERRQ (ierr);}
+    if (wm != nullptr) {ierr = VecDestroy (&wm); CHKERRQ (ierr);}
+    if (csf != nullptr) {ierr = VecDestroy (&csf); CHKERRQ (ierr);}
+    if (bg != nullptr) {ierr = VecDestroy (&bg); CHKERRQ (ierr);}
+      
 }
 /* --------------------------------------------------------------------------------------------------------------*/
     accfft_destroy_plan (plan);
@@ -453,6 +496,34 @@ int main (int argc, char** argv) {
     MPI_Comm_free(&c_comm);
     ierr = PetscFinalize ();
     return ierr;
+}
+
+PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    solver_interface->setDistMeassureSimulationGeoImages (h_maps->wm, h_maps->gm, h_maps->csf, nullptr, h_maps->bg);
+
+    Vec temp;
+    ierr = VecDuplicate (data, &temp);                   CHKERRQ (ierr);
+    ierr = VecCopy (data, temp);                         CHKERRQ (ierr);
+    ierr = VecShift (temp, -1.0);                        CHKERRQ (ierr); // (1 - data) is used to scale data healthy tissues
+    // Copy atlas to data healthy prob
+    ierr = VecCopy (h_maps->gm, h_maps->gm_data);     CHKERRQ (ierr);
+    ierr = VecCopy (h_maps->wm, h_maps->wm_data);     CHKERRQ (ierr);
+    ierr = VecCopy (h_maps->csf, h_maps->csf_data);   CHKERRQ (ierr);
+    ierr = VecCopy (h_maps->bg, h_maps->bg_data);     CHKERRQ (ierr);
+    ierr = VecPointwiseMult (h_maps->gm_data, h_maps->gm_data, temp);       CHKERRQ (ierr);
+    ierr = VecPointwiseMult (h_maps->wm_data, h_maps->wm_data, temp);       CHKERRQ (ierr);
+    ierr = VecPointwiseMult (h_maps->csf_data, h_maps->csf_data, temp);     CHKERRQ (ierr);
+    ierr = VecPointwiseMult (h_maps->bg_data, h_maps->bg_data, temp);       CHKERRQ (ierr);
+
+    solver_interface->setDistMeassureTargetDataImages (h_maps->wm_data, h_maps->gm_data, h_maps->csf_data, nullptr, h_maps->bg_data);
+    solver_interface->setDistMeassureDiffImages (h_maps->xi_wm, h_maps->xi_gm, h_maps->xi_csf, nullptr, h_maps->xi_bg);
+
+    ierr = VecDestroy (&temp);                      CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
 }
 
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
@@ -580,7 +651,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc, char *gm_path, char *wm_path, char *csf_path, char *glm_path) {
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char *gm_path, char *wm_path, char *csf_path, char *glm_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -589,17 +660,33 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<
     ierr = VecSetFromOptions (gm);                                        CHKERRQ (ierr);
 
     ierr = VecDuplicate (gm, &wm);                                        CHKERRQ (ierr);
-    ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
-    ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
+    ierr = VecDuplicate (gm, &bg);                                        CHKERRQ (ierr);
+    ierr = VecSet (bg, 0.);                                               CHKERRQ (ierr);
 
     dataIn (wm, n_misc, wm_path);
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
-    // dataIn (glm, n_misc, glm_path);
+ 
+    double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
+    double *gm_ptr, *wm_ptr, *csf_ptr, *bg_ptr;
+    ierr = VecGetArray (gm, &gm_ptr);                    CHKERRQ (ierr);
+    ierr = VecGetArray (wm, &wm_ptr);                    CHKERRQ (ierr);
+    ierr = VecGetArray (csf, &csf_ptr);                  CHKERRQ (ierr);
+    ierr = VecGetArray (bg, &bg_ptr);                    CHKERRQ (ierr);
 
-    // Assume glm is in csf 
-    ierr = VecSet (glm, 0.);                                              CHKERRQ (ierr);
+    ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
+    ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
+    ierr = weierstrassSmoother (csf_ptr, csf_ptr, n_misc, sigma_smooth);
+    // Set bg prob as 1 - sum
+    for (int i = 0; i < n_misc->n_local_; i++) {
+        bg_ptr[i] = 1.0 - (gm_ptr[i] + wm_ptr[i] + csf_ptr[i]);
+    }
+
+    ierr = VecRestoreArray (gm, &gm_ptr);                    CHKERRQ (ierr);
+    ierr = VecRestoreArray (wm, &wm_ptr);                    CHKERRQ (ierr);
+    ierr = VecRestoreArray (csf, &csf_ptr);                  CHKERRQ (ierr);
+    ierr = VecRestoreArray (bg, &bg_ptr);                    CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }

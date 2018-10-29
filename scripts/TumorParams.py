@@ -52,6 +52,8 @@ def getTumorRunCmd(params):
 
 	### tumor regularization type -- L1, L2, L2b  (Use L1 or L2b for all tests)
 	reg_type = "L1"
+	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
+	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 20
 	k_data = 0.1
@@ -67,7 +69,7 @@ def getTumorRunCmd(params):
 	### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
 	lam_cont = 1
 	### Tumor L2 regularization
-	beta = 0e-4
+	beta = 1e-4
 	### No of radial basis functions (Only used if basis_type is grid-based)
 	np = 27
 	### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / 256)
@@ -175,7 +177,8 @@ def getTumorRunCmd(params):
 	" -data_path " + data_path + \
 	" -gm_path " + gm_path + \
 	" -wm_path " + wm_path + \
-	" -csf_path " + csf_path 
+	" -csf_path " + csf_path + \
+	" -model " + str(model)
 
 	return run_str, error_flag
 
