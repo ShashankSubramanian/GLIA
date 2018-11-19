@@ -174,6 +174,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionReturn (0);
 }
 
+
 PetscErrorCode TumorSolverInterface::computeGradient (Vec dJ, Vec p, Vec data_gradeval) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
@@ -427,5 +428,215 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
+    PetscFunctionReturn (0);
+}
+
+// L1 solve is done outside InvSolver because the corrective L2 solve needs to be done with tao
+PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    // No regularization for L1 constrainied optimization
+    n_misc_->beta_ = 0;
+
+    // set the observation operator filter : default filter
+    ierr = tumor_->obs_->setDefaultFilter (d1);
+
+    // set target data for inversion (just sets the vector, no deep copy)
+    inv_solver_->setData (d1);
+    if (d1g == nullptr)
+        d1g = d1;
+    inv_solver_->setDataGradient (d1g);
+
+    // solve
+    Vec g, g_ref;              // Holds the gradient and reference gradient
+    Vec temp;                  // Temp vector 
+    PetscReal J, J_ref;        // Objective
+    Vec x_L1, x_L1_old;                  // Holds the L1 solution and the previous guess
+    ierr = VecDuplicate (tumor_->p_, &g);           CHKERRQ (ierr);
+    ierr = VecDuplicate (tumor_->p_, &g_ref);       CHKERRQ (ierr);
+    ierr = VecDuplicate (tumor_->p_, &x_L1);        CHKERRQ (ierr);
+    ierr = VecDuplicate (tumor_->p_, &x_L1_old);    CHKERRQ (ierr);
+    ierr = VecDuplicate (tumor_->p_, &temp);        CHKERRQ (ierr);
+    ierr = VecSet (g, 0);                           CHKERRQ (ierr);
+    ierr = VecSet (g_ref, 0);                       CHKERRQ (ierr);
+    ierr = VecSet (x_L1, 0);                        CHKERRQ (ierr);  // Initial guess for L1 solver is zero
+
+    // Compute reference quantities
+    ierr = inv_solver_->getGradient (x_L1, g_ref);
+    ierr = inv_solver_->getObjective (x_L1, &J_ref);   
+
+    J = J_ref;
+    ierr = VecCopy (g_ref, g);                      CHKERRQ (ierr);
+
+    /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
+
+    int its = 0;
+    std::stringstream s;
+    s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
+    << std::setw(18) << "||objective||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
+    << "   "  << std::setw(18) << "||dp||_rel"
+    << std::setw(18) << "k";
+        
+    ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+    ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
+    ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+    s.str ("");
+    s.clear ();
+
+    s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J_ref
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << 1
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << g_ref
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << 1;
+
+    double *x_ptr;
+    ierr = VecGetArray(x_L1, &x_ptr);                                         CHKERRQ(ierr);
+    s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_];
+    if (itctx->n_misc_->nk_ > 1) {
+        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_ + 1]; 
+    }
+    ierr = VecRestoreArray(x_L1, &x_ptr);                                     CHKERRQ(ierr);
+      
+    ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
+    s.str ("");
+    s.clear ();
+
+    /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
+
+
+
+    std::vector<int> idx;  // Holds the idx list after
+    // Optimizer begin
+
+    int np;
+    Vec x_L2;
+    
+    // Tolerance for L1 solver 
+    double ftol = inv_solver_->getOptSettings()->ftol;
+                                                                                                                                 
+    double *x_L2_ptr, *x_L1_ptr, *temp_ptr;
+    double norm_rel, norm;
+    np_original = n_misc_->np_;                         // Keeps track of the original number of gaussians
+
+    // Solver begin
+    while (true) {
+        if (iter > inv_solver_->getOptSettings()->gist_maxit) { // max iter reached
+            PCOUT << "Max L1 iter reached" << std::endl;
+            break;
+        }
+
+        /* -------------------------------------------------------------------- 1) Hard threshold neg gradient   --------------------------------------------------------------------  */
+        ierr = VecCopy (g, temp);                               CHKERRQ (ierr);
+        ierr = VecScale (temp, -1.0);                           CHKERRQ (ierr);
+        idx = hardThreshold (temp, 2 * n_misc_->sparsity_level_);
+
+        /* -------------------------------------------------------------------- 2) Update the prev soln's support with the 2K sparse guess' support -------------------------------------------------------------------- */
+        n_misc_->support_.insert (n_misc_->support.end(), idx.begin(), idx.end());
+
+        /* -------------------------------------------------------------------- 3) Take a Gauss-Newton/Quasi-Newton step -------------------------------------------------------------------- */
+
+        np = n_misc_->support_.size();    // Length of vector in the restricted subspace: Note that this is not always 2s as
+                                          // the support is merged with the previous support and hence could be larger
+        nk = n_misc_->nk_;
+        n_misc_->np_ = np;                    // Change np to solve the smaller L2 subsystem
+        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L2);                 CHKERRQ (ierr);              // Create the L2 solution vector
+        ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
+        ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
+        for (int i = 0; i < np; i++) {
+            x_L2_ptr[i] = x_L1_ptr[n_misc_->support_[i]];   // Starting guess for L2 solver is prev guess support values
+        }
+        // Use the same diffusivity too
+        x_L2_ptr[np] = x_L1_ptr[np_original]
+        if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
+
+        ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
+        ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
+        
+
+        tumor_->phi_->modifyCenters (n_misc_->support_);                // Modifies the centers
+        ierr = setParams (x_L2, nullptr);                               // Resets the phis and other operators, x_L2 is copied into tumor->p_ and is used as 
+                                                                        // IC for the L2 solver. This needs to be done every iteration as the while the number
+                                                                        // of basis fns remain the same, their location needs to be constantly updated.
+
+        ierr = inv_solver_->solve ();       // L2 solver
+        ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
+
+        /* -------------------------------------------------------------------- 4) Updates --------------------------------------------------------------------  */
+
+        ierr = VecCopy (x_L1, x_L1_old);                CHKERRQ (ierr);     // Keep track of the previous L1 guess for convergence checks
+
+        ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
+        ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
+        for (int i = 0; i < np; i++) {
+            x_L1_ptr[n_misc_->support_[i]] = x_L2_ptr[i];   // Correct L1 guess
+        }
+        // Correct the diffusivity
+        x_L1_ptr[np_original] = x_L2_ptr[np];
+        if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
+
+        // Hard threshold L1 guess to sparsity level
+        idx = hardThreshold (x_L1, n_misc_->sparsity_level_);
+        // Set only idx values in x_L1. Rest are hard thresholded to zero
+        ierr = VecSet (temp, 0);                        CHKERRQ (ierr);
+        ierr = VecGetArray (temp, &temp_ptr);           CHKERRQ (ierr);
+        for (int i = 0; i < idx.size(); i++) {
+            temp_ptr[idx[i]] = x_L1_ptr[idx[i]];
+        }
+        temp_ptr[np_original] = x_L1_ptr[np_original];
+        if (nk > 1) temp_ptr[np_original+1] = x_L1_ptr[np_original+1];
+
+        ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
+        ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
+        ierr = VecRestoreArray (temp, &temp_ptr);                              CHKERRQ (ierr);
+
+        // Copy thresholded vector to current L1 solution
+        ierr = VecCopy (temp, x_L1);                    CHKERRQ (ierr);
+
+        // Reset all values to initial space
+        np = np_original;
+        n_misc_->np_ = np;
+
+        tumor_->phi_->resetCenters ();              // Reset all the basis centers
+        ierr = setParams (x_L1, nullptr);           // Reset phis and other operators
+
+
+        // Destroy the L2 solution vector as its size could potentially change in subsequent iterations
+        ierr = VecDestroy (&x_L2);                      CHKERRQ (ierr);
+
+
+        /* -------------------------------------------------------------------- 5) Convergence check -------------------------------------------------------------------- */
+
+        // First, print optimizer statistics. Then check for convergence.
+
+        J_old = J;
+        // Compute new objective -- again, this is now only the mismatch term
+        ierr = inv_solver_->getObjective (x_L1, &J); 
+        ierr = VecNorm (x_L1, NORM_INFINITY, &norm);        CHKERRQ (ierr);
+        ierr = VecAXPY (temp, -1.0, x_L1_old);              CHKERRQ (ierr);     // temp holds x_L1
+        ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);    CHKERRQ (ierr);     // Norm change in the solution
+        if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref) && norm_rel < std::sqrt (ftol) * (1 + norm)) {
+            PCOUT << "L1 tolerance reached." << std::endl;
+            break;
+        }  
+
+    }
+
+
+    
+
+
+
+
+    ierr = inv_solver_->solve ();
+    // pass the reconstructed p vector to the caller (deep copy)
+    ierr= VecCopy (inv_solver_->getPrec(), prec);                                               CHKERRQ (ierr);
+
+    ierr = VecDestroy (&g);                         CHKERRQ (ierr);
+
     PetscFunctionReturn (0);
 }

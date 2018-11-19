@@ -28,6 +28,12 @@ class TumorSolverInterface {
 		 *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
 		 */
 		PetscErrorCode solveInverse (Vec prec, Vec d1, Vec d1g = {});
+
+		
+		// solves the L1 optimization problem using compressive sampling methods
+		PetscErrorCode solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g = {});
+
+
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess (Vec p);
 		PetscErrorCode setInitialGuess(double d);

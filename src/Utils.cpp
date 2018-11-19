@@ -427,3 +427,12 @@ PetscErrorCode vecSign (Vec x) {
 
 	PetscFunctionReturn (0);
 }
+
+std::vector<int> hardThreshold (Vec x, int sparsity_level) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	// TODO
+
+	PetscFunctionReturn (0);
+}

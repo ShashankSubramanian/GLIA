@@ -116,6 +116,17 @@ class InvSolver {
         bool isInitialized () {return initialized_;}
         Vec getPrec () {return xrec_;}
 
+        PetscErrorCode getGradient (Vec x, Vec dJ) {
+            PetscFunctionBegin; PetscErrorCode ierr = 0;
+            ierr = evaluateGradient (tao_, x, dJ, itctx_.get());
+            PetscFunctionReturn(0);
+        }
+        PetscErrorCode getObjective (Vec x, PetscReal *J) {
+            PetscFunctionBegin; PetscErrorCode ierr = 0;
+            ierr = evaluateObjectiveFunction (tao_, x, J, itctx_.get());
+            PetscFunctionReturn(0);
+        }
+
         std::vector<double> getInvOutParams () {
             return out_params_;
         }

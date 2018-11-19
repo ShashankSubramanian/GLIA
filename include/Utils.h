@@ -58,7 +58,7 @@ struct OptimizerSettings {
     :
     beta (0E-3),
     opttolgrad (1E-3),
-    ftol (1E-6),
+    ftol (1E-4),
     ls_minstep (1E-9),
     gtolbound (0.8),
     grtol (1E-12),
@@ -267,6 +267,8 @@ class NMisc {
         , newton_maxit_ (30)                    // Newton max itr
         , gist_maxit_ (50)                      // GIST max itr
         , krylov_maxit_ (30)                    // Krylov max itr
+        , sparsity_level_ (1)                   // Level of sparsity for L1 solves
+
                                 {
 
 
@@ -367,6 +369,8 @@ class NMisc {
 
         double target_sparsity_;
 
+        int sparsity_level_;
+
         TumorStatistics statistics_;
         std::array<double, 7> timers_;
 
@@ -381,6 +385,8 @@ class NMisc {
         std::stringstream writepath_;
 
         int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
+
+        std::vector<int> support_;
 
 };
 
@@ -449,6 +455,8 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 #   define TU_assert(Expr, Msg);
 #endif
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
+
+std::vector<int> hardThreshold (Vec x, int sparsity_level);
 
 
 #endif // end _UTILS_H
