@@ -185,6 +185,7 @@ PetscErrorCode TumorSolverInterface::computeGradient (Vec dJ, Vec p, Vec data_gr
     PetscFunctionReturn(0);
 }
 
+
 PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -431,6 +432,45 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     PetscFunctionReturn (0);
 }
 
+PetscErrorCode TumorSolverInterface::printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
+
+    std::stringstream s;
+    s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
+    << std::setw(18) << "||objective||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
+    << "   "  << std::setw(18) << "||dp||_rel"
+    << std::setw(18) << "k";
+        
+    ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+    ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
+    ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+    s.str ("");
+    s.clear ();
+
+    s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J_rel
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << g_norm
+    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << p_rel_norm;
+
+    double *x_ptr;
+    ierr = VecGetArray(x_L1, &x_ptr);                                         CHKERRQ(ierr);
+    s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[n_misc_->np_];
+    if (n_misc_->nk_ > 1) {
+        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[n_misc_->np_ + 1]; 
+    }
+    ierr = VecRestoreArray(x_L1, &x_ptr);                                     CHKERRQ(ierr);
+      
+    ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
+    s.str ("");
+    s.clear ();
+
+    PetscFunctionReturn (0);
+    /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
+}
+
 // L1 solve is done outside InvSolver because the corrective L2 solve needs to be done with tao
 PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionBegin;
@@ -455,8 +495,17 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // solve
     Vec g, g_ref;              // Holds the gradient and reference gradient
     Vec temp;                  // Temp vector 
-    PetscReal J, J_ref;        // Objective
+    PetscReal J, J_ref, J_old;        // Objective
     Vec x_L1, x_L1_old;                  // Holds the L1 solution and the previous guess
+    // Tolerance for L1 solver 
+    double ftol = inv_solver_->getOptSettings()->ftol;                                                                                                                            
+    double *x_L2_ptr, *x_L1_ptr, *temp_ptr;
+    double norm_rel, norm, norm_g;
+    std::vector<int> idx;  // Holds the idx list after
+    int np, np_original, nk;
+    Vec x_L2;  
+    np_original = n_misc_->np_;                         // Keeps track of the original number of gaussians
+
     ierr = VecDuplicate (tumor_->p_, &g);           CHKERRQ (ierr);
     ierr = VecDuplicate (tumor_->p_, &g_ref);       CHKERRQ (ierr);
     ierr = VecDuplicate (tumor_->p_, &x_L1);        CHKERRQ (ierr);
@@ -472,60 +521,17 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
     J = J_ref;
     ierr = VecCopy (g_ref, g);                      CHKERRQ (ierr);
-
-    /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
+    ierr = VecNorm (g, NORM_2, &norm_g);              CHKERRQ (ierr);
 
     int its = 0;
-    std::stringstream s;
-    s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
-    << std::setw(18) << "||objective||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
-    << "   "  << std::setw(18) << "||dp||_rel"
-    << std::setw(18) << "k";
-        
-    ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-    ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
-    ierr = tuMSGstd ("-------------------------------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-    s.str ("");
-    s.clear ();
 
-    s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
-    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J_ref
-    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << 1
-    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << g_ref
-    << "   " << std::scientific << std::setprecision(12) << std::setw(18) << 1;
-
-    double *x_ptr;
-    ierr = VecGetArray(x_L1, &x_ptr);                                         CHKERRQ(ierr);
-    s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_];
-    if (itctx->n_misc_->nk_ > 1) {
-        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_ + 1]; 
-    }
-    ierr = VecRestoreArray(x_L1, &x_ptr);                                     CHKERRQ(ierr);
-      
-    ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
-    s.str ("");
-    s.clear ();
-
-    /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
-
-
-
-    std::vector<int> idx;  // Holds the idx list after
-    // Optimizer begin
-
-    int np;
-    Vec x_L2;
-    
-    // Tolerance for L1 solver 
-    double ftol = inv_solver_->getOptSettings()->ftol;
-                                                                                                                                 
-    double *x_L2_ptr, *x_L1_ptr, *temp_ptr;
-    double norm_rel, norm;
-    np_original = n_misc_->np_;                         // Keeps track of the original number of gaussians
+    // print statistics
+    printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
 
     // Solver begin
     while (true) {
-        if (iter > inv_solver_->getOptSettings()->gist_maxit) { // max iter reached
+        its++;
+        if (its > inv_solver_->getOptSettings()->gist_maxit) { // max iter reached
             PCOUT << "Max L1 iter reached" << std::endl;
             break;
         }
@@ -533,10 +539,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         /* -------------------------------------------------------------------- 1) Hard threshold neg gradient   --------------------------------------------------------------------  */
         ierr = VecCopy (g, temp);                               CHKERRQ (ierr);
         ierr = VecScale (temp, -1.0);                           CHKERRQ (ierr);
-        idx = hardThreshold (temp, 2 * n_misc_->sparsity_level_);
+        ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx);
 
         /* -------------------------------------------------------------------- 2) Update the prev soln's support with the 2K sparse guess' support -------------------------------------------------------------------- */
-        n_misc_->support_.insert (n_misc_->support.end(), idx.begin(), idx.end());
+        n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
 
         /* -------------------------------------------------------------------- 3) Take a Gauss-Newton/Quasi-Newton step -------------------------------------------------------------------- */
 
@@ -551,7 +557,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             x_L2_ptr[i] = x_L1_ptr[n_misc_->support_[i]];   // Starting guess for L2 solver is prev guess support values
         }
         // Use the same diffusivity too
-        x_L2_ptr[np] = x_L1_ptr[np_original]
+        x_L2_ptr[np] = x_L1_ptr[np_original];
         if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
 
         ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
@@ -580,7 +586,12 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
 
         // Hard threshold L1 guess to sparsity level
-        idx = hardThreshold (x_L1, n_misc_->sparsity_level_);
+        ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx);
+
+        //clear the support
+        n_misc_->support_.clear ();
+        // Add the support of the solution. This will be merged with the support of the proxy before the L2 solve
+        n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
         // Set only idx values in x_L1. Rest are hard thresholded to zero
         ierr = VecSet (temp, 0);                        CHKERRQ (ierr);
         ierr = VecGetArray (temp, &temp_ptr);           CHKERRQ (ierr);
@@ -611,14 +622,16 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         /* -------------------------------------------------------------------- 5) Convergence check -------------------------------------------------------------------- */
 
-        // First, print optimizer statistics. Then check for convergence.
-
         J_old = J;
         // Compute new objective -- again, this is now only the mismatch term
         ierr = inv_solver_->getObjective (x_L1, &J); 
         ierr = VecNorm (x_L1, NORM_INFINITY, &norm);        CHKERRQ (ierr);
         ierr = VecAXPY (temp, -1.0, x_L1_old);              CHKERRQ (ierr);     // temp holds x_L1
         ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);    CHKERRQ (ierr);     // Norm change in the solution
+        ierr = VecNorm (g, NORM_2, &norm_g);              CHKERRQ (ierr);
+        // print statistics
+        printStatistics (its, J, PetscAbsReal (J_old - J) / PetscAbsReal (1 + J_ref), norm_g, norm_rel / (1 + norm), x_L1);
+
         if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref) && norm_rel < std::sqrt (ftol) * (1 + norm)) {
             PCOUT << "L1 tolerance reached." << std::endl;
             break;
@@ -626,17 +639,14 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
     }
 
-
-    
-
-
-
-
-    ierr = inv_solver_->solve ();
     // pass the reconstructed p vector to the caller (deep copy)
-    ierr= VecCopy (inv_solver_->getPrec(), prec);                                               CHKERRQ (ierr);
+    ierr= VecCopy (x_L1, prec);                                               CHKERRQ (ierr);
 
-    ierr = VecDestroy (&g);                         CHKERRQ (ierr);
+    ierr = VecDestroy (&g);                            CHKERRQ (ierr);
+    ierr = VecDestroy (&x_L1);                         CHKERRQ (ierr);
+    ierr = VecDestroy (&g_ref);                        CHKERRQ (ierr);
+    ierr = VecDestroy (&x_L1_old);                     CHKERRQ (ierr);
+    ierr = VecDestroy (&temp);                         CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }

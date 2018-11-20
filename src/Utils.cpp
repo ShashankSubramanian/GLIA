@@ -428,11 +428,23 @@ PetscErrorCode vecSign (Vec x) {
 	PetscFunctionReturn (0);
 }
 
-std::vector<int> hardThreshold (Vec x, int sparsity_level) {
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> support) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	// TODO
+	std::priority_queue<std::pair<PetscReal, int>> q;
+	double *x_ptr;
+	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
+	for (int i = 0; i < sz; i++) {
+		q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
+	}
+
+	for (int i = 0; i < sparsity_level; i++) {
+		support.push_back (q.top().second);
+		q.pop ();
+	}
+
+	ierr = VecRestoreArray (x, &x_ptr); 	CHKERRQ (ierr);
 
 	PetscFunctionReturn (0);
 }

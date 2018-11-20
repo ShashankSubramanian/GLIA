@@ -21,6 +21,7 @@
 #include <complex>
 #include <cmath>
 #include <vector>
+#include <queue>
 #include <accfft_utils.h>
 #include <assert.h>
 #include "EventTimings.hpp"
@@ -456,7 +457,7 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 #endif
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
-std::vector<int> hardThreshold (Vec x, int sparsity_level);
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> support);
 
 
 #endif // end _UTILS_H

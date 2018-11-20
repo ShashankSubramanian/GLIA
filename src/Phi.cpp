@@ -748,11 +748,12 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     PetscFunctionReturn (0);
 }
 
-void modifyCenters (std::vector<int> support_idx) {
+void Phi::modifyCenters (std::vector<int> support_idx) {
     centers_temp_ = centers_;
     centers_.clear ();
 
     int counter = 0;
+    int idx;
     for (int i = 0; i < support_idx.size(); i++) {
         idx = support_idx[i];       // Get the required center idx
         counter = 3 * idx;      

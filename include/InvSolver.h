@@ -118,12 +118,12 @@ class InvSolver {
 
         PetscErrorCode getGradient (Vec x, Vec dJ) {
             PetscFunctionBegin; PetscErrorCode ierr = 0;
-            ierr = evaluateGradient (tao_, x, dJ, itctx_.get());
+            ierr = itctx_->derivative_operators_->evaluateGradient (dJ, x, data_);
             PetscFunctionReturn(0);
         }
         PetscErrorCode getObjective (Vec x, PetscReal *J) {
             PetscFunctionBegin; PetscErrorCode ierr = 0;
-            ierr = evaluateObjectiveFunction (tao_, x, J, itctx_.get());
+            ierr = itctx_->derivative_operators_->evaluateObjective (J, x, data_);
             PetscFunctionReturn(0);
         }
 

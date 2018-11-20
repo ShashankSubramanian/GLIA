@@ -97,6 +97,8 @@ class TumorSolverInterface {
 			return out_params_;
 		}
 
+		PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
+
 	private :
 	  bool initialized_;
 		bool optimizer_settings_changed_;
