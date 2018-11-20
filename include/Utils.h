@@ -58,7 +58,7 @@ struct OptimizerSettings {
     OptimizerSettings ()
     :
     beta (0E-3),
-    opttolgrad (1E-3),
+    opttolgrad (1E-6),
     ftol (1E-4),
     ls_minstep (1E-9),
     gtolbound (0.8),

@@ -37,7 +37,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
 
     /*Regularization term*/
-    PetscReal reg;
+    PetscReal reg = 0;
     if (n_misc_->regularization_norm_ == L1) {
       ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
       reg *= n_misc_->lambda_;
@@ -50,7 +50,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       reg *= 0.5 * n_misc_->beta_;
       reg *= n_misc_->lebesgue_measure_;
     } else if (n_misc_->regularization_norm_ == L2b){
-      ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
+      // Reg term only on the initial condition. Leave out the diffusivity.
+      ierr = VecGetArray (x, &x_ptr);                               CHKERRQ (ierr);
+      for (int i = 0; i < n_misc_->np_; i++) {
+        reg += x_ptr[i] * x_ptr[i];
+      }
+      ierr = VecRestoreArray (x, &x_ptr);                           CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
 
@@ -268,7 +273,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       reg *= 0.5 * n_misc_->beta_;
       reg *= n_misc_->lebesgue_measure_;
     } else if (n_misc_->regularization_norm_ == L2b){
-      ierr = VecDot (x, x, &reg);                                   CHKERRQ (ierr);
+      // Reg term only on the initial condition. Leave out the diffusivity.
+      ierr = VecGetArray (x, &x_ptr);                               CHKERRQ (ierr);
+      for (int i = 0; i < n_misc_->np_; i++) {
+        reg += x_ptr[i] * x_ptr[i];
+      }
+      ierr = VecRestoreArray (x, &x_ptr);                           CHKERRQ (ierr);
       reg *= 0.5 * n_misc_->beta_;
     }
 

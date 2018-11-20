@@ -43,19 +43,19 @@ def getTumorRunCmd(params):
 
 	### Other user parameters which typically stay as default: Change if needed
 	### Flag to create synthetic data
-	create_synthetic = 0
+	create_synthetic = 1
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-	rho_inv = 20
-	k_inv = 0.0
+	rho_inv = 10
+	k_inv = 0.1
 	nt_inv = 15
 	dt_inv = 0.02
 
 	### tumor regularization type -- L1, L2, L2b  (Use L1 or L2b for all tests)
-	reg_type = "L1"
+	reg_type = "L2b"
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
-	rho_data = 20
+	rho_data = 10
 	k_data = 0.1
 	nt_data = 15
 	dt_data = 0.02
