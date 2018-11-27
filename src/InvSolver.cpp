@@ -55,9 +55,9 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
 
   // if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
-  ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
-  itctx_->lam_right = itctx_->n_misc_->lambda_;
-  itctx_->lam_left = 0;
+  // ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
+  // itctx_->lam_right = itctx_->n_misc_->lambda_;
+  // itctx_->lam_left = 0;
   // }
 
   if (itctx_->n_misc_->regularization_norm_ == wL2) {
@@ -128,6 +128,7 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
     // re-allocate memory
     if (npchanged){                              // re-allocate memory for xrec_
       // allocate memory for H, x_rec and TAO
+      itctx_->x_old = nullptr; // Will be set accordingly in the solver
       if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
       if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
       ierr = allocateTaoObjects (false); CHKERRQ(ierr);
@@ -154,7 +155,7 @@ PetscErrorCode InvSolver::solve () {
   sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
   ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
   //SNAFU
-  ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
+  // ierr = weierstrassSmoother (d_ptr, d_ptr, itctx_->n_misc_, 0.0003);                 CHKERRQ(ierr);
   //static int it = 0; it++;
   //std::stringstream ss; ss<<"_it-"<<it;
   //std::string s("files/cpl/ITdata"+ss.str()+".nc");k

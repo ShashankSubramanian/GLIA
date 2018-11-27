@@ -61,11 +61,6 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
 
     double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
 
-
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
     double *phi_ptr;
     Vec all_phis;
     ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
@@ -749,6 +744,10 @@ PetscErrorCode Phi::setGaussians (Vec data) {
 }
 
 void Phi::modifyCenters (std::vector<int> support_idx) {
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     centers_temp_ = centers_;
     centers_.clear ();
 
@@ -764,6 +763,8 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
 
     // resize np
     np_ = support_idx.size();
+    PCOUT << "Size of restricted subspace: " << np_ << std::endl;
+
 }
 
 

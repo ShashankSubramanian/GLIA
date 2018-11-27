@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
 	### TUMOR PARAMETERS SET BEGIN
 
 	### No of discretization points (Assumed uniform)
-	N = 256
+	N = 128
 	### Path to all output results (Directories are created automatically)
 	results_path = tumor_dir + '/results/'
 	if not os.path.exists(results_path):
@@ -46,24 +46,24 @@ def getTumorRunCmd(params):
 	create_synthetic = 1
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
 	rho_inv = 10
-	k_inv = 0.1
+	k_inv = 0.01
 	nt_inv = 15
 	dt_inv = 0.02
 
-	### tumor regularization type -- L1, L2, L2b  (Use L1 or L2b for all tests)
-	reg_type = "L2b"
+	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
+	reg_type = "L1c"
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 10
-	k_data = 0.1
+	k_data = 0.01
 	nt_data = 15
 	dt_data = 0.02
 
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
 	interp_flag = 0
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-	diffusivity_flag = 1
+	diffusivity_flag = 0
 	### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
 	basis_type = 1
 	### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -87,7 +87,7 @@ def getTumorRunCmd(params):
 	### Solver type: QN - Quasi newton, GN - Gauss newton
 	solvertype = "QN"
 	### Newton max iterations
-	max_iter = 35
+	max_iter = 50
 	### GIST max iterations (for L1 solver)
 	max_gist_iter = 50
 	### Krylov max iterations

@@ -90,23 +90,39 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
 PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+
+    PetscScalar val = 2.5; 
+
+    double *p_ptr;
+    PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    ierr = VecSet (p_true_, 0);                                     CHKERRQ (ierr);
+    ierr = VecGetArray (p_true_, &p_ptr);                           CHKERRQ (ierr);
     if (n_misc->np_ == 1) {
-        ierr = VecSet (p_true_, 1.0);                                 CHKERRQ (ierr);
-        PetscFunctionReturn (0);
+        p_ptr[0] = val;
+    } else {
+        p_ptr[center] = val;
     }
-    // PetscScalar val[2] = {.9, .2}; 
+
+    ierr = VecRestoreArray (p_true_, &p_ptr);                       CHKERRQ (ierr);
+
+
+    // if (n_misc->np_ == 1) {
+    //     ierr = VecSet (p_true_, val);                                 CHKERRQ (ierr);
+    //     PetscFunctionReturn (0);
+    // }
+    // // PetscScalar val[2] = {.9, .2}; 
+    // // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    // // PetscInt idx[2] = {center-1, center};
+    // // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    // // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
+    // // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
+    // // PetscFunctionReturn (0);
+    
     // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
-    // PetscInt idx[2] = {center-1, center};
-    // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    // PetscInt idx = center;
+    // ierr = VecSetValues(p_true_, 1, &idx, &val, INSERT_VALUES);         CHKERRQ(ierr);
     // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
     // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
-    // PetscFunctionReturn (0);
-    PetscScalar val = 1.0; 
-    PetscInt center = (int) std::floor(n_misc->np_ / 2.);
-    PetscInt idx = center;
-    ierr = VecSetValues(p_true_, 1, &idx, &val, INSERT_VALUES);         CHKERRQ(ierr);
-    ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
-    ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
     PetscFunctionReturn (0);
 }
 

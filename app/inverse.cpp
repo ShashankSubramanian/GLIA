@@ -93,6 +93,8 @@ int main (int argc, char** argv) {
     int syn_flag = -1;
     int model = -1;
 
+    int flag_cosamp = 0;
+
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -214,6 +216,11 @@ int main (int argc, char** argv) {
     if (strflg) {
         n_misc->regularization_norm_ = L1;
     }
+    PetscStrcmp ("L1c", reg, &strflg);
+    if (strflg) {
+        n_misc->regularization_norm_ = L2;
+        flag_cosamp = 1;
+    }
     if (diffusivity_flag) {
         n_misc->diffusivity_inversion_ = true;
     }
@@ -236,13 +243,13 @@ int main (int argc, char** argv) {
         n_misc->gaussian_vol_frac_ = gvf;
     }
     if (sigma > -1.0) {
-        n_misc->phi_sigma_ = sigma * (2 * M_PI / n_misc->n_[0]);
+        n_misc->phi_sigma_ = sigma * (2.0 * M_PI / 256);
     }
     if (spacing_factor > -1.0) {
         n_misc->phi_spacing_factor_ = spacing_factor;
     }
     if (sigma_dd > -1.0) {
-        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / n_misc->n_[0];
+        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / 256;
     }
     
     if (data_thres > -1.0) {
@@ -384,7 +391,13 @@ int main (int argc, char** argv) {
       n_misc->diffusivity_inversion_ = false;
       flag_diff = true;
     }
-    ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
+
+    if (flag_cosamp) {
+        ierr = solver_interface->solveInverseCoSaMp (p_rec, data, nullptr);                  //Solve tumor inversion using cosamp 
+    } else {
+        ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
+    }
+
     //if L1, then solve for sparse components using weigted L2
 
     if (n_misc->regularization_norm_ == L1) {
@@ -397,8 +410,10 @@ int main (int argc, char** argv) {
         }
     }
     else {
-        out_params = solver_interface->getSolverOutParams ();
-        n_newton = (int) out_params[0];    
+        if (!flag_cosamp) {
+            out_params = solver_interface->getSolverOutParams ();
+            n_newton = (int) out_params[0];    
+        }
     }
 
     if (n_misc->regularization_norm_ == wL2) {
@@ -668,7 +683,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
  
-    double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
+    double sigma_smooth = 2 * M_PI / n_misc->n_[0];
     double *gm_ptr, *wm_ptr, *csf_ptr, *bg_ptr;
     ierr = VecGetArray (gm, &gm_ptr);                    CHKERRQ (ierr);
     ierr = VecGetArray (wm, &wm_ptr);                    CHKERRQ (ierr);
@@ -817,7 +832,9 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
 
-    ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
+
+    // Artificially scale the IC -- Keep off.
+    // ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
 
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);

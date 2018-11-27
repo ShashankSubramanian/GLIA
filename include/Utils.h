@@ -63,9 +63,9 @@ struct OptimizerSettings {
     ls_minstep (1E-9),
     gtolbound (0.8),
     grtol (1E-12),
-    gatol (1E-6),
+    gatol (1E-10),
     newton_maxit (50),
-    gist_maxit (50),
+    gist_maxit (10),
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
@@ -279,8 +279,12 @@ class NMisc {
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
                 user_cm_[0] = 2 * M_PI / 128 * 64;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 50;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 82;//52  //X 
+                user_cm_[1] = 2 * M_PI / 128 * 52;//64  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 84;//52  //X 
+
+                // user_cm_[0] = 2 * M_PI / 64 * 32;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 64 * 24;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X 
             }
             else {
                 user_cm_[0] = M_PI;
@@ -457,7 +461,7 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 #endif
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
-PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> support);
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support);
 
 
 #endif // end _UTILS_H

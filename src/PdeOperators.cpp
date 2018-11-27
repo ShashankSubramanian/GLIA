@@ -80,6 +80,10 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
     n_misc_->statistics_.nb_state_solves++;
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     //enforce positivity : hack
     if (!linearized) {
         #ifdef POSITIVITY
@@ -103,6 +107,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
                 ierr = enforcePositivity (tumor_->c_t_, n_misc_);
             #endif
         }
+
         //Copy current conc to use for the adjoint equation
         if (linearized == 0) {
             ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
