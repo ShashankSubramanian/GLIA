@@ -1092,7 +1092,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
       ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
     	ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
       ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
-    	evaluateGradient(tao, p0, dJ, (void*) ctx);
+    	evaluateGradient(tao, x, dJ, (void*) ctx);
     	ierr = VecNorm (dJ, NORM_2, &norm_gref);                                  CHKERRQ(ierr);
     	ctx->optfeedback_->gradnorm0 = norm_gref;
     	//ctx->gradnorm0 = gnorm;

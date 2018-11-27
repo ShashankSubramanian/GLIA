@@ -63,7 +63,7 @@ def getTumorRunCmd(params):
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
 	interp_flag = 0
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-	diffusivity_flag = 0
+	diffusivity_flag = 1
 	### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
 	basis_type = 1
 	### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -178,7 +178,8 @@ def getTumorRunCmd(params):
 	" -gm_path " + gm_path + \
 	" -wm_path " + wm_path + \
 	" -csf_path " + csf_path + \
-	" -model " + str(model)
+	" -model " + str(model) + \
+	" -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5"
 
 	return run_str, error_flag
 

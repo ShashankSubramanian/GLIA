@@ -28,6 +28,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
       ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
       ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+      // need to update prefactors for diffusion KSP preconditioner, as k changed
+      pde_operators_->diff_solver_->precFactor();
     }
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
@@ -100,6 +102,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
       ierr = VecRestoreArray (x, &x_ptr);                                   CHKERRQ (ierr);
       ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+      // need to update prefactors for diffusion KSP preconditioner, as k changed
+      pde_operators_->diff_solver_->precFactor();
     }
 
     /* ------------------ */
@@ -829,7 +833,7 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[7] = {0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6};
+    double h[7] = {1, 1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5};
     double J, J_taylor, J_p, diff;
 
     Vec dJ;
