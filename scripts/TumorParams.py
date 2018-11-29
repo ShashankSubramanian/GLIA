@@ -47,17 +47,17 @@ def getTumorRunCmd(params):
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
 	rho_inv = 10
 	k_inv = 0.01
-	nt_inv = 15
+	nt_inv = 50
 	dt_inv = 0.02
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
-	reg_type = "L1c"
+	reg_type = "L2"
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 10
 	k_data = 0.01
-	nt_data = 15
+	nt_data = 50
 	dt_data = 0.02
 
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
@@ -80,8 +80,10 @@ def getTumorRunCmd(params):
 	gvf = 0.99
 	### Threshold of data tumor concentration above which Gaussians are switched on
 	data_thres = 0.1
-	### Target sparsity we expect for our initial tumor condition
+	### Target sparsity we expect for our initial tumor condition -- used in GIST
 	target_spars = 0.99
+	### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
+	sparsity_lvl = 2
 	### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / 256)
 	dd_fac = 2
 	### Solver type: QN - Quasi newton, GN - Gauss newton
@@ -166,6 +168,7 @@ def getTumorRunCmd(params):
 	" -gaussian_volume_fraction " + str(gvf) +  \
 	" -lambda_continuation " + str(lam_cont) +  \
 	" -target_sparsity " + str(target_spars) +  \
+	" -sparsity_level " + str(sparsity_lvl) +  \
 	" -threshold_data_driven " + str(data_thres) +  \
 	" -sigma_data_driven " + str(dd_fac) + \
 	" -output_dir " + results_path + \

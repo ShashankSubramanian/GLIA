@@ -81,6 +81,7 @@ int main (int argc, char** argv) {
     double spacing_factor = -1.0;
     double gvf = -1.0;
     double target_spars = -1.0;
+    int sparsity_level = -1.0;
     int lam_cont = 0;
     double sigma_dd = -1.0;
     double data_thres = -1.0;
@@ -132,6 +133,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-gist_maxit", "GIST max iterations", "", gist_maxit, &gist_maxit, NULL);
     PetscOptionsInt ("-krylov_maxit", "Krylov max iterations", "", krylov_maxit, &krylov_maxit, NULL);
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
+    PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
 
     PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
@@ -238,6 +240,9 @@ int main (int argc, char** argv) {
     }
     if (target_spars > -1.0) {
         n_misc->target_sparsity_ = target_spars;
+    }
+    if (sparsity_level > -1.0) {
+        n_misc->sparsity_level_ = sparsity_level;
     }
     if (gvf > -1.0) {
         n_misc->gaussian_vol_frac_ = gvf;
