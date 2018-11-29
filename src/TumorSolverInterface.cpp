@@ -549,6 +549,14 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         /* -------------------------------------------------------------------- 1) Hard threshold neg gradient   --------------------------------------------------------------------  */
         ierr = VecCopy (g, temp);                               CHKERRQ (ierr);
         ierr = VecScale (temp, -1.0);                           CHKERRQ (ierr);
+
+        PCOUT << " --------------  temp -----------------\n";
+        if (procid == 0) {
+            ierr = VecView (temp, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+        }
+        PCOUT << " --------------  -------------- -----------------\n";
+
+
         ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx);
 
         /* -------------------------------------------------------------------- 2) Update the prev soln's support with the 2K sparse guess' support -------------------------------------------------------------------- */

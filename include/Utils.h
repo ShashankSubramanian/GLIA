@@ -59,11 +59,11 @@ struct OptimizerSettings {
     :
     beta (0E-3),
     opttolgrad (1E-6),
-    ftol (1E-4),
+    ftol (1E-3),
     ls_minstep (1E-9),
     gtolbound (0.8),
     grtol (1E-12),
-    gatol (1E-10),
+    gatol (1E-8),
     newton_maxit (50),
     gist_maxit (10),
     krylov_maxit (30),

@@ -51,7 +51,7 @@ def getTumorRunCmd(params):
 	dt_inv = 0.02
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
-	reg_type = "L2"
+	reg_type = "L1c"
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
@@ -71,7 +71,7 @@ def getTumorRunCmd(params):
 	### Tumor L2 regularization
 	beta = 1e-4
 	### No of radial basis functions (Only used if basis_type is grid-based)
-	np = 27
+	np = 125
 	### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / 256)
 	fac = 2
 	### Spacing factor between radial basis functions (Keep as 2 to have a well-conditioned matrix for the radial basis functions)
@@ -83,7 +83,7 @@ def getTumorRunCmd(params):
 	### Target sparsity we expect for our initial tumor condition -- used in GIST
 	target_spars = 0.99
 	### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
-	sparsity_lvl = 2
+	sparsity_lvl = 5
 	### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / 256)
 	dd_fac = 2
 	### Solver type: QN - Quasi newton, GN - Gauss newton
