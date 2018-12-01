@@ -45,9 +45,9 @@ def getTumorRunCmd(params):
 	### Flag to create synthetic data
 	create_synthetic = 1
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-	rho_inv = 10
+	rho_inv = 15
 	k_inv = 0.01
-	nt_inv = 50
+	nt_inv = 10
 	dt_inv = 0.02
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
@@ -55,9 +55,9 @@ def getTumorRunCmd(params):
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
-	rho_data = 10
+	rho_data = 15
 	k_data = 0.01
-	nt_data = 50
+	nt_data = 10
 	dt_data = 0.02
 
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
@@ -65,7 +65,7 @@ def getTumorRunCmd(params):
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
 	diffusivity_flag = 1
 	### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
-	basis_type = 1
+	basis_type = 0
 	### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
 	lam_cont = 1
 	### Tumor L2 regularization

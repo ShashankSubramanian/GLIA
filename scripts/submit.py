@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/checkL1dd/'
+params['results_path'] = tumor_dir + '/results/checkL1vsmall/'
 params['data_path'] = tumor_dir + '/results/check/data.nc'
 run_str, err = getTumorRunCmd (params)  ### Use default parameters (if not, define dict with usable values)
 

@@ -548,7 +548,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         /* -------------------------------------------------------------------- 1) Hard threshold neg gradient   --------------------------------------------------------------------  */
         ierr = VecCopy (g, temp);                               CHKERRQ (ierr);
-        ierr = VecScale (temp, -1.0);                           CHKERRQ (ierr);
+        // ierr = VecScale (temp, -1.0);                           CHKERRQ (ierr);
+        ierr = VecAbs (temp);                                   CHKERRQ (ierr);
 
         PCOUT << " --------------  temp -----------------\n";
         if (procid == 0) {

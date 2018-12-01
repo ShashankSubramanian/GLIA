@@ -62,7 +62,7 @@ struct OptimizerSettings {
     ftol (1E-3),
     ls_minstep (1E-9),
     gtolbound (0.8),
-    grtol (1E-12),
+    grtol (1E-6),
     gatol (1E-8),
     newton_maxit (50),
     gist_maxit (10),
