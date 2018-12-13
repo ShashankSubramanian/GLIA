@@ -505,7 +505,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     PetscReal J, J_ref, J_old;        // Objective
     Vec x_L1, x_L1_old;                  // Holds the L1 solution and the previous guess
     // Tolerance for L1 solver 
-    double ftol = inv_solver_->getOptSettings()->ftol;                                                                                                                            
+    // double ftol = inv_solver_->getOptSettings()->ftol; 
+    double ftol = 1E-5;                                                                                                                           
     double *x_L2_ptr, *x_L1_ptr, *temp_ptr;
     double norm_rel, norm, norm_g;
     std::vector<int> idx;  // Holds the idx list after
@@ -551,11 +552,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         // ierr = VecScale (temp, -1.0);                           CHKERRQ (ierr);
         ierr = VecAbs (temp);                                   CHKERRQ (ierr);
 
-        PCOUT << " --------------  temp -----------------\n";
-        if (procid == 0) {
-            ierr = VecView (temp, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-        }
-        PCOUT << " --------------  -------------- -----------------\n";
+        // PCOUT << " --------------  temp -----------------\n";
+        // if (procid == 0) {
+        //     ierr = VecView (temp, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+        // }
+        // PCOUT << " --------------  -------------- -----------------\n";
 
 
         ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx);
@@ -699,6 +700,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;
 
         if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref) && norm_rel < std::sqrt (ftol) * (1 + norm)) {
+            PCOUT << "L1 tolerance reached." << std::endl;
+            break;
+        }  
+        if (PetscAbsReal (J) < 1E-8) {
             PCOUT << "L1 tolerance reached." << std::endl;
             break;
         }  
