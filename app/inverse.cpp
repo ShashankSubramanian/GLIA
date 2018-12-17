@@ -671,8 +671,16 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     #endif
 
     dataIn (data, n_misc, data_path);
-    dataIn (c_0, n_misc, data_path);    // c0 does not exist for real data, set it to data itself
 
+    // Smooth the data
+    double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
+    double *data_ptr; 
+    ierr = VecGetArray (data, &data_ptr);                                       CHKERRQ (ierr);
+    ierr = weierstrassSmoother (data_ptr, data_ptr, n_misc, sigma_smooth);
+    ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
+
+    // No IC for real data
+    ierr = VecSet (c_0, 0.);                                                    CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
 
@@ -693,7 +701,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
  
-    double sigma_smooth = 2 * M_PI / n_misc->n_[0];
+    double sigma_smooth = 1.5 * 2 * M_PI / n_misc->n_[0];
     double *gm_ptr, *wm_ptr, *csf_ptr, *bg_ptr;
     ierr = VecGetArray (gm, &gm_ptr);                    CHKERRQ (ierr);
     ierr = VecGetArray (wm, &wm_ptr);                    CHKERRQ (ierr);
