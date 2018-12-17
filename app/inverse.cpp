@@ -338,7 +338,7 @@ int main (int argc, char** argv) {
     n_misc->dt_ = dt_inv;
     n_misc->nt_ = nt_inv;
 
-    PCOUT << "Inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << std::endl;
+    PCOUT << "Inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
     PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
