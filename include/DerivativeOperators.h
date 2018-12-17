@@ -45,7 +45,7 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		DerivativeOperatorsRD (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
 				std::shared_ptr<Tumor> tumor)
 			 : DerivativeOperators (pde_operators, n_misc, tumor) {
-				 tuMSGstd (" ----- Setting reaction-diffusion derivative operators --------");
+				 // tuMSGstd (" ----- Setting reaction-diffusion derivative operators --------");
 			 }
 
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);

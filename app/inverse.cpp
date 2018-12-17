@@ -480,12 +480,12 @@ int main (int argc, char** argv) {
     }
     ofile.close ();
 
-    std::stringstream ss_out;
-    ss_out << n_misc->writepath_ .str().c_str() << "itpout_" << rho_inv << ".dat";
-    std::ofstream outfile (ss_out.str().c_str());
+    // std::stringstream ss_out;
+    // ss_out << n_misc->writepath_ .str().c_str() << "itpout_" << rho_inv << ".dat";
+    // std::ofstream outfile (ss_out.str().c_str());
 
-    outfile << n_misc->rho_ << " " << n_newton-1 << " " << n_gist-1 << " " << l2_rel_error << " " << error_norm_c0;
-    outfile.close ();
+    // outfile << n_misc->rho_ << " " << n_newton-1 << " " << n_gist-1 << " " << l2_rel_error << " " << error_norm_c0;
+    // outfile.close ();
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
@@ -599,12 +599,17 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecSet (c_temp, 0.);                                             CHKERRQ (ierr);
 
     // Second tumor location
+    // Far apart
     cm[0] = 2 * M_PI / 128 * 50;//82
-    cm[1] = 2 * M_PI / 128 * 65;//64
+    cm[1] = 2 * M_PI / 128 * 64;//64
     cm[2] = 2 * M_PI / 128 * 58;//52
+    // Near 
+    // cm[0] = 2 * M_PI / 128 * 58;//82
+    // cm[1] = 2 * M_PI / 128 * 58;//64
+    // cm[2] = 2 * M_PI / 128 * 52;//52
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
-    ierr = tumor->setTrueP (n_misc);
+    ierr = tumor->setTrueP (n_misc, 2.);
     PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
@@ -619,7 +624,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
 
-    ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
+    // ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
     
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
@@ -773,14 +778,21 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     PCOUT << "Data mismatch: " << error_norm << std::endl;
 
-    //snafu
+    error_norm /= data_norm;
+
+    std::stringstream ss_out;
+    ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
     std::ofstream opfile;
-    opfile.open ("./tc7_out.dat", std::ios_base::app);
-    if (procid == 0) 
-        opfile << n_misc->rho_ << " " << n_misc->k_ << " " << max << " " << 0.5 * error_norm * error_norm << std::endl;
+    opfile.open (ss_out.str().c_str(), std::ios_base::app);
+    if (procid == 0) {
+        opfile << "rho: " << n_misc->rho_ << std::endl;
+        opfile << "k_inv: " << n_misc->k_ << std::endl;
+        opfile << "CO relerr: " << error_norm_c0 << std::endl;
+        opfile << "C1 relerr: " << error_norm << std::endl;
+    }
+
     opfile.close ();
 
-    error_norm /= data_norm;
 
     ierr = VecDestroy (&c_rec_0); CHKERRQ (ierr);
     ierr = VecDestroy (&c_rec); CHKERRQ (ierr);

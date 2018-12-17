@@ -43,11 +43,11 @@ def getTumorRunCmd(params):
 
 	### Other user parameters which typically stay as default: Change if needed
 	### Flag to create synthetic data
-	create_synthetic = 1
+	create_synthetic = 0
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-	rho_inv = 10
+	rho_inv = 18
 	k_inv = 0.1
-	nt_inv = 25
+	nt_inv = 50
 	dt_inv = 0.01
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
@@ -55,15 +55,15 @@ def getTumorRunCmd(params):
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
-	rho_data = 10
+	rho_data = 18
 	k_data = 0.1
-	nt_data = 25
+	nt_data = 50
 	dt_data = 0.01
 
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
 	interp_flag = 0
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-	diffusivity_flag = 0
+	diffusivity_flag = 1
 	### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
 	basis_type = 1
 	### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -71,7 +71,7 @@ def getTumorRunCmd(params):
 	### Tumor L2 regularization
 	beta = 1e-4
 	### No of radial basis functions (Only used if basis_type is grid-based)
-	np = 125
+	np = 64
 	### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / 256)
 	fac = 2
 	### Spacing factor between radial basis functions (Keep as 2 to have a well-conditioned matrix for the radial basis functions)
@@ -83,15 +83,15 @@ def getTumorRunCmd(params):
 	### Target sparsity we expect for our initial tumor condition -- used in GIST
 	target_spars = 0.99
 	### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
-	sparsity_lvl = 1
+	sparsity_lvl = 10
 	### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / 256)
 	dd_fac = 2
 	### Solver type: QN - Quasi newton, GN - Gauss newton
-	solvertype = "GN"
+	solvertype = "QN"
 	### Newton max iterations
-	max_iter = 50
+	max_iter = 30
 	### GIST max iterations (for L1 solver)
-	max_gist_iter = 50
+	max_gist_iter = 1
 	### Krylov max iterations
 	max_krylov_iter = 30
 

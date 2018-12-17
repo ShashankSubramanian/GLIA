@@ -538,14 +538,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
     // print statistics
     printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
+    int flag_convergence = 0;
 
     // Solver begin
     while (true) {
         its++;
-        if (its > inv_solver_->getOptSettings()->gist_maxit) { // max iter reached
-            PCOUT << "Max L1 iter reached" << std::endl;
-            break;
-        }
 
         /* -------------------------------------------------------------------- 1) Hard threshold neg gradient   --------------------------------------------------------------------  */
         ierr = VecCopy (g, temp);                               CHKERRQ (ierr);
@@ -639,6 +636,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         // Add the support of the solution. This will be merged with the support of the proxy before the L2 solve
         n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
 
+        // Sort and remove duplicates
+        std::sort (n_misc_->support_.begin(), n_misc_->support_.end());
+        n_misc_->support_.erase (std::unique (n_misc_->support_.begin(), n_misc_->support_.end()), n_misc_->support_.end());
+
         PCOUT << "Support of current solution : ";
         for (int i = 0; i < n_misc_->support_.size(); i++) {
             PCOUT << n_misc_->support_[i] << " ";
@@ -698,15 +699,88 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         PCOUT << "\n\n\n-------------------------------------------------------------------- L1 solver statistics -------------------------------------------------------------------- " << std::endl;
         printStatistics (its, J, PetscAbsReal (J_old - J) / PetscAbsReal (1 + J_ref), norm_g, norm_rel / (1 + norm), x_L1);
         PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;
+        if (its >= inv_solver_->getOptSettings()->gist_maxit) { // max iter reached
+            PCOUT << "Max L1 iter reached" << std::endl;
+            flag_convergence = 1;
+        } else if (PetscAbsReal (J) < 1E-5) {
+            PCOUT << "L1 absolute objective tolerance reached." << std::endl;
+            flag_convergence = 1;
+        } else if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref)) {
+            PCOUT << "L1 relative objective tolerance reached." << std::endl;
+            flag_convergence = 1;
+        } else {
+            // Continue
+            flag_convergence = 0;
+        }
+        
 
-        if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref) && norm_rel < std::sqrt (ftol) * (1 + norm)) {
-            PCOUT << "L1 tolerance reached." << std::endl;
+        // if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref) && norm_rel < std::sqrt (ftol) * (1 + norm)) {
+
+        if (flag_convergence) {
+            // Final L2 solve in support  --- Similar to subspace pursuit but only in the last iteration
+             /* -------------------------------------------------------------------- 3) Take a Gauss-Newton/Quasi-Newton step -------------------------------------------------------------------- */
+
+            PCOUT << "\n\n\n-------------------------------------------------------------------- Final L2 solve -------------------------------------------------------------------- " << std::endl;
+            PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- " << std::endl;
+
+
+            np = n_misc_->support_.size();  
+            nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
+            n_misc_->np_ = np;                    // Change np to solve the smaller L2 subsystem
+            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L2);                 CHKERRQ (ierr);              // Create the L2 solution vector
+            ierr = VecSet (x_L2, 0);                                               CHKERRQ (ierr);
+            ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
+            ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
+            for (int i = 0; i < np; i++) {
+                x_L2_ptr[i] = x_L1_ptr[n_misc_->support_[i]];   // Starting guess for L2 solver is prev guess support values
+            }
+
+            if (n_misc_->diffusivity_inversion_) {
+                // Use the same diffusivity too
+                x_L2_ptr[np] = x_L1_ptr[np_original];
+                if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
+            }
+
+            ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
+            ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
+            
+
+            tumor_->phi_->modifyCenters (n_misc_->support_);                // Modifies the centers
+            // Reset tao solver explicitly: TODO: Ask Klaudius why inv_solver_->setParams() does not reset tao solver
+            ierr = resetTaoSolver();
+            ierr = setParams (x_L2, nullptr);                               // Resets the phis and other operators, x_L2 is copied into tumor->p_ and is used as 
+                                                                            // IC for the L2 solver. This needs to be done every iteration as the while the number
+                                                                            // of basis fns remain the same, their location needs to be constantly updated.
+
+            ierr = inv_solver_->solve ();       // L2 solver
+            ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
+
+            PCOUT << "--------------------------------------------------------------------     L2 solver end     -------------------------------------------------------------------- " << std::endl;
+            PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;
+
+            // Copy L2 solution to final solution
+            ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
+            ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
+            for (int i = 0; i < np; i++) {
+                x_L1_ptr[n_misc_->support_[i]] = x_L2_ptr[i];   // Correct L1 guess
+            }
+            // Correct the diffusivity
+            if (n_misc_->diffusivity_inversion_) {
+                x_L1_ptr[np_original] = x_L2_ptr[np];
+                if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
+            }
+            ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
+            ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
+
+            // Reset all values to initial space
+            np = np_original;
+            n_misc_->np_ = np;
+
+            tumor_->phi_->resetCenters ();              // Reset all the basis centers
+
+            ierr = setParams (x_L1, nullptr);           // Reset phis and other operators
             break;
-        }  
-        if (PetscAbsReal (J) < 1E-8) {
-            PCOUT << "L1 tolerance reached." << std::endl;
-            break;
-        }  
+        }
 
     }
 

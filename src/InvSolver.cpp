@@ -1691,7 +1691,15 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ierr = TaoSetMonitor (tao, optimizationMonitor, (void *) ctx, NULL);          CHKERRQ(ierr);
     }
     // Lower and Upper Bounds
-    // ierr = TaoSetVariableBounds(tao, tumor->lowerb_, tumor->upperb_);
+    // Vec lower_bound;
+    // ierr = VecDuplicate (ctx->tumor_->p_, &lower_bound);                            CHKERRQ (ierr);
+    // ierr = VecSet (lower_bound, 0.);                                                CHKERRQ (ierr);
+    // Vec upper_bound;
+    // ierr = VecDuplicate (ctx->tumor_->p_, &upper_bound);                            CHKERRQ (ierr);
+    // ierr = VecSet (upper_bound, 1E5);                                      CHKERRQ (ierr);
+    // ierr = TaoSetVariableBounds(tao, lower_bound, upper_bound);                    CHKERRQ (ierr);
+    // ierr = VecDestroy (&lower_bound);                                               CHKERRQ (ierr);
+    // ierr = VecDestroy (&upper_bound);                                               CHKERRQ (ierr);
 
     // TAO type from user input
     const TaoType taotype;
@@ -1740,8 +1748,8 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceFun, ctx);                  CHKERRQ(ierr);
     }
     else {
-      // ierr = TaoSetConvergenceTest (tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
-      ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
+      ierr = TaoSetConvergenceTest (tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
+      // ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
     }
 
     if (!itctx_->n_misc_->regularization_norm_ == L1) {  //Set other preferences for standard tao solvers

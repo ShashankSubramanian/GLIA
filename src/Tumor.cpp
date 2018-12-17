@@ -126,6 +126,25 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionReturn (0);
 }
 
+PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    double *p_ptr;
+    PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    ierr = VecSet (p_true_, 0);                                     CHKERRQ (ierr);
+    ierr = VecGetArray (p_true_, &p_ptr);                           CHKERRQ (ierr);
+    if (n_misc->np_ == 1) {
+        p_ptr[0] = val;
+    } else {
+        p_ptr[center] = val;
+    }
+
+    ierr = VecRestoreArray (p_true_, &p_ptr);                       CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
 
 PetscErrorCode Tumor::setTrueP (Vec p) {
     PetscFunctionBegin;

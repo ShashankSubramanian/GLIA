@@ -9,8 +9,19 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/L1smalltest/'
-params['data_path'] = tumor_dir + '/results/check/data.nc'
+params['results_path'] = tumor_dir + '/results/cosamp_AAMH_rho18_2iter/'
+# params['data_path'] = tumor_dir + '/results/check/data.nc'
+
+### Real data
+params['data_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/patient-AAMH_128_tu.nc'
+### Atlas
+params['gm_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/atlas-jakob_128_gm.nc'
+params['wm_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/atlas-jakob_128_wm.nc'
+params['csf_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/atlas-jakob_128_csf.nc'
+	
+
+
+
 run_str, err = getTumorRunCmd (params)  ### Use default parameters (if not, define dict with usable values)
 
 if not err:  # No error in tumor input parameters
@@ -19,7 +30,7 @@ if not err:  # No error in tumor input parameters
 	submit_file = open(fname, 'w+')
 	submit_file.write ("#!/bin/bash\n" + \
 	"#SBATCH -J ITP\n" + \
-	"#SBATCH -o " + params['results_path'] + "/itp_check\n" + \
+	"#SBATCH -o " + params['results_path'] + "/log\n" + \
 	"#SBATCH -p rebels\n" + \
 	"#SBATCH -N 1\n" + \
 	"#SBATCH -n 20\n" + \
