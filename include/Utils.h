@@ -252,7 +252,7 @@ class NMisc {
         , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
         , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
-        , obs_threshold_ (-1.0)                 // Observation threshold
+        , obs_threshold_ (0.0)                 // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
@@ -269,6 +269,7 @@ class NMisc {
         , gist_maxit_ (50)                      // GIST max itr
         , krylov_maxit_ (30)                    // Krylov max itr
         , sparsity_level_ (1)                   // Level of sparsity for L1 solves
+        , smoothing_factor_ (1)                 // Smoothing factor
 
                                 {
 
@@ -278,9 +279,20 @@ class NMisc {
                 // user_cm_[0] = 4.0;
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
-                user_cm_[0] = 2 * M_PI / 128 * 64;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 52;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 84;//52  //X 
+
+                // tumor is near the top edge -- more wm tracts visible 
+                // user_cm_[0] = 2 * M_PI / 128 * 68;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 88;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+
+                // tumor is top middle 
+                // user_cm_[0] = 2 * M_PI / 128 * 80;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 64;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X 
+
+                user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
 
                 // user_cm_[0] = 2 * M_PI / 64 * 32;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 64 * 24;//64  //Y
@@ -393,6 +405,7 @@ class NMisc {
 
         std::vector<int> support_;
 
+        double smoothing_factor_;
 };
 
 /**

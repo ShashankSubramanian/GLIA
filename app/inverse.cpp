@@ -39,6 +39,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
+PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
 
 
 
@@ -96,6 +97,8 @@ int main (int argc, char** argv) {
 
     int flag_cosamp = 0;
 
+    double sm = -1;
+
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -127,6 +130,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-lambda_continuation", "Lambda continuation", "", lam_cont, &lam_cont, NULL);
     PetscOptionsReal ("-sigma_data_driven", "Sigma for data-driven Gaussians", "", sigma_dd, &sigma_dd, NULL);
     PetscOptionsReal ("-threshold_data_driven", "Data threshold for data-driven Gaussians", "", data_thres, &data_thres, NULL);
+    PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
     PetscStrcpy (newton_solver, "QN");
     PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
     PetscOptionsInt ("-newton_maxit", "Newton max iterations", "", newton_maxit, &newton_maxit, NULL);
@@ -248,13 +252,13 @@ int main (int argc, char** argv) {
         n_misc->gaussian_vol_frac_ = gvf;
     }
     if (sigma > -1.0) {
-        n_misc->phi_sigma_ = sigma * (2.0 * M_PI / 256);
+        n_misc->phi_sigma_ = sigma * (2.0 * M_PI / n_misc->n_[0]);
     }
     if (spacing_factor > -1.0) {
         n_misc->phi_spacing_factor_ = spacing_factor;
     }
     if (sigma_dd > -1.0) {
-        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / 256;
+        n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / n_misc->n_[0];
     }
     
     if (data_thres > -1.0) {
@@ -284,6 +288,10 @@ int main (int argc, char** argv) {
 
     if (model != -1) {
         n_misc->model_ = model;
+    }
+
+    if (sm >= 0) {
+        n_misc->smoothing_factor_ = sm;
     }
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
@@ -465,6 +473,8 @@ int main (int argc, char** argv) {
     }
     PCOUT << " --------------  -------------- -----------------\n";
 
+    ierr = computeSegmentation(tumor, n_misc);      // Writes segmentation with c0 and c1 
+
 
     std::stringstream sstm;
     sstm << n_misc->writepath_ .str().c_str() << "reconp_" << rho_inv << ".data";
@@ -580,9 +590,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     // // cm[0] = 2 * M_PI / 128 * 69;//82 //Axial
     // // cm[1] = 2 * M_PI / 128 * 81;//64
     // // cm[2] = 2 * M_PI / 128 * 55;//52
-    cm[0] = 2 * M_PI / 128 * 64;//82  //Z
-    cm[1] = 2 * M_PI / 128 * 50;//64  //Y
-    cm[2] = 2 * M_PI / 128 * 46;//52  //X 
+    cm[0] = 2 * M_PI / 128 * 60;//82  //Z
+    cm[1] = 2 * M_PI / 128 * 52;//64  //Y
+    cm[2] = 2 * M_PI / 128 * 68;//52  //X 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
@@ -600,9 +610,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     // Second tumor location
     // Far apart
-    cm[0] = 2 * M_PI / 128 * 50;//82
-    cm[1] = 2 * M_PI / 128 * 64;//64
-    cm[2] = 2 * M_PI / 128 * 58;//52
+    cm[0] = 2 * M_PI / 128 * 48;//82
+    cm[1] = 2 * M_PI / 128 * 48;//64
+    cm[2] = 2 * M_PI / 128 * 68;//52
     // Near 
     // cm[0] = 2 * M_PI / 128 * 58;//82
     // cm[1] = 2 * M_PI / 128 * 58;//64
@@ -673,7 +683,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     dataIn (data, n_misc, data_path);
 
     // Smooth the data
-    double sigma_smooth = 1 * 2 * M_PI / n_misc->n_[0];
+    double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
     double *data_ptr; 
     ierr = VecGetArray (data, &data_ptr);                                       CHKERRQ (ierr);
     ierr = weierstrassSmoother (data_ptr, data_ptr, n_misc, sigma_smooth);
@@ -701,7 +711,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
  
-    double sigma_smooth = 1.5 * 2 * M_PI / n_misc->n_[0];
+    double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
     double *gm_ptr, *wm_ptr, *csf_ptr, *bg_ptr;
     ierr = VecGetArray (gm, &gm_ptr);                    CHKERRQ (ierr);
     ierr = VecGetArray (wm, &wm_ptr);                    CHKERRQ (ierr);
@@ -762,10 +772,11 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecMax (c_rec, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_rec, NULL, &min);                                      CHKERRQ (ierr);
 
-    PCOUT << "\nC Reconstructed Max and Min (Before Observation) : " << max << " " << min << std::endl;
-
     ierr = tumor->obs_->apply (c_rec, c_rec);   //Apply observation to reconstructed C to compare
                                                 //values to data
+
+    PCOUT << "\nC Reconstructed Max and Min : " << max << " " << min << std::endl;
+
 
     if (n_misc->writeOutput_)
         dataOut (c_rec, n_misc, "cRecon.nc");
@@ -882,3 +893,99 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     PetscFunctionReturn (0);
 }
+
+
+PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec max;
+    ierr = VecDuplicate(tumor->c_0_, &max);                                 CHKERRQ(ierr);
+    ierr = VecSet(max, 0);                                                  CHKERRQ(ierr);
+
+    // compute max of gm, wm, csf, bg, tumor
+    std::vector<double> v;
+    std::vector<double>::iterator max_component;
+    double *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *max_ptr;
+    ierr = VecGetArray(tumor->mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
+    ierr = VecGetArray(tumor->mat_prop_->gm_, &gm_ptr);                    CHKERRQ(ierr);
+    ierr = VecGetArray(tumor->mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
+    ierr = VecGetArray(tumor->mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
+    ierr = VecGetArray(tumor->c_0_, &c_ptr);                                CHKERRQ(ierr);
+    ierr = VecGetArray(max, &max_ptr);                                      CHKERRQ(ierr);
+
+    // segmentation for c0
+    for (int i = 0; i < n_misc->n_local_; i++) {
+        // Kill the material properties in regions of tumor
+        bg_ptr[i] = bg_ptr[i] * (1 - c_ptr[i]);
+        wm_ptr[i] = wm_ptr[i] * (1 - c_ptr[i]);
+        csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
+        gm_ptr[i] = gm_ptr[i] * (1 - c_ptr[i]);
+
+        v.push_back(bg_ptr[i]); 
+        v.push_back(gm_ptr[i]);
+        v.push_back(wm_ptr[i]);
+        v.push_back(csf_ptr[i]);
+        v.push_back(c_ptr[i]);
+
+        max_component = std::max_element(v.begin(), v.end());
+        max_ptr[i] = std::distance(v.begin(), max_component);
+
+        v.clear();
+    }   
+    ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr); 
+
+    if (n_misc->writeOutput_) {
+        dataOut (max, n_misc, "seg0.nc");
+    }
+
+    // segmentatino for c1
+    ierr = VecSet(max, 0);                                                  CHKERRQ(ierr);
+    ierr = VecGetArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);      
+    ierr = VecGetArray(max, &max_ptr);                                      CHKERRQ(ierr);
+    for (int i = 0; i < n_misc->n_local_; i++) {
+        // Kill the material properties in regions of tumor
+        bg_ptr[i] = bg_ptr[i] * (1 - c_ptr[i]);
+        wm_ptr[i] = wm_ptr[i] * (1 - c_ptr[i]);
+        csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
+        gm_ptr[i] = gm_ptr[i] * (1 - c_ptr[i]);
+
+        v.push_back(bg_ptr[i]); 
+        v.push_back(gm_ptr[i]);
+        v.push_back(wm_ptr[i]);
+        v.push_back(csf_ptr[i]);
+        v.push_back(c_ptr[i]);
+
+        max_component = std::max_element(v.begin(), v.end());
+        max_ptr[i] = std::distance(v.begin(), max_component);
+
+        v.clear();
+    }     
+
+    ierr = VecRestoreArray(tumor->mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
+    ierr = VecRestoreArray(tumor->mat_prop_->gm_, &gm_ptr);                    CHKERRQ(ierr);
+    ierr = VecRestoreArray(tumor->mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
+    ierr = VecRestoreArray(tumor->mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
+    ierr = VecRestoreArray(tumor->c_0_, &c_ptr);                                CHKERRQ(ierr);
+    ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr); 
+    ierr = VecRestoreArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);       
+
+    if (n_misc->writeOutput_) {
+        dataOut (max, n_misc, "seg1.nc");
+    }           
+
+    PetscFunctionReturn(0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

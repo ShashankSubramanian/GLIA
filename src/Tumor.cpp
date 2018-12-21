@@ -91,7 +91,17 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    PetscScalar val = 2.8; 
+    PetscScalar val;
+
+    if (n_misc->smoothing_factor_ == 1) {
+        val = 1.38;
+    } else if (n_misc->smoothing_factor_ == 1.5) {
+        val = 1.95;
+    } else if (n_misc->smoothing_factor_ == 2) {
+        val = 2.8;
+    } else {
+        PetscScalar val = 1.;
+    }
 
     double *p_ptr;
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);

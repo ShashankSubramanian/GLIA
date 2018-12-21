@@ -59,7 +59,7 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
+    double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
 
     double *phi_ptr;
     Vec all_phis;

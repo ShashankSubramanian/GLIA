@@ -680,6 +680,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         inv_solver_->setDataGradient (d1g);
 
 
+
         // Destroy the L2 solution vector as its size could potentially change in subsequent iterations
         ierr = VecDestroy (&x_L2);                      CHKERRQ (ierr);
 

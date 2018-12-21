@@ -156,7 +156,7 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 env.Append(CCFLAGS = ['-DSERIAL'])
 
 # enforce positivity in diffusion inversion for ks
-env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
+# env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
 # print centers of phi's to file
 # env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
