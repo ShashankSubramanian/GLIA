@@ -885,10 +885,15 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
 
-    ierr = tumor->obs_->apply (c_t, c_t);
+    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+
+    PCOUT << "\nC Data Max and Min (Before observation) : " << max << " " << min << std::endl;
+
+    // ierr = tumor->obs_->apply (c_t, c_t);
 
     if (n_misc->writeOutput_) {
-        dataOut (c_t, n_misc, "data.nc");
+        dataOut (c_t, n_misc, "dataBeforeObservation.nc");
     }
 
     PetscFunctionReturn (0);

@@ -1099,7 +1099,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     	ctx->optfeedback_->gradnorm0 = norm_gref;
     	//ctx->gradnorm0 = gnorm;
     	ctx->update_reference_gradient = false;
-      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << norm_gref;
+      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << ctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     	ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
       ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
@@ -1269,25 +1269,31 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     ierr = TaoGetSolutionVector(tao, &x);                                                   CHKERRQ(ierr);
 
     
-    // update/set reference gradient (with p = initial-guess)
+    // update/set reference gradient (with p = zeros)
     if(ctx->update_reference_gradient) {
-      Vec dJ;
+      Vec dJ, p0;
+      double norm_gref = 0.;
       ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
-      evaluateGradient(tao, x, dJ, (void*) ctx);
-    	double norm_gref = 0.;
+      ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
+      ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
+      ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
+      // evaluateGradient(tao, x, dJ, (void*) ctx);
+      evaluateObjectiveFunctionAndGradient (tao, p0, &ctx->optfeedback_->j0, dJ, (void*) ctx);
     	ierr = VecNorm (dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
     	ctx->optfeedback_->gradnorm0 = norm_gref;
-      evaluateObjectiveFunction (tao, x, &ctx->optfeedback_->j0, (void*) ctx);
+      // evaluateObjectiveFunction (tao, x, &ctx->optfeedback_->j0, (void*) ctx);
+
       std::stringstream s; s <<"updated reference objective for relative convergence criterion: " << ctx->optfeedback_->j0;
     	ctx->update_reference_gradient = false;
       ierr = tuMSGstd(s.str());                                                     CHKERRQ(ierr);
       s.str(std::string());
       s.clear();
-      s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << norm_gref;
+      s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << ctx->optfeedback_->gradnorm0;
     	ierr = tuMSGstd(s.str());                                                          CHKERRQ(ierr);
       s.str(std::string());
       s.clear();
       ierr = VecDestroy(&dJ);                                                            CHKERRQ(ierr);
+      ierr = VecDestroy(&p0);                                                            CHKERRQ(ierr);
     }
     
     // get initial gradient
@@ -1748,8 +1754,8 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceFun, ctx);                  CHKERRQ(ierr);
     }
     else {
-      // ierr = TaoSetConvergenceTest (tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
-      ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
+      ierr = TaoSetConvergenceTest (tao, checkConvergenceGrad, ctx);                 CHKERRQ(ierr);
+      // ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
     }
 
     if (!itctx_->n_misc_->regularization_norm_ == L1) {  //Set other preferences for standard tao solvers

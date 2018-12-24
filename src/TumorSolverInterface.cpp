@@ -492,6 +492,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
     // set the observation operator filter : default filter
     ierr = tumor_->obs_->setDefaultFilter (d1);
+    // apply observer on ground truth, store observed data in d
+    ierr = tumor_->obs_->apply (d1, d1);                                  
 
     // set target data for inversion (just sets the vector, no deep copy)
     inv_solver_->setData (d1);
@@ -674,6 +676,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
         ierr = tumor_->obs_->setDefaultFilter (d1);
+        // apply observer on ground truth, store observed data in d
+        ierr = tumor_->obs_->apply (d1, d1);    
         inv_solver_->setData (d1);
         if (d1g == nullptr)
             d1g = d1;

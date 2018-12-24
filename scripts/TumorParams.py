@@ -45,7 +45,7 @@ def getTumorRunCmd(params):
 	### Flag to create synthetic data
 	create_synthetic = 1
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-	rho_inv = 9.7
+	rho_inv = 9.5
 	k_inv = 0.0
 	nt_inv = 20
 	dt_inv = 0.05
@@ -57,8 +57,8 @@ def getTumorRunCmd(params):
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 12
 	k_data = 0.05
-	nt_data = 20
-	dt_data = 0.05
+	nt_data = 100
+	dt_data = 0.01
 
 	### Smoothing factor: Number of voxels to smooth material properties and basis functions
 	smooth_f = 1.5
