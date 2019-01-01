@@ -728,11 +728,18 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             PCOUT << "\n\n\n-------------------------------------------------------------------- Final L2 solve -------------------------------------------------------------------- " << std::endl;
             PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- " << std::endl;
 
+            PCOUT << " --------------  xL1 -----------------\n";
+            if (procid == 0) {
+                ierr = VecView (x_L1, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+            }
+            PCOUT << " --------------  -------------- -----------------\n";
 
             np = n_misc_->support_.size();  
             nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
+            // Invert for reaction here
+            n_misc_->reaction_inversion_ = true;
             n_misc_->np_ = np;                    // Change np to solve the smaller L2 subsystem
-            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L2);                 CHKERRQ (ierr);              // Create the L2 solution vector
+            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + 1, &x_L2);             CHKERRQ (ierr);              // Create the L2 solution vector: Last entry is the reaction coefficient
             ierr = VecSet (x_L2, 0);                                               CHKERRQ (ierr);
             ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
             ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
@@ -746,9 +753,32 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
             }
 
+            x_L2_ptr[np + nk] = n_misc_->rho_;  // Initial guess for rho is same as what it is now.
+            
+
+            PCOUT << " --------------  xL2 -----------------\n";
+            if (procid == 0) {
+                ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+            }
+            PCOUT << " --------------  -------------- -----------------\n";
+
+
+            // Set the max p location for bounds: this is needed for reaction inversion
+            int loc;
+            double my_max = 0.;
+            // Find the max from first np items of sol vector
+            for (int i = 0; i < np; i++) {
+                if (x_L2_ptr[i] > my_max) {
+                    loc = i;
+                    my_max = x_L2_ptr[i];
+                }
+            }
+            n_misc_->max_p_location_ = loc;
+            PCOUT << "Max tumor location is at: " << loc << std::endl;
+
             ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
             ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
-            
+
 
             tumor_->phi_->modifyCenters (n_misc_->support_);                // Modifies the centers
             // Reset tao solver explicitly: TODO: Ask Klaudius why inv_solver_->setParams() does not reset tao solver
@@ -774,6 +804,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 x_L1_ptr[np_original] = x_L2_ptr[np];
                 if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
             }
+
+            // update rho
+            n_misc_->rho_ = x_L2_ptr[np + nk];
+
             ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
             ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
 

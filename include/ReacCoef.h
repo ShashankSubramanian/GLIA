@@ -20,6 +20,7 @@ class ReacCoef {
 		PetscErrorCode setValues (double rho_scale, double r_gm_wm_ratio, double r_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input);
+		PetscErrorCode updateIsotropicCoefficients (double rho_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 
 		~ReacCoef ();
 };

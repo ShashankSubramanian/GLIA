@@ -64,6 +64,16 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     PetscFunctionReturn(0);
 }
 
+PetscErrorCode ReacCoef::updateIsotropicCoefficients (double rho_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+  // compute new ratios
+  rho_scale_        = rho_scale;
+  // and set the values
+  setValues (rho_scale_, r_gm_wm_ratio_, r_glm_wm_ratio_, mat_prop, n_misc);
+  PetscFunctionReturn (0);
+}
+
 PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;

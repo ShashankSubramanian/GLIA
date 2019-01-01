@@ -263,6 +263,7 @@ class NMisc {
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , reaction_inversion_ (false)           // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
         , newton_solver_ (QUASINEWTON)           // Newton solver type
         , newton_maxit_ (30)                    // Newton max itr
@@ -270,6 +271,7 @@ class NMisc {
         , krylov_maxit_ (30)                    // Krylov max itr
         , sparsity_level_ (1)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
+        , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
 
                                 {
 
@@ -383,8 +385,11 @@ class NMisc {
         bool nk_fixed_;
         bool diffusivity_inversion_;
         bool lambda_continuation_;
+        bool reaction_inversion_;
 
         double target_sparsity_;
+
+        int max_p_location_;
 
         int sparsity_level_;
 

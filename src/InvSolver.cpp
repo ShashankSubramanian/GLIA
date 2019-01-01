@@ -623,7 +623,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //itctx->optfeedback_->nb_krylov_it = 0;
 
     //Gradient check begin
-    // ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
+    ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }
@@ -1702,10 +1702,29 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecSet (lower_bound, 0.);                                                CHKERRQ (ierr);
     Vec upper_bound;
     ierr = VecDuplicate (ctx->tumor_->p_, &upper_bound);                            CHKERRQ (ierr);
-    ierr = VecSet (upper_bound, PETSC_INFINITY);                                               CHKERRQ (ierr);
+    double *lb_ptr, *ub_ptr;
+    ierr = VecSet (upper_bound, PETSC_INFINITY);                                  CHKERRQ (ierr);
+    if (itctx_->n_misc_->reaction_inversion_) {
+      ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
+      ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);
+
+      // set the ub to 1 for all p values
+      for (int i = 0; i < itctx_->n_misc_->np_; i++) {
+        ub_ptr[i] = 1.95;
+      }
+
+      // set the lower bound only for max tumor location to 0.9
+      lb_ptr[itctx_->n_misc_->max_p_location_] = 1.;
+
+      ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
+      ierr = VecRestoreArray (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
+      
+    } 
     ierr = TaoSetVariableBounds(tao, lower_bound, upper_bound);                     CHKERRQ (ierr);
     ierr = VecDestroy (&lower_bound);                                               CHKERRQ (ierr);
     ierr = VecDestroy (&upper_bound);                                               CHKERRQ (ierr);
+
+
 
     // TAO type from user input
     const TaoType taotype;

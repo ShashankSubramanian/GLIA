@@ -45,7 +45,7 @@ def getTumorRunCmd(params):
 	### Flag to create synthetic data
 	create_synthetic = 1
 	### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-	rho_inv = 9.5
+	rho_inv = 15
 	k_inv = 0.0
 	nt_inv = 20
 	dt_inv = 0.05
