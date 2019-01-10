@@ -16,12 +16,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    PCOUT << " --------------  IN ONLY OBJ: x -----------------\n";
-            if (procid == 0) {
-                ierr = VecView (x, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-            }
-            PCOUT << " --------------  -------------- -----------------\n";
-
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
@@ -44,7 +38,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       pde_operators_->diff_solver_->precFactor();
     }
 
-    if (n_misc_->reaction_inversion_) {
+    if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       ierr = VecGetSize(x, &x_sz);                                          CHKERRQ(ierr);
       ierr = tumor_->rho_->updateIsotropicCoefficients (x_ptr[x_sz - 1], tumor_->mat_prop_, n_misc_);
@@ -108,12 +102,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
-    PCOUT << " --------------  IN ONLY GRAD: x -----------------\n";
-            if (procid == 0) {
-                ierr = VecView (x, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-            }
-            PCOUT << " --------------  -------------- -----------------\n";
+    
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
@@ -137,7 +126,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       pde_operators_->diff_solver_->precFactor();
     }
 
-    if (n_misc_->reaction_inversion_) {
+    if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       ierr = VecGetSize(x, &x_sz);                                          CHKERRQ(ierr);
       ierr = tumor_->rho_->updateIsotropicCoefficients (x_ptr[x_sz - 1], tumor_->mat_prop_, n_misc_);
@@ -228,7 +217,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
     /* INVERSION FOR REACTION COEFFICIENT */
     integration_weight = 1.0;
-    if (n_misc_->reaction_inversion_) {
+    if (n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
@@ -251,7 +240,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[x_sz - 1]);              CHKERRQ(ierr);
       x_ptr[x_sz - 1] *= n_misc_->lebesgue_measure_;
-      PCOUT << "GRADIENT OF RHO: " << x_ptr[x_sz - 1] << std::endl;
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
@@ -278,13 +266,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-
-    PCOUT << " --------------  IN EVAL: x -----------------\n";
-            if (procid == 0) {
-                ierr = VecView (x, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-            }
-            PCOUT << " --------------  -------------- -----------------\n";
-
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
@@ -307,11 +288,10 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       pde_operators_->diff_solver_->precFactor();
     }
 
-    if (n_misc_->reaction_inversion_) {
+    if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       ierr = VecGetSize(x, &x_sz);                                          CHKERRQ(ierr);
       ierr = tumor_->rho_->updateIsotropicCoefficients (x_ptr[x_sz - 1], tumor_->mat_prop_, n_misc_);
-      PCOUT << "RHO IS: " << x_ptr[x_sz - 1] << std::endl;
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
 
@@ -425,7 +405,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     /* INVERSION FOR REACTION COEFFICIENT */
     integration_weight = 1.0;
-    if (n_misc_->reaction_inversion_) {
+    if (n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
@@ -448,10 +428,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[x_sz - 1]);              CHKERRQ(ierr);
       x_ptr[x_sz - 1] *= n_misc_->lebesgue_measure_;
-      PCOUT << "GRADIENT OF RHO: " << x_ptr[x_sz - 1] << std::endl;
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
-
 
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
@@ -949,7 +927,7 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[7] = {1, 1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5};
+    double h[7] = {1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
     double J, J_taylor, J_p, diff;
 
     Vec dJ;

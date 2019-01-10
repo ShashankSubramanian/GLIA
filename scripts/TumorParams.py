@@ -51,11 +51,11 @@ def getTumorRunCmd(params):
 	dt_inv = 0.05
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
-	reg_type = "L1c"
+	reg_type = "L2"
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
-	rho_data = 12
+	rho_data = 6
 	k_data = 0.05
 	nt_data = 100
 	dt_data = 0.01
@@ -66,6 +66,8 @@ def getTumorRunCmd(params):
 	interp_flag = 0
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
 	diffusivity_flag = 1
+	### Reaction inversion flag -- Flag to invert for reaction coefficient
+	reaction_flag = 1
 	### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
 	basis_type = 1
 	### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -165,7 +167,7 @@ def getTumorRunCmd(params):
 	run_str = "mpirun " + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
 	" -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
 	" -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
-	" -regularization " + reg_type + " -interpolation " + str(interp_flag)+ " -diffusivity_inversion " + str(diffusivity_flag) + \
+	" -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \
 	" -basis_type " + str(basis_type) + " -number_gaussians " + str(np) + " -sigma_factor " + str(fac) + " -sigma_spacing " + str(space) + \
 	" -gaussian_volume_fraction " + str(gvf) +  \
 	" -lambda_continuation " + str(lam_cont) +  \

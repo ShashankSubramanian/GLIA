@@ -66,6 +66,8 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
     ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
 
+    double phi_max;
+
     for (int i = 0; i < np_; i++) {
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
         initialize (phi_ptr, n_misc_, &centers_[3 * i]);
@@ -77,6 +79,10 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
             ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         }
+
+        // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+        ierr = VecMax (phi_vec_[i], NULL, &phi_max);                            CHKERRQ (ierr);
+        ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
 
         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
     }

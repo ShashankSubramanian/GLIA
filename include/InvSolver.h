@@ -131,6 +131,8 @@ class InvSolver {
             return out_params_;
         }
 
+        PetscErrorCode solveForParameters (Vec x);
+
         ~InvSolver ();
 
     private:
@@ -159,12 +161,15 @@ class InvSolver {
 PetscErrorCode evaluateObjectiveFunction (Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient (Tao, Vec, Vec, void*);
 PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao, Vec, PetscReal *, Vec, void *);
+PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode hessianMatVec (Mat, Vec, Vec);
 PetscErrorCode constApxHessianMatVec (Mat, Vec, Vec);
 PetscErrorCode matfreeHessian (Tao, Vec, Mat, Mat, void*);
 PetscErrorCode preconditionerMatVec (PC, Vec, Vec);
 PetscErrorCode applyPreconditioner (void*, Vec, Vec);
 PetscErrorCode optimizationMonitor (Tao tao, void *ptr);
+PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr);
+PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr);
 PetscErrorCode hessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
 PetscErrorCode constHessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
 PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr);

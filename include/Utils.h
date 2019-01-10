@@ -58,7 +58,7 @@ struct OptimizerSettings {
     OptimizerSettings ()
     :
     beta (0E-3),
-    opttolgrad (1E-4),
+    opttolgrad (1E-5),
     ftol (1E-5),
     ls_minstep (1E-9),
     gtolbound (0.8),
@@ -264,6 +264,7 @@ class NMisc {
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , reaction_inversion_ (false)           // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
+        , flag_reaction_inv_ (false)            // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
         , newton_solver_ (QUASINEWTON)           // Newton solver type
         , newton_maxit_ (30)                    // Newton max itr
@@ -386,6 +387,7 @@ class NMisc {
         bool diffusivity_inversion_;
         bool lambda_continuation_;
         bool reaction_inversion_;
+        bool flag_reaction_inv_;
 
         double target_sparsity_;
 

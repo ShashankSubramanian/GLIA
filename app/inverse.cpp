@@ -77,6 +77,7 @@ int main (int argc, char** argv) {
     int np_user = 0;
     int interp_flag = 0;
     int diffusivity_flag = 0;
+    int reaction_flag = 0;
     int basis_type = 0;
     double sigma = -1.0;
     double spacing_factor = -1.0;
@@ -122,6 +123,7 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-output_dir", "Path to results directory", "", results_dir, results_dir, 400, NULL);
     PetscOptionsInt ("-interpolation", "Interpolation flag", "", interp_flag, &interp_flag, NULL);
     PetscOptionsInt ("-diffusivity_inversion", "Diffusivity inversion flag", "", diffusivity_flag, &diffusivity_flag, NULL);
+    PetscOptionsInt ("-reaction_inversion", "Reaction coefficient inversion flag", "", reaction_flag, &reaction_flag, NULL);
     PetscOptionsInt ("-basis_type", "Radial basis type", "", basis_type, &basis_type, NULL);
     PetscOptionsReal ("-sigma_factor", "Standard deviation factor of grid-based radial basis", "", sigma, &sigma, NULL);
     PetscOptionsReal ("-sigma_spacing", "Standard deviation spacing factor of grid-based radial basis", "", spacing_factor, &spacing_factor, NULL);
@@ -229,6 +231,9 @@ int main (int argc, char** argv) {
     }
     if (diffusivity_flag) {
         n_misc->diffusivity_inversion_ = true;
+    }
+    if (reaction_flag) {
+        n_misc->reaction_inversion_ = true;
     }
     if (basis_type) {
         n_misc->bounding_box_ = 0;
@@ -431,7 +436,7 @@ int main (int argc, char** argv) {
 
     if (n_misc->regularization_norm_ == wL2) {
         ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
-        PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
+        PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
         if (n_misc->diffusivity_inversion_) {
             ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
             PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
@@ -457,7 +462,7 @@ int main (int argc, char** argv) {
     }
    
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
-    PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
+    PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
     if (n_misc->diffusivity_inversion_) {
         ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
         PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
