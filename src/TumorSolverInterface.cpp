@@ -588,6 +588,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     double *x_L2_ptr, *x_L1_ptr, *temp_ptr;
     double norm_rel, norm, norm_g;
     std::vector<int> idx;  // Holds the idx list after
+    std::vector<int> temp_support;
     int np, np_original, nk;
     Vec x_L2;  
     np_original = n_misc_->np_;                         // Keeps track of the original number of gaussians
@@ -684,10 +685,13 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         /* -------------------------------------------------------------------- 4) Updates --------------------------------------------------------------------  */
 
+
         ierr = VecCopy (x_L1, x_L1_old);                CHKERRQ (ierr);     // Keep track of the previous L1 guess for convergence checks
+        ierr = VecSet (x_L1, 0.);                       CHKERRQ (ierr);
 
         ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
         ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
+
         for (int i = 0; i < np; i++) {
             x_L1_ptr[n_misc_->support_[i]] = x_L2_ptr[i];   // Correct L1 guess
         }
@@ -697,14 +701,28 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
         }
 
-        // Hard threshold L1 guess to sparsity level
-        idx.clear();
-        ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx);
+        ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
 
+        // Hard threshold L2 guess to sparsity level
+        idx.clear();
+        ierr = hardThreshold (x_L2, n_misc_->sparsity_level_, np, idx);
+
+        temp_support = n_misc_->support_;
         //clear the support
         n_misc_->support_.clear ();
-        // Add the support of the solution. This will be merged with the support of the proxy before the L2 solve
-        n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
+        for (int i = 0; i < idx.size(); i++) {
+            n_misc_->support_.push_back (temp_support[idx[i]]);
+        }
+
+        // // Hard threshold L1 guess to sparsity level
+        // idx.clear();
+        // ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx);
+
+        // //clear the support
+        // n_misc_->support_.clear ();
+        // // Add the support of the solution. This will be merged with the support of the proxy before the L2 solve
+        // n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
+
 
         // Sort and remove duplicates
         std::sort (n_misc_->support_.begin(), n_misc_->support_.end());
@@ -716,18 +734,17 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         }
         PCOUT << std::endl;
 
-        // Set only idx values in x_L1. Rest are hard thresholded to zero
+        // Set only support values in x_L1. Rest are hard thresholded to zero
         ierr = VecSet (temp, 0);                        CHKERRQ (ierr);
         ierr = VecGetArray (temp, &temp_ptr);           CHKERRQ (ierr);
-        for (int i = 0; i < idx.size(); i++) {
-            temp_ptr[idx[i]] = x_L1_ptr[idx[i]];
+        for (int i = 0; i < n_misc_->support_.size(); i++) {
+            temp_ptr[n_misc_->support_[i]] = x_L1_ptr[n_misc_->support_[i]];
         }
         if (n_misc_->diffusivity_inversion_) {
             temp_ptr[np_original] = x_L1_ptr[np_original];
             if (nk > 1) temp_ptr[np_original+1] = x_L1_ptr[np_original+1];
         }
 
-        ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
         ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
         ierr = VecRestoreArray (temp, &temp_ptr);                              CHKERRQ (ierr);
 

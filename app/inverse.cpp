@@ -333,8 +333,8 @@ int main (int argc, char** argv) {
 
     if (syn_flag == 1) {
         PCOUT << "Generating Synthetic Data --->" << std::endl;
-        ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
-        // ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
+        // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+        ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
     } else {
         ierr = readData (data, c_0, p_rec, n_misc, data_path);
     }
@@ -589,15 +589,16 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
     std::array<double, 3> cm;
-    // cm[0] = 2 * M_PI / 128 * 69;//82 //Axial
-    // cm[1] = 2 * M_PI / 128 * 63;//64
-    // cm[2] = 2 * M_PI / 128 * 49;//52
-    // // cm[0] = 2 * M_PI / 128 * 69;//82 //Axial
-    // // cm[1] = 2 * M_PI / 128 * 81;//64
-    // // cm[2] = 2 * M_PI / 128 * 55;//52
-    cm[0] = 2 * M_PI / 128 * 60;//82  //Z
-    cm[1] = 2 * M_PI / 128 * 52;//64  //Y
-    cm[2] = 2 * M_PI / 128 * 68;//52  //X 
+
+    //near
+    // cm[0] = 2 * M_PI / 128 * 56;//82  //Z
+    // cm[1] = 2 * M_PI / 128 * 68;//64  //Y
+    // cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+
+    // far
+    cm[0] = 2 * M_PI / 128 * 52;//82  //Z
+    cm[1] = 2 * M_PI / 128 * 48;//64  //Y
+    cm[2] = 2 * M_PI / 128 * 72;//52  //X 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
@@ -614,17 +615,18 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecSet (c_temp, 0.);                                             CHKERRQ (ierr);
 
     // Second tumor location
-    // Far apart
-    cm[0] = 2 * M_PI / 128 * 48;//82
-    cm[1] = 2 * M_PI / 128 * 48;//64
-    cm[2] = 2 * M_PI / 128 * 68;//52
-    // Near 
-    // cm[0] = 2 * M_PI / 128 * 58;//82
-    // cm[1] = 2 * M_PI / 128 * 58;//64
-    // cm[2] = 2 * M_PI / 128 * 52;//52
+    // near
+    // cm[0] = 2 * M_PI / 128 * 64;//82
+    // cm[1] = 2 * M_PI / 128 * 72;//64
+    // cm[2] = 2 * M_PI / 128 * 76;//52
+    // far 
+    cm[0] = 2 * M_PI / 128 * 72;//82
+    cm[1] = 2 * M_PI / 128 * 80;//64
+    cm[2] = 2 * M_PI / 128 * 80;//52
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
-    ierr = tumor->setTrueP (n_misc, 2.);
+    // ierr = tumor->setTrueP (n_misc, 0.75);
+    ierr = tumor->setTrueP (n_misc, 0.9);
     PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
@@ -943,6 +945,12 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
 
         v.clear();
     }   
+    
+
+    double sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
+
+    ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+
     ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr); 
 
     if (n_misc->writeOutput_) {
@@ -977,6 +985,10 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     ierr = VecRestoreArray(tumor->mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray(tumor->mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray(tumor->c_0_, &c_ptr);                                CHKERRQ(ierr);
+
+    ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+
+
     ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr); 
     ierr = VecRestoreArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);       
 
