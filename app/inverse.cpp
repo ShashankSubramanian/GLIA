@@ -164,6 +164,14 @@ int main (int argc, char** argv) {
             PCOUT << " ----- Full brain test ---- " << std::endl;
             break;
         }
+        case BRAINNEARMF: {
+            PCOUT << " ----- Full brain test with multifocal nearby synthetic tumors ---- " << std::endl;
+            break;
+        }
+        case BRAINFARMF: {
+            PCOUT << " ----- Full brain test with multifocal faroff synthetic tumors ---- " << std::endl;
+            break;
+        }
         default: break;
     }
 
@@ -333,8 +341,11 @@ int main (int argc, char** argv) {
 
     if (syn_flag == 1) {
         PCOUT << "Generating Synthetic Data --->" << std::endl;
-        // ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
-        ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
+        if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
+            ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
+        } else {
+            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
+        }  
     } else {
         ierr = readData (data, c_0, p_rec, n_misc, data_path);
     }
@@ -344,7 +355,8 @@ int main (int argc, char** argv) {
     ierr = VecCopy (data, data_nonoise);
 
 
-    PCOUT << "Data Generated: Inverse solve begin --->" << std::endl; 
+    PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
+    PCOUT << "Inverse solver begin" << std::endl; 
 
     n_misc->rho_ = rho_inv;                                              
     n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
@@ -591,14 +603,16 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     std::array<double, 3> cm;
 
     //near
-    // cm[0] = 2 * M_PI / 128 * 56;//82  //Z
-    // cm[1] = 2 * M_PI / 128 * 68;//64  //Y
-    // cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+    cm[0] = 2 * M_PI / 128 * 56;//82  //Z
+    cm[1] = 2 * M_PI / 128 * 68;//64  //Y
+    cm[2] = 2 * M_PI / 128 * 72;//52  //X 
 
     // far
-    cm[0] = 2 * M_PI / 128 * 52;//82  //Z
-    cm[1] = 2 * M_PI / 128 * 48;//64  //Y
-    cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+    if (n_misc->testcase_ == BRAINFARMF) {
+        cm[0] = 2 * M_PI / 128 * 52;//82  //Z
+        cm[1] = 2 * M_PI / 128 * 48;//64  //Y
+        cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+    }
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
@@ -616,17 +630,19 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     // Second tumor location
     // near
-    // cm[0] = 2 * M_PI / 128 * 64;//82
-    // cm[1] = 2 * M_PI / 128 * 72;//64
-    // cm[2] = 2 * M_PI / 128 * 76;//52
+    cm[0] = 2 * M_PI / 128 * 64;//82
+    cm[1] = 2 * M_PI / 128 * 72;//64
+    cm[2] = 2 * M_PI / 128 * 76;//52
     // far 
-    cm[0] = 2 * M_PI / 128 * 72;//82
-    cm[1] = 2 * M_PI / 128 * 80;//64
-    cm[2] = 2 * M_PI / 128 * 80;//52
+    if (n_misc->testcase_ == BRAINFARMF) {
+        cm[0] = 2 * M_PI / 128 * 72;//82
+        cm[1] = 2 * M_PI / 128 * 80;//64
+        cm[2] = 2 * M_PI / 128 * 80;//52
+    }
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     // ierr = tumor->setTrueP (n_misc, 0.75);
-    ierr = tumor->setTrueP (n_misc, 0.9);
+    ierr = tumor->setTrueP (n_misc, .9);
     PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);

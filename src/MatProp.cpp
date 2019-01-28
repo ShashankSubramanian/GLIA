@@ -29,7 +29,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-	if (n_misc->testcase_ != BRAIN) {
+	if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
 		ierr = VecSet (filter_, 1.0);						  CHKERRQ (ierr);
 		ierr = VecSet (wm_, 1.0); 							  CHKERRQ (ierr);
 		n_misc->nk_ = 1;

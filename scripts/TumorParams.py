@@ -60,6 +60,13 @@ def getTumorRunCmd(params):
 	nt_data = 100
 	dt_data = 0.01
 
+	### Testcase: 0: brain single focal synthetic
+	###			  1: No-brain constant coefficients
+	###			  2: No-brain sinusoidal coefficients
+	###			  3: brain multifocal synthetic tumor with nearby ground truths
+	## 			  4: brain multifocal synthetic tumor with far away ground truths
+	tumor_testcase = 4
+
 	### Smoothing factor: Number of voxels to smooth material properties and basis functions
 	smooth_f = 1.5
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
@@ -112,7 +119,7 @@ def getTumorRunCmd(params):
 	if 'N' in params:
 		N = params['N']
 	else:
-		print ('Default N = {} used').format(N)
+		print ('Default N = {} used'.format(N))
 
 	## Error checking done by petsc/outside
 
@@ -124,51 +131,52 @@ def getTumorRunCmd(params):
 	
 	if 'data_path' in params:
 		data_path = params['data_path']
-		print('Tumor data path = {}').format(data_path)
+		print('Tumor data path = {}'.format(data_path))
 	else:
 		if not os.path.exists(data_path):
 			if not create_synthetic:
 				print('Default data path does not exist and no input path provided!\n')
 				error_flag = 1
 		else:
-			print ('Default datapath = {} used').format(data_path)
+			print ('Default datapath = {} used'.format(data_path))
 			
 	if 'gm_path' in params:
 		gm_path = params['gm_path']
-		print('Gray matter path = {}').format(gm_path)
+		print('Gray matter path = {}'.format(gm_path))
 	else:
 		if not os.path.exists(gm_path):
 			print('Default atlas gray matter path does not exist and no input path provided!\n')
 			error_flag = 1
 		else:
-			print ('Default atlas gray matter path = {} used').format(gm_path)
+			print ('Default atlas gray matter path = {} used'.format(gm_path))
 
 	if 'wm_path' in params:
 		wm_path = params['wm_path']
-		print('White matter path = {}').format(wm_path)
+		print('White matter path = {}'.format(wm_path))
 	else:
 		if not os.path.exists(wm_path):
 			print('Default atlas white matter path does not exist and no input path provided!\n')
 			error_flag = 1
 		else:
-			print ('Default atlas white matter path = {} used').format(wm_path)
+			print ('Default atlas white matter path = {} used'.format(wm_path))
 
 
 	if 'csf_path' in params:
 		csf_path = params['csf_path']
-		print('CSF path = {}').format(csf_path)
+		print('CSF path = {}'.format(csf_path))
 	else:
 		if not os.path.exists(csf_path):
 			print('Default atlas csf path does not exist and no input path provided!\n')
 			error_flag = 1
 		else:
-			print ('Default atlas csf path = {} used').format(csf_path)
+			print ('Default atlas csf path = {} used'.format(csf_path))
 
 	run_str = "mpirun " + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
 	" -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
 	" -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
 	" -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \
 	" -basis_type " + str(basis_type) + " -number_gaussians " + str(np) + " -sigma_factor " + str(fac) + " -sigma_spacing " + str(space) + \
+	" -testcase " + str(tumor_testcase) + \
 	" -gaussian_volume_fraction " + str(gvf) +  \
 	" -lambda_continuation " + str(lam_cont) +  \
 	" -target_sparsity " + str(target_spars) +  \

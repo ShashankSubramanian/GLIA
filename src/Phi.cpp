@@ -74,7 +74,7 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
         ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
-        if (n_misc_->testcase_ == BRAIN) {  //BRAIN
+        if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
             ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
             ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);

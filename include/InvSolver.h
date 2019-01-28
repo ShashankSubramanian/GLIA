@@ -174,6 +174,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dumm
 PetscErrorCode constHessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
 PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr);
 PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr);
+PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);

@@ -72,7 +72,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
     dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
-    if (n_misc->testcase_ != BRAIN) {
+    if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
         double *kxx_ptr, *kyy_ptr, *kzz_ptr;
         ierr = VecGetArray (kxx_, &kxx_ptr);                     CHKERRQ (ierr);
         ierr = VecGetArray (kyy_, &kyy_ptr);                     CHKERRQ (ierr);

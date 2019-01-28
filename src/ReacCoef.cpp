@@ -23,7 +23,7 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
     dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
 
-    if (n_misc->testcase_ != BRAIN) {
+    if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
         double *rho_vec_ptr;
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
         int64_t X, Y, Z, index;

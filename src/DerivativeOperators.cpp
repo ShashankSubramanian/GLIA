@@ -102,7 +102,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL
@@ -265,6 +264,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
 
     if (n_misc_->diffusivity_inversion_) {
       #ifndef SERIAL

@@ -30,7 +30,7 @@
 
 
 enum {QDFS = 0, SLFS = 1};
-enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
+enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 
@@ -62,7 +62,7 @@ struct OptimizerSettings {
     ftol (1E-5),
     ls_minstep (1E-9),
     gtolbound (0.8),
-    grtol (1E-4),
+    grtol (1E-5),
     gatol (1E-8),
     newton_maxit (30),
     gist_maxit (5),
@@ -273,12 +273,13 @@ class NMisc {
         , sparsity_level_ (1)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
+        , ic_max_ (0)
 
                                 {
 
 
             time_horizon_ = nt_ * dt_;
-            if (testcase_ == BRAIN) {
+            if (testcase_ == BRAIN || testcase_ == BRAINFARMF || testcase_ == BRAINNEARMF) {
                 // user_cm_[0] = 4.0;
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
@@ -339,6 +340,8 @@ class NMisc {
             readpath_ << "./brain_data/" << n_[0] <<"/";
             writepath_ << "./results/";
         }
+
+        double ic_max_;
 
         int testcase_;
         int n_[3];

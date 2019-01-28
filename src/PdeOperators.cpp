@@ -302,13 +302,13 @@ PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
     ierr = VecMax (c, NULL, &max);  CHKERRQ (ierr);
     ierr = VecMin (c, NULL, &min);  CHKERRQ (ierr);
     double tol = -1E-10;
-    PCOUT << "[---------- Tumor bounds: Max = " << max << ", Min = " << min << " [Checking for clipping] -----------]" << std::endl;
-    if (max > 1 || min < tol) {
-        #ifdef POSITIVITY
-            PCOUT << "[---------- Warning! Tumor IC is clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
-        #else
-            PCOUT << "[---------- Warning! Tumor IC is out of bounds and not clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
-        #endif
-    }
+    PCOUT << "[---------- Tumor bounds: Max = " << max << ", Min = " << min << " -----------]" << std::endl;
+    // if (max > 1 || min < tol) {
+    //     #ifdef POSITIVITY
+    //         PCOUT << "[---------- Warning! Tumor IC is clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
+    //     #else
+    //         PCOUT << "[---------- Warning! Tumor IC is out of bounds and not clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
+    //     #endif
+    // }
     PetscFunctionReturn (0);
 }

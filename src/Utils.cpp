@@ -439,8 +439,11 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 		q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
 	}
 
+	double tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
+						// are (almost)zero to the support 
 	for (int i = 0; i < sparsity_level; i++) {
-		support.push_back (q.top().second);
+		if (std::abs(q.top().first) > tol)
+			support.push_back (q.top().second);
 		q.pop ();
 	}
 
