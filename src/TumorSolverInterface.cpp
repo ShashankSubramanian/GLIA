@@ -669,7 +669,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
         ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
-        
+
 
         tumor_->phi_->modifyCenters (n_misc_->support_);                // Modifies the centers
         // Reset tao solver explicitly: TODO: Ask Klaudius why inv_solver_->setParams() does not reset tao solver
@@ -724,6 +724,23 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             PCOUT << n_misc_->support_[i] << " ";
         }
         PCOUT << std::endl;
+
+        // Print out the support for viewing purposes
+        Vec all_phis;
+        ierr = VecDuplicate (getTumor()->phi_->phi_vec_[0], &all_phis);        CHKERRQ (ierr);
+        ierr = VecSet (all_phis, 0.);                                          CHKERRQ (ierr);
+
+        for (int i = 0; i < np; i++) {
+            ierr = VecAXPY (all_phis, 1.0, getTumor()->phi_->phi_vec_[i]);     CHKERRQ (ierr);
+        }
+
+        std::stringstream ss;
+        ss << "phiSupport_gistitr-" << its << ".nc";
+        if (n_misc_->writeOutput_) {
+            dataOut (all_phis, n_misc_, ss.str().c_str());
+        }
+
+        ierr = VecDestroy (&all_phis);                                         CHKERRQ (ierr);
 
         // Set only support values in x_L1. Rest are hard thresholded to zero
         ierr = VecSet (temp, 0);                        CHKERRQ (ierr);
@@ -834,20 +851,21 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             ierr = inv_solver_->solve ();       // L2 solver
             ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
 
+
             // Print out the support for viewing purposes
             Vec all_phis;
             ierr = VecDuplicate (getTumor()->phi_->phi_vec_[0], &all_phis);        CHKERRQ (ierr);
             ierr = VecSet (all_phis, 0.);                                          CHKERRQ (ierr);
-
             for (int i = 0; i < np; i++) {
                 ierr = VecAXPY (all_phis, 1.0, getTumor()->phi_->phi_vec_[i]);     CHKERRQ (ierr);
             }
-
+            std::stringstream ss;
+            ss << "phiSupportFinal.nc";
             if (n_misc_->writeOutput_) {
-                dataOut (all_phis, n_misc_, "phiSupport.nc");
+                dataOut (all_phis, n_misc_, ss.str().c_str());
             }
-
             ierr = VecDestroy (&all_phis);                                         CHKERRQ (ierr);
+
 
             PCOUT << "--------------------------------------------------------------------     L2 solver end     -------------------------------------------------------------------- " << std::endl;
             PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;

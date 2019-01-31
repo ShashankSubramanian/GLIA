@@ -602,16 +602,30 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     std::array<double, 3> cm;
 
+    n_misc->user_cms_.clear ();
+
     //near
-    cm[0] = 2 * M_PI / 128 * 56;//82  //Z
-    cm[1] = 2 * M_PI / 128 * 68;//64  //Y
-    cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+    if (n_misc->testcase_ == BRAINNEARMF) {
+        cm[0] = 2 * M_PI / 128 * 56;//82  //Z
+        cm[1] = 2 * M_PI / 128 * 68;//64  //Y
+        cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+
+        n_misc->user_cms_.push_back (cm[0]);
+        n_misc->user_cms_.push_back (cm[1]);
+        n_misc->user_cms_.push_back (cm[2]);
+        n_misc->user_cms_.push_back (1.);
+    }
 
     // far
     if (n_misc->testcase_ == BRAINFARMF) {
-        cm[0] = 2 * M_PI / 128 * 52;//82  //Z
-        cm[1] = 2 * M_PI / 128 * 48;//64  //Y
-        cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+        cm[0] = 2 * M_PI / 128 * 60;//82  //Z
+        cm[1] = 2 * M_PI / 128 * 44;//64  //Y
+        cm[2] = 2 * M_PI / 128 * 76;//52  //X 
+
+        n_misc->user_cms_.push_back (cm[0]);
+        n_misc->user_cms_.push_back (cm[1]);
+        n_misc->user_cms_.push_back (cm[2]);
+        n_misc->user_cms_.push_back (1.);
     }
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
@@ -628,21 +642,34 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecDuplicate (c_0, &c_temp);                                     CHKERRQ (ierr);
     ierr = VecSet (c_temp, 0.);                                             CHKERRQ (ierr);
 
+    double scaling = 1.;
     // Second tumor location
     // near
-    cm[0] = 2 * M_PI / 128 * 64;//82
-    cm[1] = 2 * M_PI / 128 * 72;//64
-    cm[2] = 2 * M_PI / 128 * 76;//52
+    if (n_misc->testcase_ == BRAINNEARMF) {
+        cm[0] = 2 * M_PI / 128 * 64;//82
+        cm[1] = 2 * M_PI / 128 * 72;//64
+        cm[2] = 2 * M_PI / 128 * 76;//52
+
+        n_misc->user_cms_.push_back (cm[0]);
+        n_misc->user_cms_.push_back (cm[1]);
+        n_misc->user_cms_.push_back (cm[2]);
+        n_misc->user_cms_.push_back (scaling);
+    }
     // far 
     if (n_misc->testcase_ == BRAINFARMF) {
         cm[0] = 2 * M_PI / 128 * 72;//82
         cm[1] = 2 * M_PI / 128 * 80;//64
-        cm[2] = 2 * M_PI / 128 * 80;//52
+        cm[2] = 2 * M_PI / 128 * 76;//52
+
+        n_misc->user_cms_.push_back (cm[0]);
+        n_misc->user_cms_.push_back (cm[1]);
+        n_misc->user_cms_.push_back (cm[2]);
+        n_misc->user_cms_.push_back (scaling);
     }
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     // ierr = tumor->setTrueP (n_misc, 0.75);
-    ierr = tumor->setTrueP (n_misc, .9);
+    ierr = tumor->setTrueP (n_misc, scaling);
     PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
@@ -757,6 +784,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     PetscFunctionReturn (0);
 }
 
+
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0_true, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -822,14 +850,70 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     error_norm /= data_norm;
 
+
+    // compute weighted l2 error norm for c0
+    // first calculate distance of each gaussian from ground truth
+    Vec weights, p_true_w, p_diff_w, temp;
+    ierr = VecDuplicate (p_rec, &weights);                                  CHKERRQ (ierr);
+    ierr = VecDuplicate (p_rec, &p_true_w);                                 CHKERRQ (ierr);
+    ierr = VecDuplicate (p_rec, &p_diff_w);                                 CHKERRQ (ierr);
+    ierr = VecDuplicate (p_rec, &temp);                                     CHKERRQ (ierr);
+    ierr = VecSet (weights, 0.);                                            CHKERRQ (ierr);
+    ierr = VecSet (p_true_w, 0.);                                           CHKERRQ (ierr);
+    ierr = VecSet (p_diff_w, 0.);                                           CHKERRQ (ierr);
+    ierr = VecSet (temp, 0.);                                               CHKERRQ (ierr);
+
+    double *w_ptr, *p_true_ptr;
+    ierr = VecGetArray (weights, &w_ptr);                                   CHKERRQ (ierr);
+    ierr = VecGetArray (p_true_w, &p_true_ptr);                             CHKERRQ (ierr);
+
+    std::vector<double> dist (n_misc->user_cms_.size());
+    double d = 0.;
+    for (int i = 0; i < n_misc->np_; i++) {
+        dist.clear();
+        for (int j = 0; j < n_misc->user_cms_.size(); j++) {
+            d = myDistance (&n_misc->user_cms_[4 * j], &tumor->phi_->centers_[3 * i]);
+            dist.push_back (d);  // find the distance btw current gaussian and all the ground truth activations
+                                 // note: the ground truth has an additional activation, hence the 4 * j
+
+            if (d < 1E-5) {
+                // this is one of the ground truth gaussians
+                p_true_ptr[i] = n_misc->user_cms_[4 * j + 3];
+            }
+        }
+        w_ptr[i] = *(std::min_element (dist.begin(), dist.end()));      // sets the weight to the distance to the nearest ground truth activation
+        w_ptr[i] += n_misc->h_[0];                                      // to avoid division by zero
+    }
+
+    ierr = VecRestoreArray (weights, &w_ptr);                               CHKERRQ (ierr);
+    ierr = VecRestoreArray (p_true_w, &p_true_ptr);                         CHKERRQ (ierr);
+
+    double p_wL2, p_diff_wL2;
+    ierr = VecPointwiseMult (temp, p_true_w, weights);                  CHKERRQ (ierr);
+    ierr = VecDot (p_true_w, temp, &p_wL2);                             CHKERRQ (ierr); 
+    p_wL2 = std::sqrt (p_wL2);
+    ierr = VecCopy (p_true_w, p_diff_w);                                CHKERRQ (ierr);
+    ierr = VecAXPY (p_diff_w, -1.0, p_rec);                             CHKERRQ (ierr);  // diff in p
+    ierr = VecPointwiseMult (temp, p_diff_w, weights);                  CHKERRQ (ierr);
+    ierr = VecDot (p_diff_w, temp, &p_diff_wL2);                        CHKERRQ (ierr); 
+    p_diff_wL2 = std::sqrt (p_diff_wL2);
+
+    double dist_err_c0 = p_diff_wL2 / p_wL2;
+
+    ierr = VecDestroy (&weights);        CHKERRQ (ierr);
+    ierr = VecDestroy (&p_true_w);       CHKERRQ (ierr);
+    ierr = VecDestroy (&p_diff_w);       CHKERRQ (ierr);
+    ierr = VecDestroy (&temp);           CHKERRQ (ierr);
+
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
     std::ofstream opfile;
-    opfile.open (ss_out.str().c_str(), std::ios_base::app);
+    opfile.open (ss_out.str().c_str());
     if (procid == 0) {
         opfile << "rho: " << n_misc->rho_ << std::endl;
         opfile << "k_inv: " << n_misc->k_ << std::endl;
-        opfile << "CO relerr: " << error_norm_c0 << std::endl;
+        opfile << "C0 relerr: " << error_norm_c0 << std::endl;
+        opfile << "C0 disterr: " << dist_err_c0 << std::endl;
         opfile << "C1 relerr: " << error_norm << std::endl;
     }
 

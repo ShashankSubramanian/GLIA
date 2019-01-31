@@ -144,9 +144,6 @@ env.Append(LINKFLAGS = ["-fopenmp"])
 
 
 # ====== preprocessor defines, #ifdefs ========
-# tumor with Gauss-Newton
-env.Append(CCFLAGS = ['-DGAUSS_NEWTON'])
-
 env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
 # enforce positivity inside tumor forward solve

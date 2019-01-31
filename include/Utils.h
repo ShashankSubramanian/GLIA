@@ -273,7 +273,7 @@ class NMisc {
         , sparsity_level_ (1)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
-        , ic_max_ (0)
+        , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
 
                                 {
 
@@ -307,11 +307,21 @@ class NMisc {
                 // user_cm_[0] = 2 * M_PI / 64 * 32;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 64 * 24;//64  //Y
                 // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X 
+
+                user_cms_.push_back (user_cm_[0]);
+                user_cms_.push_back (user_cm_[1]);
+                user_cms_.push_back (user_cm_[2]);
+                user_cms_.push_back (1.); // this is the default scaling
+
             }
             else {
                 user_cm_[0] = M_PI;
                 user_cm_[1] = M_PI;
                 user_cm_[2] = M_PI;
+
+                user_cms_.push_back (user_cm_[0]);
+                user_cms_.push_back (user_cm_[1]);
+                user_cms_.push_back (user_cm_[2]);
             }
 
             memcpy (n_, n, 3 * sizeof(int));
@@ -419,7 +429,9 @@ class NMisc {
 
         int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
 
-        std::vector<int> support_;
+        std::vector<int> support_;      // support of cs guess
+
+        std::vector<double> user_cms_;  // stores the cms for synthetic user data
 
         double smoothing_factor_;
 };
@@ -491,6 +503,6 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support);
-
+double myDistance (double *c1, double *c2);
 
 #endif // end _UTILS_H
