@@ -51,12 +51,12 @@ def getTumorRunCmd(params):
 	dt_inv = 0.05
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
-	reg_type = "L2"
+	reg_type = "L1c"
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 8
-	k_data = 0.02
+	k_data = 0.025
 	nt_data = 100
 	dt_data = 0.01
 
@@ -65,7 +65,7 @@ def getTumorRunCmd(params):
 	###			  2: No-brain sinusoidal coefficients
 	###			  3: brain multifocal synthetic tumor with nearby ground truths
 	## 			  4: brain multifocal synthetic tumor with far away ground truths
-	tumor_testcase = 4
+	tumor_testcase = 0
 
 	### Smoothing factor: Number of voxels to smooth material properties and basis functions
 	smooth_f = 1.5

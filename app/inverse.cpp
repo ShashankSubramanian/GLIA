@@ -905,19 +905,33 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecDestroy (&p_diff_w);       CHKERRQ (ierr);
     ierr = VecDestroy (&temp);           CHKERRQ (ierr);
 
+    double *p_rec_ptr;
+    ierr = VecGetArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
+    int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+
+    double k1, k2, k3;
+    k1 = 0.; k2 = 0.; k3 = 0.;
+    if (n_misc->diffusivity_inversion_) {
+        k1 = p_rec_ptr[n_misc->np_];
+        if (n_misc->nk_ > 1)
+          k2 = p_rec_ptr[n_misc->np_ + 1];
+        if (n_misc->nk_ > 2)
+          k3 = p_rec_ptr[n_misc->np_ + 2];
+    } 
+
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
     std::ofstream opfile;
     opfile.open (ss_out.str().c_str());
     if (procid == 0) {
-        opfile << "rho: " << n_misc->rho_ << std::endl;
-        opfile << "k_inv: " << n_misc->k_ << std::endl;
-        opfile << "C0 relerr: " << error_norm_c0 << std::endl;
-        opfile << "C0 disterr: " << dist_err_c0 << std::endl;
-        opfile << "C1 relerr: " << error_norm << std::endl;
+        opfile << "rho k1 k2 k3 c1_rel c0_rel c0_dist \n";
+        opfile << n_misc->rho_ << " " << k1 << " " << k2 << " " << k3 << " " << error_norm << " "
+               << error_norm_c0 << " " << dist_err_c0;
     }
 
     opfile.close ();
+
+    ierr = VecRestoreArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
 
 
     ierr = VecDestroy (&c_rec_0); CHKERRQ (ierr);
