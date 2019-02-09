@@ -20,6 +20,10 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     double dr_dm_wm = rho_scale;                                //WM
     double dr_dm_glm = rho_scale * r_glm_wm_ratio;              //GLM
 
+    n_misc->r_gm_wm_ratio_  = r_gm_wm_ratio_;    // update values in n_misc
+    n_misc->r_glm_wm_ratio_ = r_glm_wm_ratio_;
+    n_misc->rho_              = rho_scale_;
+
     dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
     dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
 
@@ -64,11 +68,13 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode ReacCoef::updateIsotropicCoefficients (double rho_scale, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode ReacCoef::updateIsotropicCoefficients (double rho_1, double rho_2, double rho_3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
   PetscFunctionBegin;
   PetscErrorCode ierr;
   // compute new ratios
-  rho_scale_        = rho_scale;
+  rho_scale_        = rho_1;
+  r_gm_wm_ratio_    = (n_misc->nr_ == 1) ? n_misc->r_gm_wm_ratio_ : rho_2 / rho_1;
+  r_glm_wm_ratio_   = (n_misc->nr_ == 1) ? n_misc->r_glm_wm_ratio_ : rho_3 / rho_1;
   // and set the values
   setValues (rho_scale_, r_gm_wm_ratio_, r_glm_wm_ratio_, mat_prop, n_misc);
   PetscFunctionReturn (0);

@@ -286,7 +286,7 @@ PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {
     ierr = VecGetArray (c, &c_ptr);                              CHKERRQ (ierr);
     for (int i = 0; i < n_misc->n_local_; i++) {
         c_ptr[i] = (c_ptr[i] < 0.0) ? 0.0 : c_ptr[i];
-        // c_ptr[i] = (c_ptr[i] > 1.0) ? 1.0 : c_ptr[i];
+        c_ptr[i] = (c_ptr[i] > 1.0) ? 1.0 : c_ptr[i];
     }
     ierr = VecRestoreArray (c, &c_ptr);                          CHKERRQ (ierr);
     PetscFunctionReturn (0);
@@ -301,14 +301,14 @@ PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
     double max, min;
     ierr = VecMax (c, NULL, &max);  CHKERRQ (ierr);
     ierr = VecMin (c, NULL, &min);  CHKERRQ (ierr);
-    double tol = -1E-10;
+    double tol = 0.;
     PCOUT << "[---------- Tumor bounds: Max = " << max << ", Min = " << min << " -----------]" << std::endl;
-    // if (max > 1 || min < tol) {
-    //     #ifdef POSITIVITY
-    //         PCOUT << "[---------- Warning! Tumor IC is clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
-    //     #else
-    //         PCOUT << "[---------- Warning! Tumor IC is out of bounds and not clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
-    //     #endif
-    // }
+    if (max > 1 || min < tol) {
+        #ifdef POSITIVITY
+            PCOUT << "[---------- Warning! Tumor IC is clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
+        // #else
+            // PCOUT << "[---------- Warning! Tumor IC is out of bounds and not clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
+        #endif
+    }
     PetscFunctionReturn (0);
 }

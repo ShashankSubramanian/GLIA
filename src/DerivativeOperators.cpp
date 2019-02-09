@@ -38,10 +38,13 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       pde_operators_->diff_solver_->precFactor();
     }
 
+    double r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
-      ierr = VecGetSize(x, &x_sz);                                          CHKERRQ(ierr);
-      ierr = tumor_->rho_->updateIsotropicCoefficients (x_ptr[x_sz - 1], tumor_->mat_prop_, n_misc_);
+      r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
+      r2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 1] : 0;
+      r3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 2] : 0;
+      ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
 
@@ -125,10 +128,13 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       pde_operators_->diff_solver_->precFactor();
     }
 
+    double r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
-      ierr = VecGetSize(x, &x_sz);                                          CHKERRQ(ierr);
-      ierr = tumor_->rho_->updateIsotropicCoefficients (x_ptr[x_sz - 1], tumor_->mat_prop_, n_misc_);
+      r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
+      r2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 1] : 0;
+      r3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 2] : 0;
+      ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
 
@@ -168,7 +174,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     }
 
-
+    double temp_scalar;
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
     /* ------------------------- */
@@ -203,6 +209,16 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
       x_ptr[n_misc_->np_] *= n_misc_->lebesgue_measure_;
 
+      if (n_misc_->nk_ == 1) {
+        // Inverting for only one parameters a.k.a diffusivity in WM. Provide user with the option of setting a diffusivity for 
+        // other tissue types using n_misc - Hence, the gradient will change accordingly. 
+        // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);              CHKERRQ(ierr);   
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        temp_scalar *= n_misc_->k_gm_wm_ratio_;    // this ratio will control the diffusivity in gm
+        x_ptr[n_misc_->np_] += temp_scalar;
+      }
+
       if (n_misc_->nk_ > 1) {
         ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);        CHKERRQ(ierr);
         x_ptr[n_misc_->np_ + 1] *= n_misc_->lebesgue_measure_;
@@ -235,10 +251,30 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
       // integration over omega (i.e., inner product, as periodic boundary)
       
-      ierr = VecGetSize(dJ, &x_sz);                                                    CHKERRQ(ierr);
-      ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
-      ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[x_sz - 1]);              CHKERRQ(ierr);
-      x_ptr[x_sz - 1] *= n_misc_->lebesgue_measure_;
+      ierr = VecGetArray(dJ, &x_ptr);                                                                  CHKERRQ (ierr);
+      ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_ +  n_misc_->nk_]);              CHKERRQ(ierr);
+      x_ptr[n_misc_->np_ +  n_misc_->nk_] *= n_misc_->lebesgue_measure_;
+
+      if (n_misc_->nr_ == 1) {
+        // Inverting for only one parameters a.k.a reaction in WM. Provide user with the option of setting a reaction for 
+        // other tissue types using n_misc - Hence, the gradient will change accordingly. 
+        // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);              CHKERRQ(ierr);   
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        temp_scalar *= n_misc_->r_gm_wm_ratio_;    // this ratio will control the reaction coefficient in gm
+        x_ptr[n_misc_->np_ +  n_misc_->nk_] += temp_scalar;
+      }
+
+      if (n_misc_->nr_ > 1) {
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ +  n_misc_->nk_ + 1]);              CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ +  n_misc_->nk_ + 1] *= n_misc_->lebesgue_measure_;
+      }
+
+      if (n_misc_->nr_ > 2) {
+        ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ +  n_misc_->nk_ + 2]);              CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ +  n_misc_->nk_ + 2] *= n_misc_->lebesgue_measure_;
+      }
+
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
@@ -288,17 +324,22 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       pde_operators_->diff_solver_->precFactor();
     }
 
+    double r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
-      ierr = VecGetSize(x, &x_sz);                                          CHKERRQ(ierr);
-      ierr = tumor_->rho_->updateIsotropicCoefficients (x_ptr[x_sz - 1], tumor_->mat_prop_, n_misc_);
+      r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
+      r2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 1] : 0;
+      r3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 2] : 0;
+      ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
+
 
     // solve state
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
+
     // c(1) - d
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     // mismatch, squared residual norm
@@ -361,8 +402,11 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     (*J) *= 0.5;
     (*J) += reg;
 
+    double temp_scalar;
+    /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
-    // compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt
+    /* ------------------------- */
+    /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
     double integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
@@ -392,6 +436,17 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
       ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_]);              CHKERRQ(ierr);
       x_ptr[n_misc_->np_] *= n_misc_->lebesgue_measure_;
+
+      if (n_misc_->nk_ == 1) {
+        // Inverting for only one parameters a.k.a diffusivity in WM. Provide user with the option of setting a diffusivity for 
+        // other tissue types using n_misc - Hence, the gradient will change accordingly. 
+        // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);              CHKERRQ(ierr);   
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        temp_scalar *= n_misc_->k_gm_wm_ratio_;    // this ratio will control the diffusivity in gm
+        x_ptr[n_misc_->np_] += temp_scalar;
+      }
+
       if (n_misc_->nk_ > 1) {
         ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ + 1]);        CHKERRQ(ierr);
         x_ptr[n_misc_->np_ + 1] *= n_misc_->lebesgue_measure_;
@@ -424,10 +479,30 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       // time integration of [ int_0 (grad c)^T grad alpha dt ] done, result in temp_
       // integration over omega (i.e., inner product, as periodic boundary)
       
-      ierr = VecGetSize(dJ, &x_sz);                                                    CHKERRQ(ierr);
-      ierr = VecGetArray(dJ, &x_ptr);                                                  CHKERRQ (ierr);
-      ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[x_sz - 1]);              CHKERRQ(ierr);
-      x_ptr[x_sz - 1] *= n_misc_->lebesgue_measure_;
+      ierr = VecGetArray(dJ, &x_ptr);                                                                  CHKERRQ (ierr);
+      ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &x_ptr[n_misc_->np_ +  n_misc_->nk_]);              CHKERRQ(ierr);
+      x_ptr[n_misc_->np_ +  n_misc_->nk_] *= n_misc_->lebesgue_measure_;
+
+      if (n_misc_->nr_ == 1) {
+        // Inverting for only one parameters a.k.a reaction in WM. Provide user with the option of setting a reaction for 
+        // other tissue types using n_misc - Hence, the gradient will change accordingly. 
+        // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);              CHKERRQ(ierr);   
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        temp_scalar *= n_misc_->r_gm_wm_ratio_;    // this ratio will control the reaction coefficient in gm
+        x_ptr[n_misc_->np_ +  n_misc_->nk_] += temp_scalar;
+      }
+
+      if (n_misc_->nr_ > 1) {
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &x_ptr[n_misc_->np_ +  n_misc_->nk_ + 1]);              CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ +  n_misc_->nk_ + 1] *= n_misc_->lebesgue_measure_;
+      }
+
+      if (n_misc_->nr_ > 2) {
+        ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[n_misc_->np_ +  n_misc_->nk_ + 2]);              CHKERRQ(ierr);
+        x_ptr[n_misc_->np_ +  n_misc_->nk_ + 2] *= n_misc_->lebesgue_measure_;
+      }
+
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
@@ -927,7 +1002,16 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[7] = {1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
+    if (n_misc_->reaction_inversion_) {
+      ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
+      k1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
+      k2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 1] : 0;
+      k3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 2] : 0;
+      PCOUT << "r1: " << k1 << " r2: " << k2 << " r3: " << k3 << std::endl;
+      ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
+    }
+
+    double h[7] = {1e-4, 1e-5, 1e-6, 1e-7, 1e-8};
     double J, J_taylor, J_p, diff;
 
     Vec dJ;

@@ -48,8 +48,9 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients (double k1, double k2, doub
   /*       k_3 = dk_dm_glm = k_scale * k_glm_wm_ratio_;       GLM             */
   // compute new ratios
   k_scale_        = k1;
-  k_gm_wm_ratio_  = k2 / k1;
-  k_glm_wm_ratio_ = k3 / k1;
+  k_gm_wm_ratio_  = (n_misc->nk_ == 1) ? n_misc->k_gm_wm_ratio_ : k2 / k1;    // if we want to invert for just one parameter (a.k.a diffusivity in WM), then
+                                                                              // provide user with option to control the diffusivity in others from n_misc
+  k_glm_wm_ratio_ = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ : k3 / k1;   // glm is always zero. TODO:  take it out in new iterations of the solver
   // and set the values
   setValues (k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, n_misc);
   PetscFunctionReturn (0);

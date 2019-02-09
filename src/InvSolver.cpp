@@ -175,7 +175,7 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
     double norm_gref = 0.;
-    // update/set reference gradient (with p = zeros)
+    // update/set reference gradient 
     if (ctx->update_reference_gradient) {
       norm_gref = gnorm;
       ctx->optfeedback_->gradnorm0 = norm_gref;
@@ -371,17 +371,23 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = TaoSetType (tao_, "blmvm");                                                   CHKERRQ (ierr);
 
   int x_sz;
-  x_sz = (itctx_->n_misc_->nk_ > 1) ? 3 : 2;
+  int nk = (itctx_->n_misc_->diffusivity_inversion_) ? itctx_->n_misc_->nk_ : 0;
+  int nr = (itctx_->n_misc_->reaction_inversion_) ? itctx_->n_misc_->nr_ : 0;
+  x_sz = nk + nr;
   Vec x;
   ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &x);                                    CHKERRQ (ierr);  // Inversion for rho and k
+  ierr = VecSet (x, 0.);                                                              CHKERRQ (ierr);
 
   // set initial guess to current state
   double *x_in_ptr, *x_ptr;
   ierr = VecGetArray (x_in, &x_in_ptr);                                               CHKERRQ (ierr);
   ierr = VecGetArray (x, &x_ptr);                                                     CHKERRQ (ierr);
   x_ptr[0] = x_in_ptr[itctx_->n_misc_->np_];   // k1
-  if (itctx_->n_misc_->nk_ > 1) x_ptr[1] = x_in_ptr[itctx_->n_misc_->np_ + 1];  // k2
-  x_ptr[itctx_->n_misc_->nk_] = x_in_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_];  // rho
+  if (nk > 1) x_ptr[1] = x_in_ptr[itctx_->n_misc_->np_ + 1];  // k2
+  if (nk > 2) x_ptr[2] = x_in_ptr[itctx_->n_misc_->np_ + 2];  // k3
+  x_ptr[nk] = x_in_ptr[itctx_->n_misc_->np_ + nk];  // rho
+  if (nr > 1) x_ptr[nk + 1] = x_in_ptr[itctx_->n_misc_->np_ + nk + 1];  // r2
+  if (nr > 2) x_ptr[nk + 2] = x_in_ptr[itctx_->n_misc_->np_ + nk + 2];  // r3
 
   ierr = VecRestoreArray (x_in, &x_in_ptr);                                               CHKERRQ (ierr);
   ierr = VecRestoreArray (x, &x_ptr);                                                     CHKERRQ (ierr);
@@ -784,7 +790,10 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
 
   x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
   if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
+  if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
   x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
+  if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
+  if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
 
   ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
   ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
@@ -800,7 +809,10 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
 
   dj_ptr[0] = dj_full_ptr[itctx->n_misc_->np_];
   if (itctx->n_misc_->nk_ > 1) dj_ptr[1] = dj_full_ptr[itctx->n_misc_->np_ + 1];  // k2
+  if (itctx->n_misc_->nk_ > 2) dj_ptr[2] = dj_full_ptr[itctx->n_misc_->np_ + 2];  // k3
   dj_ptr[itctx->n_misc_->nk_] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_];  // rho
+  if (itctx->n_misc_->nr_ > 1) dj_ptr[itctx->n_misc_->nk_ + 1] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1];  // r2
+  if (itctx->n_misc_->nr_ > 2) dj_ptr[itctx->n_misc_->nk_ + 2] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2];  // r2
 
   ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
   ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
@@ -1050,14 +1062,16 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
 
-
     double *x_ptr, *x_full_ptr;
     ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
     ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
     x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
     if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
+    if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
     x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
+    if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r1
+    if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r1
 
     ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
     ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
@@ -1072,8 +1086,12 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
           << std::setw(18) << "step" << "   ";
 
-            s << std::setw(18) << "rho";
-            s << std::setw(18) << "k";
+            s << std::setw(18) << "r1"; 
+            if (itctx->n_misc_->nr_ > 1) s << std::setw(18) << "r2"; 
+            if (itctx->n_misc_->nr_ > 2) s << std::setw(18) << "r3"; 
+            s << std::setw(18) << "k1";
+            if (itctx->n_misc_->nk_ > 1) s << std::setw(18) << "k2"; 
+            if (itctx->n_misc_->nk_ > 2) s << std::setw(18) << "k3"; 
           
 
         ierr = tuMSGstd ("starting optimization for only biophysical parameters");                   CHKERRQ(ierr);
@@ -1094,13 +1112,17 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
 
       ierr = VecGetArray(x, &x_ptr);                                         CHKERRQ(ierr);
       s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->nk_]; 
+      if (itctx->n_misc_->nr_ > 1) s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->nk_ + 1]; 
+      if (itctx->n_misc_->nr_ > 2) s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->nk_ + 2]; 
       s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[0];
       if (itctx->n_misc_->nk_ > 1) {
         s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[1]; 
       }
+      if (itctx->n_misc_->nk_ > 2) {
+        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[2]; 
+      }
 
-      // update nmisic rho (not important, just for output purposes)
-      itctx->n_misc_->rho_ = x_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_]; 
+      
       ierr = VecRestoreArray(x, &x_ptr);                                     CHKERRQ(ierr);
       
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
@@ -2321,8 +2343,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
             // to use Eisenstat/Walker convergence crit.
             KSPSetPreSolve (ksp, preKrylovSolve, ctx);                              CHKERRQ(ierr);
             ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx, 0);                    CHKERRQ(ierr);
-            //snafu
-            ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE);                CHKERRQ (ierr);  // To compute the condition number
+            // ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE);                CHKERRQ (ierr);  // To compute the condition number
             ierr = KSPSetFromOptions (ksp);                                     CHKERRQ (ierr);
         }
         // set the preconditioner (we check if KSP exists, as there are also
