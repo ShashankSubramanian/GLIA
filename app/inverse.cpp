@@ -919,19 +919,19 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
           k3 = p_rec_ptr[n_misc->np_ + 2];
     } 
 
-    if (n_misc->reaction_inversion_) {
-        r1 = p_rec_ptr[n_misc->np_ + n_misc->nk_];
-        r2 = (n_misc->nr_ > 1) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 1] : 0;
-        r3 = (n_misc->nr_ > 2) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 2] : 0;
-    }
+    // if (n_misc->reaction_inversion_) {
+    //     r1 = p_rec_ptr[n_misc->np_ + n_misc->nk_];
+    //     r2 = (n_misc->nr_ > 1) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 1] : 0;
+    //     r3 = (n_misc->nr_ > 2) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 2] : 0;
+    // }
 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
     std::ofstream opfile;
     opfile.open (ss_out.str().c_str());
     if (procid == 0) {
-        opfile << "r1 r2 r3 k1 k2 k3 c1_rel c0_rel c0_dist \n";
-        opfile << r1 << " " << r2 << " " << r3 << " " << k1 << " " << k2 << " " << k3 << " " << error_norm << " "
+        opfile << "rho k c1_rel c0_rel c0_dist \n";
+        opfile << n_misc->rho_ << " " << k1 << " " << error_norm << " "
                << error_norm_c0 << " " << dist_err_c0;
     }
 

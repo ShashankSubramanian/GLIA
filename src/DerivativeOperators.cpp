@@ -340,6 +340,11 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
 
+    // double mx, mn;
+    // ierr = VecMax (temp_, NULL, &mx); CHKERRQ (ierr);
+    // ierr = VecMin (temp_, NULL, &mn); CHKERRQ (ierr);
+    // PCOUT << "Tumor current guess reconstruction max and min: " << mx << " " << mn << std::endl;
+
     // c(1) - d
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     // mismatch, squared residual norm

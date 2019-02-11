@@ -428,9 +428,11 @@ PetscErrorCode vecSign (Vec x) {
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support) {
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
+
+	nnz = 0;
 
 	std::priority_queue<std::pair<PetscReal, int>> q;
 	double *x_ptr;
@@ -442,8 +444,13 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 	double tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
 						// are (almost)zero to the support 
 	for (int i = 0; i < sparsity_level; i++) {
-		if (std::abs(q.top().first) > tol)
+		if (std::abs(q.top().first) > tol) {
+			nnz++;  // keeps track of how many non-zero (important) components of the signal there are
 			support.push_back (q.top().second);
+		} else {  // if top of the queue is not greater than tol, we are done since none of the elements
+				  // below it will every be greater than tol
+			break;
+		}
 		q.pop ();
 	}
 

@@ -631,6 +631,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // print statistics
     printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
     int flag_convergence = 0;
+    int nnz = 0;
+    std::stringstream ss;
 
     // Solver begin
     while (true) {
@@ -641,7 +643,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         ierr = VecAbs (temp);                                   CHKERRQ (ierr);
 
         idx.clear();
-        ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx);
+        ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx, nnz);
 
         /* -------------------------------------------------------------------- 2) Update the prev soln's support with the 2K sparse guess' support -------------------------------------------------------------------- */
         n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
@@ -695,6 +697,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         ierr = inv_solver_->solve ();       // L2 solver
         ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
 
+
         PCOUT << "--------------------------------------------------------------------     L2 solver end     -------------------------------------------------------------------- " << std::endl;
         PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;
 
@@ -720,7 +723,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         // Hard threshold L2 guess to sparsity level
         idx.clear();
-        ierr = hardThreshold (x_L2, n_misc_->sparsity_level_, np, idx);
+        ierr = hardThreshold (x_L2, n_misc_->sparsity_level_, np, idx, nnz);
 
         temp_support = n_misc_->support_;
         //clear the support
@@ -748,11 +751,12 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             ierr = VecAXPY (all_phis, 1.0, getTumor()->phi_->phi_vec_[i]);     CHKERRQ (ierr);
         }
 
-        std::stringstream ss;
-        ss << "phiSupport_gistitr-" << its << ".nc";
+
+        ss << "phiSupport_csitr-" << its << ".nc";
         if (n_misc_->writeOutput_) {
             dataOut (all_phis, n_misc_, ss.str().c_str());
         }
+        ss.str(std::string()); ss.clear();
 
         ierr = VecDestroy (&all_phis);                                         CHKERRQ (ierr);
 
@@ -790,6 +794,13 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             d1g = d1;
         inv_solver_->setDataGradient (d1g);
 
+        // print the initial guess to track progress visually
+        ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
+        ss << "c0guess_csitr-" << its << ".nc";
+        if (n_misc_->writeOutput_) {
+            dataOut (getTumor()->c_0_, n_misc_, ss.str().c_str());
+        }
+        ss.str(std::string()); ss.clear();
 
 
         // Destroy the L2 solution vector as its size could potentially change in subsequent iterations
@@ -826,12 +837,6 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         }
         
         if (flag_convergence) { 
-            // Final L2 solve in support  --- Similar to subspace pursuit but only in the last iteration
-             /* -------------------------------------------------------------------- 3) Take a Gauss-Newton/Quasi-Newton step -------------------------------------------------------------------- */
-
-            PCOUT << "\n\n\n-------------------------------------------------------------------- Final L2 solve -------------------------------------------------------------------- " << std::endl;
-            PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- " << std::endl;
-
             np = n_misc_->support_.size();  
             nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
             nr = (n_misc_->reaction_inversion_) ? n_misc_->nr_ : 0;
@@ -862,34 +867,60 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
 
             tumor_->phi_->modifyCenters (n_misc_->support_);                // Modifies the centers
-            // Reset tao solver explicitly: TODO: Ask Klaudius why inv_solver_->setParams() does not reset tao solver
+
             ierr = resetTaoSolver();
             ierr = setParams (x_L2, nullptr);                               // Resets the phis and other operators, x_L2 is copied into tumor->p_ and is used as 
                                                                             // IC for the L2 solver. This needs to be done every iteration as the while the number
                                                                             // of basis fns remain the same, their location needs to be constantly updated.
 
+            // Final L2 solve in support  --- Similar to subspace pursuit but only in the last iteration
+
+
+            PCOUT << "\n\n\n-------------------------------------------------------------------- Final L2 solve -------------------------------------------------------------------- " << std::endl;
+            PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- " << std::endl;
+
             ierr = inv_solver_->solve ();       // L2 solver
             ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
 
 
-            // Print out the support for viewing purposes
+            // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
+            ierr = tumor_->obs_->setDefaultFilter (d1);
+            // apply observer on ground truth, store observed data in d
+            ierr = tumor_->obs_->apply (d1, d1);    
+            inv_solver_->setData (d1);
+            if (d1g == nullptr)
+                d1g = d1;
+            inv_solver_->setDataGradient (d1g);
+
+             // Print out the support for viewing purposes
             Vec all_phis;
             ierr = VecDuplicate (getTumor()->phi_->phi_vec_[0], &all_phis);        CHKERRQ (ierr);
             ierr = VecSet (all_phis, 0.);                                          CHKERRQ (ierr);
             for (int i = 0; i < np; i++) {
                 ierr = VecAXPY (all_phis, 1.0, getTumor()->phi_->phi_vec_[i]);     CHKERRQ (ierr);
             }
-            std::stringstream ss;
+
             ss << "phiSupportFinal.nc";
             if (n_misc_->writeOutput_) {
                 dataOut (all_phis, n_misc_, ss.str().c_str());
             }
             ierr = VecDestroy (&all_phis);                                         CHKERRQ (ierr);
+            
+            ss.str(std::string()); ss.clear();
 
+            // print the initial guess to track progress visually
+            ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
+            ss << "c0FinalGuess" << its << ".nc";
+            if (n_misc_->writeOutput_) {
+                dataOut (getTumor()->c_0_, n_misc_, ss.str().c_str());
+            }
+            
+            ss.str(std::string()); ss.clear();
 
             PCOUT << "--------------------------------------------------------------------     L2 solver end     -------------------------------------------------------------------- " << std::endl;
             PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;
 
+            
 
             if (n_misc_->reaction_inversion_) {
                 PCOUT << "-------------------------------------------------------------------- Reaction and diffusivity inversion with scaled L2 solution guess --------------------------------------------------------------------" << std::endl;
@@ -897,16 +928,6 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 // L1 solve has finished with the wrong reaction coefficient
                 // Now, we invert for only reaction and diffusion after scaling the IC appropriately
                 n_misc_->flag_reaction_inv_ = true; // invert only for reaction and diffusion now
-
-
-                // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
-                ierr = tumor_->obs_->setDefaultFilter (d1);
-                // apply observer on ground truth, store observed data in d
-                ierr = tumor_->obs_->apply (d1, d1);    
-                inv_solver_->setData (d1);
-                if (d1g == nullptr)
-                    d1g = d1;
-                inv_solver_->setDataGradient (d1g);
 
                 // No need to reset tao solver: This is taken care of in solveForParameters() because the tao solver needs different vector sizes now.
 
@@ -955,6 +976,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             PCOUT << "r1: " << r1 << std::endl;
             PCOUT << "r2: " << r2 << std::endl;
             PCOUT << "r3: " << r3 << std::endl;
+
+            n_misc_->rho_ = r1;  //update n_misc rho 
 
             ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
             ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
