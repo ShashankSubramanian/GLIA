@@ -823,6 +823,9 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecMax (c_rec, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_rec, NULL, &min);                                      CHKERRQ (ierr);
 
+    if (n_misc->writeOutput_)
+        dataOut (c_rec, n_misc, "cReconBeforeObservation.nc");
+
     ierr = tumor->obs_->apply (c_rec, c_rec);   //Apply observation to reconstructed C to compare
                                                 //values to data
 
@@ -932,7 +935,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     if (procid == 0) {
         opfile << "rho k c1_rel c0_rel c0_dist \n";
         opfile << n_misc->rho_ << " " << k1 << " " << error_norm << " "
-               << error_norm_c0 << " " << dist_err_c0;
+               << error_norm_c0 << " " << dist_err_c0 << std::endl;
     }
 
     opfile.close ();

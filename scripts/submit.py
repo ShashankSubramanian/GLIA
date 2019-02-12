@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/tc1/'
+params['results_path'] = tumor_dir + '/results/check/'
 
 ### Real data
 # params['data_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/patient-AAMH_128_tu.nc'

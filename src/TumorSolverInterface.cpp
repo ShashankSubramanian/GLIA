@@ -208,10 +208,10 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         // Now, we invert for only reaction and diffusion after scaling the IC appropriately
         n_misc_->flag_reaction_inv_ = true; // invert only for reaction and diffusion now
 
-        // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
-        ierr = tumor_->obs_->setDefaultFilter (d1);
-        // apply observer on ground truth, store observed data in d
-        ierr = tumor_->obs_->apply (d1, d1);    
+        // // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
+        // ierr = tumor_->obs_->setDefaultFilter (d1);
+        // // apply observer on ground truth, store observed data in d
+        // ierr = tumor_->obs_->apply (d1, d1);    
         inv_solver_->setData (d1);
         if (d1g == nullptr)
             d1g = d1;
@@ -579,6 +579,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // No regularization for L1 constrainied optimization
     n_misc_->beta_ = 0;
 
+
     // set the observation operator filter : default filter
     ierr = tumor_->obs_->setDefaultFilter (d1);
     // apply observer on ground truth, store observed data in d
@@ -785,10 +786,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         ierr = setParams (x_L1, nullptr);           // Reset phis and other operators
 
-        // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
-        ierr = tumor_->obs_->setDefaultFilter (d1);
-        // apply observer on ground truth, store observed data in d
-        ierr = tumor_->obs_->apply (d1, d1);    
+
+        // // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
+        // ierr = tumor_->obs_->setDefaultFilter (d1);
+        // // apply observer on ground truth, store observed data in d
+        // ierr = tumor_->obs_->apply (d1, d1);    
         inv_solver_->setData (d1);
         if (d1g == nullptr)
             d1g = d1;
@@ -883,10 +885,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
 
 
-            // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
-            ierr = tumor_->obs_->setDefaultFilter (d1);
-            // apply observer on ground truth, store observed data in d
-            ierr = tumor_->obs_->apply (d1, d1);    
+            // // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
+            // ierr = tumor_->obs_->setDefaultFilter (d1);
+            // // apply observer on ground truth, store observed data in d
+            // ierr = tumor_->obs_->apply (d1, d1);    
             inv_solver_->setData (d1);
             if (d1g == nullptr)
                 d1g = d1;
