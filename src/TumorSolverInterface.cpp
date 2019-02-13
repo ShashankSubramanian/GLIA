@@ -163,6 +163,13 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
 
     // set the observation operator filter : default filter
     ierr = tumor_->obs_->setDefaultFilter (d1);
+    ierr = tumor_->obs_->apply (d1, d1); 
+
+    double *d_ptr;
+    double s_fact = 0.5 * 2.0 * M_PI / n_misc_->n_[0];
+    ierr = VecGetArray (d1, &d_ptr);                                                 CHKERRQ(ierr);
+    ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc_, s_fact);                      CHKERRQ(ierr);  // smooth the data a bit after applying obs
+    ierr = VecRestoreArray (d1, &d_ptr);                                             CHKERRQ(ierr);
 
     // set target data for inversion (just sets the vector, no deep copy)
     inv_solver_->setData (d1);
@@ -583,7 +590,13 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // set the observation operator filter : default filter
     ierr = tumor_->obs_->setDefaultFilter (d1);
     // apply observer on ground truth, store observed data in d
-    ierr = tumor_->obs_->apply (d1, d1);                                  
+    ierr = tumor_->obs_->apply (d1, d1);  
+
+    double *d_ptr;
+    double s_fact = 0.5 * 2.0 * M_PI / n_misc_->n_[0];
+    ierr = VecGetArray (d1, &d_ptr);                                                 CHKERRQ(ierr);
+    ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc_, s_fact);                      CHKERRQ(ierr);  // smooth the data a bit after applying obs -- half a voxel.
+    ierr = VecRestoreArray (d1, &d_ptr);                                             CHKERRQ(ierr);                                
 
     // set target data for inversion (just sets the vector, no deep copy)
     inv_solver_->setData (d1);

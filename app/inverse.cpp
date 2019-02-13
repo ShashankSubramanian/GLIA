@@ -794,10 +794,22 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    ierr = tumor->obs_->apply (data, data);   //Apply observation to data to compare.
+    double *d_ptr;
+    double s_fact = 0.5 * 2.0 * M_PI / n_misc->n_[0];
+    ierr = VecGetArray (data, &d_ptr);                                                 CHKERRQ(ierr);
+    ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc, s_fact);                         CHKERRQ(ierr);  // smooth the data a bit after applying obs -- half a voxel.
+    ierr = VecRestoreArray (data, &d_ptr);                                             CHKERRQ(ierr);
+
+    if (n_misc->writeOutput_)
+        dataOut (data, n_misc, "dataAfterSolve.nc");
+
+
     double data_norm;
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
-    std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
+    
     ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
     double *c0_ptr;

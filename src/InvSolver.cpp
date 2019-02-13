@@ -493,7 +493,7 @@ PetscErrorCode InvSolver::solve () {
   TU_assert (optsettings_ != nullptr, "InvSolver:solve (): requires non-null optimizer settings to be passed.");
   /* === observed data === */
   // apply observer on ground truth, store observed data in d
-  ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
+  // ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
   // smooth observed data
   PetscScalar *d_ptr;
   double sigma_smooth;
