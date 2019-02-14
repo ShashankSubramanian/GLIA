@@ -1086,6 +1086,12 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     //Prints a warning if tumor IC is clipped
     ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr);
 
+    double mx, mn;
+    ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
+    ierr = VecMin (itctx->tumor_->c_t_, NULL, &mn); CHKERRQ (ierr);
+    // this print helps determine if theres any large aliasing errors which is causing ls failure etc
+    PCOUT << "[---------- Tumor final bounds: Max = " << mx << ", Min = " << mn << " -----------]" << std::endl;
+
     std::stringstream s;
     if (its == 0) {
         s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
