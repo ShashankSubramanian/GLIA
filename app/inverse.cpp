@@ -816,12 +816,12 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->obs_->apply (data, data);   //Apply observation to data to compare.
-    // double *d_ptr;
-    // double s_fact = 0.5 * 2.0 * M_PI / n_misc->n_[0];
-    
-    // ierr = VecGetArray (data, &d_ptr);                                                 CHKERRQ(ierr);
-    // ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc, s_fact);                         CHKERRQ(ierr);  // smooth the data a bit after applying obs -- half a voxel.
-    // ierr = VecRestoreArray (data, &d_ptr);                                             CHKERRQ(ierr);
+    double *d_ptr;
+    double s_fact = 0.5 * 2.0 * M_PI / n_misc->n_[0];
+
+    ierr = VecGetArray (data, &d_ptr);                                                 CHKERRQ(ierr);
+    ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc, s_fact);                         CHKERRQ(ierr);  // smooth the data a bit after applying obs -- half a voxel.
+    ierr = VecRestoreArray (data, &d_ptr);                                             CHKERRQ(ierr);
 
     if (n_misc->writeOutput_)
         dataOut (data, n_misc, "dataAfterSolve.nc");
@@ -960,6 +960,8 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     //     r2 = (n_misc->nr_ > 1) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 1] : 0;
     //     r3 = (n_misc->nr_ > 2) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 2] : 0;
     // }
+
+    PCOUT << "C0 distance error: " << dist_err_c0 << std::endl;
 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
