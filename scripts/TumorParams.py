@@ -67,6 +67,10 @@ def getTumorRunCmd(params):
 	## 			  4: brain multifocal synthetic tumor with far away ground truths
 	tumor_testcase = 0
 
+	### k_gm_wm ratio
+	k_gm_wm = 0.0
+	### r_gm_wm ratio
+	r_gm_wm = 0.0
 	### Smoothing factor: Number of voxels to smooth material properties and basis functions
 	smooth_f = 1.5
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
@@ -91,6 +95,8 @@ def getTumorRunCmd(params):
 	gvf = 0.99
 	### Threshold of data tumor concentration above which Gaussians are switched on
 	data_thres = 0.1
+	### Observation detection threshold
+	obs_thres = 0.0
 	### Target sparsity we expect for our initial tumor condition -- used in GIST
 	target_spars = 0.99
 	### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
@@ -195,6 +201,9 @@ def getTumorRunCmd(params):
 	" -csf_path " + csf_path + \
 	" -model " + str(model) + \
 	" -smooth " + str(smooth_f) + \
+	" -observation_threshold " + str(obs_thres) + \
+	" -k_gm_wm " + str(k_gm_wm) + \
+	" -r_gm_wm " + str(r_gm_wm) + \
 	" -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5"
 
 	return run_str, error_flag

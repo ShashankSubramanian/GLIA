@@ -87,6 +87,10 @@ int main (int argc, char** argv) {
     int lam_cont = 0;
     double sigma_dd = -1.0;
     double data_thres = -1.0;
+    double obs_thres = -1.0;
+
+    double k_gm_wm = -1.0;
+    double r_gm_wm = -1.0;
 
     char newton_solver[10];
     int newton_maxit = -1; 
@@ -132,6 +136,9 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-lambda_continuation", "Lambda continuation", "", lam_cont, &lam_cont, NULL);
     PetscOptionsReal ("-sigma_data_driven", "Sigma for data-driven Gaussians", "", sigma_dd, &sigma_dd, NULL);
     PetscOptionsReal ("-threshold_data_driven", "Data threshold for data-driven Gaussians", "", data_thres, &data_thres, NULL);
+    PetscOptionsReal ("-observation_threshold", "Observation detection threshold", "", obs_thres, &obs_thres, NULL);
+    PetscOptionsReal ("-k_gm_wm", "WM to GM ratio for diffusivity", "", k_gm_wm, &k_gm_wm, NULL);
+    PetscOptionsReal ("-r_gm_wm", "WM to GM ratio for reaction", "", r_gm_wm, &r_gm_wm, NULL);
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
     PetscStrcpy (newton_solver, "QN");
     PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
@@ -278,6 +285,10 @@ int main (int argc, char** argv) {
         n_misc->data_threshold_ = data_thres;
     }
 
+    if (obs_thres > -1.0) {
+        n_misc->obs_threshold_ = obs_thres;
+    }
+
     PetscStrcmp ("QN", newton_solver, &strflg);
     if (strflg) {
         n_misc->newton_solver_ = QUASINEWTON;
@@ -306,6 +317,15 @@ int main (int argc, char** argv) {
     if (sm >= 0) {
         n_misc->smoothing_factor_ = sm;
     }
+
+    if (k_gm_wm > -1.0) {
+        n_misc->k_gm_wm_ratio_ = k_gm_wm;
+    }
+
+    if (r_gm_wm > -1.0) {
+        n_misc->r_gm_wm_ratio_ = r_gm_wm;
+    }
+
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
     n_misc->writepath_ << results_dir;  
