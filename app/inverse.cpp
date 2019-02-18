@@ -40,6 +40,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
 PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc);
 
 
 
@@ -104,6 +105,8 @@ int main (int argc, char** argv) {
 
     double sm = -1;
 
+    double low_freq_noise_scale = -1.0;
+
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -140,6 +143,7 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-k_gm_wm", "WM to GM ratio for diffusivity", "", k_gm_wm, &k_gm_wm, NULL);
     PetscOptionsReal ("-r_gm_wm", "WM to GM ratio for reaction", "", r_gm_wm, &r_gm_wm, NULL);
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
+    PetscOptionsReal ("-low_freq_noise", "Noise level for low frequency noise addition", "", low_freq_noise_scale, &low_freq_noise_scale, NULL);
     PetscStrcpy (newton_solver, "QN");
     PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
     PetscOptionsInt ("-newton_maxit", "Newton max iterations", "", newton_maxit, &newton_maxit, NULL);
@@ -326,6 +330,10 @@ int main (int argc, char** argv) {
         n_misc->r_gm_wm_ratio_ = r_gm_wm;
     }
 
+    if (low_freq_noise_scale > -1.0) {
+        n_misc->low_freq_noise_scale_ = low_freq_noise_scale;
+    }
+
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
     n_misc->writepath_ << results_dir;  
@@ -373,6 +381,24 @@ int main (int argc, char** argv) {
     Vec data_nonoise;
     ierr = VecDuplicate (data, &data_nonoise);
     ierr = VecCopy (data, data_nonoise);
+
+    // add low freq model noise
+    ierr = applyLowFreqNoise (data, n_misc);
+    Vec temp;
+    double noise_err_norm, rel_noise_err_norm;
+    ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
+    ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
+    ierr = VecCopy (data_nonoise, temp);      CHKERRQ (ierr);
+    ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
+    ierr = VecNorm (temp, NORM_2, &noise_err_norm);     CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
+    ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
+    rel_noise_err_norm = noise_err_norm / rel_noise_err_norm; 
+    PCOUT << "[--------------- Low frequency relative error = " << rel_noise_err_norm << " -------------------]" << std::endl;
+
+    // if (n_misc->writeOutput_)
+    //     dataOut (data, n_misc, "dataNoise.nc");
+
+    ierr = VecDestroy (&temp);          CHKERRQ (ierr);
 
 
     PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
@@ -719,7 +745,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
 
-    ierr = tumor->obs_->apply (c_t, c_t);
+    // ierr = tumor->obs_->apply (c_t, c_t);
 
     if (n_misc->writeOutput_) {
         dataOut (c_t, n_misc, "data.nc");
@@ -800,6 +826,123 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     ierr = VecRestoreArray (wm, &wm_ptr);                    CHKERRQ (ierr);
     ierr = VecRestoreArray (csf, &csf_ptr);                  CHKERRQ (ierr);
     ierr = VecRestoreArray (bg, &bg_ptr);                    CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    srand (time(NULL));
+    double random_noise;
+    double noise_level = n_misc->low_freq_noise_scale_;
+    double mag = 0.;
+    int64_t x_global, y_global, z_global, x_symm, y_symm, z_symm, global_index;
+    double freq = 0;
+    double amplitude = 0.;
+
+    int *osize = n_misc->osize_;
+    int *ostart = n_misc->ostart_;
+    int *isize = n_misc->isize_;
+    int *istart = n_misc->istart_;
+    MPI_Comm c_comm = n_misc->c_comm_;
+    int *n = n_misc->n_;
+    accfft_plan *plan = n_misc->plan_;
+
+    // Get the fourier transform of data;
+    double *d_ptr;
+    ierr = VecGetArray (data, &d_ptr);          CHKERRQ (ierr);
+
+    // // remove small aliasing errors
+    // for (int i = 0; i < n_misc->n_local_; i++) {
+    //     if (d_ptr[i] < 1E-4) {
+    //         d_ptr[i] = 0.;
+    //     }
+    // }
+
+    int alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+    accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+    Complex *data_hat;  
+    double *freq_scaling;
+    data_hat = (Complex*) accfft_alloc (alloc_max);
+    freq_scaling = (double*) accfft_alloc (alloc_max);
+    accfft_execute_r2c (plan, d_ptr, data_hat);
+    MPI_Barrier (c_comm);
+
+    double *data_hat_mag;
+    double *d;
+    data_hat_mag = (double*) accfft_alloc(alloc_max);
+    double wx, wy, wz;
+
+    int64_t ptr;
+    // Find the amplitude of the signal (data)
+    for (int i = 0; i < osize[0]; i++) {
+        for (int j = 0; j < osize[1]; j++) {
+            for (int k = 0; k < osize[2]; k++) {
+                ptr = i * osize[1] * osize[2] + j * osize[2] + k;
+                d = data_hat[ptr];
+                data_hat_mag[ptr] = std::sqrt(d[0] * d[0] + d[1] * d[1]); // amplitude compute
+                if (data_hat_mag[ptr] > amplitude)
+                    amplitude = data_hat_mag[ptr];
+
+                // populate freq: By symmetery X(N-k) = X(k)
+                // instead of enforcing conjugate symmetery manually, just scale with only unique frequencies
+
+                x_global = i + ostart[0];
+                y_global = j + ostart[1];
+                z_global = k + ostart[2];
+
+                wx = (x_global > n[0] / 2) ? n[0] - x_global : x_global;
+                wy = (y_global > n[1] / 2) ? n[1] - y_global : y_global;
+                wz = (z_global > n[2] / 2) ? n[2] - z_global : z_global;
+
+                if (wx == 0 && wy == 0 && wz == 0)
+                    freq_scaling[ptr] = 1.;
+                else
+                    freq_scaling[ptr] = (1.0 / (wx * wx + wy * wy + wz * wz));
+            }
+        }
+    }
+    // allreduce to find the amplitude of the freq
+    double global_amplitude = 0.;
+    MPI_Allreduce (&amplitude, &global_amplitude, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Barrier (c_comm);
+
+    // Now add power law noise
+    for (int i = 0; i < osize[0]; i++) {
+        for (int j = 0; j < osize[1]; j++) {
+            for (int k = 0; k < osize[2]; k++) {
+                ptr = i * osize[1] * osize[2] + j * osize[2] + k;
+                d = data_hat[ptr];
+                mag = data_hat_mag[ptr];
+                random_noise = (double)rand() / (double)RAND_MAX;
+                data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * freq_scaling[ptr];
+                // data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * std::sqrt(freq_scaling[ptr]);
+                // change data_hat accordingly -- this will change only the unique freq
+                if (mag != 0) { // check for non zero components
+                    d[0] *= (1.0 / mag) * data_hat_mag[ptr];
+                    d[1] *= (1.0 / mag) * data_hat_mag[ptr];
+                }
+            }
+        }
+    }
+
+    MPI_Barrier(c_comm);
+    accfft_execute_c2r(plan, data_hat, d_ptr);
+    MPI_Barrier(c_comm);
+
+    for (int i = 0; i < n_misc->n_local_; i++)
+        d_ptr[i] /= n[0] * n[1] * n[2];
+
+    accfft_free (data_hat);    
+    accfft_free (freq_scaling);
+    accfft_free (data_hat_mag);
+    ierr = VecRestoreArray (data, &d_ptr);              CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }

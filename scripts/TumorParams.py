@@ -97,6 +97,8 @@ def getTumorRunCmd(params):
 	data_thres = 0.1
 	### Observation detection threshold
 	obs_thres = 0.0
+	### Noise scaling for low freq noise: 0.05, 0.25, 0.5 
+	noise_scale = 0.25
 	### Target sparsity we expect for our initial tumor condition -- used in GIST
 	target_spars = 0.99
 	### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
@@ -204,6 +206,7 @@ def getTumorRunCmd(params):
 	" -observation_threshold " + str(obs_thres) + \
 	" -k_gm_wm " + str(k_gm_wm) + \
 	" -r_gm_wm " + str(r_gm_wm) + \
+	" -low_freq_noise " + str(noise_scale) + \
 	" -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5"
 
 	return run_str, error_flag

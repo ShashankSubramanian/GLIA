@@ -240,6 +240,7 @@ class NMisc {
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
+        , low_freq_noise_scale_ (0.25)          // Low freq noise scale
         , beta_ (0e-3)                          // Regularization parameter
         , lambda_ (1e5)                         // Regularization parameter for L1
         , lambda_continuation_ (true)           // bool for parameter continuation
@@ -391,6 +392,7 @@ class NMisc {
         double p_scale_;
         double p_scale_true_;
         double noise_scale_;
+        double low_freq_noise_scale_;
         double beta_;
         double lambda_;
 
