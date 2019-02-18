@@ -785,8 +785,19 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     ierr = weierstrassSmoother (data_ptr, data_ptr, n_misc, sigma_smooth);
     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
 
-    // No IC for real data
-    ierr = VecSet (c_0, 0.);                                                    CHKERRQ (ierr);
+    size_t pos;
+    std::ifstream ifile;
+    std::string c0_path (data_path);
+    pos = c0_path.find ("data.nc");
+    c0_path.replace (pos, 9, "c0True.nc");
+    ifile.open (c0_path);
+
+    if (ifile) {
+        dataIn (c_0, n_misc, c0_path.c_str());
+    } else {
+        ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
+    }
+    
     PetscFunctionReturn (0);
 }
 
@@ -1039,6 +1050,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     std::vector<double> dist (n_misc->user_cms_.size());
     double d = 0.;
+    int flg = 0;
     for (int i = 0; i < n_misc->np_; i++) {
         dist.clear();
         for (int j = 0; j < n_misc->user_cms_.size(); j++) {
@@ -1046,17 +1058,38 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
             dist.push_back (d);  // find the distance btw current gaussian and all the ground truth activations
                                  // note: the ground truth has an additional activation, hence the 4 * j
 
+            // snafu for 64
+            // if (d < .2) {
             if (d < 1E-5) {
                 // this is one of the ground truth gaussians
                 p_true_ptr[i] = n_misc->user_cms_[4 * j + 3];
+                flg = 1;
             }
         }
         w_ptr[i] = *(std::min_element (dist.begin(), dist.end()));      // sets the weight to the distance to the nearest ground truth activation
         w_ptr[i] += n_misc->h_[0];                                      // to avoid division by zero
+
+        // snafu for 64 
+        // if (flg == 1) break;
     }
 
     ierr = VecRestoreArray (weights, &w_ptr);                               CHKERRQ (ierr);
     ierr = VecRestoreArray (p_true_w, &p_true_ptr);                         CHKERRQ (ierr);
+
+    // // snafu: if using ground truth from somewhere else (for example, downsampled from a higher resolution)
+    // // interpolate c0 to the best capacity with the current basis. This is as close as we can get to the 
+    // // ground truth
+    // PCOUT << " --------------  -------------- -----------------\n";
+    // ierr = VecSet (p_true_w, 0);                                                       CHKERRQ (ierr);
+    // ierr = solver_interface->setInitialGuess (0.);
+    // PCOUT << "SOLVING INTERPOLATION WITH IC" << std::endl;
+    // ierr = solver_interface->solveInterpolation (c_0_true, p_true_w, tumor->phi_, n_misc); //interpolates c_0 o
+    // PCOUT << " --------------  INTERPOLATED P FOR IC -----------------\n";
+    // if (procid == 0) {
+    //     ierr = VecView (p_true_w, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+    // }
+    // PCOUT << " --------------  -------------- -----------------\n";
+
 
     double p_wL2, p_diff_wL2;
     ierr = VecPointwiseMult (temp, p_true_w, weights);                  CHKERRQ (ierr);

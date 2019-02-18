@@ -361,7 +361,7 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, ctx.get(), &A);      CHKERRQ (ierr);
     ierr = MatShellSetOperation (A, MATOP_MULT, (void (*) (void))phiMult);                                              CHKERRQ (ierr);
     ierr = KSPSetOperators (ksp, A, A);                                 CHKERRQ (ierr);
-    ierr = KSPSetTolerances (ksp, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 5000);                                            CHKERRQ (ierr);   //Max iter is 100
+    ierr = KSPSetTolerances (ksp, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 500);                                            CHKERRQ (ierr);   //Max iter is 100
     ierr = KSPSetType (ksp, KSPCG);                                     CHKERRQ (ierr);
     ierr = KSPSetOptionsPrefix (ksp, "phieq_");                         CHKERRQ (ierr);
     ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE);                CHKERRQ (ierr);  // To compute the condition number
