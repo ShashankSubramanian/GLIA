@@ -1073,8 +1073,10 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
         // if (flg == 1) break;
     }
 
-    std::ofstream ofile ("trueP.dat");
-    //write true p into text file
+    std::stringstream sstm;
+    sstm << n_misc->writepath_ .str().c_str() << "trueP.dat";
+    std::ofstream ofile;
+    ofile.open (sstm.str().c_str());
     if (procid == 0) { 
         for (int i = 0; i < n_misc->np_; i++)
             ofile << p_true_ptr[i] << std::endl;
@@ -1142,12 +1144,6 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     PCOUT << "P distance error: " << dist_err_c0 << std::endl;
     PCOUT << "P l1 norm: " << l1_err << std::endl;
-
-    ierr = VecSet (p_diff_w, 0.);   CHKERRQ (ierr);
-    ierr = VecCopy (p_true_w, p_diff_w);    CHKERRQ (ierr);
-    ierr = VecAXPY (p_diff_w, -1.0, p_rec); CHKERRQ (ierr);
-
-
 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
