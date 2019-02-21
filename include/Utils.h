@@ -324,6 +324,7 @@ class NMisc {
                 user_cms_.push_back (user_cm_[0]);
                 user_cms_.push_back (user_cm_[1]);
                 user_cms_.push_back (user_cm_[2]);
+                user_cms_.push_back (1.); // this is the default scaling
             }
 
             memcpy (n_, n, 3 * sizeof(int));

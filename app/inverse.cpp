@@ -540,7 +540,7 @@ int main (int argc, char** argv) {
 
 
     std::stringstream sstm;
-    sstm << n_misc->writepath_ .str().c_str() << "reconp_" << rho_inv << ".data";
+    sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
     std::ofstream ofile (sstm.str().c_str());
     //write reconstructed p into text file
     if (procid == 0) { 
@@ -1053,7 +1053,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     int flg = 0;
     for (int i = 0; i < n_misc->np_; i++) {
         dist.clear();
-        for (int j = 0; j < n_misc->user_cms_.size(); j++) {
+        for (int j = 0; j < n_misc->user_cms_.size() / 4; j++) {
             d = myDistance (&n_misc->user_cms_[4 * j], &tumor->phi_->centers_[3 * i]);
             dist.push_back (d);  // find the distance btw current gaussian and all the ground truth activations
                                  // note: the ground truth has an additional activation, hence the 4 * j
@@ -1063,7 +1063,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
             if (d < 1E-5) {
                 // this is one of the ground truth gaussians
                 p_true_ptr[i] = n_misc->user_cms_[4 * j + 3];
-                flg = 1;
+                // flg = 1;
             }
         }
         w_ptr[i] = *(std::min_element (dist.begin(), dist.end()));      // sets the weight to the distance to the nearest ground truth activation
@@ -1072,6 +1072,14 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
         // snafu for 64 
         // if (flg == 1) break;
     }
+
+    std::ofstream ofile ("trueP.dat");
+    //write true p into text file
+    if (procid == 0) { 
+        for (int i = 0; i < n_misc->np_; i++)
+            ofile << p_true_ptr[i] << std::endl;
+    }
+    ofile.close ();
 
     ierr = VecRestoreArray (weights, &w_ptr);                               CHKERRQ (ierr);
     ierr = VecRestoreArray (p_true_w, &p_true_ptr);                         CHKERRQ (ierr);
@@ -1097,11 +1105,15 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     p_wL2 = std::sqrt (p_wL2);
     ierr = VecCopy (p_true_w, p_diff_w);                                CHKERRQ (ierr);
     ierr = VecAXPY (p_diff_w, -1.0, p_rec);                             CHKERRQ (ierr);  // diff in p
+    double l1_norm_diff, l1_norm_p;
+    ierr = VecNorm (p_diff_w, NORM_1, &l1_norm_diff);   CHKERRQ (ierr);
+    ierr = VecNorm (p_true_w, NORM_1, &l1_norm_p);      CHKERRQ (ierr);
     ierr = VecPointwiseMult (temp, p_diff_w, weights);                  CHKERRQ (ierr);
     ierr = VecDot (p_diff_w, temp, &p_diff_wL2);                        CHKERRQ (ierr); 
     p_diff_wL2 = std::sqrt (p_diff_wL2);
 
     double dist_err_c0 = p_diff_wL2 / p_wL2;
+    double l1_err = l1_norm_diff / l1_norm_p;
 
     ierr = VecDestroy (&weights);        CHKERRQ (ierr);
     ierr = VecDestroy (&p_true_w);       CHKERRQ (ierr);
@@ -1128,7 +1140,14 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     //     r3 = (n_misc->nr_ > 2) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 2] : 0;
     // }
 
-    PCOUT << "C0 distance error: " << dist_err_c0 << std::endl;
+    PCOUT << "P distance error: " << dist_err_c0 << std::endl;
+    PCOUT << "P l1 norm: " << l1_err << std::endl;
+
+    ierr = VecSet (p_diff_w, 0.);   CHKERRQ (ierr);
+    ierr = VecCopy (p_true_w, p_diff_w);    CHKERRQ (ierr);
+    ierr = VecAXPY (p_diff_w, -1.0, p_rec); CHKERRQ (ierr);
+
+
 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
