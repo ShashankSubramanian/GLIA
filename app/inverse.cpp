@@ -382,26 +382,30 @@ int main (int argc, char** argv) {
     ierr = VecDuplicate (data, &data_nonoise);
     ierr = VecCopy (data, data_nonoise);
 
-    // add low freq model noise
-    ierr = applyLowFreqNoise (data, n_misc);
-    Vec temp;
-    double noise_err_norm, rel_noise_err_norm;
-    ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
-    ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
-    ierr = VecCopy (data_nonoise, temp);      CHKERRQ (ierr);
-    ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
-    ierr = VecNorm (temp, NORM_2, &noise_err_norm);     CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
-    ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
-    rel_noise_err_norm = noise_err_norm / rel_noise_err_norm; 
-    PCOUT << "[--------------- Low frequency relative error = " << rel_noise_err_norm << " -------------------]" << std::endl;
+    if (syn_flag == 1) {
+        // add low freq model noise
+        ierr = applyLowFreqNoise (data, n_misc);
+        Vec temp;
+        double noise_err_norm, rel_noise_err_norm;
+        ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
+        ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
+        ierr = VecCopy (data_nonoise, temp);      CHKERRQ (ierr);
+        ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
+        ierr = VecNorm (temp, NORM_2, &noise_err_norm);     CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
+        ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
+        rel_noise_err_norm = noise_err_norm / rel_noise_err_norm; 
+        PCOUT << "[--------------- Low frequency relative error = " << rel_noise_err_norm << " -------------------]" << std::endl;
 
-    // if (n_misc->writeOutput_)
-    //     dataOut (data, n_misc, "dataNoise.nc");
+        // if (n_misc->writeOutput_)
+        //     dataOut (data, n_misc, "dataNoise.nc");
 
-    ierr = VecDestroy (&temp);          CHKERRQ (ierr);
+        ierr = VecDestroy (&temp);          CHKERRQ (ierr);
 
 
-    PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
+        PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
+    } else {
+        PCOUT << "Data read\n";
+    }
     PCOUT << "Inverse solver begin" << std::endl; 
 
     n_misc->rho_ = rho_inv;                                              

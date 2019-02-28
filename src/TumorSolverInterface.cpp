@@ -609,6 +609,21 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         d1g = d1;
     inv_solver_->setDataGradient (d1g);
 
+    // count the number of observed voxels
+    double *pixel_ptr;
+    int sum = 0;
+    ierr = VecGetArray (d1, &pixel_ptr);        CHKERRQ (ierr);
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        if (pixel_ptr[i] > n_misc_->obs_threshold_)
+            sum++;
+    }
+    ierr = VecRestoreArray (d1, &pixel_ptr);    CHKERRQ (ierr);
+    int global_sum;
+    MPI_Reduce (&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
+    PCOUT << "Number of observed voxels: " << global_sum << std::endl;
+
+
+
     // solve
     Vec g, g_ref;              // Holds the gradient and reference gradient
     Vec temp;                  // Temp vector 

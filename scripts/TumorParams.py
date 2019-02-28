@@ -55,8 +55,8 @@ def getTumorRunCmd(params):
 	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
 	model = 1
 	### Synthetic data parameters  -- Tumor is grown with these parameters
-	rho_data = 8
-	k_data = 0.025
+	rho_data = 12
+	k_data = 0.05
 	nt_data = 100
 	dt_data = 0.01
 
