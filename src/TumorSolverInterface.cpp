@@ -589,10 +589,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     n_misc_->beta_ = 0;
 
 
-    // set the observation operator filter : default filter
-    ierr = tumor_->obs_->setDefaultFilter (d1);
-    // apply observer on ground truth, store observed data in d
-    ierr = tumor_->obs_->apply (d1, d1);  
+    // // set the observation operator filter : default filter
+    // ierr = tumor_->obs_->setDefaultFilter (d1);
+    // // apply observer on ground truth, store observed data in d
+    // ierr = tumor_->obs_->apply (d1, d1);  
 
 
     // double *d_ptr;

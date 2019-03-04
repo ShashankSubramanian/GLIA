@@ -420,6 +420,13 @@ int main (int argc, char** argv) {
 
     if (!n_misc->bounding_box_) {
         // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+        // set the observation operator filter : default filter
+        ierr = tumor->obs_->setDefaultFilter (data);
+        // apply observer on ground truth, store observed data in d
+        ierr = tumor->obs_->apply (data, data);  
+
+        // observation operator is applied before gaussians are set.
+
         ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
         ierr = tumor->phi_->setValues (tumor->mat_prop_);
         //re-create p_rec
