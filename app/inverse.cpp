@@ -796,18 +796,18 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     ierr = weierstrassSmoother (data_ptr, data_ptr, n_misc, sigma_smooth);
     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
 
-    size_t pos;
-    std::ifstream ifile;
-    std::string c0_path (data_path);
-    pos = c0_path.find ("data.nc");
-    c0_path.replace (pos, 9, "c0True.nc");
-    ifile.open (c0_path);
+    // size_t pos;
+    // std::ifstream ifile;
+    // std::string c0_path (data_path);
+    // pos = c0_path.find ("data.nc");
+    // c0_path.replace (pos, 9, "c0True.nc");
+    // ifile.open (c0_path);
 
-    if (ifile) {
-        dataIn (c_0, n_misc, c0_path.c_str());
-    } else {
-        ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
-    }
+    // if (ifile) {
+    //     dataIn (c_0, n_misc, c0_path.c_str());
+    // } else {
+    ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
+    // }
     
     PetscFunctionReturn (0);
 }
