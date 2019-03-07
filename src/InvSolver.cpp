@@ -385,9 +385,41 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   x_ptr[0] = x_in_ptr[itctx_->n_misc_->np_];   // k1
   if (nk > 1) x_ptr[1] = x_in_ptr[itctx_->n_misc_->np_ + 1];  // k2
   if (nk > 2) x_ptr[2] = x_in_ptr[itctx_->n_misc_->np_ + 2];  // k3
-  x_ptr[nk] = x_in_ptr[itctx_->n_misc_->np_ + nk];  // rho
-  if (nr > 1) x_ptr[nk + 1] = x_in_ptr[itctx_->n_misc_->np_ + nk + 1];  // r2
-  if (nr > 2) x_ptr[nk + 2] = x_in_ptr[itctx_->n_misc_->np_ + nk + 2];  // r3
+
+
+  // Guess the reaction coefficient and use as IC.
+  std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate 
+                                                              // roughly where to start, else we could get stuck in 
+                                                              // a bad local minimum
+
+  double min_norm = 1E15, norm = 0.;
+  int idx = 0;
+  for (int i = 0; i < rho_guess.size(); i++) {
+    // update the tumor with this rho    
+    ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
+    ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_in);                   CHKERRQ (ierr);   // apply scaled p to IC
+    ierr = itctx_->derivative_operators_->pde_operators_->solveState (0);    // solve state with guess reaction and inverted diffusivity
+    ierr = itctx_->tumor_->obs_->apply (itctx_->derivative_operators_->temp_, itctx_->tumor_->c_t_);               CHKERRQ (ierr);
+
+    // mismatch between data and c
+    ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_);     CHKERRQ (ierr);    // Oc(1) - d
+    ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);   CHKERRQ (ierr);
+
+    if (norm < min_norm) {
+      min_norm = norm;
+      idx = i;
+    }
+  }
+
+  PCOUT << "Initial guess for reaction coefficient: " << rho_guess[idx] << std::endl;
+
+  // x_ptr[nk] = x_in_ptr[itctx_->n_misc_->np_ + nk];  // rho
+  // if (nr > 1) x_ptr[nk + 1] = x_in_ptr[itctx_->n_misc_->np_ + nk + 1];  // r2
+  // if (nr > 2) x_ptr[nk + 2] = x_in_ptr[itctx_->n_misc_->np_ + nk + 2];  // r3
+
+  x_ptr[nk] = rho_guess[idx];  // rho
+  if (nr > 1) x_ptr[nk + 1] = 0;  // r2
+  if (nr > 2) x_ptr[nk + 2] = 0;  // r3
 
   ierr = VecRestoreArray (x_in, &x_in_ptr);                                               CHKERRQ (ierr);
   ierr = VecRestoreArray (x, &x_ptr);                                                     CHKERRQ (ierr);
