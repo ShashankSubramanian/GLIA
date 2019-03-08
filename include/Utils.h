@@ -276,7 +276,7 @@ class NMisc {
         , smoothing_factor_ (1)                 // Smoothing factor
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
-
+        , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
                                 {
 
 
@@ -355,6 +355,7 @@ class NMisc {
         }
 
         double ic_max_;
+        int predict_flag_;
 
         int testcase_;
         int n_[3];

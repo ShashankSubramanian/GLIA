@@ -107,6 +107,8 @@ int main (int argc, char** argv) {
 
     double low_freq_noise_scale = -1.0;
 
+    int predict_flag = 0;
+
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -151,6 +153,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-krylov_maxit", "Krylov max iterations", "", krylov_maxit, &krylov_maxit, NULL);
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
+    PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
 
     PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
@@ -334,6 +337,7 @@ int main (int argc, char** argv) {
         n_misc->low_freq_noise_scale_ = low_freq_noise_scale;
     }
 
+    n_misc->predict_flag_ = predict_flag;
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
     n_misc->writepath_ << results_dir;  
@@ -549,7 +553,6 @@ int main (int argc, char** argv) {
 
     ierr = computeSegmentation(tumor, n_misc);      // Writes segmentation with c0 and c1 
 
-
     std::stringstream sstm;
     sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
     std::ofstream ofile (sstm.str().c_str());
@@ -563,6 +566,29 @@ int main (int argc, char** argv) {
         ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
     }
     ofile.close ();
+
+    if (n_misc->predict_flag_) {
+        PCOUT << "Predicting future tumor growth..." << std::endl;
+        // predict tumor growth using inverted parameter values
+        // set dt and nt to synthetic values to ensure best accuracy
+        n_misc->dt_ = dt_data;
+        n_misc->nt_ = (int) (1.5 / dt_data);
+
+        // reset time history 
+        ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
+        // apply IC to tumor c0
+        ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
+        // reaction and diffusion coefficient already set correctly at the end of the 
+        // optimizer
+        ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in 
+                                                                     // pde_operators->c_
+        // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
+        dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
+        dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
+        dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
+
+        PCOUT << "Prediction complete for t = 1.2 and t = 1.5\n";
+    }
 
     // std::stringstream ss_out;
     // ss_out << n_misc->writepath_ .str().c_str() << "itpout_" << rho_inv << ".dat";

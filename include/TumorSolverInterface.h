@@ -90,6 +90,8 @@ class TumorSolverInterface {
 
 		std::shared_ptr<InvSolver> getInvSolver () {return inv_solver_;}
 
+		std::shared_ptr<PdeOperators> getPdeOperators () {return pde_operators_;}
+
 		PetscErrorCode solveInterpolation (Vec data, Vec p_rec, std::shared_ptr<Phi> phi, std::shared_ptr<NMisc> n_misc);
 
 		std::vector<double> getSolverOutParams () {

@@ -27,6 +27,7 @@ class PdeOperators {
 		virtual PetscErrorCode solveState (int linearized) = 0;
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) = 0;
+		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc) = 0;
 
 		virtual ~PdeOperators () {}
 
@@ -46,6 +47,7 @@ class PdeOperatorsRD : public PdeOperators {
 		virtual PetscErrorCode reaction (int linearized, int i);
 		virtual PetscErrorCode reactionAdjoint (int linearized, int i);
 		virtual PetscErrorCode solveAdjoint (int linearized);
+		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc);
 
 		/** @brief computes effect of varying/moving material properties, i.e.,
 		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt

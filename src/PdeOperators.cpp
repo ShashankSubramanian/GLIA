@@ -27,6 +27,43 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     }
 }
 
+PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    double dt = n_misc_->dt_;
+    int nt = n_misc->nt_;
+
+    nt_ = nt;
+
+    for (int i = 0; i < c_.size(); i++) {
+        ierr = VecDestroy (&c_[i]);
+        ierr = VecDestroy (&p_[i]);
+    }
+
+    c_.resize (nt + 1);                         //Time history of tumor
+    p_.resize (nt + 1);                         //Time history of adjoints
+
+    ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
+    ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
+    ierr = VecSetFromOptions (c_[0]);
+    ierr = VecCreate (PETSC_COMM_WORLD, &p_[0]);
+    ierr = VecSetSizes (p_[0], n_misc->n_local_, n_misc->n_global_);
+    ierr = VecSetFromOptions (p_[0]);
+
+    for (int i = 1; i < nt + 1; i++) {
+        ierr = VecDuplicate (c_[0], &c_[i]);
+        ierr = VecDuplicate (p_[0], &p_[i]);
+    }
+
+    for (int i = 0; i < nt + 1; i++) {
+        ierr = VecSet (c_[i], 0);
+        ierr = VecSet (p_[i], 0);
+    }
+
+    PetscFunctionReturn (0);
+}
+
 PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;

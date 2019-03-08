@@ -75,6 +75,8 @@ def getTumorRunCmd(params):
 	smooth_f = 1.5
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
 	interp_flag = 0
+	### Prediction flag -- Flag to predict tumor at a later time
+	predict_flag = 1
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
 	diffusivity_flag = 1
 	### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -207,6 +209,7 @@ def getTumorRunCmd(params):
 	" -k_gm_wm " + str(k_gm_wm) + \
 	" -r_gm_wm " + str(r_gm_wm) + \
 	" -low_freq_noise " + str(noise_scale) + \
+	" -prediction " + str(predict_flag) + \
 	" -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5"
 
 	return run_str, error_flag
