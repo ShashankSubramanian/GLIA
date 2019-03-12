@@ -39,11 +39,11 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 
     double alph = 1.0 / 2.0 * ctx->dt_;
 
+    ierr = VecPointwiseMult (ctx->temp_[0], ctx->velocity_[0], x);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_[1], x);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->velocity_[2], x);			CHKERRQ (ierr);
-    ierr = VecPointwiseMult (ctx->temp_[3], ctx->velocity_[3], x);			CHKERRQ (ierr);
 
-    accfft_divergence (y, ctx->temp_[1], ctx->temp_[2], ctx->temp_[3], ctx->n_misc_->plan_, t.data());
+    accfft_divergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], ctx->n_misc_->plan_, t.data());
 
     ierr = VecScale (y, alph);									CHKERRQ (ierr);
     ierr = VecAXPY (y, 1.0, x);									CHKERRQ (ierr);
@@ -66,18 +66,18 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::vector<Vec> velocity, 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     ctx->dt_ = dt;
+    ctx->velocity_[0] = velocity[0];
     ctx->velocity_[1] = velocity[1];
     ctx->velocity_[2] = velocity[2];
-    ctx->velocity_[3] = velocity[3];
 
     double alph = -1.0 / 2.0 * ctx->dt_;
 
-    //rhs for advection solve: b = scalar + dt/2 div(scalar v)
+    //rhs for advection solve: b = scalar - dt/2 div(scalar v)
+    ierr = VecPointwiseMult (ctx->temp_[0], velocity[0], scalar);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[1], velocity[1], scalar);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[2], velocity[2], scalar);			CHKERRQ (ierr);
-    ierr = VecPointwiseMult (ctx->temp_[3], velocity[3], scalar);			CHKERRQ (ierr);
 
-    accfft_divergence (rhs_, ctx->temp_[1], ctx->temp_[2], ctx->temp_[3], ctx->n_misc_->plan_, t.data());
+    accfft_divergence (rhs_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], ctx->n_misc_->plan_, t.data());
 
     ierr = VecScale (rhs_, alph);									CHKERRQ (ierr);
     ierr = VecAXPY (rhs_, 1.0, scalar);							    CHKERRQ (ierr);

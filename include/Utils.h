@@ -229,6 +229,7 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
+                       // Mass effect -- 4
         , dt_ (0.5)                            // Time step
         , nt_(1)                               // Total number of time steps
         , np_ (1)                              // Number of gaussians for bounding box

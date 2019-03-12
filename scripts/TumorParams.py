@@ -52,8 +52,8 @@ def getTumorRunCmd(params):
 
 	### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
 	reg_type = "L1c"
-	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
-	model = 1
+	### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
+	model = 4
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 12
 	k_data = 0.05
@@ -77,6 +77,8 @@ def getTumorRunCmd(params):
 	interp_flag = 0
 	### Prediction flag -- Flag to predict tumor at a later time
 	predict_flag = 1
+	### Forward flag -- Flag to run only forward solve
+	forward_flag = 1
 	### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
 	diffusivity_flag = 1
 	### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -210,6 +212,7 @@ def getTumorRunCmd(params):
 	" -r_gm_wm " + str(r_gm_wm) + \
 	" -low_freq_noise " + str(noise_scale) + \
 	" -prediction " + str(predict_flag) + \
+	" -forward " + str(forward_flag) + \
 	" -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5"
 
 	return run_str, error_flag

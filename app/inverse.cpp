@@ -101,6 +101,8 @@ int main (int argc, char** argv) {
     int syn_flag = -1;
     int model = -1;
 
+    int fwd_flag = 0;
+
     int flag_cosamp = 0;
 
     double sm = -1;
@@ -154,6 +156,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
+    PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
 
     PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
@@ -410,6 +413,13 @@ int main (int argc, char** argv) {
     } else {
         PCOUT << "Data read\n";
     }
+
+    if (fwd_flag) {
+        PCOUT << "Forward solve completed: exiting...\n";
+        MPI_Barrier (c_comm);
+        ierr = PetscFinalize ();
+        exit(1);
+    }
     PCOUT << "Inverse solver begin" << std::endl; 
 
     n_misc->rho_ = rho_inv;                                              
@@ -475,6 +485,8 @@ int main (int argc, char** argv) {
         PCOUT << " --------------  -------------- -----------------\n";
     }
     if (interp_flag) {
+        MPI_Barrier (c_comm);
+        ierr = PetscFinalize ();
         exit(1);
     }
     bool flag_diff = false;

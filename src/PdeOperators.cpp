@@ -27,6 +27,7 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     }
 }
 
+
 PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -314,6 +315,67 @@ PdeOperatorsRD::~PdeOperatorsRD () {
         ierr = VecDestroy (&c_[i]);
         ierr = VecDestroy (&p_[i]);
     }
+}
+
+PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-solve-state");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    double dt = n_misc_->dt_;
+    int nt = n_misc_->nt_;
+
+    n_misc_->statistics_.nb_state_solves++;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    //enforce positivity : hack
+    if (!linearized) {
+        #ifdef POSITIVITY
+            ierr = enforcePositivity (tumor_->c_0_, n_misc_);
+        #endif
+    }
+
+    ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
+    if (linearized == 0) {
+        ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
+    }
+
+    // TARFU 
+    double vel = 1.;
+    ierr = VecSet (tumor_->velocity_[0], vel); CHKERRQ (ierr);
+    ierr = VecSet (tumor_->velocity_[1], vel); CHKERRQ (ierr);
+
+    for (int i = 0; i < nt; i++) {
+        // diff_solver_->solve (tumor_->c_t_, dt / 2.0);
+        // ierr = reaction (linearized, i);
+        // diff_solver_->solve (tumor_->c_t_, dt / 2.0);
+
+        ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);
+
+        //enforce positivity : hack
+        if (!linearized) {
+            #ifdef POSITIVITY
+                ierr = enforcePositivity (tumor_->c_t_, n_misc_);
+            #endif
+        }
+
+        //Copy current conc to use for the adjoint equation
+        if (linearized == 0) {
+            ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
+        }
+    }
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (0);
 }
 
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {
