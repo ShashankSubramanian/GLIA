@@ -124,7 +124,8 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
 
 	std::stringstream str;
-	str << n_misc->readpath_.str().c_str() << fname;
+	// str << n_misc->readpath_.str().c_str() << fname;
+	str << fname;
 	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
 	return;
 }
@@ -386,10 +387,10 @@ PetscErrorCode geometricCoupling(
   // m = m0(1-c(1))
 	for (PetscInt j = 0; j < nmisc->n_local_; j++) {
 		sum = 0;
-    if(m0_gm   != nullptr) {ptr_m1_gm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum += ptr_gm[j];}
-		if(m0_csf  != nullptr) {ptr_m1_csf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum += ptr_csf[j];}
-		if(m0_glm  != nullptr) {ptr_m1_glm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum += ptr_glm[j];}
-		if(m0_bg   != nullptr) {ptr_m1_bg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum += ptr_bg[j];}
+    if(m0_gm   != nullptr) {ptr_m1_gm[j]  = ptr_gm[j]  * (1 - ptr_tu[j]); sum += ptr_m1_gm[j];}
+		if(m0_csf  != nullptr) {ptr_m1_csf[j] = ptr_csf[j] * (1 - ptr_tu[j]); sum += ptr_m1_csf[j];}
+		if(m0_glm  != nullptr) {ptr_m1_glm[j] = ptr_glm[j] * (1 - ptr_tu[j]); sum += ptr_m1_glm[j];}
+		if(m0_bg   != nullptr) {ptr_m1_bg[j]  = ptr_bg[j]  * (1 - ptr_tu[j]); sum += ptr_m1_bg[j];}
 		if(m0_wm   != nullptr) {ptr_m1_wm[j]  = 1. - (sum + ptr_tu[j]);}
 	}
 	if(m0_wm  != nullptr) {ierr = VecRestoreArray(m0_wm,  &ptr_wm);    CHKERRQ(ierr);}
@@ -427,4 +428,37 @@ PetscErrorCode vecSign (Vec x) {
 	PetscFunctionReturn (0);
 }
 
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
 
+	nnz = 0;
+
+	std::priority_queue<std::pair<PetscReal, int>> q;
+	double *x_ptr;
+	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
+	for (int i = 0; i < sz; i++) {
+		q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
+	}
+
+	double tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
+						// are (almost)zero to the support 
+	for (int i = 0; i < sparsity_level; i++) {
+		if (std::abs(q.top().first) > tol) {
+			nnz++;  // keeps track of how many non-zero (important) components of the signal there are
+			support.push_back (q.top().second);
+		} else {  // if top of the queue is not greater than tol, we are done since none of the elements
+				  // below it will every be greater than tol
+			break;
+		}
+		q.pop ();
+	}
+
+	ierr = VecRestoreArray (x, &x_ptr); 	CHKERRQ (ierr);
+
+	PetscFunctionReturn (0);
+}
+
+double myDistance (double *c1, double *c2) {
+    return std::sqrt((c1[0] - c2[0]) * (c1[0] - c2[0]) + (c1[1] - c2[1]) * (c1[1] - c2[1]) + (c1[2] - c2[2]) * (c1[2] - c2[2]));
+}

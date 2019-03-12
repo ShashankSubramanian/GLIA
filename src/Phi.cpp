@@ -12,7 +12,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 0; i < np_; i++) {
+    for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
@@ -28,7 +28,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     sigma_ = sigma;                   n_misc_->phi_sigma_ = sigma_;
     spacing_factor_ = spacing_factor; n_misc_->phi_spacing_factor_ = spacing_factor_;
     np_ = np;                         n_misc_->np_ = np_;
-    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " --------" << std::endl;
+    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " and sigma: " << sigma_ << " --------" << std::endl;
     centers_.clear ();
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
@@ -40,7 +40,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 0; i < np_; i++) {
+    for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
@@ -59,17 +59,14 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
-
-
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
 
     double *phi_ptr;
     Vec all_phis;
     ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
     ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
+
+    double phi_max;
 
     for (int i = 0; i < np_; i++) {
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
@@ -77,11 +74,15 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
         ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
-        if (n_misc_->testcase_ == BRAIN) {  //BRAIN
+        if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
             ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
             ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         }
+
+        // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+        ierr = VecMax (phi_vec_[i], NULL, &phi_max);                            CHKERRQ (ierr);
+        ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
 
         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
     }
@@ -109,6 +110,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
     MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
     int h = round (std::pow (np_, 1.0 / 3.0));
     double space[3];
+    double mu[3];
 
     #ifdef VISUALIZE_PHI
      std::stringstream phivis;
@@ -124,6 +126,18 @@ PetscErrorCode Phi::phiMesh (double *center) {
         center[0] = cm_[0];
         center[1] = cm_[1];
         center[2] = cm_[2];
+        #ifdef VISUALIZE_PHI
+        phivis << "];"<<std::endl;
+        std::fstream phifile;
+        static int ct = 0;
+        if(procid == 0) {
+          std::stringstream ssct; ssct<<ct;
+          phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+          phifile << phivis.str()<<std::endl;
+          phifile.close();
+          ct++;
+        }
+        #endif
         PetscFunctionReturn(0);
     }
     if (np_ % 2 == 1) {
@@ -145,10 +159,13 @@ PetscErrorCode Phi::phiMesh (double *center) {
         for (int k = -(h) / 2; k <= (h) / 2; k++)
             for (int j = -(h) / 2; j <= (h) / 2; j++)
                 for (int i = -(h) / 2; i <= (h) / 2; i++) {
+                    mu[0] = ((i < 0) ? -1 : ((i > 0) ? 1 : 0)) * 0.5;
+                    mu[1] = ((j < 0) ? -1 : ((j > 0) ? 1 : 0)) * 0.5;
+                    mu[2] = ((k < 0) ? -1 : ((k > 0) ? 1 : 0)) * 0.5;
                     if ((i != 0) && (j != 0) && (k != 0)) {
-                        center[ptr + 0] = i * space[0] + cm_[0];
-                        center[ptr + 1] = j * space[1] + cm_[1];
-                        center[ptr + 2] = k * space[2] + cm_[2];
+                        center[ptr + 0] = (i - mu[0]) * space[0] + cm_[0];
+                        center[ptr + 1] = (j - mu[1]) * space[1] + cm_[1];
+                        center[ptr + 2] = (k - mu[2]) * space[2] + cm_[2];
                         #ifdef VISUALIZE_PHI
                          phivis << " " << center[ptr + 0] <<", " << center[ptr + 1] << ", "  << center[ptr + 2] <<std::endl;
                         #endif
@@ -208,7 +225,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
 
         double *pg_ptr;
         Vec dummy, pg;
-        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);                                          
+        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);
         ierr = VecCopy (p, pg);         CHKERRQ (ierr);
         ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
         ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
@@ -220,6 +237,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
         ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
         ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
+        ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
 
         self_exec_time += MPI_Wtime();
         accumulateTimers (t, t, self_exec_time);
@@ -436,8 +454,8 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     int gaussian_interior = 0;
     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
     double h_64 = twopi / 64;
-    // sigma_ = 2.0 * hx;
-    sigma_ = h_64;
+    double h_256 = twopi / 256;
+    sigma_ = n_misc_->phi_sigma_data_driven_;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
 
     double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     spacing_factor_ = 2.0;
@@ -453,7 +471,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
-    PCOUT << " ----- Phi parameters: radius: " << sigma_ / hx << " | center spacing: " << space << std::endl;
+    PCOUT << " ----- Phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_ << std::endl;
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
@@ -689,6 +707,27 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     centers_.clear ();
     centers_.resize (3 * np_);
     centers_ = center_global;
+
+    #ifdef VISUALIZE_PHI
+        std::stringstream phivis;
+        phivis <<" sigma = "<<sigma_<<", spacing = "<<spacing_factor_ * sigma_<<std::endl;
+        phivis <<" centers = ["<<std::endl;
+        for (int ptr = 0; ptr < 3 * np_; ptr += 3) {
+            phivis << " " << centers_[ptr + 0] <<", " << centers_[ptr + 1] << ", "  << centers_[ptr + 2] << std::endl;
+        }
+        phivis << "];"<<std::endl;
+        std::fstream phifile;
+        static int ct = 0;
+        if(procid == 0) {
+            std::stringstream ssct; ssct<<ct;
+            phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+            phifile << phivis.str()<<std::endl;
+            phifile.close();
+            ct++;
+        }
+    #endif
+
+
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
         ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
@@ -699,7 +738,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 0; i < np_; i++) {
+    for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
@@ -710,6 +749,30 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     PetscFunctionReturn (0);
 }
 
+void Phi::modifyCenters (std::vector<int> support_idx) {
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    centers_temp_ = centers_;
+    centers_.clear ();
+
+    int counter = 0;
+    int idx;
+    for (int i = 0; i < support_idx.size(); i++) {
+        idx = support_idx[i];       // Get the required center idx
+        counter = 3 * idx;      
+        centers_.push_back (centers_temp_[counter]);
+        centers_.push_back (centers_temp_[counter + 1]);
+        centers_.push_back (centers_temp_[counter + 2]);
+    }
+
+    // resize np
+    np_ = support_idx.size();
+    PCOUT << "Size of restricted subspace: " << np_ << std::endl;
+
+}
+
 
 
 Phi::~Phi () {
@@ -717,4 +780,5 @@ Phi::~Phi () {
     for (int i = 0; i < np_; i++) {
         ierr = VecDestroy (&phi_vec_[i]);
     }
+    phi_vec_.clear();
 }

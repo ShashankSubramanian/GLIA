@@ -66,7 +66,8 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     if (npchanged) {
       // re-create p vectors
       if (p_ != nullptr) {ierr = VecDestroy (&p_);                  CHKERRQ (ierr);}
-      if (p_ != nullptr) {ierr = VecDestroy (&p_true_);             CHKERRQ (ierr);}
+      if (p_true_ != nullptr) {ierr = VecDestroy (&p_true_);        CHKERRQ (ierr);}
+      if (weights_ != nullptr) {ierr = VecDestroy (&weights_);      CHKERRQ (ierr);}
       ierr = VecDuplicate (p, &p_);                                 CHKERRQ (ierr);
       ierr = VecDuplicate (p, &p_true_);                            CHKERRQ (ierr);
       ierr = VecDuplicate (p, &weights_);                           CHKERRQ (ierr);
@@ -89,16 +90,69 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
 PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    if (n_misc->np_ == 1) {
-        ierr = VecSet (p_true_, 1.0);                                 CHKERRQ (ierr);
-        PetscFunctionReturn (0);
-    }
-    PetscScalar val[2] = {.9, .2}; 
+
+    PetscScalar val;
+
+    // if (n_misc->smoothing_factor_ == 1) {
+    //     val = 1.38;
+    // } else if (n_misc->smoothing_factor_ == 1.5) {
+    //     val = 1.95;
+    // } else if (n_misc->smoothing_factor_ == 2) {
+    //     val = 2.8;
+    // } else {
+    //     val = 1.;
+    // }
+
+    val = 1.;
+    double *p_ptr;
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);
-    PetscInt idx[2] = {center-1, center};
-    ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
-    ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
-    ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
+    ierr = VecSet (p_true_, 0);                                     CHKERRQ (ierr);
+    ierr = VecGetArray (p_true_, &p_ptr);                           CHKERRQ (ierr);
+    if (n_misc->np_ == 1) {
+        p_ptr[0] = val;
+    } else {
+        p_ptr[center] = val;
+    }
+
+    ierr = VecRestoreArray (p_true_, &p_ptr);                       CHKERRQ (ierr);
+
+
+    // if (n_misc->np_ == 1) {
+    //     ierr = VecSet (p_true_, val);                                 CHKERRQ (ierr);
+    //     PetscFunctionReturn (0);
+    // }
+    // // PetscScalar val[2] = {.9, .2}; 
+    // // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    // // PetscInt idx[2] = {center-1, center};
+    // // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
+    // // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
+    // // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
+    // // PetscFunctionReturn (0);
+    
+    // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    // PetscInt idx = center;
+    // ierr = VecSetValues(p_true_, 1, &idx, &val, INSERT_VALUES);         CHKERRQ(ierr);
+    // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
+    // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    double *p_ptr;
+    PetscInt center = (int) std::floor(n_misc->np_ / 2.);
+    ierr = VecSet (p_true_, 0);                                     CHKERRQ (ierr);
+    ierr = VecGetArray (p_true_, &p_ptr);                           CHKERRQ (ierr);
+    if (n_misc->np_ == 1) {
+        p_ptr[0] = val;
+    } else {
+        p_ptr[center] = val;
+    }
+
+    ierr = VecRestoreArray (p_true_, &p_ptr);                       CHKERRQ (ierr);
+
     PetscFunctionReturn (0);
 }
 
@@ -120,8 +174,9 @@ Tumor::~Tumor () {
     ierr = VecDestroy (&p_);
     ierr = VecDestroy (&p_true_);
 
-    for (int i = 0; i < 11; i++) {
+    for (int i = 0; i < 12; i++) {
         ierr = VecDestroy (&work_[i]);
     }
     delete[] work_;
+    ierr = VecDestroy (&weights_);
 }

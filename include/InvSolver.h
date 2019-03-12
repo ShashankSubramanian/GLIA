@@ -38,6 +38,7 @@ struct CtxInv {
     /* optimization state */
     double jvalold;                 // old value of objective function (previous newton iteration)
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
+    Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
     int verbosity;                  // controls verbosity of inverse solver
     /* additional data */
@@ -57,6 +58,7 @@ struct CtxInv {
         jvalold = 0;
         weights = nullptr;
         c0old = nullptr;
+        x_old = nullptr;
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
         flag_sparse = false;
@@ -69,6 +71,11 @@ struct CtxInv {
             VecDestroy (&weights);
             weights = nullptr;
         }
+        if (x_old != nullptr) {
+            VecDestroy (&x_old);
+            x_old = nullptr;
+        }
+            
         if (c0old != nullptr) {
             VecDestroy (&c0old);
             c0old = nullptr;
@@ -108,6 +115,24 @@ class InvSolver {
         std::shared_ptr<CtxInv> getInverseSolverContext() {return itctx_;}
         bool isInitialized () {return initialized_;}
         Vec getPrec () {return xrec_;}
+
+        PetscErrorCode getGradient (Vec x, Vec dJ) {
+            PetscFunctionBegin; PetscErrorCode ierr = 0;
+            ierr = itctx_->derivative_operators_->evaluateGradient (dJ, x, data_);
+            PetscFunctionReturn(0);
+        }
+        PetscErrorCode getObjective (Vec x, PetscReal *J) {
+            PetscFunctionBegin; PetscErrorCode ierr = 0;
+            ierr = itctx_->derivative_operators_->evaluateObjective (J, x, data_);
+            PetscFunctionReturn(0);
+        }
+
+        std::vector<double> getInvOutParams () {
+            return out_params_;
+        }
+
+        PetscErrorCode solveForParameters (Vec x);
+
         ~InvSolver ();
 
     private:
@@ -128,22 +153,28 @@ class InvSolver {
         std::shared_ptr<OptimizerSettings> optsettings_;
         std::shared_ptr<OptimizerFeedback> optfeedback_;
         std::shared_ptr<CtxInv> itctx_;
+
+        std::vector<double> out_params_;
 };
 
 // ============================= non-class methods used for TAO ============================
 PetscErrorCode evaluateObjectiveFunction (Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient (Tao, Vec, Vec, void*);
 PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao, Vec, PetscReal *, Vec, void *);
+PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode hessianMatVec (Mat, Vec, Vec);
 PetscErrorCode constApxHessianMatVec (Mat, Vec, Vec);
 PetscErrorCode matfreeHessian (Tao, Vec, Mat, Mat, void*);
 PetscErrorCode preconditionerMatVec (PC, Vec, Vec);
 PetscErrorCode applyPreconditioner (void*, Vec, Vec);
 PetscErrorCode optimizationMonitor (Tao tao, void *ptr);
+PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr);
+PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr);
 PetscErrorCode hessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
 PetscErrorCode constHessianKSPMonitor (KSP ksp,PetscInt n,PetscReal rnorm, void *dummy);
 PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr);
 PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr);
+PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);

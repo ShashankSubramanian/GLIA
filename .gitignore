@@ -10,3 +10,4 @@ brain_data/
 build
 run
 *.dat
+/scripts/*.pyc

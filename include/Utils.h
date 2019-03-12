@@ -21,6 +21,7 @@
 #include <complex>
 #include <cmath>
 #include <vector>
+#include <queue>
 #include <accfft_utils.h>
 #include <assert.h>
 #include "EventTimings.hpp"
@@ -29,7 +30,7 @@
 
 
 enum {QDFS = 0, SLFS = 1};
-enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0};
+enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 
@@ -42,6 +43,7 @@ struct OptimizerSettings {
     double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
     double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
+    int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
     int    newton_minit;         /// @brief minimum number of newton steps
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
@@ -55,19 +57,20 @@ struct OptimizerSettings {
 
     OptimizerSettings ()
     :
-    beta (1E-3),
-    opttolgrad (1E-3),
+    beta (0E-3),
+    opttolgrad (1E-5),
     ftol (1E-5),
     ls_minstep (1E-9),
     gtolbound (0.8),
-    grtol (1E-12),
-    gatol (1E-6),
-    newton_maxit (100),
+    grtol (1E-5),
+    gatol (1E-8),
+    newton_maxit (30),
+    gist_maxit (5),
     krylov_maxit (30),
     newton_minit (1),
     iterbound (200),
     fseqtype (SLFS),
-    newtonsolver (GAUSSNEWTON),
+    newtonsolver (QUASINEWTON),
     regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
@@ -128,7 +131,9 @@ struct TumorSettings {
     std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
     double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     double phi_sigma;               /// @brief standard deviation of Gaussians
+    double phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
     double gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
+    double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
     bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
 
@@ -154,7 +159,9 @@ struct TumorSettings {
     phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
     phi_spacing_factor (1.5),
     phi_sigma (PETSC_PI/10),
+    phi_sigma_data_driven(2*PETSC_PI/256),
     gaussian_volume_fraction(0),
+    target_sparsity(0.99),
     phi_selection_mode_bbox(1),
     diffusivity_inversion(false)
     {}
@@ -222,51 +229,102 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
-        , dt_ (0.01)                            // Time step
-        , nt_(16)                               // Total number of time steps
-        , np_ (27)                              // Number of gaussians for bounding box
-        , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
-        , k_ (1E-1)                              // Isotropic diffusion coefficient
+        , dt_ (0.5)                            // Time step
+        , nt_(1)                               // Total number of time steps
+        , np_ (1)                              // Number of gaussians for bounding box
+        , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
+        , nr_ (1)                               // number of rho_i that we like to invert for (1-3)
+        , k_ (0E-1)                              // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
-        , rho_ (15)                             // Reaction coefficient
+        , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
         , p_scale_true_ (1.0)                   // Scaling factor for synthetic data generation
         , noise_scale_(0.0)                     // Noise scale
-        , beta_ (1e-3)                          // Regularization parameter
+        , low_freq_noise_scale_ (0.25)          // Low freq noise scale
+        , beta_ (0e-3)                          // Regularization parameter
         , lambda_ (1e5)                         // Regularization parameter for L1
         , lambda_continuation_ (true)           // bool for parameter continuation
+        , target_sparsity_ (0.99)               // target sparsity for L1 continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
         , verbosity_ (1)                        // Print flag for optimization routines
-        , k_gm_wm_ratio_ (1.0 / 5.0)            // gm to wm diffusion coeff ratio
+        , k_gm_wm_ratio_ (0.0 / 1.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (1.0)                  // gm to wm reaction coeff ratio
-        , r_glm_wm_ratio_ (1.0)                 // glm to wm diffusion coeff ratio
-        , phi_sigma_ (0.1)        // Gaussian standard deviation for bounding box
+        , r_gm_wm_ratio_ (0.0 / 5.0)                  // gm to wm reaction coeff ratio
+        , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
+        , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
+        , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
-        , obs_threshold_ (-1.0)                 // Observation threshold
+        , obs_threshold_ (0.0)                 // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
-        , data_threshold_ (0.1)                 // Data threshold to set custom gaussians
-        , gaussian_vol_frac_ (0.99)              // Volume fraction of gaussians to set custom basis functions
-        , bounding_box_ (1)                     // Flag to set bounding box for gaussians
+        , data_threshold_ (0.05)                 // Data threshold to set custom gaussians
+        , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
+        , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
         , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+        , reaction_inversion_ (false)           // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
+        , flag_reaction_inv_ (false)            // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
+        , newton_solver_ (QUASINEWTON)           // Newton solver type
+        , newton_maxit_ (30)                    // Newton max itr
+        , gist_maxit_ (50)                      // GIST max itr
+        , krylov_maxit_ (30)                    // Krylov max itr
+        , sparsity_level_ (1)                   // Level of sparsity for L1 solves
+        , smoothing_factor_ (1)                 // Smoothing factor
+        , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
+        , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
+        , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
                                 {
 
+
             time_horizon_ = nt_ * dt_;
-            if (testcase_ == BRAIN) {
-                user_cm_[0] = 4.0;
-                user_cm_[1] = 2.53;
-                user_cm_[2] = 2.57;
+            if (testcase_ == BRAIN || testcase_ == BRAINFARMF || testcase_ == BRAINNEARMF) {
+                // user_cm_[0] = 4.0;
+                // user_cm_[1] = 2.53;
+                // user_cm_[2] = 2.57;
+
+                // tumor is near the top edge -- more wm tracts visible 
+                // user_cm_[0] = 2 * M_PI / 128 * 68;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 88;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+
+                // tumor is top middle 
+                // user_cm_[0] = 2 * M_PI / 128 * 80;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 64;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X 
+
+                // tc1 and 2
+                user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+
+                // tc2
+                // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 84;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 80;//52  //X 
+
+                // user_cm_[0] = 2 * M_PI / 64 * 32;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 64 * 24;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X 
+
+                user_cms_.push_back (user_cm_[0]);
+                user_cms_.push_back (user_cm_[1]);
+                user_cms_.push_back (user_cm_[2]);
+                user_cms_.push_back (1.); // this is the default scaling
+
             }
             else {
                 user_cm_[0] = M_PI;
                 user_cm_[1] = M_PI;
                 user_cm_[2] = M_PI;
+
+                user_cms_.push_back (user_cm_[0]);
+                user_cms_.push_back (user_cm_[1]);
+                user_cms_.push_back (user_cm_[2]);
+                user_cms_.push_back (1.); // this is the default scaling
             }
 
             memcpy (n_, n, 3 * sizeof(int));
@@ -286,6 +344,8 @@ class NMisc {
             h_[1] = M_PI * 2 / n[1];
             h_[2] = M_PI * 2 / n[2];
 
+            lebesgue_measure_ = h_[0] * h_[1] * h_[2];
+
             for(int i=0; i < 7; ++i)
                 timers_[i] = 0;
 
@@ -293,6 +353,9 @@ class NMisc {
             readpath_ << "./brain_data/" << n_[0] <<"/";
             writepath_ << "./results/";
         }
+
+        double ic_max_;
+        int predict_flag_;
 
         int testcase_;
         int n_[3];
@@ -302,9 +365,11 @@ class NMisc {
         int ostart_[3];
         int c_dims_[2];
         double h_[3];
+        double lebesgue_measure_;
 
         int np_;
         int nk_;
+        int nr_;
         double time_horizon_;
         double dt_;
         int nt_;
@@ -329,12 +394,14 @@ class NMisc {
         double p_scale_;
         double p_scale_true_;
         double noise_scale_;
+        double low_freq_noise_scale_;
         double beta_;
         double lambda_;
 
         bool beta_changed_;
 
         double phi_sigma_;
+        double phi_sigma_data_driven_;
         double phi_spacing_factor_;
         double data_threshold_;
         double gaussian_vol_frac_;
@@ -344,6 +411,14 @@ class NMisc {
         bool nk_fixed_;
         bool diffusivity_inversion_;
         bool lambda_continuation_;
+        bool reaction_inversion_;
+        bool flag_reaction_inv_;
+
+        double target_sparsity_;
+
+        int max_p_location_;
+
+        int sparsity_level_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;
@@ -358,6 +433,13 @@ class NMisc {
         std::stringstream readpath_;
         std::stringstream writepath_;
 
+        int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
+
+        std::vector<int> support_;      // support of cs guess
+
+        std::vector<double> user_cms_;  // stores the cms for synthetic user data
+
+        double smoothing_factor_;
 };
 
 /**
@@ -376,6 +458,7 @@ struct LSCtx {
 
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
 
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))
 PetscErrorCode geometricCoupling(
@@ -425,5 +508,7 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 #endif
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
+double myDistance (double *c1, double *c2);
 
 #endif // end _UTILS_H

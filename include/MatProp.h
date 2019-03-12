@@ -13,13 +13,14 @@ class MatProp {
 		Vec wm_;
 		Vec csf_;
 		Vec glm_;
+		Vec bg_;
 		Vec filter_;
 
 		double force_factor_;
 		double edema_threshold_;	
 
 		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
-		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc);
 
 		~MatProp ();
 };

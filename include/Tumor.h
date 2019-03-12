@@ -45,7 +45,7 @@ class Tumor {
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);
 		PetscErrorCode changeNP (Vec p);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
-
+		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val);
 		PetscErrorCode setTrueP (Vec p);
 
 		~Tumor ();

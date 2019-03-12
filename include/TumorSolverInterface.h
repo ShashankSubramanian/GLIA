@@ -28,6 +28,12 @@ class TumorSolverInterface {
 		 *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
 		 */
 		PetscErrorCode solveInverse (Vec prec, Vec d1, Vec d1g = {});
+
+		
+		// solves the L1 optimization problem using compressive sampling methods
+		PetscErrorCode solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g = {});
+
+
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess (Vec p);
 		PetscErrorCode setInitialGuess(double d);
@@ -47,7 +53,7 @@ class TumorSolverInterface {
 		 *         A additional filter, that filters the admissable area for tumor
 		 *         growth has to be passed (updates the \Phi filter)
 		 */
-		PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params);
+		PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params, bool use_nmisc = false);
 		/// @brief evaluates gradient for given control variable p and data
 		PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
 		/// @brief true if TumorSolverInterface is initialized and ready to use
@@ -82,7 +88,18 @@ class TumorSolverInterface {
 		std::shared_ptr<CtxInv> getITctx () {return inv_solver_->getInverseSolverContext();}
 		~TumorSolverInterface () {}
 
+		std::shared_ptr<InvSolver> getInvSolver () {return inv_solver_;}
+
+		std::shared_ptr<PdeOperators> getPdeOperators () {return pde_operators_;}
+
 		PetscErrorCode solveInterpolation (Vec data, Vec p_rec, std::shared_ptr<Phi> phi, std::shared_ptr<NMisc> n_misc);
+
+		std::vector<double> getSolverOutParams () {
+			out_params_ = inv_solver_->getInvOutParams ();
+			return out_params_;
+		}
+
+		PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
 
 	private :
 	  bool initialized_;
@@ -92,6 +109,8 @@ class TumorSolverInterface {
 		std::shared_ptr<PdeOperators> pde_operators_;
 		std::shared_ptr<DerivativeOperators> derivative_operators_;
 		std::shared_ptr<InvSolver> inv_solver_;
+
+		std::vector<double> out_params_;
 };
 
 #endif
