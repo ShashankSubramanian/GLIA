@@ -349,8 +349,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     // TARFU 
     double vel = 1.;
-    // ierr = VecSet (tumor_->velocity_[1], vel); CHKERRQ (ierr);
-    ierr = VecSet (tumor_->velocity_[2], vel); CHKERRQ (ierr);
+    ierr = VecSet (tumor_->velocity_->y_, vel); CHKERRQ (ierr);
 
     for (int i = 0; i < nt; i++) {
         // diff_solver_->solve (tumor_->c_t_, dt / 2.0);

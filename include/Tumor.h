@@ -15,7 +15,6 @@ Tumor class
 #include <mpi.h>
 #include <omp.h>
 
-
 class Tumor {
 	public:
 		Tumor (std::shared_ptr<NMisc> n_misc);
@@ -43,9 +42,9 @@ class Tumor {
 
     	// mass effect parameters
     	// velocity
-		std::vector<Vec> velocity_;
-		std::vector<Vec> displacement_;
-		std::vector<Vec> force_;
+		std::shared_ptr<VecField> velocity_;
+		std::shared_ptr<VecField> displacement_;
+		std::shared_ptr<VecField> force_;
 
 		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);

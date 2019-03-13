@@ -1,5 +1,80 @@
 #include "Utils.h"
 
+VecField::VecField (int nl , int ng) {
+	PetscErrorCode ierr = 0;
+    ierr = VecCreate (PETSC_COMM_WORLD, &x_);
+    ierr = VecSetSizes (x_, nl, ng);
+    ierr = VecSetFromOptions (x_);
+    ierr = VecSet (x_, 0.);
+
+    ierr = VecDuplicate (x_, y_);
+    ierr = VecDuplicate (x_, z_);
+    ierr = VecSet (y_, 0.);
+    ierr = VecSet (z_, 0.);
+}
+
+PetscErrorCode VecField::getComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	ierr = VecGetArray (x_, &x_ptr);		CHKERRQ (ierr);
+	ierr = VecGetArray (y_, &y_ptr);		CHKERRQ (ierr);
+	ierr = VecGetArray (z_, &z_ptr);		CHKERRQ (ierr);
+
+	PetscFunctionReturn (0);
+}
+
+
+PetscErrorCode VecField::restoreComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	ierr = VecRestoreArray (x_, &x_ptr);		CHKERRQ (ierr);
+	ierr = VecRestoreArray (y_, &y_ptr);		CHKERRQ (ierr);
+	ierr = VecRestoreArray (z_, &z_ptr);		CHKERRQ (ierr);
+
+	PetscFunctionReturn (0);
+}
+
+PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	double *x_ptr, *y_ptr, *z_ptr, *in_ptr;
+	int local_size = 0;
+	ierr = VecGetLocalSize (x_in, &local_size);		CHKERRQ (ierr);
+	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
+	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
+	for (int i = 0; i < local_size; i++) {
+		x_ptr[i] = in_ptr[i];
+		y_ptr[i] = in_ptr[i + local_size / 3];
+		z_ptr[i] = in_ptr[i + 2 * local_size / 3];
+	}
+	ierr = VecRestoreArray (x_in, &in_ptr);			CHKERRQ (ierr);
+	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
+	PetscFunctionReturn (0);
+}
+
+PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	double *x_ptr, *y_ptr, *z_ptr, *in_ptr;
+	int local_size = 0;
+	ierr = VecGetLocalSize (x_in, &local_size);		CHKERRQ (ierr);
+	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
+	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
+	for (int i = 0; i < local_size; i++) {
+		in_ptr[i] = x_ptr[i];
+		in_ptr[i + local_size / 3] = y_ptr[i]
+		in_ptr[i + 2 * local_size / 3] = z_ptr[i]
+	}
+	ierr = VecRestoreArray (x_in, &in_ptr);			CHKERRQ (ierr);
+	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
+	PetscFunctionReturn (0);
+}
+
+
 PetscErrorCode tuMSG(std::string msg, int size) {
 	PetscFunctionBegin;
   PetscErrorCode ierr;

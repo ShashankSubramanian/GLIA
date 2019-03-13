@@ -42,9 +42,9 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 
     double alph = 1.0 / 2.0 * ctx->dt_;
 
-    ierr = VecPointwiseMult (ctx->temp_[0], ctx->velocity_[0], x);			CHKERRQ (ierr);
-    ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_[1], x);			CHKERRQ (ierr);
-    ierr = VecPointwiseMult (ctx->temp_[2], ctx->velocity_[2], x);			CHKERRQ (ierr);
+    ierr = VecPointwiseMult (ctx->temp_[0], ctx->velocity_->x_, x);			CHKERRQ (ierr);
+    ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_->y_, x);			CHKERRQ (ierr);
+    ierr = VecPointwiseMult (ctx->temp_[2], ctx->velocity_->z_, x);			CHKERRQ (ierr);
 
     accfft_divergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], ctx->n_misc_->plan_, t.data());
 
@@ -58,7 +58,7 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::vector<Vec> velocity, double dt) {
+PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -69,15 +69,15 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::vector<Vec> velocity, 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     ctx->dt_ = dt;
-    ctx->velocity_[0] = velocity[0];
-    ctx->velocity_[1] = velocity[1];
-    ctx->velocity_[2] = velocity[2];
+    ctx->velocity_->x_ = velocity->x_;
+    ctx->velocity_->y_ = velocity->y_;
+    ctx->velocity_->z_ = velocity->z_;
 
     double alph = -1.0 / 2.0 * ctx->dt_;
     //rhs for advection solve: b = scalar - dt/2 div(scalar v)
-    ierr = VecPointwiseMult (ctx->temp_[0], velocity[0], scalar);			CHKERRQ (ierr);
-    ierr = VecPointwiseMult (ctx->temp_[1], velocity[1], scalar);			CHKERRQ (ierr);
-    ierr = VecPointwiseMult (ctx->temp_[2], velocity[2], scalar);			CHKERRQ (ierr);
+    ierr = VecPointwiseMult (ctx->temp_[0], velocity->x_, scalar);			CHKERRQ (ierr);
+    ierr = VecPointwiseMult (ctx->temp_[1], velocity->y_, scalar);			CHKERRQ (ierr);
+    ierr = VecPointwiseMult (ctx->temp_[2], velocity->z_, scalar);			CHKERRQ (ierr);
 
     accfft_divergence (rhs_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], ctx->n_misc_->plan_, t.data());
 

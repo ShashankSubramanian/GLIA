@@ -9,6 +9,16 @@
 struct CtxElasticity {
 	std::shared_ptr<NMisc> n_misc_;
 	std::shared_ptr<Tumor> tumor_;
+
+	PetscScalar mu_avg_, lam_avg_, screen_avg_;
+
+	double computeMu (double E, double nu) {
+		return (E / (2 * (1 + nu)));
+	}
+
+	double computeLam (double E, double mu) {
+		return (nu * E / ((1 + nu) * (1 - 2 * nu)));
+	}
 };
 
 class ElasticitySolver {

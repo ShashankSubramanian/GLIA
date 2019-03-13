@@ -9,7 +9,7 @@
 struct CtxAdv {
 	std::shared_ptr<NMisc> n_misc_;
 	std::vector<Vec> temp_;
-	std::vector<Vec> velocity_;
+	std::shared_ptr<VecField> velocity_;
 	double dt_;
 };
 
@@ -23,7 +23,7 @@ class AdvectionSolver {
 
 		std::shared_ptr<CtxAdv> ctx_;
 
-		virtual PetscErrorCode solve (Vec scalar, std::vector<Vec> velocity, double dt) = 0;
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt) = 0;
 
 		virtual ~AdvectionSolver ();
 
@@ -33,7 +33,7 @@ class AdvectionSolver {
 class TrapezoidalSolver : public AdvectionSolver {
 	public:
 		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {}
-		virtual PetscErrorCode solve (Vec scalar, std::vector<Vec> velocity, double dt);
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt);
 
 		virtual ~TrapezoidalSolver () {}
 };
@@ -42,7 +42,7 @@ class TrapezoidalSolver : public AdvectionSolver {
 class SemiLagrangianSolver : public AdvectionSolver {
 	public:
 		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {}
-		virtual PetscErrorCode solve (Vec scalar, std::vector<Vec> velocity, double dt);
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt);
 
 		virtual ~SemiLagrangianSolver () {}
 };

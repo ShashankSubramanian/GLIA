@@ -286,6 +286,8 @@ class NMisc {
         , E_bg_ (15000)                         // Young's modulus of background
         , E_tumor_ (2100)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
+        , screen_low_ (0)                       // low screening coefficient
+        , screen_high_ (1E3)                    // high screening 
                                 {
 
 
@@ -452,6 +454,27 @@ class NMisc {
 
         double E_csf_, E_healthy_, E_tumor_, E_bg_;
         double nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
+
+        double screen_low_, screen_high_;
+};
+
+class VecField {
+    public:
+        VecField (int nl, int ng);
+        Vec x_;
+        Vec y_;
+        Vec z_;
+        ~VecField () {
+            PetscErrorCode ierr = 0;
+            ierr = VecDestroy (&x_);
+            ierr = VecDestroy (&y_);
+            ierr = VecDestroy (&z_);
+        }
+
+        PetscErrorCode getComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr);
+        PetscErrorCode restoreComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr);
+        PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
+        PetscErrorCode getIndividualComponents (Vec in);  // uses x,y,z to populate in
 };
 
 /**
