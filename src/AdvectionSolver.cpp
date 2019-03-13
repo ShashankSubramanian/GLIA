@@ -9,6 +9,9 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
     for (int i = 0; i < 3; i++)
     	ctx_->temp_[i] = tumor->work_[11 - i]; 	// Choose some tumor work vector
 
+    ctx_->velocity_.resize (3);
+
+
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdv);
 
@@ -71,7 +74,6 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::vector<Vec> velocity, 
     ctx->velocity_[2] = velocity[2];
 
     double alph = -1.0 / 2.0 * ctx->dt_;
-
     //rhs for advection solve: b = scalar - dt/2 div(scalar v)
     ierr = VecPointwiseMult (ctx->temp_[0], velocity[0], scalar);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[1], velocity[1], scalar);			CHKERRQ (ierr);
@@ -81,7 +83,6 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::vector<Vec> velocity, 
 
     ierr = VecScale (rhs_, alph);									CHKERRQ (ierr);
     ierr = VecAXPY (rhs_, 1.0, scalar);							    CHKERRQ (ierr);
-
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, scalar);                            CHKERRQ (ierr);
 
@@ -92,7 +93,7 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::vector<Vec> velocity, 
 	PetscFunctionReturn (0);
 }
 
-TrapezoidalSolver::~TrapezoidalSolver () {
+AdvectionSolver::~AdvectionSolver () {
 	PetscErrorCode ierr = 0;
 	ierr = MatDestroy (&A_);
     ierr = KSPDestroy (&ksp_);

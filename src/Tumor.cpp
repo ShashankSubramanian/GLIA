@@ -194,4 +194,11 @@ Tumor::~Tumor () {
     }
     delete[] work_;
     ierr = VecDestroy (&weights_);
+
+    if (velocity_.size() != 0) {
+        // velocity vectors created
+        for (int i = 0; i < velocity_.size(); i++) {
+            ierr = VecDestroy (&velocity_[i]);
+        }
+    }
 }

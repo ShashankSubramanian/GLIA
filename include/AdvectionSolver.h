@@ -25,7 +25,7 @@ class AdvectionSolver {
 
 		virtual PetscErrorCode solve (Vec scalar, std::vector<Vec> velocity, double dt) = 0;
 
-		virtual ~AdvectionSolver () {}
+		virtual ~AdvectionSolver ();
 
 };
 
@@ -35,7 +35,7 @@ class TrapezoidalSolver : public AdvectionSolver {
 		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {}
 		virtual PetscErrorCode solve (Vec scalar, std::vector<Vec> velocity, double dt);
 
-		virtual ~TrapezoidalSolver ();
+		virtual ~TrapezoidalSolver () {}
 };
 
 //Solve transport equations using semi-Lagrangian

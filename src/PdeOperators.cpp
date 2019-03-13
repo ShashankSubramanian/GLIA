@@ -324,6 +324,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
+    
+
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
 
@@ -347,14 +349,13 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     // TARFU 
     double vel = 1.;
-    ierr = VecSet (tumor_->velocity_[0], vel); CHKERRQ (ierr);
-    ierr = VecSet (tumor_->velocity_[1], vel); CHKERRQ (ierr);
+    // ierr = VecSet (tumor_->velocity_[1], vel); CHKERRQ (ierr);
+    ierr = VecSet (tumor_->velocity_[2], vel); CHKERRQ (ierr);
 
     for (int i = 0; i < nt; i++) {
         // diff_solver_->solve (tumor_->c_t_, dt / 2.0);
         // ierr = reaction (linearized, i);
         // diff_solver_->solve (tumor_->c_t_, dt / 2.0);
-
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);
 
         //enforce positivity : hack
