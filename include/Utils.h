@@ -278,6 +278,14 @@ class NMisc {
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
+        , nu_healthy_ (0.3)                     // Poisson's ratio of wm and gm
+        , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
+        , nu_bg_ (0.48)                         // Poisson's ratio of background
+        , nu_csf_ (0.1)                         // Poisson's ratio of CSF
+        , E_healthy_ (2100)                     // Young's modulus of wm and gm
+        , E_bg_ (15000)                         // Young's modulus of background
+        , E_tumor_ (2100)                       // Young's modulus of tumor
+        , E_csf_ (100)                          // Young's modulus of CSF
                                 {
 
 
@@ -441,6 +449,9 @@ class NMisc {
         std::vector<double> user_cms_;  // stores the cms for synthetic user data
 
         double smoothing_factor_;
+
+        double E_csf_, E_healthy_, E_tumor_, E_bg_;
+        double nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
 };
 
 /**

@@ -44,6 +44,8 @@ class Tumor {
     	// mass effect parameters
     	// velocity
 		std::vector<Vec> velocity_;
+		std::vector<Vec> displacement_;
+		std::vector<Vec> force_;
 
 		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);

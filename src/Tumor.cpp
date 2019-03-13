@@ -31,12 +31,28 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
 
 
     if (n_misc->model_ == 4) { // mass effect model -- allocate space for more variables
-        velocity_.resize (3);     
+        velocity_.resize (3);   
+        displacement_.resize (3);
+        force_.resize (3);     
         ierr = VecCreate (PETSC_COMM_WORLD, &velocity_[0]);
         ierr = VecSetSizes (velocity_[0], n_misc->n_local_, n_misc->n_global_);
         ierr = VecSetFromOptions (velocity_[0]);
         ierr = VecDuplicate (velocity_[0], &velocity_[1]);
         ierr = VecDuplicate (velocity_[0], &velocity_[2]);
+        ierr = VecDuplicate (velocity_[0], &force_[0]);
+        ierr = VecDuplicate (velocity_[0], &force_[1]);
+        ierr = VecDuplicate (velocity_[0], &force_[2]);
+        ierr = VecDuplicate (velocity_[0], &displacement_[0]);
+        ierr = VecDuplicate (velocity_[0], &displacement_[1]);
+        ierr = VecDuplicate (velocity_[0], &displacement_[2]);
+
+        ierr = VecSet (displacement_[0], 0.);
+        ierr = VecSet (displacement_[1], 0.);
+        ierr = VecSet (displacement_[2], 0.);
+
+        ierr = VecSet (force_[0], 0.);
+        ierr = VecSet (force_[1], 0.);
+        ierr = VecSet (force_[2], 0.);
 
         ierr = VecSet (velocity_[0], 0.);
         ierr = VecSet (velocity_[1], 0.);
