@@ -16,7 +16,7 @@ struct CtxElasticity {
 		return (E / (2 * (1 + nu)));
 	}
 
-	double computeLam (double E, double mu) {
+	double computeLam (double E, double nu) {
 		return (nu * E / ((1 + nu) * (1 - 2 * nu)));
 	}
 };
@@ -37,7 +37,7 @@ class ElasticitySolver {
 
 };
 
-class VariableLinearElasitictySolver : public ElasticitySolver {
+class VariableLinearElasticitySolver : public ElasticitySolver {
 	public:
 		VariableLinearElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ElasticitySolver (n_misc, tumor) {}
 		virtual PetscErrorCode solve (std::vector<Vec> displacement, std::vector<Vec> rhs);

@@ -7,8 +7,8 @@ VecField::VecField (int nl , int ng) {
     ierr = VecSetFromOptions (x_);
     ierr = VecSet (x_, 0.);
 
-    ierr = VecDuplicate (x_, y_);
-    ierr = VecDuplicate (x_, z_);
+    ierr = VecDuplicate (x_, &y_);
+    ierr = VecDuplicate (x_, &z_);
     ierr = VecSet (y_, 0.);
     ierr = VecSet (z_, 0.);
 }
@@ -66,8 +66,8 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
 	for (int i = 0; i < local_size; i++) {
 		in_ptr[i] = x_ptr[i];
-		in_ptr[i + local_size / 3] = y_ptr[i]
-		in_ptr[i + 2 * local_size / 3] = z_ptr[i]
+		in_ptr[i + local_size / 3] = y_ptr[i];
+		in_ptr[i + 2 * local_size / 3] = z_ptr[i];
 	}
 	ierr = VecRestoreArray (x_in, &in_ptr);			CHKERRQ (ierr);
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
