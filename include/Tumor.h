@@ -26,6 +26,8 @@ class Tumor {
 
 		std::shared_ptr<MatProp> mat_prop_;
 
+		std::shared_ptr<NMisc> n_misc_;
+
     	// parametrization
 		Vec p_;
 		Vec p_true_;
@@ -51,6 +53,9 @@ class Tumor {
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val);
 		PetscErrorCode setTrueP (Vec p);
+
+		// mass effect functions
+		PetscErrorCode computeForce (Vec c);
 
 		~Tumor ();
 };

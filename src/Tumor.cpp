@@ -1,6 +1,6 @@
 #include "Tumor.h"
 
-Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
+Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -169,6 +169,40 @@ PetscErrorCode Tumor::setTrueP (Vec p) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ierr = VecCopy (p, p_true_);                                      CHKERRQ (ierr);
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode Tumor::computeForce (Vec c) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Event e ("tumor-compute-force");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    std::bitset<3> XYZ;
+    XYZ[0] = 1;
+    XYZ[1] = 1;
+    XYZ[2] = 1;
+
+    double *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
+    accfft_grad (force_->x_, force_->y_, force_->z_, c, n_misc_->plan_, &XYZ, t.data());
+
+    ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
+    ierr = VecGetArray (c, &c_ptr);                                  CHKERRQ (ierr);
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        fx_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
+        fy_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
+        fz_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
+    }
+    ierr = VecRestoreArray (c, &c_ptr);                              CHKERRQ (ierr);
+    ierr = force_->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr); 
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (n_misc_->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
+
     PetscFunctionReturn (0);
 }
 

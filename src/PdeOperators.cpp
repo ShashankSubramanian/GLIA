@@ -347,15 +347,61 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
     }
 
-    // TARFU 
-    double vel = 1.;
-    ierr = VecSet (tumor_->velocity_->y_, vel); CHKERRQ (ierr);
+    double k1, k2, k3, r1, r2, r3;
+    k1 = n_misc_->k_;
+    k2 = n_misc_->k_gm_wm_ratio_ * n_misc_->k_; k3 = 0;
+    r1 = n_misc_->rho_;
+    r2 = n_misc_->r_gm_wm_ratio_ * n_misc_->rho_; r3 = 0;
+
+
+    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
+    // force compute
+    ierr = tumor_->computeForce (tumor_->c_t_);
+    // displacement compute through elasticity solve
+    ierr = elasticity_solver_->solve (displacement_old, tumor_->force_);
 
     for (int i = 0; i < nt; i++) {
-        // diff_solver_->solve (tumor_->c_t_, dt / 2.0);
-        // ierr = reaction (linearized, i);
-        // diff_solver_->solve (tumor_->c_t_, dt / 2.0);
+        // Update diffusivity and reaction coefficient
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+        ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
+        // need to update prefactors for diffusion KSP preconditioner, as k changed
+        ierr = diff_solver_->precFactor();
+
+        // Advection of tumor and healthy tissue
+        ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);
+
+        // Mass conservation of healthy -- TODO
+
+        // Diffusion of tumor
+        ierr = diff_solver_->solve (tumor_->c_t_, dt);
+
+        // Reaction of tumor
+        ierr = reaction (linearized, i);
+
+        // force compute
+        ierr = tumor_->computeForce (tumor_->c_t_);
+        // displacement compute through elasticity solve
+        ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
+
+        // compute velocity
+        ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
+
+        double vel_x_norm, vel_y_norm, vel_z_norm;
+        ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
+        PCOUT << "Norm of velocity (x,y,z) : (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+
+        // copy displacement to old vector
+        ierr = displacement_old->copy (tumor_->displacement_);
 
         //enforce positivity : hack
         if (!linearized) {

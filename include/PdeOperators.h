@@ -5,6 +5,7 @@
 #include "Tumor.h"
 #include "DiffSolver.h"
 #include "AdvectionSolver.h"
+#include "ElasticitySolver.h"
 
 #include <mpi.h>
 #include <omp.h>
@@ -61,9 +62,11 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 	public:
 		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
 			adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
+			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor);
 		}
 
 		std::shared_ptr<AdvectionSolver> adv_solver_;
+		std::shared_ptr<ElasticitySolver> elasticity_solver_;
 
 		virtual PetscErrorCode solveState (int linearized);
 

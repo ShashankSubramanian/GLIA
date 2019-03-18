@@ -31,7 +31,7 @@ class ElasticitySolver {
 
 		std::shared_ptr<CtxElasticity> ctx_;
 
-		virtual PetscErrorCode solve (std::vector<Vec> displacement, std::vector<Vec> rhs) = 0;
+		virtual PetscErrorCode solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs) = 0;
 
 		virtual ~ElasticitySolver ();
 
@@ -40,7 +40,7 @@ class ElasticitySolver {
 class VariableLinearElasticitySolver : public ElasticitySolver {
 	public:
 		VariableLinearElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ElasticitySolver (n_misc, tumor) {}
-		virtual PetscErrorCode solve (std::vector<Vec> displacement, std::vector<Vec> rhs);
+		virtual PetscErrorCode solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs);
 		virtual ~VariableLinearElasticitySolver () {}
 };
 

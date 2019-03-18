@@ -47,8 +47,8 @@ PetscErrorCode operatorConstantCoefficients (Mat A, Vec x, Vec y) {
 
     std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
-    ierr = force->setIndividualComponents (y);		// sets components of y vector in f
-    ierr = displacement->setIndividualComponents (x);
+    ierr = force->setIndividualComponents (x);		// sets components of x vector in f
+    ierr = displacement->setIndividualComponents (y);
     // FFT of each component
     Complex *fx_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
     Complex *fy_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
@@ -140,12 +140,42 @@ PetscErrorCode operatorConstantCoefficients (Mat A, Vec x, Vec y) {
     ierr = force->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr);
     ierr = displacement->restoreComponentArrays (ux_ptr, uy_ptr, uz_ptr);
 
-    ierr = displacement->getIndividualComponents (x);  // get the individual components of u and set it to x (input)
+    ierr = displacement->getIndividualComponents (y);  // get the individual components of u and set it to y (o/p)
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
+	PetscFunctionReturn (0);
+}
+
+PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	Event e ("tumor-advection-solve");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    CtxElasticity *ctx;
+    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
+
+    ierr = rhs->getIndividualComponents (rhs_);   // get the three rhs components in rhs_
+    Vec disp;
+    ierr = VecDuplicate (rhs_, &disp);							CHKERRQ (ierr);
+    ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
+    ierr = displacement->getIndividualComponents (disp);		CHKERRQ (ierr);
+
+    ierr = operatorConstantCoefficients (A_, rhs_, disp);
+
+    ierr = displacement->setIndividualComponents (disp);
+    ierr = VecDestroy (&disp);
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
+
 	PetscFunctionReturn (0);
 }
 

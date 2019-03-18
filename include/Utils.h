@@ -288,6 +288,7 @@ class NMisc {
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E3)                    // high screening 
+        , forcing_factor_ (4E4)                 // mass effect forcing factor
                                 {
 
 
@@ -456,6 +457,8 @@ class NMisc {
         double nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
 
         double screen_low_, screen_high_;
+
+        double forcing_factor_;
 };
 
 class VecField {
@@ -471,6 +474,7 @@ class VecField {
             ierr = VecDestroy (&z_);
         }
 
+        PetscErrorCode copy (std::shared_ptr<VecField> field);
         PetscErrorCode getComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr);
         PetscErrorCode restoreComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
