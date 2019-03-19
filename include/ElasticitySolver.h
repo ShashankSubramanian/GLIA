@@ -10,9 +10,9 @@ struct CtxElasticity {
 	CtxElasticity (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : n_misc_ (n_misc), tumor_ (tumor) {
 		PetscErrorCode ierr = 0;
 		ierr = VecDuplicate (tumor_->mat_prop_->gm_, &mu_); 
-		ierr = VecDuplicate (mu, &lam_);
-		ierr = VecDuplicate (mu, &screen_);
-		ierr = VecDuplicate (mu, &temp_);
+		ierr = VecDuplicate (mu_, &lam_);
+		ierr = VecDuplicate (mu_, &screen_);
+		ierr = VecDuplicate (mu_, &temp_);
 
 		ierr = VecSet (mu_, 0.); 
 		ierr = VecSet (lam_, 0.);
@@ -38,6 +38,7 @@ struct CtxElasticity {
 	}
 
 	~CtxElasticity () {
+		PetscErrorCode ierr = 0;
 		ierr = VecDestroy (&mu_);
 		ierr = VecDestroy (&lam_);
 		ierr = VecDestroy (&screen_);

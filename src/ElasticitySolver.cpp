@@ -152,11 +152,6 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     ierr = force->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr);
     ierr = displacement->restoreComponentArrays (ux_ptr, uy_ptr, uz_ptr);
 
-    //snafu
-    // ierr = tumor->mat_prop_->filterBackgroundAndSmooth (displacement->x_);
-    // ierr = tumor->mat_prop_->filterBackgroundAndSmooth (displacement->y_);
-    // ierr = tumor->mat_prop_->filterBackgroundAndSmooth (displacement->z_);
-
     ierr = displacement->getIndividualComponents (y);  // get the individual components of u and set it to y (o/p)
 
     self_exec_time += MPI_Wtime();
@@ -227,9 +222,27 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	ierr = VecAXPY (ctx->lam_, lam_tumor, tumor->c_t_);				CHKERRQ (ierr);
 
 	// Compute screening vector
-	
+	double c_threshold = 0.005;
+	double *screen_ptr, *c_ptr;
+	ierr = VecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
+	ierr = VecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
+	for (int i = 0; i < n_misc->n_local_; i++) {
+		screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
+	}
+	ierr = VecRestoreArray (tumor->c_t_, &c_ptr);					CHKERRQ (ierr);
+	ierr = VecRestoreArray (ctx->screen_, &screen_ptr);				CHKERRQ (ierr);
+	ierr = VecAXPY (ctx->screen_, 1E6, tumor->mat_prop_->bg_);		CHKERRQ (ierr); // ensures minimal bg displacement
 
+	// average the material properties for use in preconditioner
+	ierr = VecSum (ctx->mu_, &ctx->mu_avg_);						CHKERRQ (ierr);
+	ierr = VecSum (ctx->lam_, &ctx->lam_avg_);						CHKERRQ (ierr);
+	ierr = VecSum (ctx->screen_, &ctx->screen_avg_);				CHKERRQ (ierr);
 
+	ctx->mu_avg_ /= n_misc->n_global_;
+	ctx->lam_avg_ /= n_misc->n_global_;
+	ctx->screen_avg_ /= n_misc->n_global_;
+
+	PetscFunctionReturn (0);
 }
 
 PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs) {
@@ -251,6 +264,8 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     Vec disp;
     ierr = VecDuplicate (rhs_, &disp);							CHKERRQ (ierr);
     ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
+
+    ierr = computeMaterialProperties ();
 
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, disp);                         CHKERRQ (ierr);
