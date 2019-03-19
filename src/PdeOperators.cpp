@@ -324,8 +324,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    
-
     double dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
 
@@ -360,7 +358,20 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     // displacement compute through elasticity solve
     ierr = elasticity_solver_->solve (displacement_old, tumor_->force_);
 
+    if (n_misc_->writeOutput_) {
+        ierr = displacement_old->computeMagnitude();
+        ierr = tumor_->force_->computeMagnitude();
+        dataOut (displacement_old->magnitude_, n_misc_, "displacement_t[0].nc");
+        dataOut (tumor_->force_->magnitude_, n_misc_, "force_t[0].nc");
+        dataOut (tumor_->mat_prop_->csf_, n_misc_, "csf_t[0].nc");
+        ierr = tumor_->computeSegmentation ();
+        dataOut (tumor_->seg_, n_misc_, "seg_t[0].nc");
+    }
+
+    std::stringstream ss;
+
     for (int i = 0; i < nt; i++) {
+        PCOUT << "Time = " << i << std::endl;
         // Update diffusivity and reaction coefficient
         ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
         ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
@@ -383,7 +394,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);
-        // displacement compute through elasticity solve
+        // displacement compute through elasticity solve: Linv(force_) = displacement_
         ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
 
         // compute velocity
@@ -402,6 +413,24 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);
+
+        if (n_misc_->writeOutput_) {
+            ierr = displacement_old->computeMagnitude();
+            ierr = tumor_->force_->computeMagnitude();
+            ss << "displacement_t[" << i + 1 << "].nc";
+            dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "force_t[" << i + 1 << "].nc";
+            dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "csf_t[" << i + 1 << "].nc";
+            dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "seg_t[" << i + 1 << "].nc";
+            ierr = tumor_->computeSegmentation ();
+            dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+        }
 
         //enforce positivity : hack
         if (!linearized) {

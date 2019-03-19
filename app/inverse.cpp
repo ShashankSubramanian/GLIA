@@ -1383,7 +1383,9 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
 
     if (n_misc->writeOutput_) {
         dataOut (max, n_misc, "seg1.nc");
-    }           
+    }        
+
+    ierr = VecDestroy (&max);       CHKERRQ (ierr);   
 
     PetscFunctionReturn(0);
 }

@@ -42,6 +42,9 @@ class Tumor {
     	// weights for w-l2
     	Vec weights_;
 
+    	// segmentation based on max voxel-wise prop
+    	Vec seg_;
+
     	// mass effect parameters
     	// velocity
 		std::shared_ptr<VecField> velocity_;
@@ -53,6 +56,7 @@ class Tumor {
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val);
 		PetscErrorCode setTrueP (Vec p);
+		PetscErrorCode computeSegmentation ();
 
 		// mass effect functions
 		PetscErrorCode computeForce (Vec c);

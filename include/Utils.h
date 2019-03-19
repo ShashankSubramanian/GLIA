@@ -467,16 +467,19 @@ class VecField {
         Vec x_;
         Vec y_;
         Vec z_;
+        Vec magnitude_;
         ~VecField () {
             PetscErrorCode ierr = 0;
             ierr = VecDestroy (&x_);
             ierr = VecDestroy (&y_);
             ierr = VecDestroy (&z_);
+            ierr = VecDestroy (&magnitude_);
         }
 
+        PetscErrorCode computeMagnitude ();
         PetscErrorCode copy (std::shared_ptr<VecField> field);
-        PetscErrorCode getComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr);
-        PetscErrorCode restoreComponentArrays (double *x_ptr, double *y_ptr, double *z_ptr);
+        PetscErrorCode getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
+        PetscErrorCode restoreComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
         PetscErrorCode getIndividualComponents (Vec in);  // uses x,y,z to populate in
 };

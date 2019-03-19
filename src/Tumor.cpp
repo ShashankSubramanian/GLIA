@@ -29,6 +29,9 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     ierr = VecSet (p_0_, 0);
     ierr = VecSet (p_t_, 0);
 
+    ierr = VecDuplicate (c_t_, &seg_);                                        
+    ierr = VecSet (seg_, 0);                                            
+
 
     if (n_misc->model_ == 4) { // mass effect model -- allocate space for more variables
         velocity_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
@@ -180,6 +183,10 @@ PetscErrorCode Tumor::computeForce (Vec c) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     std::bitset<3> XYZ;
     XYZ[0] = 1;
     XYZ[1] = 1;
@@ -206,6 +213,50 @@ PetscErrorCode Tumor::computeForce (Vec c) {
     PetscFunctionReturn (0);
 }
 
+PetscErrorCode Tumor::computeSegmentation () {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    ierr = VecSet (seg_, 0);                                                  CHKERRQ(ierr);
+
+    // compute seg_ of gm, wm, csf, bg, tumor
+    std::vector<double> v;
+    std::vector<double>::iterator seg_component;
+    double *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *seg_ptr;
+    ierr = VecGetArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
+    ierr = VecGetArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
+    ierr = VecGetArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
+    ierr = VecGetArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
+    ierr = VecGetArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
+    ierr = VecGetArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
+
+    // segmentation for c0
+    for (int i = 0; i < n_misc_->n_local_; i++) {    
+        v.push_back(bg_ptr[i]* (1 - c_ptr[i])); 
+        v.push_back(c_ptr[i]);
+        v.push_back(gm_ptr[i]* (1 - c_ptr[i]));
+        v.push_back(wm_ptr[i]* (1 - c_ptr[i]));
+        v.push_back(csf_ptr[i]* (1 - c_ptr[i]));
+        
+        seg_component = std::max_element (v.begin(), v.end());
+        seg_ptr[i] = std::distance (v.begin(), seg_component);
+
+        v.clear();
+    }   
+    
+    double sigma_smooth = 1.5 * M_PI / n_misc_->n_[0];
+    // ierr = weierstrassSmoother (seg_ptr, seg_ptr, n_misc_, sigma_smooth);
+    
+    ierr = VecRestoreArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
+    ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
+    ierr = VecRestoreArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
+    ierr = VecRestoreArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
+    ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
+    ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr); 
+
+    PetscFunctionReturn(0);
+}
+
 
 Tumor::~Tumor () {
     PetscErrorCode ierr;
@@ -221,4 +272,6 @@ Tumor::~Tumor () {
     }
     delete[] work_;
     ierr = VecDestroy (&weights_);
+
+    ierr = VecDestroy (&seg_);
 }
