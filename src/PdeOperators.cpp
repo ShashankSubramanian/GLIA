@@ -369,6 +369,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     }
 
     std::stringstream ss;
+    double vel_max;
 
     for (int i = 0; i < nt; i++) {
         PCOUT << "Time = " << i << std::endl;
@@ -410,6 +411,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
         PCOUT << "Norm of velocity (x,y,z) : (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+
+        // compute CFL
+        ierr = tumor_->velocity_->computeMagnitude ();
+        ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
+        PCOUT << "CFL: " << dt * vel_max / n_misc_->h_[0] << "\n\n";
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);

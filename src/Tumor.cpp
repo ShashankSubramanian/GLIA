@@ -175,7 +175,7 @@ PetscErrorCode Tumor::setTrueP (Vec p) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode Tumor::computeForce (Vec c) {
+PetscErrorCode Tumor::computeForce (Vec c1) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -193,6 +193,18 @@ PetscErrorCode Tumor::computeForce (Vec c) {
     XYZ[2] = 1;
 
     double *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
+
+    // snafu: smooth
+    Vec c;
+    ierr = VecDuplicate (c1, &c);      CHKERRQ (ierr);
+    ierr = VecCopy (c1, c);            CHKERRQ (ierr);
+
+    ierr = VecGetArray (c, &c_ptr);                                  CHKERRQ (ierr);
+    double sigma_smooth = 4.0 * 2.0 * M_PI / n_misc_->n_[0];
+    ierr = weierstrassSmoother (c_ptr, c_ptr, n_misc_, sigma_smooth);
+    ierr = VecRestoreArray (c, &c_ptr);                              CHKERRQ (ierr);
+
+
     accfft_grad (force_->x_, force_->y_, force_->z_, c, n_misc_->plan_, &XYZ, t.data());
 
     ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
@@ -204,6 +216,8 @@ PetscErrorCode Tumor::computeForce (Vec c) {
     }
     ierr = VecRestoreArray (c, &c_ptr);                              CHKERRQ (ierr);
     ierr = force_->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr); 
+
+    ierr = VecDestroy (&c);             CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc_->timers_, t, self_exec_time);
@@ -244,8 +258,8 @@ PetscErrorCode Tumor::computeSegmentation () {
         v.clear();
     }   
     
-    double sigma_smooth = 1.5 * M_PI / n_misc_->n_[0];
-    // ierr = weierstrassSmoother (seg_ptr, seg_ptr, n_misc_, sigma_smooth);
+    double sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
+    ierr = weierstrassSmoother (seg_ptr, seg_ptr, n_misc_, sigma_smooth);
     
     ierr = VecRestoreArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);

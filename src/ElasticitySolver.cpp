@@ -338,6 +338,13 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     ierr = displacement->setIndividualComponents (disp);
     ierr = VecDestroy (&disp);
 
+    int itr;
+    ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
+    double res_norm;
+    ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
+
+    PCOUT << "GMRES convergence --    iterations: " << itr << "    residual: " << res_norm << std::endl;
+
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
