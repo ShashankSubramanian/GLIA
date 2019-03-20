@@ -154,6 +154,13 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 
     ierr = displacement->getIndividualComponents (y);  // get the individual components of u and set it to y (o/p)
 
+    accfft_free (ux_hat);
+    accfft_free (uy_hat);
+    accfft_free (uz_hat);
+    accfft_free (fx_hat);
+    accfft_free (fy_hat);
+    accfft_free (fz_hat);
+
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
@@ -172,10 +179,68 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
 
+    std::bitset<3> XYZ;
+    XYZ[0] = 1;
+    XYZ[1] = 1;
+    XYZ[2] = 1;
+
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
 
+    std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+    std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+    ierr = displacement->setIndividualComponents (x);
 
+    // second term: grad(lambda * div(u)) :  stored in work[1],[2],[3]
+    accfft_divergence (tumor->work_[0], displacement->x_, displacement->y_, displacement->z_, n_misc->plan_, t.data());
+    ierr = VecPointwiseMult (tumor->work_[0], ctx->lam_, tumor->work_[0]);		CHKERRQ (ierr);
+    accfft_grad (tumor->work_[1], tumor->work_[2], tumor->work_[3], tumor->work_[0], n_misc->plan_, &XYZ, t.data());
+
+    // first term: div (mu .* (gradu + graduT))
+    accfft_grad (tumor->work_[4], tumor->work_[5], tumor->work_[6], displacement->x_, n_misc->plan_, &XYZ, t.data());
+    accfft_grad (tumor->work_[7], tumor->work_[8], tumor->work_[9], displacement->y_, n_misc->plan_, &XYZ, t.data());
+    accfft_grad (tumor->work_[10], tumor->work_[11], tumor->work_[0], displacement->z_, n_misc->plan_, &XYZ, t.data());
+
+    ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[4], tumor->work_[4]);		CHKERRQ (ierr);   // dudx + dudx
+    ierr = VecWAXPY (ctx->temp_[1], 1.0, tumor->work_[5], tumor->work_[7]);		CHKERRQ (ierr);   // dudy + dvdx
+    ierr = VecWAXPY (ctx->temp_[2], 1.0, tumor->work_[6], tumor->work_[10]);	CHKERRQ (ierr);   // dudz + dwdx
+    ierr = VecPointwiseMult (ctx->temp_[0], ctx->mu_, ctx->temp_[0]);			CHKERRQ (ierr);	  // mu * (...)
+    ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);			CHKERRQ (ierr);	  // mu * (...)
+    ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);			CHKERRQ (ierr);	  // mu * (...)
+
+	accfft_divergence (force->x_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
+	ierr = VecAXPY (force->x_, 1.0, tumor->work_[1]);							CHKERRQ (ierr);   // first term + second term
+
+	ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[7], tumor->work_[5]);		CHKERRQ (ierr);   // dvdx + dudy
+    ierr = VecWAXPY (ctx->temp_[1], 1.0, tumor->work_[8], tumor->work_[8]);		CHKERRQ (ierr);   // dvdy + dvdy
+    ierr = VecWAXPY (ctx->temp_[2], 1.0, tumor->work_[9], tumor->work_[11]);	CHKERRQ (ierr);   // dvdz + dwdy
+    ierr = VecPointwiseMult (ctx->temp_[0], ctx->mu_, ctx->temp_[0]);			CHKERRQ (ierr);	  // mu * (...)
+    ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);			CHKERRQ (ierr);	  // mu * (...)
+    ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);			CHKERRQ (ierr);	  // mu * (...)
+
+	accfft_divergence (force->y_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
+	ierr = VecAXPY (force->y_, 1.0, tumor->work_[2]);							CHKERRQ (ierr);   // first term + second term
+
+	ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[10], tumor->work_[6]);	CHKERRQ (ierr);   // dwdx + dudz
+    ierr = VecWAXPY (ctx->temp_[1], 1.0, tumor->work_[11], tumor->work_[9]);	CHKERRQ (ierr);   // dwdy + dvdz
+    ierr = VecWAXPY (ctx->temp_[2], 1.0, tumor->work_[0], tumor->work_[0]);		CHKERRQ (ierr);   // dwdz + dwdz
+    ierr = VecPointwiseMult (ctx->temp_[0], ctx->mu_, ctx->temp_[0]);			CHKERRQ (ierr);	  // mu * (...)
+    ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);			CHKERRQ (ierr);	  // mu * (...)
+    ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);			CHKERRQ (ierr);	  // mu * (...)
+
+	accfft_divergence (force->z_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
+	ierr = VecAXPY (force->z_, 1.0, tumor->work_[3]);							CHKERRQ (ierr);   // first term + second term
+
+	// screening term
+	ierr = VecPointwiseMult (ctx->temp_[0], ctx->screen_, displacement->x_);	CHKERRQ (ierr);
+	ierr = VecPointwiseMult (ctx->temp_[1], ctx->screen_, displacement->y_);	CHKERRQ (ierr);
+	ierr = VecPointwiseMult (ctx->temp_[2], ctx->screen_, displacement->z_);	CHKERRQ (ierr);
+
+	ierr = VecAXPY (force->x_, -1.0, ctx->temp_[0]);							CHKERRQ (ierr);
+	ierr = VecAXPY (force->y_, -1.0, ctx->temp_[1]);							CHKERRQ (ierr);
+	ierr = VecAXPY (force->z_, -1.0, ctx->temp_[2]);							CHKERRQ (ierr);
+
+	ierr = force->getIndividualComponents (y);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

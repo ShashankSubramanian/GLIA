@@ -12,12 +12,16 @@ struct CtxElasticity {
 		ierr = VecDuplicate (tumor_->mat_prop_->gm_, &mu_); 
 		ierr = VecDuplicate (mu_, &lam_);
 		ierr = VecDuplicate (mu_, &screen_);
-		ierr = VecDuplicate (mu_, &temp_);
+
+		temp_.resize (3);
+		for (int i = 0; i < 3; i++) {
+			ierr = VecDuplicate (mu_, &temp_[i]);
+			ierr = VecSet (temp_[i], 0.);
+		}
 
 		ierr = VecSet (mu_, 0.); 
 		ierr = VecSet (lam_, 0.);
 		ierr = VecSet (screen_, 0.);
-		ierr = VecSet (temp_, 0.);
 	}
 	std::shared_ptr<NMisc> n_misc_;
 	std::shared_ptr<Tumor> tumor_;
@@ -27,7 +31,7 @@ struct CtxElasticity {
 	Vec mu_;
 	Vec lam_;
 	Vec screen_;
-	Vec temp_;
+	std::vector<Vec> temp_;
 
 	double computeMu (double E, double nu) {
 		return (E / (2 * (1 + nu)));
@@ -42,7 +46,11 @@ struct CtxElasticity {
 		ierr = VecDestroy (&mu_);
 		ierr = VecDestroy (&lam_);
 		ierr = VecDestroy (&screen_);
-		ierr = VecDestroy (&temp_);
+
+		for (int i = 0; i < 3; i++) {
+			ierr = VecDestroy (&temp_[i]);
+		}
+		temp_.clear ();
 	}
 };
 
