@@ -382,7 +382,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // Advection of tumor and healthy tissue
         ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);
         ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);
+
+        adv_solver_->advection_mode_ = 2;  // pure advection for csf
         ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);
+        adv_solver_->advection_mode_ = 1;  // reset to mass conservation
+
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);
 
         // Mass conservation of healthy -- TODO

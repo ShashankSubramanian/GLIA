@@ -61,7 +61,7 @@ class PdeOperatorsRD : public PdeOperators {
 class PdeOperatorsMassEffect : public PdeOperatorsRD {
 	public:
 		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
-			adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
+			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
 			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor);
 		}
 

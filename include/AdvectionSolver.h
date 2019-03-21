@@ -25,6 +25,8 @@ class AdvectionSolver {
 
 		std::shared_ptr<CtxAdv> ctx_;
 
+		int advection_mode_;						  // controls the source term of the advection equation
+
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt) = 0;
 
 		virtual ~AdvectionSolver ();
@@ -53,8 +55,7 @@ class SemiLagrangianSolver : public AdvectionSolver {
 		double *vector_field_ghost_;			  // local vector field with ghost points
 		std::shared_ptr<VecField> work_field_;	  // work vector field
 		Vec *temp_;								  // temp vectors	
-		int advection_mode_;						  // controls the source term of the advection equation
-
+		
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt);	// solve transport equation
 		PetscErrorCode computeTrajectories ();														// Computes RK2 trajectories and query points
 		PetscErrorCode interpolate (Vec out, Vec in);												// Interpolated scalar field

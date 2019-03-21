@@ -25,6 +25,9 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (rhs_);
     ierr = VecSet (rhs_, 0);
+
+    advection_mode_ = 1;    // 1 -- mass conservation
+                            // 2 -- pure advection (csf uses this to allow for leakage etc)
 }
 
 // LHS for transport equation using Crank-Nicolson 
@@ -126,9 +129,6 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
         // point to tumor work vectors -- no memory allocation
         temp_[i] = tumor->work_[i];
     }
-
-    advection_mode_ = 1;    // 1 -- mass conservation
-                            // 2 -- pure advection (csf uses this to allow for leakage etc)
 }
 
 // Interpolate scalar fields
@@ -285,12 +285,13 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
 
                 // compute query points
                 query_ptr[ptr * 3 + 0] = (x1 - 0.5 * dt * (vx_ptr[ptr] + wx_ptr[ptr])) / (2.0 * M_PI);   
-                query_ptr[ptr * 3 + 1] = (x1 - 0.5 * dt * (vy_ptr[ptr] + wy_ptr[ptr])) / (2.0 * M_PI);   
-                query_ptr[ptr * 3 + 2] = (x1 - 0.5 * dt * (vz_ptr[ptr] + wz_ptr[ptr])) / (2.0 * M_PI);   
+                query_ptr[ptr * 3 + 1] = (x2 - 0.5 * dt * (vy_ptr[ptr] + wy_ptr[ptr])) / (2.0 * M_PI);   
+                query_ptr[ptr * 3 + 2] = (x3 - 0.5 * dt * (vz_ptr[ptr] + wz_ptr[ptr])) / (2.0 * M_PI);   
             }
         }
     }
     ierr = velocity->restoreComponentArrays (vx_ptr, vy_ptr, vz_ptr);
+    ierr = work_field_->restoreComponentArrays (wx_ptr, wy_ptr, wz_ptr);
 
     // scatter final query points
     interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
@@ -319,6 +320,14 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     ctx->velocity_ = velocity;
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    for (int i = 0; i < 4; i++) {
+        ierr = VecSet (temp_[i], 0.);                         CHKERRQ (ierr);
+    }
+
     if (advection_mode_ == 1) {
         // Mass conservation equation in transport form is:
         // d_t \nu + grad \nu . v = -\nu (div v)
@@ -330,9 +339,6 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
         ierr = interpolate (temp_[0], scalar);
 
         // Compute source term: -\nu (div v)
-        for (int i = 0; i < 4; i++) {
-            ierr = VecSet (temp_[i], 0.);                         CHKERRQ (ierr);
-        }
         accfft_divergence (temp_[1], velocity->x_, velocity->y_, velocity->z_, n_misc->plan_, t.data());
 
         // Interpolate div using the same query points
@@ -381,9 +387,9 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
 
 SemiLagrangianSolver::~SemiLagrangianSolver () {
     PetscErrorCode ierr = 0;
+
     if (scalar_field_ghost_ != NULL) accfft_free (scalar_field_ghost_);
     if (vector_field_ghost_ != NULL) accfft_free (vector_field_ghost_);
-
     delete [] temp_;
 }
 
