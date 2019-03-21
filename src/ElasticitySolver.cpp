@@ -40,7 +40,7 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Event e ("tumor-elasticity-constantcoefficients-preconditioner");
+	Event e ("tumor-elasticity-prec");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxElasticity *ctx;
@@ -173,7 +173,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Event e ("tumor-elasticity-variablecoefficients-matvec");
+	Event e ("tumor-elasticity-matvec");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxElasticity *ctx;
@@ -314,7 +314,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Event e ("tumor-advection-solve");
+	Event e ("tumor-elasticity-solve");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
@@ -343,7 +343,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     double res_norm;
     ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
 
-    PCOUT << "[Elasticity solver] GMRES convergence --    iterations: " << itr << "    residual: " << res_norm << std::endl;
+    PCOUT << "[Elasticity solver] GMRES convergence --   iterations: " << itr << "    residual: " << res_norm << std::endl;
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

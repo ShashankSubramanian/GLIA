@@ -36,7 +36,7 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Event e ("tumor-advection-ksp-matvec");
+	Event e ("tumor-adv-ksp-matvec");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxAdv *ctx;
@@ -64,7 +64,7 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Event e ("tumor-advection-solve");
+	Event e ("tumor-adv-solve");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
@@ -136,7 +136,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    Event e ("tumor-advection-interpolate-scalarfield");
+    Event e ("tumor-interp-scafield");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
@@ -175,7 +175,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    Event e ("tumor-advection-interpolate-vectorfield");
+    Event e ("tumor-interp-vecfield");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
@@ -225,7 +225,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    Event e ("tumor-advection-computetrajectories");
+    Event e ("tumor-adv-eulercomp");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
@@ -310,7 +310,7 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    Event e ("tumor-advection-semilagrangian-solve");
+    Event e ("tumor-adv-semilag-solve");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
@@ -391,6 +391,8 @@ SemiLagrangianSolver::~SemiLagrangianSolver () {
     if (scalar_field_ghost_ != NULL) accfft_free (scalar_field_ghost_);
     if (vector_field_ghost_ != NULL) accfft_free (vector_field_ghost_);
     delete [] temp_;
+
+    ierr = VecDestroy (&query_points_);  
 }
 
 

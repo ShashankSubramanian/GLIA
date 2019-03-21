@@ -56,9 +56,9 @@ def getTumorRunCmd(params):
 	model = 4
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 12
-	k_data = 0.05
-	nt_data = 100
-	dt_data = 0.01
+	k_data = 0.02
+	nt_data = 50
+	dt_data = 0.02
 
 	### Testcase: 0: brain single focal synthetic
 	###			  1: No-brain constant coefficients
@@ -72,7 +72,7 @@ def getTumorRunCmd(params):
 	### r_gm_wm ratio
 	r_gm_wm = 0.0
 	### Smoothing factor: Number of voxels to smooth material properties and basis functions
-	smooth_f = 1.5
+	smooth_f = 1.0
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
 	interp_flag = 0
 	### Prediction flag -- Flag to predict tumor at a later time

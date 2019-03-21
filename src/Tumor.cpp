@@ -200,7 +200,7 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     ierr = VecCopy (c1, c);            CHKERRQ (ierr);
 
     ierr = VecGetArray (c, &c_ptr);                                  CHKERRQ (ierr);
-    double sigma_smooth = 4.0 * 2.0 * M_PI / n_misc_->n_[0];
+    double sigma_smooth = 2.0 * 2.0 * M_PI / n_misc_->n_[0];
     ierr = weierstrassSmoother (c_ptr, c_ptr, n_misc_, sigma_smooth);
     ierr = VecRestoreArray (c, &c_ptr);                              CHKERRQ (ierr);
 

@@ -372,7 +372,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     double vel_max;
 
     for (int i = 0; i < nt; i++) {
-        PCOUT << "Time = " << i << std::endl;
+        PCOUT << "Time step = " << i << std::endl;
         // Update diffusivity and reaction coefficient
         ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
         ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
@@ -414,12 +414,12 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        PCOUT << "Norm of velocity (x,y,z) : (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        PCOUT << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
 
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude ();
         ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
-        PCOUT << "CFL: " << dt * vel_max / n_misc_->h_[0] << "\n\n";
+        PCOUT << "CFL = " << dt * vel_max / n_misc_->h_[0] << "\n\n";
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);
