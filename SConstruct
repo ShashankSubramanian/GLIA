@@ -72,6 +72,7 @@ conf = Configure(env) # For checking libraries, headers, ...
 
 Help(vars.GenerateHelpText(env))
 env.Append(CPPPATH = ['#include'])
+env.Append(CPPPATH = [os.path.join( "3rdparty")])
 env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
 
 print
