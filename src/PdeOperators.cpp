@@ -317,6 +317,70 @@ PdeOperatorsRD::~PdeOperatorsRD () {
     }
 }
 
+PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-conservehealthy");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+
+    // gm, wm is conserved with rhs g/(g + w) * (Dc + Rc) : treated explicity
+    double *c_ptr, *rho_ptr;
+
+    // Dc
+    ierr = VecCopy (tumor_->c_t_, temp_[1]);                        CHKERRQ (ierr);
+    ierr = tumor_->k_->applyD (temp_[0], temp_[1], n_misc_->plan_);
+
+    // Rc = rho * c * (1 - c)
+    ierr = VecGetArray (temp_[1], &c_ptr);                          CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    double dt = n_misc_->dt_;
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        c_ptr[i] = rho_ptr[i] * c_ptr[i] * (1. - c_ptr[i]);
+    }
+    ierr = VecRestoreArray (temp_[1], &c_ptr);                      CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
+
+    // R + D
+    ierr = VecAXPY (temp_[0], 1.0, temp_[1]);                       CHKERRQ (ierr);
+
+    // scaling
+    double *gm_ptr, *wm_ptr, *scale_gm_ptr, *scale_wm_ptr, *sum_ptr;
+    ierr = VecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->mat_prop_->wm_, &wm_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (temp_[0], &sum_ptr);                        CHKERRQ (ierr);
+    ierr = VecGetArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
+    ierr = VecGetArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
+
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        scale_gm_ptr[i] = 0.0;
+        scale_wm_ptr[i] = 0.0;
+
+        if (gm_ptr[i] > 0.1 || wm_ptr[i] > 0.1) {
+            scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+        }
+
+        gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
+        wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
+    }
+
+    ierr = VecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->mat_prop_->wm_, &wm_ptr);           CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp_[0], &sum_ptr);                        CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (0);
+    PetscFunctionReturn (0);
+}
+
 PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -370,6 +434,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     std::stringstream ss;
     double vel_max;
+    double cfl;
 
     for (int i = 0; i < nt; i++) {
         PCOUT << "Time step = " << i << std::endl;
@@ -389,13 +454,14 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);
 
-        // Mass conservation of healthy -- TODO
-
         // Diffusion of tumor
         ierr = diff_solver_->solve (tumor_->c_t_, dt);
 
         // Reaction of tumor
         ierr = reaction (linearized, i);
+
+        // Mass conservation of healthy: modified gm and wm to account for cell death
+        ierr = conserveHealthyTissues ();
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);
@@ -419,7 +485,17 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude ();
         ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
-        PCOUT << "CFL = " << dt * vel_max / n_misc_->h_[0] << "\n\n";
+
+        cfl = dt * vel_max / n_misc_->h_[0];
+        PCOUT << "CFL = " << cfl << "\n\n";
+
+        // Adaptively time step if CFL is too large
+        if (cfl > 0.5) {
+            dt *= 0.5;
+            nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            n_misc_->dt_ = dt;
+            n_misc_->nt_ = nt;
+        }
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);

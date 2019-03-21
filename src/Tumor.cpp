@@ -246,11 +246,11 @@ PetscErrorCode Tumor::computeSegmentation () {
 
     // segmentation for c0
     for (int i = 0; i < n_misc_->n_local_; i++) {    
-        v.push_back(bg_ptr[i]* (1 - c_ptr[i])); 
-        v.push_back(c_ptr[i]);
-        v.push_back(gm_ptr[i]* (1 - c_ptr[i]));
-        v.push_back(wm_ptr[i]* (1 - c_ptr[i]));
-        v.push_back(csf_ptr[i]* (1 - c_ptr[i]));
+        v.push_back (bg_ptr[i]); 
+        v.push_back (c_ptr[i]);
+        v.push_back (gm_ptr[i]);
+        v.push_back (wm_ptr[i]);
+        v.push_back (csf_ptr[i]);
         
         seg_component = std::max_element (v.begin(), v.end());
         seg_ptr[i] = std::distance (v.begin(), seg_component);

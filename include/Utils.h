@@ -287,8 +287,8 @@ class NMisc {
         , E_tumor_ (2100)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
-        , screen_high_ (1E2)                    // high screening 
-        , forcing_factor_ (5E4)                 // mass effect forcing factor
+        , screen_high_ (5E1)                    // high screening 
+        , forcing_factor_ (6E4)                 // mass effect forcing factor
                                 {
 
 
