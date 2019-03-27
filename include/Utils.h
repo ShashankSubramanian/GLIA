@@ -278,17 +278,17 @@ class NMisc {
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
-        , nu_healthy_ (0.3)                     // Poisson's ratio of wm and gm
+        , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
         , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
         , nu_bg_ (0.48)                         // Poisson's ratio of background
         , nu_csf_ (0.1)                         // Poisson's ratio of CSF
         , E_healthy_ (2100)                     // Young's modulus of wm and gm
         , E_bg_ (15000)                         // Young's modulus of background
-        , E_tumor_ (2100)                       // Young's modulus of tumor
-        , E_csf_ (100)                          // Young's modulus of CSF
+        , E_tumor_ (10000)                       // Young's modulus of tumor
+        , E_csf_ (10)                          // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
-        , screen_high_ (5E1)                    // high screening 
-        , forcing_factor_ (6E4)                 // mass effect forcing factor
+        , screen_high_ (1E4)                    // high screening 
+        , forcing_factor_ (2.0E5)                 // mass effect forcing factor
                                 {
 
 
@@ -314,8 +314,8 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
 
                 // casebrats for mass effect
-                user_cm_[0] = 2 * M_PI / 128 * 60;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 84;//64  //Y
+                user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
                 user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
 
                 // tc2

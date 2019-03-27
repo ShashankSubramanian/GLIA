@@ -18,7 +18,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
-    ierr = KSPSetTolerances (ksp_, 1e-3, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
     ierr = KSPSetType (ksp_, KSPGMRES);
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);

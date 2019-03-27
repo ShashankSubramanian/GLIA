@@ -362,6 +362,9 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
             scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
         }
 
+        scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
+        scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+
         gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
         wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
     }
@@ -405,9 +408,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     }
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
-    if (linearized == 0) {
-        ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
-    }
+    // if (linearized == 0) {
+    //     ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
+    // }
 
     double k1, k2, k3, r1, r2, r3;
     k1 = n_misc_->k_;
@@ -422,17 +425,36 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     // displacement compute through elasticity solve
     ierr = elasticity_solver_->solve (displacement_old, tumor_->force_);
 
+    std::stringstream ss;
+
     if (n_misc_->writeOutput_) {
         ierr = displacement_old->computeMagnitude();
         ierr = tumor_->force_->computeMagnitude();
-        dataOut (displacement_old->magnitude_, n_misc_, "displacement_t[0].nc");
-        dataOut (tumor_->force_->magnitude_, n_misc_, "force_t[0].nc");
-        dataOut (tumor_->mat_prop_->csf_, n_misc_, "csf_t[0].nc");
+        ss << "displacement_t[" << 0 << "].nc";
+        dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "force_t[" << 0 << "].nc";
+        dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "csf_t[" << 0 << "].nc";
+        dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "wm_t[" << 0 << "].nc";
+        dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "seg_t[" << 0 << "].nc";
         ierr = tumor_->computeSegmentation ();
-        dataOut (tumor_->seg_, n_misc_, "seg_t[0].nc");
+        dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "c_t[" << 0 << "].nc";
+        dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "velocity_t[" << 0 << "].nc";
+        dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
     }
 
-    std::stringstream ss;
+    
     double vel_max;
     double cfl;
 
@@ -461,7 +483,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = reaction (linearized, i);
 
         // Mass conservation of healthy: modified gm and wm to account for cell death
-        ierr = conserveHealthyTissues ();
+        // ierr = conserveHealthyTissues ();
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);
@@ -491,16 +513,20 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         // Adaptively time step if CFL is too large
         if (cfl > 0.5) {
-            dt *= 0.5;
-            nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
-            n_misc_->dt_ = dt;
-            n_misc_->nt_ = nt;
+            // // TODO: resize time history
+            // dt *= 0.5;
+            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            // n_misc_->dt_ = dt;
+            // n_misc_->nt_ = nt;
+
+            // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
+            PCOUT << "CFL too large: exiting...\n"; break;
         }
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);
 
-        if (n_misc_->writeOutput_) {
+        if (n_misc_->writeOutput_ && (i + 1) % 5 == 0) {
             ierr = displacement_old->computeMagnitude();
             ierr = tumor_->force_->computeMagnitude();
             ss << "displacement_t[" << i + 1 << "].nc";
@@ -512,9 +538,18 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "csf_t[" << i + 1 << "].nc";
             dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ss << "wm_t[" << i + 1 << "].nc";
+            dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
             ss << "seg_t[" << i + 1 << "].nc";
             ierr = tumor_->computeSegmentation ();
             dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "c_t[" << i + 1 << "].nc";
+            dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "velocity_t[" << i + 1 << "].nc";
+            dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
         }
 
@@ -526,9 +561,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         }
 
         //Copy current conc to use for the adjoint equation
-        if (linearized == 0) {
-            ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
-        }
+        // if (linearized == 0) {
+        //     ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
+        // }
     }
 
     self_exec_time += MPI_Wtime();

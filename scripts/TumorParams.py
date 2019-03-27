@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
 	### TUMOR PARAMETERS SET BEGIN
 
 	### No of discretization points (Assumed uniform)
-	N = 256
+	N = 128
 	### Path to all output results (Directories are created automatically)
 	results_path = tumor_dir + '/results/'
 	if not os.path.exists(results_path):
@@ -56,9 +56,9 @@ def getTumorRunCmd(params):
 	model = 4
 	### Synthetic data parameters  -- Tumor is grown with these parameters
 	rho_data = 12
-	k_data = 0.02
-	nt_data = 50
-	dt_data = 0.02
+	k_data = 0.05
+	nt_data = 100
+	dt_data = 0.01
 
 	### Testcase: 0: brain single focal synthetic
 	###			  1: No-brain constant coefficients
@@ -68,9 +68,9 @@ def getTumorRunCmd(params):
 	tumor_testcase = 0
 
 	### k_gm_wm ratio
-	k_gm_wm = 0.0
+	k_gm_wm = 0.1
 	### r_gm_wm ratio
-	r_gm_wm = 0.0
+	r_gm_wm = 0.5
 	### Smoothing factor: Number of voxels to smooth material properties and basis functions
 	smooth_f = 1.0
 	### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
