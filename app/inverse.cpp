@@ -21,14 +21,14 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
 
     ~HealthyProbMaps () {
         PetscErrorCode ierr = 0;
-        ierr = VecDestroy (&gm_data);              
-        ierr = VecDestroy (&wm_data);           
-        ierr = VecDestroy (&csf_data);               
-        ierr = VecDestroy (&bg_data);                
-        ierr = VecDestroy (&xi_gm);             
-        ierr = VecDestroy (&xi_wm);             
-        ierr = VecDestroy (&xi_csf);        
-        ierr = VecDestroy (&xi_bg);             
+        ierr = VecDestroy (&gm_data);
+        ierr = VecDestroy (&wm_data);
+        ierr = VecDestroy (&csf_data);
+        ierr = VecDestroy (&bg_data);
+        ierr = VecDestroy (&xi_gm);
+        ierr = VecDestroy (&xi_wm);
+        ierr = VecDestroy (&xi_csf);
+        ierr = VecDestroy (&xi_bg);
     }
 };
 
@@ -37,6 +37,7 @@ PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
+PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
 PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
@@ -75,6 +76,7 @@ int main (int argc, char** argv) {
     char wm_path[400];
     char glm_path[400];
     char csf_path[400];
+    char obs_mask_path[400];
     int np_user = 0;
     int interp_flag = 0;
     int diffusivity_flag = 0;
@@ -94,12 +96,14 @@ int main (int argc, char** argv) {
     double r_gm_wm = -1.0;
 
     char newton_solver[10];
-    int newton_maxit = -1; 
+    int newton_maxit = -1;
     int gist_maxit = -1;
     int krylov_maxit = -1;
 
     int syn_flag = -1;
     int model = -1;
+
+    int fwd_flag = 0;
 
     int flag_cosamp = 0;
 
@@ -128,7 +132,7 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-dt_data", "Tumor inversion reaction coefficient", "", dt_data, &dt_data, NULL);
     PetscStrcpy (reg, "L2b"); //default reg
     PetscOptionsString ("-regularization", "Tumor regularization", "", reg, reg, 10, NULL);
-    PetscStrcpy (results_dir, "./results/check/"); //default 
+    PetscStrcpy (results_dir, "./results/check/"); //default
     PetscOptionsString ("-output_dir", "Path to results directory", "", results_dir, results_dir, 400, NULL);
     PetscOptionsInt ("-interpolation", "Interpolation flag", "", interp_flag, &interp_flag, NULL);
     PetscOptionsInt ("-diffusivity_inversion", "Diffusivity inversion flag", "", diffusivity_flag, &diffusivity_flag, NULL);
@@ -154,12 +158,15 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
+    PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
 
     PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
     PetscOptionsString ("-wm_path", "Path to WM", "", wm_path, wm_path, 400, NULL);
     PetscOptionsString ("-csf_path", "Path to CSF", "", csf_path, csf_path, 400, NULL);
     PetscOptionsString ("-glm_path", "Path to GLM", "", glm_path, glm_path, 400, NULL);
+    PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
+
 
     PetscOptionsEnd ();
 
@@ -208,11 +215,12 @@ int main (int argc, char** argv) {
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data
     //Synthetic parameters: Overwrite n_misc
-    Vec c_0, data, p_rec, wm, gm, glm, csf, bg;
+    Vec c_0, data, p_rec, wm, gm, glm, csf, bg, obs_mask;
 
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = true; //don't change -- controlled from the run script
+    bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0); // no path to mask has been set
     double rho = rho_data;
     double k = k_data;
     double dt = dt_data;
@@ -287,7 +295,7 @@ int main (int argc, char** argv) {
     if (sigma_dd > -1.0) {
         n_misc->phi_sigma_data_driven_ = sigma_dd * 2.0 * M_PI / n_misc->n_[0];
     }
-    
+
     if (data_thres > -1.0) {
         n_misc->data_threshold_ = data_thres;
     }
@@ -339,8 +347,8 @@ int main (int argc, char** argv) {
 
     n_misc->predict_flag_ = predict_flag;
 
-    n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream      
-    n_misc->writepath_ << results_dir;  
+    n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
+    n_misc->writepath_ << results_dir;
 
     rho_temp = n_misc->rho_;
     k_temp = n_misc->k_;
@@ -365,21 +373,28 @@ int main (int argc, char** argv) {
 
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
-        ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, gm_path, wm_path, csf_path, glm_path);     
+        ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, gm_path, wm_path, csf_path, glm_path);
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
     std::shared_ptr<HealthyProbMaps> h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
 
+    double self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> timers = {0};
+
     if (syn_flag == 1) {
         PCOUT << "Generating Synthetic Data --->" << std::endl;
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
-            ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc); 
+            ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
         } else {
-            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc); 
-        }  
+            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
+        }
     } else {
         ierr = readData (data, c_0, p_rec, n_misc, data_path);
+        if(use_custom_obs_mask){
+          ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
+          PCOUT << "Use custom observation mask\n";
+        }
     }
 
     Vec data_nonoise;
@@ -397,7 +412,7 @@ int main (int argc, char** argv) {
         ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
         ierr = VecNorm (temp, NORM_2, &noise_err_norm);     CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
         ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
-        rel_noise_err_norm = noise_err_norm / rel_noise_err_norm; 
+        rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
         PCOUT << "[--------------- Low frequency relative error = " << rel_noise_err_norm << " -------------------]" << std::endl;
 
         // if (n_misc->writeOutput_)
@@ -410,192 +425,194 @@ int main (int argc, char** argv) {
     } else {
         PCOUT << "Data read\n";
     }
-    PCOUT << "Inverse solver begin" << std::endl; 
 
-    n_misc->rho_ = rho_inv;                                              
-    n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
-    n_misc->dt_ = dt_inv;
-    n_misc->nt_ = nt_inv;
+    if (fwd_flag) {
+        PCOUT << "Forward solve completed: exiting...\n";
+    } else {
+        PCOUT << "Inverse solver begin" << std::endl;
 
-    PCOUT << "Inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
-    PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
-    double self_exec_time = -MPI_Wtime ();
-    std::array<double, 7> timers = {0};
+        n_misc->rho_ = rho_inv;
+        n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
+        n_misc->dt_ = dt_inv;
+        n_misc->nt_ = nt_inv;
 
-    if (!n_misc->bounding_box_) {
-        // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
-        // set the observation operator filter : default filter
-        ierr = tumor->obs_->setDefaultFilter (data);
-        // apply observer on ground truth, store observed data in d
-        ierr = tumor->obs_->apply (data, data);  
+        PCOUT << "Inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
+        PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
 
-        // observation operator is applied before gaussians are set.
+        if (!n_misc->bounding_box_) {
+            // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
+            // set the observation operator filter : default filter
+            if (use_custom_obs_mask) {
+              ierr = tumor->obs_->setCustomFilter (obs_mask);
+              PCOUT << "Set custom observation mask" << std::endl;
+            } else {
+              ierr = tumor->obs_->setDefaultFilter (data);
+              PCOUT << "Set default observation mask based on input data and threshold " << tumor->obs_->threshold_  << std::endl;
+            }
+            // apply observer on ground truth, store observed data in d
+            ierr = tumor->obs_->apply (data, data);
 
-        ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
-        ierr = tumor->phi_->setValues (tumor->mat_prop_);
-        //re-create p_rec
-        ierr = VecDestroy (&p_rec);                                                 CHKERRQ (ierr);
-        int np = n_misc->np_;
-        int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
-        #ifdef SERIAL
-            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
-        #else
-            ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-            ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-            ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
-        #endif
-        ierr = solver_interface->setParams (p_rec, nullptr);
-    }
+            // observation operator is applied before gaussians are set.
 
-    if (n_misc->model_ == 3) {// Modified objective
-        setDistMeasuresFullObj (solver_interface, h_maps, data);
-    }
-
-    ierr = tumor->rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);
-    ierr = tumor->k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, tumor->mat_prop_, n_misc);
-    ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
-    ierr = solver_interface->setInitialGuess (0.); 
-
-    if (interp_flag) {
-        PCOUT << "SOLVING INTERPOLATION WITH DATA" << std::endl;
-        ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
-        PCOUT << " --------------  INTERPOLATED P -----------------\n";
-        if (procid == 0) {
-            ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+            ierr = tumor->phi_->setGaussians (data);                                   //Overwrites bounding box phis with custom phis
+            ierr = tumor->phi_->setValues (tumor->mat_prop_);
+            //re-create p_rec
+            ierr = VecDestroy (&p_rec);                                                 CHKERRQ (ierr);
+            int np = n_misc->np_;
+            int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+            #ifdef SERIAL
+                ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+            #else
+                ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
+                ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
+                ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+            #endif
+            ierr = solver_interface->setParams (p_rec, nullptr);
         }
-        PCOUT << " --------------  -------------- -----------------\n";
+
+        if (n_misc->model_ == 3) {// Modified objective
+            setDistMeasuresFullObj (solver_interface, h_maps, data);
+        }
+
+        ierr = tumor->rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);
+        ierr = tumor->k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, tumor->mat_prop_, n_misc);
         ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
         ierr = solver_interface->setInitialGuess (0.);
-        PCOUT << "SOLVING INTERPOLATION WITH IC" << std::endl;
-        ierr = solver_interface->solveInterpolation (c_0, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
-        PCOUT << " --------------  INTERPOLATED P -----------------\n";
-        if (procid == 0) {
-            ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+
+        if (interp_flag) {
+            PCOUT << "SOLVING INTERPOLATION WITH DATA" << std::endl;
+            ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
+            PCOUT << " --------------  INTERPOLATED P -----------------\n";
+            if (procid == 0) {
+                ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+            }
+            PCOUT << " --------------  -------------- -----------------\n";
+            ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
+            ierr = solver_interface->setInitialGuess (0.);
+            PCOUT << "SOLVING INTERPOLATION WITH IC" << std::endl;
+            ierr = solver_interface->solveInterpolation (c_0, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
+            PCOUT << " --------------  INTERPOLATED P -----------------\n";
+            if (procid == 0) {
+                ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+            }
+            PCOUT << " --------------  -------------- -----------------\n";
+            PCOUT << "Interpolation complete; exiting solver...\n";
+        } else {
+            bool flag_diff = false;
+            if (n_misc->regularization_norm_ == L1 && n_misc->diffusivity_inversion_ == true) {
+              n_misc->diffusivity_inversion_ = false;
+              flag_diff = true;
+            }
+
+            if (flag_cosamp) {
+                ierr = solver_interface->solveInverseCoSaMp (p_rec, data, nullptr);                  //Solve tumor inversion using cosamp
+            } else {
+                ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
+            }
+
+            //if L1, then solve for sparse components using weigted L2
+
+            if (n_misc->regularization_norm_ == L1) {
+                out_params = solver_interface->getSolverOutParams ();
+                n_gist = (int) out_params[0];
+                n_misc->regularization_norm_ = wL2; //Set W-L2
+                if (flag_diff) {
+                    n_misc->diffusivity_inversion_ = true;  //if we want diffusivity inversion after L1
+                    n_misc->k_ = 0.0;
+                }
+            }
+            else {
+                if (!flag_cosamp) {
+                    out_params = solver_interface->getSolverOutParams ();
+                    n_newton = (int) out_params[0];
+                }
+            }
+
+            if (n_misc->regularization_norm_ == wL2) {
+                ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
+                PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
+                if (n_misc->diffusivity_inversion_) {
+                    ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+                    PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
+                    PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
+                    PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
+                    ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+                }
+                ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, c_0, solver_interface, n_misc);
+                PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
+                PCOUT << " --------------  RECONST P -----------------\n";
+                if (procid == 0) {
+                    ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
+                }
+                PCOUT << " --------------  -------------- -----------------\n";
+                PCOUT << " \n\n --------------- W-L2 solve for sparse components ----------------------\n\n\n";
+
+                ierr = solver_interface->resetTaoSolver ();                                 //Reset tao objects
+                ierr = solver_interface->setInitialGuess (p_rec);
+                ierr = solver_interface->solveInverse (p_rec, data, nullptr);
+
+                out_params = solver_interface->getSolverOutParams ();
+                n_newton = (int) out_params[1];
+            }
+
+            ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
+            PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
+            if (n_misc->diffusivity_inversion_) {
+                ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+                PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
+                PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
+                PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
+                ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+            }
+            ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, c_0, solver_interface, n_misc);
+            PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
+            PCOUT << " --------------  RECONST P -----------------\n";
+            if (procid == 0) {
+                ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
+            }
+            PCOUT << " --------------  -------------- -----------------\n";
+
+            ierr = computeSegmentation(tumor, n_misc);      // Writes segmentation with c0 and c1
+
+            std::stringstream sstm;
+            sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
+            std::ofstream ofile (sstm.str().c_str());
+            //write reconstructed p into text file
+            if (procid == 0) {
+                ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+                int np = n_misc->np_;
+                int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+                for (int i = 0; i < np + nk; i++)
+                    ofile << prec_ptr[i] << std::endl;
+                ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+            }
+            ofile.close ();
+
+            if (n_misc->predict_flag_) {
+                PCOUT << "Predicting future tumor growth..." << std::endl;
+                // predict tumor growth using inverted parameter values
+                // set dt and nt to synthetic values to ensure best accuracy
+                n_misc->dt_ = dt_data;
+                n_misc->nt_ = (int) (1.5 / dt_data);
+
+                // reset time history
+                ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
+                // apply IC to tumor c0
+                ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
+                // reaction and diffusion coefficient already set correctly at the end of the
+                // optimizer
+                ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                                                                             // pde_operators->c_
+                // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
+                dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
+                dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
+                dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
+
+                PCOUT << "Prediction complete for t = 1.2 and t = 1.5\n";
+            }
         }
-        PCOUT << " --------------  -------------- -----------------\n";
+
     }
-    if (interp_flag) {
-        exit(1);
-    }
-    bool flag_diff = false;
-    if (n_misc->regularization_norm_ == L1 && n_misc->diffusivity_inversion_ == true) {
-      n_misc->diffusivity_inversion_ = false;
-      flag_diff = true;
-    }
-
-    if (flag_cosamp) {
-        ierr = solver_interface->solveInverseCoSaMp (p_rec, data, nullptr);                  //Solve tumor inversion using cosamp 
-    } else {
-        ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
-    }
-
-    //if L1, then solve for sparse components using weigted L2
-
-    if (n_misc->regularization_norm_ == L1) {
-        out_params = solver_interface->getSolverOutParams ();
-        n_gist = (int) out_params[0];
-        n_misc->regularization_norm_ = wL2; //Set W-L2
-        if (flag_diff) {
-            n_misc->diffusivity_inversion_ = true;  //if we want diffusivity inversion after L1
-            n_misc->k_ = 0.0;
-        }
-    }
-    else {
-        if (!flag_cosamp) {
-            out_params = solver_interface->getSolverOutParams ();
-            n_newton = (int) out_params[0];    
-        }
-    }
-
-    if (n_misc->regularization_norm_ == wL2) {
-        ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
-        PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
-        if (n_misc->diffusivity_inversion_) {
-            ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
-            PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
-            PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
-            PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
-            ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
-        }
-        ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, c_0, solver_interface, n_misc);
-        PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
-        PCOUT << " --------------  RECONST P -----------------\n";
-        if (procid == 0) {
-            ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
-        }
-        PCOUT << " --------------  -------------- -----------------\n";
-        PCOUT << " \n\n --------------- W-L2 solve for sparse components ----------------------\n\n\n";
-
-        ierr = solver_interface->resetTaoSolver ();                                 //Reset tao objects
-        ierr = solver_interface->setInitialGuess (p_rec);
-        ierr = solver_interface->solveInverse (p_rec, data, nullptr);
-
-        out_params = solver_interface->getSolverOutParams ();
-        n_newton = (int) out_params[1]; 
-    }
-   
-    ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
-    PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
-    if (n_misc->diffusivity_inversion_) {
-        ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
-        PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
-        PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
-        PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
-        ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
-    }
-    ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, c_0, solver_interface, n_misc);
-    PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
-    PCOUT << " --------------  RECONST P -----------------\n";
-    if (procid == 0) {
-        ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
-    }
-    PCOUT << " --------------  -------------- -----------------\n";
-
-    ierr = computeSegmentation(tumor, n_misc);      // Writes segmentation with c0 and c1 
-
-    std::stringstream sstm;
-    sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
-    std::ofstream ofile (sstm.str().c_str());
-    //write reconstructed p into text file
-    if (procid == 0) { 
-        ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
-        int np = n_misc->np_;
-        int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
-        for (int i = 0; i < np + nk; i++)
-            ofile << prec_ptr[i] << std::endl;
-        ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
-    }
-    ofile.close ();
-
-    if (n_misc->predict_flag_) {
-        PCOUT << "Predicting future tumor growth..." << std::endl;
-        // predict tumor growth using inverted parameter values
-        // set dt and nt to synthetic values to ensure best accuracy
-        n_misc->dt_ = dt_data;
-        n_misc->nt_ = (int) (1.5 / dt_data);
-
-        // reset time history 
-        ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
-        // apply IC to tumor c0
-        ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
-        // reaction and diffusion coefficient already set correctly at the end of the 
-        // optimizer
-        ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in 
-                                                                     // pde_operators->c_
-        // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
-        dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
-        dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
-        dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
-
-        PCOUT << "Prediction complete for t = 1.2 and t = 1.5\n";
-    }
-
-    // std::stringstream ss_out;
-    // ss_out << n_misc->writepath_ .str().c_str() << "itpout_" << rho_inv << ".dat";
-    // std::ofstream outfile (ss_out.str().c_str());
-
-    // outfile << n_misc->rho_ << " " << n_newton-1 << " " << n_gist-1 << " " << l2_rel_error << " " << error_norm_c0;
-    // outfile.close ();
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
@@ -612,13 +629,14 @@ int main (int argc, char** argv) {
     ierr = VecDestroy (&data);              CHKERRQ (ierr);
     ierr = VecDestroy (&p_rec);             CHKERRQ (ierr);
     ierr = VecDestroy (&data_nonoise);      CHKERRQ (ierr);
-    
+
 
     if (gm != nullptr) {ierr = VecDestroy (&gm); CHKERRQ (ierr);}
     if (wm != nullptr) {ierr = VecDestroy (&wm); CHKERRQ (ierr);}
     if (csf != nullptr) {ierr = VecDestroy (&csf); CHKERRQ (ierr);}
     if (bg != nullptr) {ierr = VecDestroy (&bg); CHKERRQ (ierr);}
-      
+    if (obs_mask != nullptr) {ierr = VecDestroy (&obs_mask); CHKERRQ (ierr);}
+
 }
 /* --------------------------------------------------------------------------------------------------------------*/
     accfft_destroy_plan (plan);
@@ -691,7 +709,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     if (n_misc->testcase_ == BRAINNEARMF) {
         cm[0] = 2 * M_PI / 128 * 56;//82  //Z
         cm[1] = 2 * M_PI / 128 * 68;//64  //Y
-        cm[2] = 2 * M_PI / 128 * 72;//52  //X 
+        cm[2] = 2 * M_PI / 128 * 72;//52  //X
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
@@ -703,7 +721,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     if (n_misc->testcase_ == BRAINFARMF) {
         cm[0] = 2 * M_PI / 128 * 60;//82  //Z
         cm[1] = 2 * M_PI / 128 * 44;//64  //Y
-        cm[2] = 2 * M_PI / 128 * 76;//52  //X 
+        cm[2] = 2 * M_PI / 128 * 76;//52  //X
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
@@ -738,7 +756,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
         n_misc->user_cms_.push_back (cm[2]);
         n_misc->user_cms_.push_back (scaling);
     }
-    // far 
+    // far
     if (n_misc->testcase_ == BRAINFARMF) {
         cm[0] = 2 * M_PI / 128 * 72;//82
         cm[1] = 2 * M_PI / 128 * 80;//64
@@ -768,7 +786,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
 
     // ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
-    
+
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
     #endif
@@ -817,7 +835,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
 
     // Smooth the data
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
-    double *data_ptr; 
+    double *data_ptr;
     ierr = VecGetArray (data, &data_ptr);                                       CHKERRQ (ierr);
     ierr = weierstrassSmoother (data_ptr, data_ptr, n_misc, sigma_smooth);
     ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
@@ -834,7 +852,27 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     // } else {
     ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
     // }
-    
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char *obs_mask_path) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    ierr = VecCreate (PETSC_COMM_WORLD, &obs_mask);                             CHKERRQ (ierr);
+    ierr = VecSetSizes (obs_mask, n_misc->n_local_, n_misc->n_global_);   CHKERRQ (ierr);
+    ierr = VecSetFromOptions (obs_mask);                                  CHKERRQ (ierr);
+    ierr = VecSet (obs_mask, 0.);                                         CHKERRQ (ierr);
+
+    dataIn (obs_mask, n_misc, obs_mask_path);
+    double *obs_mask_ptr;
+    ierr = VecGetArray (obs_mask, &obs_mask_ptr);                         CHKERRQ (ierr);
+    for (int i = 0; i < n_misc->n_local_; i++) {
+        obs_mask_ptr[i] = (obs_mask_ptr[i] > 0) ? 1.0 : 0.0;
+    }
+
+    ierr = VecRestoreArray (obs_mask, &obs_mask_ptr);                     CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
 
@@ -854,7 +892,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (wm, n_misc, wm_path);
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
- 
+
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
     double *gm_ptr, *wm_ptr, *csf_ptr, *bg_ptr;
     ierr = VecGetArray (gm, &gm_ptr);                    CHKERRQ (ierr);
@@ -915,7 +953,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
 
     int alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
     accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-    Complex *data_hat;  
+    Complex *data_hat;
     double *freq_scaling;
     data_hat = (Complex*) accfft_alloc (alloc_max);
     freq_scaling = (double*) accfft_alloc (alloc_max);
@@ -987,7 +1025,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     for (int i = 0; i < n_misc->n_local_; i++)
         d_ptr[i] /= n[0] * n[1] * n[2];
 
-    accfft_free (data_hat);    
+    accfft_free (data_hat);
     accfft_free (freq_scaling);
     accfft_free (data_hat_mag);
     ierr = VecRestoreArray (data, &d_ptr);              CHKERRQ (ierr);
@@ -1010,7 +1048,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     double data_norm;
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
-    
+
     ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
     double *c0_ptr;
@@ -1041,7 +1079,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     // ierr = tumor->obs_->apply (c_rec, c_rec);   //Apply observation to reconstructed C to compare
                                                 //values to data ?
-                                                // S: obs should not be applied because we want to see how the model captures the 
+                                                // S: obs should not be applied because we want to see how the model captures the
                                                 // true boundaries
 
     PCOUT << "\nC Reconstructed Max and Min : " << max << " " << min << std::endl;
@@ -1106,7 +1144,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
         w_ptr[i] = *(std::min_element (dist.begin(), dist.end()));      // sets the weight to the distance to the nearest ground truth activation
         w_ptr[i] += n_misc->h_[0];                                      // to avoid division by zero
 
-        // snafu for 64 
+        // snafu for 64
         // if (flg == 1) break;
     }
 
@@ -1114,7 +1152,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     sstm << n_misc->writepath_ .str().c_str() << "trueP.dat";
     std::ofstream ofile;
     ofile.open (sstm.str().c_str());
-    if (procid == 0) { 
+    if (procid == 0) {
         for (int i = 0; i < n_misc->np_; i++)
             ofile << p_true_ptr[i] << std::endl;
     }
@@ -1124,7 +1162,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecRestoreArray (p_true_w, &p_true_ptr);                         CHKERRQ (ierr);
 
     // // snafu: if using ground truth from somewhere else (for example, downsampled from a higher resolution)
-    // // interpolate c0 to the best capacity with the current basis. This is as close as we can get to the 
+    // // interpolate c0 to the best capacity with the current basis. This is as close as we can get to the
     // // ground truth
     // PCOUT << " --------------  -------------- -----------------\n";
     // ierr = VecSet (p_true_w, 0);                                                       CHKERRQ (ierr);
@@ -1140,7 +1178,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     double p_wL2, p_diff_wL2;
     ierr = VecPointwiseMult (temp, p_true_w, weights);                  CHKERRQ (ierr);
-    ierr = VecDot (p_true_w, temp, &p_wL2);                             CHKERRQ (ierr); 
+    ierr = VecDot (p_true_w, temp, &p_wL2);                             CHKERRQ (ierr);
     p_wL2 = std::sqrt (p_wL2);
     ierr = VecCopy (p_true_w, p_diff_w);                                CHKERRQ (ierr);
     ierr = VecAXPY (p_diff_w, -1.0, p_rec);                             CHKERRQ (ierr);  // diff in p
@@ -1148,7 +1186,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecNorm (p_diff_w, NORM_1, &l1_norm_diff);   CHKERRQ (ierr);
     ierr = VecNorm (p_true_w, NORM_1, &l1_norm_p);      CHKERRQ (ierr);
     ierr = VecPointwiseMult (temp, p_diff_w, weights);                  CHKERRQ (ierr);
-    ierr = VecDot (p_diff_w, temp, &p_diff_wL2);                        CHKERRQ (ierr); 
+    ierr = VecDot (p_diff_w, temp, &p_diff_wL2);                        CHKERRQ (ierr);
     p_diff_wL2 = std::sqrt (p_diff_wL2);
 
     double dist_err_c0 = p_diff_wL2 / p_wL2;
@@ -1171,7 +1209,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
           k2 = p_rec_ptr[n_misc->np_ + 1];
         if (n_misc->nk_ > 2)
           k3 = p_rec_ptr[n_misc->np_ + 2];
-    } 
+    }
 
     // if (n_misc->reaction_inversion_) {
     //     r1 = p_rec_ptr[n_misc->np_ + n_misc->nk_];
@@ -1311,7 +1349,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
         csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
         gm_ptr[i] = gm_ptr[i] * (1 - c_ptr[i]);
 
-        v.push_back(bg_ptr[i]); 
+        v.push_back(bg_ptr[i]);
         v.push_back(gm_ptr[i]);
         v.push_back(wm_ptr[i]);
         v.push_back(csf_ptr[i]);
@@ -1321,14 +1359,14 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
         max_ptr[i] = std::distance(v.begin(), max_component);
 
         v.clear();
-    }   
-    
+    }
+
 
     double sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
 
     ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 
-    ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr); 
+    ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr);
 
     if (n_misc->writeOutput_) {
         dataOut (max, n_misc, "seg0.nc");
@@ -1336,7 +1374,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
 
     // segmentatino for c1
     ierr = VecSet(max, 0);                                                  CHKERRQ(ierr);
-    ierr = VecGetArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);      
+    ierr = VecGetArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecGetArray(max, &max_ptr);                                      CHKERRQ(ierr);
     for (int i = 0; i < n_misc->n_local_; i++) {
         // Kill the material properties in regions of tumor
@@ -1345,7 +1383,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
         csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
         gm_ptr[i] = gm_ptr[i] * (1 - c_ptr[i]);
 
-        v.push_back(bg_ptr[i]); 
+        v.push_back(bg_ptr[i]);
         v.push_back(gm_ptr[i]);
         v.push_back(wm_ptr[i]);
         v.push_back(csf_ptr[i]);
@@ -1355,7 +1393,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
         max_ptr[i] = std::distance(v.begin(), max_component);
 
         v.clear();
-    }     
+    }
 
     ierr = VecRestoreArray(tumor->mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray(tumor->mat_prop_->gm_, &gm_ptr);                    CHKERRQ(ierr);
@@ -1366,25 +1404,14 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 
 
-    ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr); 
-    ierr = VecRestoreArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);       
+    ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr);
+    ierr = VecRestoreArray(tumor->c_t_, &c_ptr);                                CHKERRQ(ierr);
 
     if (n_misc->writeOutput_) {
         dataOut (max, n_misc, "seg1.nc");
-    }           
+    }
+
+    ierr = VecDestroy (&max);       CHKERRQ (ierr);
 
     PetscFunctionReturn(0);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
