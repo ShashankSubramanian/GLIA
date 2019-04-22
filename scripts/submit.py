@@ -10,6 +10,7 @@ tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
 params['results_path'] = tumor_dir + '/results/check/'
+params['compute_sys'] = 'rebels'
 
 # ### Real data
 # params['data_path'] = tumor_dir + '/results/tc2_128/data.nc'

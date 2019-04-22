@@ -594,7 +594,6 @@ int main (int argc, char** argv) {
                 // set dt and nt to synthetic values to ensure best accuracy
                 n_misc->dt_ = dt_data;
                 n_misc->nt_ = (int) (1.5 / dt_data);
-
                 // reset time history
                 ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
                 // apply IC to tumor c0
@@ -635,7 +634,7 @@ int main (int argc, char** argv) {
     if (wm != nullptr) {ierr = VecDestroy (&wm); CHKERRQ (ierr);}
     if (csf != nullptr) {ierr = VecDestroy (&csf); CHKERRQ (ierr);}
     if (bg != nullptr) {ierr = VecDestroy (&bg); CHKERRQ (ierr);}
-    if (obs_mask != nullptr) {ierr = VecDestroy (&obs_mask); CHKERRQ (ierr);}
+    if (use_custom_obs_mask) {ierr = VecDestroy (&obs_mask); CHKERRQ (ierr);}
 
 }
 /* --------------------------------------------------------------------------------------------------------------*/

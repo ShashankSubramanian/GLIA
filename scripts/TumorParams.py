@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 256
+    N = 128
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -45,7 +45,7 @@ def getTumorRunCmd(params):
 
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
     sparsity_lvl = 10
     ### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / meshsize)
-    dd_fac = 4
+    dd_fac = 2
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "QN"
     ### Newton max iterations
