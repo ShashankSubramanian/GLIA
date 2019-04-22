@@ -193,7 +193,7 @@ def getTumorRunCmd(params):
     if params['compute_sys'] == 'hazelhen':
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N 24 ";
     if params['compute_sys'] == 'stampede2':
-        cmd = cmd + "ibrun -n " + str(params['mpi_pernode']) + " ";
+        cmd = cmd + "ibrun ";
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
