@@ -34,7 +34,7 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
 PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*);
@@ -538,7 +538,7 @@ int main (int argc, char** argv) {
                     PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
                     ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
                 }
-                ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, c_0, solver_interface, n_misc);
+                ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, data, c_0, solver_interface, n_misc);
                 PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
                 PCOUT << " --------------  RECONST P -----------------\n";
                 if (procid == 0) {
@@ -564,7 +564,7 @@ int main (int argc, char** argv) {
                 PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
                 ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
             }
-            ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, c_0, solver_interface, n_misc);
+            ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, data, c_0, solver_interface, n_misc);
             PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
             PCOUT << " --------------  RECONST P -----------------\n";
             if (procid == 0) {
@@ -1033,7 +1033,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
 }
 
 
-PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec c_0_true, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0_true, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Vec c_rec_0, c_rec;
@@ -1076,7 +1076,11 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     // if (n_misc->writeOutput_)
         // dataOut (c_rec, n_misc, "cReconBeforeObservation.nc");
 
-    // ierr = tumor->obs_->apply (c_rec, c_rec);   //Apply observation to reconstructed C to compare
+    Vec obs_c_rec;
+    ierr = VecDuplicate (c_rec, &obs_c_rec);                                CHKERRQ (ierr);
+    ierr = VecCopy (c_rec, obs_c_rec);                                      CHKERRQ (ierr);
+
+    ierr = tumor->obs_->apply (obs_c_rec, obs_c_rec);   //Apply observation to reconstructed C to compare
                                                 //values to data ?
                                                 // S: obs should not be applied because we want to see how the model captures the
                                                 // true boundaries
@@ -1104,6 +1108,18 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     PCOUT << "Data mismatch: " << error_norm << std::endl;
 
     error_norm /= data_norm;
+
+    double obs_c_norm, obs_data_norm;
+
+    ierr = VecAXPY (obs_c_rec, -1.0, data_obs);                             CHKERRQ (ierr);
+    ierr = VecNorm (obs_c_rec, NORM_2, &obs_c_norm);                        CHKERRQ (ierr);
+    ierr = VecNorm (data_obs, NORM_2, &obs_data_norm);                      CHKERRQ (ierr);
+
+    obs_c_norm /= obs_data_norm;
+
+    PCOUT << "L2 rel error at observation points: " << obs_c_norm << std::endl;
+
+    ierr = VecDestroy (&obs_c_rec);                                         CHKERRQ (ierr);
 
 
     // compute weighted l2 error norm for c0

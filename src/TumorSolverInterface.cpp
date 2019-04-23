@@ -623,6 +623,62 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     PCOUT << "Number of observed voxels: " << global_sum << std::endl;
 
 
+    // // Guess the reaction coefficient and use as IC.
+    // std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate 
+    //                                                       // roughly where to start, else we could get stuck in 
+    //                                                       // a bad local minimum
+
+    // // get com of data and assign a Gaussian to it
+    // double com[3];
+    // ierr = computeCenterOfMass (d1, n_misc_->isize_, n_misc_->istart_, n_misc_->h_, com);
+
+    // PCOUT << "Center of mass of tumor: " << com[0] << " " << com[1] << " " << com[2] << std::endl;
+
+    // // find the Gaussian closest to the CoM
+    // int com_idx = 0;
+    // double min_dist = 1E10, dist;
+    // for (int i = 0; i < n_misc_->np_; i++) {
+    //     dist = myDistance (com, &tumor_->phi_->centers_[3 * i]);
+    //     if (dist < min_dist) {
+    //         min_dist = dist;
+    //         com_idx = i;
+    //     }
+    // }
+
+    // // set the com gaussian to 1.
+    // int insert_idx[1];
+    // insert_idx[0] = com_idx;
+    // double val_arr[1];
+    // val_arr[0] = 1.;
+    // ierr = VecSetValues (prec, 1, insert_idx, val_arr, INSERT_VALUES);     CHKERRQ (ierr);
+
+
+    // double min_norm = 1E15, norm_1 = 0.;
+    // int idx_min = 0;
+    // for (int i = 0; i < rho_guess.size(); i++) {
+    //     // update the tumor with this rho    
+    //     ierr = tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., tumor_->mat_prop_, n_misc_);
+    //     ierr = tumor_->phi_->apply (tumor_->c_0_, prec);                                       CHKERRQ (ierr);    // apply scaled p to IC
+    //     ierr = derivative_operators_->pde_operators_->solveState (0);                                             // solve state with guess reaction and zero diffusivity
+    //     ierr = tumor_->obs_->apply (derivative_operators_->temp_, tumor_->c_t_);               CHKERRQ (ierr);
+
+    //     // mismatch between data and c
+    //     ierr = VecAXPY (derivative_operators_->temp_, -1.0, d1);     CHKERRQ (ierr);    // Oc(1) - d
+    //     ierr = VecNorm (derivative_operators_->temp_, NORM_2, &norm_1);   CHKERRQ (ierr);
+
+    //     if (norm_1 < min_norm) {
+    //         min_norm = norm_1;
+    //         idx_min = i;
+    //     }
+    // }
+
+    // PCOUT << "Initial guess for reaction coefficient: " << rho_guess[idx_min] << std::endl;
+
+    // n_misc_->rho_ = rho_guess[idx_min];
+    // ierr = tumor_->rho_->updateIsotropicCoefficients (rho_guess[idx_min], 0., 0., tumor_->mat_prop_, n_misc_);
+
+    // // Reset IC to zero for inverse solve.
+    // ierr = VecSet (prec, 0.);                                     CHKERRQ (ierr);
 
     // solve
     Vec g, g_ref;              // Holds the gradient and reference gradient

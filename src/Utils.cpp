@@ -462,3 +462,50 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 double myDistance (double *c1, double *c2) {
     return std::sqrt((c1[0] - c2[0]) * (c1[0] - c2[0]) + (c1[1] - c2[1]) * (c1[1] - c2[1]) + (c1[2] - c2[2]) * (c1[2] - c2[2]));
 }
+
+PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	int nprocs, procid;
+	MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+	int64_t ptr_idx;
+	double X, Y, Z;
+    double *data_ptr;
+    double com[3], sum;
+    for (int i = 0; i < 3; i++) 
+    	com[i] = 0.;
+    sum = 0;
+    ierr = VecGetArray (x, &data_ptr);                 CHKERRQ (ierr);
+    for (int x = 0; x < isize[0]; x++) {
+        for (int y = 0; y < isize[1]; y++) {
+            for (int z = 0; z < isize[2]; z++) {
+                X = h[0] * (istart[0] + x);
+                Y = h[1] * (istart[1] + y);
+                Z = h[2] * (istart[2] + z);
+
+                ptr_idx = x * isize[1] * isize[2] + y * isize[2] + z;
+                com[0] += (data_ptr[ptr_idx] * X);
+                com[1] += (data_ptr[ptr_idx] * Y);
+                com[2] += (data_ptr[ptr_idx] * Z);
+
+                sum += data_ptr[ptr_idx];
+            }
+        }
+    }
+
+    double sm;
+    MPI_Allreduce (&com, cm, 3, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    MPI_Allreduce (&sum, &sm, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+
+    for (int i = 0; i < 3; i++) {
+    	cm[i] /= sm;
+    }
+
+    ierr = VecRestoreArray (x, &data_ptr);                 CHKERRQ (ierr);
+
+
+	PetscFunctionReturn (0);
+}

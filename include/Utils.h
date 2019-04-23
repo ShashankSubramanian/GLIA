@@ -511,4 +511,6 @@ void __TU_assert(const char* expr_str, bool expr, const char* file, int line, co
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
 double myDistance (double *c1, double *c2);
 
+PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);
+
 #endif // end _UTILS_H
