@@ -272,6 +272,7 @@ class NMisc {
         , newton_maxit_ (30)                    // Newton max itr
         , gist_maxit_ (50)                      // GIST max itr
         , krylov_maxit_ (30)                    // Krylov max itr
+        , opttolgrad_ (1E-5)                    // Relative gradient tolerance of L2 solves
         , sparsity_level_ (1)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
@@ -434,6 +435,7 @@ class NMisc {
         std::stringstream writepath_;
 
         int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
+        double opttolgrad_;
 
         std::vector<int> support_;      // support of cs guess
 

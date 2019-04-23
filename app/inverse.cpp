@@ -109,6 +109,8 @@ int main (int argc, char** argv) {
 
     double sm = -1;
 
+    double opttolgrad = -1.0;
+
     double low_freq_noise_scale = -1.0;
 
     int predict_flag = 0;
@@ -155,6 +157,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-newton_maxit", "Newton max iterations", "", newton_maxit, &newton_maxit, NULL);
     PetscOptionsInt ("-gist_maxit", "GIST max iterations", "", gist_maxit, &gist_maxit, NULL);
     PetscOptionsInt ("-krylov_maxit", "Krylov max iterations", "", krylov_maxit, &krylov_maxit, NULL);
+    PetscOptionsReal ("-rel_grad_tol", "Relative gradient tolerance for L2 solves", "", opttolgrad, &opttolgrad, NULL);
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
@@ -304,6 +307,10 @@ int main (int argc, char** argv) {
         n_misc->obs_threshold_ = obs_thres;
     }
 
+    if (opttolgrad != -1.0) {
+        n_misc->opttolgrad_ = opttolgrad;
+    }
+
     PetscStrcmp ("QN", newton_solver, &strflg);
     if (strflg) {
         n_misc->newton_solver_ = QUASINEWTON;
@@ -370,6 +377,7 @@ int main (int argc, char** argv) {
     solver_interface->getInvSolver()->getOptSettings ()->newtonsolver = n_misc->newton_solver_;
     solver_interface->getInvSolver()->getOptSettings ()->gist_maxit = n_misc->gist_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
+    solver_interface->getInvSolver()->getOptSettings ()->opttolgrad = n_misc->opttolgrad_;
 
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {

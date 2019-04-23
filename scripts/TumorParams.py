@@ -117,6 +117,8 @@ def getTumorRunCmd(params):
     max_gist_iter = 2
     ### Krylov max iterations
     max_krylov_iter = 30
+    ### Relative gradient tolerance
+    grad_tol = 1E-5
 
     ### TUMOR PARAMETERS SET END
 
@@ -213,6 +215,7 @@ def getTumorRunCmd(params):
     " -newton_maxit " + str(max_iter) + \
     " -gist_maxit " + str(max_gist_iter) + \
     " -krylov_maxit " + str(max_krylov_iter) + \
+    " -rel_grad_tol " + str(grad_tol) + \
     " -syn_flag " + str(create_synthetic) + \
     " -data_path " + data_path + \
     " -gm_path " + gm_path + \
