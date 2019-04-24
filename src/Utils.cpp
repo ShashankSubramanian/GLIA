@@ -515,7 +515,7 @@ PetscErrorCode setupVec (Vec x, int type) {
 	PetscErrorCode ierr = 0;
 
 	#ifdef CUDA
-		if type == SEQ
+		if (type == SEQ)
 			ierr = VecSetType (x, VECSEQCUDA);
 		else
 			ierr = VecSetType (x, VECCUDA);

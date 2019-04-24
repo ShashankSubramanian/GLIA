@@ -153,7 +153,7 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
 
-if env["gpu"] == 'True':
+if env["gpu"] == True:
     env.Append(CCFLAGS = ['-DCUDA'])
 
 # enforce positivity in diffusion inversion for ks
