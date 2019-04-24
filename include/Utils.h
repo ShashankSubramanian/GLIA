@@ -26,7 +26,9 @@
 #include <assert.h>
 #include "EventTimings.hpp"
 
-
+#ifdef CUDA
+    #include "petsccuda.h"
+#endif
 
 
 enum {QDFS = 0, SLFS = 1};
