@@ -10,7 +10,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
     for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
@@ -38,7 +38,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
     for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
@@ -281,7 +281,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         double * pg_ptr;
         Vec pg;
         ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);                            CHKERRQ (ierr);
-        ierr = VecSetFromOptions (pg);                                              CHKERRQ (ierr);
+        ierr = setupVec (pg, SEQ);                                                       CHKERRQ (ierr);
 
         {
             VecScatter scatter; /* scatter context */
@@ -736,7 +736,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
     for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);

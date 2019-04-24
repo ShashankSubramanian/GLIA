@@ -72,6 +72,7 @@ conf = Configure(env) # For checking libraries, headers, ...
 
 Help(vars.GenerateHelpText(env))
 env.Append(CPPPATH = ['#include'])
+env.Append(CPPPATH = [os.path.join( "3rdparty")])
 env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
 
 print
@@ -151,6 +152,9 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
+
+if env["gpu"] == 'True':
+    env.Append(CCFLAGS = ['-DCUDA'])
 
 # enforce positivity in diffusion inversion for ks
 # env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])

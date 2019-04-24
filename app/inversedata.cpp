@@ -97,7 +97,7 @@ int main (int argc, char** argv) {
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
         ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+        ierr = setupVec (p_rec);                                       CHKERRQ (ierr);
     #endif
 
     ierr = solver_interface->setParams (p_rec, nullptr);
@@ -145,7 +145,7 @@ PetscErrorCode readDataAndAtlas (Vec &data, Vec &wm, Vec &gm, Vec &glm, Vec &csf
 
     ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
-    ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
+    ierr = setupVec (data);                                        CHKERRQ (ierr);
 
     ierr = VecDuplicate (data, &wm);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (data, &gm);                                        CHKERRQ (ierr);
@@ -216,7 +216,7 @@ PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
 
     ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
-    ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
+    ierr = setupVec (data);                                        CHKERRQ (ierr);
 
     dataIn (data, n_misc, "tuAAAN.nc");
 

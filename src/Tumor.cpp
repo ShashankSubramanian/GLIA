@@ -10,7 +10,7 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) {
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t_);
     ierr = VecSetSizes (c_t_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (c_t_);
+    ierr = setupVec (c_t_);
     ierr = VecDuplicate (c_t_, &c_0_);
     ierr = VecDuplicate (c_t_, &p_0_);
     ierr = VecDuplicate (c_0_, &p_t_);

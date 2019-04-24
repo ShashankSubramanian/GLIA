@@ -9,7 +9,7 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &kxx_);
     ierr = VecSetSizes (kxx_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (kxx_);
+    ierr = setupVec (kxx_);
 
     ierr = VecDuplicate (kxx_, &kxy_);
     ierr = VecDuplicate (kxx_, &kxz_);

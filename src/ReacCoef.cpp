@@ -4,7 +4,7 @@ ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &rho_vec_);
     ierr = VecSetSizes (rho_vec_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (rho_vec_);
+    ierr = setupVec (rho_vec_);
     ierr = VecSet(rho_vec_, 0);
 
     smooth_flag_ = 0;

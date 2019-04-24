@@ -509,3 +509,19 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, d
 
 	PetscFunctionReturn (0);
 }
+
+PetscErrorCode setupVec (Vec x, int type) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	#ifdef CUDA
+		if type == SEQ
+			ierr = VecSetType (x, VECSEQCUDA);
+		else
+			ierr = VecSetType (x, VECCUDA);
+	#else
+		ierr = VecSetFromOptions (x);						
+	#endif
+
+	PetscFunctionReturn (0);
+}

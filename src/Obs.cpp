@@ -5,7 +5,7 @@ Obs::Obs (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &filter_);
     ierr = VecSetSizes (filter_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (filter_);
+    ierr = setupVec (filter_);
     ierr = VecSet (filter_, 1.0);
 }
 

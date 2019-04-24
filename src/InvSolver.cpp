@@ -326,7 +326,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   Vec noise; double *noise_ptr;
   ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
   ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
-  ierr = VecSetFromOptions(noise);                                                    CHKERRQ(ierr);
+  ierr = setupVec(noise);                                                    CHKERRQ(ierr);
   ierr = VecSetRandom(noise, NULL);                                                   CHKERRQ(ierr);
   ierr = VecGetArray (noise, &noise_ptr);                                             CHKERRQ(ierr);
   for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {
@@ -376,6 +376,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   x_sz = nk + nr;
   Vec x;
   ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &x);                                    CHKERRQ (ierr);  // Inversion for rho and k
+  ierr = setupVec (x, SEQ);                                                                CHKERRQ (ierr);
   ierr = VecSet (x, 0.);                                                              CHKERRQ (ierr);
 
   // set initial guess to current state
@@ -541,7 +542,7 @@ PetscErrorCode InvSolver::solve () {
   Vec noise; double *noise_ptr;
   ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
   ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
-  ierr = VecSetFromOptions(noise);                                                    CHKERRQ(ierr);
+  ierr = setupVec(noise);                                                    CHKERRQ(ierr);
   ierr = VecSetRandom(noise, NULL);                                                   CHKERRQ(ierr);
   ierr = VecGetArray (noise, &noise_ptr);                                             CHKERRQ(ierr);
   for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {

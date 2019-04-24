@@ -6,7 +6,7 @@ struct InterpolationContext {
         PetscErrorCode ierr = 0;
         ierr = VecCreate (PETSC_COMM_WORLD, &temp_);
         ierr = VecSetSizes (temp_, n_misc->n_local_, n_misc->n_global_);
-        ierr = VecSetFromOptions (temp_);
+        ierr = setupVec (temp_);
         ierr = VecSet (temp_, 0);
     }
     std::shared_ptr<Tumor> tumor_;
@@ -45,10 +45,11 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
 
     #ifdef SERIAL
         ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);     CHKERRQ (ierr);
+        ierr = setupVec (p, SEQ);                                    CHKERRQ (ierr);
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
         ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
+        ierr = setupVec (p);                                        CHKERRQ (ierr);
     #endif
 
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
@@ -190,7 +191,8 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     np = n_misc_->np_;
     nk = n_misc_->nk_;
     nr = n_misc_->nr_;
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);             CHKERRQ (ierr);              // Create the L2 solution vector
+    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);            CHKERRQ (ierr);              // Create the L2 solution vector
+    ierr = setupVec (x_L2, SEQ);                                                CHKERRQ (ierr);
     ierr = VecSet (x_L2, 0);                                               CHKERRQ (ierr);
     ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
     ierr = VecGetArray (prec, &prec_ptr);                                  CHKERRQ (ierr);
@@ -759,6 +761,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
         n_misc_->np_ = np;                    // Change np to solve the smaller L2 subsystem
         ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L2);                 CHKERRQ (ierr);              // Create the L2 solution vector
+        ierr = setupVec (x_L2, SEQ);                                                CHKERRQ (ierr);
         ierr = VecSet (x_L2, 0);                                               CHKERRQ (ierr);
         ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
         ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);
@@ -933,7 +936,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             nr = (n_misc_->reaction_inversion_) ? n_misc_->nr_ : 0;
             
             n_misc_->np_ = np;                    // Change np to solve the smaller L2 subsystem
-            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);             CHKERRQ (ierr);              // Create the L2 solution vector
+            ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);            CHKERRQ (ierr);              // Create the L2 solution vector
+            ierr = setupVec (x_L2, SEQ);                                                CHKERRQ (ierr);
             ierr = VecSet (x_L2, 0);                                               CHKERRQ (ierr);
             ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
             ierr = VecGetArray (x_L1, &x_L1_ptr);                                  CHKERRQ (ierr);

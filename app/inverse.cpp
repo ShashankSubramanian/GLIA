@@ -470,10 +470,11 @@ int main (int argc, char** argv) {
             int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
             #ifdef SERIAL
                 ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+                ierr = setupVec (p_rec, SEQ);                                                CHKERRQ (ierr);
             #else
                 ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
                 ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-                ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+                ierr = setupVec (p_rec);                                                CHKERRQ (ierr);
             #endif
             ierr = solver_interface->setParams (p_rec, nullptr);
         }
@@ -694,15 +695,16 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     #ifdef SERIAL
         ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+        ierr = setupVec (p_rec, SEQ);                                       CHKERRQ (ierr);
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
         ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+        ierr = setupVec (p_rec);                                       CHKERRQ (ierr);
     #endif
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
-    ierr = VecSetFromOptions (c_t);                                         CHKERRQ (ierr);
+    ierr = setupVec (c_t);                                         CHKERRQ (ierr);
     ierr = VecDuplicate (c_t, &c_0);                                        CHKERRQ (ierr);
 
     ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);
@@ -822,7 +824,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
 
     ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
-    ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
+    ierr = setupVec (data);                                        CHKERRQ (ierr);
 
     ierr = VecDuplicate (data, &c_0);                                       CHKERRQ (ierr);
 
@@ -832,10 +834,11 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
 
     #ifdef SERIAL
         ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+        ierr = setupVec (p_rec, SEQ);                                       CHKERRQ (ierr);
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
         ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+        ierr = setupVec (p_rec);                                       CHKERRQ (ierr);
     #endif
 
     dataIn (data, n_misc, data_path);
@@ -869,7 +872,7 @@ PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char
 
     ierr = VecCreate (PETSC_COMM_WORLD, &obs_mask);                             CHKERRQ (ierr);
     ierr = VecSetSizes (obs_mask, n_misc->n_local_, n_misc->n_global_);   CHKERRQ (ierr);
-    ierr = VecSetFromOptions (obs_mask);                                  CHKERRQ (ierr);
+    ierr = setupVec (obs_mask);                                  CHKERRQ (ierr);
     ierr = VecSet (obs_mask, 0.);                                         CHKERRQ (ierr);
 
     dataIn (obs_mask, n_misc, obs_mask_path);
@@ -889,7 +892,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     ierr = VecCreate (PETSC_COMM_WORLD, &gm);                             CHKERRQ (ierr);
     ierr = VecSetSizes (gm, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
-    ierr = VecSetFromOptions (gm);                                        CHKERRQ (ierr);
+    ierr = setupVec (gm);                                        CHKERRQ (ierr);
 
     ierr = VecDuplicate (gm, &wm);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
@@ -1276,15 +1279,16 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     #ifdef SERIAL
         ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+        ierr = setupVec (p_rec, SEQ);                                       CHKERRQ (ierr);
     #else
         ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
         ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+        ierr = setupVec (p_rec);                                       CHKERRQ (ierr);
     #endif
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
-    ierr = VecSetFromOptions (c_t);                                         CHKERRQ (ierr);
+    ierr = setupVec (c_t);                                         CHKERRQ (ierr);
     ierr = VecDuplicate (c_t, &c_0);                                        CHKERRQ (ierr);
 
     ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);

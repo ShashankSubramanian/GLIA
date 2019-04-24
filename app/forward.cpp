@@ -89,7 +89,7 @@ int main (int argc, char** argv) {
 
 	ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
-    ierr = VecSetFromOptions (c_t);                                         CHKERRQ (ierr);
+    ierr = setupVec (c_t);                                         CHKERRQ (ierr);
     ierr = VecDuplicate (c_t, &c_0);                                        CHKERRQ (ierr);
 
     ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);

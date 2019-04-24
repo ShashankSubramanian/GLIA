@@ -33,7 +33,7 @@ ctx_() {
 
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (rhs_);
+    ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
 }
 

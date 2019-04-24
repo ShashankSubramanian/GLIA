@@ -12,10 +12,10 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (c_[0]);
+    ierr = setupVec (c_[0]);
     ierr = VecCreate (PETSC_COMM_WORLD, &p_[0]);
     ierr = VecSetSizes (p_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (p_[0]);
+    ierr = setupVec (p_[0]);
 
     for (int i = 1; i < nt + 1; i++) {
         ierr = VecDuplicate (c_[0], &c_[i]);
@@ -46,10 +46,10 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc)
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (c_[0]);
+    ierr = setupVec (c_[0]);
     ierr = VecCreate (PETSC_COMM_WORLD, &p_[0]);
     ierr = VecSetSizes (p_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (p_[0]);
+    ierr = setupVec (p_[0]);
 
     for (int i = 1; i < nt + 1; i++) {
         ierr = VecDuplicate (c_[0], &c_[i]);

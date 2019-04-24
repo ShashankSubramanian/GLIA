@@ -33,6 +33,7 @@ enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
+enum {SEQ = 0, MPI = 1};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -514,5 +515,6 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 double myDistance (double *c1, double *c2);
 
 PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);
+PetscErrorCode setupVec (Vec x, int type = MPI);
 
 #endif // end _UTILS_H

@@ -4,7 +4,7 @@ MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &gm_);
 	ierr = VecSetSizes (gm_, n_misc->n_local_, n_misc->n_global_);
-	ierr = VecSetFromOptions (gm_);
+	ierr = setupVec (gm_);
 
 	ierr = VecDuplicate (gm_, &wm_);
 	ierr = VecDuplicate (gm_, &csf_);
