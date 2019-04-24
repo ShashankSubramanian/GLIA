@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -45,7 +45,7 @@ def getTumorRunCmd(params):
 
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 1
+    create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -101,6 +101,8 @@ def getTumorRunCmd(params):
     data_thres = 0.1
     ### Observation detection threshold
     obs_thres = 0.0
+    ### Flag indicating whether to negate the observation mask (use 1 if edema is passed as obs_mask)
+    invert_obs_mask_flag = 1
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -222,6 +224,7 @@ def getTumorRunCmd(params):
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -obs_mask_path " + obs_mask_path + \
+    " -invert_obs_mask " + str(invert_obs_mask_flag) + \
     " -model " + str(model) + \
     " -smooth " + str(smooth_f) + \
     " -observation_threshold " + str(obs_thres) + \
