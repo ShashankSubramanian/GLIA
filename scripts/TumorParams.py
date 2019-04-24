@@ -229,7 +229,7 @@ def getTumorRunCmd(params):
     " -r_gm_wm " + str(r_gm_wm) + \
     " -low_freq_noise " + str(noise_scale) + \
     " -prediction " + str(predict_flag) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5"
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10 "
 
     return run_str, error_flag
 
