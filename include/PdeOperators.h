@@ -4,6 +4,8 @@
 #include "Utils.h"
 #include "Tumor.h"
 #include "DiffSolver.h"
+#include "AdvectionSolver.h"
+#include "ElasticitySolver.h"
 
 #include <mpi.h>
 #include <omp.h>
@@ -54,6 +56,37 @@ class PdeOperatorsRD : public PdeOperators {
 		 */
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4);
 		virtual ~PdeOperatorsRD ();
+};
+
+class PdeOperatorsMassEffect : public PdeOperatorsRD {
+	public:
+		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
+			PetscErrorCode ierr = 0;
+			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
+			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
+			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor);
+
+			temp_ = new Vec[3];
+			for (int i = 0; i <3; i++) {
+				ierr = VecDuplicate (tumor->work_[0], &temp_[i]);
+				ierr = VecSet (temp_[i], 0.);
+			}
+		}
+
+		std::shared_ptr<AdvectionSolver> adv_solver_;
+		std::shared_ptr<ElasticitySolver> elasticity_solver_;
+
+		Vec *temp_;
+
+		virtual PetscErrorCode solveState (int linearized);
+		PetscErrorCode conserveHealthyTissues ();
+
+		virtual ~PdeOperatorsMassEffect () {
+			PetscErrorCode ierr = 0;
+			for (int i = 0; i < 3; i++)
+				ierr = VecDestroy (&temp_[i]);
+			delete [] temp_;
+		}
 };
 
 #endif

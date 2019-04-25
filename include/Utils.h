@@ -229,6 +229,7 @@ class NMisc {
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
+                       // Mass effect -- 4
         , dt_ (0.5)                            // Time step
         , nt_(1)                               // Total number of time steps
         , np_ (1)                              // Number of gaussians for bounding box
@@ -278,6 +279,17 @@ class NMisc {
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
+        , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
+        , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
+        , nu_bg_ (0.48)                         // Poisson's ratio of background
+        , nu_csf_ (0.1)                         // Poisson's ratio of CSF
+        , E_healthy_ (2100)                     // Young's modulus of wm and gm
+        , E_bg_ (15000)                         // Young's modulus of background
+        , E_tumor_ (10000)                       // Young's modulus of tumor
+        , E_csf_ (10)                          // Young's modulus of CSF
+        , screen_low_ (0)                       // low screening coefficient
+        , screen_high_ (1E4)                    // high screening 
+        , forcing_factor_ (2.0E5)                 // mass effect forcing factor
                                 {
 
 
@@ -301,6 +313,11 @@ class NMisc {
                 user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
                 user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
                 user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+
+                // casebrats for mass effect
+                // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
@@ -442,6 +459,36 @@ class NMisc {
         std::vector<double> user_cms_;  // stores the cms for synthetic user data
 
         double smoothing_factor_;
+
+        double E_csf_, E_healthy_, E_tumor_, E_bg_;
+        double nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
+
+        double screen_low_, screen_high_;
+
+        double forcing_factor_;
+};
+
+class VecField {
+    public:
+        VecField (int nl, int ng);
+        Vec x_;
+        Vec y_;
+        Vec z_;
+        Vec magnitude_;
+        ~VecField () {
+            PetscErrorCode ierr = 0;
+            ierr = VecDestroy (&x_);
+            ierr = VecDestroy (&y_);
+            ierr = VecDestroy (&z_);
+            ierr = VecDestroy (&magnitude_);
+        }
+
+        PetscErrorCode computeMagnitude ();
+        PetscErrorCode copy (std::shared_ptr<VecField> field);
+        PetscErrorCode getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
+        PetscErrorCode restoreComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
+        PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
+        PetscErrorCode getIndividualComponents (Vec in);  // uses x,y,z to populate in
 };
 
 /**

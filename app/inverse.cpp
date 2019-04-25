@@ -437,11 +437,11 @@ int main (int argc, char** argv) {
     }
 
     if (fwd_flag) {
-        PCOUT << "Forward solve completed: exiting...\n";
+        PCOUT << "Forward solve completed: exiting...\n";  
     } else {
-        PCOUT << "Inverse solver begin" << std::endl;
+        PCOUT << "Inverse solver begin" << std::endl; 
 
-        n_misc->rho_ = rho_inv;
+        n_misc->rho_ = rho_inv;                                              
         n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->dt_ = dt_inv;
         n_misc->nt_ = nt_inv;
@@ -622,6 +622,7 @@ int main (int argc, char** argv) {
         }
 
     }
+
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
@@ -1438,6 +1439,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     }
 
     ierr = VecDestroy (&max);       CHKERRQ (ierr);
+
 
     PetscFunctionReturn(0);
 }

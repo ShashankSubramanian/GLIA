@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 256
+    N = 128
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -45,7 +45,7 @@ def getTumorRunCmd(params):
 
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -54,7 +54,7 @@ def getTumorRunCmd(params):
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
-    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective
+    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
@@ -79,6 +79,8 @@ def getTumorRunCmd(params):
     interp_flag = 0
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 1
+    ### Forward flag -- Flag to run only forward solve
+    forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -102,7 +104,7 @@ def getTumorRunCmd(params):
     ### Observation detection threshold
     obs_thres = 0.0
     ### Flag indicating whether to negate the observation mask (use 1 if edema is passed as obs_mask)
-    invert_obs_mask_flag = 1
+    invert_obs_mask_flag = 0
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -232,23 +234,7 @@ def getTumorRunCmd(params):
     " -r_gm_wm " + str(r_gm_wm) + \
     " -low_freq_noise " + str(noise_scale) + \
     " -prediction " + str(predict_flag) + \
+    " -forward " + str(forward_flag) + \
     " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10 "
 
     return run_str, error_flag
-
-
-
-##########################################################################################################################################################################################
-
-### Parsers --- old version, too messy
-### Command line parameters which superscripts will have to compulsarily provide
-# parser = argparse.ArgumentParser (description = 'Glioblastoma inversion parameters')
-# parser.add_argument ('-N', type = int, default = 256, metavar = 'N', help = 'Dimensions of uniform grid')
-# parser.add_argument ('-data_path', type = str, default = os.getcwd() + '/brain_data/256/cpl/c1p.nc', metavar = 'data_path', help = 'Path to tumor data probability')
-# parser.add_argument ('-atlas_gm_path', type = str, default = os.getcwd() + '/brain_data/256/gray_matter.nc', metavar = 'gm_path', help = 'Path to atlas gray matter probability')
-# parser.add_argument ('-atlas_wm_path', type = str, default = os.getcwd() + '/brain_data/256/white_matter.nc', metavar = 'wm_path', help = 'Path to atlas white matter probability')
-# parser.add_argument ('-atlas_csf_path', type = str, default = os.getcwd() + '/brain_data/256/csf.nc', metavar = 'csf_path', help = 'Path to atlas csf probability')
-# parser.add_argument ('-atlas_glm_path', type = str, default = os.getcwd() + '/brain_data/256/glial_matter.nc', metavar = 'glm_path', help = 'Path to atlas glial matter probability')
-# parser.add_argument ('-results_path', type = str, default = os.getcwd() + '/results/', metavar = 'results', help = 'Path to output files')
-
-# args = parser.parse_arg2s()

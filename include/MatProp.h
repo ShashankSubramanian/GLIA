@@ -19,8 +19,12 @@ class MatProp {
 		double force_factor_;
 		double edema_threshold_;	
 
+		std::shared_ptr<NMisc> n_misc_;
+
 		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc);
+
+		PetscErrorCode filterBackgroundAndSmooth (Vec in);
 
 		~MatProp ();
 };

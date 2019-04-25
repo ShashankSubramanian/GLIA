@@ -27,6 +27,7 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     }
 }
 
+
 PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -314,6 +315,263 @@ PdeOperatorsRD::~PdeOperatorsRD () {
         ierr = VecDestroy (&c_[i]);
         ierr = VecDestroy (&p_[i]);
     }
+}
+
+PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-conservehealthy");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+
+    // gm, wm is conserved with rhs g/(g + w) * (Dc + Rc) : treated explicity
+    double *c_ptr, *rho_ptr;
+
+    // Dc
+    ierr = VecCopy (tumor_->c_t_, temp_[1]);                        CHKERRQ (ierr);
+    ierr = tumor_->k_->applyD (temp_[0], temp_[1], n_misc_->plan_);
+
+    // Rc = rho * c * (1 - c)
+    ierr = VecGetArray (temp_[1], &c_ptr);                          CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    double dt = n_misc_->dt_;
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        c_ptr[i] = rho_ptr[i] * c_ptr[i] * (1. - c_ptr[i]);
+    }
+    ierr = VecRestoreArray (temp_[1], &c_ptr);                      CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
+
+    // R + D
+    ierr = VecAXPY (temp_[0], 1.0, temp_[1]);                       CHKERRQ (ierr);
+
+    // scaling
+    double *gm_ptr, *wm_ptr, *scale_gm_ptr, *scale_wm_ptr, *sum_ptr;
+    ierr = VecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->mat_prop_->wm_, &wm_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (temp_[0], &sum_ptr);                        CHKERRQ (ierr);
+    ierr = VecGetArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
+    ierr = VecGetArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
+
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        scale_gm_ptr[i] = 0.0;
+        scale_wm_ptr[i] = 0.0;
+
+        if (gm_ptr[i] > 0.1 || wm_ptr[i] > 0.1) {
+            scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+        }
+
+        scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
+        scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+
+        gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
+        wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
+    }
+
+    ierr = VecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->mat_prop_->wm_, &wm_ptr);           CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp_[0], &sum_ptr);                        CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
+    ierr = VecRestoreArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (0);
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-solve-state");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    double dt = n_misc_->dt_;
+    int nt = n_misc_->nt_;
+
+    n_misc_->statistics_.nb_state_solves++;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    //enforce positivity : hack
+    if (!linearized) {
+        #ifdef POSITIVITY
+            ierr = enforcePositivity (tumor_->c_0_, n_misc_);
+        #endif
+    }
+
+    ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
+    // if (linearized == 0) {
+    //     ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
+    // }
+
+    double k1, k2, k3, r1, r2, r3;
+    k1 = n_misc_->k_;
+    k2 = n_misc_->k_gm_wm_ratio_ * n_misc_->k_; k3 = 0;
+    r1 = n_misc_->rho_;
+    r2 = n_misc_->r_gm_wm_ratio_ * n_misc_->rho_; r3 = 0;
+
+
+    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
+    // force compute
+    ierr = tumor_->computeForce (tumor_->c_t_);
+    // displacement compute through elasticity solve
+    ierr = elasticity_solver_->solve (displacement_old, tumor_->force_);
+
+    std::stringstream ss;
+
+    if (n_misc_->writeOutput_) {
+        ierr = displacement_old->computeMagnitude();
+        ierr = tumor_->force_->computeMagnitude();
+        ss << "displacement_t[" << 0 << "].nc";
+        dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "force_t[" << 0 << "].nc";
+        dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "csf_t[" << 0 << "].nc";
+        dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "wm_t[" << 0 << "].nc";
+        dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "seg_t[" << 0 << "].nc";
+        ierr = tumor_->computeSegmentation ();
+        dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "c_t[" << 0 << "].nc";
+        dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "velocity_t[" << 0 << "].nc";
+        dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+    }
+
+    
+    double vel_max;
+    double cfl;
+
+    for (int i = 0; i < nt; i++) {
+        PCOUT << "Time step = " << i << std::endl;
+        // Update diffusivity and reaction coefficient
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+        ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
+        // need to update prefactors for diffusion KSP preconditioner, as k changed
+        ierr = diff_solver_->precFactor();
+
+        // Advection of tumor and healthy tissue
+        ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);
+
+        adv_solver_->advection_mode_ = 2;  // pure advection for csf
+        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);
+        adv_solver_->advection_mode_ = 1;  // reset to mass conservation
+
+        ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);
+
+        // Diffusion of tumor
+        ierr = diff_solver_->solve (tumor_->c_t_, dt);
+
+        // Reaction of tumor
+        ierr = reaction (linearized, i);
+
+        // Mass conservation of healthy: modified gm and wm to account for cell death
+        ierr = conserveHealthyTissues ();
+
+        // force compute
+        ierr = tumor_->computeForce (tumor_->c_t_);
+        // displacement compute through elasticity solve: Linv(force_) = displacement_
+        ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
+
+        // compute velocity
+        ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
+
+        double vel_x_norm, vel_y_norm, vel_z_norm;
+        ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
+        PCOUT << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+
+        // compute CFL
+        ierr = tumor_->velocity_->computeMagnitude ();
+        ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
+
+        cfl = dt * vel_max / n_misc_->h_[0];
+        PCOUT << "CFL = " << cfl << "\n\n";
+
+        // Adaptively time step if CFL is too large
+        if (cfl > 0.5) {
+            // // TODO: resize time history
+            // dt *= 0.5;
+            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            // n_misc_->dt_ = dt;
+            // n_misc_->nt_ = nt;
+
+            // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
+            PCOUT << "CFL too large: exiting...\n"; break;
+        }
+
+        // copy displacement to old vector
+        ierr = displacement_old->copy (tumor_->displacement_);
+
+        if (n_misc_->writeOutput_ && (i + 1) % 5 == 0) {
+            ierr = displacement_old->computeMagnitude();
+            ierr = tumor_->force_->computeMagnitude();
+            ss << "displacement_t[" << i + 1 << "].nc";
+            dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "force_t[" << i + 1 << "].nc";
+            dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "csf_t[" << i + 1 << "].nc";
+            dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "wm_t[" << i + 1 << "].nc";
+            dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "seg_t[" << i + 1 << "].nc";
+            ierr = tumor_->computeSegmentation ();
+            dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "c_t[" << i + 1 << "].nc";
+            dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "velocity_t[" << i + 1 << "].nc";
+            dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+        }
+
+        //enforce positivity : hack
+        if (!linearized) {
+            #ifdef POSITIVITY
+                ierr = enforcePositivity (tumor_->c_t_, n_misc_);
+            #endif
+        }
+
+        //Copy current conc to use for the adjoint equation
+        // if (linearized == 0) {
+        //     ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
+        // }
+    }
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (0);
 }
 
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {

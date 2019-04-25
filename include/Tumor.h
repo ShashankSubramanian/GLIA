@@ -15,7 +15,6 @@ Tumor class
 #include <mpi.h>
 #include <omp.h>
 
-
 class Tumor {
 	public:
 		Tumor (std::shared_ptr<NMisc> n_misc);
@@ -26,6 +25,8 @@ class Tumor {
 		std::shared_ptr<Obs> obs_;
 
 		std::shared_ptr<MatProp> mat_prop_;
+
+		std::shared_ptr<NMisc> n_misc_;
 
     	// parametrization
 		Vec p_;
@@ -41,12 +42,24 @@ class Tumor {
     	// weights for w-l2
     	Vec weights_;
 
+    	// segmentation based on max voxel-wise prop
+    	Vec seg_;
+
+    	// mass effect parameters
+    	// velocity
+		std::shared_ptr<VecField> velocity_;
+		std::shared_ptr<VecField> displacement_;
+		std::shared_ptr<VecField> force_;
+
 		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);
-		PetscErrorCode changeNP (Vec p);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val);
 		PetscErrorCode setTrueP (Vec p);
+		PetscErrorCode computeSegmentation ();
+
+		// mass effect functions
+		PetscErrorCode computeForce (Vec c);
 
 		~Tumor ();
 };
