@@ -463,9 +463,9 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   std::stringstream ss;
   tuMSGstd(" parameters (optimizer):");
   tuMSGstd(" tolerances (stopping conditions):");
-  ss << "   gatol: "<< ctx->optsettings_->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-  ss << "   grtol: "<< ctx->optsettings_->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
-  ss << "   gttol: "<< ctx->optsettings_->opttolgrad;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(s.str()); s.str(""); s.clear();
+  ss << "   gatol: "<< ctx->optsettings_->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(ss.str()); ss.str(""); ss.clear();
+  ss << "   grtol: "<< ctx->optsettings_->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(ss.str()); ss.str(""); ss.clear();
+  ss << "   gttol: "<< ctx->optsettings_->opttolgrad;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(ss.str()); ss.str(""); ss.clear();
 
   ierr = TaoSetFromOptions(tao_);                                                     CHKERRQ(ierr);
 
