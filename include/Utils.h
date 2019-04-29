@@ -247,7 +247,7 @@ class NMisc {
         , lambda_continuation_ (true)           // bool for parameter continuation
         , target_sparsity_ (0.99)               // target sparsity for L1 continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
-        , verbosity_ (4)                        // Print flag for optimization routines
+        , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (0.0 / 1.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (0.0 / 5.0)                  // gm to wm reaction coeff ratio
