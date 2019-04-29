@@ -78,7 +78,7 @@ def getTumorRunCmd(params):
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Prediction flag -- Flag to predict tumor at a later time
-    predict_flag = 1
+    predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
@@ -123,6 +123,8 @@ def getTumorRunCmd(params):
     max_krylov_iter = 30
     ### Relative gradient tolerance
     grad_tol = 1E-5
+    ### Forward solver time order of accuracy
+    accuracy_order = 2
 
     ### TUMOR PARAMETERS SET END
 
@@ -235,6 +237,7 @@ def getTumorRunCmd(params):
     " -low_freq_noise " + str(noise_scale) + \
     " -prediction " + str(predict_flag) + \
     " -forward " + str(forward_flag) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10 "
+    " -order " + str(accuracy_order) + \
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10"
 
     return run_str, error_flag

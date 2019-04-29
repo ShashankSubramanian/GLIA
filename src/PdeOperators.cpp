@@ -134,10 +134,18 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
     }
 
+    diff_ksp_itr_state_ = 0;
+
     for (int i = 0; i < nt; i++) {
-        diff_solver_->solve (tumor_->c_t_, dt / 2.0);
-        ierr = reaction (linearized, i);
-        diff_solver_->solve (tumor_->c_t_, dt / 2.0);
+
+        if (n_misc_->order_ == 2) {
+            diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+            ierr = reaction (linearized, i);
+            diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+        } else {
+            diff_solver_->solve (tumor_->c_t_, dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+            ierr = reaction (linearized, i);
+        }
 
         //enforce positivity : hack
         if (!linearized) {
@@ -150,6 +158,12 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         if (linearized == 0) {
             ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
         }
+    }
+
+    std::stringstream s;
+    if (n_misc_->verbosity_ >= 3) {
+        s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
 
     self_exec_time += MPI_Wtime();
@@ -176,7 +190,11 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     Vec temp = tumor_->work_[11];
     //reaction adjoint needs c_ at half time step.
     ierr = VecCopy (c_[iter], temp);                             CHKERRQ (ierr);
-    diff_solver_->solve (temp, dt / 2.0);
+    if (n_misc_->order_ == 2) {
+        diff_solver_->solve (temp, dt / 2.0);   diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+    } else {
+        diff_solver_->solve (temp, dt);         diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+    }
 
     ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
@@ -222,14 +240,26 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     if (linearized == 1) {
         ierr = VecCopy (tumor_->p_0_, p_[nt]);                   CHKERRQ (ierr);
     }
+    diff_ksp_itr_adj_ = 0;
     for (int i = 0; i < nt; i++) {
-        diff_solver_->solve (tumor_->p_0_, dt / 2.0);
-        ierr = reactionAdjoint (linearized, nt - i - 1);
-        diff_solver_->solve (tumor_->p_0_, dt / 2.0);
+        if (n_misc_->order_ == 2) {
+            diff_solver_->solve (tumor_->p_0_, dt / 2.0);       diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+            ierr = reactionAdjoint (linearized, nt - i - 1);
+            diff_solver_->solve (tumor_->p_0_, dt / 2.0);       diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+        } else {
+            diff_solver_->solve (tumor_->p_0_, dt);             diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+            ierr = reactionAdjoint (linearized, nt - i - 1);
+        }
         //Copy current adjoint time point to use in additional term for moving-atlas formulation
         if (linearized == 1) {
             ierr = VecCopy (tumor_->p_0_, p_[nt - i - 1]);            CHKERRQ (ierr);
         }
+    }
+
+    std::stringstream s;
+    if (n_misc_->verbosity_ >= 3) {
+        s << " Accumulated KSP itr for adjoint eqn = " << diff_ksp_itr_adj_;
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
 
     self_exec_time += MPI_Wtime();

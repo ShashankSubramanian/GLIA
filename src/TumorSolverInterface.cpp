@@ -894,10 +894,16 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         inv_solver_->setDataGradient (d1g);
 
         // print the initial guess to track progress visually
-        ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
+        // ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
         ss << "c0guess_csitr-" << its << ".nc";
         if (n_misc_->writeOutput_) {
             dataOut (getTumor()->c_0_, n_misc_, ss.str().c_str());
+        }
+        ss.str(std::string()); ss.clear();
+
+        ss << "c1guess_csitr-" << its << ".nc";
+        if (n_misc_->verbosity_ >= 4) {
+            dataOut (getTumor()->c_t_, n_misc_, ss.str().c_str());
         }
         ss.str(std::string()); ss.clear();
 

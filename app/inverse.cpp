@@ -115,6 +115,7 @@ int main (int argc, char** argv) {
     double low_freq_noise_scale = -1.0;
 
     int predict_flag = 0;
+    int order_of_accuracy = -1;
 
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
@@ -163,6 +164,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
     PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
+    PetscOptionsInt ("-order", "Order of accuracy of PDE solver", "", order_of_accuracy, &order_of_accuracy, NULL);
 
     PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
@@ -354,6 +356,10 @@ int main (int argc, char** argv) {
         n_misc->low_freq_noise_scale_ = low_freq_noise_scale;
     }
 
+    if (order_of_accuracy != -1) {
+        n_misc->order_ = order_of_accuracy;
+    }
+
     n_misc->predict_flag_ = predict_flag;
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
@@ -380,6 +386,8 @@ int main (int argc, char** argv) {
     solver_interface->getInvSolver()->getOptSettings ()->gist_maxit = n_misc->gist_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->opttolgrad = n_misc->opttolgrad_;
+
+    solver_interface->getInvSolver()->getOptSettings ()->verbosity = n_misc->verbosity_;
 
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {

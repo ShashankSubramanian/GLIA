@@ -766,10 +766,11 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
 
     itctx->optfeedback_->nb_gradevals++;
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
+    std::stringstream s;
     if (itctx->optsettings_->verbosity > 1) {
         double gnorm;
         ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
-        PetscPrintf (MPI_COMM_WORLD, " norm of gradient ||g||_2 = %e\n", gnorm);
+        s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
     self_exec_time += MPI_Wtime ();
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -800,10 +801,11 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
   ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
+  std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
       double gnorm;
       ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
-      PetscPrintf (MPI_COMM_WORLD, " norm of gradient ||g||_2 = %e\n", gnorm);
+      s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
   self_exec_time += MPI_Wtime ();
   accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -860,10 +862,11 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
   ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
   ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
 
+  std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
       double gnorm;
       ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
-      PetscPrintf (MPI_COMM_WORLD, " norm of gradient ||g||_2 = %e\n", gnorm);
+      s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
   self_exec_time += MPI_Wtime ();
   accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -1219,6 +1222,12 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");
     s.clear ();
+
+    s << "c1guess_paraminvitr-" << its << ".nc";
+    if (itctx->n_misc_->verbosity_ >= 4 && its % 5 == 0) {
+        dataOut (itctx->tumor_->c_t_, itctx->n_misc_, s.str().c_str());
+    }
+    s.str(std::string()); s.clear();
 
 
     //ierr = PetscPrintf (PETSC_COMM_WORLD, "\nKSP number of krylov iterations: %d\n", itctx->optfeedback_->nb_krylov_it);          CHKERRQ(ierr);

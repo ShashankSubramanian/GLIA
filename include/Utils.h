@@ -247,7 +247,7 @@ class NMisc {
         , lambda_continuation_ (true)           // bool for parameter continuation
         , target_sparsity_ (0.99)               // target sparsity for L1 continuation
         , writeOutput_ (1)                      // Print flag for paraview visualization
-        , verbosity_ (1)                        // Print flag for optimization routines
+        , verbosity_ (4)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (0.0 / 1.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
         , r_gm_wm_ratio_ (0.0 / 5.0)                  // gm to wm reaction coeff ratio
@@ -279,6 +279,7 @@ class NMisc {
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
+        , order_ (2)                            // Order of accuracy for PDE solves
         , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
         , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
         , nu_bg_ (0.48)                         // Poisson's ratio of background
@@ -437,6 +438,8 @@ class NMisc {
         int max_p_location_;
 
         int sparsity_level_;
+
+        int order_;
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;

@@ -15,6 +15,8 @@ class PdeOperators {
 		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
 			diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
 			nt_ = n_misc->nt_;
+			diff_ksp_itr_state_ = 0;
+			diff_ksp_itr_adj_ = 0;
 		}
 
 		std::shared_ptr<Tumor> tumor_;
@@ -25,6 +27,10 @@ class PdeOperators {
 		std::vector<Vec> c_;
 		// @brief time history of adjoint variable
 		std::vector<Vec> p_;
+
+		// Accumulated number of KSP solves for diff solver in one forward and adj solve
+		int diff_ksp_itr_state_, diff_ksp_itr_adj_;
+
 
 		virtual PetscErrorCode solveState (int linearized) = 0;
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
