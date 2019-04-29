@@ -1014,7 +1014,6 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             ss.str(std::string()); ss.clear();
 
             // print the initial guess to track progress visually
-            ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
             ss << "c0FinalGuess.nc";
             if (n_misc_->writeOutput_) {
                 dataOut (getTumor()->c_0_, n_misc_, ss.str().c_str());
