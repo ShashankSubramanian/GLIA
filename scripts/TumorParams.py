@@ -43,6 +43,8 @@ def getTumorRunCmd(params):
     ### Path to custom obs mask, default: none
     obs_mask_path = ""
 
+
+    verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
     create_synthetic = 1
@@ -238,6 +240,7 @@ def getTumorRunCmd(params):
     " -prediction " + str(predict_flag) + \
     " -forward " + str(forward_flag) + \
     " -order " + str(accuracy_order) + \
+    " -verbosity " + str(verbosity) + \
     " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10"
 
     return run_str, error_flag
