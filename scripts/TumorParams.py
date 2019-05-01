@@ -251,7 +251,7 @@ def getTumorRunCmd(params):
 
 
     ibman = ""
-    if 'ibrun_man' in params:
+    if 'ibrun_man' in params and params['ibrun_man']:
         ibman = " -n " + str(params['mpi_pernode']) + " -o 0 "
     cmd = ""
     if params['compute_sys'] == 'hazelhen':
