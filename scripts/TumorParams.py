@@ -153,6 +153,11 @@ def getTumorRunCmd(params):
     else:
         print ('Default rho = {} used'.format(rho_inv))
     # ---
+    if 'predict_flag' in params:
+        predict_flag = params['predict_flag']
+    else:
+        print ('Default predict_flag = {} used'.format(predict_flag))
+    # ---
     if 'k_inv' in params:
         k_inv = params['k_inv']
     else:
@@ -224,25 +229,25 @@ def getTumorRunCmd(params):
         obs_mask_path = params['obs_mask_path']
         print('OBS mask path = {}'.format(obs_mask_path))
     else:
-        print('No custom observation mask given. \n')
+        print('No custom observation mask given.')
     # ---
     if 'support_data_path' in params:
         support_data_path = params['support_data_path']
         print('support_data path = {}'.format(support_data_path))
     else:
-        print('Using target tumor data for Gaussian support selection. \n')
+        print('Using target tumor data for Gaussian support selection.')
     # ---
     if 'gaussian_cm_path' in params:
         gaussian_cm_path = params['gaussian_cm_path']
         print('path to file with Gaussian centers = {}'.format(gaussian_cm_path))
     else:
-        print('Generating Gaussian support from target data. \n')
+        print('Generating Gaussian support from target data.')
     # ---
     if 'pvec_path' in params:
         pvec_path = params['pvec_path']
         print('p vector initial guess path = {}'.format(pvec_path))
     else:
-        print('Using zero initial guess for p vector. \n')
+        print('Using zero initial guess for p vector.')
 
 
     cmd = ""
