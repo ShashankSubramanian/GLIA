@@ -47,13 +47,13 @@ def getTumorRunCmd(params):
     ### Path to file with Gaussian support centers, default: none, (generate Gaussians based on target data)
     gaussian_cm_path = ""
     ### Path to initial guess p vector, default: none, (use zero initial guess)
-    p_vec_path = ""
+    pvec_path = ""
 
 
     verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 1
+    create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -86,7 +86,7 @@ def getTumorRunCmd(params):
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Prediction flag -- Flag to predict tumor at a later time
-    predict_flag = 0
+    predict_flag = 1
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
@@ -238,9 +238,9 @@ def getTumorRunCmd(params):
     else:
         print('Generating Gaussian support from target data. \n')
     # ---
-    if 'p_vec_path' in params:
-        p_vec_path = params['p_vec_path']
-        print('p vector initial guess path = {}'.format(p_vec_path))
+    if 'pvec_path' in params:
+        pvec_path = params['pvec_path']
+        print('p vector initial guess path = {}'.format(pvec_path))
     else:
         print('Using zero initial guess for p vector. \n')
 
