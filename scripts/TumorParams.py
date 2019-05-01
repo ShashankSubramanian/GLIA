@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -42,6 +42,12 @@ def getTumorRunCmd(params):
     wm_path = tumor_dir + '/brain_data/' + str(N) +'/white_matter.nc'
     ### Path to custom obs mask, default: none
     obs_mask_path = ""
+    ### Path to data for support, default: none, (target data for inversion is used)
+    support_data_path = ""
+    ### Path to file with Gaussian support centers, default: none, (generate Gaussians based on target data)
+    gaussian_cm_path = ""
+    ### Path to initial guess p vector, default: none, (use zero initial guess)
+    p_vec_path = ""
 
 
     verbosity = 3
@@ -105,8 +111,6 @@ def getTumorRunCmd(params):
     data_thres = 0.1
     ### Observation detection threshold
     obs_thres = 0.0
-    ### Flag indicating whether to negate the observation mask (use 1 if edema is passed as obs_mask)
-    invert_obs_mask_flag = 0
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -137,20 +141,44 @@ def getTumorRunCmd(params):
 
 
     ### Error checking and run script string generation
+    # ---
     error_flag = 0
     if 'N' in params:
         N = params['N']
     else:
         print ('Default N = {} used'.format(N))
-
-    ## Error checking done by petsc/outside
-
+    # ---
+    if 'rho_inv' in params:
+        rho_inv = params['rho_inv']
+    else:
+        print ('Default rho = {} used'.format(rho_inv))
+    # ---
+    if 'k_inv' in params:
+        k_inv = params['k_inv']
+    else:
+        print ('Default k = {} used'.format(k_inv))
+    # ---
+    if 'beta' in params:
+        beta = params['beta']
+    else:
+        print ('Default beta = {} used'.format(beta))
+    # ---
+    if 'dd_fac' in params:
+        dd_fac = params['dd_fac']
+    else:
+        print ('Default dd_fac = {} used'.format(dd_fac))
+    # ---
+    if 'sparsity_lvl' in params:
+        sparsity_lvl = params['sparsity_lvl']
+    else:
+        print ('Default sparsity_lvl = {} used'.format(sparsity_lvl))
+    # ---
     if 'results_path' in params:
         results_path = params['results_path']
         if not os.path.exists(results_path):
             print ('Results path does not exist, making the required folders and sub-folders...\n')
             os.makedirs(results_path)
-
+    # ---
     if 'data_path' in params:
         data_path = params['data_path']
         print('Tumor data path = {}'.format(data_path))
@@ -161,7 +189,7 @@ def getTumorRunCmd(params):
                 error_flag = 1
         else:
             print ('Default datapath = {} used'.format(data_path))
-
+    # ---
     if 'gm_path' in params:
         gm_path = params['gm_path']
         print('Gray matter path = {}'.format(gm_path))
@@ -171,7 +199,7 @@ def getTumorRunCmd(params):
             error_flag = 1
         else:
             print ('Default atlas gray matter path = {} used'.format(gm_path))
-
+    # ---
     if 'wm_path' in params:
         wm_path = params['wm_path']
         print('White matter path = {}'.format(wm_path))
@@ -181,8 +209,7 @@ def getTumorRunCmd(params):
             error_flag = 1
         else:
             print ('Default atlas white matter path = {} used'.format(wm_path))
-
-
+    # ---
     if 'csf_path' in params:
         csf_path = params['csf_path']
         print('CSF path = {}'.format(csf_path))
@@ -192,12 +219,31 @@ def getTumorRunCmd(params):
             error_flag = 1
         else:
             print ('Default atlas csf path = {} used'.format(csf_path))
-
+    # ---
     if 'obs_mask_path' in params:
         obs_mask_path = params['obs_mask_path']
         print('OBS mask path = {}'.format(obs_mask_path))
     else:
         print('No custom observation mask given. \n')
+    # ---
+    if 'support_data_path' in params:
+        support_data_path = params['support_data_path']
+        print('support_data path = {}'.format(support_data_path))
+    else:
+        print('Using target tumor data for Gaussian support selection. \n')
+    # ---
+    if 'gaussian_cm_path' in params:
+        gaussian_cm_path = params['gaussian_cm_path']
+        print('path to file with Gaussian centers = {}'.format(gaussian_cm_path))
+    else:
+        print('Generating Gaussian support from target data. \n')
+    # ---
+    if 'p_vec_path' in params:
+        p_vec_path = params['p_vec_path']
+        print('p vector initial guess path = {}'.format(p_vec_path))
+    else:
+        print('Using zero initial guess for p vector. \n')
+
 
     cmd = ""
     if params['compute_sys'] == 'hazelhen':
@@ -230,7 +276,9 @@ def getTumorRunCmd(params):
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -obs_mask_path " + obs_mask_path + \
-    " -invert_obs_mask " + str(invert_obs_mask_flag) + \
+    " -support_data_path " + support_data_path + \
+    " -gaussian_cm_path " + gaussian_cm_path + \
+    " -pvec_path " + pvec_path + \
     " -model " + str(model) + \
     " -smooth " + str(smooth_f) + \
     " -observation_threshold " + str(obs_thres) + \
