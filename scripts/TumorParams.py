@@ -250,11 +250,14 @@ def getTumorRunCmd(params):
         print('Using zero initial guess for p vector.')
 
 
+    ibman = ""
+    if 'ibrun_man' in params:
+        ibman = " -n " + str(params['mpi_pernode']) + " -o 0 "
     cmd = ""
     if params['compute_sys'] == 'hazelhen':
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N 24 ";
     if params['compute_sys'] == 'stampede2':
-        cmd = cmd + "ibrun ";
+        cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
