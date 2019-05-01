@@ -237,7 +237,7 @@ int main (int argc, char** argv) {
     bool read_support_data   = (support_data_path != NULL && strlen(support_data_path) > 0); // path set?
     bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0);         // path set?
     bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);               // path set?
-    if (warmstart_p  && not (gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0){
+    if (warmstart_p  && not (gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0)){
       PCOUT << " ERROR: if initial guess for p is used, Gaussian centers need to be specified. " << std::endl;
       exit(-1);
     }
