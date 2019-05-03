@@ -27,6 +27,7 @@
 #include "EventTimings.hpp"
 
 #ifdef CUDA
+    #include "cuda.h"
     #include "petsccuda.h"
 #endif
 

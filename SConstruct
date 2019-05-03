@@ -166,6 +166,12 @@ if env["gpu"] == True:
 if env["platform"] != "stampede2":
   env.Append(CCFLAGS = ['-march=native'])
 
+# ====== CUDA =======
+if env["gpu"] == True:
+    CUDA_DIR = checkset_var("CUDA_DIR", "")
+    env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
+    uniqueCheckLib(conf, "cuda")
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
 env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
