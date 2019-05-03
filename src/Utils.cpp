@@ -283,6 +283,148 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	ierr = VecRestoreArray (A, &a_ptr);
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readPhiMesh /////////////////////////////////////// ###
+PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  std::ifstream file(f);
+  int np = 0, k = 0;
+  double sigma = 0, spacing = 0;
+  if (file.is_open()) {
+    PCOUT << "reading Gaussian centers from file " << f << std::endl;
+    centers.clear();
+    std::string line;
+    std::getline(file, line); // sigma, spacing
+    std::string token;
+    size_t pos1 = line.find("=");
+    size_t pos2 = line.find(",");
+    if (pos1 != std::string::npos && pos2 != std::string::npos) {sigma = atof(line.substr(pos1+1, pos2).c_str());}
+    line.erase(0, pos2+1); pos1 = line.find("=");
+    if (pos1 != std::string::npos) {spacing = atof(line.substr(pos1+1, line.length()).c_str());}
+    PCOUT << "reading sigma="<<sigma<<", spacing="<<spacing<<std::endl;
+    if (n_misc->phi_sigma_data_driven_ != sigma) {
+      PCOUT << "WARNING: specified sigma="<<n_misc->phi_sigma_data_driven_<<" != sigma="<<sigma<<" (read from file). Specified sigma overwritten."<<std::endl;
+      n_misc->phi_sigma_data_driven_ = sigma;
+    }
+    std::getline(file, line); // throw away;
+    std::string t;
+    while (std::getline(file, line)) {
+      if (line.rfind("]") != std::string::npos) break;   // end of file reached, exit out
+      std::stringstream l(line);
+      while (std::getline(l, t, ',')) {
+        centers.push_back(atof(t.c_str()));
+        // PCOUT << "reading "<<t<<", np="<<np<<std::endl;
+      }
+      np++;
+    }
+    file.close();
+    n_misc->np_ = np;
+    PCOUT << "np=" << np << " centers read " << std::endl;
+  } else {
+    PCOUT << "cannot open file " << f << std::endl;
+    PetscFunctionReturn(1);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readBIN /////////////////////////////////////////// ###
+PetscErrorCode readBIN(Vec* x, int size, std::string f) {
+  PetscFunctionBegin;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  PetscErrorCode ierr = 0;
+  PetscViewer viewer=nullptr;
+  std::string file, msg;
+  PetscFunctionBegin;
+
+  TU_assert(!f.empty(), "filename not set");
+  // get file name without path
+  ierr = getFileName(file, f);                                    CHKERRQ(ierr);
+  msg = "file " + file + " does not exist";
+  TU_assert(fileExists(f), msg);
+  if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
+  #ifdef SERIAL
+      ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));         CHKERRQ (ierr);
+      ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
+  #else
+      ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                CHKERRQ (ierr);
+      ierr = VecSetSizes (*x, PETSC_DECIDE, size);                CHKERRQ (ierr);
+      ierr = VecSetFromOptions (*x);                              CHKERRQ (ierr);
+      ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
+  #endif
+  TU_assert(viewer != NULL, "could not read binary file");
+  ierr = PetscViewerBinarySetFlowControl(viewer, 2);              CHKERRQ(ierr);
+  ierr = VecLoad(*x, viewer);                                     CHKERRQ(ierr);
+
+  if (procid == 0) {
+  ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);                  CHKERRQ (ierr);
+  }
+  // clean up
+  if (viewer!=nullptr) {
+      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
+      viewer=nullptr;
+  }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// writeBIN ////////////////////////////////////////// ###
+PetscErrorCode writeBIN(Vec x, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  PetscViewer viewer = nullptr;
+  PetscFunctionBegin;
+  TU_assert(x != nullptr, "null pointer");
+  TU_assert(!f.empty(), "filename not set");
+  #ifdef SERIAL
+    ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
+  #else
+    ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
+  #endif
+  TU_assert(viewer != nullptr, "could not write binary file");
+  ierr = VecView(x, viewer);                                      CHKERRQ(ierr);
+  // clean up
+  if (viewer != nullptr) {
+      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
+      viewer = nullptr;
+  }
+  PetscFunctionReturn(0);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// getFileName /////////////////////////////////////// ###
+PetscErrorCode getFileName(std::string& filename, std::string file) {
+    PetscErrorCode ierr = 0;
+    std::string path;
+    size_t sep;
+    PetscFunctionBegin;
+
+    sep = file.find_last_of("\\/");
+    if (sep != std::string::npos) {
+        path=file.substr(0,sep);
+        filename=file.substr(sep + 1);
+    }
+    if (filename == "") { filename = file; }
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// fileExists //////////////////////////////////////// ###
+bool fileExists(const std::string& filename) {
+    struct stat buffer;
+    return (stat(filename.c_str(), &buffer) == 0);
+}
+
 //TODO
 //Rewrite variables according to standard conventions
 
@@ -557,7 +699,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 	}
 
 	double tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
-						// are (almost)zero to the support 
+						// are (almost)zero to the support
 	for (int i = 0; i < sparsity_level; i++) {
 		if (std::abs(q.top().first) > tol) {
 			nnz++;  // keeps track of how many non-zero (important) components of the signal there are
@@ -590,7 +732,7 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, d
 	double X, Y, Z;
     double *data_ptr;
     double com[3], sum;
-    for (int i = 0; i < 3; i++) 
+    for (int i = 0; i < 3; i++)
     	com[i] = 0.;
     sum = 0;
     ierr = VecGetArray (x, &data_ptr);                 CHKERRQ (ierr);

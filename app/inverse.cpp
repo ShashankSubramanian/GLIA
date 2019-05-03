@@ -62,7 +62,7 @@ int main (int argc, char** argv) {
     int testcase = 0;
     double beta_user = -1.0;
     double rho_inv= -1.0;
-    double k_inv = -1.0;
+    double k_inv = 0.0;
     int nt_inv = 0.0;
     double dt_inv = 0.0;
     double rho_data = -1.0;
@@ -442,9 +442,9 @@ int main (int argc, char** argv) {
         double noise_err_norm, rel_noise_err_norm;
         ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
         ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
-        ierr = VecCopy (data_nonoise, temp);      CHKERRQ (ierr);
+        ierr = VecCopy (data_nonoise, temp);    CHKERRQ (ierr);
         ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
-        ierr = VecNorm (temp, NORM_2, &noise_err_norm);     CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
+        ierr = VecNorm (temp, NORM_2, &noise_err_norm);               CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
         ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
         rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
         PCOUT << "[--------------- Low frequency relative error = " << rel_noise_err_norm << " -------------------]" << std::endl;
@@ -466,7 +466,8 @@ int main (int argc, char** argv) {
         PCOUT << "Inverse solver begin" << std::endl;
 
         n_misc->rho_ = rho_inv;
-        n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
+        // n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
+        n_misc->k_ = k_inv; // (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->dt_ = dt_inv;
         n_misc->nt_ = nt_inv;
 
@@ -484,23 +485,31 @@ int main (int argc, char** argv) {
               PCOUT << "Set default observation mask based on input data and threshold " << tumor->obs_->threshold_  << std::endl;
             }
             // apply observer on ground truth, store observed data in d
-            ierr = tumor->obs_->apply (data, data);
-
             // observation operator is applied before gaussians are set.
+            ierr = tumor->obs_->apply (data, data);                                     CHKERRQ (ierr);
+            ierr = tumor->obs_->apply (support_data, support_data);                     CHKERRQ (ierr);
 
-            ierr = tumor->phi_->setGaussians (support_data);                            //Overwrites bounding box phis with custom phis
-            ierr = tumor->phi_->setValues (tumor->mat_prop_);
-            //re-create p_rec
-            ierr = VecDestroy (&p_rec);                                                 CHKERRQ (ierr);
-            int np = n_misc->np_;
             int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
-            #ifdef SERIAL
-                ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
-            #else
-                ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-                ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-                ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
-            #endif
+            // if p vector and Gaussian centers are read in
+            if (warmstart_p) {
+              std::string file_p(p_vec_path);
+              std::string file_cm(gaussian_cm_path);
+              ierr = tumor->phi_->setGaussians (file_cm);                               CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+              ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
+              readBIN(&p_rec, n_misc->np_ + nk, file_p);
+            } else {
+              ierr = tumor->phi_->setGaussians (support_data);                          CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+              ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
+              //re-create p_rec
+              ierr = VecDestroy (&p_rec);                                               CHKERRQ (ierr);
+              #ifdef SERIAL
+                  ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_ + nk, &p_rec);      CHKERRQ (ierr);
+              #else
+                  ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                          CHKERRQ (ierr);
+                  ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                CHKERRQ (ierr);
+                  ierr = VecSetFromOptions (p_rec);                                     CHKERRQ (ierr);
+              #endif
+            }
             ierr = solver_interface->setParams (p_rec, nullptr);
         }
 
@@ -510,8 +519,11 @@ int main (int argc, char** argv) {
 
         ierr = tumor->rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);
         ierr = tumor->k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, tumor->mat_prop_, n_misc);
-        ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
-        ierr = solver_interface->setInitialGuess (0.);
+        if (!warmstart_p) {
+            ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
+            ierr = solver_interface->setInitialGuess (0.);
+        }
+
 
         if (interp_flag) {
             PCOUT << "SOLVING INTERPOLATION WITH DATA" << std::endl;
@@ -621,6 +633,9 @@ int main (int argc, char** argv) {
                 ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
             }
             ofile.close ();
+            // write p to bin file
+            std::string fname = n_misc->writepath_ .str() + "p-final.bin";
+            writeBIN(p_rec, fname);
 
             if (n_misc->predict_flag_) {
                 PCOUT << "Predicting future tumor growth..." << std::endl;
@@ -857,8 +872,6 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &c_0, Vec &p_rec, std
     if (read_support_data) {
       ierr = VecDuplicate (data, &support_data);                            CHKERRQ (ierr);
     }
-
-
 
     //Create p_rec
     int np = n_misc->np_;

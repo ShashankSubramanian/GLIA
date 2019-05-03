@@ -24,6 +24,7 @@
 #include <queue>
 #include <accfft_utils.h>
 #include <assert.h>
+#include <sys/stat.h>
 #include "EventTimings.hpp"
 
 
@@ -276,7 +277,7 @@ class NMisc {
         , opttolgrad_ (1E-5)                    // Relative gradient tolerance of L2 solves
         , sparsity_level_ (1)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
-        , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
+        , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
         , order_ (2)                            // Order of accuracy for PDE solves
@@ -289,7 +290,7 @@ class NMisc {
         , E_tumor_ (10000)                       // Young's modulus of tumor
         , E_csf_ (10)                          // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
-        , screen_high_ (1E4)                    // high screening 
+        , screen_high_ (1E4)                    // high screening
         , forcing_factor_ (2.0E5)                 // mass effect forcing factor
                                 {
 
@@ -300,34 +301,34 @@ class NMisc {
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
 
-                // tumor is near the top edge -- more wm tracts visible 
+                // tumor is near the top edge -- more wm tracts visible
                 // user_cm_[0] = 2 * M_PI / 128 * 68;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 88;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
-                // tumor is top middle 
+                // tumor is top middle
                 // user_cm_[0] = 2 * M_PI / 128 * 80;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 64;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X
 
                 // tc1 and 2
                 user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
                 user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 84;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 80;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 80;//52  //X
 
                 // user_cm_[0] = 2 * M_PI / 64 * 32;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 64 * 24;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X
 
                 user_cms_.push_back (user_cm_[0]);
                 user_cms_.push_back (user_cm_[1]);
@@ -537,6 +538,16 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
+/// @reads in binary vector, serial
+PetscErrorCode readBIN(Vec* x, int size2, std::string f);
+/// @brief writes out vector im binary format, serial
+PetscErrorCode writeBIN(Vec x, std::string f);
+/// @brief reads in Gaussian centers from file
+PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f);
+
+
+PetscErrorCode getFileName(std::string& filename, std::string file);
+bool fileExists(const std::string& filename);
 
 /* helper methods for print out to console */
 PetscErrorCode tuMSG(std::string msg, int size = 98);

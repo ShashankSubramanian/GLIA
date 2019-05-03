@@ -18,6 +18,9 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     }
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
 PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
@@ -51,6 +54,8 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
 }
 
 
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setValues ///////////////////////////////////////// ###
 PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -102,6 +107,9 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionReturn(0);
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// phiMesh /////////////////////////////////////////// ###
 PetscErrorCode Phi::phiMesh (double *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -189,6 +197,9 @@ PetscErrorCode Phi::phiMesh (double *center) {
     PetscFunctionReturn(0);
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// initialize //////////////////////////////////////// ###
 PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -434,6 +445,81 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
     }
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
+PetscErrorCode Phi::setGaussians (std::string file) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ------" << std::endl;
+    PCOUT << " ----- Bounding box not set: Basis functions set from file -----\n" << std::endl;
+
+    // read centers from file (clears centers_)
+    ierr = readPhiMesh(centers_, n_misc_, file);                               CHKERRQ (ierr);
+
+    double twopi = 2.0 * M_PI;
+    double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
+    sigma_ = n_misc_->phi_sigma_data_driven_;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
+    spacing_factor_ = 2.0;
+    n_misc_->phi_spacing_factor_ = spacing_factor_;
+    double space = spacing_factor_ * sigma_ / hx;
+
+    //Get gaussian volume
+    double dist = 0.0;
+    int gaussian_interior = 0;
+    for (int i = -sigma_ / hx; i <= sigma_ / hx; i++)
+        for (int j = -sigma_ / hx; j <= sigma_ / hx; j++)
+            for (int k = -sigma_ / hx; k <= sigma_ / hx; k++) {
+                dist = sqrt (i*i + j*j + k*k);
+                if (dist <= sigma_ / hx) gaussian_interior++;
+            }
+    PCOUT << " ----- Phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_ << std::endl;
+    np_ = n_misc_->np_;
+    PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
+    // write centers to file
+    #ifdef VISUALIZE_PHI
+        std::stringstream phivis;
+        phivis <<" sigma = "<<sigma_<<", spacing = "<<spacing_factor_ * sigma_<<std::endl;
+        phivis <<" centers = ["<<std::endl;
+        for (int ptr = 0; ptr < 3 * np_; ptr += 3) {
+            phivis << " " << centers_[ptr + 0] <<", " << centers_[ptr + 1] << ", "  << centers_[ptr + 2] << std::endl;
+        }
+        phivis << "];"<<std::endl;
+        std::fstream phifile;
+        static int ct = 0;
+        if(procid == 0) {
+            std::stringstream ssct; ssct<<ct;
+            phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+            phifile << phivis.str()<<std::endl;
+            phifile.close();
+            ct++;
+        }
+    #endif
+
+    //Destroy and clear any previously set phis
+    for (int i = 0; i < phi_vec_.size (); i++) {
+        ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
+    }
+    phi_vec_.clear();
+    phi_vec_.resize (np_);
+    ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
+    ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
+    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = VecSet (phi_vec_[0], 0);
+    for (int i = 1; i < np_; i++) {
+        ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
+        ierr = VecSet (phi_vec_[i], 0);
+    }
+    PetscFunctionReturn (0);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
 PetscErrorCode Phi::setGaussians (Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -761,7 +847,7 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
     int idx;
     for (int i = 0; i < support_idx.size(); i++) {
         idx = support_idx[i];       // Get the required center idx
-        counter = 3 * idx;      
+        counter = 3 * idx;
         centers_.push_back (centers_temp_[counter]);
         centers_.push_back (centers_temp_[counter + 1]);
         centers_.push_back (centers_temp_[counter + 2]);

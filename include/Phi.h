@@ -23,6 +23,7 @@ class Phi {
 
 		PetscErrorCode setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np); //, std::shared_ptr<NMisc> n_misc);   //Bounding box
 		PetscErrorCode setGaussians (Vec data);																								//Adaptive phis
+    PetscErrorCode setGaussians (std::string file);
 		PetscErrorCode setValues (std::shared_ptr<MatProp> mat_prop);
 		PetscErrorCode phiMesh (double *center);
 		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);
