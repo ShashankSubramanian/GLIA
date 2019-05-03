@@ -19,6 +19,7 @@ MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
 	ierr = VecSet (bg_, 0);
 	ierr = VecSet (filter_ , 0);
 
+	n_misc_ = n_misc;
 }
 
 PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
@@ -63,7 +64,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			dataIn (glm_ptr, n_misc, str.str().c_str());
 			
 
-			double sigma_smooth = 1.2 * 2 * M_PI / n_misc->n_[0];
+			double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
 			ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
 			ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
@@ -144,6 +145,23 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 	ierr = VecRestoreArray (filter_, &filter_ptr);            CHKERRQ (ierr);
 	ierr = VecRestoreArray (bg_, &bg_ptr);					  CHKERRQ (ierr);
 	PetscFunctionReturn (0);
+}
+
+PetscErrorCode MatProp::filterBackgroundAndSmooth (Vec in) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	double *in_ptr, *bg_ptr;
+	ierr = VecGetArray (bg_, &bg_ptr);					CHKERRQ (ierr);
+	ierr = VecGetArray (in, &in_ptr);					CHKERRQ (ierr);
+
+	for (int i = 0; i < n_misc_->n_local_; i++) {
+		in_ptr[i] *= (1.0 - bg_ptr[i]);
+	}
+	double sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+	ierr = weierstrassSmoother (in_ptr, in_ptr, n_misc_, sigma_smooth);
+	ierr = VecRestoreArray (in, &in_ptr);				CHKERRQ (ierr);
+	ierr = VecRestoreArray (bg_, &bg_ptr);				CHKERRQ (ierr);
 }
 
 MatProp::~MatProp() {

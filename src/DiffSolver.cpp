@@ -4,6 +4,8 @@ DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef>
 :
 ctx_() {
     PetscErrorCode ierr = 0;
+
+    ksp_itr_ = 0;
     ctx_ = std::make_shared<Ctx> ();
     ctx_->k_ = k;
     ctx_->n_misc_ = n_misc;
@@ -164,6 +166,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     ctx->dt_ = dt;
     if (ctx->k_->k_scale_ == 0) {
+        ksp_itr_ = 0;
         return 0;
     }
     double alph = 1.0 / 2.0 * ctx->dt_;
@@ -174,9 +177,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, c);                            CHKERRQ (ierr);
 
-    //Debug
-    int itr;
-    ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
+    ierr = KSPGetIterationNumber (ksp_, &ksp_itr_);             CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

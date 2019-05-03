@@ -4,6 +4,8 @@
 #include "Utils.h"
 #include "Tumor.h"
 #include "DiffSolver.h"
+#include "AdvectionSolver.h"
+#include "ElasticitySolver.h"
 
 #include <mpi.h>
 #include <omp.h>
@@ -13,6 +15,8 @@ class PdeOperators {
 		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
 			diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
 			nt_ = n_misc->nt_;
+			diff_ksp_itr_state_ = 0;
+			diff_ksp_itr_adj_ = 0;
 		}
 
 		std::shared_ptr<Tumor> tumor_;
@@ -23,6 +27,10 @@ class PdeOperators {
 		std::vector<Vec> c_;
 		// @brief time history of adjoint variable
 		std::vector<Vec> p_;
+
+		// Accumulated number of KSP solves for diff solver in one forward and adj solve
+		int diff_ksp_itr_state_, diff_ksp_itr_adj_;
+
 
 		virtual PetscErrorCode solveState (int linearized) = 0;
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
@@ -54,6 +62,37 @@ class PdeOperatorsRD : public PdeOperators {
 		 */
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4);
 		virtual ~PdeOperatorsRD ();
+};
+
+class PdeOperatorsMassEffect : public PdeOperatorsRD {
+	public:
+		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
+			PetscErrorCode ierr = 0;
+			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
+			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
+			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor);
+
+			temp_ = new Vec[3];
+			for (int i = 0; i <3; i++) {
+				ierr = VecDuplicate (tumor->work_[0], &temp_[i]);
+				ierr = VecSet (temp_[i], 0.);
+			}
+		}
+
+		std::shared_ptr<AdvectionSolver> adv_solver_;
+		std::shared_ptr<ElasticitySolver> elasticity_solver_;
+
+		Vec *temp_;
+
+		virtual PetscErrorCode solveState (int linearized);
+		PetscErrorCode conserveHealthyTissues ();
+
+		virtual ~PdeOperatorsMassEffect () {
+			PetscErrorCode ierr = 0;
+			for (int i = 0; i < 3; i++)
+				ierr = VecDestroy (&temp_[i]);
+			delete [] temp_;
+		}
 };
 
 #endif

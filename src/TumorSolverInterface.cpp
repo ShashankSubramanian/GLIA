@@ -68,6 +68,10 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc, tumor_);
     }
+    if (n_misc->model_ == 4) {
+        pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
+    }
     // create tumor inverse solver
     inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
     ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
@@ -130,6 +134,10 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     if (n_misc_->model_ == 3 && (modelchanged || npchanged || ntchanged)) {
       pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
+    }
+    if (n_misc_->model_ == 4 && (modelchanged || npchanged || ntchanged)) {
+      pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc_);
+      derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
     inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);   CHKERRQ (ierr);
@@ -889,10 +897,16 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         inv_solver_->setDataGradient (d1g);
 
         // print the initial guess to track progress visually
-        ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
+        // ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
         ss << "c0guess_csitr-" << its << ".nc";
         if (n_misc_->writeOutput_) {
             dataOut (getTumor()->c_0_, n_misc_, ss.str().c_str());
+        }
+        ss.str(std::string()); ss.clear();
+
+        ss << "c1guess_csitr-" << its << ".nc";
+        if (n_misc_->verbosity_ >= 4) {
+            dataOut (getTumor()->c_t_, n_misc_, ss.str().c_str());
         }
         ss.str(std::string()); ss.clear();
 
@@ -1004,12 +1018,17 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             ss.str(std::string()); ss.clear();
 
             // print the initial guess to track progress visually
-            ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L1);
-            ss << "c0FinalGuess" << its << ".nc";
+            ss << "c0FinalGuess.nc";
             if (n_misc_->writeOutput_) {
                 dataOut (getTumor()->c_0_, n_misc_, ss.str().c_str());
             }
             
+            ss.str(std::string()); ss.clear();
+
+            ss << "c1FinalGuess.nc";
+            if (n_misc_->verbosity_ >= 4) {
+                dataOut (getTumor()->c_t_, n_misc_, ss.str().c_str());
+            }
             ss.str(std::string()); ss.clear();
 
             PCOUT << "--------------------------------------------------------------------     L2 solver end     -------------------------------------------------------------------- " << std::endl;

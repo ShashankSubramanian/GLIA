@@ -26,6 +26,8 @@ class DiffSolver {
 
 		Vec rhs_;
 
+		int ksp_itr_;
+
 		std::shared_ptr<Ctx> ctx_;
 
 		PetscErrorCode solve (Vec c, double dt);

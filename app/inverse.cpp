@@ -37,7 +37,7 @@ PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
-PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*);
+PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*, bool inversed = true);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
 PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
@@ -81,6 +81,7 @@ int main (int argc, char** argv) {
     int interp_flag = 0;
     int diffusivity_flag = 0;
     int reaction_flag = 0;
+    int invert_obs_mask = 0;
     int basis_type = 0;
     double sigma = -1.0;
     double spacing_factor = -1.0;
@@ -114,6 +115,7 @@ int main (int argc, char** argv) {
     double low_freq_noise_scale = -1.0;
 
     int predict_flag = 0;
+    int order_of_accuracy = -1;
 
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
@@ -162,6 +164,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
     PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
+    PetscOptionsInt ("-order", "Order of accuracy of PDE solver", "", order_of_accuracy, &order_of_accuracy, NULL);
 
     PetscOptionsString ("-data_path", "Path to data", "", data_path, data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
@@ -169,6 +172,7 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-csf_path", "Path to CSF", "", csf_path, csf_path, 400, NULL);
     PetscOptionsString ("-glm_path", "Path to GLM", "", glm_path, glm_path, 400, NULL);
     PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
+    PetscOptionsInt    ("-invert_obs_mask", "if set, observation mask is inverted", "", invert_obs_mask, &invert_obs_mask, NULL);
 
 
     PetscOptionsEnd ();
@@ -352,6 +356,10 @@ int main (int argc, char** argv) {
         n_misc->low_freq_noise_scale_ = low_freq_noise_scale;
     }
 
+    if (order_of_accuracy != -1) {
+        n_misc->order_ = order_of_accuracy;
+    }
+
     n_misc->predict_flag_ = predict_flag;
 
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
@@ -379,6 +387,8 @@ int main (int argc, char** argv) {
     solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->opttolgrad = n_misc->opttolgrad_;
 
+    solver_interface->getInvSolver()->getOptSettings ()->verbosity = n_misc->verbosity_;
+
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, gm_path, wm_path, csf_path, glm_path);
@@ -400,7 +410,7 @@ int main (int argc, char** argv) {
     } else {
         ierr = readData (data, c_0, p_rec, n_misc, data_path);
         if(use_custom_obs_mask){
-          ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
+          ierr = readObsFilter(obs_mask, n_misc, obs_mask_path, invert_obs_mask);
           PCOUT << "Use custom observation mask\n";
         }
     }
@@ -435,11 +445,11 @@ int main (int argc, char** argv) {
     }
 
     if (fwd_flag) {
-        PCOUT << "Forward solve completed: exiting...\n";
+        PCOUT << "Forward solve completed: exiting...\n";  
     } else {
-        PCOUT << "Inverse solver begin" << std::endl;
+        PCOUT << "Inverse solver begin" << std::endl; 
 
-        n_misc->rho_ = rho_inv;
+        n_misc->rho_ = rho_inv;                                              
         n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->dt_ = dt_inv;
         n_misc->nt_ = nt_inv;
@@ -621,6 +631,7 @@ int main (int argc, char** argv) {
         }
 
     }
+
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
@@ -866,7 +877,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char *obs_mask_path) {
+PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char *obs_mask_path, bool inversed) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -879,7 +890,8 @@ PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char
     double *obs_mask_ptr;
     ierr = VecGetArray (obs_mask, &obs_mask_ptr);                         CHKERRQ (ierr);
     for (int i = 0; i < n_misc->n_local_; i++) {
-        obs_mask_ptr[i] = (obs_mask_ptr[i] > 0) ? 1.0 : 0.0;
+        if (inversed) {obs_mask_ptr[i] = (obs_mask_ptr[i] > 0) ? 0.0 : 1.0;}
+        else          {obs_mask_ptr[i] = (obs_mask_ptr[i] > 0) ? 1.0 : 0.0;}
     }
 
     ierr = VecRestoreArray (obs_mask, &obs_mask_ptr);                     CHKERRQ (ierr);
@@ -1439,6 +1451,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     }
 
     ierr = VecDestroy (&max);       CHKERRQ (ierr);
+
 
     PetscFunctionReturn(0);
 }

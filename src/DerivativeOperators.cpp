@@ -48,6 +48,19 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
 
+    std::stringstream s;
+    if (n_misc_->verbosity_ >= 3) {
+      if (n_misc_->diffusivity_inversion_) {
+        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      }
+      if (n_misc_->flag_reaction_inv_) {
+        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")";
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      }
+    }
+
+
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
@@ -80,9 +93,10 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     (*J) *= n_misc_->lebesgue_measure_;
 
-    std::stringstream s;
+    
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
+    
     (*J) *= 0.5;
     (*J) += reg;
 
@@ -334,6 +348,19 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
 
+    std::stringstream s;
+    if (n_misc_->verbosity_ >= 3) {
+      if (n_misc_->diffusivity_inversion_) {
+        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      }
+      if (n_misc_->flag_reaction_inv_) {
+        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")";
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      }
+    }
+
+
 
     // solve state
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
@@ -396,11 +423,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     (*J) *= n_misc_->lebesgue_measure_;
 
-    std::stringstream s;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     // objective function value
     (*J) *= 0.5;
     (*J) += reg;
+
+    
 
     double temp_scalar;
     /* ------------------------- */
