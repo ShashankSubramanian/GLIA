@@ -89,6 +89,7 @@ int main (int argc, char** argv) {
     double target_spars = -1.0;
     int sparsity_level = -1.0;
     int lam_cont = 0;
+    int verbosity_in = 1;
     double sigma_dd = -1.0;
     double data_thres = -1.0;
     double obs_thres = -1.0;
@@ -173,6 +174,7 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-glm_path", "Path to GLM", "", glm_path, glm_path, 400, NULL);
     PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
     PetscOptionsInt    ("-invert_obs_mask", "if set, observation mask is inverted", "", invert_obs_mask, &invert_obs_mask, NULL);
+    PetscOptionsInt    ("-verbosity", "solver verbosity (1-4)", "", verbosity_in, &verbosity_in, NULL);
 
 
     PetscOptionsEnd ();
@@ -360,8 +362,9 @@ int main (int argc, char** argv) {
         n_misc->order_ = order_of_accuracy;
     }
 
-    n_misc->predict_flag_ = predict_flag;
 
+    n_misc->predict_flag_ = predict_flag;
+    n_misc->verbosity_ = verbosity_in;
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
     n_misc->writepath_ << results_dir;
 
@@ -445,11 +448,11 @@ int main (int argc, char** argv) {
     }
 
     if (fwd_flag) {
-        PCOUT << "Forward solve completed: exiting...\n";  
+        PCOUT << "Forward solve completed: exiting...\n";
     } else {
-        PCOUT << "Inverse solver begin" << std::endl; 
+        PCOUT << "Inverse solver begin" << std::endl;
 
-        n_misc->rho_ = rho_inv;                                              
+        n_misc->rho_ = rho_inv;
         n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->dt_ = dt_inv;
         n_misc->nt_ = nt_inv;
@@ -1403,7 +1406,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
 
     double sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
 
-    ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+    // ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 
     ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr);
 
@@ -1440,7 +1443,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     ierr = VecRestoreArray(tumor->mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray(tumor->c_0_, &c_ptr);                                CHKERRQ(ierr);
 
-    ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+    // ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 
 
     ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr);
