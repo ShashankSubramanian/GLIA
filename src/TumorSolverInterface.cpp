@@ -319,12 +319,12 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
 
   double r1, r2, r3, k1;
   double *ptr_pr_rec;
-  nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
+  int nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
   ierr = VecGetArray (prec, &ptr_pr_rec);                                       CHKERRQ (ierr);
-  k1 = ptr_pr_rec[np];
-  r1 = ptr_pr_rec[np + nk];
-  r2 = (n_misc_->nr_ > 1) ? ptr_pr_rec[np + nk + 1] : 0;
-  r3 = (n_misc_->nr_ > 2) ? ptr_pr_rec[np + nk + 2] : 0;
+  k1 = ptr_pr_rec[n_misc_->np_];
+  r1 = ptr_pr_rec[n_misc_->np_ + nk];
+  r2 = (n_misc_->nr_ > 1) ? ptr_pr_rec[n_misc_->np_ + nk + 1] : 0;
+  r3 = (n_misc_->nr_ > 2) ? ptr_pr_rec[n_misc_->np_ + nk + 2] : 0;
   ierr = VecRestoreArray (prec, &ptr_pr_rec);                                   CHKERRQ (ierr);
 
   PCOUT << "\nEstimated diffusion coefficients " <<  std::endl;
@@ -779,7 +779,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // set initial guess for k_inv (possibly != zero)
     ierr = VecGetArray(x_L1, &x_L1_ptr);             CHKERRQ (ierr);
     x_L1_ptr[n_misc_->np_] = n_misc_->k_;
-    ierr = VecResoreArray(x_L1, &x_L1_ptr);          CHKERRQ (ierr);
+    ierr = VecRestoreArray(x_L1, &x_L1_ptr);          CHKERRQ (ierr);
     ierr = VecCopy(x_L1, x_L1_old);                  CHKERRQ (ierr);
 
     J = J_ref;

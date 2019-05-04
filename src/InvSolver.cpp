@@ -384,11 +384,11 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   double *x_in_ptr, *x_ptr;
   ierr = VecGetArray (x_in, &x_in_ptr);                                               CHKERRQ (ierr);
   ierr = VecGetArray (x, &x_ptr);                                                     CHKERRQ (ierr);
-  x_ptr[0] = (nk > 0) x_in_ptr[itctx_->n_misc_->np_] : 0;     // k1
+  x_ptr[0] = (nk > 0) ? x_in_ptr[itctx_->n_misc_->np_] : 0;   // k1
   if (nk > 1) x_ptr[1] = x_in_ptr[itctx_->n_misc_->np_ + 1];  // k2
   if (nk > 2) x_ptr[2] = x_in_ptr[itctx_->n_misc_->np_ + 2];  // k3
 
-  PCOUT << "Initial guess for diffusion coefficient: " << _ptr[0] << std::endl;
+  PCOUT << "Initial guess for diffusion coefficient: " << x_ptr[0] << std::endl;
 
   // Guess the reaction coefficient and use as IC.
   std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate
