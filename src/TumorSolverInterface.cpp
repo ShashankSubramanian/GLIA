@@ -298,10 +298,6 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-  Vec x_in;
-  ierr = VecDuplicate (prec, &x_in);                                            CHKERRQ (ierr);
-  ierr = VecCopy (prec, x_in);                                                  CHKERRQ (ierr);
-
   if (n_misc_->reaction_inversion_) {
       PCOUT << "-------------------------------------------------------------------- Reaction and diffusivity inversion with scaled L2 solution guess --------------------------------------------------------------------" << std::endl;
 
@@ -309,58 +305,33 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
       // No need to reset tao solver: This is taken care of in solveForParameters() because the tao solver needs different vector sizes now.
       // assuming p is already scaled to one (according to our modeling assumptions)
 
-      double g_norm_ref;
-      // reaction -inversion solve
+      // reaction-inversion solve
       ierr = inv_solver_->solveForParameters (prec);          // With IC as current guess
       ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
   } else {
     PCOUT << " WARNING: Attempting to solve for reaction and diffusion, but reaction inversion is nor enabled. \n";
   }
 
-  // Copy L2 solution to final solution
-  ierr = VecGetArray (x_L2, &x_L2_ptr);                                         CHKERRQ (ierr);
-  ierr = VecGetArray (x_L1, &x_L1_ptr);                                         CHKERRQ (ierr);
-  for (int i = 0; i < np; i++) {
-      x_L1_ptr[n_misc_->support_[i]] = x_L2_ptr[i];   // Correct L1 guess
-  }
-  // Correct the diffusivity
-  if (n_misc_->diffusivity_inversion_) {
-      x_L1_ptr[np_original] = x_L2_ptr[np];
-      if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
-  }
+  double r1, r2, r3, k1;
+  double *ptr_pr_rec;
+  nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
+  ierr = VecGetArray (prec, &ptr_pr_rec);                                       CHKERRQ (ierr);
+  k1 = ptr_pr_rec[np];
+  r1 = ptr_pr_rec[np + nk];
+  r2 = (n_misc_->nr_ > 1) ? ptr_pr_rec[np + nk + 1] : 0;
+  r3 = (n_misc_->nr_ > 2) ? ptr_pr_rec[np + nk + 2] : 0;
+  ierr = VecRestoreArray (prec, &ptr_pr_rec);                                   CHKERRQ (ierr);
 
-  double r1, r2, r3;
-  r1 = x_L2_ptr[np + nk];
-  r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
-  r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
+  PCOUT << "\nEstimated diffusion coefficients " <<  std::endl;
+  PCOUT << "k1: " << k1 << std::endl;
 
   PCOUT << "\nEstimated reaction coefficients " <<  std::endl;
   PCOUT << "r1: " << r1 << std::endl;
   PCOUT << "r2: " << r2 << std::endl;
   PCOUT << "r3: " << r3 << std::endl;
-
   n_misc_->rho_ = r1;  //update n_misc rho
 
-  ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
-  ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
-
-  // Reset all values to initial space
-  np = np_original;
-  n_misc_->np_ = np;
-
-  tumor_->phi_->resetCenters ();              // Reset all the basis centers
-
-  ierr = setParams (x_L1, nullptr);           // Reset phis and other operators
-
-  ierr = VecDestroy (&x_L2);                                                    CHKERRQ (ierr);
-  // pass the reconstructed p vector to the caller (deep copy)
-  ierr= VecCopy (x_L1, prec);                                                   CHKERRQ (ierr);
-  ierr = VecDestroy (&g);                                                       CHKERRQ (ierr);
-  ierr = VecDestroy (&x_L1);                                                    CHKERRQ (ierr);
-  ierr = VecDestroy (&g_ref);                                                   CHKERRQ (ierr);
-  ierr = VecDestroy (&x_L1_old);                                                CHKERRQ (ierr);
-  ierr = VecDestroy (&temp);                                                    CHKERRQ (ierr);
-
+  PetscFunctionReturn(ierr);
 }
 
 
@@ -800,6 +771,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     ierr = inv_solver_->getObjective (x_L1, &J_ref);
     ierr = inv_solver_->getGradient (x_L1, g_ref);
 
+    // set initial guess for k_inv (possibly != zero)
+    ierr = VecGetArray(x_L1, &x_L1_ptr);             CHKERRQ (ierr);
+    x_L1_ptr[n_misc_->np_] = n_misc_->k_;
+    ierr = VecResoreArray(x_L1, &x_L1_ptr);          CHKERRQ (ierr);
+    ierr = VecCopy(x_L1, x_L1_old);                  CHKERRQ (ierr);
 
     J = J_ref;
     ierr = VecCopy (g_ref, g);                      CHKERRQ (ierr);
