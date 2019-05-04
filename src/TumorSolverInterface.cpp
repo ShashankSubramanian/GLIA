@@ -305,6 +305,11 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
       // No need to reset tao solver: This is taken care of in solveForParameters() because the tao solver needs different vector sizes now.
       // assuming p is already scaled to one (according to our modeling assumptions)
 
+      // set data
+      inv_solver_->setData (d1);
+      if (d1g == nullptr) {d1g = d1;}
+      inv_solver_->setDataGradient (d1g);
+
       // reaction-inversion solve
       ierr = inv_solver_->solveForParameters (prec);          // With IC as current guess
       ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
