@@ -160,8 +160,8 @@ env.Append(CCFLAGS = ['-DSERIAL'])
 # env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 
 # avx
-if env["platform"] != "stampede2":
-  env.Append(CCFLAGS = ['-march=native'])
+#if env["platform"] != "stampede2":
+env.Append(CCFLAGS = ['-march=native'])
 
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
