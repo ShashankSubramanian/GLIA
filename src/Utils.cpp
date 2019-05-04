@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include "Phi.h"
 
 VecField::VecField (int nl , int ng) {
 	PetscErrorCode ierr = 0;
@@ -281,6 +282,37 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	ierr = VecGetArray (A, &a_ptr);
 	dataOut (a_ptr, n_misc, fname);
 	ierr = VecRestoreArray (A, &a_ptr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// writeCheckpoint /////////////////////////////////// ###
+PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path, std::string suffix) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  // write p vector
+  std::string fname_p = path + "p-rec-" + suffix + ".bin";
+  writeBIN(p, fname_p);
+
+  // write Gaussian centers
+  std::string fname_phi = path + "phi-mesh-" + suffix + ".dat";
+  std::stringstream phivis;
+  phivis <<" sigma = "<<phi->sigma_<<", spacing = "<<phi->spacing_factor_ * phi->sigma_<<std::endl;
+  phivis <<" centers = ["<<std::endl;
+  for (int ptr = 0; ptr < 3 * phi->np_; ptr += 3) {
+      phivis << " " << phi->centers_[ptr + 0] <<", " << phi->centers_[ptr + 1] << ", "  << phi->centers_[ptr + 2] << std::endl;
+  }
+  phivis << "];"<<std::endl;
+  std::fstream phifile;
+  if(procid == 0) {
+      phifile.open(fname_phi, std::ios_base::out);
+      phifile << phivis.str()<<std::endl;
+      phifile.close();
+  }
+  PetscFunctionReturn(ierr);
 }
 
 

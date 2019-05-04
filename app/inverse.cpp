@@ -84,6 +84,8 @@ int main (int argc, char** argv) {
     int interp_flag = 0;
     int diffusivity_flag = 0;
     int reaction_flag = 0;
+    int solve_rho_k_only_flag = 0;
+    int checkpointing_flag = 1;
     // int invert_obs_mask = 0;
     int basis_type = 0;
     double sigma = -1.0;
@@ -180,6 +182,8 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-pvec_path", "Path to initial guess p vector", "", p_vec_path, p_vec_path, 400, NULL);
     PetscOptionsString ("-gaussian_cm_path", "Path to file with Gaussian centers", "", gaussian_cm_path, gaussian_cm_path, 400, NULL);
     PetscOptionsInt    ("-verbosity", "solver verbosity (1-4)", "", verbosity_in, &verbosity_in, NULL);
+    PetscOptionsInt    ("-checkpointing_flag", "solver writes checkpoints for p vector and corresponding Gaussian centers", "", checkpointing_flag, &checkpointing_flag, NULL);
+    PetscOptionsInt    ("-solve_rho_k", "Flag to do only the inversion for reaction and diffusion coefficient, keeping the initial condition c(0) fixed (needs to be read in)", "", solve_rho_k_only_flag, &solve_rho_k_only_flag, NULL);
 
 
     PetscOptionsEnd ();
@@ -281,6 +285,9 @@ int main (int argc, char** argv) {
     }
     if (diffusivity_flag) {
         n_misc->diffusivity_inversion_ = true;
+    }
+    if (checkpointing_flag) {
+      n_misc->write_p_checkpoint_ = true;
     }
     if (reaction_flag) {
         n_misc->reaction_inversion_ = true;
@@ -550,10 +557,13 @@ int main (int argc, char** argv) {
               flag_diff = true;
             }
 
-            if (flag_cosamp) {
-                ierr = solver_interface->solveInverseCoSaMp (p_rec, data, nullptr);                  //Solve tumor inversion using cosamp
+            if (solve_rho_k_only_flag) {
+                if (!warmstart_p) {PCOUT << "Error: c(0) needs to be set, read in p and Gaussians. exiting solver...\n"; exit(1);}
+                ierr = solver_interface->solveInverseReacDiff (p_rec, data, nullptr);     // solve tumor inversion only for rho and k, read in c(0)
+            } else if (flag_cosamp) {
+                ierr = solver_interface->solveInverseCoSaMp (p_rec, data, nullptr);     // solve tumor inversion using cosamp
             } else {
-                ierr = solver_interface->solveInverse (p_rec, data, nullptr);                  //Solve tumor inversion
+                ierr = solver_interface->solveInverse (p_rec, data, nullptr);           // solve tumor inversion
             }
 
             //if L1, then solve for sparse components using weigted L2

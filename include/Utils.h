@@ -29,6 +29,7 @@
 
 
 
+class Phi;
 
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
@@ -270,7 +271,8 @@ class NMisc {
         , reaction_inversion_ (false)           // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
         , flag_reaction_inv_ (false)            // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
-        , newton_solver_ (QUASINEWTON)           // Newton solver type
+        , write_p_checkpoint_(true)             // if true, p vector and corresponding Gaussian centers are written to file at certain checkpoints
+        , newton_solver_ (QUASINEWTON)          // Newton solver type
         , newton_maxit_ (30)                    // Newton max itr
         , gist_maxit_ (50)                      // GIST max itr
         , krylov_maxit_ (30)                    // Krylov max itr
@@ -419,6 +421,7 @@ class NMisc {
         double lambda_;
 
         bool beta_changed_;
+        bool write_p_checkpoint_;
 
         double phi_sigma_;
         double phi_sigma_data_driven_;
@@ -544,9 +547,11 @@ PetscErrorCode readBIN(Vec* x, int size2, std::string f);
 PetscErrorCode writeBIN(Vec x, std::string f);
 /// @brief reads in Gaussian centers from file
 PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f);
-
-
+/// @brief write checkpoint for p-vector and Gaussian centers
+PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path, std::string suffix);
+/// @brief returns only filename
 PetscErrorCode getFileName(std::string& filename, std::string file);
+/// @brief checks if file exists
 bool fileExists(const std::string& filename);
 
 /* helper methods for print out to console */
