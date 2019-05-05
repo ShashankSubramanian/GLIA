@@ -32,7 +32,6 @@ ctx_() {
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
-
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
     ierr = setupVec (rhs_);

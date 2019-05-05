@@ -32,7 +32,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
 
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, factor * n_misc->n_local_, factor * n_misc->n_global_);
-    ierr = VecSetFromOptions (rhs_);
+    ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
 }
 

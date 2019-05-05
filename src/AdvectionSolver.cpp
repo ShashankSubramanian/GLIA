@@ -23,7 +23,7 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
 
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (rhs_);
+    ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
 
     advection_mode_ = 1;    // 1 -- mass conservation
@@ -115,7 +115,7 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     int factor = 3;
     ierr = VecCreate (PETSC_COMM_WORLD, &query_points_);
     ierr = VecSetSizes (query_points_, factor * n_misc->n_local_, factor * n_misc->n_global_);
-    ierr = VecSetFromOptions (query_points_);
+    ierr = setupVec (query_points_);
     ierr = VecSet (query_points_, 0);
 
     n_ghost_ = 3;
