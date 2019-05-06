@@ -457,6 +457,7 @@ PetscErrorCode Phi::setGaussians (std::string file) {
 
     PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ------" << std::endl;
     PCOUT << " ----- Bounding box not set: Basis functions set from file -----\n" << std::endl;
+    PCOUT << " file: " << file << std::endl;
 
     // read centers from file (clears centers_)
     ierr = readPhiMesh(centers_, n_misc_, file);                               CHKERRQ (ierr);

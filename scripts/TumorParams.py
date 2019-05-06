@@ -85,6 +85,8 @@ def getTumorRunCmd(params):
     smooth_f = 1.5
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
+    ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
+    solve_rho_k = 0;
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 1
     ### Forward flag -- Flag to run only forward solve
@@ -248,6 +250,10 @@ def getTumorRunCmd(params):
         print('p vector initial guess path = {}'.format(pvec_path))
     else:
         print('Using zero initial guess for p vector.')
+    # ---
+    if "solve_rho_k" in params:
+        solve_rho_k = params['solve_rho_k']
+        print('solving for rho and k only (c(0) must be set via p and Gaussian centers)')
 
 
     ibman = ""
@@ -266,6 +272,7 @@ def getTumorRunCmd(params):
     " -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \
     " -basis_type " + str(basis_type) + " -number_gaussians " + str(np) + " -sigma_factor " + str(fac) + " -sigma_spacing " + str(space) + \
     " -testcase " + str(tumor_testcase) + \
+    " -solve_rho_k " + str(solve_rho_k) + \
     " -gaussian_volume_fraction " + str(gvf) +  \
     " -lambda_continuation " + str(lam_cont) +  \
     " -target_sparsity " + str(target_spars) +  \

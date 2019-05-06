@@ -497,13 +497,15 @@ int main (int argc, char** argv) {
             ierr = tumor->obs_->apply (support_data, support_data);                     CHKERRQ (ierr);
 
             int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+            int nr = (n_misc->reaction_inversion_)    ? n_misc->nr_ : 0;
             // if p vector and Gaussian centers are read in
             if (warmstart_p) {
+              PCOUT << "Solver warmstart using p and Gaussian centers" << std::endl;
               std::string file_p(p_vec_path);
               std::string file_cm(gaussian_cm_path);
               ierr = tumor->phi_->setGaussians (file_cm);                               CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
-              readBIN(&p_rec, n_misc->np_ + nk, file_p);
+              readBIN(&p_rec, n_misc->np_ + nk + nr, file_p);
             } else {
               ierr = tumor->phi_->setGaussians (support_data);                          CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
