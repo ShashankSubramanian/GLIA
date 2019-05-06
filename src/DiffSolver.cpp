@@ -1,4 +1,5 @@
 #include "DiffSolver.h"
+#include "petsc/private/kspimpl.h"
 
 DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k)
 :
@@ -172,6 +173,12 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     ierr = VecCopy (c, rhs_);                                   CHKERRQ (ierr);
     ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);
+
+    for (int i = 0; i < 3; i++) {
+        ierr = VecDestroy (&ksp_->work[i]); CHKERRQ(ierr);
+        ierr = VecDuplicate (c, &ksp_->work[i]); CHKERRQ(ierr);
+        ierr = VecSet (ksp_->work[i], 0.);  CHKERRQ(ierr);
+    }
 
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, c);                            CHKERRQ (ierr);
