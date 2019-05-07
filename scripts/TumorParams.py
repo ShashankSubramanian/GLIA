@@ -150,6 +150,11 @@ def getTumorRunCmd(params):
     else:
         print ('Default N = {} used'.format(N))
     # ---
+    if 'grad_tol' in params:
+        grad_tol = params['grad_tol']
+    else:
+        print ('Default grad_tol = {} used'.format(grad_tol))
+    # ---
     if 'rho_inv' in params:
         rho_inv = params['rho_inv']
     else:
