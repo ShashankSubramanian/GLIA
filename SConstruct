@@ -167,16 +167,21 @@ if env["gpu"] == True:
 env.Append(CCFLAGS = ['-march=native'])
 
 # ====== CUDA =======
-if env["gpu"] == True:
-    CUDA_DIR = checkset_var("CUDA_DIR", "")
-    env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
-    env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
+CUDA_DIR = checkset_var("CUDA_DIR", "")
+env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
+env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
+uniqueCheckLib(conf, "cusparse")
+uniqueCheckLib(conf, "cufft")
+uniqueCheckLib(conf, "cublas")
+uniqueCheckLib(conf, "cudart")
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
 env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( ACCFFT_DIR, "lib")])
 uniqueCheckLib(conf, "accfft")
 uniqueCheckLib(conf, "accfft_utils")
+uniqueCheckLib(conf, "accfft_gpu")
+uniqueCheckLib(conf, "accfft_utils_gpu")
 
 # ====== PNETCDF ======
 PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
