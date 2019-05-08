@@ -68,8 +68,8 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 	public:
 		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
 			PetscErrorCode ierr = 0;
-			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
-			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
+			// adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
+			adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
 			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor);
 
 			temp_ = new Vec[3];
