@@ -33,6 +33,8 @@
 
     using fft_plan = accfft_plan_gpu;
 
+    #define accfft_execute_r2c accfft_execute_r2c_gpu
+    #define accfft_execute_c2r accfft_execute_c2r_gpu
 
 #else
     #include <accfft.h>
