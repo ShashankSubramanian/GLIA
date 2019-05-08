@@ -5,8 +5,7 @@
 #include <stdlib.h>
 #include <iomanip>
 #include "petsctao.h"
-#include <accfft.h>
-#include <accfft_operators.h>
+
 #include <math.h>
 #include <memory>
 #include <complex>
@@ -29,6 +28,17 @@
 #ifdef CUDA
     #include "cuda.h"
     #include "petsccuda.h"
+    #include <accfft_gpu.h>
+    #include <accfft_operators_gpu.h>
+
+    using fft_plan = accfft_plan_gpu;
+
+
+#else
+    #include <accfft.h>
+    #include <accfft_operators.h>
+
+    using fft_plan = accfft_plan;
 #endif
 
 
@@ -230,7 +240,7 @@ public:
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
                        // Mass effect -- 4
@@ -452,7 +462,7 @@ class NMisc {
         int64_t n_local_;
         int64_t n_global_;
 
-        accfft_plan *plan_;
+        fft_plan *plan_;
         MPI_Comm c_comm_;
 
         std::stringstream readpath_;
@@ -549,8 +559,8 @@ PetscErrorCode tuMSGwarn(std::string msg, int size = 98);
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
 /* accfft differential operators */
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
+void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, double *timers);
+void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, double *timers);
 
 PetscErrorCode vecSign (Vec x); //signum of petsc vector
 PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsity of vector

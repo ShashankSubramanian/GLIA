@@ -4,7 +4,7 @@ VecField::VecField (int nl , int ng) {
 	PetscErrorCode ierr = 0;
     ierr = VecCreate (PETSC_COMM_WORLD, &x_);
     ierr = VecSetSizes (x_, nl, ng);
-    ierr = VecSetFromOptions (x_);
+    ierr = setupVec (x_);
     ierr = VecSet (x_, 0.);
 
     ierr = VecDuplicate (x_, &y_);
@@ -172,36 +172,64 @@ PetscErrorCode TumorStatistics::print() {
 	PetscFunctionReturn(0);
 }
 
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers) {
+void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, double *timers) {
 	PetscErrorCode ierr = 0;
 	double *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
-	ierr = VecGetArray (grad_x, &grad_x_ptr);
-	ierr = VecGetArray (grad_y, &grad_y_ptr);
-	ierr = VecGetArray (grad_z, &grad_z_ptr);
-	ierr = VecGetArray (x, &x_ptr);
+	#ifdef CUDA
+		ierr = VecCUDAGetArrayReadWrite (grad_x, &grad_x_ptr);
+		ierr = VecCUDAGetArrayReadWrite (grad_y, &grad_y_ptr);
+		ierr = VecCUDAGetArrayReadWrite (grad_z, &grad_z_ptr);
+		ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);
 
-	accfft_grad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan, pXYZ, timers);
+		accfft_grad_gpu (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan, pXYZ, timers);
 
-	ierr = VecRestoreArray (grad_x, &grad_x_ptr);
-	ierr = VecRestoreArray (grad_y, &grad_y_ptr);
-	ierr = VecRestoreArray (grad_z, &grad_z_ptr);
-	ierr = VecRestoreArray (x, &x_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (grad_x, &grad_x_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (grad_y, &grad_y_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (grad_z, &grad_z_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (x, &x_ptr);
+	#else
+		ierr = VecGetArray (grad_x, &grad_x_ptr);
+		ierr = VecGetArray (grad_y, &grad_y_ptr);
+		ierr = VecGetArray (grad_z, &grad_z_ptr);
+		ierr = VecGetArray (x, &x_ptr);
+
+		accfft_grad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan, pXYZ, timers);
+
+		ierr = VecRestoreArray (grad_x, &grad_x_ptr);
+		ierr = VecRestoreArray (grad_y, &grad_y_ptr);
+		ierr = VecRestoreArray (grad_z, &grad_z_ptr);
+		ierr = VecRestoreArray (x, &x_ptr);
+	#endif
 }
 
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers) {
+void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, double *timers) {
 	PetscErrorCode ierr = 0;
 	double *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
-	ierr = VecGetArray (div, &div_ptr);
-	ierr = VecGetArray (dx, &dx_ptr);
-	ierr = VecGetArray (dy, &dy_ptr);
-	ierr = VecGetArray (dz, &dz_ptr);
+	#ifdef CUDA
+		ierr = VecCUDAGetArrayReadWrite (div, &div_ptr);
+		ierr = VecCUDAGetArrayReadWrite (dx, &dx_ptr);
+		ierr = VecCUDAGetArrayReadWrite (dy, &dy_ptr);
+		ierr = VecCUDAGetArrayReadWrite (dz, &dz_ptr);
 
-	accfft_divergence (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan, timers);
+		accfft_divergence_gpu (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan, timers);
 
-	ierr = VecRestoreArray (div, &div_ptr);
-	ierr = VecRestoreArray (dx, &dx_ptr);
-	ierr = VecRestoreArray (dy, &dy_ptr);
-	ierr = VecRestoreArray (dz, &dz_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (div, &div_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (dx, &dx_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (dy, &dy_ptr);
+		ierr = VecCUDARestoreArrayReadWrite (dz, &dz_ptr);
+	#else
+		ierr = VecGetArray (div, &div_ptr);
+		ierr = VecGetArray (dx, &dx_ptr);
+		ierr = VecGetArray (dy, &dy_ptr);
+		ierr = VecGetArray (dz, &dz_ptr);
+
+		accfft_divergence (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan, timers);
+
+		ierr = VecRestoreArray (div, &div_ptr);
+		ierr = VecRestoreArray (dx, &dx_ptr);
+		ierr = VecRestoreArray (dy, &dy_ptr);
+		ierr = VecRestoreArray (dz, &dz_ptr);
+	#endif
 }
 
 /* definition of tumor assert */
@@ -303,7 +331,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 	const int Nx = N_Misc->n_[0], Ny = N_Misc->n_[1], Nz = N_Misc->n_[2];
 	const double pi = M_PI, twopi = 2.0 * pi, factor = 1.0 / (Nx * Ny * Nz);
 	const double hx = twopi / Nx, hy = twopi / Ny, hz = twopi / Nz;
-	accfft_plan * plan = N_Misc->plan_;
+	fft_plan * plan = N_Misc->plan_;
 
 	Complex *c_hat = (Complex*) accfft_alloc(alloc_max);
 	Complex *f_hat = (Complex*) accfft_alloc(alloc_max);

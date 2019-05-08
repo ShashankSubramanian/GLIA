@@ -50,9 +50,9 @@ class DiffCoef {
 		PetscErrorCode setWorkVecs(Vec * workvecs);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);
-		PetscErrorCode applyD (Vec dc, Vec c, accfft_plan *plan);
+		PetscErrorCode applyD (Vec dc, Vec c, fft_plan *plan);
 		/** @brief computes x = k_bar (grad c)^T grad \alpha, where k_bar = dK/dm */
-		PetscErrorCode compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, accfft_plan *plan);
+		PetscErrorCode compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, fft_plan *plan);
 		~DiffCoef ();
 };
 

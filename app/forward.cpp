@@ -59,7 +59,7 @@ int main (int argc, char** argv) {
     int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
     double *c_0 = (double*) accfft_alloc (alloc_max);
     Complex *c_hat = (Complex*) accfft_alloc (alloc_max);
-    accfft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+    fft_plan *plan = fft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
     accfft_free (c_0);
     accfft_free (c_hat);
 

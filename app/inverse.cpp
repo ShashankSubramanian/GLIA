@@ -210,12 +210,23 @@ int main (int argc, char** argv) {
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
     int isize[3], osize[3], istart[3], ostart[3];
-    int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-    double *c_0 = (double*) accfft_alloc (alloc_max);
-    Complex *c_hat = (Complex*) accfft_alloc (alloc_max);
-    accfft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-    accfft_free (c_0);
-    accfft_free (c_hat);
+    double *c_0;
+    Complex *c_hat;
+    #ifdef CUDA
+        int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        cudaMalloc((void**) &c_0, alloc_max);
+        cudaMalloc((void**) &c_hat, alloc_max);
+        fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+        cudaFree (c_0);
+        cudaFree (c_hat);
+    #else
+        int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        c_0= (double*) accfft_alloc (alloc_max);
+        c_hat = (Complex*) accfft_alloc (alloc_max);
+        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+        accfft_free (c_0);
+        accfft_free (c_hat);
+    #endif
 /* ACCFFT, PETSC setup end */
 /* --------------------------------------------------------------------------------------------------------------*/
 
@@ -945,115 +956,115 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    // int procid, nprocs;
+    // MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    // MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    srand (time(NULL));
-    double random_noise;
-    double noise_level = n_misc->low_freq_noise_scale_;
-    double mag = 0.;
-    int64_t x_global, y_global, z_global, x_symm, y_symm, z_symm, global_index;
-    double freq = 0;
-    double amplitude = 0.;
+    // srand (time(NULL));
+    // double random_noise;
+    // double noise_level = n_misc->low_freq_noise_scale_;
+    // double mag = 0.;
+    // int64_t x_global, y_global, z_global, x_symm, y_symm, z_symm, global_index;
+    // double freq = 0;
+    // double amplitude = 0.;
 
-    int *osize = n_misc->osize_;
-    int *ostart = n_misc->ostart_;
-    int *isize = n_misc->isize_;
-    int *istart = n_misc->istart_;
-    MPI_Comm c_comm = n_misc->c_comm_;
-    int *n = n_misc->n_;
-    accfft_plan *plan = n_misc->plan_;
+    // int *osize = n_misc->osize_;
+    // int *ostart = n_misc->ostart_;
+    // int *isize = n_misc->isize_;
+    // int *istart = n_misc->istart_;
+    // MPI_Comm c_comm = n_misc->c_comm_;
+    // int *n = n_misc->n_;
+    // fft_plan *plan = n_misc->plan_;
 
-    // Get the fourier transform of data;
-    double *d_ptr;
-    ierr = VecGetArray (data, &d_ptr);          CHKERRQ (ierr);
+    // // Get the fourier transform of data;
+    // double *d_ptr;
+    // ierr = VecGetArray (data, &d_ptr);          CHKERRQ (ierr);
 
-    // // remove small aliasing errors
-    // for (int i = 0; i < n_misc->n_local_; i++) {
-    //     if (d_ptr[i] < 1E-4) {
-    //         d_ptr[i] = 0.;
+    // // // remove small aliasing errors
+    // // for (int i = 0; i < n_misc->n_local_; i++) {
+    // //     if (d_ptr[i] < 1E-4) {
+    // //         d_ptr[i] = 0.;
+    // //     }
+    // // }
+
+    // int alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+    // accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+    // Complex *data_hat;
+    // double *freq_scaling;
+    // data_hat = (Complex*) accfft_alloc (alloc_max);
+    // freq_scaling = (double*) accfft_alloc (alloc_max);
+    // accfft_execute_r2c (plan, d_ptr, data_hat);
+    // MPI_Barrier (c_comm);
+
+    // double *data_hat_mag;
+    // double *d;
+    // data_hat_mag = (double*) accfft_alloc(alloc_max);
+    // double wx, wy, wz;
+
+    // int64_t ptr;
+    // // Find the amplitude of the signal (data)
+    // for (int i = 0; i < osize[0]; i++) {
+    //     for (int j = 0; j < osize[1]; j++) {
+    //         for (int k = 0; k < osize[2]; k++) {
+    //             ptr = i * osize[1] * osize[2] + j * osize[2] + k;
+    //             d = data_hat[ptr];
+    //             data_hat_mag[ptr] = std::sqrt(d[0] * d[0] + d[1] * d[1]); // amplitude compute
+    //             if (data_hat_mag[ptr] > amplitude)
+    //                 amplitude = data_hat_mag[ptr];
+
+    //             // populate freq: By symmetery X(N-k) = X(k)
+    //             // instead of enforcing conjugate symmetery manually, just scale with only unique frequencies
+
+    //             x_global = i + ostart[0];
+    //             y_global = j + ostart[1];
+    //             z_global = k + ostart[2];
+
+    //             wx = (x_global > n[0] / 2) ? n[0] - x_global : x_global;
+    //             wy = (y_global > n[1] / 2) ? n[1] - y_global : y_global;
+    //             wz = (z_global > n[2] / 2) ? n[2] - z_global : z_global;
+
+    //             if (wx == 0 && wy == 0 && wz == 0)
+    //                 freq_scaling[ptr] = 1.;
+    //             else
+    //                 freq_scaling[ptr] = (1.0 / (wx * wx + wy * wy + wz * wz));
+    //         }
+    //     }
+    // }
+    // // allreduce to find the amplitude of the freq
+    // double global_amplitude = 0.;
+    // MPI_Allreduce (&amplitude, &global_amplitude, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    // MPI_Barrier (c_comm);
+
+    // // Now add power law noise
+    // for (int i = 0; i < osize[0]; i++) {
+    //     for (int j = 0; j < osize[1]; j++) {
+    //         for (int k = 0; k < osize[2]; k++) {
+    //             ptr = i * osize[1] * osize[2] + j * osize[2] + k;
+    //             d = data_hat[ptr];
+    //             mag = data_hat_mag[ptr];
+    //             random_noise = (double)rand() / (double)RAND_MAX;
+    //             data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * freq_scaling[ptr];
+    //             // data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * std::sqrt(freq_scaling[ptr]);
+    //             // change data_hat accordingly -- this will change only the unique freq
+    //             if (mag != 0) { // check for non zero components
+    //                 d[0] *= (1.0 / mag) * data_hat_mag[ptr];
+    //                 d[1] *= (1.0 / mag) * data_hat_mag[ptr];
+    //             }
+    //         }
     //     }
     // }
 
-    int alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-    accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-    Complex *data_hat;
-    double *freq_scaling;
-    data_hat = (Complex*) accfft_alloc (alloc_max);
-    freq_scaling = (double*) accfft_alloc (alloc_max);
-    accfft_execute_r2c (plan, d_ptr, data_hat);
-    MPI_Barrier (c_comm);
+    // MPI_Barrier(c_comm);
+    // accfft_execute_c2r(plan, data_hat, d_ptr);
+    // MPI_Barrier(c_comm);
 
-    double *data_hat_mag;
-    double *d;
-    data_hat_mag = (double*) accfft_alloc(alloc_max);
-    double wx, wy, wz;
+    // for (int i = 0; i < n_misc->n_local_; i++)
+    //     d_ptr[i] /= n[0] * n[1] * n[2];
 
-    int64_t ptr;
-    // Find the amplitude of the signal (data)
-    for (int i = 0; i < osize[0]; i++) {
-        for (int j = 0; j < osize[1]; j++) {
-            for (int k = 0; k < osize[2]; k++) {
-                ptr = i * osize[1] * osize[2] + j * osize[2] + k;
-                d = data_hat[ptr];
-                data_hat_mag[ptr] = std::sqrt(d[0] * d[0] + d[1] * d[1]); // amplitude compute
-                if (data_hat_mag[ptr] > amplitude)
-                    amplitude = data_hat_mag[ptr];
-
-                // populate freq: By symmetery X(N-k) = X(k)
-                // instead of enforcing conjugate symmetery manually, just scale with only unique frequencies
-
-                x_global = i + ostart[0];
-                y_global = j + ostart[1];
-                z_global = k + ostart[2];
-
-                wx = (x_global > n[0] / 2) ? n[0] - x_global : x_global;
-                wy = (y_global > n[1] / 2) ? n[1] - y_global : y_global;
-                wz = (z_global > n[2] / 2) ? n[2] - z_global : z_global;
-
-                if (wx == 0 && wy == 0 && wz == 0)
-                    freq_scaling[ptr] = 1.;
-                else
-                    freq_scaling[ptr] = (1.0 / (wx * wx + wy * wy + wz * wz));
-            }
-        }
-    }
-    // allreduce to find the amplitude of the freq
-    double global_amplitude = 0.;
-    MPI_Allreduce (&amplitude, &global_amplitude, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Barrier (c_comm);
-
-    // Now add power law noise
-    for (int i = 0; i < osize[0]; i++) {
-        for (int j = 0; j < osize[1]; j++) {
-            for (int k = 0; k < osize[2]; k++) {
-                ptr = i * osize[1] * osize[2] + j * osize[2] + k;
-                d = data_hat[ptr];
-                mag = data_hat_mag[ptr];
-                random_noise = (double)rand() / (double)RAND_MAX;
-                data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * freq_scaling[ptr];
-                // data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * std::sqrt(freq_scaling[ptr]);
-                // change data_hat accordingly -- this will change only the unique freq
-                if (mag != 0) { // check for non zero components
-                    d[0] *= (1.0 / mag) * data_hat_mag[ptr];
-                    d[1] *= (1.0 / mag) * data_hat_mag[ptr];
-                }
-            }
-        }
-    }
-
-    MPI_Barrier(c_comm);
-    accfft_execute_c2r(plan, data_hat, d_ptr);
-    MPI_Barrier(c_comm);
-
-    for (int i = 0; i < n_misc->n_local_; i++)
-        d_ptr[i] /= n[0] * n[1] * n[2];
-
-    accfft_free (data_hat);
-    accfft_free (freq_scaling);
-    accfft_free (data_hat_mag);
-    ierr = VecRestoreArray (data, &d_ptr);              CHKERRQ (ierr);
+    // accfft_free (data_hat);
+    // accfft_free (freq_scaling);
+    // accfft_free (data_hat_mag);
+    // ierr = VecRestoreArray (data, &d_ptr);              CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }

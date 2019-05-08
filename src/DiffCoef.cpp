@@ -222,7 +222,7 @@ PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
+PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, fft_plan *plan) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diff-coeff-apply-D");
@@ -248,7 +248,7 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
 
 // TODO: only correct for isotropic diffusion
 // TODO: assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T
-PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, accfft_plan *plan) {
+PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, fft_plan *plan) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-diff-coeff-apply-dKdm-gradc-gradp");

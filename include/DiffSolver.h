@@ -9,7 +9,7 @@
 struct Ctx {
 	std::shared_ptr<DiffCoef> k_;
 	std::shared_ptr<NMisc> n_misc_;
-	accfft_plan *plan_;
+	fft_plan *plan_;
 	double dt_;
 	Vec temp_;
 	double *precfactor_;
