@@ -27,6 +27,7 @@
 
 #ifdef CUDA
     #include "cuda.h"
+    #include <cuda_runtime_api.h>
     #include "petsccuda.h"
     #include <accfft_gpu.h>
     #include <accfft_operators_gpu.h>
