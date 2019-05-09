@@ -37,16 +37,12 @@ __global__ void computeWeierstrassFilter (double *f, double *s, double sigma,
 	if (f[ptr] != f[ptr])
 		f[ptr] = 0.; // To avoid Nan
 	(*s) += f[ptr];
-
-    cudaCheckKernelError ();
 }
 
 __global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x, double *alph) {
 	int i = threadIdx.x;
 	y[i] = cuCmul (y[i], make_cuDoubleComplex (*alph, 0));
 	y[i] = cuCmul (y[i], x[i]);
-
-    cudaCheckKernelError ();
 }
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n) {
@@ -57,10 +53,12 @@ void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isiz
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks (isize[0] / n_th_x, isize[1] / n_th_y, isize[2] / n_th_z);
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, s, sigma, isize, istart, n);
+	cudaCheckKernelError ();
 }
 
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, double *alph, int *osize) {
 	int n_th = 512;
 	hadamardComplexProduct <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (y, x, alph);
+	cudaCheckKernelError ();
 }
 
