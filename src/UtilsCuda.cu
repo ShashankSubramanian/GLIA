@@ -1,8 +1,7 @@
-#include "Utils.h"
-#include <math_constants.h>
+#include "UtilsCuda.h"
 
 
-__global__ void computeWeierstrassFilterCuda (double *f, double *s, double sigma, 
+__global__ void computeWeierstrassFilter (double *f, double *s, double sigma, 
 	int *isize, int *istart, int *n) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
@@ -40,7 +39,23 @@ __global__ void computeWeierstrassFilterCuda (double *f, double *s, double sigma
 	s += f[ptr];
 }
 
-__global__ void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph) {
+__global__ void hadamardComplexProduct (std::complex<double> *y, std::complex<double> *x, double *alph) {
 	int i = threadIdx.x;
 	y[i] *= (x[i] * (*alph));
 }
+
+void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n) {
+	int n_th_x = 32;
+	int n_th_y = 8;
+	int n_th_z = 1;
+
+	dim3 n_threads (n_th_x, n_th_y, n_th_z);
+	dim3 n_blocks (isize[0] / n_th_x, isize[1] / n_th_y, isize[2] / n_th_z);
+	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, s, sigma, isize, istart, n);
+}
+
+void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph, int *osize) {
+	int n_th = 512;
+	hadamardComplexProduct <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (cf_hat, cc_hat, alph_cuda);
+}
+

@@ -588,9 +588,4 @@ double myDistance (double *c1, double *c2);
 PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);
 PetscErrorCode setupVec (Vec x, int type = MPI);
 
-//cuda helpers
-__global__ void computeWeierstrassFilterCuda (double *f, double *s, double sigma, 
-    int *isize, int *istart, int *n);
-__global__ void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph);
-
 #endif // end _UTILS_H

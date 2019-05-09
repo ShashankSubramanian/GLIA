@@ -120,8 +120,12 @@ elif real_compiler == "g++-mp-4.9":
 #env.Append(LINKFLAGS = ['-O3', '-std=c++11', '-fopenmp',  '-DREG_HAS_PNETCDF',  '-DGAUSS_NEWTON', '-march=native'])
 
 # set compiler variables
-env.Replace(CXX = env["compiler"])
-env.Replace(CC = env["compiler"])
+if env["gpu"] == True:
+    env.Replace(CXX = nvcc -ccbin=mpicxx)
+    env.Replace(CC = nvcc -ccbin=mpicxx)
+else:
+    env.Replace(CXX = env["compiler"])
+    env.Replace(CC = env["compiler"])
 
 if not conf.CheckCXX():
     Exit(1)
