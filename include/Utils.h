@@ -470,7 +470,7 @@ class NMisc {
         int64_t n_global_;
 
         fft_plan *plan_;
-        blas_handle handle_;
+        blas_handle *handle_;
         MPI_Comm c_comm_;
 
         std::stringstream readpath_;

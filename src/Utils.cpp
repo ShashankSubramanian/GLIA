@@ -365,7 +365,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 
 		dim3 n_threads (n_th_x, n_th_y, n_th_z);
 		dim3 n_blocks (n_misc->n_[0] / n_th_x, n_misc->n_[1] / n_th_y, n_misc->n_[2] / n_th_z)
-		computeWeierstrassFilterCuda<<< n_blocks, n_threads >>> (f, s_cuda, sigma, isize_cuda, istart_cuda, n_cuda);
+		computeWeierstrassFilterCuda<< n_blocks, n_threads >> (f, s_cuda, sigma, isize_cuda, istart_cuda, n_cuda);
 		cudaMemcpy (&sum_f_local, s_cuda, sizeof(double), cudaMemcpyDeviceToHost);
 	#else
 		double X, Y, Z, Xp, Yp, Zp;
@@ -424,7 +424,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 		double alph_cpu = factor * hx * hy * hz;
 		cudaMalloc ((void**)&alph_cuda, sizeof(double));
 		cudaMemcpy (alph_cuda, &alph_cpu, sizeof(double), cudaMemcpyHostToDevice);
-		hadamardComplexProductCuda <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (cf_hat, cc_hat, alph_cuda);
+		hadamardComplexProductCuda << (osize[0] * osize[1] * osize[2]) / n_th, n_th >> (cf_hat, cc_hat, alph_cuda);
 	#else	
 		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
 			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
