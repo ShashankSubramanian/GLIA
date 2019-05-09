@@ -2,7 +2,7 @@ CXX=mpicxx
 RM = rm -f
 MKDIRS = mkdir -p
 
-BUILD_GPU = 0
+BUILD_GPU = 1
 WARN = -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror -Wno-unused
 BINDIR = ./bin
 SRCDIR = ./src

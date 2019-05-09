@@ -56,6 +56,6 @@ void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isiz
 
 void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph, int *osize) {
 	int n_th = 512;
-	hadamardComplexProduct <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (cf_hat, cc_hat, alph_cuda);
+	hadamardComplexProduct <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (y, x, alph);
 }
 
