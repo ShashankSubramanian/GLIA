@@ -400,8 +400,10 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	double normalize_factor = 1. / (sum_f * hx * hy * hz);
 
 	#ifdef CUDA
+		cublasStatus_t status;
 		// cublas vec scale
-		cublasDscal (*n_misc->handle_, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
+		status = cublasDscal (*n_misc->handle_, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
+		cublasCheckError (status);
 	#else
 		for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
 			f[i] = f[i] * normalize_factor;

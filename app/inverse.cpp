@@ -674,6 +674,9 @@ int main (int argc, char** argv) {
 
 }
 /* --------------------------------------------------------------------------------------------------------------*/
+    #ifdef CUDA //delete all cuda handles
+        cublasDestroy (handle);
+    #endif
     accfft_destroy_plan (plan);
     accfft_cleanup();
     MPI_Comm_free(&c_comm);

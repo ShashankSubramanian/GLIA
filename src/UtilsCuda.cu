@@ -37,12 +37,16 @@ __global__ void computeWeierstrassFilter (double *f, double *s, double sigma,
 	if (f[ptr] != f[ptr])
 		f[ptr] = 0.; // To avoid Nan
 	(*s) += f[ptr];
+
+    cudaCheckKernelError ();
 }
 
 __global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x, double *alph) {
 	int i = threadIdx.x;
 	y[i] = cuCmul (y[i], make_cuDoubleComplex (*alph, 0));
 	y[i] = cuCmul (y[i], x[i]);
+
+    cudaCheckKernelError ();
 }
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n) {
