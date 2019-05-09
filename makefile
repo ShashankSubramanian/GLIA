@@ -46,18 +46,7 @@ TARGET_BIN= $(BINDIR)/forward
 TARGET_BIN+= $(BINDIR)/inverse
 TARGET_BIN+= $(BINDIR)/inversedata
 
-SOURCES = $(SRCDIR)/DiffCoef.cpp\
-		  $(SRCDIR)/ReacCoef.cpp \
-		  $(SRCDIR)/Phi.cpp \
-		  $(SRCDIR)/Obs.cpp \
-		  $(SRCDIR)/Tumor.cpp \
-		  $(SRCDIR)/MatProp.cpp \
-		  $(SRCDIR)/DiffSolver.cpp \
-		  $(SRCDIR)/PdeOperators.cpp \
-		  $(SRCDIR)/DerivativeOperators.cpp \
-		  $(SRCDIR)/InvSolver.cpp \
-		  $(SRCDIR)/TumorSolverInterface.cpp \
-		  $(SRCDIR)/Utils.cpp \
+SOURCES = $(wildcard $(SRCDIR)/*.cpp)\
 		  $(TIMINGSDIR)/EventTimings.cpp \
 
 GPU_SOURCES =		 
