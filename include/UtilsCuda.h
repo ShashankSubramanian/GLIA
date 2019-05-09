@@ -40,16 +40,6 @@ inline void cudaPrintDeviceMemory(int dev=0) {
     static_cast<double>(total_mem)/1048576.0);
 }
 
-#define cublasCheckError(ans) cublasAssert((ans), __FILE__, __LINE__,false)
-inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool abort=true) {
-	if (code != CUBLAS_STATUS_SUCCESS) {
-		fprintf(stderr,"CUBLAS Error: %s %s %d\n", cublasGetErrorString (code), file, line);
-		if (abort) exit(code);
-    	return code;
-  	}
-  return 0;
-}
-
 //cublas error checking
 const char* cublasGetErrorString (cublasStatus_t status)
 {
@@ -66,6 +56,17 @@ const char* cublasGetErrorString (cublasStatus_t status)
     }
     return "unknown error";
 }
+
+#define cublasCheckError(ans) cublasAssert((ans), __FILE__, __LINE__,false)
+inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool abort=true) {
+	if (code != CUBLAS_STATUS_SUCCESS) {
+		fprintf(stderr,"CUBLAS Error: %s %s %d\n", cublasGetErrorString (code), file, line);
+		if (abort) exit(code);
+    	return code;
+  	}
+  return 0;
+}
+
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n);
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, double *alph, int *sz);
