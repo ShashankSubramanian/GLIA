@@ -25,7 +25,7 @@ PSC_DBG_LIB = -L$(PETSC_DBG_DIR)/lib     -L$(PETSC_DBG_DIR)/$(PETSC_DBG_ARCH)/li
 
 CXXFLAGS= -O3 -fopenmp -std=c++11 -DPVFMM_MEMDEBUG -DCUDA -DSERIAL  #-DENFORCE_POSITIVE_C #-DINVERT_RHO   -xhost 
 
-N_FLAGS=-c  -O0 -gencode arch=compute_35,code=sm_35  -Xcompiler -fopenmp -DENABLE_GPU -lcudart 
+N_FLAGS=-c  -O0 -gencode arch=compute_35,code=sm_35  -Xcompiler -fopenmp -DENABLE_GPU -lcusparse -lcufft -lcublas -lcudart
 N_INC= -I$(CUDA_DIR)/include -I./ -I./include/
 N_LIB= -L$(CUDA_DIR)/lib64/
 
@@ -34,7 +34,7 @@ LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  -
 LDFLAGS+= -L${GLOG_DIR}/lib -lglog
 
 ifeq ($(BUILD_GPU), 1)
-LDFLAGS+=-L$(CUDA_DIR)/lib64 -lcudart
+LDFLAGS+=-L$(CUDA_DIR)/lib64 -lcusparse -lcufft -lcublas -lcudart
 endif
 
 TARGET_BIN= $(BINDIR)/forward
