@@ -404,7 +404,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 
 	#ifdef CUDA
 		// cublas vec scale
-		cublasSscal (n_misc->handle_, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
+		cublasSscal (*n_misc->handle_, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
 	#else
 		for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
 			f[i] = f[i] * normalize_factor;

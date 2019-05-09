@@ -246,7 +246,7 @@ public:
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, blas_handle handle, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, blas_handle *handle = NULL, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
                        // Mass effect -- 4
@@ -591,6 +591,6 @@ PetscErrorCode setupVec (Vec x, int type = MPI);
 //cuda helpers
 __global__ void computeWeierstrassFilterCuda (double *f, double *s, double sigma, 
     int *isize, int *istart, int *n);
-__global__ void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph)
+__global__ void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph);
 
 #endif // end _UTILS_H
