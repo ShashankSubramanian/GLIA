@@ -36,12 +36,13 @@ __global__ void computeWeierstrassFilter (double *f, double *s, double sigma,
 
 	if (f[ptr] != f[ptr])
 		f[ptr] = 0.; // To avoid Nan
-	s += f[ptr];
+	(*s) += f[ptr];
 }
 
-__global__ void hadamardComplexProduct (std::complex<double> *y, std::complex<double> *x, double *alph) {
+__global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x, double *alph) {
 	int i = threadIdx.x;
-	y[i] *= (x[i] * (*alph));
+	y[i] = cuCmul (y[i], make_cuDoubleComplex (*alph, 0));
+	y[i] = cuCmul (y[i], x[i]);
 }
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n) {
@@ -54,7 +55,7 @@ void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isiz
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, s, sigma, isize, istart, n);
 }
 
-void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph, int *osize) {
+void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, double *alph, int *osize) {
 	int n_th = 512;
 	hadamardComplexProduct <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (y, x, alph);
 }

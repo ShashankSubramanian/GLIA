@@ -32,6 +32,7 @@
     #include "petsccuda.h"
     #include <accfft_gpu.h>
     #include <accfft_operators_gpu.h>
+    #include <cuComplex.h>
 
     using fft_plan = accfft_plan_gpu;
     using blas_handle = cublasHandle_t;

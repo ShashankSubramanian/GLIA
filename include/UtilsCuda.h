@@ -9,7 +9,7 @@
 #include "cublas_v2.h"
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n);
-void hadamardComplexProductCuda (std::complex<double> *y, std::complex<double> *x, double *alph, int *sz);
+void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, double *alph, int *sz);
 
 
 #endif

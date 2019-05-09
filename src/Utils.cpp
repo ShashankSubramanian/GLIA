@@ -411,16 +411,16 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	accfft_execute_r2c(plan, f, f_hat);
 	accfft_execute_r2c(plan, c, c_hat);
 
-	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
 	std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
 	std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
 
+	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
 	#ifdef CUDA
 		double *alph_cuda;
 		double alph_cpu = factor * hx * hy * hz;
 		cudaMalloc ((void**)&alph_cuda, sizeof(double));
 		cudaMemcpy (alph_cuda, &alph_cpu, sizeof(double), cudaMemcpyHostToDevice);
-		hadamardComplexProductCuda (cf_hat, cc_hat, alph_cuda, osize);
+		hadamardComplexProductCuda ((cuDoubleComplex*) cf_hat, (cuDoubleComplex*) cc_hat, alph_cuda, osize);
 	#else	
 		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
 			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
