@@ -1,4 +1,7 @@
 #include "Utils.h"
+#ifdef CUDA
+	#include "UtilsCuda.h"
+#endif
 
 VecField::VecField (int nl , int ng) {
 	PetscErrorCode ierr = 0;
@@ -417,7 +420,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 		double alph_cpu = factor * hx * hy * hz;
 		cudaMalloc ((void**)&alph_cuda, sizeof(double));
 		cudaMemcpy (alph_cuda, &alph_cpu, sizeof(double), cudaMemcpyHostToDevice);
-		hadamardComplexProductCuda (cf_hat, cc_hat, alph_cuda);
+		hadamardComplexProductCuda (cf_hat, cc_hat, alph_cuda, osize);
 	#else	
 		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
 			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
