@@ -30,7 +30,12 @@ N_INC= -I$(CUDA_DIR)/include -I./ -I./include/
 N_LIB= -L$(CUDA_DIR)/lib64/
 
 LDFLAGS=  -L${FFTW_DIR}/lib  -lfftw3 -lfftw3_threads -lfftw3f -lfftw3f_threads -L${ACCFFT_DIR}/lib
-LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  -L${PNETCDF_DIR}/lib -lpnetcdf 
+LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  
+ifeq ($(BUILD_GPU), 1)
+LDFLAGS+= -laccfft_gpu -laccfft_utils_gpu
+endif
+
+LDFLAGS+= -L${PNETCDF_DIR}/lib -lpnetcdf 
 LDFLAGS+= -L${GLOG_DIR}/lib -lglog
 
 ifeq ($(BUILD_GPU), 1)
