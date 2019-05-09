@@ -246,7 +246,7 @@ public:
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, blas_handle *handle = NULL, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, blas_handle *handle = NULL, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
                        // Mass effect -- 4

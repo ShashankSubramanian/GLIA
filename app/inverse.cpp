@@ -256,7 +256,7 @@ int main (int argc, char** argv) {
 
     std::vector<double> out_params;
     int n_gist = 0, n_newton;
-    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, handle, c_comm, c_dims, testcase);   //This class contains all required parameters
+    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, handle, testcase);   //This class contains all required parameters
 
 
     // Read input parameters (controlled from run script)
