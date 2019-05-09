@@ -315,13 +315,13 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 //Rewrite variables according to standard conventions
 
 
-int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, double sigma) {
-	MPI_Comm c_comm = N_Misc->c_comm_;
+int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma) {
+	MPI_Comm c_comm = n_misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank(c_comm, &procid);
 	MPI_Comm_size(c_comm, &nprocs);
 
-	int *N = N_Misc->n_;
+	int *N = n_misc->n_;
 	int istart[3], isize[3], osize[3], ostart[3];
 	Complex *c_hat, *f_hat;
 	double *f;
@@ -341,86 +341,98 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 
 	double self_exec_time = -MPI_Wtime();
 
-	const int Nx = N_Misc->n_[0], Ny = N_Misc->n_[1], Nz = N_Misc->n_[2];
+	const int Nx = n_misc->n_[0], Ny = n_misc->n_[1], Nz = n_misc->n_[2];
 	const double pi = M_PI, twopi = 2.0 * pi, factor = 1.0 / (Nx * Ny * Nz);
 	const double hx = twopi / Nx, hy = twopi / Ny, hz = twopi / Nz;
-	fft_plan * plan = N_Misc->plan_;
+	fft_plan * plan = n_misc->plan_;
 
+	double sum_f_local = 0., sum_f = 0;
+	#ifdef CUDA
+		int *isize_cuda, *istart_cuda, *n_cuda;
+		double *s_cuda;
+		cudaMalloc ((void**)&isize_cuda, 3 * sizeof(int));
+		cudaMalloc ((void**)&istart_cuda, 3 * sizeof(int));
+		cudaMalloc ((void**)&n_cuda, 3 * sizeof(int));
+		cudaMalloc ((void**)&s_cuda, sizeof(double));
+		cudaMemcpy (isize_cuda, isize, 3 * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy (istart_cuda, istart, 3 * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy (n_cuda, n_misc->n_, 3 * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy (s_cuda, &sum_f_local, sizeof(double), cudaMemcpyHostToDevice);
+
+		int n_th_x = 32;
+		int n_th_y = 8;
+		int n_th_z = 1;
+
+		dim3 n_threads (n_th_x, n_th_y, n_th_z);
+		dim3 n_blocks (n_misc->n_[0] / n_th_x, n_misc->n_[1] / n_th_y, n_misc->n_[2] / n_th_z)
+		computeWeierstrassFilterCuda<<< n_blocks, n_threads >>> (f, s_cuda, sigma, isize_cuda, istart_cuda, n_cuda);
+		cudaMemcpy (&sum_f_local, s_cuda, sizeof(double), cudaMemcpyDeviceToHost);
+	#else
+		double X, Y, Z, Xp, Yp, Zp;
+		int64_t ptr;
+		for (int i = 0; i < isize[0]; i++)
+			for (int j = 0; j < isize[1]; j++)
+				for (int k = 0; k < isize[2]; k++) {
+					X = (istart[0] + i) * hx;
+					Xp = X - twopi;
+					Y = (istart[1] + j) * hy;
+					Yp = Y - twopi;
+					Z = (istart[2] + k) * hz;
+					Zp = Z - twopi;
+					ptr = i * isize[1] * isize[2] + j * isize[2] + k;
+					f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
+							+ std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+
+					f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
+							+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+
+					f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+							+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+
+					f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+							+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+
+					if (f[ptr] != f[ptr])
+						f[ptr] = 0.; // To avoid Nan
+					sum_f_local += f[ptr];
+				}
+	#endif
 	
-	if ((c_hat == NULL) || (f_hat == NULL) || (f == NULL)) {
-		printf("Proc %d: Error allocating array\n", procid);
-		exit(-1);
-	}
+
+	MPI_Allreduce(&sum_f_local, &sum_f, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	double normalize_factor = 1. / (sum_f * hx * hy * hz);
+
+	#ifdef CUDA
+		// cublas vec scale
+		cublasSscal (n_misc->handle_, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
+	#else
+		for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
+			f[i] = f[i] * normalize_factor;
+	#endif
+
+	/* Forward transform */
+	accfft_execute_r2c(plan, f, f_hat);
+	accfft_execute_r2c(plan, c, c_hat);
+
+	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
+	std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
+	std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
+
+	#ifdef CUDA
+		int n_th = 512;
+		double *alph_cuda;
+		double alph_cpu = factor * hx * hy * hz;
+		cudaMalloc ((void**)&alph_cuda, sizeof(double));
+		cudaMemcpy (alph_cuda, &alph_cpu, sizeof(double), cudaMemcpyHostToDevice);
+		hadamardComplexProductCuda <<< (osize[0] * osize[1] * osize[2]) / n_th, n_th >>> (cf_hat, cc_hat, alph_cuda);
+	#else	
+		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
+			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
+	#endif
 
 
-	//PCOUT<<"\033[1;32m weierstrass_smoother { "<<"\033[0m"<<std::endl;
-	// Build the filter
-	// int num_th = omp_get_max_threads();
-	// double sum_th[num_th];
-	// for (int i = 0; i < num_th; i++)
-	// 	sum_th[i] = 0.;
-	// #pragma omp parallel num_threads(num_th)
-	// {
-	// 	int thid = omp_get_thread_num();
-	// 	double X, Y, Z, Xp, Yp, Zp;
-	// 	int64_t ptr;
-	// #pragma omp for
-	// 	for (int i = 0; i < isize[0]; i++)
-	// 		for (int j = 0; j < isize[1]; j++)
-	// 			for (int k = 0; k < isize[2]; k++) {
-	// 				X = (istart[0] + i) * hx;
-	// 				Xp = X - twopi;
-	// 				Y = (istart[1] + j) * hy;
-	// 				Yp = Y - twopi;
-	// 				Z = (istart[2] + k) * hz;
-	// 				Zp = Z - twopi;
-	// 				ptr = i * isize[1] * isize[2] + j * isize[2] + k;
-	// 				f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
-	// 						+ std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
-
-	// 				 f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
-	// 				 		+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
-
-	// 				 f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-	// 				 		+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
-
-	// 				 f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-	// 				 		+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
-
-	// 				if (f[ptr] != f[ptr])
-	// 					f[ptr] = 0.; // To avoid Nan
-	// 				sum_th[thid] += f[ptr];
-	// 			}
-	// }
-
-	// // Normalize the Filter
-	// double sum_f_local = 0., sum_f = 0;
-	// for (int i = 0; i < num_th; i++)
-	// 	sum_f_local += sum_th[i];
-
-	// MPI_Allreduce(&sum_f_local, &sum_f, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	// double normalize_factor = 1. / (sum_f * hx * hy * hz);
-
-	// #pragma omp parallel for
-	// for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
-	// 	f[i] = f[i] * normalize_factor;
-	// //PCOUT<<"sum f= "<<sum_f<<std::endl;
-	// //PCOUT<<"normalize factor= "<<normalize_factor<<std::endl;
-
-	// /* Forward transform */
-	// accfft_execute_r2c(plan, f, f_hat);
-	// accfft_execute_r2c(plan, c, c_hat);
-
-	// // Perform the Hadamard Transform f_hat=f_hat.*c_hat
-	// std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
-	// std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
-	// #pragma omp parallel for
-	// for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
-	// 	cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
-
-
-	// /* Backward transform */
-	// accfft_execute_c2r(plan, f_hat, Wc);
+	/* Backward transform */
+	accfft_execute_c2r(plan, f_hat, Wc);
 
 	#ifdef CUDA
 		cudaFree (f); 
