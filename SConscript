@@ -17,7 +17,7 @@ sourcesDrivers = [
 sourcesAllNoMain = [
     sourcesPGLISTR,
     sourcesTHIRDPARTY,
-    Glob('src/UtilsCuda.cu')
+    Glob('src/*.cu')
 ]
 
 sourcesAll = [
