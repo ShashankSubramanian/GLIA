@@ -242,7 +242,7 @@ binfwd = env.Program (
 )
 bininv = env.Program (
     target = buildpath + '/inverse',
-    source = [sourcesPGLISTR, './src/UtilsCuda.cu' './app/inverse.cpp']
+    source = [sourcesPGLISTR, './app/inverse.cpp']
 )
 env.Alias("bin", bininv)
 
