@@ -78,6 +78,8 @@ env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
 print
 print_options(vars)
 
+env.Tool('nvcc', toolpath = [os.getcwd()])
+
 buildpath = os.path.join(env["builddir"], "") # Ensures to have a trailing slash
 
 print
@@ -120,15 +122,9 @@ elif real_compiler == "g++-mp-4.9":
 #env.Append(LINKFLAGS = ['-O3', '-std=c++11', '-fopenmp',  '-DREG_HAS_PNETCDF',  '-DGAUSS_NEWTON', '-march=native'])
 
 # set compiler variables
-if env["gpu"] == True:
-    env.Replace(CXX = nvcc -ccbin=mpicxx)
-    env.Replace(CC = nvcc -ccbin=mpicxx)
-else:
-    env.Replace(CXX = env["compiler"])
-    env.Replace(CC = env["compiler"])
+env.Replace(CXX = env["compiler"])
+env.Replace(CC = env["compiler"])
 
-if not conf.CheckCXX():
-    Exit(1)
 
 # ====== Build Directories ======
 if env["build"] == 'debug':
@@ -246,7 +242,7 @@ binfwd = env.Program (
 )
 bininv = env.Program (
     target = buildpath + '/inverse',
-    source = [sourcesPGLISTR, './app/inverse.cpp']
+    source = [sourcesPGLISTR, './src/UtilsCuda.cu' './app/inverse.cpp']
 )
 env.Alias("bin", bininv)
 
