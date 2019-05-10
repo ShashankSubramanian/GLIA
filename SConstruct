@@ -231,7 +231,7 @@ env = conf.Finish() # Used to check libraries
 
 #--------------------------------------------- Define sources and build targets
 
-(sourcesPGLISTR, sourcesSIBIAapp) = SConscript (
+(sourcesPGLISTR, sourcesPGLISTRGPU, sourcesSIBIAapp) = SConscript (
     'SConscript',
     variant_dir = buildpath,
     duplicate = 0
@@ -241,10 +241,16 @@ binfwd = env.Program (
     target = buildpath + '/forward',
     source = [sourcesPGLISTR, './app/forward.cpp']
 )
-bininv = env.Program (
+if env["gpu"] == True:
+    bininv = env.Program (
     target = buildpath + '/inverse',
-    source = [sourcesPGLISTR, './app/inverse.cpp']
-)
+    source = [sourcesPGLISTRGPU, './app/inverse.cpp']
+    )
+else:
+    bininv = env.Program (
+        target = buildpath + '/inverse',
+        source = [sourcesPGLISTR, './app/inverse.cpp']
+    )
 env.Alias("bin", bininv)
 
 # Creates a symlink that always points to the latest build

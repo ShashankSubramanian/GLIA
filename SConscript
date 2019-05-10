@@ -17,6 +17,11 @@ sourcesDrivers = [
 sourcesAllNoMain = [
     sourcesPGLISTR,
     sourcesTHIRDPARTY,
+]
+
+sourcesAllNoMainGPU = [
+    sourcesPGLISTR,
+    sourcesTHIRDPARTY,
     Glob('src/*.cu')
 ]
 
@@ -25,4 +30,4 @@ sourcesAll = [
     sourcesDrivers
 ]
 
-Return ('sourcesAllNoMain', 'sourcesAll')
+Return ('sourcesAllNoMain', 'sourcesAllNoMainGPU', 'sourcesAll')
