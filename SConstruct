@@ -78,7 +78,8 @@ env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
 print
 print_options(vars)
 
-env.Tool('nvcc', toolpath = [os.getcwd()])
+if env["gpu"] == True:
+    env.Tool('nvcc', toolpath = [os.getcwd()])
 
 buildpath = os.path.join(env["builddir"], "") # Ensures to have a trailing slash
 
@@ -125,7 +126,6 @@ elif real_compiler == "g++-mp-4.9":
 env.Replace(CXX = env["compiler"])
 env.Replace(CC = env["compiler"])
 
-
 # ====== Build Directories ======
 if env["build"] == 'debug':
     # The Assert define does not actually switches asserts on/off, these are controlled by NDEBUG.
@@ -167,13 +167,14 @@ if env["gpu"] == True:
 env.Append(CCFLAGS = ['-march=native'])
 
 # ====== CUDA =======
-CUDA_DIR = checkset_var("CUDA_DIR", "")
-env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
-env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
-uniqueCheckLib(conf, "cusparse")
-uniqueCheckLib(conf, "cufft")
-uniqueCheckLib(conf, "cublas")
-uniqueCheckLib(conf, "cudart")
+if env["gpu"] == True:
+    CUDA_DIR = checkset_var("CUDA_DIR", "")
+    env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
+    uniqueCheckLib(conf, "cusparse")
+    uniqueCheckLib(conf, "cufft")
+    uniqueCheckLib(conf, "cublas")
+    uniqueCheckLib(conf, "cudart")
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
 env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
