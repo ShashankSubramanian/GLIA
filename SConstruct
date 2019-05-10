@@ -181,8 +181,9 @@ env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( ACCFFT_DIR, "lib")])
 uniqueCheckLib(conf, "accfft")
 uniqueCheckLib(conf, "accfft_utils")
-uniqueCheckLib(conf, "accfft_gpu")
-uniqueCheckLib(conf, "accfft_utils_gpu")
+if env["gpu"] == True:
+    uniqueCheckLib(conf, "accfft_gpu")
+    uniqueCheckLib(conf, "accfft_utils_gpu")
 
 # ====== PNETCDF ======
 PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
@@ -237,16 +238,21 @@ env = conf.Finish() # Used to check libraries
     duplicate = 0
 )
 
-binfwd = env.Program (
-    target = buildpath + '/forward',
-    source = [sourcesPGLISTR, './app/forward.cpp']
-)
+
 if env["gpu"] == True:
+    binfwd = env.Program (
+    target = buildpath + '/forward',
+    source = [sourcesPGLISTRGPU, './app/forward.cpp']
+    )
     bininv = env.Program (
     target = buildpath + '/inverse',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
 else:
+    binfwd = env.Program (
+    target = buildpath + '/forward',
+    source = [sourcesPGLISTR, './app/forward.cpp']
+    )
     bininv = env.Program (
         target = buildpath + '/inverse',
         source = [sourcesPGLISTR, './app/inverse.cpp']
