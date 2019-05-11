@@ -154,12 +154,12 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 
     ierr = displacement->getIndividualComponents (y);  // get the individual components of u and set it to y (o/p)
 
-    accfft_free (ux_hat);
-    accfft_free (uy_hat);
-    accfft_free (uz_hat);
-    accfft_free (fx_hat);
-    accfft_free (fy_hat);
-    accfft_free (fz_hat);
+    fft_free (ux_hat);
+    fft_free (uy_hat);
+    fft_free (uz_hat);
+    fft_free (fx_hat);
+    fft_free (fy_hat);
+    fft_free (fz_hat);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

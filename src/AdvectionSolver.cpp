@@ -389,8 +389,8 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
 SemiLagrangianSolver::~SemiLagrangianSolver () {
     PetscErrorCode ierr = 0;
 
-    if (scalar_field_ghost_ != NULL) accfft_free (scalar_field_ghost_);
-    if (vector_field_ghost_ != NULL) accfft_free (vector_field_ghost_);
+    if (scalar_field_ghost_ != NULL) fft_free (scalar_field_ghost_);
+    if (vector_field_ghost_ != NULL) fft_free (vector_field_ghost_);
     delete [] temp_;
 
     ierr = VecDestroy (&query_points_);  

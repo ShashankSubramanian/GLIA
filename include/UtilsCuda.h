@@ -68,6 +68,11 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
   return 0;
 }
 
+typedef struct {
+  int *size_, *start_, *n_;
+  std::vector<double> work_;
+} cudaContext;
+
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n);
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, double *alph, int *sz);

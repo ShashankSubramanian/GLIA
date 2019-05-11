@@ -216,19 +216,17 @@ int main (int argc, char** argv) {
     #ifdef CUDA
         cublasCreate (handle);  // create blas handle for cublas ops later
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-        cudaMalloc((void**) &c_0, alloc_max);
-        cudaMalloc((void**) &c_hat, alloc_max);
+        cudaMalloc ((void**) &c_0, alloc_max);
+        cudaMalloc ((void**) &c_hat, alloc_max);
         fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-        cudaFree (c_0);
-        cudaFree (c_hat);
     #else
-        int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        int64_t alloc_max = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
         c_0= (double*) accfft_alloc (alloc_max);
         c_hat = (Complex*) accfft_alloc (alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-        accfft_free (c_0);
-        accfft_free (c_hat);
+        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);        
     #endif
+    fft_free (c_0);
+    fft_free (c_hat);
 /* ACCFFT, PETSC setup end */
 /* --------------------------------------------------------------------------------------------------------------*/
 
@@ -1066,9 +1064,9 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     // for (int i = 0; i < n_misc->n_local_; i++)
     //     d_ptr[i] /= n[0] * n[1] * n[2];
 
-    // accfft_free (data_hat);
-    // accfft_free (freq_scaling);
-    // accfft_free (data_hat_mag);
+    // fft_free (data_hat);
+    // fft_free (freq_scaling);
+    // fft_free (data_hat_mag);
     // ierr = VecRestoreArray (data, &d_ptr);              CHKERRQ (ierr);
 
     PetscFunctionReturn (0);

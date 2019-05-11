@@ -34,18 +34,23 @@
     #include <accfft_operators_gpu.h>
     #include <cuComplex.h>
 
+    #include "UtilsCuda.h"
+
     using fft_plan = accfft_plan_gpu;
     using blas_handle = cublasHandle_t;
 
     #define accfft_execute_r2c accfft_execute_r2c_gpu
     #define accfft_execute_c2r accfft_execute_c2r_gpu
+    #define fft_free cudaFree
 
 #else
     #include <accfft.h>
     #include <accfft_operators.h>
 
     using fft_plan = accfft_plan;
-    using blas_handle = int; // no ha
+    using blas_handle = int; // no handle
+
+    #define fft_free accfft_free
 #endif
 
 

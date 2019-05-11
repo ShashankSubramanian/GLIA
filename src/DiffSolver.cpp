@@ -78,6 +78,7 @@ PetscErrorCode DiffSolver::precFactor () {
 
     double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
 
+
     for (int x = 0; x < n_misc->osize_[0]; x++) {
         for (int y = 0; y < n_misc->osize_[1]; y++) {
             for (int z = 0; z < n_misc->osize_[2]; z++){
@@ -146,7 +147,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     }
     accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
     ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
-    accfft_free (c_hat);
+    fft_free (c_hat);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc->timers_, t, self_exec_time);
@@ -174,11 +175,15 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);
 
+    // hack -- explicity set the ksp_->work vecs as cuda vecs since
+    // petsc does not do this for some reason. <follow-up with petsc>
+    #ifdef CUDA
     for (int i = 0; i < 3; i++) {
         ierr = VecDestroy (&ksp_->work[i]); CHKERRQ(ierr);
         ierr = VecDuplicate (c, &ksp_->work[i]); CHKERRQ(ierr);
         ierr = VecSet (ksp_->work[i], 0.);  CHKERRQ(ierr);
     }
+    #endif
 
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, c);                            CHKERRQ (ierr);

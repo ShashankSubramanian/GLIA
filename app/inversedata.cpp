@@ -61,15 +61,15 @@ int main (int argc, char** argv) {
         cudaMalloc((void**) &c_0, alloc_max);
         cudaMalloc((void**) &c_hat, alloc_max);
         fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-        cudaFree (c_0);
-        cudaFree (c_hat);
+        fft_free (c_0);
+        fft_free (c_hat);
     #else
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         c_0= (double*) accfft_alloc (alloc_max);
         c_hat = (Complex*) accfft_alloc (alloc_max);
         fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-        accfft_free (c_0);
-        accfft_free (c_hat);
+        fft_free (c_0);
+        fft_free (c_hat);
     #endif
 /* ACCFFT, PETSC setup end */
 /* --------------------------------------------------------------------------------------------------------------*/

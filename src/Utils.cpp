@@ -1,7 +1,4 @@
 #include "Utils.h"
-#ifdef CUDA
-	#include "UtilsCuda.h"
-#endif
 
 VecField::VecField (int nl , int ng) {
 	PetscErrorCode ierr = 0;
@@ -433,13 +430,13 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	accfft_execute_c2r(plan, f_hat, Wc);
 
 	#ifdef CUDA
-		cudaFree (f); 
-		cudaFree (f_hat);
-		cudaFree (c_hat);
+		fft_free (f); 
+		fft_free (f_hat);
+		fft_free (c_hat);
 	#else
-		accfft_free(f);
-		accfft_free(f_hat);
-		accfft_free(c_hat);
+		fft_free(f);
+		fft_free(f_hat);
+		fft_free(c_hat);
 	#endif
 
 	//PCOUT<<"\033[1;32m weierstrass_smoother } "<<"\033[0m"<<std::endl;
