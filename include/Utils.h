@@ -536,7 +536,9 @@ struct LSCtx {
     PetscReal J_old;
 };
 
-int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
+int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma);
+int weierstrassSmootherGeneral (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma);
+PetscErrorCode weierstrassSmoother (Vec Wc, Vec c, std::shared_ptr<NMisc> n_misc, double sigma);
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
 
