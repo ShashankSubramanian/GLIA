@@ -221,6 +221,7 @@ int main (int argc, char** argv) {
         fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
 
         // copy mesh parameters to the gpu constant memory
+        __constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
         cudaMemcpyToSymbol (isize_cuda, isize, 3 * sizeof(int));
         cudaMemcpyToSymbol (osize_cuda, osize, 3 * sizeof(int));
         cudaMemcpyToSymbol (istart_cuda, istart, 3 * sizeof(int));
