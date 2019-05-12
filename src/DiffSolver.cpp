@@ -158,7 +158,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
         accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
 
         std::complex<double> *c_a = (std::complex<double> *) c_hat;
-        hadamardComplexProductCuda ((cuDoubleComplex*) c_a, (cuDoubleComplex*) ctx->precfactor_);
+        hadamardComplexProductCuda ((cuDoubleComplex*) c_a, (cuDoubleComplex*) ctx->precfactor_, n_misc->osize_);
 
         accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
 

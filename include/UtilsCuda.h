@@ -10,7 +10,7 @@
 
 #include <cuda_runtime.h>
 
-extern __constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
+__constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
 
 // Cuda error checking routines
 
