@@ -80,7 +80,7 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
     double kyy_avg = work[5];
     double kzz_avg = work[6];
     double factor = work[7];
-    
+
     int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
     precfactor[index] = (1. + 0.25 * dt * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
                             + 2.0 * kxz_avg * wx * wz + 2.0 * kyz_avg * wy * wz + kyy_avg * wy * wy
@@ -91,12 +91,12 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
         precfactor[index] = factor / precfactor[index];
 }
 
-void precFactorDiffusionCuda (double *precfactor, double *work) {
+void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
 	int n_th_x = 32;
 	int n_th_y = 8;
 	int n_th_z = 1;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (osize_cuda[0] / n_th_x, osize_cuda[1] / n_th_y, osize_cuda[2] / n_th_z);
+	dim3 n_blocks (sz[0] / n_th_x, sz[1] / n_th_y, sz[2] / n_th_z);
 
 	precFactorDiffusion <<< n_blocks, n_threads >>> (precfactor, work);
 
@@ -104,12 +104,12 @@ void precFactorDiffusionCuda (double *precfactor, double *work) {
 	cudaCheckKernelError ();
 }
 
-void computeWeierstrassFilterCuda (double *f, double *s, double sigma) {
+void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *sz) {
 	int n_th_x = 32;
 	int n_th_y = 8;
 	int n_th_z = 1;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (isize_cuda[0] / n_th_x, isize_cuda[1] / n_th_y, isize_cuda[2] / n_th_z);
+	dim3 n_blocks (sz[0] / n_th_x, sz[1] / n_th_y, sz[2] / n_th_z);
 
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, s, sigma);
 
@@ -117,10 +117,10 @@ void computeWeierstrassFilterCuda (double *f, double *s, double sigma) {
 	cudaCheckKernelError ();
 }
 
-void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x) {
+void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz) {
 	int n_th = 512;
 
-	hadamardComplexProduct <<< (osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) / n_th, n_th >>> (y, x);
+	hadamardComplexProduct <<< (sz[0] * sz[1] * sz[2]) / n_th, n_th >>> (y, x);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

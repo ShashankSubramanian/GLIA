@@ -351,7 +351,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 		double *s_cuda;
 		cudaMalloc ((void**)&s_cuda, sizeof(double));
 		cudaMemcpy (s_cuda, &sum_f_local, sizeof(double), cudaMemcpyHostToDevice);		
-		computeWeierstrassFilterCuda (f, s_cuda, sigma);
+		computeWeierstrassFilterCuda (f, s_cuda, sigma, isize);
 		cudaMemcpy (&sum_f_local, s_cuda, sizeof(double), cudaMemcpyDeviceToHost);
 	#else
 		double X, Y, Z, Xp, Yp, Zp;
@@ -408,7 +408,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
 	#ifdef CUDA
 		double alp = factor * hx * hy * hz;
-		hadamardComplexProductCuda ((cuDoubleComplex*) cf_hat, (cuDoubleComplex*) cc_hat);
+		hadamardComplexProductCuda ((cuDoubleComplex*) cf_hat, (cuDoubleComplex*) cc_hat, osize);
 		status = cublasZdscal (*n_misc->handle_, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) cf_hat, 1);
 		cublasCheckError (status);
 	#else	

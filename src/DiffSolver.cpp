@@ -89,7 +89,7 @@ PetscErrorCode DiffSolver::precFactor () {
         cudaMemcpy (&work[5], &kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy (&work[6], &kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
         cudaMemcpy (&work[7], &factor, sizeof(double), cudaMemcpyHostToDevice);
-        precFactorDiffusionCuda (ctx_->precfactor_, work);
+        precFactorDiffusionCuda (ctx_->precfactor_, work, n_misc->osize_);
     #else
 
     for (int x = 0; x < n_misc->osize_[0]; x++) {

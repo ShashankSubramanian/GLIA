@@ -10,7 +10,7 @@
 
 #include <cuda_runtime.h>
 
-__constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
+extern __constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
 
 // Cuda error checking routines
 
@@ -70,9 +70,9 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
 }
 
 
-void computeWeierstrassFilterCuda (double *f, double *s, double sigma);
-void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x);
-void precFactorDiffusionCuda (double *precfactor, double *work);
+void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *sz);
+void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz);
+void precFactorDiffusionCuda (double *precfactor, double *work, int *sz);
 
 
 #endif

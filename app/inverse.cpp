@@ -220,6 +220,8 @@ int main (int argc, char** argv) {
         cudaMalloc ((void**) &c_hat, alloc_max);
         fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
 
+        // define constants for the gpu
+        __constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
     #else
         int64_t alloc_max = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
         c_0= (double*) accfft_alloc (alloc_max);
