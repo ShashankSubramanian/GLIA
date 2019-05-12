@@ -10,6 +10,7 @@
 
 #include <cuda_runtime.h>
 
+__constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
 
 // Cuda error checking routines
 
@@ -68,14 +69,30 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
   return 0;
 }
 
-typedef struct {
+struct CtxCuda {
   int *size_, *start_, *n_;
-  std::vector<double> work_;
-} cudaContext;
+  double *work_;
+
+  CtxCuda (int work_size) {
+    cudaMalloc ((void**)&size_, 3 * sizeof(int));
+    cudaMalloc ((void**)&start_, 3 * sizeof(int));
+    cudaMalloc ((void**)&n_, 3 * sizeof(int));
+
+    cudaMalloc ((void**)&work_, work_size * sizeof(int));
+  }
+
+  ~CtxCuda () {
+    cudaFree (size_);
+    cudaFree (start_);
+    cudaFree (n_);
+    cudaFree (work_);
+  }
+};
 
 
-void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *isize, int *istart, int *n);
-void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, double *alph, int *sz);
+void computeWeierstrassFilterCuda (double *f, double *s, double sigma);
+void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x);
+void precFactorDiffusionCuda ();
 
 
 #endif

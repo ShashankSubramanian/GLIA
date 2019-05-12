@@ -78,6 +78,19 @@ PetscErrorCode DiffSolver::precFactor () {
 
     double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
 
+    #ifdef CUDA
+        double *work;   // work vector for cuda
+        cudaMalloc ((void**)&work, 8 * sizeof(double));
+        cudaMemcpy (work[0], ctx_->dt_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[1], kxx_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[2], kxy_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[3], kxz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[4], kyz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[5], kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[6], kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (work[7], factor, sizeof(double), cudaMemcpyHostToDevice);
+        precFactorDiffusionCuda (ctx_->precfactor_, work);
+    #else
 
     for (int x = 0; x < n_misc->osize_[0]; x++) {
         for (int y = 0; y < n_misc->osize_[1]; y++) {
@@ -116,6 +129,7 @@ PetscErrorCode DiffSolver::precFactor () {
             }
         }
     }
+    #endif
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc->timers_, t, self_exec_time);
@@ -135,18 +149,34 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     ierr = PCShellGetContext (pc, (void **) &ctx);              CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
+
     PetscScalar *y_ptr;
-    ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
+    #ifdef CUDA
+        ierr = VecCUDAGetArrayReadWrite (y, &y_ptr);                             CHKERRQ (ierr);
+        cudaMalloc ((void**)&c_hat, n_misc->accfft_alloc_max_);
+        accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
 
-    Complex *c_hat = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
-    accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
+        std::complex<double> *c_a = (std::complex<double> *) c_hat;
+        hadamardComplexProductCuda ((cuDoubleComplex*) c_a, (cuDoubleComplex*) ctx->precfactor_);
 
-    std::complex<double> *c_a = (std::complex<double> *) c_hat;
-    for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
-        c_a[i] *= ctx->precfactor_[i];
-    }
-    accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
-    ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
+        accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
+
+        ierr = VecCUDARestoreArrayReadWrite (y, &y_ptr);                         CHKERRQ (ierr);
+    #else
+        ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
+        Complex *c_hat = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
+        accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
+
+        std::complex<double> *c_a = (std::complex<double> *) c_hat;
+        for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
+            c_a[i] *= ctx->precfactor_[i];
+        }
+
+        accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
+
+        ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
+    #endif
+    
     fft_free (c_hat);
 
     self_exec_time += MPI_Wtime();

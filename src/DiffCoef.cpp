@@ -19,8 +19,10 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
 
     // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
     temp_ = new Vec[7];
-    #ifdef CUDA cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
-    #else temp_accfft_ = (double * ) accfft_alloc (n_misc->accfft_alloc_max_);
+    #ifdef CUDA 
+      cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
+    #else 
+      temp_accfft_ = (double * ) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
 
     ierr = VecSet (kxx_ , 0);
