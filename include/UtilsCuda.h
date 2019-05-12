@@ -10,6 +10,8 @@
 
 #include <cuda_runtime.h>
 
+__constant__ int isize_cuda[3], istart_cuda[3], osize_cuda[3], ostart_cuda[3], n_cuda[3];
+
 // Cuda error checking routines
 
 #define cudaCheckError(ans) cudaAssert((ans), __FILE__, __LINE__,false)
