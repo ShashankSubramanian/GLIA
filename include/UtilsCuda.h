@@ -69,30 +69,10 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
   return 0;
 }
 
-struct CtxCuda {
-  int *size_, *start_, *n_;
-  double *work_;
-
-  CtxCuda (int work_size) {
-    cudaMalloc ((void**)&size_, 3 * sizeof(int));
-    cudaMalloc ((void**)&start_, 3 * sizeof(int));
-    cudaMalloc ((void**)&n_, 3 * sizeof(int));
-
-    cudaMalloc ((void**)&work_, work_size * sizeof(int));
-  }
-
-  ~CtxCuda () {
-    cudaFree (size_);
-    cudaFree (start_);
-    cudaFree (n_);
-    cudaFree (work_);
-  }
-};
-
 
 void computeWeierstrassFilterCuda (double *f, double *s, double sigma);
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x);
-void precFactorDiffusionCuda ();
+void precFactorDiffusionCuda (double *precfactor, double *work);
 
 
 #endif

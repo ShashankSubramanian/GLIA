@@ -81,14 +81,14 @@ PetscErrorCode DiffSolver::precFactor () {
     #ifdef CUDA
         double *work;   // work vector for cuda
         cudaMalloc ((void**)&work, 8 * sizeof(double));
-        cudaMemcpy (work[0], ctx_->dt_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[1], kxx_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[2], kxy_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[3], kxz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[4], kyz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[5], kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[6], kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (work[7], factor, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[0], &ctx_->dt_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[1], &kxx_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[2], &kxy_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[3], &kxz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[4], &kyz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[5], &kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[6], &kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work[7], &factor, sizeof(double), cudaMemcpyHostToDevice);
         precFactorDiffusionCuda (ctx_->precfactor_, work);
     #else
 
@@ -152,6 +152,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
 
     PetscScalar *y_ptr;
     #ifdef CUDA
+        Complex *c_hat;
         ierr = VecCUDAGetArrayReadWrite (y, &y_ptr);                             CHKERRQ (ierr);
         cudaMalloc ((void**)&c_hat, n_misc->accfft_alloc_max_);
         accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
