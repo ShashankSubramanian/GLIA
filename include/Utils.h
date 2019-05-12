@@ -379,15 +379,6 @@ class NMisc {
             memcpy (istart_, istart, 3 * sizeof(int));
             memcpy (ostart_, ostart, 3 * sizeof(int));
 
-            #ifdef CUDA
-                // copy mesh parameters to the gpu constant memory
-                cudaMemcpyToSymbol (isize_cuda, isize, 3 * sizeof(int));
-                cudaMemcpyToSymbol (osize_cuda, osize, 3 * sizeof(int));
-                cudaMemcpyToSymbol (istart_cuda, istart, 3 * sizeof(int));
-                cudaMemcpyToSymbol (ostart_cuda, ostart, 3 * sizeof(int));
-                cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
-            #endif
-
             plan_ = plan;
             handle_ = handle;
             c_comm_ = c_comm;
