@@ -157,28 +157,15 @@ PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     double sigma = 2.0 * M_PI / n_misc->n_[0];
-    double *kxx_ptr, *kxy_ptr, *kxz_ptr, *kyy_ptr, *kyz_ptr, *kzz_ptr;
+    
 
-    ierr = VecGetArray (kxx_, &kxx_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (kxy_, &kxy_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (kxz_, &kxz_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (kyy_, &kyy_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (kyz_, &kyz_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (kzz_, &kzz_ptr);                         CHKERRQ (ierr);
+    ierr = weierstrassSmoother (kxx_, kxx_, n_misc, sigma);
+    ierr = weierstrassSmoother (kxy_, kxy_, n_misc, sigma);
+    ierr = weierstrassSmoother (kxz_, kxz_, n_misc, sigma);
+    ierr = weierstrassSmoother (kyy_, kyy_, n_misc, sigma);
+    ierr = weierstrassSmoother (kyz_, kyz_, n_misc, sigma);
+    ierr = weierstrassSmoother (kzz_, kzz_, n_misc, sigma);
 
-    ierr = weierstrassSmoother (kxx_ptr, kxx_ptr, n_misc, sigma);
-    ierr = weierstrassSmoother (kxy_ptr, kxy_ptr, n_misc, sigma);
-    ierr = weierstrassSmoother (kxz_ptr, kxz_ptr, n_misc, sigma);
-    ierr = weierstrassSmoother (kyy_ptr, kyy_ptr, n_misc, sigma);
-    ierr = weierstrassSmoother (kyz_ptr, kyz_ptr, n_misc, sigma);
-    ierr = weierstrassSmoother (kzz_ptr, kzz_ptr, n_misc, sigma);
-
-    ierr = VecRestoreArray (kxx_, &kxx_ptr);                     CHKERRQ (ierr);
-    ierr = VecRestoreArray (kxy_, &kxy_ptr);                     CHKERRQ (ierr);
-    ierr = VecRestoreArray (kxz_, &kxz_ptr);                     CHKERRQ (ierr);
-    ierr = VecRestoreArray (kyy_, &kyy_ptr);                     CHKERRQ (ierr);
-    ierr = VecRestoreArray (kyz_, &kyz_ptr);                     CHKERRQ (ierr);
-    ierr = VecRestoreArray (kzz_, &kzz_ptr);                     CHKERRQ (ierr);
 
     PetscFunctionReturn(0);
 }

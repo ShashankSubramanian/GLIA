@@ -89,10 +89,7 @@ PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr;
     double sigma = 2.0 * M_PI / n_misc->n_[0];
 
-    double *rho_vec_ptr;
-    ierr = VecGetArray (rho_vec_, &rho_vec_ptr);                 CHKERRQ (ierr);
-    ierr = weierstrassSmoother (rho_vec_ptr, rho_vec_ptr, n_misc, sigma);
-    ierr = VecRestoreArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
+    ierr = weierstrassSmoother (rho_vec_, rho_vec_, n_misc, sigma);
 
     PetscFunctionReturn(0);
 }

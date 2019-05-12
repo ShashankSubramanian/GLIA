@@ -876,10 +876,8 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
 
     // Smooth the data
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
-    double *data_ptr;
-    ierr = VecGetArray (data, &data_ptr);                                       CHKERRQ (ierr);
-    ierr = weierstrassSmoother (data_ptr, data_ptr, n_misc, sigma_smooth);
-    ierr = VecRestoreArray (data, &data_ptr);                                   CHKERRQ (ierr);
+    
+    ierr = weierstrassSmoother (data, data, n_misc, sigma_smooth);
 
     // size_t pos;
     // std::ifstream ifile;
@@ -936,24 +934,17 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (csf, n_misc, csf_path);
 
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
-    double *gm_ptr, *wm_ptr, *csf_ptr, *bg_ptr;
-    ierr = VecGetArray (gm, &gm_ptr);                    CHKERRQ (ierr);
-    ierr = VecGetArray (wm, &wm_ptr);                    CHKERRQ (ierr);
-    ierr = VecGetArray (csf, &csf_ptr);                  CHKERRQ (ierr);
-    ierr = VecGetArray (bg, &bg_ptr);                    CHKERRQ (ierr);
 
-    ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
-    ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
-    ierr = weierstrassSmoother (csf_ptr, csf_ptr, n_misc, sigma_smooth);
+    ierr = weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
+    ierr = weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
+    ierr = weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
+    
     // Set bg prob as 1 - sum
-    for (int i = 0; i < n_misc->n_local_; i++) {
-        bg_ptr[i] = 1.0 - (gm_ptr[i] + wm_ptr[i] + csf_ptr[i]);
-    }
-
-    ierr = VecRestoreArray (gm, &gm_ptr);                    CHKERRQ (ierr);
-    ierr = VecRestoreArray (wm, &wm_ptr);                    CHKERRQ (ierr);
-    ierr = VecRestoreArray (csf, &csf_ptr);                  CHKERRQ (ierr);
-    ierr = VecRestoreArray (bg, &bg_ptr);                    CHKERRQ (ierr);
+    ierr = VecWAXPY (bg, 1., gm, wm);                   CHKERRQ (ierr);
+    ierr = VecAXPY (bg, 1., csf);                       CHKERRQ (ierr);
+    ierr = VecShift (bg, -1.0);                         CHKERRQ (ierr);
+    ierr = VecScale (bg, -1.0);                         CHKERRQ (ierr);
+    
 
     PetscFunctionReturn (0);
 }
