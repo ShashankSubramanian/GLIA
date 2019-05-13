@@ -16,7 +16,7 @@ __global__ void computeWeierstrassFilter (double *f, double *s, double sigma) {
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
 
 	double X, Y, Z, Xp, Yp, Zp, twopi;
-	int hx, hy, hz;
+	double hx, hy, hz;
 	int64_t ptr;
 	twopi = 2. * CUDART_PI;
 	hx = twopi / n_cuda[0];
@@ -48,7 +48,7 @@ __global__ void computeWeierstrassFilter (double *f, double *s, double sigma) {
 }
 
 __global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x) {
-	int i = threadIdx.x;
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	y[i] = cuCmul (y[i], x[i]);
 }
 
