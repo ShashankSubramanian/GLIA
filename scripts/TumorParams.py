@@ -160,6 +160,11 @@ def getTumorRunCmd(params):
     else:
         print ('Default rho = {} used'.format(rho_inv))
     # ---
+    if 'gvf' in params:
+        gvf = params['gvf']
+    else:
+        print ('Default gvf = {} used'.format(gvf))    
+    # ---
     if 'predict_flag' in params:
         predict_flag = params['predict_flag']
     else:
@@ -266,8 +271,11 @@ def getTumorRunCmd(params):
         ibman = " -n " + str(params['mpi_pernode']) + " -o 0 "
     cmd = ""
     if params['compute_sys'] == 'hazelhen':
-        cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N 24 ";
-    if params['compute_sys'] == 'stampede2':
+        ppn = 24;
+        if params['mpi_pernode'] < 24:
+            ppn = params['mpi_pernode'];
+        cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
+    elif params['compute_sys'] == 'stampede2':
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";

@@ -64,7 +64,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     k_glm_wm_ratio_ = k_glm_wm_ratio;
     n_misc->k_gm_wm_ratio_  = k_gm_wm_ratio_;    // update values in n_misc
     n_misc->k_glm_wm_ratio_ = k_glm_wm_ratio_;
-    n_misc->k_              = k_scale_;
+    // n_misc->k_              = k_scale_;
 
     double dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
     double dk_dm_wm  = k_scale;                         //WM
