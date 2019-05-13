@@ -447,9 +447,10 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	accfft_execute_c2r(plan, f_hat, Wc);
 
 	#ifdef CUDA
-		fft_free (f); 
-		fft_free (f_hat);
-		fft_free (c_hat);
+		cudaFree (f); 
+		cudaFree (f_hat);
+		cudaFree (c_hat);
+		cudaFree (s_cuda);
 	#else
 		fft_free(f);
 		fft_free(f_hat);
