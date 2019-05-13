@@ -8,6 +8,7 @@
 #include <cuda_runtime_api.h>
 #include "cublas_v2.h"
 
+#include <thrust/system_error.h>
 #include <thrust/device_ptr.h>
 #include <thrust/transform.h>
 #include <thrust/functional.h>

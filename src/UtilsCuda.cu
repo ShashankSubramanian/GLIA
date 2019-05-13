@@ -122,13 +122,19 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma);
 
-	// use thrust for reduction
-	thrust::device_ptr<double> f_thrust;
-	f_thrust = thrust::device_pointer_cast (f);
-	(*sum) = thrust::reduce (f_thrust, f_thrust + (sz[0] * sz[1] * sz[2]), 0, thrust::plus<double>());
-
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
+
+	// use thrust for reduction
+	try {
+		thrust::device_ptr<double> f_thrust;
+		f_thrust = thrust::device_pointer_cast (f);
+		(*sum) = thrust::reduce (f_thrust, f_thrust + (sz[0] * sz[1] * sz[2]));
+	} catch (thrust::system_error &e) {
+		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
+	}
+
+	cudaDeviceSynchronize();
 }
 
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz) {
