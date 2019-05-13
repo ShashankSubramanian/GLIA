@@ -125,7 +125,7 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 	// use thrust for reduction
 	thrust::device_ptr<double> f_thrust;
 	f_thrust = thrust::device_pointer_cast (f);
-	sum = thrust::reduce (f_thrust, f_thrust + (isize[0] * isize[1] * isize[2]), 0, thrust::plus<double>());
+	(*sum) = thrust::reduce (f_thrust, f_thrust + (sz[0] * sz[1] * sz[2]), 0, thrust::plus<double>());
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

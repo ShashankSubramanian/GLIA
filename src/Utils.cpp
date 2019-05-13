@@ -373,7 +373,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	double sum_f_local = 0., sum_f = 0;
 	#ifdef CUDA
 		// user define cuda call
-		computeWeierstrassFilterCuda (f, sum_f_local, sigma, isize);
+		computeWeierstrassFilterCuda (f, &sum_f_local, sigma, isize);
 	#else
 		double X, Y, Z, Xp, Yp, Zp;
 		int64_t ptr;
