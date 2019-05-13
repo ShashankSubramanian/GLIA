@@ -414,8 +414,10 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 
 	#ifdef CUDA
 		cublasStatus_t status;
+		cublasHandle_t handle;
 		// cublas vec scale
-		status = cublasDscal (*n_misc->handle_, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
+		PetscCUBLASGetHandle (&handle);
+		status = cublasDscal (handle, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
 		cublasCheckError (status);
 	#else
 		for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
@@ -433,7 +435,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	#ifdef CUDA
 		double alp = factor * hx * hy * hz;
 		hadamardComplexProductCuda ((cuDoubleComplex*) cf_hat, (cuDoubleComplex*) cc_hat, osize);
-		status = cublasZdscal (*n_misc->handle_, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) cf_hat, 1);
+		status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) cf_hat, 1);
 		cublasCheckError (status);
 	#else	
 		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)

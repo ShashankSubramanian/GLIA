@@ -214,7 +214,7 @@ int main (int argc, char** argv) {
     Complex *c_hat;
     blas_handle *handle;
     #ifdef CUDA
-        cublasCreate (handle);  // create blas handle for cublas ops later
+        // cublasCreate (handle);  // create blas handle for cublas ops later
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         cudaMalloc ((void**) &c_0, alloc_max);
         cudaMalloc ((void**) &c_hat, alloc_max);
@@ -675,9 +675,9 @@ int main (int argc, char** argv) {
 
 }
 /* --------------------------------------------------------------------------------------------------------------*/
-    #ifdef CUDA //delete all cuda handles
-        cublasDestroy (*handle);
-    #endif
+    // #ifdef CUDA //delete all cuda handles
+        // cublasDestroy (*handle);
+    // #endif
     accfft_destroy_plan (plan);
     accfft_cleanup();
     MPI_Comm_free(&c_comm);
