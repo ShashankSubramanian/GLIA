@@ -212,9 +212,7 @@ int main (int argc, char** argv) {
     int isize[3], osize[3], istart[3], ostart[3];
     double *c_0;
     Complex *c_hat;
-    blas_handle *handle;
     #ifdef CUDA
-        // cublasCreate (handle);  // create blas handle for cublas ops later
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         cudaMalloc ((void**) &c_0, alloc_max);
         cudaMalloc ((void**) &c_hat, alloc_max);
@@ -257,7 +255,7 @@ int main (int argc, char** argv) {
 
     std::vector<double> out_params;
     int n_gist = 0, n_newton;
-    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, handle, testcase);   //This class contains all required parameters
+    std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
 
     // Read input parameters (controlled from run script)
@@ -675,9 +673,6 @@ int main (int argc, char** argv) {
 
 }
 /* --------------------------------------------------------------------------------------------------------------*/
-    // #ifdef CUDA //delete all cuda handles
-        // cublasDestroy (*handle);
-    // #endif
     accfft_destroy_plan (plan);
     accfft_cleanup();
     MPI_Comm_free(&c_comm);
@@ -938,7 +933,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     ierr = weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
     ierr = weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
     ierr = weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
-    
+
     // Set bg prob as 1 - sum
     ierr = VecWAXPY (bg, 1., gm, wm);                   CHKERRQ (ierr);
     ierr = VecAXPY (bg, 1., csf);                       CHKERRQ (ierr);

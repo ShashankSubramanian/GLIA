@@ -10,7 +10,7 @@ void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n
 	cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
 }
 
-__global__ void computeWeierstrassFilter (double *f, double *s, double sigma) {
+__global__ void computeWeierstrassFilter (double *f, double sigma) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -44,7 +44,6 @@ __global__ void computeWeierstrassFilter (double *f, double *s, double sigma) {
 
 	if (f[ptr] != f[ptr])
 		f[ptr] = 0.; // To avoid Nan
-	(*s) += f[ptr];
 }
 
 __global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x) {
@@ -114,14 +113,14 @@ void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
 	cudaCheckKernelError ();
 }
 
-void computeWeierstrassFilterCuda (double *f, double *s, double sigma, int *sz) {
+void computeWeierstrassFilterCuda (double *f, double sigma, int *sz) {
 	int n_th_x = 32;
 	int n_th_y = 8;
 	int n_th_z = 1;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks (sz[0] / n_th_x, sz[1] / n_th_y, sz[2] / n_th_z);
 
-	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, s, sigma);
+	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

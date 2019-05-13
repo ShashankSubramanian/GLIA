@@ -29,6 +29,9 @@
     #include "cuda.h"
     #include <cuda_runtime_api.h>
     #include "cublas_v2.h"
+    #include <thrust/device_ptr.h>
+    #include <thrust/transform.h>
+    #include <thrust/functional.h>
     #include "petsccuda.h"
     #include <accfft_gpu.h>
     #include <accfft_operators_gpu.h>
@@ -37,7 +40,6 @@
     #include "UtilsCuda.h"
 
     using fft_plan = accfft_plan_gpu;
-    using blas_handle = int;
 
     #define accfft_execute_r2c accfft_execute_r2c_gpu
     #define accfft_execute_c2r accfft_execute_c2r_gpu
@@ -48,8 +50,6 @@
     #include <accfft_operators.h>
 
     using fft_plan = accfft_plan;
-    using blas_handle = int; // no handle
-
     #define fft_free accfft_free
 #endif
 
@@ -252,7 +252,7 @@ public:
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, blas_handle *handle = NULL, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
                        // Modified Obj -- 3
                        // Mass effect -- 4
@@ -380,7 +380,6 @@ class NMisc {
             memcpy (ostart_, ostart, 3 * sizeof(int));
 
             plan_ = plan;
-            handle_ = handle;
             c_comm_ = c_comm;
             accfft_alloc_max_ = plan->alloc_max;
 
@@ -476,7 +475,6 @@ class NMisc {
         int64_t n_global_;
 
         fft_plan *plan_;
-        blas_handle *handle_;
         MPI_Comm c_comm_;
 
         std::stringstream readpath_;

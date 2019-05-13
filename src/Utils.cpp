@@ -372,11 +372,12 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 
 	double sum_f_local = 0., sum_f = 0;
 	#ifdef CUDA
-		double *s_cuda;
-		cudaMalloc ((void**)&s_cuda, sizeof(double));
-		cudaMemcpy (s_cuda, &sum_f_local, sizeof(double), cudaMemcpyHostToDevice);		
-		computeWeierstrassFilterCuda (f, s_cuda, sigma, isize);
-		cudaMemcpy (&sum_f_local, s_cuda, sizeof(double), cudaMemcpyDeviceToHost);
+		// user define cuda call
+		computeWeierstrassFilterCuda (f, sigma, isize);
+		// use thrust for reduction
+		thrust::device_ptr<double> f_thrust;
+		f_thrust = thrust::device_pointer_cast (f);
+		sum_f_local = thrust::reduce (f_thrust, f_thrust + (isize[0] * isize[1] * isize[2]));
 	#else
 		double X, Y, Z, Xp, Yp, Zp;
 		int64_t ptr;
@@ -415,7 +416,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	#ifdef CUDA
 		cublasStatus_t status;
 		cublasHandle_t handle;
-		// cublas vec scale
+		// cublas for vec scale
 		PetscCUBLASGetHandle (&handle);
 		status = cublasDscal (handle, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
 		cublasCheckError (status);

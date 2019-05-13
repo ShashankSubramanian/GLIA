@@ -58,9 +58,7 @@ int main (int argc, char** argv) {
     int isize[3], osize[3], istart[3], ostart[3];
     double *c_0;
     Complex *c_hat;
-    blas_handle *handle;
     #ifdef CUDA
-        // cublasCreate (handle);  // create blas handle for cublas ops later
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         cudaMalloc ((void**) &c_0, alloc_max);
         cudaMalloc ((void**) &c_hat, alloc_max);
@@ -80,7 +78,7 @@ int main (int argc, char** argv) {
 
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-forward");
-	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, handle, testcase);   //This class contains all required parameters
+	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
     double self_exec_time = -MPI_Wtime ();
