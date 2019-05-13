@@ -451,7 +451,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   // overwrite linesearch objects
   TaoLineSearch linesearch;        // line-search object
   PetscReal minstep;
-  minstep = std::pow (2.0, 18.0);
+  minstep = std::pow (2.0, 15.0);
   minstep = 1.0 / minstep;
   itctx_->optsettings_->ls_minstep = minstep;
 
@@ -2275,7 +2275,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     std::string msg;
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 20.0);
+    minstep = std::pow (2.0, 15.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 

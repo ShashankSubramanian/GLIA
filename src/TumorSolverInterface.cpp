@@ -653,7 +653,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     // No regularization for L1 constrainied optimization
-    n_misc_->beta_ = 0;
+    // n_misc_->beta_ = 0;
 
     // // set the observation operator filter : default filter
     // ierr = tumor_->obs_->setDefaultFilter (d1);
