@@ -377,7 +377,7 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 		// use thrust for reduction
 		thrust::device_ptr<double> f_thrust;
 		f_thrust = thrust::device_pointer_cast (f);
-		sum_f_local = thrust::reduce (f_thrust, f_thrust + (isize[0] * isize[1] * isize[2]));
+		sum_f_local = thrust::reduce (f_thrust, f_thrust + (isize[0] * isize[1] * isize[2]), 0, thrust::plus<double>());
 	#else
 		double X, Y, Z, Xp, Yp, Zp;
 		int64_t ptr;
@@ -451,7 +451,6 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 		cudaFree (f); 
 		cudaFree (f_hat);
 		cudaFree (c_hat);
-		cudaFree (s_cuda);
 	#else
 		fft_free(f);
 		fft_free(f_hat);

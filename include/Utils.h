@@ -32,6 +32,7 @@
     #include <thrust/device_ptr.h>
     #include <thrust/transform.h>
     #include <thrust/functional.h>
+    #include <thrust/reduce.h>
     #include "petsccuda.h"
     #include <accfft_gpu.h>
     #include <accfft_operators_gpu.h>
