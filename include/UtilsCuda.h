@@ -8,6 +8,11 @@
 #include <cuda_runtime_api.h>
 #include "cublas_v2.h"
 
+#include <thrust/device_ptr.h>
+#include <thrust/transform.h>
+#include <thrust/functional.h>
+#include <thrust/reduce.h>
+
 #include <cuda_runtime.h>
 
 // Cuda error checking routines
@@ -68,7 +73,7 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
 }
 
 
-void computeWeierstrassFilterCuda (double *f, double sigma, int *sz);
+void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz);
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz);
 void precFactorDiffusionCuda (double *precfactor, double *work, int *sz);
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);

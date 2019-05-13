@@ -113,7 +113,7 @@ void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
 	cudaCheckKernelError ();
 }
 
-void computeWeierstrassFilterCuda (double *f, double sigma, int *sz) {
+void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz) {
 	int n_th_x = 32;
 	int n_th_y = 8;
 	int n_th_z = 1;
@@ -121,6 +121,11 @@ void computeWeierstrassFilterCuda (double *f, double sigma, int *sz) {
 	dim3 n_blocks (sz[0] / n_th_x, sz[1] / n_th_y, sz[2] / n_th_z);
 
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma);
+
+	// use thrust for reduction
+	thrust::device_ptr<double> f_thrust;
+	f_thrust = thrust::device_pointer_cast (f);
+	sum = thrust::reduce (f_thrust, f_thrust + (isize[0] * isize[1] * isize[2]), 0, thrust::plus<double>());
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
