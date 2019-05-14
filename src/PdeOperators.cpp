@@ -76,9 +76,21 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     double *c_ptr;
     double factor, alph;
     double dt = n_misc_->dt_;
+
+    #ifdef CUDA
+    ierr = VecCUDAGetArrayReadWrite (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
+    ierr = VecCUDAGetArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
+    ierr = VecCUDAGetArrayReadWrite (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+
+    logisticReactionCuda (c_t_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
+
+    ierr = VecCUDARestoreArrayReadWrite (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
+    ierr = VecCUDARestoreArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
+    ierr = VecCUDARestoreArrayReadWrite (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+
+    #else
     ierr = VecGetArray (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
-
     ierr = VecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
@@ -97,6 +109,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     ierr = VecRestoreArray (tumor_->c_t_, &c_t_ptr);             CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);   CHKERRQ (ierr);
     ierr = VecRestoreArray (c_[iter], &c_ptr);                   CHKERRQ (ierr);
+    #endif
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);

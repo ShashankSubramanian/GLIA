@@ -147,5 +147,26 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz
 	cudaCheckKernelError ();
 }
 
-double norm; 
-            VecNorm(gm_, NORM_2, &norm); std::cout<<"norm: " << norm << std::endl;
+__global__ logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int linearized) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	double factor = 0., alph = 0.;
+	if (linearized == 0) {
+        factor = exp (rho_ptr[i] * dt);
+        alph = (1.0 - c_t_ptr[i]) / c_t_ptr[i];
+        c_t_ptr[i] = factor / (factor + alph);
+    }
+    else {
+        factor = exp (rho_ptr[i] * dt);
+        alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
+        c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
+    }
+}
+
+void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized) {
+	int n_th = 512;
+
+	logisticReaction <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt, linearized);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
