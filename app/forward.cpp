@@ -51,7 +51,7 @@ int main (int argc, char** argv) {
         default: break;
     }
 
-    aaccfft_init();
+    accfft_init();
     MPI_Comm c_comm;
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
