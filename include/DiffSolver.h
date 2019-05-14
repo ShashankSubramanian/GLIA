@@ -13,6 +13,7 @@ struct Ctx {
 	double dt_;
 	Vec temp_;
 	double *precfactor_;
+	double *work_cuda_;
 };
 
 class DiffSolver {

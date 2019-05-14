@@ -21,8 +21,9 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
     temp_ = new Vec[7];
     #ifdef CUDA 
       cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
+      cudaMalloc ((void**) &work_cuda_, 7 * sizeof(double));
     #else 
-      temp_accfft_ = (double * ) accfft_alloc (n_misc->accfft_alloc_max_);
+      temp_accfft_ = (double *) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
 
     ierr = VecSet (kxx_ , 0);
@@ -145,6 +146,15 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     kyy_avg_ *= 1.0 / filter_avg_;
     kyz_avg_ *= 1.0 / filter_avg_;
     kzz_avg_ *= 1.0 / filter_avg_;
+
+    #ifdef CUDA
+        cudaMemcpy (&work_cuda_[1], &kxx_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[2], &kxy_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[3], &kxz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[4], &kyz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[5], &kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[6], &kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
+    #endif
 
     if (smooth_flag_) {
         ierr = this->smooth (n_misc); CHKERRQ (ierr);
@@ -305,4 +315,8 @@ DiffCoef::~DiffCoef () {
     ierr = VecDestroy (&kzz_);
     delete [] temp_;
     fft_free (temp_accfft_);
+    #ifdef CUDA 
+      fft_free (work_cuda_);
+    #endif
+
 }

@@ -443,15 +443,9 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	/* Backward transform */
 	accfft_execute_c2r(plan, f_hat, Wc);
 
-	#ifdef CUDA
-		cudaFree (f); 
-		cudaFree (f_hat);
-		cudaFree (c_hat);
-	#else
-		fft_free(f);
-		fft_free(f_hat);
-		fft_free(c_hat);
-	#endif
+	fft_free(f);
+	fft_free(f_hat);
+	fft_free(c_hat);
 
 	//PCOUT<<"\033[1;32m weierstrass_smoother } "<<"\033[0m"<<std::endl;
 	//self_exec_time+= MPI_Wtime();

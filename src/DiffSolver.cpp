@@ -14,6 +14,7 @@ ctx_() {
     ctx_->plan_ = n_misc->plan_;
     ctx_->temp_ = k->temp_[0];
     ctx_->precfactor_ = k->temp_accfft_;
+    ctx_->work_cuda_ = k->work_cuda_;
     ierr = precFactor ();
 
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
@@ -79,17 +80,8 @@ PetscErrorCode DiffSolver::precFactor () {
     double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
 
     #ifdef CUDA
-        double *work;   // work vector for cuda
-        cudaMalloc ((void**)&work, 8 * sizeof(double));
-        cudaMemcpy (&work[0], &ctx_->dt_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[1], &kxx_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[2], &kxy_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[3], &kxz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[4], &kyz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[5], &kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[6], &kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work[7], &factor, sizeof(double), cudaMemcpyHostToDevice);
-        precFactorDiffusionCuda (ctx_->precfactor_, work, n_misc->osize_);
+        cudaMemcpy (&ctx_->work_cuda_[0], &ctx_->dt_, sizeof(double), cudaMemcpyHostToDevice);
+        precFactorDiffusionCuda (ctx_->precfactor_, ctx_->work_cuda_, n_misc->osize_);
     #else
 
     for (int x = 0; x < n_misc->osize_[0]; x++) {

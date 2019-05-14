@@ -56,6 +56,8 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
 
+	double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+
 	double X, Y, Z;
 	X = ostart_cuda[0] + x;
     Y = ostart_cuda[1] + y;
@@ -88,7 +90,6 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
     double kyz_avg = work[4];
     double kyy_avg = work[5];
     double kzz_avg = work[6];
-    double factor = work[7];
 
     int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
     precfactor[index] = (1. + 0.25 * dt * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
@@ -146,3 +147,5 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz
 	cudaCheckKernelError ();
 }
 
+double norm; 
+            VecNorm(gm_, NORM_2, &norm); std::cout<<"norm: " << norm << std::endl;
