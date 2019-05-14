@@ -148,12 +148,12 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     kzz_avg_ *= 1.0 / filter_avg_;
 
     #ifdef CUDA
-        cudaMemcpy (&work_cuda_[1], &kxx_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[2], &kxy_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[3], &kxz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[4], &kyz_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[5], &kyy_avg, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[6], &kzz_avg, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[1], &kxx_avg_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[2], &kxy_avg_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[3], &kxz_avg_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[4], &kyz_avg_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[5], &kyy_avg_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[6], &kzz_avg_, sizeof(double), cudaMemcpyHostToDevice);
     #endif
 
     if (smooth_flag_) {
