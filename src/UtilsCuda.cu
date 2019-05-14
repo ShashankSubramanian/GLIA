@@ -147,7 +147,7 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz
 	cudaCheckKernelError ();
 }
 
-__global__ logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int linearized) {
+__global__ void logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int linearized) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	double factor = 0., alph = 0.;
 	if (linearized == 0) {
