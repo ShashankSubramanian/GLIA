@@ -190,9 +190,9 @@ void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, doub
 	int n_th = N_THREADS;
 
 	if (linearized == 0)
-		logisticReaction <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt, linearized);
+		logisticReaction <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
 	else
-		logisticReactionLinearized <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt, linearized);
+		logisticReactionLinearized <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
