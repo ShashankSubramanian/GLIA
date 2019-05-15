@@ -210,26 +210,32 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
         diff_solver_->solve (temp, dt);         diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
     }
 
+    #ifdef CUDA
+    ierr = VecCUDAGetArrayReadWrite (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
+    ierr = VecCUDAGetArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
+    ierr = VecCUDAGetArrayReadWrite (temp, &c_ptr);                           CHKERRQ (ierr);
+
+    logisticReactionCuda (p_0_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
+
+    ierr = VecCUDARestoreArrayReadWrite (tumor_->p_0_, &p_0_ptr);             CHKERRQ (ierr);
+    ierr = VecCUDARestoreArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);   CHKERRQ (ierr);
+    ierr = VecCUDARestoreArrayReadWrite (temp, &c_ptr);                       CHKERRQ (ierr);
+
+    #else
     ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
     ierr = VecGetArray (temp, &c_ptr);                           CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (linearized == 1) {
-            factor = std::exp (rho_ptr[i] * dt);
-            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
-            p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
-        }
-        else { //Gauss - Newton method
-            factor = std::exp (rho_ptr[i] * dt);
-            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
-            p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
-        }
+        factor = std::exp (rho_ptr[i] * dt);
+        alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
+        p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
     }
 
     ierr = VecRestoreArray (tumor_->p_0_, &p_0_ptr);             CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);   CHKERRQ (ierr);
     ierr = VecRestoreArray (temp, &c_ptr);                       CHKERRQ (ierr);
+    #endif
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
