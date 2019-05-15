@@ -93,13 +93,14 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
     ierr = VecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
 
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (linearized == 0) {
+    if (linearized == 0) {
+        for (int i = 0; i < n_misc_->n_local_; i++) {
             factor = std::exp (rho_ptr[i] * dt);
             alph = (1.0 - c_t_ptr[i]) / c_t_ptr[i];
             c_t_ptr[i] = factor / (factor + alph);
         }
-        else {
+    } else {
+        for (int i = 0; i < n_misc_->n_local_; i++) {
             factor = std::exp (rho_ptr[i] * dt);
             alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
             c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);

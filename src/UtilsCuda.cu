@@ -107,9 +107,9 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
 }
 
 void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
-	int n_th_x = 32;
-	int n_th_y = 8;
-	int n_th_z = 1;
+	int n_th_x = N_THREADS_X;
+	int n_th_y = N_THREADS_Y;
+	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks (sz[0] / n_th_x, sz[1] / n_th_y, sz[2] / n_th_z);
 
@@ -120,9 +120,9 @@ void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
 }
 
 void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz) {
-	int n_th_x = 32;
-	int n_th_y = 8;
-	int n_th_z = 1;
+	int n_th_x = N_THREADS_X;
+	int n_th_y = N_THREADS_Y;
+	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks (sz[0] / n_th_x, sz[1] / n_th_y, sz[2] / n_th_z);
 
@@ -144,7 +144,7 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 }
 
 void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz) {
-	int n_th = 512;
+	int n_th = N_THREADS;
 
 	hadamardComplexProduct <<< (sz[0] * sz[1] * sz[2]) / n_th, n_th >>> (y, x);
 
@@ -166,25 +166,33 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz
 	cudaDeviceSynchronize();
 }
 
-__global__ void logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int linearized) {
+__global__ void logisticReactionLinearized (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	double factor = 0., alph = 0.;
-	if (linearized == 0) {
-        factor = exp (rho_ptr[i] * dt);
-        alph = (1.0 - c_t_ptr[i]) / c_t_ptr[i];
-        c_t_ptr[i] = factor / (factor + alph);
-    }
-    else {
-        factor = exp (rho_ptr[i] * dt);
-        alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
-        c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
-    }
+
+    factor = exp (rho_ptr[i] * dt);
+    alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
+    c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
+    
+}
+
+__global__ void logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	double factor = 0., alph = 0.;
+
+    factor = exp (rho_ptr[i] * dt);
+    alph = (1.0 - c_t_ptr[i]) / c_t_ptr[i];
+    c_t_ptr[i] = factor / (factor + alph);
+    
 }
 
 void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized) {
-	int n_th = 512;
+	int n_th = N_THREADS;
 
-	logisticReaction <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt, linearized);
+	if (linearized == 0)
+		logisticReaction <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt, linearized);
+	else
+		logisticReactionLinearized <<< sz / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt, linearized);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
