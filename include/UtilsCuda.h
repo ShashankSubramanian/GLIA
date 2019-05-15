@@ -13,6 +13,7 @@
 #include <thrust/transform.h>
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
+#include <thrust/complex.h>
 
 #include <cuda_runtime.h>
 
