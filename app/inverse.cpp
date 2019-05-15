@@ -1243,6 +1243,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
         for (int i = 0; i < n_misc->np_; i++)
             ofile << p_true_ptr[i] << std::endl;
     }
+    ofile.flush();
     ofile.close ();
 
     ierr = VecRestoreArray (weights, &w_ptr);                               CHKERRQ (ierr);
@@ -1316,7 +1317,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
         opfile << n_misc->rho_ << " " << k1 << " " << error_norm << " "
                << error_norm_c0 << " " << dist_err_c0 << std::endl;
     }
-
+    opfile.flush();
     opfile.close ();
 
     ierr = VecRestoreArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);

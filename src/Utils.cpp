@@ -293,9 +293,21 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-  // write p vector
+  // write p vector to bin
   std::string fname_p = path + "p-rec-" + suffix + ".bin";
+  std::string fname_p_txt = path + "p-rec-" + suffix + ".txt";
   writeBIN(p, fname_p);
+
+  // write p vector to txt
+  double *p_ptr;
+  ierr = VecGetArray (p, &p_ptr);
+  std::stringstream pvis;
+  pvis <<" p = ["<<std::endl;
+  for (int ptr = 0; ptr < phi->np_; ++ptr) {
+      pvis << " " << p_ptr[ptr] << std::endl;
+  }
+  ierr = VecRestoreArray (p, &p_ptr);
+  pvis << "];"<<std::endl;
 
   // write Gaussian centers
   std::string fname_phi = path + "phi-mesh-" + suffix + ".dat";
@@ -307,10 +319,14 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
   }
   phivis << "];"<<std::endl;
   std::fstream phifile;
+  std::fstream pfile;
   if(procid == 0) {
       phifile.open(fname_phi, std::ios_base::out);
       phifile << phivis.str()<<std::endl;
       phifile.close();
+      pfile.open(fname_p_txt, std::ios_base::out);
+      pfile << pvis.str()<<std::endl;
+      pfile.close();
   }
   PetscFunctionReturn(ierr);
 }
