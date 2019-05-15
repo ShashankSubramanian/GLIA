@@ -18,9 +18,9 @@
 #include <cuda_runtime.h>
 
 #define N_THREADS 512
-#define N_THREADS_X 32
+#define N_THREADS_X 8
 #define N_THREADS_Y 8
-#define N_THREADS_Z 1
+#define N_THREADS_Z 8
 
 // Cuda error checking routines
 
