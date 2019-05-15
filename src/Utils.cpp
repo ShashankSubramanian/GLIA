@@ -425,16 +425,15 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	accfft_execute_r2c(plan, f, f_hat);
 	accfft_execute_r2c(plan, c, c_hat);
 
-	std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
-	std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
-
 	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
 	#ifdef CUDA
 		double alp = factor * hx * hy * hz;
-		hadamardComplexProductCuda ((cuDoubleComplex*) cf_hat, (cuDoubleComplex*) cc_hat, osize);
-		status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) cf_hat, 1);
+		hadamardComplexProductCuda ((cuDoubleComplex*) f_hat, (cuDoubleComplex*) c_hat, osize);
+		status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) f_hat, 1);
 		cublasCheckError (status);
 	#else	
+		std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
+		std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
 		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
 			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
 	#endif

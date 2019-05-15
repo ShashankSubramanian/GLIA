@@ -149,8 +149,8 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
         cudaMalloc ((void**)&c_hat, n_misc->accfft_alloc_max_);
         accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
 
-        std::complex<double> *c_a = (std::complex<double> *) c_hat;
-        hadamardComplexProductCuda ((cuDoubleComplex*) c_a, (cuDoubleComplex*) ctx->precfactor_, n_misc->osize_);
+        // TODO: is there a better way to do this by somehow casting double* to complex*?
+        hadamardComplexProductCuda ((cuDoubleComplex*) c_hat, ctx->precfactor_, n_misc->osize_);
 
         accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
 

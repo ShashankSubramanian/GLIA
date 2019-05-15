@@ -46,6 +46,11 @@ __global__ void computeWeierstrassFilter (double *f, double sigma) {
 		f[ptr] = 0.; // To avoid Nan
 }
 
+__global__ void hadamardComplexProduct (cuDoubleComplex *y, double *x) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	y[i] = cuCmul (y[i], make_cuDoubleComplex(x[i], 0.));
+}
+
 __global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	y[i] = cuCmul (y[i], x[i]);
@@ -138,13 +143,27 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 	cudaDeviceSynchronize();
 }
 
-void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz) {
+void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz) {
 	int n_th = 512;
 
 	hadamardComplexProduct <<< (sz[0] * sz[1] * sz[2]) / n_th, n_th >>> (y, x);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
+}
+
+void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz) {
+	try	{
+		thrust::device_ptr<thrust::complex<double>> y_thrust, x_thrust;
+	    y_thrust = thrust::device_pointer_cast ((thrust::complex<double>*)y);
+	    x_thrust = thrust::device_pointer_cast ((thrust::complex<double>*)x);
+
+	    thrust::transform(y_thrust, y_thrust + (sz[0] * sz[1] * sz[2]), x_thrust, y_thrust, thrust::multiplies<thrust::complex<double>>());
+	} catch (thrust::system_error &e) {
+		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
+	}
+
+	cudaDeviceSynchronize();
 }
 
 __global__ void logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int linearized) {

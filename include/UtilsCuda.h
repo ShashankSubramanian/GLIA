@@ -76,9 +76,9 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
 
 void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz);
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz);
+void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz);
 void precFactorDiffusionCuda (double *precfactor, double *work, int *sz);
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
 void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized);
-
 
 #endif
