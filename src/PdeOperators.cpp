@@ -7,23 +7,25 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     double dt = n_misc_->dt_;
     int nt = n_misc->nt_;
 
-    c_.resize (nt + 1);                         //Time history of tumor
-    p_.resize (nt + 1);                         //Time history of adjoints
+    if (!n_misc->forward_flag_) {
+        c_.resize (nt + 1);                         //Time history of tumor
+        p_.resize (nt + 1);                         //Time history of adjoints
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
-    ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = setupVec (c_[0]);
-    ierr = VecCreate (PETSC_COMM_WORLD, &p_[0]);
-    ierr = VecSetSizes (p_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = setupVec (p_[0]);
-
-    for (int i = 1; i < nt + 1; i++) {
-        ierr = VecDuplicate (c_[0], &c_[i]);
-        ierr = VecDuplicate (p_[0], &p_[i]);
-    }
-    for (int i = 0; i < nt + 1; i++) {
-        ierr = VecSet (c_[i], 0);
-        ierr = VecSet (p_[i], 0);
+        ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
+        ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
+        ierr = setupVec (c_[0]);
+        ierr = VecCreate (PETSC_COMM_WORLD, &p_[0]);
+        ierr = VecSetSizes (p_[0], n_misc->n_local_, n_misc->n_global_);
+        ierr = setupVec (p_[0]);
+    
+        for (int i = 1; i < nt + 1; i++) {
+            ierr = VecDuplicate (c_[0], &c_[i]);
+            ierr = VecDuplicate (p_[0], &p_[i]);
+        }
+        for (int i = 0; i < nt + 1; i++) {
+            ierr = VecSet (c_[i], 0);
+            ierr = VecSet (p_[i], 0);
+        }
     }
 }
 
@@ -80,18 +82,21 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     #ifdef CUDA
     ierr = VecCUDAGetArrayReadWrite (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = VecCUDAGetArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
-    ierr = VecCUDAGetArrayReadWrite (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+    if (linearized != 0) {
+        ierr = VecCUDAGetArrayReadWrite (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+    }
 
     logisticReactionCuda (c_t_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
 
     ierr = VecCUDARestoreArrayReadWrite (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = VecCUDARestoreArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
-    ierr = VecCUDARestoreArrayReadWrite (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+    if (linearized != 0) {
+        ierr = VecCUDARestoreArrayReadWrite (c_[iter], &c_ptr);                       CHKERRQ (ierr);
+    }
 
     #else
     ierr = VecGetArray (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
 
     if (linearized == 0) {
         for (int i = 0; i < n_misc_->n_local_; i++) {
@@ -100,16 +105,18 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
             c_t_ptr[i] = factor / (factor + alph);
         }
     } else {
+        ierr = VecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
         for (int i = 0; i < n_misc_->n_local_; i++) {
             factor = std::exp (rho_ptr[i] * dt);
             alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
             c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
         }
+        ierr = VecRestoreArray (c_[iter], &c_ptr);                   CHKERRQ (ierr);
     }
 
     ierr = VecRestoreArray (tumor_->c_t_, &c_t_ptr);             CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);   CHKERRQ (ierr);
-    ierr = VecRestoreArray (c_[iter], &c_ptr);                   CHKERRQ (ierr);
+    
     #endif
 
     self_exec_time += MPI_Wtime();
@@ -144,7 +151,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     }
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
-    if (linearized == 0) {
+    if (linearized == 0 && !n_misc_->forward_flag_) {
         ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
     }
 
@@ -169,7 +176,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         }
 
         //Copy current conc to use for the adjoint equation
-        if (linearized == 0) {
+        if (linearized == 0 && !n_misc_->forward_flag_) {
             ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
         }
     }
@@ -361,9 +368,11 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
 
 PdeOperatorsRD::~PdeOperatorsRD () {
     PetscErrorCode ierr = 0;
-    for (int i = 0; i < nt_ + 1; i++) {
-        ierr = VecDestroy (&c_[i]);
-        ierr = VecDestroy (&p_[i]);
+    if (!n_misc_->forward_flag_) {
+        for (int i = 0; i < nt_ + 1; i++) {
+            ierr = VecDestroy (&c_[i]);
+            ierr = VecDestroy (&p_[i]);
+        }
     }
 }
 

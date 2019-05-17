@@ -374,6 +374,8 @@ int main (int argc, char** argv) {
         n_misc->order_ = order_of_accuracy;
     }
 
+    n_misc->forward_flag_ = fwd_flag;
+
 
     n_misc->predict_flag_ = predict_flag;
     n_misc->verbosity_ = verbosity_in;
