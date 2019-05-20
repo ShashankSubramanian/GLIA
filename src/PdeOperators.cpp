@@ -1,7 +1,7 @@
 #include "PdeOperators.h"
 
-PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc)
-        : PdeOperators (tumor, n_misc) {
+PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops)
+        : PdeOperators (tumor, n_misc, spec_ops) {
 
     PetscErrorCode ierr = 0;
     double dt = n_misc_->dt_;
@@ -389,7 +389,7 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
 
     // Dc
     ierr = VecCopy (tumor_->c_t_, temp_[1]);                        CHKERRQ (ierr);
-    ierr = tumor_->k_->applyD (temp_[0], temp_[1], n_misc_->plan_);
+    ierr = tumor_->k_->applyD (temp_[0], temp_[1]);
 
     // Rc = rho * c * (1 - c)
     ierr = VecGetArray (temp_[1], &c_ptr);                          CHKERRQ (ierr);

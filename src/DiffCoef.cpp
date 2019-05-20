@@ -1,6 +1,6 @@
 #include "DiffCoef.h"
 
-DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
+DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : spec_ops_ (spec_ops),
   k_scale_(1E-2)
 , k_gm_wm_ratio_(1.0 / 5.0)
 , k_glm_wm_ratio_(3.0 / 5.0)
@@ -169,12 +169,12 @@ PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     double sigma = 2.0 * M_PI / n_misc->n_[0];
     
 
-    ierr = weierstrassSmoother (kxx_, kxx_, n_misc, sigma);
-    ierr = weierstrassSmoother (kxy_, kxy_, n_misc, sigma);
-    ierr = weierstrassSmoother (kxz_, kxz_, n_misc, sigma);
-    ierr = weierstrassSmoother (kyy_, kyy_, n_misc, sigma);
-    ierr = weierstrassSmoother (kyz_, kyz_, n_misc, sigma);
-    ierr = weierstrassSmoother (kzz_, kzz_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (kxx_, kxx_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (kxy_, kxy_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (kxz_, kxz_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (kyy_, kyy_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (kyz_, kyz_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (kzz_, kzz_, n_misc, sigma);
 
 
     PetscFunctionReturn(0);
@@ -223,7 +223,7 @@ PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, fft_plan *plan) {
+PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diff-coeff-apply-D");
@@ -235,9 +235,9 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, fft_plan *plan) {
     XYZ[1] = 1;
     XYZ[2] = 1;
 
-    accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, t.data());
+    ierr = spec_ops_->computeGradient (temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
     ierr = applyK (temp_[4], temp_[5], temp_[6]);
-    accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, t.data());
+    ierr = spec_ops_->computeDivergence (dc, temp_[1], temp_[2], temp_[3], t.data());
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);

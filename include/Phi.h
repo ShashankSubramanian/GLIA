@@ -8,7 +8,7 @@
 
 class Phi {
 	public:
-		Phi (std::shared_ptr<NMisc> n_misc);
+		Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spec_ops);
 
 		std::vector<Vec> phi_vec_;
 
@@ -18,6 +18,7 @@ class Phi {
 		int np_, n_local_;
 
 		std::shared_ptr<NMisc> n_misc_;
+		std::shared_ptr<SpectralOperators> spec_ops_;
 		std::vector<double> centers_;   //Vector of centers for the gaussians
 		std::vector<double> centers_temp_; // Keeps track of centers if phis ever need to be changed
 

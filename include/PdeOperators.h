@@ -6,14 +6,12 @@
 #include "DiffSolver.h"
 #include "AdvectionSolver.h"
 #include "ElasticitySolver.h"
-
-#include <mpi.h>
-#include <omp.h>
+#include "SpectralOperators.h"
 
 class PdeOperators {
 	public:
-		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
-			diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
+		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : tumor_(tumor), n_misc_(n_misc), spec_ops_(spec_ops) {
+			diff_solver_ = std::make_shared<DiffSolver> (n_misc, spec_ops, tumor->k_);
 			nt_ = n_misc->nt_;
 			diff_ksp_itr_state_ = 0;
 			diff_ksp_itr_adj_ = 0;
@@ -22,6 +20,7 @@ class PdeOperators {
 		std::shared_ptr<Tumor> tumor_;
 		std::shared_ptr<DiffSolver> diff_solver_;
 		std::shared_ptr<NMisc> n_misc_;
+		std::shared_ptr<SpectralOperators> spec_ops_;
 
 		// @brief time history of state variable
 		std::vector<Vec> c_;
@@ -49,7 +48,7 @@ class PdeOperators {
 
 class PdeOperatorsRD : public PdeOperators {
 	public:
-		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
+		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 
 		virtual PetscErrorCode solveState (int linearized);
 		virtual PetscErrorCode reaction (int linearized, int i);
@@ -66,7 +65,7 @@ class PdeOperatorsRD : public PdeOperators {
 
 class PdeOperatorsMassEffect : public PdeOperatorsRD {
 	public:
-		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
+		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : PdeOperatorsRD (tumor, n_misc, spec_ops) {
 			PetscErrorCode ierr = 0;
 			// adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
 			adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);

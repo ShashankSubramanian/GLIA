@@ -18,25 +18,26 @@ struct InterpolationContext {
     }
 };
 
-TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) :
+TumorSolverInterface::TumorSolverInterface (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) :
 initialized_ (false),
 optimizer_settings_changed_ (false),
 n_misc_ (n_misc),
+spec_ops_ (spec_ops),
 tumor_ (),
 pde_operators_ (),
 derivative_operators_ (),
 inv_solver_ () {
     PetscErrorCode ierr = 0;
     if (n_misc != nullptr)
-        initialize (n_misc, phi, mat_prop);
+        initialize (n_misc, spec_ops, phi, mat_prop);
 }
 
-PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
+PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     if (initialized_) PetscFunctionReturn (0);
 
-    tumor_ = std::make_shared<Tumor> (n_misc);
+    tumor_ = std::make_shared<Tumor> (n_misc, spec_ops);
     n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
@@ -53,23 +54,23 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     #endif
 
     ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
-    ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
+    ierr = tumor_->initialize (p, n_misc, spec_ops, phi, mat_prop);
 
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
-        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
+        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
     if (n_misc->model_ == 2) {
-        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
+        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
         derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc, tumor_);
     }
     if (n_misc->model_ == 3) {
-        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc);
+        pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc, tumor_);
     }
     if (n_misc->model_ == 4) {
-        pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc);
+        pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc, spec_ops);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
     // create tumor inverse solver
@@ -124,19 +125,19 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     // ++ re-initialize pdeoperators and derivativeoperators ++ if either tumor model or np or nt changed
     // invcludes re-allocating time history for adjoint,
     if (n_misc_->model_ == 1 && (modelchanged || npchanged || ntchanged)) {
-      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
     if (n_misc_->model_ == 2 && (modelchanged || npchanged || ntchanged)) {
-      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
     }
     if (n_misc_->model_ == 3 && (modelchanged || npchanged || ntchanged)) {
-      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+      pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
     }
     if (n_misc_->model_ == 4 && (modelchanged || npchanged || ntchanged)) {
-      pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc_);
+      pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..

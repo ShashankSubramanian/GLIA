@@ -1,11 +1,11 @@
 #include "Tumor.h"
 
-Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
+Tumor::Tumor (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : n_misc_ (n_misc), spec_ops_ (spec_ops) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    k_ = std::make_shared<DiffCoef> (n_misc);
-    rho_ = std::make_shared<ReacCoef> (n_misc);
+    k_ = std::make_shared<DiffCoef> (n_misc, spec_ops);
+    rho_ = std::make_shared<ReacCoef> (n_misc, spec_ops);
     obs_ = std::make_shared<Obs> (n_misc);
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t_);
@@ -41,11 +41,11 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
 }
 
 
-PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
+PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     if (mat_prop == nullptr) {
-        mat_prop_ = std::make_shared<MatProp> (n_misc);
+        mat_prop_ = std::make_shared<MatProp> (n_misc, spec_ops);
         ierr = mat_prop_->setValues (n_misc);
     }
     else
@@ -59,7 +59,7 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     ierr = setTrueP (n_misc);                                     CHKERRQ (ierr);
 
     if (phi == nullptr) {
-        phi_ = std::make_shared<Phi> (n_misc);
+        phi_ = std::make_shared<Phi> (n_misc, spec_ops);
         ierr = phi_->setGaussians (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
         ierr = phi_->setValues (mat_prop_);
     }

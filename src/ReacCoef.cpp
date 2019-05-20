@@ -1,6 +1,6 @@
 #include "ReacCoef.h"
 
-ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc) {
+ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : spec_ops_ (spec_ops) {
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &rho_vec_);
     ierr = VecSetSizes (rho_vec_, n_misc->n_local_, n_misc->n_global_);
@@ -89,7 +89,7 @@ PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr;
     double sigma = 2.0 * M_PI / n_misc->n_[0];
 
-    ierr = weierstrassSmoother (rho_vec_, rho_vec_, n_misc, sigma);
+    ierr = spec_ops_->weierstrassSmoother (rho_vec_, rho_vec_, n_misc, sigma);
 
     PetscFunctionReturn(0);
 }

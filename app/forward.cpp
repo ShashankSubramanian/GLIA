@@ -56,24 +56,11 @@ int main (int argc, char** argv) {
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
     int isize[3], osize[3], istart[3], ostart[3];
-    double *c_0;
-    Complex *c_hat;
-    #ifdef CUDA
-        int64_t alloc_max = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
-        cudaMalloc ((void**) &c_0, alloc_max);
-        cudaMalloc ((void**) &c_hat, alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-
-        // define constants for the gpu
-        initCudaConstants (isize, osize, istart, ostart, n);
-    #else
-        int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-        c_0= (double*) accfft_alloc (alloc_max);
-        c_hat = (Complex*) accfft_alloc (alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);        
-    #endif
-    fft_free (c_0);
-    fft_free (c_hat);
+   
+    std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> ();
+    spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
+    int64_t alloc_max = spec_ops->alloc_max_;
+    fft_plan *plan = spec_ops->plan_;
 
 /* --------------------------------------------------------------------------------------------------------------*/
 
@@ -152,6 +139,5 @@ int main (int argc, char** argv) {
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
-	accfft_destroy_plan (plan);
 	PetscFinalize ();
 }

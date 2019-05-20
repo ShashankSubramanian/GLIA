@@ -1,0 +1,252 @@
+#include "SpectralOperators.h"
+
+void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm) {
+
+	double *c_0;
+    Complex *c_hat;
+
+    #ifdef CUDA
+        alloc_max_ = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
+        cudaMalloc ((void**) &c_0, alloc_max_);
+        cudaMalloc ((void**) &c_hat, alloc_max_);
+        plan_ = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+
+        // define constants for the gpu
+        initCudaConstants (isize, osize, istart, ostart, n);
+    #else
+        alloc_max_ = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        c_0 = (double*) accfft_alloc (alloc_max_);
+        c_hat = (Complex*) accfft_alloc (alloc_max_);
+        plan_ = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);        
+    #endif
+
+    fft_free (c_0);
+    fft_free (c_hat);
+
+}
+
+void SpectralOperators::executeFFTR2C (double *f, Complex *f_hat) {
+    accfft_execute_r2c (plan_, f, f_hat);
+}
+
+void SpectralOperators::executeFFTC2R (Complex *f_hat, double *f) {
+    accfft_execute_c2r (plan_, f_hat, f);
+}
+
+PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, double *timers) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    double *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
+    #ifdef CUDA
+        ierr = VecCUDAGetArrayReadWrite (grad_x, &grad_x_ptr);
+        ierr = VecCUDAGetArrayReadWrite (grad_y, &grad_y_ptr);
+        ierr = VecCUDAGetArrayReadWrite (grad_z, &grad_z_ptr);
+        ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);
+
+        accfft_grad_gpu (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+
+        ierr = VecCUDARestoreArrayReadWrite (grad_x, &grad_x_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (grad_y, &grad_y_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (grad_z, &grad_z_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (x, &x_ptr);
+    #else
+        ierr = VecGetArray (grad_x, &grad_x_ptr);
+        ierr = VecGetArray (grad_y, &grad_y_ptr);
+        ierr = VecGetArray (grad_z, &grad_z_ptr);
+        ierr = VecGetArray (x, &x_ptr);
+
+        accfft_grad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+
+        ierr = VecRestoreArray (grad_x, &grad_x_ptr);
+        ierr = VecRestoreArray (grad_y, &grad_y_ptr);
+        ierr = VecRestoreArray (grad_z, &grad_z_ptr);
+        ierr = VecRestoreArray (x, &x_ptr);
+    #endif
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, double *timers) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    double *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
+    #ifdef CUDA
+        ierr = VecCUDAGetArrayReadWrite (div, &div_ptr);
+        ierr = VecCUDAGetArrayReadWrite (dx, &dx_ptr);
+        ierr = VecCUDAGetArrayReadWrite (dy, &dy_ptr);
+        ierr = VecCUDAGetArrayReadWrite (dz, &dz_ptr);
+
+        accfft_divergence_gpu (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+
+        ierr = VecCUDARestoreArrayReadWrite (div, &div_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (dx, &dx_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (dy, &dy_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (dz, &dz_ptr);
+    #else
+        ierr = VecGetArray (div, &div_ptr);
+        ierr = VecGetArray (dx, &dx_ptr);
+        ierr = VecGetArray (dy, &dy_ptr);
+        ierr = VecGetArray (dz, &dz_ptr);
+
+        accfft_divergence (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+
+        ierr = VecRestoreArray (div, &div_ptr);
+        ierr = VecRestoreArray (dx, &dx_ptr);
+        ierr = VecRestoreArray (dy, &dy_ptr);
+        ierr = VecRestoreArray (dz, &dz_ptr);
+    #endif
+    PetscFunctionReturn (0);
+}
+
+// apply weierstrass smoother
+PetscErrorCode SpectralOperators::weierstrassSmoother (Vec wc, Vec c, std::shared_ptr<NMisc> n_misc, double sigma) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("spectral-smoother");
+    std::array<double, 7> t = {0};
+
+    double self_exec_time = -MPI_Wtime ();
+
+    double *wc_ptr, *c_ptr;
+    #ifdef CUDA
+        ierr = VecCUDAGetArrayReadWrite (wc, &wc_ptr);
+        ierr = VecCUDAGetArrayReadWrite (c, &c_ptr);
+
+        ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
+
+        ierr = VecCUDARestoreArrayReadWrite (wc, &wc_ptr);
+        ierr = VecCUDARestoreArrayReadWrite (c, &c_ptr);
+    #else
+        ierr = VecGetArray (wc, &wc_ptr);
+        ierr = VecGetArray (c, &c_ptr);
+
+        ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
+
+        ierr = VecRestoreArray (wc, &wc_ptr);
+        ierr = VecRestoreArray (c, &c_ptr);
+    #endif
+
+    self_exec_time += MPI_Wtime ();
+
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+
+    PetscFunctionReturn (0);
+}
+
+
+int SpectralOperators::weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma) {
+    MPI_Comm c_comm = n_misc->c_comm_;
+    int nprocs, procid;
+    MPI_Comm_rank(c_comm, &procid);
+    MPI_Comm_size(c_comm, &nprocs);
+
+    int *N = n_misc->n_;
+    int *istart, *isize, *osize, *ostart;
+    istart = n_misc->istart_;
+    ostart = n_misc->ostart_;
+    isize = n_misc->isize_;
+    osize = n_misc->osize_;
+    Complex *c_hat, *f_hat;
+    double *f;
+    int alloc_max = alloc_max_;
+    #ifdef CUDA
+        cudaMalloc ((void**) &c_hat, alloc_max);
+        cudaMalloc ((void**) &f_hat, alloc_max);
+        cudaMalloc ((void**) &f, alloc_max);
+    #else
+        c_hat = (Complex*) accfft_alloc (alloc_max);
+        f_hat = (Complex*) accfft_alloc (alloc_max);
+        f = (double*) accfft_alloc (alloc_max);
+    #endif
+
+    const int Nx = n_misc->n_[0], Ny = n_misc->n_[1], Nz = n_misc->n_[2];
+    const double pi = M_PI, twopi = 2.0 * pi, factor = 1.0 / (Nx * Ny * Nz);
+    const double hx = twopi / Nx, hy = twopi / Ny, hz = twopi / Nz;
+    fft_plan * plan = n_misc->plan_;
+
+    double sum_f_local = 0., sum_f = 0;
+    #ifdef CUDA
+        // user define cuda call
+        computeWeierstrassFilterCuda (f, &sum_f_local, sigma, isize);
+    #else
+        double X, Y, Z, Xp, Yp, Zp;
+        int64_t ptr;
+        for (int i = 0; i < isize[0]; i++)
+            for (int j = 0; j < isize[1]; j++)
+                for (int k = 0; k < isize[2]; k++) {
+                    X = (istart[0] + i) * hx;
+                    Xp = X - twopi;
+                    Y = (istart[1] + j) * hy;
+                    Yp = Y - twopi;
+                    Z = (istart[2] + k) * hz;
+                    Zp = Z - twopi;
+                    ptr = i * isize[1] * isize[2] + j * isize[2] + k;
+                    f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
+                            + std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+
+                    f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
+                            + std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+
+                    f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+                            + std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
+
+                    f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+                            + std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
+
+                    if (f[ptr] != f[ptr])
+                        f[ptr] = 0.; // To avoid Nan
+                    sum_f_local += f[ptr];
+                }
+    #endif
+    
+
+    MPI_Allreduce(&sum_f_local, &sum_f, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    double normalize_factor = 1. / (sum_f * hx * hy * hz);
+
+    #ifdef CUDA
+        cublasStatus_t status;
+        cublasHandle_t handle;
+        // cublas for vec scale
+        PetscCUBLASGetHandle (&handle);
+        status = cublasDscal (handle, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
+        cublasCheckError (status);
+    #else
+        for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
+            f[i] = f[i] * normalize_factor;
+    #endif
+
+    /* Forward transform */
+    executeFFTR2C (f, f_hat);
+    executeFFTR2C (c, c_hat);    
+
+    // Perform the Hadamard Transform f_hat=f_hat.*c_hat
+    #ifdef CUDA
+        double alp = factor * hx * hy * hz;
+        hadamardComplexProductCuda ((cuDoubleComplex*) f_hat, (cuDoubleComplex*) c_hat, osize);
+        status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) f_hat, 1);
+        cublasCheckError (status);
+    #else   
+        std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
+        std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
+        for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
+            cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
+    #endif
+
+    /* Backward transform */
+    executeFFTC2R (f_hat, Wc);
+
+    fft_free(f);
+    fft_free(f_hat);
+    fft_free(c_hat);
+
+    return 0;
+}
+
+
+SpectralOperators::~SpectralOperators () {
+	if (plan_ != nullptr) {
+        accfft_destroy_plan (plan_);
+    }
+	accfft_cleanup ();
+}

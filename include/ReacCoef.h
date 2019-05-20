@@ -8,7 +8,7 @@
 
 class ReacCoef {
 	public:
-		ReacCoef (std::shared_ptr<NMisc> n_misc);
+		ReacCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 
 		int smooth_flag_;
 
@@ -16,6 +16,8 @@ class ReacCoef {
 		double r_gm_wm_ratio_;
 		double r_glm_wm_ratio_;
 		Vec rho_vec_;
+
+		std::shared_ptr<SpectralOperators> spec_ops_;
 
 		PetscErrorCode setValues (double rho_scale, double r_gm_wm_ratio, double r_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);

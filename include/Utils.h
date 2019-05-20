@@ -41,6 +41,7 @@
 
     #define accfft_execute_r2c accfft_execute_r2c_gpu
     #define accfft_execute_c2r accfft_execute_c2r_gpu
+    #define accfft_cleanup accfft_cleanup_gpu
     #define fft_free cudaFree
 
 #else
@@ -51,7 +52,7 @@
     #define fft_free accfft_free
 #endif
 
-
+enum {ACCFFT = 0, CUFFT = 1};
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};

@@ -1,7 +1,7 @@
 #include "DiffSolver.h"
 #include "petsc/private/kspimpl.h"
 
-DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k)
+DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k)
 :
 ctx_() {
     PetscErrorCode ierr = 0;
@@ -12,6 +12,7 @@ ctx_() {
     ctx_->n_misc_ = n_misc;
     ctx_->dt_ = n_misc->dt_;
     ctx_->plan_ = n_misc->plan_;
+    ctx_->spec_ops_ = spec_ops;
     ctx_->temp_ = k->temp_[0];
     ctx_->precfactor_ = k->temp_accfft_;
     ctx_->work_cuda_ = k->work_cuda_;
@@ -51,7 +52,7 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
 
     double alph = -1.0 / 2.0 * ctx->dt_;
-    ierr = ctx->k_->applyD (ctx->temp_, y, ctx->plan_);
+    ierr = ctx->k_->applyD (ctx->temp_, y);
     ierr = VecAXPY (y, alph, ctx->temp_);                       CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
@@ -147,25 +148,25 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
         Complex *c_hat;
         ierr = VecCUDAGetArrayReadWrite (y, &y_ptr);                             CHKERRQ (ierr);
         cudaMalloc ((void**)&c_hat, n_misc->accfft_alloc_max_);
-        accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
+        ctx->spec_ops_->executeFFTR2C (y_ptr, c_hat);
 
         // TODO: is there a better way to do this by somehow casting double* to complex*?
         hadamardComplexProductCuda ((cuDoubleComplex*) c_hat, ctx->precfactor_, n_misc->osize_);
 
-        accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
+        ctx->spec_ops_->executeFFTC2R (c_hat, y_ptr);
 
         ierr = VecCUDARestoreArrayReadWrite (y, &y_ptr);                         CHKERRQ (ierr);
     #else
         ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
         Complex *c_hat = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
-        accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
+        ctx->spec_ops_->executeFFTR2C (y_ptr, c_hat);
 
         std::complex<double> *c_a = (std::complex<double> *) c_hat;
         for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
             c_a[i] *= ctx->precfactor_[i];
         }
 
-        accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
+        ctx->spec_ops_->executeFFTC2R (c_hat, y_ptr);
 
         ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
     #endif
@@ -195,7 +196,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
     }
     double alph = 1.0 / 2.0 * ctx->dt_;
     ierr = VecCopy (c, rhs_);                                   CHKERRQ (ierr);
-    ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);
+    ierr = ctx->k_->applyD (ctx->temp_, rhs_);
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);
 
     // hack -- explicity set the ksp_->work vecs as cuda vecs since

@@ -3,12 +3,12 @@
 
 #include "Utils.h"
 #include "DiffCoef.h"
-#include <mpi.h>
-#include <omp.h>
+#include "SpectralOperators.h"
 
 struct Ctx {
 	std::shared_ptr<DiffCoef> k_;
 	std::shared_ptr<NMisc> n_misc_;
+	std::shared_ptr<SpectralOperators> spec_ops_;
 	fft_plan *plan_;
 	double dt_;
 	Vec temp_;
@@ -18,7 +18,7 @@ struct Ctx {
 
 class DiffSolver {
 	public:
-		DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k);
+		DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k);
 
 		KSP ksp_;
 		Mat A_;

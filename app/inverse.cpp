@@ -35,12 +35,12 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*);
-PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
+PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*);
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*, char*, char*, char*);
 PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*, bool inversed = true);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
-PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc);
 
 
@@ -210,24 +210,12 @@ int main (int argc, char** argv) {
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
     int isize[3], osize[3], istart[3], ostart[3];
-    double *c_0;
-    Complex *c_hat;
-    #ifdef CUDA
-        int64_t alloc_max = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
-        cudaMalloc ((void**) &c_0, alloc_max);
-        cudaMalloc ((void**) &c_hat, alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+   
+    std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> ();
+    spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
+    int64_t alloc_max = spec_ops->alloc_max_;
+    fft_plan *plan = spec_ops->plan_;
 
-        // define constants for the gpu
-        initCudaConstants (isize, osize, istart, ostart, n);
-    #else
-        int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-        c_0= (double*) accfft_alloc (alloc_max);
-        c_hat = (Complex*) accfft_alloc (alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);        
-    #endif
-    fft_free (c_0);
-    fft_free (c_hat);
 /* ACCFFT, PETSC setup end */
 /* --------------------------------------------------------------------------------------------------------------*/
 
@@ -394,7 +382,7 @@ int main (int argc, char** argv) {
         n_misc->nt_ = nt;
     }
 
-    std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
+    std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, spec_ops, nullptr, nullptr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
     // Set optimization flags of tumor solver from input script
@@ -408,7 +396,7 @@ int main (int argc, char** argv) {
 
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
-        ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, gm_path, wm_path, csf_path, glm_path);
+        ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, spec_ops, gm_path, wm_path, csf_path, glm_path);
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
@@ -425,7 +413,7 @@ int main (int argc, char** argv) {
             ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
         }
     } else {
-        ierr = readData (data, c_0, p_rec, n_misc, data_path);
+        ierr = readData (data, c_0, p_rec, n_misc, spec_ops, data_path);
         if(use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path, invert_obs_mask);
           PCOUT << "Use custom observation mask\n";
@@ -608,7 +596,7 @@ int main (int argc, char** argv) {
             }
             PCOUT << " --------------  -------------- -----------------\n";
 
-            ierr = computeSegmentation(tumor, n_misc);      // Writes segmentation with c0 and c1
+            ierr = computeSegmentation(tumor, n_misc, spec_ops);      // Writes segmentation with c0 and c1
 
             std::stringstream sstm;
             sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
@@ -675,8 +663,7 @@ int main (int argc, char** argv) {
 
 }
 /* --------------------------------------------------------------------------------------------------------------*/
-    accfft_destroy_plan (plan);
-    accfft_cleanup();
+
     MPI_Comm_free(&c_comm);
     ierr = PetscFinalize ();
     return ierr;
@@ -846,7 +833,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char *data_path) {
+PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *data_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -874,20 +861,8 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     // Smooth the data
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
     
-    ierr = weierstrassSmoother (data, data, n_misc, sigma_smooth);
-
-    // size_t pos;
-    // std::ifstream ifile;
-    // std::string c0_path (data_path);
-    // pos = c0_path.find ("data.nc");
-    // c0_path.replace (pos, 9, "c0True.nc");
-    // ifile.open (c0_path);
-
-    // if (ifile) {
-    //     dataIn (c_0, n_misc, c0_path.c_str());
-    // } else {
+    ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
     ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
-    // }
 
     PetscFunctionReturn (0);
 }
@@ -913,7 +888,7 @@ PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char *gm_path, char *wm_path, char *csf_path, char *glm_path) {
+PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *gm_path, char *wm_path, char *csf_path, char *glm_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -932,9 +907,9 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
-    ierr = weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
-    ierr = weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
-    ierr = weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
+    ierr = spec_ops->weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
+    ierr = spec_ops->weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
+    ierr = spec_ops->weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
 
     // Set bg prob as 1 - sum
     ierr = VecWAXPY (bg, 1., gm, wm);                   CHKERRQ (ierr);
@@ -1369,7 +1344,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 }
 
 
-PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -1411,7 +1386,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
 
     double sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
 
-    // ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+    // ierr = spec_ops->weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 
     ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr);
 
@@ -1448,7 +1423,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     ierr = VecRestoreArray(tumor->mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray(tumor->c_0_, &c_ptr);                                CHKERRQ(ierr);
 
-    // ierr = weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+    // ierr = spec_ops->weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 
 
     ierr = VecRestoreArray(max, &max_ptr);                                      CHKERRQ(ierr);

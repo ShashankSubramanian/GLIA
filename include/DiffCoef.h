@@ -19,12 +19,14 @@
  */
 class DiffCoef {
 	public:
-		DiffCoef (std::shared_ptr<NMisc> n_misc);
+		DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 
 		double k_scale_;         // (= k_f * k_wm),    k_wm  := 1 (fixed)      INVERSION for k_f, k_gm, k_glm
 		double k_gm_wm_ratio_;   // (= k_f * k_gm),    k_gm  := ratio_gm_wm
 		double k_glm_wm_ratio_;  // (= k_f * k_glm),   k_glm := ratio_glm_wm
 		int smooth_flag_;
+
+		std::shared_ptr<SpectralOperators> spec_ops_;
 
 		Vec kxx_;
 		Vec kxy_;
@@ -52,7 +54,7 @@ class DiffCoef {
 		PetscErrorCode setWorkVecs(Vec * workvecs);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);
-		PetscErrorCode applyD (Vec dc, Vec c, fft_plan *plan);
+		PetscErrorCode applyD (Vec dc, Vec c);
 		/** @brief computes x = k_bar (grad c)^T grad \alpha, where k_bar = dK/dm */
 		PetscErrorCode compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, fft_plan *plan);
 		~DiffCoef ();

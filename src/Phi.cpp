@@ -1,6 +1,6 @@
 #include "Phi.h"
 
-Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
+Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spec_ops) : n_misc_ (n_misc), spec_ops_ (spec_ops) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
 
@@ -75,7 +75,7 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
 
         if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
-            ierr = weierstrassSmoother (phi_vec_[i], phi_vec_[i], n_misc_, sigma_smooth);   
+            ierr = spec_ops_->weierstrassSmoother (phi_vec_[i], phi_vec_[i], n_misc_, sigma_smooth);   
         }
 
         // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)

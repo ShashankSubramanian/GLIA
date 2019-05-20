@@ -6,12 +6,13 @@
 #include "PdeOperators.h"
 #include "DerivativeOperators.h"
 #include "InvSolver.h"
+#include "SpectralOperators.h"
 
 class TumorSolverInterface {
 	public :
-		TumorSolverInterface (std::shared_ptr<NMisc> n_misc = {}, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
+		TumorSolverInterface (std::shared_ptr<NMisc> n_misc = {}, std::shared_ptr<SpectralOperators> spec_ops = {}, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		/// @brief initializes the TumorSolverInterface
-		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
+		PetscErrorCode initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 
 
     int npChangedResetComponents();
@@ -105,6 +106,7 @@ class TumorSolverInterface {
 	  bool initialized_;
 		bool optimizer_settings_changed_;
 		std::shared_ptr<NMisc> n_misc_;
+		std::shared_ptr<SpectralOperators> spec_ops_;
 		std::shared_ptr<Tumor> tumor_;
 		std::shared_ptr<PdeOperators> pde_operators_;
 		std::shared_ptr<DerivativeOperators> derivative_operators_;

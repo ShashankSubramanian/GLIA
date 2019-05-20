@@ -1,6 +1,6 @@
 #include "MatProp.h"
 
-MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
+MatProp::MatProp (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : spec_ops_ (spec_ops) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &gm_);
 	ierr = VecSetSizes (gm_, n_misc->n_local_, n_misc->n_global_);
@@ -61,10 +61,10 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 
 			double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
-			ierr = weierstrassSmoother (gm_, gm_, n_misc, sigma_smooth);
-			ierr = weierstrassSmoother (wm_, wm_, n_misc, sigma_smooth);
-			ierr = weierstrassSmoother (glm_, glm_, n_misc, sigma_smooth);
-			ierr = weierstrassSmoother (csf_, csf_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (gm_, gm_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (wm_, wm_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (glm_, glm_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (csf_, csf_, n_misc, sigma_smooth);
 
 			ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 			ierr = VecGetArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
@@ -160,7 +160,7 @@ PetscErrorCode MatProp::filterBackgroundAndSmooth (Vec in) {
 	ierr = VecShift (bg_, 1.0);							CHKERRQ (ierr); // bg
 
 	double sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
-	ierr = weierstrassSmoother (in, in, n_misc_, sigma_smooth);
+	ierr = spec_ops_->weierstrassSmoother (in, in, n_misc_, sigma_smooth);
 }
 
 MatProp::~MatProp() {
