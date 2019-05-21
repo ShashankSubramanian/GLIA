@@ -10,6 +10,7 @@ class SpectralOperators {
 		}
 
 		int fft_mode_;
+		int *isize_, *istart_, *osize_, *ostart_, *n_;
 		fft_plan *plan_;
 		cufftHandle plan_r2c_;
 		cufftHandle plan_c2r_;

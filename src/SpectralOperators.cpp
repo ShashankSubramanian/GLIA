@@ -9,6 +9,11 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
     #ifdef CUDA
         alloc_max_ = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
+        isize_ = isize;
+        istart_ = istart;
+        osize_ = osize;
+        ostart_ = ostart;
+        n_ = n;
         cudaMalloc ((void**) &c_0, alloc_max_);
         cudaMalloc ((void**) &c_hat, alloc_max_);
 
@@ -22,6 +27,11 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         initCudaConstants (isize, osize, istart, ostart, n);
     #else
         alloc_max_ = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        isize_ = isize;
+        istart_ = istart;
+        osize_ = osize;
+        ostart_ = ostart;
+        n_ = n;
         c_0 = (double*) accfft_alloc (alloc_max_);
         c_hat = (Complex*) accfft_alloc (alloc_max_);
         plan_ = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);        
@@ -64,7 +74,59 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
         ierr = VecCUDAGetArrayReadWrite (grad_z, &grad_z_ptr);
         ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);
 
-        accfft_grad_gpu (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+        if (fft_mode_ == ACCFFT)
+            accfft_grad_gpu (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+        else {
+            cufftResult cufft_status;
+            Complex *x_hat, *wx_hat;
+            cudaMalloc ((void**) &x_hat, alloc_max_);
+            cudaMalloc ((void**) &wx_hat, alloc_max_);
+
+            // compute forward transform
+            cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) x_ptr, (cufftDoubleComplex*) x_hat);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            // set the bits
+            std::bitset<3> XYZ;
+            if (pXYZ != NULL) {
+                XYZ = *pXYZ;
+            } else {
+                XYZ[0] = 1;
+                XYZ[1] = 1;
+                XYZ[2] = 1;
+            }
+
+            if (XYZ[0]) {
+                // compute x gradient
+                multiplyXWaveNumberCuda ((cuDoubleComplex*) wx_hat, (cuDoubleComplex*) x_hat, osize_);
+                // backwards transform
+                cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat, (cufftDoubleReal*) grad_x_ptr);
+                cufftCheckError (cufft_status);
+                cudaDeviceSynchronize ();
+            }
+
+            if (XYZ[1]) {
+                // compute y gradient
+                multiplyYWaveNumberCuda ((cuDoubleComplex*) wx_hat, (cuDoubleComplex*) x_hat, osize_);
+                // backwards transform
+                cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat, (cufftDoubleReal*) grad_y_ptr);
+                cufftCheckError (cufft_status);
+                cudaDeviceSynchronize ();
+            }
+
+            if (XYZ[2]) {
+                // compute z gradient
+                multiplyZWaveNumberCuda ((cuDoubleComplex*) wx_hat, (cuDoubleComplex*) x_hat, osize_);
+                // backwards transform
+                cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat, (cufftDoubleReal*) grad_z_ptr);
+                cufftCheckError (cufft_status);
+                cudaDeviceSynchronize ();
+            }
+
+            fft_free (x_hat);
+            fft_free (wx_hat);
+        }
 
         ierr = VecCUDARestoreArrayReadWrite (grad_x, &grad_x_ptr);
         ierr = VecCUDARestoreArrayReadWrite (grad_y, &grad_y_ptr);
@@ -96,7 +158,68 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
         ierr = VecCUDAGetArrayReadWrite (dy, &dy_ptr);
         ierr = VecCUDAGetArrayReadWrite (dz, &dz_ptr);
 
-        accfft_divergence_gpu (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+        if (fft_mode_ == ACCFFT) {
+            accfft_divergence_gpu (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+        } else {
+            cufftResult cufft_status;
+            Complex *x_hat, *wx_hat;
+            cudaMalloc ((void**) &x_hat, alloc_max_);
+            cudaMalloc ((void**) &wx_hat, alloc_max_);
+            double *d1_ptr, *d2_ptr;
+            cudaMalloc ((void**) &d1_ptr, alloc_max_);
+            cudaMalloc ((void**) &d2_ptr, alloc_max_);
+
+
+            // compute forward transform for dx
+            cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) dx_ptr, (cufftDoubleComplex*) x_hat);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            multiplyXWaveNumberCuda ((cuDoubleComplex*) wx_hat, (cuDoubleComplex*) x_hat, osize_);
+            // backwards transform
+            cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat, (cufftDoubleReal*) d1_ptr);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            // compute forward transform for dy
+            cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) dy_ptr, (cufftDoubleComplex*) x_hat);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            multiplyYWaveNumberCuda ((cuDoubleComplex*) wx_hat, (cuDoubleComplex*) x_hat, osize_);
+            // backwards transform
+            cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat, (cufftDoubleReal*) d2_ptr);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            // compute forward transform for dz
+            cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) dz_ptr, (cufftDoubleComplex*) x_hat);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            multiplyZWaveNumberCuda ((cuDoubleComplex*) wx_hat, (cuDoubleComplex*) x_hat, osize_);
+            // backwards transform
+            cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat, (cufftDoubleReal*) div_ptr);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+
+            // cublas for axpy
+             cublasStatus_t status;
+            cublasHandle_t handle;
+            // cublas for vec scale
+            PetscCUBLASGetHandle (&handle);
+            double alp = 1.;
+            status = cublasDaxpy (handle, isize_[0] * isize_[1] * isize_[2], &alp, d1_ptr, 1, div_ptr, 1);
+            cublasCheckError (status);
+            status = cublasDaxpy (handle, isize_[0] * isize_[1] * isize_[2], &alp, d2_ptr, 1, div_ptr, 1);
+            cublasCheckError (status);
+
+            fft_free (x_hat);
+            fft_free (wx_hat);
+            fft_free (d1_ptr);
+            fft_free (d2_ptr);
+
+        }
 
         ierr = VecCUDARestoreArrayReadWrite (div, &div_ptr);
         ierr = VecCUDARestoreArrayReadWrite (dx, &dx_ptr);

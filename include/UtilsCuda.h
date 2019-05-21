@@ -112,5 +112,8 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz);
 void precFactorDiffusionCuda (double *precfactor, double *work, int *sz);
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
 void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized);
+void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
+void multiplyYWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
+void multiplyZWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
 
 #endif
