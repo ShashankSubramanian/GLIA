@@ -5,11 +5,18 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 	double *c_0;
     Complex *c_hat;
 
+    cufftResult ierr;
+
     #ifdef CUDA
         alloc_max_ = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
         cudaMalloc ((void**) &c_0, alloc_max_);
         cudaMalloc ((void**) &c_hat, alloc_max_);
+
         plan_ = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+        if (fft_mode_ == CUFFT) {
+            ierr = cufftPlan3d (&plan_r2c_, n[0], n[1], n[2], CUFFT_R2C);   CHKERRQ (ierr != CUFFT_SUCCESS);
+            ierr = cufftPlan3d (&plan_c2r_, n[0], n[1], n[2], CUFFT_C2R);   CHKERRQ (ierr != CUFFT_SUCCESS);
+        }
 
         // define constants for the gpu
         initCudaConstants (isize, osize, istart, ostart, n);
@@ -26,11 +33,25 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 }
 
 void SpectralOperators::executeFFTR2C (double *f, Complex *f_hat) {
-    accfft_execute_r2c (plan_, f, f_hat);
+    cufftResult ierr;
+    if (fft_mode_ == ACCFFT)
+        accfft_execute_r2c (plan_, f, f_hat);
+    else {
+        cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) f, (cufftDoubleComplex*) f_hat);
+        CHKERRQ (ierr != CUFFT_SUCCESS);
+        cudaDeviceSynchronize ();
+    }
 }
 
 void SpectralOperators::executeFFTC2R (Complex *f_hat, double *f) {
-    accfft_execute_c2r (plan_, f_hat, f);
+    cufftResult ierr;
+    if (fft_mode_ == ACCFFT)
+        accfft_execute_c2r (plan_, f_hat, f);
+    else {
+        cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) f_hat, (cufftDoubleReal*) f);
+        CHKERRQ (ierr != CUFFT_SUCCESS);
+        cudaDeviceSynchronize ();
+    }
 }
 
 PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, double *timers) {
@@ -245,8 +266,9 @@ int SpectralOperators::weierstrassSmoother (double * Wc, double *c, std::shared_
 
 
 SpectralOperators::~SpectralOperators () {
-	if (plan_ != nullptr) {
-        accfft_destroy_plan (plan_);
-    }
+    accfft_destroy_plan (plan_);
+    cufftDestroy (plan_r2c_);
+    cufftDestroy (plan_c2r_);
+
 	accfft_cleanup ();
 }

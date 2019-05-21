@@ -7,15 +7,12 @@ class SpectralOperators {
 	public:
 		SpectralOperators (int fft_mode = ACCFFT) {
 			fft_mode_ = fft_mode;
-			plan_ = nullptr;	
-			plan_r2c_ = nullptr;
-			plan_c2r_ = nullptr;
 		}
 
 		int fft_mode_;
 		fft_plan *plan_;
-		cufftHandle *plan_r2c_;
-		cufftHandle *plan_c2r_;
+		cufftHandle plan_r2c_;
+		cufftHandle plan_c2r_;
 		int64_t alloc_max_;
 
 		void setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm);
