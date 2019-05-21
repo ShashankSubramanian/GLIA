@@ -211,7 +211,7 @@ int main (int argc, char** argv) {
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
     int isize[3], osize[3], istart[3], ostart[3];
    
-    std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> ();
+    std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> (CUFFT);
     spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
     int64_t alloc_max = spec_ops->alloc_max_;
     fft_plan *plan = spec_ops->plan_;
