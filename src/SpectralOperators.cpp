@@ -5,7 +5,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 	double *c_0;
     Complex *c_hat;
 
-    cufftResult ierr;
+    cufftResult cufft_status;
 
     #ifdef CUDA
         alloc_max_ = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
@@ -14,8 +14,8 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
         plan_ = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
         if (fft_mode_ == CUFFT) {
-            ierr = cufftPlan3d (&plan_r2c_, n[0], n[1], n[2], CUFFT_R2C);   CHKERRQ (ierr != CUFFT_SUCCESS);
-            ierr = cufftPlan3d (&plan_c2r_, n[0], n[1], n[2], CUFFT_C2R);   CHKERRQ (ierr != CUFFT_SUCCESS);
+            cufft_status = cufftPlan3d (&plan_r2c_, n[0], n[1], n[2], CUFFT_R2C);   cufftCheckError (cufft_status);
+            cufft_status = cufftPlan3d (&plan_c2r_, n[0], n[1], n[2], CUFFT_C2R);   cufftCheckError (cufft_status);
         }
 
         // define constants for the gpu
@@ -33,23 +33,23 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 }
 
 void SpectralOperators::executeFFTR2C (double *f, Complex *f_hat) {
-    cufftResult ierr;
+    cufftResult cufft_status;
     if (fft_mode_ == ACCFFT)
         accfft_execute_r2c (plan_, f, f_hat);
     else {
-        cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) f, (cufftDoubleComplex*) f_hat);
-        CHKERRQ (ierr != CUFFT_SUCCESS);
+        cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) f, (cufftDoubleComplex*) f_hat);
+        cufftCheckError (cufft_status);
         cudaDeviceSynchronize ();
     }
 }
 
 void SpectralOperators::executeFFTC2R (Complex *f_hat, double *f) {
-    cufftResult ierr;
+    cufftResult cufft_status;
     if (fft_mode_ == ACCFFT)
         accfft_execute_c2r (plan_, f_hat, f);
     else {
-        cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) f_hat, (cufftDoubleReal*) f);
-        CHKERRQ (ierr != CUFFT_SUCCESS);
+        cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) f_hat, (cufftDoubleReal*) f);
+        cufftCheckError (cufft_status);
         cudaDeviceSynchronize ();
     }
 }

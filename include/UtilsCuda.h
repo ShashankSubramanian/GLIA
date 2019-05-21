@@ -7,6 +7,7 @@
 #include <math_constants.h>
 #include <cuda_runtime_api.h>
 #include "cublas_v2.h"
+#include "cufft.h"
 
 #include <thrust/system_error.h>
 #include <thrust/device_ptr.h>
@@ -52,10 +53,8 @@ inline void cudaPrintDeviceMemory(int dev=0) {
 }
 
 //cublas error checking
-inline const char* cublasGetErrorString (cublasStatus_t status)
-{
-    switch(status)
-    {
+inline const char* cublasGetErrorString (cublasStatus_t status) {
+    switch(status) {
         case CUBLAS_STATUS_SUCCESS: return "CUBLAS_STATUS_SUCCESS";
         case CUBLAS_STATUS_NOT_INITIALIZED: return "CUBLAS_STATUS_NOT_INITIALIZED";
         case CUBLAS_STATUS_ALLOC_FAILED: return "CUBLAS_STATUS_ALLOC_FAILED";
@@ -68,6 +67,23 @@ inline const char* cublasGetErrorString (cublasStatus_t status)
     return "unknown error";
 }
 
+inline const char* cufftGetErrorString (cufftResult error) {
+    switch (error) {
+        case CUFFT_SUCCESS: return "CUFFT_SUCCESS";
+        case CUFFT_INVALID_PLAN: return "CUFFT_INVALID_PLAN";
+        case CUFFT_ALLOC_FAILED: return "CUFFT_ALLOC_FAILED";
+        case CUFFT_INVALID_TYPE: return "CUFFT_INVALID_TYPE";
+        case CUFFT_INVALID_VALUE: return "CUFFT_INVALID_VALUE";
+        case CUFFT_INTERNAL_ERROR: return "CUFFT_INTERNAL_ERROR";
+        case CUFFT_EXEC_FAILED: return "CUFFT_EXEC_FAILED";
+        case CUFFT_SETUP_FAILED: return "CUFFT_SETUP_FAILED";
+        case CUFFT_INVALID_SIZE: return "CUFFT_INVALID_SIZE";
+        case CUFFT_UNALIGNED_DATA: return "CUFFT_UNALIGNED_DATA";
+    }
+
+    return "unknown error";
+}
+
 
 #define cublasCheckError(ans) cublasAssert((ans), __FILE__, __LINE__,false)
 inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool abort=true) {
@@ -76,6 +92,16 @@ inline int cublasAssert (cublasStatus_t code, const char *file, int line, bool a
 		if (abort) exit(code);
     	return code;
   	}
+  return 0;
+}
+
+#define cufftCheckError(ans) cufftAssert((ans), __FILE__, __LINE__,false)
+inline int cufftAssert (cufftResult code, const char *file, int line, bool abort=true) {
+  if (code != CUFFT_SUCCESS) {
+    fprintf(stderr,"CUFFT Error: %s %s %d\n", cufftGetErrorString (code), file, line);
+    if (abort) exit(code);
+      return code;
+    }
   return 0;
 }
 
