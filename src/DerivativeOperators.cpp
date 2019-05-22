@@ -12,6 +12,16 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     int x_sz;
 
+    
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+    #endif
+
+
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
@@ -100,6 +110,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     (*J) *= 0.5;
     (*J) += reg;
 
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+    #endif
+
     PetscFunctionReturn(0);
 }
 
@@ -115,6 +131,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     double k1, k2, k3;
 
     int x_sz;
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+    #endif
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -204,9 +228,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
         // compute x = (grad c)^T grad \alpha
         // compute gradient of state variable c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], &XYZ, t.data());
         // compute gradient of adjoint variable p(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -292,6 +316,13 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+    #endif
+
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
     PetscFunctionReturn(0);
@@ -310,6 +341,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     double *x_ptr, k1, k2, k3;
 
     int x_sz;
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+    #endif
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -446,9 +485,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
         // compute x = (grad c)^T grad \alpha
         // compute gradient of state variable c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], &XYZ, t.data());
         // compute gradient of adjoint variable p(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -534,8 +573,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+    #endif
+
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
+
 
     PetscFunctionReturn (0);
 

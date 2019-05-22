@@ -821,6 +821,14 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+  #endif
+
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
@@ -841,6 +849,12 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
 
   Vec dJ_full;
   ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
+
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+  #endif
 
   ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ_full, itctx->x_old, itctx->data_gradeval);
 
