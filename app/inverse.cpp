@@ -209,17 +209,23 @@ int main (int argc, char** argv) {
     MPI_Comm c_comm;
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
-    int isize[3], osize[3], istart[3], ostart[3];
-   
-    std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> (CUFFT);
-    spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
-    int64_t alloc_max = spec_ops->alloc_max_;
-    fft_plan *plan = spec_ops->plan_;
 
 /* ACCFFT, PETSC setup end */
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
+    int isize[3], osize[3], istart[3], ostart[3];
+   
+    std::shared_ptr<SpectralOperators> spec_ops;
+    #ifdef CUDA
+        spec_ops = std::make_shared<SpectralOperators> (CUFFT);
+    #else
+        spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
+    #endif        
+    spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
+    int64_t alloc_max = spec_ops->alloc_max_;
+    fft_plan *plan = spec_ops->plan_;
+    
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data

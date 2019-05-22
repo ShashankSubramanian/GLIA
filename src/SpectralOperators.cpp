@@ -5,9 +5,8 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 	double *c_0;
     Complex *c_hat;
 
-    cufftResult cufft_status;
-
     #ifdef CUDA
+        cufftResult cufft_status;
         alloc_max_ = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
         isize_ = isize;
         istart_ = istart;
@@ -43,25 +42,33 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 }
 
 void SpectralOperators::executeFFTR2C (double *f, Complex *f_hat) {
-    cufftResult cufft_status;
-    if (fft_mode_ == ACCFFT)
+    #ifdef CUDA
+        cufftResult cufft_status;
+        if (fft_mode_ == ACCFFT)
+            accfft_execute_r2c (plan_, f, f_hat);
+        else {
+            cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) f, (cufftDoubleComplex*) f_hat);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+        }
+    #else
         accfft_execute_r2c (plan_, f, f_hat);
-    else {
-        cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) f, (cufftDoubleComplex*) f_hat);
-        cufftCheckError (cufft_status);
-        cudaDeviceSynchronize ();
-    }
+    #endif
 }
 
 void SpectralOperators::executeFFTC2R (Complex *f_hat, double *f) {
-    cufftResult cufft_status;
-    if (fft_mode_ == ACCFFT)
+    #ifdef CUDA
+        cufftResult cufft_status;
+        if (fft_mode_ == ACCFFT)
+            accfft_execute_c2r (plan_, f_hat, f);
+        else {
+            cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) f_hat, (cufftDoubleReal*) f);
+            cufftCheckError (cufft_status);
+            cudaDeviceSynchronize ();
+        }
+    #else
         accfft_execute_c2r (plan_, f_hat, f);
-    else {
-        cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) f_hat, (cufftDoubleReal*) f);
-        cufftCheckError (cufft_status);
-        cudaDeviceSynchronize ();
-    }
+    #endif
 }
 
 PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, double *timers) {
@@ -390,8 +397,11 @@ int SpectralOperators::weierstrassSmoother (double * Wc, double *c, std::shared_
 
 SpectralOperators::~SpectralOperators () {
     accfft_destroy_plan (plan_);
-    cufftDestroy (plan_r2c_);
-    cufftDestroy (plan_c2r_);
+
+    #ifdef CUDA
+        cufftDestroy (plan_r2c_);
+        cufftDestroy (plan_c2r_);
+    #endif
 
 	accfft_cleanup ();
 }

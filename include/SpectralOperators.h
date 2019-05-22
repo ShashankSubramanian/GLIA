@@ -12,8 +12,11 @@ class SpectralOperators {
 		int fft_mode_;
 		int *isize_, *istart_, *osize_, *ostart_, *n_;
 		fft_plan *plan_;
-		cufftHandle plan_r2c_;
-		cufftHandle plan_c2r_;
+
+		#ifdef CUDA
+			cufftHandle plan_r2c_;
+			cufftHandle plan_c2r_;
+		#endif
 		int64_t alloc_max_;
 
 		void setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm);
