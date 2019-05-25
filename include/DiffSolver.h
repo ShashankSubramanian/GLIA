@@ -14,6 +14,12 @@ struct Ctx {
 	Vec temp_;
 	double *precfactor_;
 	double *work_cuda_;
+
+	Complex *c_hat_;
+
+	~Ctx () {
+		fft_free (c_hat_);
+	}
 };
 
 class DiffSolver {

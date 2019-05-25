@@ -225,7 +225,7 @@ void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz)
 
 	multiplyXWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
@@ -238,7 +238,7 @@ void multiplyYWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz)
 
 	multiplyYWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
@@ -251,7 +251,7 @@ void multiplyZWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz)
 
 	multiplyZWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
@@ -265,7 +265,7 @@ void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
 
 	precFactorDiffusion <<< n_blocks, n_threads >>> (precfactor, work);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
@@ -278,7 +278,7 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 
 	// use thrust for reduction
@@ -290,7 +290,7 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
 	}
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 }
 
 void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz) {
@@ -298,7 +298,7 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz) {
 
 	hadamardComplexProduct <<< std::ceil((sz[0] * sz[1] * sz[2]) / n_th), n_th >>> (y, x);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
@@ -313,7 +313,7 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz
 		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
 	}
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 }
 
 
@@ -325,6 +325,6 @@ void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, doub
 	else
 		logisticReactionLinearized <<< std::ceil(sz / n_th), n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
 
-	cudaDeviceSynchronize();
+//	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }

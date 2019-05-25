@@ -19,6 +19,9 @@ class SpectralOperators {
 		#endif
 		int64_t alloc_max_;
 
+		Complex *x_hat_, *wx_hat_;
+		double *d1_ptr_, *d2_ptr_;
+
 		void setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm);
 		void executeFFTR2C (double *f, Complex *f_hat);
 		void executeFFTC2R (Complex *f_hat, double *f);
