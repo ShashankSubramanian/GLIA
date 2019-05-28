@@ -52,7 +52,7 @@ void SpectralOperators::executeFFTR2C (double *f, Complex *f_hat) {
         else {
             cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) f, (cufftDoubleComplex*) f_hat);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
         }
     #else
         accfft_execute_r2c (plan_, f, f_hat);
@@ -67,7 +67,7 @@ void SpectralOperators::executeFFTC2R (Complex *f_hat, double *f) {
         else {
             cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) f_hat, (cufftDoubleReal*) f);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
         }
     #else
         accfft_execute_c2r (plan_, f_hat, f);
@@ -92,7 +92,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
             // compute forward transform
             cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) x_ptr, (cufftDoubleComplex*) x_hat_);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             // set the bits
             std::bitset<3> XYZ;
@@ -110,7 +110,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
                 // backwards transform
                 cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat_, (cufftDoubleReal*) grad_x_ptr);
                 cufftCheckError (cufft_status);
- //           cudaDeviceSynchronize ();
+                cudaDeviceSynchronize ();
             }
 
             if (XYZ[1]) {
@@ -119,7 +119,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
                 // backwards transform
                 cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat_, (cufftDoubleReal*) grad_y_ptr);
                 cufftCheckError (cufft_status);
- //           cudaDeviceSynchronize ();
+                cudaDeviceSynchronize ();
             }
 
             if (XYZ[2]) {
@@ -128,7 +128,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
                 // backwards transform
                 cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat_, (cufftDoubleReal*) grad_z_ptr);
                 cufftCheckError (cufft_status);
- //           cudaDeviceSynchronize ();
+                cudaDeviceSynchronize ();
             }
         }
 
@@ -171,38 +171,38 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
             // compute forward transform for dx
             cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) dx_ptr, (cufftDoubleComplex*) x_hat_);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             multiplyXWaveNumberCuda ((cuDoubleComplex*) wx_hat_, (cuDoubleComplex*) x_hat_, osize_);
             // backwards transform
             cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat_, (cufftDoubleReal*) d1_ptr_);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             // compute forward transform for dy
             cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) dy_ptr, (cufftDoubleComplex*) x_hat_);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             multiplyYWaveNumberCuda ((cuDoubleComplex*) wx_hat_, (cuDoubleComplex*) x_hat_, osize_);
             // backwards transform
             cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat_, (cufftDoubleReal*) d2_ptr_);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             // compute forward transform for dz
             cufft_status = cufftExecD2Z (plan_r2c_, (cufftDoubleReal*) dz_ptr, (cufftDoubleComplex*) x_hat_);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             multiplyZWaveNumberCuda ((cuDoubleComplex*) wx_hat_, (cuDoubleComplex*) x_hat_, osize_);
             // backwards transform
             cufft_status = cufftExecZ2D (plan_c2r_, (cufftDoubleComplex*) wx_hat_, (cufftDoubleReal*) div_ptr);
             cufftCheckError (cufft_status);
-  //          cudaDeviceSynchronize ();
+            cudaDeviceSynchronize ();
 
             // cublas for axpy
-             cublasStatus_t status;
+            cublasStatus_t status;
             cublasHandle_t handle;
             // cublas for vec scale
             PetscCUBLASGetHandle (&handle);
