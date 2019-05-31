@@ -270,7 +270,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
     /* INVERSION FOR REACTION COEFFICIENT */
     integration_weight = 1.0;
-    if (n_misc_->flag_reaction_inv_) {
+     if (n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
@@ -278,10 +278,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
         if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
         else integration_weight = 1.0;
 
-        ierr = VecCopy(pde_operators_->c_[i], tumor_->work_[0]);                                   CHKERRQ(ierr);   // work is c_t
-        ierr = VecShift(tumor_->work_[0], -1.0);                                                   CHKERRQ(ierr);   // work is c_t - 1
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->c_[i]);        CHKERRQ(ierr);   // work is -c_t * (1 - c_t)
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);        CHKERRQ(ierr); // work is -a_t * c_t * (1 - c_t)
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->c_[i], pde_operators_->c_[i]);  CHKERRQ (ierr); // work is c*c
+        ierr = VecAXPY (tumor_->work_[0], -1.0, pde_operators_->c_[i]);                            CHKERRQ (ierr); // work is c*c - c
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->p_[i], tumor_->work_[0]);       CHKERRQ (ierr); // work is a * (c*c - c)
 
         // numerical time integration using trapezoidal rule
         ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
@@ -535,10 +534,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
         if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
         else integration_weight = 1.0;
 
-        ierr = VecCopy(pde_operators_->c_[i], tumor_->work_[0]);                                   CHKERRQ(ierr);   // work is c_t
-        ierr = VecShift(tumor_->work_[0], -1.0);                                                   CHKERRQ(ierr);   // work is c_t - 1
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->c_[i]);        CHKERRQ(ierr);   // work is -c_t * (1 - c_t)
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);        CHKERRQ(ierr); // work is -a_t * c_t * (1 - c_t)
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->c_[i], pde_operators_->c_[i]);  CHKERRQ (ierr); // work is c*c
+        ierr = VecAXPY (tumor_->work_[0], -1.0, pde_operators_->c_[i]);                            CHKERRQ (ierr); // work is c*c - c
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->p_[i], tumor_->work_[0]);       CHKERRQ (ierr); // work is a * (c*c - c)
 
         // numerical time integration using trapezoidal rule
         ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
