@@ -102,7 +102,7 @@ AdvectionSolver::~AdvectionSolver () {
     ierr = KSPDestroy (&ksp_);
     ierr = VecDestroy (&rhs_);
 }
-/*
+
 
 SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {
     PetscErrorCode ierr = 0;
@@ -395,63 +395,3 @@ SemiLagrangianSolver::~SemiLagrangianSolver () {
 
     ierr = VecDestroy (&query_points_);  
 }
-
-
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
