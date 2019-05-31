@@ -1,4 +1,5 @@
 #include <ElasticitySolver.h>
+#include <petsc/private/vecimpl.h>
 
 ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ctx_ () {
 	PetscErrorCode ierr = 0;
@@ -46,14 +47,24 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     CtxElasticity *ctx;
     ierr = PCShellGetContext (pc, (void **) &ctx);                        CHKERRQ (ierr);
 
+    int lock_state, lock_state_y;
+    ierr = VecLockGet (x, &lock_state);                                   CHKERRQ (ierr);
+    if (lock_state != 0) {
+      x->lock = 0;
+    }
+    ierr = VecLockGet (y, &lock_state_y);                                 CHKERRQ (ierr);
+    if (lock_state_y != 0) {
+      y->lock = 0;
+    }
+
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
   
     std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
 
-    ierr = force->setIndividualComponents (x);		// sets components of x vector in f
-    ierr = displacement->setIndividualComponents (y);
+    ierr = force->setIndividualComponents (x);		     CHKERRQ (ierr);// sets components of x vector in f  
+    ierr = displacement->setIndividualComponents (y);    CHKERRQ (ierr);
 
     // FFT of each component
     Complex *fx_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
@@ -161,6 +172,13 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     fft_free (fy_hat);
     fft_free (fz_hat);
 
+    if (lock_state != 0) {
+      x->lock = lock_state;
+    }
+    if (lock_state_y != 0) {
+      y->lock = lock_state;
+    }
+
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
@@ -184,12 +202,18 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     XYZ[1] = 1;
     XYZ[2] = 1;
 
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);                         CHKERRQ (ierr);
+    if (lock_state != 0) {
+      x->lock = 0;
+    }
+
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
 
     std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
-    ierr = displacement->setIndividualComponents (x);
+    ierr = displacement->setIndividualComponents (x);                           CHKERRQ (ierr);
 
     // second term: grad(lambda * div(u)) :  stored in work[1],[2],[3]
     accfft_divergence (tumor->work_[0], displacement->x_, displacement->y_, displacement->z_, n_misc->plan_, t.data());
@@ -241,6 +265,10 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	ierr = VecAXPY (force->z_, -1.0, ctx->temp_[2]);							CHKERRQ (ierr);
 
 	ierr = force->getIndividualComponents (y);
+
+    if (lock_state != 0) {
+      x->lock = lock_state;
+    }
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
@@ -325,7 +353,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    ierr = rhs->getIndividualComponents (rhs_);   // get the three rhs components in rhs_
+    ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
     Vec disp;
     ierr = VecDuplicate (rhs_, &disp);							CHKERRQ (ierr);
     ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
@@ -335,7 +363,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, disp);                         CHKERRQ (ierr);
 
-    ierr = displacement->setIndividualComponents (disp);
+    ierr = displacement->setIndividualComponents (disp);        CHKERRQ (ierr);
     ierr = VecDestroy (&disp);
 
     int itr;

@@ -212,7 +212,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     ierr = VecRestoreArray (query_points_, &query_ptr);          CHKERRQ (ierr);
 
     // set interpolated values back into array
-    ierr = output->setIndividualComponents (query_points_);
+    ierr = output->setIndividualComponents (query_points_);      CHKERRQ (ierr);
     
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
