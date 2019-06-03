@@ -31,9 +31,15 @@ PetscErrorCode VecField::getComponentArrays (double *&x_ptr, double *&y_ptr, dou
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
+#ifdef CUDA
+	ierr = VecCUDAGetArrayReadWrite (x_, &x_ptr);		CHKERRQ (ierr);
+	ierr = VecCUDAGetArrayReadWrite (y_, &y_ptr);		CHKERRQ (ierr);
+	ierr = VecCUDAGetArrayReadWrite (z_, &z_ptr);		CHKERRQ (ierr);
+#else
 	ierr = VecGetArray (x_, &x_ptr);		CHKERRQ (ierr);
 	ierr = VecGetArray (y_, &y_ptr);		CHKERRQ (ierr);
 	ierr = VecGetArray (z_, &z_ptr);		CHKERRQ (ierr);
+#endif
 
 	PetscFunctionReturn (0);
 }
@@ -43,9 +49,15 @@ PetscErrorCode VecField::restoreComponentArrays (double *&x_ptr, double *&y_ptr,
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
+#ifdef CUDA
+	ierr = VecCUDARestoreArrayReadWrite (x_, &x_ptr);		CHKERRQ (ierr);
+	ierr = VecCUDARestoreArrayReadWrite (y_, &y_ptr);		CHKERRQ (ierr);
+	ierr = VecCUDARestoreArrayReadWrite (z_, &z_ptr);		CHKERRQ (ierr);
+#else
 	ierr = VecRestoreArray (x_, &x_ptr);		CHKERRQ (ierr);
 	ierr = VecRestoreArray (y_, &y_ptr);		CHKERRQ (ierr);
 	ierr = VecRestoreArray (z_, &z_ptr);		CHKERRQ (ierr);
+#endif
 
 	PetscFunctionReturn (0);
 }
@@ -56,15 +68,22 @@ PetscErrorCode VecField::computeMagnitude () {
 
 	double *mag_ptr, *x_ptr, *y_ptr, *z_ptr;
 	int sz;
-	ierr = VecGetLocalSize (x_, &sz); 				CHKERRQ (ierr);
-	ierr = VecGetArray (magnitude_, &mag_ptr);		CHKERRQ (ierr);
 	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
+	ierr = VecGetLocalSize (x_, &sz); 				CHKERRQ (ierr);
 
+#ifdef CUDA
+	ierr = VecCUDAGetArrayReadWrite (magnitude_, &mag_ptr);		CHKERRQ (ierr);
+	computeMagnitudeCuda (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
+	ierr = VecCUDARestoreArrayReadWrite (magnitude_, &mag_ptr);	CHKERRQ (ierr);
+#else
+	ierr = VecGetArray (magnitude_, &mag_ptr);		CHKERRQ (ierr);
 	for (int i = 0; i < sz; i++) {
 		mag_ptr[i] = std::sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
 	}
-
 	ierr = VecRestoreArray (magnitude_, &mag_ptr);	CHKERRQ (ierr);
+#endif
+
+
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
 	PetscFunctionReturn (0);
@@ -74,14 +93,18 @@ PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
 	double *x_ptr, *y_ptr, *z_ptr, *in_ptr;
 	int local_size = 0;
 	ierr = VecGetLocalSize (x_in, &local_size);		CHKERRQ (ierr);
 	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
+
+#ifdef CUDA
+	ierr = VecCUDAGetArrayReadWrite (x_in, &in_ptr);			    CHKERRQ (ierr);
+	cudaMemcpy (x_ptr, in_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (y_ptr, &in_ptr[local_size/3], sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (z_ptr, &in_ptr[2*local_size/3], sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	ierr = VecCUDARestoreArrayReadWrite (x_in, &in_ptr);			CHKERRQ (ierr);
+#else
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
 	for (int i = 0; i < local_size / 3; i++) {
 		x_ptr[i] = in_ptr[i];
@@ -89,6 +112,9 @@ PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
 		z_ptr[i] = in_ptr[i + 2 * local_size / 3];
 	}
 	ierr = VecRestoreArray (x_in, &in_ptr);			CHKERRQ (ierr);
+#endif
+
+
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
 	PetscFunctionReturn (0);
@@ -102,6 +128,14 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 	int local_size = 0;
 	ierr = VecGetLocalSize (x_in, &local_size);		CHKERRQ (ierr);
 	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
+
+#ifdef CUDA
+	ierr = VecCUDAGetArrayReadWrite (x_in, &in_ptr);			    CHKERRQ (ierr);
+	cudaMemcpy (in_ptr, x_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (&in_ptr[local_size/3], y_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (&in_ptr[2*local_size/3], z_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	ierr = VecCUDARestoreArrayReadWrite (x_in, &in_ptr);			CHKERRQ (ierr);
+#else
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
 	for (int i = 0; i < local_size / 3; i++) {
 		in_ptr[i] = x_ptr[i];
@@ -109,14 +143,15 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 		in_ptr[i + 2 * local_size / 3] = z_ptr[i];
 	}
 	ierr = VecRestoreArray (x_in, &in_ptr);			CHKERRQ (ierr);
+#endif
+
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
 	PetscFunctionReturn (0);
 }
 
-
 PetscErrorCode tuMSG(std::string msg, int size) {
-	PetscFunctionBegin;
+  PetscFunctionBegin;
   PetscErrorCode ierr;
   std::string color = "\x1b[1;34;m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);

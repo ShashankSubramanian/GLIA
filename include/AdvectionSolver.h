@@ -50,7 +50,14 @@ class SemiLagrangianSolver : public AdvectionSolver {
 		int m_dofs_[2];  						  // controls number of interpolation plans: we need two
 		Vec query_points_;						  // query point coordinates
 		int n_ghost_;							  // ghost padding number = order of interpolation
+		int n_alloc_;							  // allocation size with ghosts
+	#ifdef CUDA
+		std::shared_ptr<InterpPlan> interp_plan_vector_;
+		std::shared_ptr<InterpPlan> interp_plan_scalar_;
+	#else
 		std::shared_ptr<InterpPlan> interp_plan_; // plan for interpolation
+	#endif
+		int isize_g_[3], istart_g_[3];    		  // local input sizes with ghost layers
 		double *scalar_field_ghost_;			  // local scalar field with ghost points
 		double *vector_field_ghost_;			  // local vector field with ghost points
 		std::shared_ptr<VecField> work_field_;	  // work vector field

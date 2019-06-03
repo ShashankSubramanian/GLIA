@@ -3,11 +3,13 @@
 
 #include "Utils.h"
 #include "Tumor.h"
+#include "SpectralOperators.h"
 #include <mpi.h>
 #include <omp.h>
 
 struct CtxElasticity {
-	CtxElasticity (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : n_misc_ (n_misc), tumor_ (tumor) {
+	CtxElasticity (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : 
+	n_misc_ (n_misc), tumor_ (tumor), spec_ops_ (spec_ops) {
 		PetscErrorCode ierr = 0;
 		ierr = VecDuplicate (tumor_->mat_prop_->gm_, &mu_); 
 		ierr = VecDuplicate (mu_, &lam_);
@@ -22,11 +24,31 @@ struct CtxElasticity {
 		ierr = VecSet (mu_, 0.); 
 		ierr = VecSet (lam_, 0.);
 		ierr = VecSet (screen_, 0.);
+
+	#ifdef CUDA
+		cudaMalloc ((void**)fx_hat_, n_misc->accfft_alloc_max_);
+		cudaMalloc ((void**)fy_hat_, n_misc->accfft_alloc_max_);
+		cudaMalloc ((void**)fz_hat_, n_misc->accfft_alloc_max_);
+		cudaMalloc ((void**)ux_hat_, n_misc->accfft_alloc_max_);
+		cudaMalloc ((void**)uy_hat_, n_misc->accfft_alloc_max_);
+		cudaMalloc ((void**)uz_hat_, n_misc->accfft_alloc_max_);
+	#else
+		fx_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+	    fy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+	    fz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+	  	ux_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+	    uy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+	    uz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+	#endif
 	}
 	std::shared_ptr<NMisc> n_misc_;
 	std::shared_ptr<Tumor> tumor_;
+	std::shared_ptr<SpectralOperators> spec_ops_;
 
 	PetscScalar mu_avg_, lam_avg_, screen_avg_;
+
+	Complex *fx_hat_, *fy_hat_, *fz_hat_;
+	Complex *ux_hat_, *uy_hat_, *uz_hat_;
 
 	Vec mu_;
 	Vec lam_;
@@ -51,12 +73,19 @@ struct CtxElasticity {
 			ierr = VecDestroy (&temp_[i]);
 		}
 		temp_.clear ();
+
+		fft_free (ux_hat_);
+	    fft_free (uy_hat_);
+	    fft_free (uz_hat_);
+	    fft_free (fx_hat_);
+	    fft_free (fy_hat_);
+	    fft_free (fz_hat_);
 	}
 };
 
 class ElasticitySolver {
 	public:
-		ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor);   //tumor is needed for its work vectors
+		ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);   //tumor is needed for its work vectors
 
 		KSP ksp_;
 		Mat A_;
@@ -74,7 +103,7 @@ class ElasticitySolver {
 
 class VariableLinearElasticitySolver : public ElasticitySolver {
 	public:
-		VariableLinearElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ElasticitySolver (n_misc, tumor) {}
+		VariableLinearElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : ElasticitySolver (n_misc, tumor, spec_ops) {}
 		PetscErrorCode computeMaterialProperties ();
 		virtual PetscErrorCode solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs);
 		virtual ~VariableLinearElasticitySolver () {}

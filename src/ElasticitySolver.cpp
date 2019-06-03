@@ -1,9 +1,9 @@
 #include <ElasticitySolver.h>
 #include <petsc/private/vecimpl.h>
 
-ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ctx_ () {
+ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : ctx_ () {
 	PetscErrorCode ierr = 0;
-    ctx_ = std::make_shared<CtxElasticity> (n_misc, tumor);
+    ctx_ = std::make_shared<CtxElasticity> (n_misc, tumor, spec_ops);
    
     // compute average coefficients
     ctx_->mu_avg_ = (ctx_->computeMu (n_misc->E_healthy_, n_misc->nu_healthy_) + ctx_->computeMu (n_misc->E_bg_, n_misc->nu_bg_)
@@ -67,24 +67,28 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     ierr = displacement->setIndividualComponents (y);    CHKERRQ (ierr);
 
     // FFT of each component
-    Complex *fx_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-    Complex *fy_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-    Complex *fz_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-
-    Complex *ux_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-    Complex *uy_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-    Complex *uz_hat = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-
     double *fx_ptr, *fy_ptr, *fz_ptr;
     double *ux_ptr, *uy_ptr, *uz_ptr;
 
     ierr = force->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
     ierr = displacement->getComponentArrays (ux_ptr, uy_ptr, uz_ptr);
 
-    accfft_execute_r2c (n_misc->plan_, fx_ptr, fx_hat);
-    accfft_execute_r2c (n_misc->plan_, fy_ptr, fy_hat);
-    accfft_execute_r2c (n_misc->plan_, fz_ptr, fz_hat);
+    Complex *fx_hat = ctx->fx_hat_;
+    Complex *fy_hat = ctx->fy_hat_;
+    Complex *fz_hat = ctx->fz_hat_;
+    Complex *ux_hat = ctx->ux_hat_;
+    Complex *uy_hat = ctx->uy_hat_;
+    Complex *uz_hat = ctx->uz_hat_;
 
+    ctx->spec_ops_->executeFFTR2C (fx_ptr, fx_hat);
+    ctx->spec_ops_->executeFFTR2C (fy_ptr, fy_hat);
+    ctx->spec_ops_->executeFFTR2C (fz_ptr, fz_hat);
+
+#ifdef CUDA
+    precFactorElasticityCuda ((cuDoubleComplex*)ux_hat, (cuDoubleComplex*)uy_hat,
+    (cuDoubleComplex*)uz_hat, (cuDoubleComplex*)fx_hat, (cuDoubleComplex*)fy_hat, 
+    (cuDoubleComplex*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->isize_);
+#else
     double s1, s2, s1_square, s3, scale;
 
     int64_t wx, wy, wz;
@@ -155,22 +159,16 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     		}
     	}
     }
+#endif
 
-    accfft_execute_c2r (n_misc->plan_, ux_hat, ux_ptr);
-    accfft_execute_c2r (n_misc->plan_, uy_hat, uy_ptr);
-    accfft_execute_c2r (n_misc->plan_, uz_hat, uz_ptr);
+    ctx->spec_ops_->executeFFTC2R (ux_hat, ux_ptr);
+    ctx->spec_ops_->executeFFTC2R (uy_hat, uy_ptr);
+    ctx->spec_ops_->executeFFTC2R (uz_hat, uz_ptr);
     
     ierr = force->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr);
     ierr = displacement->restoreComponentArrays (ux_ptr, uy_ptr, uz_ptr);
 
     ierr = displacement->getIndividualComponents (y);  // get the individual components of u and set it to y (o/p)
-
-    fft_free (ux_hat);
-    fft_free (uy_hat);
-    fft_free (uz_hat);
-    fft_free (fx_hat);
-    fft_free (fy_hat);
-    fft_free (fz_hat);
 
     if (lock_state != 0) {
       x->lock = lock_state;
@@ -216,14 +214,14 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = displacement->setIndividualComponents (x);                           CHKERRQ (ierr);
 
     // second term: grad(lambda * div(u)) :  stored in work[1],[2],[3]
-    accfft_divergence (tumor->work_[0], displacement->x_, displacement->y_, displacement->z_, n_misc->plan_, t.data());
+    ctx->spec_ops_->computeDivergence (tumor->work_[0], displacement->x_, displacement->y_, displacement->z_, t.data());
     ierr = VecPointwiseMult (tumor->work_[0], ctx->lam_, tumor->work_[0]);		CHKERRQ (ierr);
-    accfft_grad (tumor->work_[1], tumor->work_[2], tumor->work_[3], tumor->work_[0], n_misc->plan_, &XYZ, t.data());
+    ctx->spec_ops_->computeGradient (tumor->work_[1], tumor->work_[2], tumor->work_[3], tumor->work_[0], &XYZ, t.data());
 
     // first term: div (mu .* (gradu + graduT))
-    accfft_grad (tumor->work_[4], tumor->work_[5], tumor->work_[6], displacement->x_, n_misc->plan_, &XYZ, t.data());
-    accfft_grad (tumor->work_[7], tumor->work_[8], tumor->work_[9], displacement->y_, n_misc->plan_, &XYZ, t.data());
-    accfft_grad (tumor->work_[10], tumor->work_[11], tumor->work_[0], displacement->z_, n_misc->plan_, &XYZ, t.data());
+    ctx->spec_ops_->computeGradient (tumor->work_[4], tumor->work_[5], tumor->work_[6], displacement->x_, &XYZ, t.data());
+    ctx->spec_ops_->computeGradient (tumor->work_[7], tumor->work_[8], tumor->work_[9], displacement->y_, &XYZ, t.data());
+    ctx->spec_ops_->computeGradient (tumor->work_[10], tumor->work_[11], tumor->work_[0], displacement->z_, &XYZ, t.data());
 
     ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[4], tumor->work_[4]);		CHKERRQ (ierr);   // dudx + dudx
     ierr = VecWAXPY (ctx->temp_[1], 1.0, tumor->work_[5], tumor->work_[7]);		CHKERRQ (ierr);   // dudy + dvdx
@@ -232,7 +230,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);			CHKERRQ (ierr);	  // mu * (...)
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);			CHKERRQ (ierr);	  // mu * (...)
 
-	accfft_divergence (force->x_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
+	ctx->spec_ops_->computeDivergence (force->x_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());    
 	ierr = VecAXPY (force->x_, 1.0, tumor->work_[1]);							CHKERRQ (ierr);   // first term + second term
 
 	ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[7], tumor->work_[5]);		CHKERRQ (ierr);   // dvdx + dudy
@@ -242,7 +240,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);			CHKERRQ (ierr);	  // mu * (...)
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);			CHKERRQ (ierr);	  // mu * (...)
 
-	accfft_divergence (force->y_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
+	ctx->spec_ops_->computeDivergence (force->y_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());    
 	ierr = VecAXPY (force->y_, 1.0, tumor->work_[2]);							CHKERRQ (ierr);   // first term + second term
 
 	ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[10], tumor->work_[6]);	CHKERRQ (ierr);   // dwdx + dudz
@@ -252,7 +250,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);			CHKERRQ (ierr);	  // mu * (...)
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);			CHKERRQ (ierr);	  // mu * (...)
 
-	accfft_divergence (force->z_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
+	ctx->spec_ops_->computeDivergence (force->z_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());    
 	ierr = VecAXPY (force->z_, 1.0, tumor->work_[3]);							CHKERRQ (ierr);   // first term + second term
 
 	// screening term

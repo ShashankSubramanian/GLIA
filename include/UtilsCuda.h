@@ -105,15 +105,21 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
   return 0;
 }
 
-
+void computeMagnitudeCuda (double *mag_ptr, double *x_ptr, double *y_ptr, double *z_ptr, int sz);
 void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz);
 void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz);
 void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz);
 void precFactorDiffusionCuda (double *precfactor, double *work, int *sz);
+void precFactorElasticityCuda (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat, cuDoubleComplex *uz_hat, cuDoubleComplex *fx_hat, 
+                              cuDoubleComplex *fy_hat, cuDoubleComplex *fz_hat, double lam_avg, double mu_avg, double screen_avg, int *sz);
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
 void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized);
 void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
 void multiplyYWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
 void multiplyZWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
+void computeEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double dt, int *sz);
+void computeSecondOrderEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr,
+                                       double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt, int *sz);
+void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz);
 
 #endif

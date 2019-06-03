@@ -108,11 +108,24 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     PetscErrorCode ierr = 0;
     m_dofs_[0] = 1;   // one set of query points for scalar field
     m_dofs_[1] = 3;   // one set of query points (Euler points) for the velocity field: the semilagrangian is second order
+
+    n_alloc_ = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g_, istart_g_); // memory allocate
+    scalar_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
+    vector_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (3 * n_alloc_));    // vector field with ghost points
+
+    double *x_ptr, *y_ptr, *z_ptr;
+#ifdef CUDA
+    interp_plan_scalar_ = std::make_shared<InterpPlan> (n_alloc_);
+    interp_plan_scalar_->allocate (n_misc->n_local_, 1);
+    interp_plan_vector_ = std::make_shared<InterpPlan> (n_alloc_);
+    interp_plan_vector_->allocate (n_misc->n_local_, 3);
+#else
     interp_plan_ = std::make_shared<InterpPlan> ();
     interp_plan_->allocate (n_misc->n_local_, m_dofs_, 2);  // allocate memory for two sets of plans
                                                             // one plan will deal with query points for scalar field
                                                             // second plan will deal with vecfield query points: the interpolation is done      
                                                             // for all components in one interpolation call
+#endif
     int factor = 3;
     ierr = VecCreate (PETSC_COMM_WORLD, &query_points_);
     ierr = VecSetSizes (query_points_, factor * n_misc->n_local_, factor * n_misc->n_global_);
@@ -145,21 +158,19 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
-    int isize_g[3], istart_g[3];    // local input sizes with ghost layers
-    int n_alloc = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g, istart_g); // memory allocate
-
-    if (scalar_field_ghost_ == NULL)  {
-        scalar_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (n_alloc));    // scalar field with ghost points
-    }
-
     double *in_ptr, *out_ptr;
     ierr = VecGetArray (input, &in_ptr);                        CHKERRQ (ierr);
     ierr = VecGetArray (output, &out_ptr);                      CHKERRQ (ierr);
-    accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g, in_ptr, scalar_field_ghost_);  // populate scalar ghost field with input
+    accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g_, in_ptr, scalar_field_ghost_);  // populate scalar ghost field with input
 
     // Interpolation
+#ifdef CUDA
+    interp_plan_scalar_->interpolate (scalar_field_ghost_, 1, n_misc->n_, n_misc->isize_, n_misc->istart_,
+                                 n_misc->n_local_, n_ghost_, out_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+#else
     interp_plan_->interpolate (scalar_field_ghost_, n_misc->n_, n_misc->isize_, n_misc->istart_,
                                  n_misc->n_local_, n_ghost_, out_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data(), 0);
+#endif
 
     ierr = VecRestoreArray (input, &in_ptr);                    CHKERRQ (ierr);
     ierr = VecRestoreArray (output, &out_ptr);                  CHKERRQ (ierr);
@@ -187,27 +198,25 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     // flatten input
     ierr = input->getIndividualComponents (query_points_);      // query points is just a temp now
 
-    int isize_g[3], istart_g[3];    // local input sizes with ghost layers
-    int n_alloc = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g, istart_g); // memory allocate
-
-    if (vector_field_ghost_ == NULL)  {
-        vector_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (3 * n_alloc));    // vector field with ghost points
-    }
-
     int nl_ghost = 1;
     for (int i = 0; i < 3; i++) {
-        nl_ghost *= static_cast<int> (isize_g[i]);
+        nl_ghost *= static_cast<int> (isize_g_[i]);
     }
 
     double *query_ptr;
     ierr = VecGetArray (query_points_, &query_ptr);              CHKERRQ (ierr);
     for (int i = 0; i < 3; i++) {
-        accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g, &query_ptr[i * n_misc->n_local_], &vector_field_ghost_[i * nl_ghost]);  // populate vector ghost field with input
+        accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g_, &query_ptr[i * n_misc->n_local_], &vector_field_ghost_[i * nl_ghost]);  // populate vector ghost field with input
     }
 
     // Interpolation
+#ifdef CUDA
+    interp_plan_vector_->interpolate (vector_field_ghost_, 3, n_misc->n_, n_misc->isize_, n_misc->istart_,
+                                 n_misc->n_local_, n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+#else
     interp_plan_->interpolate (vector_field_ghost_, n_misc->n_, n_misc->isize_, n_misc->istart_,
                                  n_misc->n_local_, n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data(), 1);
+#endif
 
     ierr = VecRestoreArray (query_points_, &query_ptr);          CHKERRQ (ierr);
 
@@ -240,6 +249,9 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     double x1, x2, x3;
     ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);
     ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
+#ifdef CUDA
+    computeEulerPointsCuda (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt, n_misc->isize_);
+#else
     int64_t ptr;
     for (int i1 = 0; i1 < n_misc->isize_[0]; i1++) {
         for (int i2 = 0; i2 < n_misc->isize_[1]; i2++) {
@@ -258,14 +270,21 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
             }
         }
     }
+#endif
     ierr = velocity->restoreComponentArrays (vx_ptr, vy_ptr, vz_ptr);
-    
 
     // communicate coordinates to all processes: this function keeps track of query points
     // coordinates must always be scattered before any interpolation, otherwise the plan
     // will use whatever query points that was set before (if at all)
+#ifdef CUDA
+    interp_plan_scalar_->scatter (1, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
+                            n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+    interp_plan_vector_->scatter (3, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
+                            n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+#else
     interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
                             n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+#endif
     ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
 
     // Interpolate velocity fields at Euler points
@@ -275,6 +294,10 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     ierr = work_field_->getComponentArrays (wx_ptr, wy_ptr, wz_ptr);
     ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
 
+#ifdef CUDA
+    computeSecondOrderEulerPointsCuda (query_ptr, vx_ptr, vy_ptr, vz_ptr,
+                                                  wx_ptr, wy_ptr, wz_ptr, dt, n_misc->isize_);
+#else
     for (int i1 = 0; i1 < n_misc->isize_[0]; i1++) {
         for (int i2 = 0; i2 < n_misc->isize_[1]; i2++) {
             for (int i3 = 0; i3 < n_misc->isize_[2]; i3++) {
@@ -291,12 +314,20 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
             }
         }
     }
+#endif
     ierr = velocity->restoreComponentArrays (vx_ptr, vy_ptr, vz_ptr);
     ierr = work_field_->restoreComponentArrays (wx_ptr, wy_ptr, wz_ptr);
 
     // scatter final query points
+#ifdef CUDA
+    interp_plan_scalar_->scatter (1, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
+                            n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+    interp_plan_vector_->scatter (3, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
+                            n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+#else
     interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
                             n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
+#endif
     ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
 
 

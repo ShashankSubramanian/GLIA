@@ -182,42 +182,34 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     Event e ("tumor-compute-force");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
     std::bitset<3> XYZ;
     XYZ[0] = 1;
     XYZ[1] = 1;
     XYZ[2] = 1;
 
     double *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
+    double sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
 
     // snafu: smooth
-    Vec c;
-    ierr = VecDuplicate (c1, &c);      CHKERRQ (ierr);
-    ierr = VecCopy (c1, c);            CHKERRQ (ierr);
-
-    ierr = VecGetArray (c, &c_ptr);                                  CHKERRQ (ierr);
-    double sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
-    ierr = weierstrassSmoother (c_ptr, c_ptr, n_misc_, sigma_smooth);
-    ierr = VecRestoreArray (c, &c_ptr);                              CHKERRQ (ierr);
-
-
-    accfft_grad (force_->x_, force_->y_, force_->z_, c, n_misc_->plan_, &XYZ, t.data());
+    ierr = VecCopy (c1, work_[0]);            CHKERRQ (ierr);
+    ierr = spec_ops_->weierstrassSmoother (work_[0], work_[0], n_misc_, sigma_smooth);
+    spec_ops_->computeGradient (force_->x_, force_->y_, force_->z_, work_[0], &XYZ, t.data());
 
     ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
-    ierr = VecGetArray (c, &c_ptr);                                  CHKERRQ (ierr);
+#ifdef CUDA
+    ierr = VecCUDAGetArrayReadWrite (work_[0], &c_ptr);                                  CHKERRQ (ierr);
+    nonlinearForceScalingCuda (c_ptr, fx_ptr, fy_ptr, fz_ptr, n_misc_->forcing_factor_, n_misc_->n_local_);
+    ierr = VecCUDARestoreArrayReadWrite (work_[0], &c_ptr);                              CHKERRQ (ierr);
+#else
+    ierr = VecGetArray (work_[0], &c_ptr);                                  CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
         fx_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
         fy_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
         fz_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
     }
-    ierr = VecRestoreArray (c, &c_ptr);                              CHKERRQ (ierr);
+    ierr = VecRestoreArray (work_[0], &c_ptr);                              CHKERRQ (ierr);
+#endif
     ierr = force_->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr); 
-
-    ierr = VecDestroy (&c);             CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc_->timers_, t, self_exec_time);
@@ -259,7 +251,7 @@ PetscErrorCode Tumor::computeSegmentation () {
     }   
     
     double sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
-    ierr = weierstrassSmoother (seg_ptr, seg_ptr, n_misc_, sigma_smooth);
+    ierr = spec_ops_->weierstrassSmoother (seg_ptr, seg_ptr, n_misc_, sigma_smooth);
     
     ierr = VecRestoreArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);

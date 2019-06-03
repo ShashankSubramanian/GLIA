@@ -215,6 +215,208 @@ __global__ void multiplyZWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	}
 }
 
+__global__ void computeEulerPoints (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double dt) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int j = threadIdx.y + blockDim.y * blockIdx.y;
+	int k = threadIdx.z + blockDim.z * blockIdx.z;
+
+	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
+
+	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		double hx, hy, hz, x1, x2, x3;
+		double twopi = 2. * CUDART_PI;
+		hx = 1. / n_cuda[0];
+		hy = 1. / n_cuda[1];
+		hz = 1. / n_cuda[2];
+
+		x1 = hx * static_cast<double> (i + istart_cuda[0]);
+        x2 = hy * static_cast<double> (j + istart_cuda[1]);
+        x3 = hz * static_cast<double> (k + istart_cuda[2]);
+
+        dt /= twopi;
+
+        // compute the Euler points: xstar = x - dt * vel.
+        // coords are normalized - requirement from interpolation
+        query_ptr[ptr * 3 + 0] = (x1 - dt * vx_ptr[ptr]);   
+        query_ptr[ptr * 3 + 1] = (x2 - dt * vy_ptr[ptr]);   
+        query_ptr[ptr * 3 + 2] = (x3 - dt * vz_ptr[ptr]);  
+    }
+}
+
+__global__ void computeSecondOrderEulerPoints (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int j = threadIdx.y + blockDim.y * blockIdx.y;
+	int k = threadIdx.z + blockDim.z * blockIdx.z;
+
+	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
+
+	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		double hx, hy, hz, x1, x2, x3;
+		double twopi = 2. * CUDART_PI;
+		hx = 1. / n_cuda[0];
+		hy = 1. / n_cuda[1];
+		hz = 1. / n_cuda[2];
+
+		x1 = hx * static_cast<double> (i + istart_cuda[0]);
+        x2 = hy * static_cast<double> (j + istart_cuda[1]);
+        x3 = hz * static_cast<double> (k + istart_cuda[2]);
+
+        dt /= twopi;
+
+        // compute query points
+        query_ptr[ptr * 3 + 0] = (x1 - 0.5 * dt * (vx_ptr[ptr] + wx_ptr[ptr]));   
+        query_ptr[ptr * 3 + 1] = (x2 - 0.5 * dt * (vy_ptr[ptr] + wy_ptr[ptr]));   
+        query_ptr[ptr * 3 + 2] = (x3 - 0.5 * dt * (vz_ptr[ptr] + wz_ptr[ptr]));    
+    }
+}
+
+__global__ void precFactorElasticity (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat, cuDoubleComplex *uz_hat, cuDoubleComplex *fx_hat, cuDoubleComplex *fy_hat, cuDoubleComplex *fz_hat, double lam_avg, double mu_avg, double screen_avg) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int j = threadIdx.y + blockDim.y * blockIdx.y;
+	int k = threadIdx.z + blockDim.z * blockIdx.z;
+
+	int64_t ptr = i * osize_cuda[1] * osize_cuda[2] + j * osize_cuda[2] + k;
+
+	if (ptr < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
+		double s1, s2, s1_square, s3, scale;
+	    int64_t wx, wy, wz;
+	    double wTw, wTf_real, wTf_imag;
+	    int64_t x_global, y_global, z_global;
+
+	    double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+	    s2 = lam_avg + mu_avg;
+
+
+		x_global = i + ostart_cuda[0];
+		y_global = j + ostart_cuda[1];
+		z_global = k + ostart_cuda[2];
+
+		wx = x_global;
+		if (x_global > n_cuda[0] / 2) // symmetric frequencies
+			wx -= n_cuda[0];
+		if (x_global == n_cuda[0] / 2) // nyquist frequency
+			wx = 0;
+
+		wy = y_global;
+		if (y_global > n_cuda[1] / 2) // symmetric frequencies
+			wy -= n_cuda[1];
+		if (y_global == n_cuda[1] / 2) // nyquist frequency
+			wy = 0;
+
+		wz = z_global;
+		if (z_global > n_cuda[2] / 2) // symmetric frequencies
+			wz -= n_cuda[2];
+		if (z_global == n_cuda[2] / 2) // nyquist frequency
+			wz = 0;
+
+		wTw = -1.0 * (wx * wx + wy * wy + wz * wz);
+
+		s1 = -screen_avg + mu_avg * wTw;
+		s1_square = s1 * s1;
+		s3 = 1.0 / (1.0 + (wTw * s2) / s1);
+
+		wTf_real = wx * fx_hat[ptr].x + wy * fy_hat[ptr].x + wz * fz_hat[ptr].x;
+		wTf_imag = wx * fx_hat[ptr].y + wy * fy_hat[ptr].y + wz * fz_hat[ptr].y;
+
+		// real part
+		scale = -1.0 * wx * wTf_real;
+		ux_hat[ptr].x = factor * (fx_hat[ptr].x * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
+		// imaginary part
+		scale = -1.0 * wx * wTf_imag;
+		ux_hat[ptr].y = factor * (fx_hat[ptr].y * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
+
+		// real part
+		scale = -1.0 * wy * wTf_real;
+		uy_hat[ptr].x = factor * (fy_hat[ptr].x * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
+		// imaginary part
+		scale = -1.0 * wy * wTf_imag;
+		uy_hat[ptr].y = factor * (fy_hat[ptr].y * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
+
+		// real part
+		scale = -1.0 * wz * wTf_real;
+		uz_hat[ptr].x = factor * (fz_hat[ptr].x * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
+		// imaginary part
+		scale = -1.0 * wz * wTf_imag;
+		uz_hat[ptr].y = factor * (fz_hat[ptr].y * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
+	}
+}
+
+__global__ void computeMagnitude (double *mag_ptr, double *x_ptr, double *y_ptr, double *z_ptr, int sz) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < sz)  
+		mag_ptr[i] = sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
+}
+
+__global__ void nonlinearForceScaling (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < sz) {
+		fx_ptr[i] *= fac * tanh (c_ptr[i]);
+        fy_ptr[i] *= fac * tanh (c_ptr[i]);
+        fz_ptr[i] *= fac * tanh (c_ptr[i]);
+	}
+}
+
+void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz) {
+	int n_th = N_THREADS;
+
+	nonlinearForceScaling <<< std::ceil(sz / n_th), n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, fac, sz);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeMagnitudeCuda (double *mag_ptr, double *x_ptr, double *y_ptr, double *z_ptr, int sz) {
+	int n_th = N_THREADS;
+
+	computeMagnitude <<< std::ceil(sz / n_th), n_th >>> (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void precFactorElasticityCuda (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat, cuDoubleComplex *uz_hat, cuDoubleComplex *fx_hat, 
+                              cuDoubleComplex *fy_hat, cuDoubleComplex *fz_hat, double lam_avg, double mu_avg, double screen_avg, int *sz) {
+	int n_th_x = N_THREADS_X;
+	int n_th_y = N_THREADS_Y;
+	int n_th_z = N_THREADS_Z;
+	dim3 n_threads (n_th_x, n_th_y, n_th_z);
+	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+
+	precFactorElasticity <<< n_blocks, n_threads >>> (ux_hat, uy_hat, uz_hat, fx_hat, fy_hat, fz_hat, lam_avg, mu_avg, screen_avg);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeSecondOrderEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr,
+          double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt, int *sz) {
+	int n_th_x = N_THREADS_X;
+	int n_th_y = N_THREADS_Y;
+	int n_th_z = N_THREADS_Z;
+	dim3 n_threads (n_th_x, n_th_y, n_th_z);
+	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+
+	computeSecondOrderEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, wx_ptr, wy_ptr, wz_ptr, dt);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double dt, int *sz) {
+	int n_th_x = N_THREADS_X;
+	int n_th_y = N_THREADS_Y;
+	int n_th_z = N_THREADS_Z;
+	dim3 n_threads (n_th_x, n_th_y, n_th_z);
+	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+
+	computeEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
 
 void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz) {
 	int n_th_x = N_THREADS_X;
