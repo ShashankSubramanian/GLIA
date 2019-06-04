@@ -248,10 +248,13 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     double *vx_ptr, *vy_ptr, *vz_ptr, *query_ptr, *wx_ptr, *wy_ptr, *wz_ptr;
     double x1, x2, x3;
     ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);
-    ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
+    
 #ifdef CUDA
+    ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
     computeEulerPointsCuda (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt, n_misc->isize_);
+    ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);             CHKERRQ (ierr);
 #else
+    ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
     int64_t ptr;
     for (int i1 = 0; i1 < n_misc->isize_[0]; i1++) {
         for (int i2 = 0; i2 < n_misc->isize_[1]; i2++) {
@@ -270,12 +273,14 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
             }
         }
     }
+    ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
 #endif
     ierr = velocity->restoreComponentArrays (vx_ptr, vy_ptr, vz_ptr);
 
     // communicate coordinates to all processes: this function keeps track of query points
     // coordinates must always be scattered before any interpolation, otherwise the plan
     // will use whatever query points that was set before (if at all)
+    ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
 #ifdef CUDA
     interp_plan_scalar_->scatter (1, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
                             n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
@@ -292,12 +297,15 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
 
     ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);
     ierr = work_field_->getComponentArrays (wx_ptr, wy_ptr, wz_ptr);
-    ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
+    
 
 #ifdef CUDA
+    ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
     computeSecondOrderEulerPointsCuda (query_ptr, vx_ptr, vy_ptr, vz_ptr,
                                                   wx_ptr, wy_ptr, wz_ptr, dt, n_misc->isize_);
+    ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);             CHKERRQ (ierr);
 #else
+    ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
     for (int i1 = 0; i1 < n_misc->isize_[0]; i1++) {
         for (int i2 = 0; i2 < n_misc->isize_[1]; i2++) {
             for (int i3 = 0; i3 < n_misc->isize_[2]; i3++) {
@@ -314,10 +322,12 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
             }
         }
     }
+    ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
 #endif
     ierr = velocity->restoreComponentArrays (vx_ptr, vy_ptr, vz_ptr);
     ierr = work_field_->restoreComponentArrays (wx_ptr, wy_ptr, wz_ptr);
 
+    ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
     // scatter final query points
 #ifdef CUDA
     interp_plan_scalar_->scatter (1, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
