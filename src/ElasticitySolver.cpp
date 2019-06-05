@@ -1,9 +1,26 @@
 #include <ElasticitySolver.h>
 #include <petsc/private/vecimpl.h>
+#include "petsc/private/kspimpl.h"
 
 ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : ctx_ () {
 	PetscErrorCode ierr = 0;
     ctx_ = std::make_shared<CtxElasticity> (n_misc, tumor, spec_ops);
+
+    #ifdef CUDA
+        cudaMalloc ((void**)&ctx_->fx_hat_, n_misc->accfft_alloc_max_);
+        cudaMalloc ((void**)&ctx_->fy_hat_, n_misc->accfft_alloc_max_);
+        cudaMalloc ((void**)&ctx_->fz_hat_, n_misc->accfft_alloc_max_);
+        cudaMalloc ((void**)&ctx_->ux_hat_, n_misc->accfft_alloc_max_);
+        cudaMalloc ((void**)&ctx_->uy_hat_, n_misc->accfft_alloc_max_);
+        cudaMalloc ((void**)&ctx_->uz_hat_, n_misc->accfft_alloc_max_);
+    #else
+        ctx_->fx_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->fy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->fz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->ux_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->uy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->uz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+    #endif
    
     // compute average coefficients
     ctx_->mu_avg_ = (ctx_->computeMu (n_misc->E_healthy_, n_misc->nu_healthy_) + ctx_->computeMu (n_misc->E_bg_, n_misc->nu_bg_)
@@ -30,6 +47,16 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = PCShellSetContext (pc_, ctx_.get());
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
+
+    #ifdef CUDA
+        // hack -- explicity set the ksp_->work vecs as cuda vecs since
+        // petsc does not do this for some reason. <follow-up with petsc>
+        for (int i = 0; i < 3; i++) {
+            ierr = VecDestroy (&ksp_->work[i]); 
+            ierr = VecDuplicate (ctx_->tumor_->c_t_, &ksp_->work[i]); 
+            ierr = VecSet (ksp_->work[i], 0.);
+        }
+    #endif
 
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, factor * n_misc->n_local_, factor * n_misc->n_global_);

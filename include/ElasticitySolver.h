@@ -24,22 +24,6 @@ struct CtxElasticity {
 		ierr = VecSet (mu_, 0.); 
 		ierr = VecSet (lam_, 0.);
 		ierr = VecSet (screen_, 0.);
-
-	#ifdef CUDA
-		cudaMalloc ((void**)fx_hat_, n_misc->accfft_alloc_max_);
-		cudaMalloc ((void**)fy_hat_, n_misc->accfft_alloc_max_);
-		cudaMalloc ((void**)fz_hat_, n_misc->accfft_alloc_max_);
-		cudaMalloc ((void**)ux_hat_, n_misc->accfft_alloc_max_);
-		cudaMalloc ((void**)uy_hat_, n_misc->accfft_alloc_max_);
-		cudaMalloc ((void**)uz_hat_, n_misc->accfft_alloc_max_);
-	#else
-		fx_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-	    fy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-	    fz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-	  	ux_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-	    uy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-	    uz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-	#endif
 	}
 	std::shared_ptr<NMisc> n_misc_;
 	std::shared_ptr<Tumor> tumor_;

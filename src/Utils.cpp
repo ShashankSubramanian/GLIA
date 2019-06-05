@@ -100,9 +100,9 @@ PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
 
 #ifdef CUDA
 	ierr = VecCUDAGetArrayReadWrite (x_in, &in_ptr);			    CHKERRQ (ierr);
-	cudaMemcpy (x_ptr, in_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (y_ptr, &in_ptr[local_size/3], sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (z_ptr, &in_ptr[2*local_size/3], sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (x_ptr, in_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (y_ptr, &in_ptr[local_size/3], sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (z_ptr, &in_ptr[2*local_size/3], sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
 	ierr = VecCUDARestoreArrayReadWrite (x_in, &in_ptr);			CHKERRQ (ierr);
 #else
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
@@ -131,9 +131,9 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 
 #ifdef CUDA
 	ierr = VecCUDAGetArrayReadWrite (x_in, &in_ptr);			    CHKERRQ (ierr);
-	cudaMemcpy (in_ptr, x_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (&in_ptr[local_size/3], y_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (&in_ptr[2*local_size/3], z_ptr, sizeof (double) * local_size, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (in_ptr, x_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (&in_ptr[local_size/3], y_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (&in_ptr[2*local_size/3], z_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
 	ierr = VecCUDARestoreArrayReadWrite (x_in, &in_ptr);			CHKERRQ (ierr);
 #else
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
