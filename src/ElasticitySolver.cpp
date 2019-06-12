@@ -33,6 +33,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     int factor = 3;   // vector equations
     ierr = MatCreateShell (PETSC_COMM_WORLD, factor * n_misc->n_local_, factor * n_misc->n_local_, factor * n_misc->n_global_, factor * n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorVariableCoefficients);
+    ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecs);
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
@@ -48,21 +49,35 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
-    #ifdef CUDA
-        // hack -- explicity set the ksp_->work vecs as cuda vecs since
-        // petsc does not do this for some reason. <follow-up with petsc>
-        for (int i = 0; i < 3; i++) {
-            ierr = VecDestroy (&ksp_->work[i]); 
-            ierr = VecDuplicate (ctx_->tumor_->c_t_, &ksp_->work[i]); 
-            ierr = VecSet (ksp_->work[i], 0.);
-        }
-    #endif
-
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, factor * n_misc->n_local_, factor * n_misc->n_global_);
     ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
 }
+
+PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Ctx *ctx;
+    ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
+    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+    int factor = 3;
+
+    if (right) {
+        ierr = VecCreate (PETSC_COMM_WORLD, right); CHKERRQ (ierr);
+        ierr = VecSetSizes (*right, factor * n_misc->n_local_, factor * n_misc->n_global_); CHKERRQ (ierr);
+        ierr = setupVec (*right);  CHKERRQ (ierr);
+    }
+    if (left) {
+        ierr = VecCreate (PETSC_COMM_WORLD, left);  CHKERRQ (ierr);
+        ierr = VecSetSizes (*left, factor * n_misc->n_local_, factor * n_misc->n_global_);  CHKERRQ (ierr);
+        ierr = setupVec (*left);  CHKERRQ (ierr);
+    }
+
+    PetscFunctionReturn(0);
+}
+
 
 PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 	PetscFunctionBegin;

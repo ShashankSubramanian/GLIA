@@ -43,13 +43,6 @@ ctx_() {
 
     #ifdef CUDA
         cudaMalloc ((void**)&ctx_->c_hat_, n_misc->accfft_alloc_max_);
-        // hack -- explicity set the ksp_->work vecs as cuda vecs since
-        // petsc does not do this for some reason. <follow-up with petsc>
-        for (int i = 0; i < 3; i++) {
-            ierr = VecDestroy (&ksp_->work[i]); 
-            ierr = VecDuplicate (ctx_->k_->kxx_, &ksp_->work[i]); 
-            ierr = VecSet (ksp_->work[i], 0.);
-        }
     #else
         ctx_->c_hat_ = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
@@ -69,7 +62,7 @@ PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
     if (left) {
         ierr = VecDuplicate (ctx->k_->kxx_, left);              CHKERRQ(ierr);
     }
-    
+
     PetscFunctionReturn(0);
 }
 
