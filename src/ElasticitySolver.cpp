@@ -59,7 +59,7 @@ PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    Ctx *ctx;
+    CtxElasticity *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     int factor = 3;
