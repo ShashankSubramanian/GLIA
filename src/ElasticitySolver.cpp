@@ -53,6 +53,8 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = VecSetSizes (rhs_, factor * n_misc->n_local_, factor * n_misc->n_global_);
     ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
+
+    ierr = VecDuplicate (rhs_, &ctx_->disp_);
 }
 
 PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
@@ -65,14 +67,10 @@ PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
     int factor = 3;
 
     if (right) {
-        ierr = VecCreate (PETSC_COMM_WORLD, right); CHKERRQ (ierr);
-        ierr = VecSetSizes (*right, factor * n_misc->n_local_, factor * n_misc->n_global_); CHKERRQ (ierr);
-        ierr = setupVec (*right);  CHKERRQ (ierr);
+        ierr = VecDuplicate (ctx->disp_, right);                CHKERRQ (ierr);
     }
     if (left) {
-        ierr = VecCreate (PETSC_COMM_WORLD, left);  CHKERRQ (ierr);
-        ierr = VecSetSizes (*left, factor * n_misc->n_local_, factor * n_misc->n_global_);  CHKERRQ (ierr);
-        ierr = setupVec (*left);  CHKERRQ (ierr);
+        ierr = VecDuplicate (ctx->disp_, left);                CHKERRQ (ierr);
     }
 
     PetscFunctionReturn(0);
@@ -394,17 +392,14 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
-    Vec disp;
-    ierr = VecDuplicate (rhs_, &disp);							CHKERRQ (ierr);
-    ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
+    ierr = VecSet (ctx->disp_, 0.);									CHKERRQ (ierr);
 
     ierr = computeMaterialProperties ();
 
     //KSP solve
-    ierr = KSPSolve (ksp_, rhs_, disp);                         CHKERRQ (ierr);
+    ierr = KSPSolve (ksp_, rhs_, ctx->disp_);                         CHKERRQ (ierr);
 
-    ierr = displacement->setIndividualComponents (disp);        CHKERRQ (ierr);
-    ierr = VecDestroy (&disp);
+    ierr = displacement->setIndividualComponents (ctx->disp_);        CHKERRQ (ierr);
 
     int itr;
     ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);

@@ -37,6 +37,7 @@ struct CtxElasticity {
 	Vec mu_;
 	Vec lam_;
 	Vec screen_;
+	Vec disp_;
 	std::vector<Vec> temp_;
 
 	double computeMu (double E, double nu) {
@@ -52,6 +53,7 @@ struct CtxElasticity {
 		ierr = VecDestroy (&mu_);
 		ierr = VecDestroy (&lam_);
 		ierr = VecDestroy (&screen_);
+		ierr = VecDestroy (&disp_);
 
 		for (int i = 0; i < 3; i++) {
 			ierr = VecDestroy (&temp_[i]);
