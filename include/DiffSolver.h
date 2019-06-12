@@ -46,6 +46,7 @@ class DiffSolver {
 
 //Helper functions for KSP solve
 PetscErrorCode operatorA (Mat A, Vec x, Vec y);
+PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right);
 PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx);
 PetscErrorCode applyPC (PC pc, Vec x, Vec y);
 

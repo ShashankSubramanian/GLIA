@@ -20,6 +20,7 @@ ctx_() {
 
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorA);
+    ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecs);
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
@@ -54,6 +55,25 @@ ctx_() {
     #endif
 
 }
+
+PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Ctx *ctx;
+    ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
+
+    if (right) {
+        ierr = VecDuplicate (ctx->k_->kxx_, right);             CHKERRQ(ierr);
+    }
+    if (left) {
+        ierr = VecDuplicate (ctx->k_->kxx_, left);              CHKERRQ(ierr);
+    }
+    
+    PetscFunctionReturn(0);
+}
+
+
 
 PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionBegin;
