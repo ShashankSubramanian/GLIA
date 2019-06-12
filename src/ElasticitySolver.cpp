@@ -31,6 +31,14 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
 
 
     int factor = 3;   // vector equations
+
+    ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
+    ierr = VecSetSizes (rhs_, factor * n_misc->n_local_, factor * n_misc->n_global_);
+    ierr = setupVec (rhs_);
+    ierr = VecSet (rhs_, 0);
+
+    ierr = VecDuplicate (rhs_, &ctx_->disp_);
+    
     ierr = MatCreateShell (PETSC_COMM_WORLD, factor * n_misc->n_local_, factor * n_misc->n_local_, factor * n_misc->n_global_, factor * n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorVariableCoefficients);
     ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsElas);
@@ -49,12 +57,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
-    ierr = VecSetSizes (rhs_, factor * n_misc->n_local_, factor * n_misc->n_global_);
-    ierr = setupVec (rhs_);
-    ierr = VecSet (rhs_, 0);
-
-    ierr = VecDuplicate (rhs_, &ctx_->disp_);
+    
 }
 
 PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
