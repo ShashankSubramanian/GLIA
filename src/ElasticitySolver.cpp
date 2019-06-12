@@ -33,7 +33,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     int factor = 3;   // vector equations
     ierr = MatCreateShell (PETSC_COMM_WORLD, factor * n_misc->n_local_, factor * n_misc->n_local_, factor * n_misc->n_global_, factor * n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorVariableCoefficients);
-    ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecs);
+    ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsElas);
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
@@ -55,7 +55,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = VecSet (rhs_, 0);
 }
 
-PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
+PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
