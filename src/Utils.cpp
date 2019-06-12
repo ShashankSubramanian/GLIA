@@ -734,30 +734,75 @@ PetscErrorCode vecSign (Vec x) {
 }
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  nnz = 0;
+
+  std::priority_queue<std::pair<PetscReal, int>> q;
+  double *x_ptr;
+  ierr = VecGetArray (x, &x_ptr);   CHKERRQ (ierr);
+  for (int i = 0; i < sz; i++) {
+    q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
+  }
+
+  double tol = 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
+            // are (almost)zero to the support
+  for (int i = 0; i < sparsity_level; i++) {
+    if (std::abs(q.top().first) > tol) {
+      nnz++;  // keeps track of how many non-zero (important) components of the signal there are
+      support.push_back (q.top().second);
+    } else {  // if top of the queue is not greater than tol, we are done since none of the elements
+          // below it will every be greater than tol
+      break;
+    }
+    q.pop ();
+  }
+
+  ierr = VecRestoreArray (x, &x_ptr);   CHKERRQ (ierr);
+
+  PetscFunctionReturn (0);
+}
+
+
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<double> weights, int &nnz, int num_components) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
 	nnz = 0;
+  std::priority_queue<std::pair<PetscReal, int>> q;
+  double *x_ptr;
+  double tol = 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
+                      // are (almost)zero to the support
+  ierr = VecGetArray (x, &x_ptr);   CHKERRQ (ierr);
 
-	std::priority_queue<std::pair<PetscReal, int>> q;
-	double *x_ptr;
-	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
-	for (int i = 0; i < sz; i++) {
-		q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
-	}
+  std::vector<int> component_sparsity;
+  int fin_spars;
+  for (int nc = 0; nc < num_components; nc++) {
+    if (nc != num_components - 1) {
+      component_sparsity.push_back (std::ceil (weights[nc] * sparsity_level));
+    } else { // last component is the remaining support
+      fin_spars = sparsity_level - std::accumulate (component_sparsity.begin(), component_sparsity.end(), 0);
+      component_sparsity.push_back (fin_spars);
+    }
 
-	double tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
-						// are (almost)zero to the support
-	for (int i = 0; i < sparsity_level; i++) {
-		if (std::abs(q.top().first) > tol) {
-			nnz++;  // keeps track of how many non-zero (important) components of the signal there are
-			support.push_back (q.top().second);
-		} else {  // if top of the queue is not greater than tol, we are done since none of the elements
-				  // below it will every be greater than tol
-			break;
-		}
-		q.pop ();
-	}
+    for (int i = 0; i < sz; i++) {
+      if (labels[i] == nc + 1) // push the current components into the priority queue
+        q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
+    }
+    
+    for (int i = 0; i < component_sparsity[nc]; i++) {
+      if (std::abs(q.top().first) > tol) {
+        nnz++;  // keeps track of how many non-zero (important) components of the signal there are
+        support.push_back (q.top().second);
+      } else {  // if top of the queue is not greater than tol, we are done since none of the elements
+            // below it will every be greater than tol
+        break;
+      }
+      q.pop ();
+    }
+    q = std::priority_queue<std::pair<PetscReal, int>> (); // reset the queue 
+  }
 
 	ierr = VecRestoreArray (x, &x_ptr); 	CHKERRQ (ierr);
 

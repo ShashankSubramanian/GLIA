@@ -794,6 +794,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     int nnz = 0;
     std::stringstream ss;
 
+    tumor_->phi_->num_components_ = tumor_->phi_->component_weights_.size ();  // number of connected components
+
     // Solver begin
     while (true) {
         its++;
@@ -803,7 +805,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         ierr = VecAbs (temp);                                   CHKERRQ (ierr);
 
         idx.clear();
-        ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx, nnz);
+        ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx, tumor_->phi_->gaussian_labels_, tumor_->phi_->component_weights_, nnz, tumor_->phi_->num_components_);
 
         /* -------------------------------------------------------------------- 2) Update the prev soln's support with the 2K sparse guess' support -------------------------------------------------------------------- */
         n_misc_->support_.insert (n_misc_->support_.end(), idx.begin(), idx.end());
@@ -881,16 +883,21 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
 
-        // Hard threshold L2 guess to sparsity level
+        // Hard threshold L1 guess to sparsity level
         idx.clear();
-        ierr = hardThreshold (x_L2, n_misc_->sparsity_level_, np, idx, nnz);
 
-        temp_support = n_misc_->support_;
+        if (n_misc_->prune_components_)
+            ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx, tumor_->phi_->gaussian_labels_, tumor_->phi_->component_weights_, nnz, tumor_->phi_->num_components_);
+        else
+            ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx, nnz);
+
+        // temp_support = n_misc_->support_;
         //clear the support
         n_misc_->support_.clear ();
-        for (int i = 0; i < idx.size(); i++) {
-            n_misc_->support_.push_back (temp_support[idx[i]]);
-        }
+        n_misc_->support_ = idx;
+        // for (int i = 0; i < idx.size(); i++) {
+        //     n_misc_->support_.push_back (temp_support[idx[i]]);
+        // }
 
         // Sort and remove duplicates
         std::sort (n_misc_->support_.begin(), n_misc_->support_.end());

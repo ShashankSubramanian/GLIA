@@ -294,6 +294,7 @@ class NMisc {
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E4)                    // high screening
         , forcing_factor_ (2.0E5)                 // mass effect forcing factor
+        , prune_components_ (1)                 // prunes L2 solution based on components
                                 {
 
 
@@ -378,6 +379,7 @@ class NMisc {
 
         double ic_max_;
         int predict_flag_;
+        int prune_components_;
 
         int testcase_;
         int n_[3];
@@ -577,6 +579,8 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<double> weights, int &nnz, int num_components);
+
 double myDistance (double *c1, double *c2);
 
 PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);

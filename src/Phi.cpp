@@ -16,6 +16,8 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
+
+    labels_ = nullptr;
 }
 
 
@@ -749,6 +751,10 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         }
     }
 
+    double *label_ptr;
+    // connected components has updated the labels
+    ierr = VecGetArray (labels_, &label_ptr);                                  CHKERRQ (ierr);
+
     //Add the local boundary centers to the selected centers vector
     for (int i = 0; i < local_tumor_marker.size(); i++) {
         num_top_ptr[i] = (double) local_tumor_marker[i] / gaussian_interior;                  //For visualization
@@ -764,9 +770,11 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             center.push_back (X * hx);
             center.push_back (Y * hy);
             center.push_back (Z * hz);
+            gaussian_labels_.push_back (label_ptr[i]);  // each gaussian has the component label
         }
     }
 
+    ierr = VecRestoreArray (labels_, &label_ptr);                             CHKERRQ (ierr);
     ierr = VecRestoreArray (num_tumor_output, &num_top_ptr);                  CHKERRQ (ierr);
 
     int np_global;
@@ -859,8 +867,6 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
     PCOUT << "Size of restricted subspace: " << np_ << std::endl;
 
 }
-
-
 
 Phi::~Phi () {
     PetscErrorCode ierr = 0;
