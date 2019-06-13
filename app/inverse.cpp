@@ -35,7 +35,7 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode readData (Vec &data, Vec &support_data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*, char *);
+PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char*, char *, char *);
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, char*, char*, char*, char*);
 PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
@@ -69,6 +69,8 @@ int main (int argc, char** argv) {
     double k_data = -1.0;
     int nt_data = 0.0;
     double dt_data = 0.0;
+    double data_comp_weights[10];
+    int ncomp = 10;
     char reg[10];
     char results_dir[400];
     char data_path[400];
@@ -78,6 +80,8 @@ int main (int argc, char** argv) {
     char glm_path[400];
     char csf_path[400];
     char obs_mask_path[400];
+    char data_comp_path[400];
+    char data_comp_dat_path[400];
     char p_vec_path[400];
     char gaussian_cm_path[400];
     int np_user = 0;
@@ -185,6 +189,11 @@ int main (int argc, char** argv) {
     PetscOptionsInt    ("-checkpointing_flag", "solver writes checkpoints for p vector and corresponding Gaussian centers", "", checkpointing_flag, &checkpointing_flag, NULL);
     PetscOptionsInt    ("-solve_rho_k", "Flag to do only the inversion for reaction and diffusion coefficient, keeping the initial condition c(0) fixed (needs to be read in)", "", solve_rho_k_only_flag, &solve_rho_k_only_flag, NULL);
 
+    // bool flag = PETSC_FALSE;
+    // PetscOptionsGetRealArray(NULL,NULL, "-data_comp_weights", data_comp_weights, &ncomp, &flag);
+    PetscOptionsString ("-data_comp_path", "Path to label img of data components", "", data_comp_path, data_comp_path, 400, NULL);
+    PetscOptionsString ("-data_comp_dat_path", "Path to .dat file of data components", "", data_comp_dat_path, data_comp_dat_path, 400, NULL);
+
 
     PetscOptionsEnd ();
 
@@ -233,13 +242,14 @@ int main (int argc, char** argv) {
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data
     //Synthetic parameters: Overwrite n_misc
-    Vec c_0, data, support_data, p_rec, wm, gm, glm, csf, bg, obs_mask;
+    Vec c_0, data, support_data, p_rec, wm, gm, glm, csf, bg, obs_mask, data_components;
 
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = true; //don't change -- controlled from the run script
     bool read_support_data   = (support_data_path != NULL && strlen(support_data_path) > 0); // path set?
     bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0);         // path set?
+    bool use_data_comps      = (data_comp_path != NULL && strlen(data_comp_path) > 0);       // path set?
     bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);               // path set?
     if (warmstart_p  && not (gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0)){
       PCOUT << " ERROR: if initial guess for p is used, Gaussian centers need to be specified. " << std::endl;
@@ -431,7 +441,11 @@ int main (int argc, char** argv) {
         read_support_data = false;
         support_data = data;
     } else {
-        ierr = readData (data, support_data, c_0, p_rec, n_misc, data_path, support_data_path);
+        ierr = readData (data, support_data, data_components, c_0, p_rec, n_misc, data_path, support_data_path, data_comp_path);
+        if(use_data_comps) {
+          PCOUT << " SET LABELS " << std::endl;
+          tumor->phi_->setLabels (data_components);           
+        }
         if(use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
           PCOUT << "Use custom observation mask\n";
@@ -480,6 +494,11 @@ int main (int argc, char** argv) {
 
         PCOUT << "Inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
         PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
+
+        std::string file_concomp(data_comp_dat_path);
+        if(use_data_comps){
+          readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
+        }
 
         if (!n_misc->bounding_box_) {
             // ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, n_misc);    //Overwrite Matprop with custom atlas
@@ -691,12 +710,12 @@ int main (int argc, char** argv) {
     ierr = VecDestroy (&p_rec);             CHKERRQ (ierr);
     ierr = VecDestroy (&data_nonoise);      CHKERRQ (ierr);
 
-
-    if (gm != nullptr) {ierr = VecDestroy (&gm); CHKERRQ (ierr);}
-    if (wm != nullptr) {ierr = VecDestroy (&wm); CHKERRQ (ierr);}
-    if (csf != nullptr) {ierr = VecDestroy (&csf); CHKERRQ (ierr);}
-    if (bg != nullptr) {ierr = VecDestroy (&bg); CHKERRQ (ierr);}
+    if (gm != nullptr) {ierr = VecDestroy (&gm);                 CHKERRQ (ierr);}
+    if (wm != nullptr) {ierr = VecDestroy (&wm);                 CHKERRQ (ierr);}
+    if (csf != nullptr) {ierr = VecDestroy (&csf);               CHKERRQ (ierr);}
+    if (bg != nullptr) {ierr = VecDestroy (&bg);                 CHKERRQ (ierr);}
     if (use_custom_obs_mask) {ierr = VecDestroy (&obs_mask);     CHKERRQ (ierr);}
+    if (use_data_comps) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr);}
     if (read_support_data)   {ierr = VecDestroy (&support_data); CHKERRQ (ierr);}
 
 
@@ -749,11 +768,11 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
 
     #ifdef SERIAL
-        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
+        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);             CHKERRQ (ierr);
     #else
-        ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                            CHKERRQ (ierr);
-        ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                  CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p_rec);                                       CHKERRQ (ierr);
+        ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                        CHKERRQ (ierr);
+        ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);              CHKERRQ (ierr);
+        ierr = VecSetFromOptions (p_rec);                                   CHKERRQ (ierr);
     #endif
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
@@ -872,7 +891,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode readData (Vec &data, Vec &support_data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char *data_path, char* support_data_path) {
+PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char *data_path, char* support_data_path, char* data_comp_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -904,6 +923,14 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &c_0, Vec &p_rec, std
       support_data = data;
     }
 
+    if((data_comp_path != NULL && strlen(data_comp_path) > 0)) {
+      ierr = VecCreate (PETSC_COMM_WORLD, &data_components);                       CHKERRQ (ierr);
+      ierr = VecSetSizes (data_components, n_misc->n_local_, n_misc->n_global_);   CHKERRQ (ierr);
+      ierr = VecSetFromOptions (data_components);                                  CHKERRQ (ierr);
+      ierr = VecSet (data_components, 0.);                                         CHKERRQ (ierr);
+      dataIn (data_components, n_misc, data_comp_path);
+    }
+
     // Smooth the data
     double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
     double *data_ptr;
@@ -931,7 +958,7 @@ PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    ierr = VecCreate (PETSC_COMM_WORLD, &obs_mask);                             CHKERRQ (ierr);
+    ierr = VecCreate (PETSC_COMM_WORLD, &obs_mask);                       CHKERRQ (ierr);
     ierr = VecSetSizes (obs_mask, n_misc->n_local_, n_misc->n_global_);   CHKERRQ (ierr);
     ierr = VecSetFromOptions (obs_mask);                                  CHKERRQ (ierr);
     ierr = VecSet (obs_mask, 0.);                                         CHKERRQ (ierr);
@@ -1432,10 +1459,10 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     // segmentation for c0
     for (int i = 0; i < n_misc->n_local_; i++) {
         // Kill the material properties in regions of tumor
-        bg_ptr[i] = bg_ptr[i] * (1 - c_ptr[i]);
-        wm_ptr[i] = wm_ptr[i] * (1 - c_ptr[i]);
+        bg_ptr[i]  = bg_ptr[i]  * (1 - c_ptr[i]);
+        wm_ptr[i]  = wm_ptr[i]  * (1 - c_ptr[i]);
         csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
-        gm_ptr[i] = gm_ptr[i] * (1 - c_ptr[i]);
+        gm_ptr[i]  = gm_ptr[i]  * (1 - c_ptr[i]);
 
         v.push_back(bg_ptr[i]);
         v.push_back(gm_ptr[i]);

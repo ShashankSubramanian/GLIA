@@ -1,6 +1,10 @@
 #include "Phi.h"
 
-Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
+Phi::Phi (std::shared_ptr<NMisc> n_misc) :
+    n_misc_ (n_misc)
+  , component_weights_()
+  , component_centers_()
+  {
     PetscFunctionBegin;
     PetscErrorCode ierr;
 
@@ -20,7 +24,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     labels_ = nullptr;
 
     // by default one component
-    component_weights_.push_back (1.); 
+    component_weights_.push_back (1.);
 }
 
 
@@ -757,9 +761,9 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     double *label_ptr;
     if (labels_ != nullptr) {
         // connected components has updated the labels
-        ierr = VecGetArray (labels_, &label_ptr);                                  CHKERRQ (ierr);    
+        ierr = VecGetArray (labels_, &label_ptr);                                  CHKERRQ (ierr);
     }
-    
+
 
     //Add the local boundary centers to the selected centers vector
     for (int i = 0; i < local_tumor_marker.size(); i++) {
@@ -776,6 +780,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             center.push_back (X * hx);
             center.push_back (Y * hy);
             center.push_back (Z * hz);
+            PCOUT << " SET GAUSSIAN LABELS " << std::endl;
             if (labels_ != nullptr) gaussian_labels_.push_back (label_ptr[i]);  // each gaussian has the component label
             else gaussian_labels_.push_back (1);                                // if no labels, assume one component: all gaussians are component 1
         }

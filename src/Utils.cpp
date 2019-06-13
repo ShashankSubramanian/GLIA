@@ -383,6 +383,67 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
 
 
 // ### _____________________________________________________________________ ___
+// ### ///////////////// readConCompDat /////////////////////////////////////// ###
+PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> &centers, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  std::ifstream file(f);
+  int ncomp = 0;
+  if (file.is_open()) {
+    PCOUT << "reading concomp.dat file " << f << std::endl;
+    weights.clear();
+    centers.clear();
+
+    std::string line;
+    std::getline(file, line); // #components
+    std::getline(file, line); // #components (value)
+    ncomp = atoi(line.c_str());
+    std::getline(file, line); // center of mass:
+    for(int i=0; i < ncomp; ++i){
+      std::getline(file, line); // values
+      std::stringstream l(line);
+      std::string t;
+        while (std::getline(l, t, ',')) {
+          centers.push_back(atof(t.c_str()));
+        }
+    }
+    std::getline(file, line); // relative mass:
+    for(int i=0; i < ncomp; ++i){
+      std::getline(file, line); // values
+      weights.push_back(atof(line.c_str()));
+    }
+
+    file.close();
+    PCOUT << "ncomp=" << ncomp << " component read " << std::endl;
+    PCOUT << "weights: ";
+    for(int i=0; i < ncomp; ++i){
+      PCOUT << weights[i];
+      if(i < 2) {PCOUT << ", ";}
+    }
+    PCOUT << std::endl;
+    PCOUT << "centers: ";
+    for(int i=0; i < ncomp; ++i){
+      PCOUT << "(";
+      for(int j=0; j < 3; ++j){
+        PCOUT << centers[3*i+j];
+        if(j < 2) {PCOUT << ",";}
+      }
+      PCOUT << "); ";
+    }
+    PCOUT << std::endl;
+  } else {
+    PCOUT << "cannot open file " << f << std::endl;
+    PetscFunctionReturn(1);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### _____________________________________________________________________ ___
 // ### ///////////////// readBIN /////////////////////////////////////////// ###
 PetscErrorCode readBIN(Vec* x, int size, std::string f) {
   PetscFunctionBegin;
@@ -790,7 +851,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
       if (labels[i] == nc + 1) // push the current components into the priority queue
         q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
     }
-    
+
     for (int i = 0; i < component_sparsity[nc]; i++) {
       if (std::abs(q.top().first) > tol) {
         nnz++;  // keeps track of how many non-zero (important) components of the signal there are
@@ -801,7 +862,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
       }
       q.pop ();
     }
-    q = std::priority_queue<std::pair<PetscReal, int>> (); // reset the queue 
+    q = std::priority_queue<std::pair<PetscReal, int>> (); // reset the queue
   }
 
 	ierr = VecRestoreArray (x, &x_ptr); 	CHKERRQ (ierr);

@@ -48,6 +48,10 @@ def getTumorRunCmd(params):
     gaussian_cm_path = ""
     ### Path to initial guess p vector, default: none, (use zero initial guess)
     pvec_path = ""
+    ### Path to label image of connected components of target data
+    data_comp_path = ""
+    ### Path to .dat file for connected components of target data
+    data_comp_dat_path = ""
 
 
     verbosity = 3
@@ -163,7 +167,7 @@ def getTumorRunCmd(params):
     if 'gvf' in params:
         gvf = params['gvf']
     else:
-        print ('Default gvf = {} used'.format(gvf))    
+        print ('Default gvf = {} used'.format(gvf))
     # ---
     if 'predict_flag' in params:
         predict_flag = params['predict_flag']
@@ -261,6 +265,18 @@ def getTumorRunCmd(params):
     else:
         print('Using zero initial guess for p vector.')
     # ---
+    if 'data_comp_path' in params:
+        data_comp_path = params['data_comp_path']
+        print('path to file with target data comp label image = {}'.format(data_comp_path))
+    else:
+        print('No label image for components of target data set.')
+    # ---
+    if 'data_comp_dat_path' in params:
+        data_comp_dat_path = params['data_comp_dat_path']
+        print('path to file with target data comp  = {}'.format(data_comp_dat_path))
+    else:
+        print('No .dat file for components of target data given.')
+    # ---
     if "solve_rho_k" in params:
         solve_rho_k = params['solve_rho_k']
         print('solving for rho and k only (c(0) must be set via p and Gaussian centers)')
@@ -307,6 +323,8 @@ def getTumorRunCmd(params):
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \
     " -pvec_path " + pvec_path + \
+    " -data_comp_path " + data_comp_path + \
+    " -data_comp_dat_path " + data_comp_dat_path + \
     " -model " + str(model) + \
     " -smooth " + str(smooth_f) + \
     " -observation_threshold " + str(obs_thres) + \
