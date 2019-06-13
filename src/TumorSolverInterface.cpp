@@ -819,6 +819,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             PCOUT << n_misc_->support_[i] << " ";
         }
         PCOUT << std::endl;
+        PCOUT << "Component label of support : ";
+        for (int i = 0; i < n_misc_->support_.size(); i++) {
+            PCOUT << tumor_->phi_->gaussian_labels_[n_misc_->support_[i]] << " ";
+        }
+        PCOUT << std::endl;
 
         /* -------------------------------------------------------------------- 3) Take a Gauss-Newton/Quasi-Newton step -------------------------------------------------------------------- */
 
@@ -906,6 +911,12 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         PCOUT << "Support of current solution : ";
         for (int i = 0; i < n_misc_->support_.size(); i++) {
             PCOUT << n_misc_->support_[i] << " ";
+        }
+        PCOUT << std::endl;
+
+        PCOUT << "Component label of current solution : ";
+        for (int i = 0; i < n_misc_->support_.size(); i++) {
+            PCOUT << tumor_->phi_->gaussian_labels_[n_misc_->support_[i]] << " ";
         }
         PCOUT << std::endl;
 
