@@ -780,7 +780,6 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             center.push_back (X * hx);
             center.push_back (Y * hy);
             center.push_back (Z * hz);
-            PCOUT << " SET GAUSSIAN LABELS " << std::endl;
             if (labels_ != nullptr) gaussian_labels_.push_back (label_ptr[i]);  // each gaussian has the component label
             else gaussian_labels_.push_back (1);                                // if no labels, assume one component: all gaussians are component 1
         }
@@ -809,6 +808,22 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         rcount[i] = center_size[i];
     }
     MPI_Allgatherv (&center[0], center.size(), MPI_DOUBLE, &center_global[0], &rcount[0], &displs[0], MPI_DOUBLE, PETSC_COMM_WORLD);
+
+    // gather gaussian labels
+    std::vector<int> g_labels;
+    g_labels.resize (np_global);
+    size = gaussian_labels_.size();
+    MPI_Allgather (&size, 1, MPI_INT, &center_size[0], 1, MPI_INT, PETSC_COMM_WORLD);
+    displs[0] = 0;
+    rcount[0] = center_size[0];
+    for (int i = 1; i < nprocs; i++) {
+        displs[i] = displs[i - 1] + center_size[i - 1];
+        rcount[i] = center_size[i];
+    }
+    MPI_Allgatherv (&gaussian_labels_[0], gaussian_labels_.size(), MPI_INT, &g_labels[0], &rcount[0], &displs[0], MPI_INT, PETSC_COMM_WORLD);
+    gaussian_labels_.clear();
+    gaussian_labels_ = g_labels;
+
 
     np_ = np_global;
     n_misc_->np_ = np_;
