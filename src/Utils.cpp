@@ -459,7 +459,7 @@ PetscErrorCode readBIN(Vec* x, int size, std::string f) {
   // get file name without path
   ierr = getFileName(file, f);                                    CHKERRQ(ierr);
   msg = "file " + file + " does not exist";
-  TU_assert(fileExists(f), msg);
+  TU_assert(fileExists(f), msg.c_str());
   if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
   #ifdef SERIAL
       ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));         CHKERRQ (ierr);
