@@ -214,6 +214,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
     PetscErrorCode ierr = 0;
     double twopi = 2.0 * M_PI;
     const double R = std::sqrt(2.) * sigma_; //0.05*twopi;
+    const double AMPL = 1. / (sigma_ * std::sqrt(2*M_PI));
     int64_t X, Y, Z;
     double dummy, r, ratio;
     int64_t ptr;
@@ -229,7 +230,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
                 r = sqrt((hx * X - xc) * (hx * X - xc) + (hy * Y - yc) * (hy * Y - yc) + (hz * Z - zc) * (hz * Z - zc));
                 ratio = r / R;
                 ptr = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
-                out[ptr] = std::exp(-ratio * ratio);
+                out[ptr] = AMPL * std::exp(-ratio * ratio);
 
             }
   PetscFunctionReturn(0);
