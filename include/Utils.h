@@ -229,15 +229,15 @@ public:
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
-        : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
-                       // Modified Obj -- 3
-                       // Mass effect -- 4
-        , dt_ (0.5)                            // Time step
-        , nt_(1)                               // Total number of time steps
-        , np_ (1)                              // Number of gaussians for bounding box
+        : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
+                                                // Modified Obj -- 3
+                                                // Mass effect -- 4
+        , dt_ (0.5)                             // Time step
+        , nt_(1)                                // Total number of time steps
+        , np_ (1)                               // Number of gaussians for bounding box
         , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
         , nr_ (1)                               // number of rho_i that we like to invert for (1-3)
-        , k_ (0E-1)                              // Isotropic diffusion coefficient
+        , k_ (0E-1)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
@@ -252,21 +252,21 @@ class NMisc {
         , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (0.0 / 1.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (0.0 / 5.0)                  // gm to wm reaction coeff ratio
+        , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
+        , phi_sigma_ (2 * M_PI / 64)            // Gaussian standard deviation for bounding box
         , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
-        , obs_threshold_ (0.0)                 // Observation threshold
+        , obs_threshold_ (0.0)                  // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
-        , data_threshold_ (0.05)                 // Data threshold to set custom gaussians
+        , data_threshold_ (0.05)                // Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
+        , regularization_norm_(L2b)             // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , reaction_inversion_ (false)           // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
         , flag_reaction_inv_ (false)            // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
@@ -289,12 +289,13 @@ class NMisc {
         , nu_csf_ (0.1)                         // Poisson's ratio of CSF
         , E_healthy_ (2100)                     // Young's modulus of wm and gm
         , E_bg_ (15000)                         // Young's modulus of background
-        , E_tumor_ (10000)                       // Young's modulus of tumor
-        , E_csf_ (10)                          // Young's modulus of CSF
+        , E_tumor_ (10000)                      // Young's modulus of tumor
+        , E_csf_ (10)                           // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E4)                    // high screening
-        , forcing_factor_ (2.0E5)                 // mass effect forcing factor
+        , forcing_factor_ (2.0E5)               // mass effect forcing factor
         , prune_components_ (1)                 // prunes L2 solution based on components
+        , multilevel_ (1)                       // scales INT_Omega phi(x) dx = const across levels
                                 {
 
 
@@ -381,6 +382,7 @@ class NMisc {
         int predict_flag_;
         int prune_components_;
 
+
         int testcase_;
         int n_[3];
         int isize_[3];
@@ -438,6 +440,7 @@ class NMisc {
         bool lambda_continuation_;
         bool reaction_inversion_;
         bool flag_reaction_inv_;
+        bool multilevel_;
 
         double target_sparsity_;
 

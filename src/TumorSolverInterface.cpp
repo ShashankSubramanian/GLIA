@@ -246,10 +246,16 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
         ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);                        CHKERRQ (ierr);  // max of IC
 
-        ierr = VecGetArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
-        for (int i = 0; i < np; i++)
-            x_L2_ptr[i] *= (1.0 / ic_max);
-
+        ierr = VecGetArray (x_L2, &x_L2_ptr);                           CHKERRQ (ierr);
+        for (int i = 0; i < np; i++){
+            if(n_misc_->multilevel_) {
+              // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
+              // scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25
+              x_L2_ptr[i] *= (1.0/4.0 * n_misc_->n_[0]/64.  / ic_max);
+            } else {
+              x_L2_ptr[i] *= (1.0 / ic_max);
+            }
+          }    
         ierr = VecRestoreArray (x_L2, &x_L2_ptr);                               CHKERRQ (ierr);
 
         // write out p vector after IC, k inversion (unscaled)
@@ -1132,8 +1138,15 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);                CHKERRQ (ierr);  // max of IC
 
                 ierr = VecGetArray (x_L2, &x_L2_ptr);                           CHKERRQ (ierr);
-                for (int i = 0; i < np; i++)
-                    x_L2_ptr[i] *= (1.0 / ic_max);
+                for (int i = 0; i < np; i++){
+                    if(n_misc_->multilevel_) {
+                      // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
+                      // scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25
+                      x_L2_ptr[i] *= (1.0/4.0 * n_misc_->n_[0]/64.  / ic_max);
+                    } else {
+                      x_L2_ptr[i] *= (1.0 / ic_max);
+                    }
+                  }
 
                 ierr = VecRestoreArray (x_L2, &x_L2_ptr);                       CHKERRQ (ierr);
 
