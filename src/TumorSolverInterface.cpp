@@ -44,14 +44,14 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     int nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
 
     #ifdef SERIAL
-        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);     CHKERRQ (ierr);
+        ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);                     CHKERRQ (ierr);
     #else
-        ierr = VecCreate (PETSC_COMM_WORLD, &p);                    CHKERRQ (ierr);
-        ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);          CHKERRQ (ierr);
-        ierr = VecSetFromOptions (p);                               CHKERRQ (ierr);
+        ierr = VecCreate (PETSC_COMM_WORLD, &p);                                CHKERRQ (ierr);
+        ierr = VecSetSizes (p, PETSC_DECIDE, n_misc->np_);                      CHKERRQ (ierr);
+        ierr = VecSetFromOptions (p);                                           CHKERRQ (ierr);
     #endif
 
-    ierr = VecSet (p, n_misc->p_scale_);                        CHKERRQ (ierr);
+    ierr = VecSet (p, n_misc->p_scale_);                                        CHKERRQ (ierr);
     ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
 
     // create pde and derivative operators
@@ -76,7 +76,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
     initialized_ = true;
     // cleanup
-    ierr = VecDestroy (&p);                                     CHKERRQ (ierr);
+    ierr = VecDestroy (&p);                                                     CHKERRQ (ierr);
     PetscFunctionReturn (0);
 }
 
@@ -139,7 +139,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
-    inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);   CHKERRQ (ierr);
+    inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
 
     PetscFunctionReturn(0);
 }
@@ -149,11 +149,11 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     // set the initial condition
-    ierr = VecCopy (c0, tumor_->c_0_);                           CHKERRQ (ierr);
+    ierr = VecCopy (c0, tumor_->c_0_);                                          CHKERRQ (ierr);
     // solve forward
-    ierr = pde_operators_->solveState (0);                       CHKERRQ (ierr);
+    ierr = pde_operators_->solveState (0);                                      CHKERRQ (ierr);
     // get solution
-    ierr = VecCopy (tumor_->c_t_, cT);                           CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
     PetscFunctionReturn(0);
 }
 // TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
@@ -162,7 +162,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscErrorCode ierr = 0;
     TU_assert (inv_solver_->isInitialized (), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
     if (!optimizer_settings_changed_) {
-        ierr = tuMSGwarn (" Tumor inverse solver running with default settings.");              CHKERRQ (ierr);
+        ierr = tuMSGwarn (" Tumor inverse solver running with default settings."); CHKERRQ (ierr);
     }
 
     int procid, nprocs;
@@ -176,9 +176,9 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
 
     // double *d_ptr;
     // double s_fact = 0.5 * 2.0 * M_PI / n_misc_->n_[0];
-    // ierr = VecGetArray (d1, &d_ptr);                                                 CHKERRQ(ierr);
-    // ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc_, s_fact);                      CHKERRQ(ierr);  // smooth the data a bit after applying obs
-    // ierr = VecRestoreArray (d1, &d_ptr);                                             CHKERRQ(ierr);
+    // ierr = VecGetArray (d1, &d_ptr);                                          CHKERRQ(ierr);
+    // ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc_, s_fact);               CHKERRQ(ierr);  // smooth the data a bit after applying obs
+    // ierr = VecRestoreArray (d1, &d_ptr);                                      CHKERRQ(ierr);
 
 
     // set target data for inversion (just sets the vector, no deep copy)
@@ -190,7 +190,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     // solve
     ierr = inv_solver_->solve ();
     // pass the reconstructed p vector to the caller (deep copy)
-    ierr= VecCopy (inv_solver_->getPrec(), prec);                                               CHKERRQ (ierr);
+    ierr= VecCopy (inv_solver_->getPrec(), prec);                               CHKERRQ (ierr);
 
     Vec x_L2;
     int np, nk, nr;
@@ -198,10 +198,10 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     np = n_misc_->np_;
     nk = n_misc_->nk_;
     nr = n_misc_->nr_;
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);            CHKERRQ (ierr);              // Create the L2 solution vector
-    ierr = VecSet (x_L2, 0);                                               CHKERRQ (ierr);
-    ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
-    ierr = VecGetArray (prec, &prec_ptr);                                  CHKERRQ (ierr);
+    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);                 CHKERRQ (ierr);              // Create the L2 solution vector
+    ierr = VecSet (x_L2, 0);                                                    CHKERRQ (ierr);
+    ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
+    ierr = VecGetArray (prec, &prec_ptr);                                       CHKERRQ (ierr);
 
     for (int i = 0; i < np + nk; i++)
         x_L2_ptr[i] = prec_ptr[i]; // solution + diffusivity copied from L2 solve
@@ -210,8 +210,8 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     if (nr > 2) x_L2_ptr[np + nk + 2] = n_misc_->rho_ * n_misc_->r_glm_wm_ratio_;
 
 
-    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
-    ierr = VecRestoreArray (prec, &prec_ptr);                                  CHKERRQ (ierr);
+    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
+    ierr = VecRestoreArray (prec, &prec_ptr);                                   CHKERRQ (ierr);
 
     if (n_misc_->reaction_inversion_) {
         PCOUT << " --------------  -------------- -----------------\n";
@@ -548,14 +548,14 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
 
     if (!use_nmisc) {
         // update matprob, deep copy of probability maps
-    		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_);         CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);         CHKERRQ(ierr); }
-    		if(gm != nullptr)      { ierr = VecCopy (gm, tumor_->mat_prop_->gm_);         CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);         CHKERRQ(ierr); }
-    		if(csf != nullptr)     { ierr = VecCopy (csf, tumor_->mat_prop_->csf_);       CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);        CHKERRQ(ierr); }
-    		if(glm != nullptr)     { ierr = VecCopy (gm, tumor_->mat_prop_->glm_);        CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->glm_, 0.0);        CHKERRQ(ierr); }
+    		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_);   CHKERRQ(ierr); }
+    		else                   { ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);   CHKERRQ(ierr); }
+    		if(gm != nullptr)      { ierr = VecCopy (gm, tumor_->mat_prop_->gm_);   CHKERRQ(ierr); }
+    		else                   { ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);   CHKERRQ(ierr); }
+    		if(csf != nullptr)     { ierr = VecCopy (csf, tumor_->mat_prop_->csf_); CHKERRQ(ierr); }
+    		else                   { ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);  CHKERRQ(ierr); }
+    		if(glm != nullptr)     { ierr = VecCopy (gm, tumor_->mat_prop_->glm_);  CHKERRQ(ierr); }
+    		else                   { ierr = VecSet (tumor_->mat_prop_->glm_, 0.0);  CHKERRQ(ierr); }
     		if(filter != nullptr)  { ierr = VecCopy (filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
     		else                   { ierr = VecSet (tumor_->mat_prop_->filter_, 0.0);     CHKERRQ(ierr); }
 
