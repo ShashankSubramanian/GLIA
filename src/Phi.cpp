@@ -75,12 +75,11 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
 
     double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
 
+    double phi_max = 0, max = 0;
     double *phi_ptr;
     Vec all_phis;
     ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
     ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
-
-    double phi_max;
 
     for (int i = 0; i < np_; i++) {
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
@@ -93,13 +92,18 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
             ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         }
+        // find the max
+        ierr = VecMax (phi_vec_[i], NULL, &max);                                  CHKERRQ (ierr);
+        if (max > phi_max) {
+          phi_max = max;
+        }
+      }
 
-        // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
-        ierr = VecMax (phi_vec_[i], NULL, &phi_max);                            CHKERRQ (ierr);
+      // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+      for (int i = 0; i < np_; i++) {
         ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
-
         ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
-    }
+      }
 
     if (n_misc_->writeOutput_) {
         dataOut (all_phis, n_misc_, "phiGrid.nc");
@@ -214,7 +218,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
     PetscErrorCode ierr = 0;
     double twopi = 2.0 * M_PI;
     const double R = std::sqrt(2.) * sigma_; //0.05*twopi;
-    const double AMPL = 1. / (sigma_ * std::sqrt(2*M_PI));
+    const double AMPL = 1.;// / (sigma_ * std::sqrt(2*M_PI));
     int64_t X, Y, Z;
     double dummy, r, ratio;
     int64_t ptr;
