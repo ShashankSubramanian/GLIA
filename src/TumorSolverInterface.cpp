@@ -1195,11 +1195,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
     // pass the reconstructed p vector to the caller (deep copy)
     ierr= VecCopy (x_L1, prec);                                                 CHKERRQ (ierr);
-    ierr = VecDestroy (&g);                            CHKERRQ (ierr);
-    ierr = VecDestroy (&x_L1);                         CHKERRQ (ierr);
-    ierr = VecDestroy (&g_ref);                        CHKERRQ (ierr);
-    ierr = VecDestroy (&x_L1_old);                     CHKERRQ (ierr);
-    ierr = VecDestroy (&temp);                         CHKERRQ (ierr);
+    ierr = VecDestroy (&g);                                                     CHKERRQ (ierr);
+    ierr = VecDestroy (&x_L1);                                                  CHKERRQ (ierr);
+    ierr = VecDestroy (&g_ref);                                                 CHKERRQ (ierr);
+    ierr = VecDestroy (&x_L1_old);                                              CHKERRQ (ierr);
+    ierr = VecDestroy (&temp);                                                  CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
 }
