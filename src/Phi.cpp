@@ -82,23 +82,28 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
 
     for (int i = 0; i < np_; i++) {
+        // set values of Gaussian function
         ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
         initialize (phi_ptr, n_misc_, &centers_[3 * i]);
         ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+        // filter with brain geometry
         ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
-
+        // smooth to avoid sharp edges (FFT)
         if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
-            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
             ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
-            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                     CHKERRQ (ierr);
         }
+        // truncate Gaussians after radius of 5*sigma for compact support
+        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+        truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
         // find the max
-        ierr = VecMax (phi_vec_[i], NULL, &max);                                  CHKERRQ (ierr);
+        ierr = VecMax (phi_vec_[i], NULL, &max);                                CHKERRQ (ierr);
         if (max > phi_max) {
           phi_max = max;
         }
       }
-
       // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
       for (int i = 0; i < np_; i++) {
         ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
@@ -108,10 +113,7 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     if (n_misc_->writeOutput_) {
         dataOut (all_phis, n_misc_, "phiGrid.nc");
     }
-
-    ierr = VecDestroy (&all_phis);                                             CHKERRQ (ierr);
-
-
+    ierr = VecDestroy (&all_phis);                                              CHKERRQ (ierr);
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
     t[5] = self_exec_time;
@@ -127,7 +129,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     int nprocs, procid;
-	MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
+	  MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
     MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
     int h = round (std::pow (np_, 1.0 / 3.0));
     double space[3];
@@ -212,6 +214,32 @@ PetscErrorCode Phi::phiMesh (double *center) {
 
 
 // ### _____________________________________________________________________ ___
+// ### ///////////////// truncate //////////////////////////////////////// ###
+PetscErrorCode Phi::truncate (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    double twopi = 2.0 * M_PI;
+    int64_t X, Y, Z;
+    double r;
+    int64_t ptr;
+    double xc = center[0], yc = center[1], zc = center[2];
+    double hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
+
+    for (int x = 0; x < n_misc->isize_[0]; x++)
+        for (int y = 0; y < n_misc->isize_[1]; y++)
+            for (int z = 0; z < n_misc->isize_[2]; z++) {
+                X = n_misc->istart_[0] + x;
+                Y = n_misc->istart_[1] + y;
+                Z = n_misc->istart_[2] + z;
+                r = sqrt((hx * X - xc) * (hx * X - xc) + (hy * Y - yc) * (hy * Y - yc) + (hz * Z - zc) * (hz * Z - zc));
+                ptr = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
+                // truncate to zero after radius 5*sigma
+                out[ptr] = (r/sigma_ <= 5) ? out[ptr] : 0.0;
+            }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
 // ### ///////////////// initialize //////////////////////////////////////// ###
 PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
     PetscFunctionBegin;
@@ -220,7 +248,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
     const double R = std::sqrt(2.) * sigma_; //0.05*twopi;
     const double AMPL = 1.;// / (sigma_ * std::sqrt(2*M_PI));
     int64_t X, Y, Z;
-    double dummy, r, ratio;
+    double r, ratio;
     int64_t ptr;
     double xc = center[0], yc = center[1], zc = center[2];
     double hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
@@ -234,6 +262,8 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
                 r = sqrt((hx * X - xc) * (hx * X - xc) + (hy * Y - yc) * (hy * Y - yc) + (hz * Z - zc) * (hz * Z - zc));
                 ratio = r / R;
                 ptr = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
+                // set values of Gaussian function, truncate to zero after radius 5\sigma
+                // out[ptr] = (r/sigma_ <= 5) ? AMPL * std::exp(-ratio * ratio) : 0.0;
                 out[ptr] = AMPL * std::exp(-ratio * ratio);
 
             }

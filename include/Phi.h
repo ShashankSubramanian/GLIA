@@ -34,6 +34,7 @@ class Phi {
 		PetscErrorCode setValues (std::shared_ptr<MatProp> mat_prop);
 		PetscErrorCode phiMesh (double *center);
 		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);
+    PetscErrorCode truncate (double *out, std::shared_ptr<NMisc> n_misc, double *center);
 		PetscErrorCode apply (Vec out, Vec p);
 		PetscErrorCode applyTranspose (Vec pout, Vec in);
 		void modifyCenters (std::vector<int> support_idx);    														  // Picks only the basis needed in the restricted subspace
