@@ -422,7 +422,7 @@ PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> 
     PCOUT << "weights: ";
     for(int i=0; i < ncomp; ++i){
       PCOUT << weights[i];
-      if(i < 2) {PCOUT << ", ";}
+      if(i < ncomp) {PCOUT << ", ";}
     }
     PCOUT << std::endl;
     PCOUT << "centers: ";
@@ -860,14 +860,20 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
     }
 
     for (int i = 0; i < component_sparsity[nc]; i++) {
-      if (std::abs(q.top().first) > tol) {
-        nnz++;  // keeps track of how many non-zero (important) components of the signal there are
-        support.push_back (q.top().second);
-      } else {  // if top of the queue is not greater than tol, we are done since none of the elements
-            // below it will every be greater than tol
+      if (q.size() > 0) {
+        if (std::abs(q.top().first) > tol) {
+          nnz++;  // keeps track of how many non-zero (important) components of the signal there are
+          support.push_back (q.top().second);
+        } else {  // if top of the queue is not greater than tol, we are done since none of the elements
+                  // below it will ever be greater than tol
+          PCOUT << "No support selected in component " << nc << "; reason: g_i < tolerance = " << tol << std::endl;
+          break;
+        }
+        q.pop ();
+      } else {
+        PCOUT << "No support selected in component " << nc << "; reason: no value present in queue (possibly component weight very small, w="<< weights[nc]  <<"). " << std::endl;
         break;
       }
-      q.pop ();
     }
     q = std::priority_queue<std::pair<PetscReal, int>> (); // reset the queue
   }
