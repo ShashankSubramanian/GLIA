@@ -16,7 +16,7 @@ class Phi {
 		int num_components_;						// number of connected components of data
 		std::vector<int> gaussian_labels_;			// gaussian labels set using labels_
 		std::vector<double> component_weights_;		// weights for labels obtained using connected components
-    	std::vector<double> component_centers_;		// weights for labels obtained using connected components
+    std::vector<double> component_centers_;		// weights for labels obtained using connected components
 
 		double sigma_;
 		double spacing_factor_;
@@ -29,8 +29,8 @@ class Phi {
 
 		PetscErrorCode setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np);    // Bounding box
 		PetscErrorCode setGaussians (Vec data);																		  // Adaptive phis
-    	PetscErrorCode setGaussians (std::string file);
-    	PetscErrorCode setLabels (Vec labels) {labels_ = labels; PetscFunctionReturn(0);}
+    PetscErrorCode setGaussians (std::string file);
+    PetscErrorCode setLabels (Vec labels) {labels_ = labels; PetscFunctionReturn(0);}
 		PetscErrorCode setValues (std::shared_ptr<MatProp> mat_prop);
 		PetscErrorCode phiMesh (double *center);
 		PetscErrorCode initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center);

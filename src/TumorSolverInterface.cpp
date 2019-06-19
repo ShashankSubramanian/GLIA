@@ -255,7 +255,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
             } else {
               x_L2_ptr[i] *= (1.0 / ic_max);
             }
-          }    
+          }
         ierr = VecRestoreArray (x_L2, &x_L2_ptr);                               CHKERRQ (ierr);
 
         // write out p vector after IC, k inversion (unscaled)
@@ -752,10 +752,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // ierr = VecSet (prec, 0.);                                     CHKERRQ (ierr);
 
     // solve
-    Vec g, g_ref;              // Holds the gradient and reference gradient
-    Vec temp;                  // Temp vector
-    PetscReal J, J_ref, J_old;        // Objective
-    Vec x_L1, x_L1_old;                  // Holds the L1 solution and the previous guess
+    Vec g, g_ref;                // Holds the gradient and reference gradient
+    Vec temp;                    // Temp vector
+    PetscReal J, J_ref, J_old;   // Objective
+    Vec x_L1, x_L1_old;          // Holds the L1 solution and the previous guess
     // Tolerance for L1 solver
     // double ftol = inv_solver_->getOptSettings()->ftol;
     double ftol = 1E-5;
@@ -898,9 +898,9 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         idx.clear();
 
         if (n_misc_->prune_components_)
-            ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx, tumor_->phi_->gaussian_labels_, tumor_->phi_->component_weights_, nnz, tumor_->phi_->num_components_);
+            hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx, tumor_->phi_->gaussian_labels_, tumor_->phi_->component_weights_, nnz, tumor_->phi_->num_components_);
         else
-            ierr = hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx, nnz);
+            hardThreshold (x_L1, n_misc_->sparsity_level_, np_original, idx, nnz);
 
         // temp_support = n_misc_->support_;
         //clear the support

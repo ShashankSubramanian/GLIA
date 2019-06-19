@@ -444,7 +444,7 @@ int main (int argc, char** argv) {
         ierr = readData (data, support_data, data_components, c_0, p_rec, n_misc, data_path, support_data_path, data_comp_path);
         if(use_data_comps) {
           PCOUT << " SET LABELS " << std::endl;
-          tumor->phi_->setLabels (data_components);           
+          tumor->phi_->setLabels (data_components);
         }
         if(use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
@@ -498,6 +498,8 @@ int main (int argc, char** argv) {
         std::string file_concomp(data_comp_dat_path);
         if(use_data_comps){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
+          n_misc->sparsity_level_ =  4 * tumor->phi_->component_weights_.size();
+          PCOUT << "Set sparsity level to 4 x n_components = " << n_misc->sparsity_level_ <<std::endl;
         }
 
         if (!n_misc->bounding_box_) {

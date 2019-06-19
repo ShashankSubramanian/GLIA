@@ -829,6 +829,9 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<double> weights, int &nnz, int num_components) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
+  int nprocs, procid;
+	MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
+	MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
 
 	nnz = 0;
   std::priority_queue<std::pair<PetscReal, int>> q;
@@ -839,13 +842,17 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 
   std::vector<int> component_sparsity;
   int fin_spars;
+  PCOUT << "sparsity per component: [ ";
   for (int nc = 0; nc < num_components; nc++) {
     if (nc != num_components - 1) {
-      component_sparsity.push_back (std::ceil (weights[nc] * sparsity_level));
+      component_sparsity.push_back (1 + std::floor (weights[nc] * (sparsity_level - num_components) ));
+      PCOUT << component_sparsity.at(nc) << ", ";
     } else { // last component is the remaining support
       fin_spars = sparsity_level - std::accumulate (component_sparsity.begin(), component_sparsity.end(), 0);
       component_sparsity.push_back (fin_spars);
+      PCOUT << fin_spars << "]"<<std::endl;
     }
+
 
     for (int i = 0; i < sz; i++) {
       if (labels[i] == nc + 1) // push the current components into the priority queue
