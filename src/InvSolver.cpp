@@ -456,7 +456,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   itctx_->optsettings_->ls_minstep = minstep;
 
   ierr = TaoGetLineSearch (tao_, &linesearch);                                        CHKERRQ(ierr);
-  // ierr = TaoLineSearchSetType (linesearch, "armijo");                                 CHKERRQ(ierr);
+  ierr = TaoLineSearchSetType (linesearch, "armijo");                                 CHKERRQ(ierr);
   linesearch->stepmin = minstep;
 
   ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
@@ -2443,9 +2443,9 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
       linesearch->stepmin = minstep;
-      if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
+      //if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
-      }
+      //}
       ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
       std::stringstream s;
       tuMSGstd(" parameters (optimizer):");
