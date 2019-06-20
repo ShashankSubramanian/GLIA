@@ -128,9 +128,9 @@ def getTumorRunCmd(params):
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "QN"
     ### Newton max iterations
-    max_iter = 50
+    newton_maxit = 50
     ### GIST max iterations (for L1 solver)
-    max_gist_iter = 2
+    gist_maxit = 2
     ### Krylov max iterations
     max_krylov_iter = 30
     ### Relative gradient tolerance
@@ -158,6 +158,21 @@ def getTumorRunCmd(params):
         grad_tol = params['grad_tol']
     else:
         print ('Default grad_tol = {} used'.format(grad_tol))
+    # ---
+    if 'newton_maxit' in params:
+        newton_maxit = params['newton_maxit']
+    else:
+        print ('Default newton_maxit = {} used'.format(newton_maxit))
+    # ---
+    if 'gist_maxit' in params:
+        gist_maxit = params['gist_maxit']
+    else:
+        print ('Default gist_maxit = {} used'.format(gist_maxit))
+    # ---
+    if 'data_thres' in params:
+        data_thres = params['data_thres']
+    else:
+        print ('Default data_thres = {} used'.format(data_thres))
     # ---
     if 'rho_inv' in params:
         rho_inv = params['rho_inv']
@@ -310,8 +325,8 @@ def getTumorRunCmd(params):
     " -sigma_data_driven " + str(dd_fac) + \
     " -output_dir " + results_path + \
     " -newton_solver " + solvertype + \
-    " -newton_maxit " + str(max_iter) + \
-    " -gist_maxit " + str(max_gist_iter) + \
+    " -newton_maxit " + str(newton_maxit) + \
+    " -gist_maxit " + str(gist_maxit) + \
     " -krylov_maxit " + str(max_krylov_iter) + \
     " -rel_grad_tol " + str(grad_tol) + \
     " -syn_flag " + str(create_synthetic) + \
