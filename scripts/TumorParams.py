@@ -81,6 +81,8 @@ def getTumorRunCmd(params):
     ##               4: brain multifocal synthetic tumor with far away ground truths
     tumor_testcase = 0
 
+    multilevel = 0;
+
     ### k_gm_wm ratio
     k_gm_wm = 0.0
     ### r_gm_wm ratio
@@ -122,11 +124,13 @@ def getTumorRunCmd(params):
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
     target_spars = 0.99
     ### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
-    sparsity_lvl = 10
+    sparsity_lvl = 5
     ### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / meshsize)
     dd_fac = 2
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "QN"
+    ### Line-search type: armijo - armijo line-search, mt - more-thuene line search (wolfe conditions)
+    linesearchtype = "armijo"
     ### Newton max iterations
     newton_maxit = 50
     ### GIST max iterations (for L1 solver)
@@ -134,7 +138,7 @@ def getTumorRunCmd(params):
     ### Krylov max iterations
     max_krylov_iter = 30
     ### Relative gradient tolerance
-    grad_tol = 1E-5
+    grad_tol = 1E-4
     ### Forward solver time order of accuracy
     accuracy_order = 2
 
@@ -198,6 +202,14 @@ def getTumorRunCmd(params):
         beta = params['beta']
     else:
         print ('Default beta = {} used'.format(beta))
+    # ---
+    if 'linesearchtype' in params:
+        linesearchtype = params['linesearchtype']
+    else:
+        print ('Using default line-search type = {} used'.format(linesearchtype))
+    # ---
+    if 'multilevel' in params:
+        multilevel = params['multilevel']
     # ---
     if 'dd_fac' in params:
         dd_fac = params['dd_fac']
@@ -311,6 +323,7 @@ def getTumorRunCmd(params):
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
+    " -multilevel " + str(multilevel) + \
     " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
     " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
     " -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \
@@ -325,6 +338,7 @@ def getTumorRunCmd(params):
     " -sigma_data_driven " + str(dd_fac) + \
     " -output_dir " + results_path + \
     " -newton_solver " + solvertype + \
+    " -line_search "   + linesearchtype + \
     " -newton_maxit " + str(newton_maxit) + \
     " -gist_maxit " + str(gist_maxit) + \
     " -krylov_maxit " + str(max_krylov_iter) + \

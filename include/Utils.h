@@ -34,6 +34,7 @@ class Phi;
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
+enum {ARMIJO = 0, MT = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 
 struct OptimizerSettings {
@@ -51,6 +52,7 @@ struct OptimizerSettings {
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
     int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
     int    newtonsolver;         /// @brief type of newton slver (0=GN, 1=QN, 2=GN/QN)
+    int    linesearch;           /// @brief type of line-search used (0=armijo, 1=mt)
     int    regularization_norm;  /// @brief defines the type of regularization (L1, L2, or weighted-L2)
     int    verbosity;            /// @brief controls verbosity of solver
     bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
@@ -73,6 +75,7 @@ struct OptimizerSettings {
     iterbound (200),
     fseqtype (SLFS),
     newtonsolver (QUASINEWTON),
+    linesearch (MT),
     regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
@@ -273,11 +276,12 @@ class NMisc {
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
         , write_p_checkpoint_(true)             // if true, p vector and corresponding Gaussian centers are written to file at certain checkpoints
         , newton_solver_ (QUASINEWTON)          // Newton solver type
+        , linesearch_ (MT)                      // Line-search type
         , newton_maxit_ (30)                    // Newton max itr
         , gist_maxit_ (50)                      // GIST max itr
         , krylov_maxit_ (30)                    // Krylov max itr
         , opttolgrad_ (1E-5)                    // Relative gradient tolerance of L2 solves
-        , sparsity_level_ (1)                   // Level of sparsity for L1 solves
+        , sparsity_level_ (5)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
@@ -295,7 +299,7 @@ class NMisc {
         , screen_high_ (1E4)                    // high screening
         , forcing_factor_ (2.0E5)               // mass effect forcing factor
         , prune_components_ (1)                 // prunes L2 solution based on components
-        , multilevel_ (1)                       // scales INT_Omega phi(x) dx = const across levels
+        , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
                                 {
 
 
@@ -463,7 +467,7 @@ class NMisc {
         std::stringstream readpath_;
         std::stringstream writepath_;
 
-        int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
+        int newton_solver_, linesearch_, newton_maxit_, gist_maxit_, krylov_maxit_;
         double opttolgrad_;
 
         std::vector<int> support_;      // support of cs guess
@@ -550,6 +554,8 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode readBIN(Vec* x, int size2, std::string f);
 /// @brief writes out vector im binary format, serial
 PetscErrorCode writeBIN(Vec x, std::string f);
+/// @reads in p_vec vector from txt file
+PetscErrorCode readPVec(Vec* x, int size, int np, std::string f);
 /// @brief reads in Gaussian centers from file
 PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f);
 /// @brief reads connected component data from file
@@ -558,6 +564,8 @@ PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> 
 PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path, std::string suffix);
 /// @brief returns only filename
 PetscErrorCode getFileName(std::string& filename, std::string file);
+/// @brief returns filename, extension and path
+PetscErrorCode getFileName(std::string& path, std::string& filename, std::string& extension, std::string file);
 /// @brief checks if file exists
 bool fileExists(const std::string& filename);
 

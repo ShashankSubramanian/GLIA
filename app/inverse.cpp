@@ -107,11 +107,13 @@ int main (int argc, char** argv) {
     double r_gm_wm = -1.0;
 
     char newton_solver[10];
+    char line_search[10];
     int newton_maxit = -1;
     int gist_maxit = -1;
     int krylov_maxit = -1;
 
     int syn_flag = -1;
+    int multilevel_flag = -1;
     int model = -1;
 
     int fwd_flag = 0;
@@ -165,12 +167,15 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
     PetscOptionsReal ("-low_freq_noise", "Noise level for low frequency noise addition", "", low_freq_noise_scale, &low_freq_noise_scale, NULL);
     PetscStrcpy (newton_solver, "QN");
+    PetscStrcpy (line_search, "mt");
     PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
+    PetscOptionsString ("-line_search", "Line search type {mt, armijo}", "", line_search, line_search, 10, NULL);
     PetscOptionsInt ("-newton_maxit", "Newton max iterations", "", newton_maxit, &newton_maxit, NULL);
     PetscOptionsInt ("-gist_maxit", "GIST max iterations", "", gist_maxit, &gist_maxit, NULL);
     PetscOptionsInt ("-krylov_maxit", "Krylov max iterations", "", krylov_maxit, &krylov_maxit, NULL);
     PetscOptionsReal ("-rel_grad_tol", "Relative gradient tolerance for L2 solves", "", opttolgrad, &opttolgrad, NULL);
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
+    PetscOptionsInt ("-multilevel", "Flag indicating wehther or not solver is running in multilevel mode", "", multilevel_flag, &multilevel_flag, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
     PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
@@ -354,6 +359,20 @@ int main (int argc, char** argv) {
         n_misc->newton_solver_ = GAUSSNEWTON;
     }
 
+    PetscStrcmp ("armijo", line_search, &strflg);
+    if (strflg) {
+        n_misc->linesearch_ = ARMIJO;
+    }
+    PetscStrcmp ("mt", line_search, &strflg);
+    if (strflg) {
+        n_misc->linesearch_ = MT;
+    }
+
+    if (multilevel_flag != -1.0) {
+        n_misc->multilevel_ = multilevel_flag;
+        PCOUT << "Solver is running in multi-level mode" << std::endl;
+    }
+
     if (newton_maxit != -1.0) {
         n_misc->newton_maxit_ = newton_maxit;
     }
@@ -414,6 +433,7 @@ int main (int argc, char** argv) {
     // Set optimization flags of tumor solver from input script
     solver_interface->getInvSolver()->getOptSettings ()->newton_maxit = n_misc->newton_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->newtonsolver = n_misc->newton_solver_;
+    solver_interface->getInvSolver()->getOptSettings ()->linesearch = n_misc->linesearch_;
     solver_interface->getInvSolver()->getOptSettings ()->gist_maxit = n_misc->gist_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->opttolgrad = n_misc->opttolgrad_;
@@ -498,7 +518,7 @@ int main (int argc, char** argv) {
         std::string file_concomp(data_comp_dat_path);
         if(use_data_comps){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
-          n_misc->sparsity_level_ =  4 * tumor->phi_->component_weights_.size();
+          n_misc->sparsity_level_ =  n_misc->sparsity_level_ * tumor->phi_->component_weights_.size();
           PCOUT << "Set sparsity level to 4 x n_components = " << n_misc->sparsity_level_ <<std::endl;
         }
 
@@ -526,7 +546,7 @@ int main (int argc, char** argv) {
               std::string file_cm(gaussian_cm_path);
               ierr = tumor->phi_->setGaussians (file_cm);                               CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
-              readBIN(&p_rec, n_misc->np_ + nk + nr, file_p);
+              ierr = readPVec(&p_rec, n_misc->np_ + nk + nr, n_misc->np_, file_p);      CHKERRQ (ierr);
             } else {
               ierr = tumor->phi_->setGaussians (support_data);                          CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);

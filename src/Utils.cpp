@@ -310,7 +310,7 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
   pvis << "];"<<std::endl;
 
   // write Gaussian centers
-  std::string fname_phi = path + "phi-mesh-" + suffix + ".dat";
+  std::string fname_phi = path + "phi-mesh-" + suffix + ".txt";
   std::stringstream phivis;
   phivis <<" sigma = "<<phi->sigma_<<", spacing = "<<phi->spacing_factor_ * phi->sigma_<<std::endl;
   phivis <<" centers = ["<<std::endl;
@@ -383,6 +383,134 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
 
 
 // ### _____________________________________________________________________ ___
+// ### ///////////////// readPVec ////////////////////////////////////////// ###
+PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  double *x_ptr;
+  std::string file, msg, path, ext, line;
+
+  TU_assert(!f.empty(), "filename not set");
+  // get file name without path
+  ierr = getFileName(path, file, ext, f);                         CHKERRQ(ierr);
+  msg = "file " + file + " does not exist";
+  TU_assert(fileExists(f), msg.c_str());
+
+  if (strcmp(ext.c_str(),"bin") == 0) {
+    ierr = readBIN(&(*x), size, f);                               CHKERRQ(ierr);
+    PetscFunctionReturn(0);
+  }
+
+  // if not nullptr, clear memory
+  if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
+  // create vec
+  #ifdef SERIAL
+      ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));        CHKERRQ (ierr);
+  #else
+      ierr = VecCreate (PETSC_COMM_WORLD, &(*x));                CHKERRQ (ierr);
+      ierr = VecSetSizes (*x, PETSC_DECIDE, size);               CHKERRQ (ierr);
+      ierr = VecSetFromOptions (*x);                             CHKERRQ (ierr);
+  #endif
+  ierr = VecSet (*x, 0.);                                        CHKERRQ (ierr);
+
+  // read pvec from file
+  std::ifstream pfile(f);
+  int pi = 0;
+  if (pfile.is_open()) {
+    PCOUT << "reading p_i values from file " << f;
+    std::getline(pfile, line); // throw away (p = [);
+    ierr = VecGetArray(*x, &x_ptr);                                CHKERRQ (ierr);
+    while (std::getline(pfile, line)) {
+      if (line.rfind("]") != std::string::npos) break;   // end of file reached, exit out
+      TU_assert(pi < np, "index out of bounds reading p_vec from file.");
+      x_ptr[pi] = atof(line.c_str());
+      pi++;
+    }
+    PCOUT << " ... success: " << pi << " values read, size of vector: " << size << std::endl;
+    TU_assert(pi == np-1, "number of read p_i values does not match with number of read Gaussian centers.");
+    ierr = VecRestoreArray(*x, &x_ptr);                            CHKERRQ (ierr);
+    pfile.close();
+  } else {
+    PCOUT << "cannot open file " << f << std::endl;
+    PetscFunctionReturn(1);
+  }
+  if (procid == 0) {
+    ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readBIN /////////////////////////////////////////// ###
+PetscErrorCode readBIN(Vec* x, int size, std::string f) {
+  PetscFunctionBegin;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  PetscErrorCode ierr = 0;
+  PetscViewer viewer=nullptr;
+  std::string file, msg;
+
+  PCOUT << "reading p_i values from binary file " << f << std::endl;
+  TU_assert(!f.empty(), "filename not set");
+  // get file name without path
+  ierr = getFileName(file, f);                                    CHKERRQ(ierr);
+  msg = "file " + file + " does not exist";
+  TU_assert(fileExists(f), msg.c_str());
+  if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
+  #ifdef SERIAL
+      ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));        CHKERRQ (ierr);
+      ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
+  #else
+      ierr = VecCreate (PETSC_COMM_WORLD, &(*x));                CHKERRQ (ierr);
+      ierr = VecSetSizes (*x, PETSC_DECIDE, size);               CHKERRQ (ierr);
+      ierr = VecSetFromOptions (*x);                             CHKERRQ (ierr);
+      ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
+  #endif
+  TU_assert(viewer != NULL, "could not read binary file");
+  ierr = PetscViewerBinarySetFlowControl(viewer, 2);              CHKERRQ(ierr);
+  ierr = VecLoad(*x, viewer);                                     CHKERRQ(ierr);
+
+  if (procid == 0) {
+  ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);                 CHKERRQ (ierr);
+  }
+  // clean up
+  if (viewer!=nullptr) {
+      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
+      viewer=nullptr;
+  }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// writeBIN ////////////////////////////////////////// ###
+PetscErrorCode writeBIN(Vec x, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  PetscViewer viewer = nullptr;
+  PetscFunctionBegin;
+  TU_assert(x != nullptr, "null pointer");
+  TU_assert(!f.empty(), "filename not set");
+  #ifdef SERIAL
+    ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
+  #else
+    ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
+  #endif
+  TU_assert(viewer != nullptr, "could not write binary file");
+  ierr = VecView(x, viewer);                                      CHKERRQ(ierr);
+  // clean up
+  if (viewer != nullptr) {
+      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
+      viewer = nullptr;
+  }
+  PetscFunctionReturn(0);
+}
+
+
+// ### _____________________________________________________________________ ___
 // ### ///////////////// readConCompDat /////////////////////////////////////// ###
 PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> &centers, std::string f) {
   PetscFunctionBegin;
@@ -443,72 +571,6 @@ PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> 
 }
 
 
-// ### _____________________________________________________________________ ___
-// ### ///////////////// readBIN /////////////////////////////////////////// ###
-PetscErrorCode readBIN(Vec* x, int size, std::string f) {
-  PetscFunctionBegin;
-  int nprocs, procid;
-  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-  PetscErrorCode ierr = 0;
-  PetscViewer viewer=nullptr;
-  std::string file, msg;
-  PetscFunctionBegin;
-
-  TU_assert(!f.empty(), "filename not set");
-  // get file name without path
-  ierr = getFileName(file, f);                                    CHKERRQ(ierr);
-  msg = "file " + file + " does not exist";
-  TU_assert(fileExists(f), msg.c_str());
-  if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
-  #ifdef SERIAL
-      ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));         CHKERRQ (ierr);
-      ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
-  #else
-      ierr = VecCreate (PETSC_COMM_WORLD, &p_rec);                CHKERRQ (ierr);
-      ierr = VecSetSizes (*x, PETSC_DECIDE, size);                CHKERRQ (ierr);
-      ierr = VecSetFromOptions (*x);                              CHKERRQ (ierr);
-      ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
-  #endif
-  TU_assert(viewer != NULL, "could not read binary file");
-  ierr = PetscViewerBinarySetFlowControl(viewer, 2);              CHKERRQ(ierr);
-  ierr = VecLoad(*x, viewer);                                     CHKERRQ(ierr);
-
-  if (procid == 0) {
-  ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);                  CHKERRQ (ierr);
-  }
-  // clean up
-  if (viewer!=nullptr) {
-      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
-      viewer=nullptr;
-  }
-  PetscFunctionReturn(0);
-}
-
-// ### _____________________________________________________________________ ___
-// ### ///////////////// writeBIN ////////////////////////////////////////// ###
-PetscErrorCode writeBIN(Vec x, std::string f) {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
-  PetscViewer viewer = nullptr;
-  PetscFunctionBegin;
-  TU_assert(x != nullptr, "null pointer");
-  TU_assert(!f.empty(), "filename not set");
-  #ifdef SERIAL
-    ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
-  #else
-    ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
-  #endif
-  TU_assert(viewer != nullptr, "could not write binary file");
-  ierr = VecView(x, viewer);                                      CHKERRQ(ierr);
-  // clean up
-  if (viewer != nullptr) {
-      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
-      viewer = nullptr;
-  }
-  PetscFunctionReturn(0);
-}
-
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// getFileName /////////////////////////////////////// ###
@@ -524,6 +586,52 @@ PetscErrorCode getFileName(std::string& filename, std::string file) {
         filename=file.substr(sep + 1);
     }
     if (filename == "") { filename = file; }
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// getFileName /////////////////////////////////////// ###
+PetscErrorCode getFileName(std::string& path, std::string& filename,
+                           std::string& extension, std::string file) {
+    PetscErrorCode ierr = 0;
+    int nprocs, procid;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::string::size_type idx;
+
+    PetscFunctionBegin;
+
+    // get path
+    idx = file.find_last_of("\\/");
+    if (idx != std::string::npos) {
+        path = file.substr(0,idx);
+        filename = file.substr(idx + 1);
+    }
+    if (filename == "") {
+        filename = file;
+    }
+
+    // get extension
+    idx = filename.rfind(".");
+    if (idx != std::string::npos) {
+        extension = filename.substr(idx+1);
+
+        // handle zipped files
+        if (strcmp(extension.c_str(),"gz") == 0) {
+            filename = filename.substr(0,idx);
+            idx = filename.rfind(".");
+            if(idx != std::string::npos) {
+                extension = filename.substr(idx+1);
+                extension = extension + ".gz";
+            }
+        }
+        extension = "." + extension;
+        filename  = filename.substr(0,idx);
+
+    } else {
+        PCOUT << "ERROR: no extension found" << std::endl;
+    }
+
     PetscFunctionReturn(ierr);
 }
 
@@ -807,7 +915,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
     q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
   }
 
-  double tol = 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
+  double tol = 0.0; // 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
             // are (almost)zero to the support
   for (int i = 0; i < sparsity_level; i++) {
     if (std::abs(q.top().first) > tol) {
@@ -836,7 +944,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 	nnz = 0;
   std::priority_queue<std::pair<PetscReal, int>> q;
   double *x_ptr;
-  double tol = 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
+  double tol = 0.0; // 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
                       // are (almost)zero to the support
   ierr = VecGetArray (x, &x_ptr);   CHKERRQ (ierr);
 
@@ -845,14 +953,15 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
   PCOUT << "sparsity per component: [ ";
   for (int nc = 0; nc < num_components; nc++) {
     if (nc != num_components - 1) {
-      component_sparsity.push_back (1 + std::floor (weights[nc] * (sparsity_level - num_components) ));
+      // sparsity level in total is 5 * #nc (number components)
+      // every component gets at 3 degrees of freedom, the remaining 2 * #nc degrees of freedom are distributed based on component weight
+      component_sparsity.push_back (3 + std::floor (weights[nc] * (sparsity_level - 3 * num_components) ));
       PCOUT << component_sparsity.at(nc) << ", ";
     } else { // last component is the remaining support
       fin_spars = sparsity_level - std::accumulate (component_sparsity.begin(), component_sparsity.end(), 0);
       component_sparsity.push_back (fin_spars);
       PCOUT << fin_spars << "]"<<std::endl;
     }
-
 
     for (int i = 0; i < sz; i++) {
       if (labels[i] == nc + 1) // push the current components into the priority queue

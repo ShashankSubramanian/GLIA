@@ -455,8 +455,13 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   minstep = 1.0 / minstep;
   itctx_->optsettings_->ls_minstep = minstep;
 
-  ierr = TaoGetLineSearch (tao_, &linesearch);                                        CHKERRQ(ierr);
-  ierr = TaoLineSearchSetType (linesearch, "armijo");                                 CHKERRQ(ierr);
+  ierr = TaoGetLineSearch (tao_, &linesearch);                                   CHKERRQ(ierr);
+  if (ctx->optsettings_->linesearch == ARMIJO) {
+    ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
+    tuMSGstd(" using line-search type: armijo");
+  } else {
+    tuMSGstd(" using line-search type: more-thuene");
+  }
   linesearch->stepmin = minstep;
 
   ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
@@ -2443,8 +2448,16 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
       linesearch->stepmin = minstep;
+
+      if (ctx->optsettings_->linesearch == ARMIJO) {
+        ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
+        tuMSGstd(" using line-search type: armijo");
+      } else {
+        tuMSGstd(" using line-search type: more-thuene");
+      }
+
       //if(itctx_->optsettings_->newtonsolver == GAUSSNEWTON) {
-        ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
+      //  ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
       //}
       ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
       std::stringstream s;
