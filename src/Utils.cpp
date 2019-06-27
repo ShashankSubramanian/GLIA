@@ -370,10 +370,11 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
       ii = 0;
       while (std::getline(l, t, ',')) {
         if (ii < 3) {
-        centers.push_back(atof(t.c_str()));
-      } else if (read_comp_data && comps != nullptr) {
-        (*comps).push_back(atof(t.c_str()));
-      }
+          centers.push_back(atof(t.c_str()));
+        } else if (read_comp_data && comps != nullptr) {
+          (*comps).push_back(atof(t.c_str()));
+        }
+        ii++;
         // PCOUT << "reading "<<t<<", np="<<np<<std::endl;
       }
       np++;
@@ -381,6 +382,7 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
     file.close();
     n_misc->np_ = np;
     PCOUT << "np=" << np << " centers read " << std::endl;
+    // if(read_comp_data && comps != nullptr){PCOUT << "component labels read, np=" << comps->size() << std::endl;}
   } else {
     PCOUT << "cannot open file " << f << std::endl;
     PetscFunctionReturn(1);
@@ -982,7 +984,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
           support.push_back (q.top().second);
         } else {  // if top of the queue is not greater than tol, we are done since none of the elements
                   // below it will ever be greater than tol
-          PCOUT << "No support selected in component " << nc << "; reason: g_i < tolerance = " << tol << std::endl;
+          PCOUT << "No support selected in component " << nc << "; reason: g_i = " << std::abs(q.top().first) << " < " << tol << " = tolerance" << std::endl;
           break;
         }
         q.pop ();
