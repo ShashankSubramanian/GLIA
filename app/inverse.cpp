@@ -252,7 +252,15 @@ int main (int argc, char** argv) {
     PetscErrorCode ierr = 0;
     double rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = true; //don't change -- controlled from the run script
-    bool read_support_data   = (support_data_path != NULL && strlen(support_data_path) > 0); // path set?
+    bool read_support_data     = (support_data_path != NULL && strlen(support_data_path) > 0); // path set?
+    bool read_support_data_nc  = false;
+    bool read_support_data_txt = false;
+    std::string f(support_data_path), file, path, ext;
+    if(read_support_data) {
+      ierr = getFileName(path, file, ext, f);                                   CHKERRQ(ierr);
+      read_support_data_nc  = (strcmp(ext.c_str(),".nc") == 0);                               // file ends with *.nc?
+      read_support_data_txt = (strcmp(ext.c_str(),".txt") == 0);                              // file ends with *.txt?
+    }
     bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0);         // path set?
     bool use_data_comps      = (data_comp_path != NULL && strlen(data_comp_path) > 0);       // path set?
     bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);               // path set?
@@ -458,14 +466,10 @@ int main (int argc, char** argv) {
         } else {
             ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
         }
-        read_support_data = false;
+        read_support_data_nc = false;
         support_data = data;
     } else {
         ierr = readData (data, support_data, data_components, c_0, p_rec, n_misc, data_path, support_data_path, data_comp_path);
-        if(use_data_comps) {
-          PCOUT << " SET LABELS " << std::endl;
-          tumor->phi_->setLabels (data_components);
-        }
         if(use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
           PCOUT << "Use custom observation mask\n";
@@ -518,8 +522,8 @@ int main (int argc, char** argv) {
         std::string file_concomp(data_comp_dat_path);
         if(use_data_comps){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
+          PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components = " << n_misc->sparsity_level_ * tumor->phi_->component_weights_.size()<<std::endl;
           n_misc->sparsity_level_ =  n_misc->sparsity_level_ * tumor->phi_->component_weights_.size();
-          PCOUT << "Set sparsity level to 4 x n_components = " << n_misc->sparsity_level_ <<std::endl;
         }
 
         if (!n_misc->bounding_box_) {
@@ -547,8 +551,24 @@ int main (int argc, char** argv) {
               ierr = tumor->phi_->setGaussians (file_cm);                               CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
               ierr = readPVec(&p_rec, n_misc->np_ + nk + nr, n_misc->np_, file_p);      CHKERRQ (ierr);
+
+              // no solver warmstart
             } else {
-              ierr = tumor->phi_->setGaussians (support_data);                          CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+              // use Gaussian centers of initial support from .txt file (contains labels for data components)
+              if (read_support_data_txt) {
+                std::string file_cm(support_data_path);
+                ierr = tumor->phi_->setGaussians (file_cm, true);                       CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+              // use *.nc support data to determine Gaussian support, labels have to be set beforehand
+              } else if (read_support_data_nc) {
+                if(use_data_comps) {
+                  PCOUT << " Set labels of connected components of data. " << std::endl;
+                  tumor->phi_->setLabels (data_components);
+                }
+                ierr = tumor->phi_->setGaussians (support_data);                        CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+              } else {
+                PCOUT << "Error: Expecting user input data -support_data_path *.nc or *.txt. exiting..." <<std::endl;
+                exit(1);
+              }
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
               //re-create p_rec
               ierr = VecDestroy (&p_rec);                                               CHKERRQ (ierr);
@@ -737,8 +757,8 @@ int main (int argc, char** argv) {
     if (csf != nullptr) {ierr = VecDestroy (&csf);               CHKERRQ (ierr);}
     if (bg != nullptr) {ierr = VecDestroy (&bg);                 CHKERRQ (ierr);}
     if (use_custom_obs_mask) {ierr = VecDestroy (&obs_mask);     CHKERRQ (ierr);}
-    if (use_data_comps) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr);}
-    if (read_support_data)   {ierr = VecDestroy (&support_data); CHKERRQ (ierr);}
+    if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr);}
+    if (read_support_data_nc)   {ierr = VecDestroy (&support_data); CHKERRQ (ierr);}
 
 
 }
@@ -915,14 +935,25 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
 PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, char *data_path, char* support_data_path, char* data_comp_path) {
     PetscFunctionBegin;
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PetscErrorCode ierr = 0;
 
-    bool read_support_data = (support_data_path != NULL && strlen(support_data_path) > 0); // path set?
+    bool read_support_data     = (support_data_path != NULL && strlen(support_data_path) > 0); // path set?
+    bool read_data_comp_data   = (data_comp_path != NULL && strlen(data_comp_path) > 0);       // path set?
+    bool read_support_data_nc  = false;
+    std::string f(support_data_path), file, path, ext;
+    if(read_support_data) {
+      ierr = getFileName(path, file, ext, f);                               CHKERRQ(ierr);
+      read_support_data_nc = (strcmp(ext.c_str(),".nc") == 0);                                // file ends with *.nc?
+    }
+
     ierr = VecCreate (PETSC_COMM_WORLD, &data);                             CHKERRQ (ierr);
     ierr = VecSetSizes (data, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
     ierr = VecSetFromOptions (data);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_0);                                       CHKERRQ (ierr);
-    if (read_support_data) {
+    if (read_support_data_nc) {
       ierr = VecDuplicate (data, &support_data);                            CHKERRQ (ierr);
     }
 
@@ -939,13 +970,13 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec
     #endif
 
     dataIn (data, n_misc, data_path);
-    if(read_support_data){
+    if(read_support_data_nc){
       dataIn (support_data, n_misc, support_data_path);
     } else {
       support_data = data;
     }
 
-    if((data_comp_path != NULL && strlen(data_comp_path) > 0)) {
+    if(read_data_comp_data && read_support_data_nc) {
       ierr = VecCreate (PETSC_COMM_WORLD, &data_components);                       CHKERRQ (ierr);
       ierr = VecSetSizes (data_components, n_misc->n_local_, n_misc->n_global_);   CHKERRQ (ierr);
       ierr = VecSetFromOptions (data_components);                                  CHKERRQ (ierr);

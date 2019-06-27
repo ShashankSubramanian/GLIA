@@ -492,7 +492,7 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radiu
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setGaussians ////////////////////////////////////// ###
-PetscErrorCode Phi::setGaussians (std::string file) {
+PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     int procid, nprocs;
@@ -504,7 +504,11 @@ PetscErrorCode Phi::setGaussians (std::string file) {
     PCOUT << " file: " << file << std::endl;
 
     // read centers from file (clears centers_)
-    ierr = readPhiMesh(centers_, n_misc_, file);                               CHKERRQ (ierr);
+    if (!read_comp_data) {
+      ierr = readPhiMesh(centers_, n_misc_, file);                              CHKERRQ (ierr);
+    } else {
+      ierr = readPhiMesh(centers_, n_misc_, file, true, &gaussian_labels_);     CHKERRQ (ierr);
+    }
 
     double twopi = 2.0 * M_PI;
     double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];

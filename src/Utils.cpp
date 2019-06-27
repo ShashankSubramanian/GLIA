@@ -334,7 +334,7 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// readPhiMesh /////////////////////////////////////// ###
-PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f) {
+PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int nprocs, procid;
@@ -347,6 +347,7 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
   if (file.is_open()) {
     PCOUT << "reading Gaussian centers from file " << f << std::endl;
     centers.clear();
+    if (read_comp_data && comps != nullptr) {(*comps).clear();}
     std::string line;
     std::getline(file, line); // sigma, spacing
     std::string token;
@@ -362,11 +363,17 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
     }
     std::getline(file, line); // throw away;
     std::string t;
+    int ii = 0;
     while (std::getline(file, line)) {
       if (line.rfind("]") != std::string::npos) break;   // end of file reached, exit out
       std::stringstream l(line);
+      ii = 0;
       while (std::getline(l, t, ',')) {
+        if (ii < 3) {
         centers.push_back(atof(t.c_str()));
+      } else if (read_comp_data && comps != nullptr) {
+        (*comps).push_back(atof(t.c_str()));
+      }
         // PCOUT << "reading "<<t<<", np="<<np<<std::endl;
       }
       np++;
@@ -399,7 +406,7 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
   msg = "file " + file + " does not exist";
   TU_assert(fileExists(f), msg.c_str());
 
-  if (strcmp(ext.c_str(),"bin") == 0) {
+  if (strcmp(ext.c_str(),".bin") == 0) {
     ierr = readBIN(&(*x), size, f);                               CHKERRQ(ierr);
     PetscFunctionReturn(0);
   }
