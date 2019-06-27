@@ -2,6 +2,7 @@
 
 Phi::Phi (std::shared_ptr<NMisc> n_misc) :
     n_misc_ (n_misc)
+  , gaussian_labels_()  
   , component_weights_()
   , component_centers_()
   {
