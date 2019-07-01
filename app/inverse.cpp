@@ -258,12 +258,13 @@ int main (int argc, char** argv) {
     std::string f(support_data_path), file, path, ext;
     if(read_support_data) {
       ierr = getFileName(path, file, ext, f);                                   CHKERRQ(ierr);
-      read_support_data_nc  = (strcmp(ext.c_str(),".nc") == 0);                               // file ends with *.nc?
-      read_support_data_txt = (strcmp(ext.c_str(),".txt") == 0);                              // file ends with *.txt?
+      read_support_data_nc  = (strcmp(ext.c_str(),".nc") == 0);                                  // file ends with *.nc?
+      read_support_data_txt = (strcmp(ext.c_str(),".txt") == 0);                                 // file ends with *.txt?
     }
-    bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0);         // path set?
-    bool use_data_comps      = (data_comp_path != NULL && strlen(data_comp_path) > 0);       // path set?
-    bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);               // path set?
+    bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0);             // path set?
+    bool use_data_comps      = (data_comp_path != NULL && strlen(data_comp_path) > 0);           // path set?
+    bool read_data_comp_file = (data_comp_dat_path != NULL && strlen(data_comp_dat_path) > 0);   // path set?
+    bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);                   // path set?
     if (warmstart_p  && not (gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0)){
       PCOUT << " ERROR: if initial guess for p is used, Gaussian centers need to be specified. " << std::endl;
       exit(-1);
@@ -520,7 +521,7 @@ int main (int argc, char** argv) {
         PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
 
         std::string file_concomp(data_comp_dat_path);
-        if(use_data_comps){
+        if(read_data_comp_file){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
           PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components = " << n_misc->sparsity_level_ * tumor->phi_->component_weights_.size()<<std::endl;
           n_misc->sparsity_level_ =  n_misc->sparsity_level_ * tumor->phi_->component_weights_.size();
