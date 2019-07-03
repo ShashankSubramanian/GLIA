@@ -959,17 +959,16 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 
   std::vector<int> component_sparsity;
   int fin_spars;
-  PCOUT << "sparsity per component: [ ";
   for (int nc = 0; nc < num_components; nc++) {
     if (nc != num_components - 1) {
       // sparsity level in total is 5 * #nc (number components)
       // every component gets at 3 degrees of freedom, the remaining 2 * #nc degrees of freedom are distributed based on component weight
       component_sparsity.push_back (3 + std::floor (weights[nc] * (sparsity_level - 3 * num_components) ));
-      PCOUT << component_sparsity.at(nc) << ", ";
+      PCOUT << "sparsity of component " << nc << ":" << component_sparsity.at(nc) << std::endl;
     } else { // last component is the remaining support
       fin_spars = sparsity_level - std::accumulate (component_sparsity.begin(), component_sparsity.end(), 0);
       component_sparsity.push_back (fin_spars);
-      PCOUT << fin_spars << "]"<<std::endl;
+      PCOUT << "sparsity of component " << nc << ":" << fin_spars << std::endl;
     }
 
     for (int i = 0; i < sz; i++) {
@@ -984,12 +983,12 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
           support.push_back (q.top().second);
         } else {  // if top of the queue is not greater than tol, we are done since none of the elements
                   // below it will ever be greater than tol
-          PCOUT << "No support selected in component " << nc << "; reason: g_i = " << std::abs(q.top().first) << " < " << tol << " = tolerance" << std::endl;
+          PCOUT << "  ... no support selected in component " << nc << "; reason: g_i = " << std::abs(q.top().first) << " < " << tol << " = tolerance" << std::endl;
           break;
         }
         q.pop ();
       } else {
-        PCOUT << "No support selected in component " << nc << "; reason: no value present in queue (possibly component weight very small, w="<< weights[nc]  <<"). " << std::endl;
+        PCOUT << "  ... no support selected in component " << nc << "; reason: no value present in queue (possibly component weight very small, w="<< weights[nc]  <<"). " << std::endl;
         break;
       }
     }
