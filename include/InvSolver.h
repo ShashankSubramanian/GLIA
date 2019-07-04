@@ -161,6 +161,8 @@ class InvSolver {
 PetscErrorCode evaluateObjectiveFunction (Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient (Tao, Vec, Vec, void*);
 PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao, Vec, PetscReal *, Vec, void *);
+PetscErrorCode evaluateGradientForParameters (Tao tao, Vec x, Vec dJ, void *ptr);
+PetscErrorCode evaluateObjectiveForParameters (Tao tao, Vec x, PetscReal *J, void *ptr);
 PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode hessianMatVec (Mat, Vec, Vec);
 PetscErrorCode constApxHessianMatVec (Mat, Vec, Vec);

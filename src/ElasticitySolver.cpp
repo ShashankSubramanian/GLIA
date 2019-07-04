@@ -20,6 +20,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
     ierr = KSPSetType (ksp_, KSPGMRES);
+    // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
@@ -328,7 +329,8 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     ierr = rhs->getIndividualComponents (rhs_);   // get the three rhs components in rhs_
     Vec disp;
     ierr = VecDuplicate (rhs_, &disp);							CHKERRQ (ierr);
-    ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
+    // ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
+    ierr = displacement->getIndividualComponents (disp);   // get the three disp components in disp to use as IC
 
     ierr = computeMaterialProperties ();
 

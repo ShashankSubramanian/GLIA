@@ -438,7 +438,9 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = VecDestroy (&lower_bound);                                               CHKERRQ (ierr);
   ierr = VecDestroy (&upper_bound);                                               CHKERRQ (ierr);
 
-  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientForParameters, (void*) ctx);       CHKERRQ (ierr);
+  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveForParameters, (void*) ctx);                              CHKERRQ(ierr);
+  ierr = TaoSetGradientRoutine (tao_, evaluateGradientForParameters, (void*) ctx);                                CHKERRQ(ierr);
+  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientForParameters, (void*) ctx);        CHKERRQ (ierr);
 
   ctx->update_reference_gradient = true;
 
@@ -816,6 +818,104 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
 	//ierr = evaluateGradient (tao, p, dJ, ptr);                             CHKERRQ(ierr);
 	PetscFunctionReturn (0);
 }
+
+PetscErrorCode evaluateObjectiveForParameters (Tao tao, Vec x, PetscReal *J, void *ptr){
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e ("tao-eval-obj-params");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
+  CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+
+  itctx->optfeedback_->nb_objevals++;
+  itctx->optfeedback_->nb_gradevals++;
+
+  // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
+  double *x_ptr, *x_full_ptr;
+  ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
+  ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+
+  x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
+  if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
+  if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
+  x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
+  if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
+  if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
+
+  ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
+  ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+
+  ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
+
+  self_exec_time += MPI_Wtime ();
+  accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
+  e.addTimings (t);
+  e.stop ();
+
+  PetscFunctionReturn (0);
+}
+
+PetscErrorCode evaluateGradientForParameters (Tao tao, Vec x, Vec dJ, void *ptr){
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e ("tao-eval-grad-tumor-params");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
+  CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+
+  itctx->optfeedback_->nb_objevals++;
+  itctx->optfeedback_->nb_gradevals++;
+
+  // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
+  double *x_ptr, *x_full_ptr;
+  ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
+  ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+
+  x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
+  if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
+  if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
+  x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
+  if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
+  if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
+
+  ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
+  ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+
+  Vec dJ_full;
+  ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
+
+  ierr = itctx->derivative_operators_->evaluateGradient (dJ_full, itctx->x_old, itctx->data_gradeval);
+
+  double *dj_ptr, *dj_full_ptr;
+  ierr = VecGetArray (dJ, &dj_ptr);             CHKERRQ (ierr);
+  ierr = VecGetArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+
+  dj_ptr[0] = dj_full_ptr[itctx->n_misc_->np_];
+  if (itctx->n_misc_->nk_ > 1) dj_ptr[1] = dj_full_ptr[itctx->n_misc_->np_ + 1];  // k2
+  if (itctx->n_misc_->nk_ > 2) dj_ptr[2] = dj_full_ptr[itctx->n_misc_->np_ + 2];  // k3
+  dj_ptr[itctx->n_misc_->nk_] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_];  // rho
+  if (itctx->n_misc_->nr_ > 1) dj_ptr[itctx->n_misc_->nk_ + 1] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1];  // r2
+  if (itctx->n_misc_->nr_ > 2) dj_ptr[itctx->n_misc_->nk_ + 2] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2];  // r2
+
+  ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
+  ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+
+  std::stringstream s;
+  if (itctx->optsettings_->verbosity > 1) {
+      double gnorm;
+      ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
+      s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  }
+  self_exec_time += MPI_Wtime ();
+  accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
+  e.addTimings (t);
+  e.stop ();
+
+  ierr = VecDestroy (&dJ_full);   CHKERRQ (ierr);
+
+  PetscFunctionReturn (0);
+}
+
 
 PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
   PetscFunctionBegin;
@@ -2446,6 +2546,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
       }
       ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
+
       std::stringstream s;
       tuMSGstd(" parameters (optimizer):");
       tuMSGstd(" tolerances (stopping conditions):");
