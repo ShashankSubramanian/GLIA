@@ -9,17 +9,18 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/check_ver3/'
+params['results_path'] = tumor_dir + '/results/checkthistoo/'
 params['compute_sys'] = 'rebels'
 
 
 # ### Real data
 # params['data_path'] = tumor_dir + '/results/tc2_128/data.nc'
 # params['data_path'] = '/workspace/shashank/label_maps/tcia_09_141/data.nc'
-# # ## Atlas
-# # params['gm_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/atlas-jakob_128_gm.nc'
-# # params['wm_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/atlas-jakob_128_wm.nc'
-# # params['csf_path'] = tumor_dir + '/../SIBIA/base/brain_data/symlinks/glistr_data/AAMH/atlas-jakob_128_csf.nc'
+# params['data_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_tc.nc'
+# # # ## Atlas
+# params['gm_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_gm.nc'
+# params['wm_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_wm_wt.nc'
+# params['csf_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_csf.nc'
 # params['gm_path'] = '/workspace/shashank/label_maps/tcia_09_141/gm.nc'
 # params['wm_path'] = '/workspace/shashank/label_maps/tcia_09_141/wm.nc'
 # params['csf_path'] = '/workspace/shashank/label_maps/tcia_09_141/csf.nc'
