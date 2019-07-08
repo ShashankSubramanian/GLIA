@@ -578,7 +578,7 @@ int main (int argc, char** argv) {
 
             ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
             PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
-            if (n_misc->diffusivity_inversion_) {
+            if (n_misc->diffusivity_inversion_ && !n_misc->reaction_inversion_) {
                 ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
                 PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
                 PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;

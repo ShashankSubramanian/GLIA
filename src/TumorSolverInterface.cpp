@@ -943,7 +943,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         
         if (flag_convergence) { 
             np = n_misc_->support_.size();  
-            nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
+            nk = (n_misc_->reaction_inversion_ || n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
             nr = (n_misc_->reaction_inversion_) ? n_misc_->nr_ : 0;
             
             n_misc_->np_ = np;                    // Change np to solve the smaller L2 subsystem
@@ -960,6 +960,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 x_L2_ptr[np] = x_L1_ptr[np_original];
                 if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1]; 
                 if (nk > 2) x_L2_ptr[np+2] = x_L1_ptr[np_original+2];
+            } else {
+                x_L2_ptr[np] = n_misc_->k_;
+                if (nk > 1) x_L2_ptr[np+1] = n_misc_->k_ * n_misc_->k_gm_wm_ratio_;
+                if (nk > 2) x_L2_ptr[np+2] = n_misc_->k_ * n_misc_->k_glm_wm_ratio_;
             }
 
             if (n_misc_->reaction_inversion_) {
@@ -1071,23 +1075,31 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             for (int i = 0; i < np; i++) {
                 x_L1_ptr[n_misc_->support_[i]] = x_L2_ptr[i];   // Correct L1 guess
             }
-            // Correct the diffusivity
-            if (n_misc_->diffusivity_inversion_) {
+            // Correct the diffusivity and reaction
+            if (n_misc_->reaction_inversion_) {
                 x_L1_ptr[np_original] = x_L2_ptr[np];
                 if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
+                if (nk > 2) x_L1_ptr[np_original+2] = x_L2_ptr[np+2];
+
+                double r1, r2, r3, k1, k2, k3;
+                r1 = x_L2_ptr[np + nk];
+                r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
+                r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
+
+                k1 = x_L2_ptr[np];
+                k2 = (nk > 1) ? x_L2_ptr[np + 1] : 0;
+                k3 = (nk > 2) ? x_L2_ptr[np + 2] : 0;
+
+                PCOUT << "\nEstimated reaction coefficients " <<  std::endl;            
+                PCOUT << "r1: " << r1 << std::endl;
+                PCOUT << "r2: " << r2 << std::endl;
+                PCOUT << "r3: " << r3 << std::endl;
+
+                PCOUT << "\nEstimated diffusion coefficients " <<  std::endl;            
+                PCOUT << "k1: " << k1 << std::endl;
+                PCOUT << "k2: " << k2 << std::endl;
+                PCOUT << "k3: " << k3 << std::endl;
             }
-
-            double r1, r2, r3;
-            r1 = x_L2_ptr[np + nk];
-            r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
-            r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
-
-            PCOUT << "\nEstimated reaction coefficients " <<  std::endl;            
-            PCOUT << "r1: " << r1 << std::endl;
-            PCOUT << "r2: " << r2 << std::endl;
-            PCOUT << "r3: " << r3 << std::endl;
-
-            n_misc_->rho_ = r1;  //update n_misc rho 
 
             ierr = VecRestoreArray (x_L2, &x_L2_ptr);                              CHKERRQ (ierr);
             ierr = VecRestoreArray (x_L1, &x_L1_ptr);                              CHKERRQ (ierr);
