@@ -328,8 +328,8 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 
     ierr = rhs->getIndividualComponents (rhs_);   // get the three rhs components in rhs_
     Vec disp;
-    ierr = VecDuplicate (rhs_, &disp);                          CHKERRQ (ierr);
-    // ierr = VecSet (disp, 0.);                                    CHKERRQ (ierr);
+    ierr = VecDuplicate (rhs_, &disp);							CHKERRQ (ierr);
+    // ierr = VecSet (disp, 0.);									CHKERRQ (ierr);
     ierr = displacement->getIndividualComponents (disp);   // get the three disp components in disp to use as IC
 
     ierr = computeMaterialProperties ();

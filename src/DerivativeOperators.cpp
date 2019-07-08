@@ -16,7 +16,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    if (n_misc_->diffusivity_inversion_) {
+    if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
       #endif
@@ -50,7 +50,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     std::stringstream s;
     if (n_misc_->verbosity_ >= 3) {
-      if (n_misc_->diffusivity_inversion_) {
+      if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
         s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";
         ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
       }
@@ -120,7 +120,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    if (n_misc_->diffusivity_inversion_) {
+    if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
       #endif
@@ -194,7 +194,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
     double integration_weight = 1.0;
-    if (n_misc_->diffusivity_inversion_) {
+    if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
@@ -316,7 +316,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
 
-    if (n_misc_->diffusivity_inversion_) {
+    if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) { // if solveForParameters is happening always invert for diffusivity
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
       #endif
@@ -350,7 +350,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     std::stringstream s;
     if (n_misc_->verbosity_ >= 3) {
-      if (n_misc_->diffusivity_inversion_) {
+      if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
         s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";
         ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
       }
@@ -436,7 +436,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
     double integration_weight = 1.0;
-    if (n_misc_->diffusivity_inversion_) {
+    if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {

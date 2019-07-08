@@ -361,20 +361,20 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
 
   // TODO: x_old here is used to store the full solution vector and not old guess. (Maybe change to new vector to avoid confusion?)
   if (itctx_->x_old == nullptr)  {
-      ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->x_old);                        CHKERRQ (ierr);
+      ierr = VecDuplicate (x_in, &itctx_->x_old);                                      CHKERRQ (ierr);
       ierr = VecCopy (x_in, itctx_->x_old);                                            CHKERRQ (ierr);
   }
 
-  ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                                    CHKERRQ(ierr);
+  ierr = VecDuplicate (x_in, &xrec_);                                                 CHKERRQ(ierr);
 
   CtxInv *ctx = itctx_.get();
 
-  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                          CHKERRQ (ierr);
+  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                           CHKERRQ (ierr);
   ierr = TaoSetType (tao_, "blmvm");                                                   CHKERRQ (ierr);
 
   int x_sz;
-  int nk = (itctx_->n_misc_->diffusivity_inversion_) ? itctx_->n_misc_->nk_ : 0;
-  int nr = (itctx_->n_misc_->reaction_inversion_) ? itctx_->n_misc_->nr_ : 0;
+  int nk = itctx_->n_misc_->nk_;
+  int nr = itctx_->n_misc_->nr_;
   x_sz = nk + nr;
   Vec x;
   ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &x);                                    CHKERRQ (ierr);  // Inversion for rho and k
@@ -451,7 +451,6 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound);                    CHKERRQ (ierr);
   ierr = VecDestroy (&lower_bound);                                               CHKERRQ (ierr);
   ierr = VecDestroy (&upper_bound);                                               CHKERRQ (ierr);
-
 
   ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveForParameters, (void*) ctx);                              CHKERRQ(ierr);
   ierr = TaoSetGradientRoutine (tao_, evaluateGradientForParameters, (void*) ctx);                                CHKERRQ(ierr);
@@ -2561,6 +2560,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       //  ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
       //}
       ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
+
       std::stringstream s;
       tuMSGstd(" parameters (optimizer):");
       tuMSGstd(" tolerances (stopping conditions):");
