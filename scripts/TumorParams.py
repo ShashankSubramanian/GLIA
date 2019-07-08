@@ -364,6 +364,6 @@ def getTumorRunCmd(params):
     " -forward " + str(forward_flag) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10"
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 3"
 
     return run_str, error_flag
