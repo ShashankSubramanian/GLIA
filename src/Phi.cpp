@@ -5,6 +5,10 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     PetscErrorCode ierr;
 
     n_local_ = n_misc->n_local_;
+    if (!n_misc_->phi_store_) 
+        compute_ = true;
+    else 
+        compute_ = false;
 
     np_ = n_misc->np_;
     phi_vec_.resize (np_);
@@ -59,39 +63,45 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+    mat_prop_ = mat_prop; // this is needed for phi::apply when computation of phis are on the fly
+                          // Use whatever matprop the setvalues uses in default
 
-    double *phi_ptr;
-    Vec all_phis;
-    ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
-    ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
+    // set phis only if compute is disabled: the subspace is small and all the phis
+    // are filtered and stored in memory
+    if (!compute_) { 
+        double *phi_ptr;
+        double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+        Vec all_phis;
+        ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
+        ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
 
-    double phi_max;
+        double phi_max;
 
-    for (int i = 0; i < np_; i++) {
-        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        initialize (phi_ptr, n_misc_, &centers_[3 * i]);
-        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-        ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
-
-        if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+        for (int i = 0; i < np_; i++) {
             ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-            ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+            initialize (phi_ptr, n_misc_, &centers_[3 * i]);
             ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
+
+            if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+                ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+                ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+                ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            }
+
+            // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+            ierr = VecMax (phi_vec_[i], NULL, &phi_max);                            CHKERRQ (ierr);
+            ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
+
+            ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
         }
 
-        // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
-        ierr = VecMax (phi_vec_[i], NULL, &phi_max);                            CHKERRQ (ierr);
-        ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
+        if (n_misc_->writeOutput_) {
+            dataOut (all_phis, n_misc_, "phiGrid.nc");
+        }
 
-        ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
+        ierr = VecDestroy (&all_phis);                                             CHKERRQ (ierr);
     }
-
-    if (n_misc_->writeOutput_) {
-        dataOut (all_phis, n_misc_, "phiGrid.nc");
-    }
-
-    ierr = VecDestroy (&all_phis);                                             CHKERRQ (ierr);
 
 
     self_exec_time += MPI_Wtime();
@@ -224,20 +234,42 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         double self_exec_time = -MPI_Wtime ();
 
         double *pg_ptr;
-        Vec dummy, pg;
-        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);
-        ierr = VecCopy (p, pg);         CHKERRQ (ierr);
-        ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
-        ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-        ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
+        ierr = VecSet (out, 0.);                                                                       CHKERRQ (ierr);
+        ierr = VecGetArray (p, &pg_ptr);                                                               CHKERRQ (ierr);
 
-        for (int i = 0; i < np_; i++) {
-            ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
+        if (!compute_) {
+            for (int i = 0; i < np_; i++) {
+                ierr = VecAXPY (out, pg_ptr[i], phi_vec_[i]);                                          CHKERRQ (ierr);
+            }
+        } else {
+            // compute phi and apply on the fly
+            // use phi_vec_[0] as proxy for every phi
+            
+            double phi_max;
+            double *phi_ptr;
+            double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+            for (int i = 0; i < np_; i++) {
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]); 
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);      
+                ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
+
+                if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+                    ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                    ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+                    ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
+                }
+
+                // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+                ierr = VecMax (phi_vec_[0], NULL, &phi_max);                                           CHKERRQ (ierr);
+                ierr = VecScale (phi_vec_[0], (1.0 / phi_max));                                        CHKERRQ (ierr);
+
+                // accumulate phi*p
+                ierr = VecAXPY (out, pg_ptr[i], phi_vec_[0]);                                          CHKERRQ (ierr);
+            }
+                  
         }
-        ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
-        ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
-        ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
-        ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
+        ierr = VecRestoreArray (p, &pg_ptr);                                                           CHKERRQ (ierr);
 
         self_exec_time += MPI_Wtime();
         accumulateTimers (t, t, self_exec_time);
@@ -256,10 +288,39 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         PetscScalar values[np_];
         double *pout_ptr;
         ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
-        Vec *v = &phi_vec_[0];
-        ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
-        for (int i = 0; i < np_; i++) {
-            pout_ptr[i] = values[i];
+
+        if (!compute_) {
+            Vec *v = &phi_vec_[0];
+            ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
+            for (int i = 0; i < np_; i++) {
+                pout_ptr[i] = values[i];
+            }
+        } else {
+            // compute the phis on the fly
+            // use phi_vec_[0] as proxy for every phi
+            
+            double *phi_ptr;
+            double phi_max;
+            double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+            for (int i = 0; i < np_; i++) {
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]); 
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);      
+                ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
+
+                if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+                    ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                    ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+                    ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
+                }
+
+                // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+                ierr = VecMax (phi_vec_[0], NULL, &phi_max);                                           CHKERRQ (ierr);
+                ierr = VecScale (phi_vec_[0], (1.0 / phi_max));                                        CHKERRQ (ierr);
+
+                // compute phi^T*p
+                ierr = VecDot (phi_vec_[0], in, &pout_ptr[i]);                                         CHKERRQ (ierr);
+            }
         }
         ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
 
@@ -738,10 +799,16 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 1; i < np_; i++) {
+
+    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed 
+    // max size of subspace can be 3 * sparsity_level
+    // on the fly
+    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
+    for (int i = 1; i < num_phi_store; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
+
     if(n_misc_->writeOutput_) {
         dataOut (num_tumor_output, n_misc_, "phiNumTumor.nc");
     }
@@ -769,6 +836,7 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
 
     // resize np
     np_ = support_idx.size();
+    if (!n_misc_->phi_store_) compute_ = false;
     PCOUT << "Size of restricted subspace: " << np_ << std::endl;
 
 }
@@ -777,7 +845,8 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
 
 Phi::~Phi () {
     PetscErrorCode ierr = 0;
-    for (int i = 0; i < np_; i++) {
+    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
+    for (int i = 0; i < num_phi_store; i++) {
         ierr = VecDestroy (&phi_vec_[i]);
     }
     phi_vec_.clear();
