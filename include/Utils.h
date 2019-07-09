@@ -300,6 +300,7 @@ class NMisc {
         , forcing_factor_ (2.0E5)               // mass effect forcing factor
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
+        , phi_store_ (false)                    // Flag to store phis 
                                 {
 
 
@@ -386,6 +387,8 @@ class NMisc {
         int predict_flag_;
         int prune_components_;
 
+
+        bool phi_store_;
 
         int testcase_;
         int n_[3];
