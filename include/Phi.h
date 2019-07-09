@@ -23,6 +23,10 @@ class Phi {
 		double cm_[3];
 		int np_, n_local_;
 
+		bool compute_;
+
+		std::shared_ptr<MatProp> mat_prop_;
+
 		std::shared_ptr<NMisc> n_misc_;
 		std::vector<double> centers_;   																		      // Vector of centers for the gaussians
 		std::vector<double> centers_temp_; 																			  // Keeps track of centers if phis ever need to be changed
@@ -37,8 +41,9 @@ class Phi {
     PetscErrorCode truncate (double *out, std::shared_ptr<NMisc> n_misc, double *center);
 		PetscErrorCode apply (Vec out, Vec p);
 		PetscErrorCode applyTranspose (Vec pout, Vec in);
-		void modifyCenters (std::vector<int> support_idx);    														  // Picks only the basis needed in the restricted subspace
-		void resetCenters () {centers_.clear(); centers_ = centers_temp_; np_ = n_misc_->np_;};						  // Resets centers to the original centers
+		void modifyCenters (std::vector<int> support_idx);    	// Picks only the basis needed in the restricted subspace
+		void resetCenters () {centers_.clear(); centers_ = centers_temp_; np_ = n_misc_->np_; 
+							  if (!n_misc_->phi_store_) compute_ = true;};			// Resets centers to the older ones
 
 		~Phi ();
 };
