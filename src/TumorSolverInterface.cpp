@@ -781,8 +781,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // Compute reference quantities
     // Save diffusivity guess
     double k_inv_guess = n_misc_->k_;
-    ierr = inv_solver_->getObjective (x_L1, &J_ref);
-    ierr = inv_solver_->getGradient (x_L1, g_ref);
+    ierr = inv_solver_->getObjectiveAndGradient (x_L1, &J_ref, g_ref);
     // reset diffusivity guess as reference gradient has zeroed out the guess
     n_misc_->k_ = k_inv_guess;
 
@@ -1006,12 +1005,13 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         J_old = J;
         // Compute new objective -- again, this is now only the mismatch term
-        ierr = inv_solver_->getObjective (x_L1, &J);
-        ierr = inv_solver_->getGradient (x_L1, g);
-        ierr = VecNorm (x_L1, NORM_INFINITY, &norm);                            CHKERRQ (ierr);
-        ierr = VecAXPY (temp, -1.0, x_L1_old);                                  CHKERRQ (ierr);     // temp holds x_L1
-        ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);                        CHKERRQ (ierr);     // Norm change in the solution
-        ierr = VecNorm (g, NORM_2, &norm_g);                                    CHKERRQ (ierr);
+        // ierr = inv_solver_->getObjective (x_L1, &J); 
+        // ierr = inv_solver_->getGradient (x_L1, g); 
+        ierr = inv_solver_->getObjectiveAndGradient (x_L1, &J, g);
+        ierr = VecNorm (x_L1, NORM_INFINITY, &norm);        CHKERRQ (ierr);
+        ierr = VecAXPY (temp, -1.0, x_L1_old);              CHKERRQ (ierr);     // temp holds x_L1
+        ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);    CHKERRQ (ierr);     // Norm change in the solution
+        ierr = VecNorm (g, NORM_2, &norm_g);              CHKERRQ (ierr);
         // print statistics
 
         PCOUT << "\n\n\n-------------------------------------------------------------------- L1 solver statistics -------------------------------------------------------------------- " << std::endl;
@@ -1143,9 +1143,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 double ic_max, g_norm_ref;
                 ic_max = 0;
                 // get c0
-                ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
-                ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);                CHKERRQ (ierr);  // max of IC
-
+                // ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
+                ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);              CHKERRQ (ierr);  // max of IC
                 ierr = VecGetArray (x_L2, &x_L2_ptr);                           CHKERRQ (ierr);
                 for (int i = 0; i < np; i++){
                     if(n_misc_->multilevel_) {
