@@ -244,7 +244,6 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         } else {
             // compute phi and apply on the fly
             // use phi_vec_[0] as proxy for every phi
-            
             double phi_max;
             double *phi_ptr;
             double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
@@ -298,7 +297,6 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         } else {
             // compute the phis on the fly
             // use phi_vec_[0] as proxy for every phi
-            
             double *phi_ptr;
             double phi_max;
             double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];

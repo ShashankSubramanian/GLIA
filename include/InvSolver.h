@@ -126,6 +126,11 @@ class InvSolver {
             ierr = itctx_->derivative_operators_->evaluateObjective (J, x, data_);
             PetscFunctionReturn(0);
         }
+        PetscErrorCode getObjectiveAndGradient (Vec x, PetscReal *J, Vec dJ) {
+            PetscFunctionBegin; PetscErrorCode ierr = 0;
+            ierr = itctx_->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, data_);
+            PetscFunctionReturn(0);
+        }
 
         std::vector<double> getInvOutParams () {
             return out_params_;

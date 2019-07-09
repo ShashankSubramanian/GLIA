@@ -716,8 +716,9 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     ierr = VecSet (temp, 0);                        CHKERRQ (ierr);
 
     // Compute reference quantities
-    ierr = inv_solver_->getObjective (x_L1, &J_ref);   
-    ierr = inv_solver_->getGradient (x_L1, g_ref);
+    // ierr = inv_solver_->getObjective (x_L1, &J_ref);   
+    // ierr = inv_solver_->getGradient (x_L1, g_ref);
+    ierr = inv_solver_->getObjectiveAndGradient (x_L1, &J_ref, g_ref);
 
 
     J = J_ref;
@@ -916,8 +917,9 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
         J_old = J;
         // Compute new objective -- again, this is now only the mismatch term
-        ierr = inv_solver_->getObjective (x_L1, &J); 
-        ierr = inv_solver_->getGradient (x_L1, g); 
+        // ierr = inv_solver_->getObjective (x_L1, &J); 
+        // ierr = inv_solver_->getGradient (x_L1, g); 
+        ierr = inv_solver_->getObjectiveAndGradient (x_L1, &J, g);
         ierr = VecNorm (x_L1, NORM_INFINITY, &norm);        CHKERRQ (ierr);
         ierr = VecAXPY (temp, -1.0, x_L1_old);              CHKERRQ (ierr);     // temp holds x_L1
         ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);    CHKERRQ (ierr);     // Norm change in the solution
@@ -1049,7 +1051,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 double ic_max, g_norm_ref;
                 ic_max = 0;
                 // get c0
-                ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
+                // ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
                 ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);              CHKERRQ (ierr);  // max of IC
 
                 ierr = VecGetArray (x_L2, &x_L2_ptr);                   CHKERRQ (ierr);

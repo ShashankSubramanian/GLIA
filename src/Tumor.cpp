@@ -65,7 +65,7 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     }
     else
         phi_ = phi;
-    ierr = phi_->apply(c_0_, p_);
+    // ierr = phi_->apply(c_0_, p_);
 
     PetscFunctionReturn(0);
 }
@@ -93,7 +93,7 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     ierr = rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, mat_prop_, n_misc);
     // ierr = phi_->setGaussians (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = phi_->setValues (mat_prop_);
-    ierr = phi_->apply(c_0_, p_);
+    // ierr = phi_->apply(c_0_, p_);
 
     PetscFunctionReturn(0);
 }

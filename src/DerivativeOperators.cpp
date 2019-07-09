@@ -165,27 +165,39 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     // solve adjoint
     ierr = pde_operators_->solveAdjoint (1);
     // compute gradient
-    ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+    if (!n_misc_->phi_store_) {
+      // restructure phi compute because it is now expensive
+      // assume that reg norm is L2 for now
+      // TODO: change to normal if reg norm is not L2
 
-    // Multiply by lebesque measure
-    ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+      // p0 = p0 - beta * phi * p
+      ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_);   CHKERRQ (ierr);
+      // dJ is phiT p0 - beta * phiT * phi * p
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);        CHKERRQ (ierr);
+      // dJ is beta * phiT * phi * p - phiT * p0
+      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
 
-    // gradient according to reg paramater
-    if (n_misc_->regularization_norm_ == L1) {
-      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-    } else if (n_misc_->regularization_norm_ == wL2) {
-      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
-      ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
-    } else if (n_misc_->regularization_norm_ == L2){
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
-    } else if (n_misc_->regularization_norm_ == L2b){
-      ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+
+      // Gradient according to reg parameter chosen
+      if (n_misc_->regularization_norm_ == L1) {
+        ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+        ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+      } else if (n_misc_->regularization_norm_ == wL2) {
+        ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
+        ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+      } else if (n_misc_->regularization_norm_ == L2){
+        ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+        ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      } else if (n_misc_->regularization_norm_ == L2b){
+        ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
+        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      }
     }
 
     double temp_scalar;
@@ -375,26 +387,40 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (1);
-    ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
 
-    ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+    if (!n_misc_->phi_store_) {
+      // restructure phi compute because it is now expensive
+      // assume that reg norm is L2 for now
+      // TODO: change to normal if reg norm is not L2
 
-    // Gradient according to reg parameter chosen
-    if (n_misc_->regularization_norm_ == L1) {
-      ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
-      ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
-    } else if (n_misc_->regularization_norm_ == wL2) {
-      ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
-      ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
-    } else if (n_misc_->regularization_norm_ == L2){
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-      ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
-    } else if (n_misc_->regularization_norm_ == L2b){
-      ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
-      ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
-      ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      // p0 = p0 - beta * phi * p
+      ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_);   CHKERRQ (ierr);
+      // dJ is phiT p0 - beta * phiT * phi * p
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);        CHKERRQ (ierr);
+      // dJ is beta * phiT * phi * p - phiT * p0
+      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
+
+    } else {
+      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+
+      // Gradient according to reg parameter chosen
+      if (n_misc_->regularization_norm_ == L1) {
+        ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
+        ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
+      } else if (n_misc_->regularization_norm_ == wL2) {
+        ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
+        ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+      } else if (n_misc_->regularization_norm_ == L2){
+        ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
+        ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      } else if (n_misc_->regularization_norm_ == L2b){
+        ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
+        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
+      }
     }
 
     // regularization
