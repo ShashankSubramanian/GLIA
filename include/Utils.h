@@ -291,7 +291,8 @@ class NMisc {
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E4)                    // high screening 
         , forcing_factor_ (2.0E5)                 // mass effect forcing factor
-        , phi_store_ (false)                    // Flag to store phis 
+        , phi_store_ (true)                    // Flag to store phis 
+        , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
                                 {
 
 
@@ -378,6 +379,7 @@ class NMisc {
         int predict_flag_;
 
         bool phi_store_;
+        bool adjoint_store_;
 
         int testcase_;
         int n_[3];

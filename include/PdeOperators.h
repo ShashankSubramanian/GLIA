@@ -27,6 +27,8 @@ class PdeOperators {
 		std::vector<Vec> c_;
 		// @brief time history of adjoint variable
 		std::vector<Vec> p_;
+		// half-time history of state variables
+		std::vector<Vec> c_half_;
 
 		// Accumulated number of KSP solves for diff solver in one forward and adj solve
 		int diff_ksp_itr_state_, diff_ksp_itr_adj_;
