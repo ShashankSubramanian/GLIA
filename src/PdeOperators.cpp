@@ -10,6 +10,11 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     c_.resize (nt + 1);                         //Time history of tumor
     p_.resize (nt + 1);                         //Time history of adjoints
 
+    if (n_misc->adjoint_store_) {
+        // store half-time history to avoid unecessary diffusion solves
+        c_half_.resize (nt);
+    }
+
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
     ierr = VecSetFromOptions (c_[0]);
@@ -24,6 +29,13 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     for (int i = 0; i < nt + 1; i++) {
         ierr = VecSet (c_[i], 0);
         ierr = VecSet (p_[i], 0);
+    }
+
+    if (n_misc->adjoint_store_) {
+        for (int i = 0; i < nt; i++) {
+            ierr = VecDuplicate (c_[0], &c_half_[i]);
+            ierr = VecSet (c_half_[i], 0.);
+        }
     }
 }
 
@@ -40,10 +52,12 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc)
     for (int i = 0; i < c_.size(); i++) {
         ierr = VecDestroy (&c_[i]);
         ierr = VecDestroy (&p_[i]);
+        if (c_half_.size() > 0 && i != nt_) ierr = VecDestroy (&c_half_[i]);
     }
 
     c_.resize (nt + 1);                         //Time history of tumor
     p_.resize (nt + 1);                         //Time history of adjoints
+    if (n_misc->adjoint_store_) c_half_.resize (nt);                        //Time history of half-time concs
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
@@ -60,6 +74,13 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc)
     for (int i = 0; i < nt + 1; i++) {
         ierr = VecSet (c_[i], 0);
         ierr = VecSet (p_[i], 0);
+    }
+
+    if (n_misc->adjoint_store_) {
+        for (int i = 0; i < nt; i++) {
+            ierr = VecDuplicate (c_[0], &c_half_[i]);
+            ierr = VecSet (c_half_[i], 0.);
+        }
     }
 
     PetscFunctionReturn (0);
@@ -140,10 +161,16 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
         if (n_misc_->order_ == 2) {
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+            if (linearized == 0 && n_misc_->adjoint_store_) {
+                ierr = VecCopy (tumor_->c_t_, c_half_[i]);                    CHKERRQ (ierr);
+            }
             ierr = reaction (linearized, i);
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
         } else {
             diff_solver_->solve (tumor_->c_t_, dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+            if (linearized == 0 && n_misc_->adjoint_store_) {
+                ierr = VecCopy (tumor_->c_t_, c_half_[i]);                    CHKERRQ (ierr);
+            }
             ierr = reaction (linearized, i);
         }
 
@@ -190,10 +217,15 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     Vec temp = tumor_->work_[11];
     //reaction adjoint needs c_ at half time step.
     ierr = VecCopy (c_[iter], temp);                             CHKERRQ (ierr);
-    if (n_misc_->order_ == 2) {
-        diff_solver_->solve (temp, dt / 2.0);   diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+    if (n_misc_->adjoint_store_) {
+        // half time-step is already stored
+        ierr = VecCopy (c_half_[iter], temp);                    CHKERRQ (ierr);
     } else {
-        diff_solver_->solve (temp, dt);         diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+        if (n_misc_->order_ == 2) {
+            diff_solver_->solve (temp, dt / 2.0);   diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+        } else {
+            diff_solver_->solve (temp, dt);         diff_ksp_itr_adj_ += diff_solver_->ksp_itr_;
+        }
     }
 
     ierr = VecGetArray (tumor_->p_0_, &p_0_ptr);                 CHKERRQ (ierr);
@@ -344,6 +376,7 @@ PdeOperatorsRD::~PdeOperatorsRD () {
     for (int i = 0; i < nt_ + 1; i++) {
         ierr = VecDestroy (&c_[i]);
         ierr = VecDestroy (&p_[i]);
+        if (c_half_.size() > 0 && i != nt_) ierr = VecDestroy (&c_half_[i]);
     }
 }
 

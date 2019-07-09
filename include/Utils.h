@@ -301,6 +301,7 @@ class NMisc {
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
         , phi_store_ (false)                    // Flag to store phis 
+        , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
                                 {
 
 
@@ -389,6 +390,7 @@ class NMisc {
 
 
         bool phi_store_;
+        bool adjoint_store_;
 
         int testcase_;
         int n_[3];
