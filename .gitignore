@@ -8,6 +8,5 @@ brain_data/
 .*
 *.o
 build
-run
 *.dat
 /scripts/*.pyc
