@@ -511,6 +511,22 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   self_exec_time_tuninv += MPI_Wtime();
   MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
+  Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                          CHKERRQ(ierr);
+
+  double *x_full_ptr;
+  ierr = VecGetArray (p, &x_ptr);       CHKERRQ (ierr);
+  ierr = VecGetArray (itctx_->x_old, &x_full_ptr);   CHKERRQ (ierr);
+
+  x_full_ptr[itctx_->n_misc_->np_] = x_ptr[0];   // k1
+  if (itctx_->n_misc_->nk_ > 1) x_full_ptr[itctx_->n_misc_->np_ + 1] = x_ptr[1];  // k2
+  if (itctx_->n_misc_->nk_ > 2) x_full_ptr[itctx_->n_misc_->np_ + 2] = x_ptr[2];  // k3
+  x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_] = x_ptr[itctx_->n_misc_->nk_];  // rho
+  if (itctx_->n_misc_->nr_ > 1) x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_ + 1] = x_ptr[itctx_->n_misc_->nk_ + 1];  // r2
+  if (itctx_->n_misc_->nr_ > 2) x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_ + 2] = x_ptr[itctx_->n_misc_->nk_ + 2];  // r2
+
+  ierr = VecRestoreArray (p, &x_ptr);       CHKERRQ (ierr);
+  ierr = VecRestoreArray (itctx_->x_old, &x_full_ptr);   CHKERRQ (ierr);
+
   ierr = VecCopy (itctx_->x_old, xrec_);                                                          CHKERRQ(ierr);
 
   /* Get information on termination */
