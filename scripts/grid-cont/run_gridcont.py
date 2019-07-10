@@ -111,9 +111,10 @@ def gridcont(basedir, args):
     submit      = False;
     pid_prev    = 0;
     obs_masks   = []
-    gaussian_selection_mode = "C0_RANKED"; # alternatives: {"PHI", "C0", "C0_RANKED"}
-    data_thresh = [1E-1, 1E-4, 1E-3] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-1, 1E-1];
+    gaussian_selection_mode = "C0"; # alternatives: {"PHI", "C0", "C0_RANKED"}
+    data_thresh = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-4, 1E-4];
     sparsity_lvl_per_component = 5;
+    ls_max_func_evals = [20, 5, 5];
     # #################################
 
     os.environ['DIR_SUFFIX'] = "{0:1.1f}".format(args.obs_lambda);
@@ -194,7 +195,7 @@ def gridcont(basedir, args):
     cmd     += cmd_lvl;
 
     # loop over levels
-    for level, sigma_fac, n, p, h, m, pred, gvf_, d_thresh in zip(levels, dd_fac, nodes, procs, wtime_h, wtime_m, predict, gvf, data_thresh):
+    for level, sigma_fac, n, p, h, m, pred, gvf_, d_thresh, ls_max_func in zip(levels, dd_fac, nodes, procs, wtime_h, wtime_m, predict, gvf, data_thresh, ls_max_func_evals):
 
         res_dir = os.path.join(tumor_out_path, 'nx' + str(level) + "/");
         res_dir_out = os.path.join(res_dir, obs_dir)
@@ -248,30 +249,31 @@ def gridcont(basedir, args):
             cmd_extractrhok += "source " + os.path.join(res_dir_prev, 'env_rhok.sh') + "\n"
 
         # tumor settings for current level
-        tumor_input_params['num_nodes']      = n;
-        tumor_input_params['mpi_pernode']    = p;
-        tumor_input_params['wtime_h']        = h;
-        tumor_input_params['wtime_m']        = m
-        tumor_input_params['ibrun_man']      = (level <= 64);
-        tumor_input_params['results_path']   = res_dir_out;
-        tumor_input_params['N']              = level;
-        tumor_input_params['grad_tol']       = args.opttol;
-        tumor_input_params['sparsity_lvl']   = sparsity_lvl_per_component;
-        tumor_input_params['multilevel']     = 1;
-        tumor_input_params['data_thres']     = d_thresh;
-        tumor_input_params['rho_inv']        = rho_default if (level == 64) else '${RHO_INIT}';
-        tumor_input_params['k_inv']          = k_default   if (level == 64) else '${K_INIT}';
-        tumor_input_params['gist_maxit']     = 4           if (level == 64) else 2;
-        tumor_input_params['linesearchtype'] = 'mt'    if (level == 64) else 'armijo';
-        tumor_input_params['newton_maxit']   = 30 if (level == 256) else 50;
-        tumor_input_params['gvf']            = gvf_;
-        tumor_input_params['beta']           = betap_prev;
-        tumor_input_params['dd_fac']         = sigma_fac;
-        tumor_input_params['predict_flag']   = pred;
-        tumor_input_params['csf_path']       = os.path.join(inp_dir, 'patient_seg_csf.nc');
-        tumor_input_params['gm_path']        = os.path.join(inp_dir, 'patient_seg_gm.nc');
-        tumor_input_params['wm_path']        = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
-        tumor_input_params['data_path']      = os.path.join(inp_dir, 'patient_seg_tc.nc');
+        tumor_input_params['num_nodes']         = n;
+        tumor_input_params['mpi_pernode']       = p;
+        tumor_input_params['wtime_h']           = h;
+        tumor_input_params['wtime_m']           = m
+        tumor_input_params['ibrun_man']         = (level <= 64);
+        tumor_input_params['results_path']      = res_dir_out;
+        tumor_input_params['N']                 = level;
+        tumor_input_params['grad_tol']          = args.opttol;
+        tumor_input_params['sparsity_lvl']      = sparsity_lvl_per_component;
+        tumor_input_params['multilevel']        = 1;
+        tumor_input_params['ls_max_func_evals'] = ls_max_func;
+        tumor_input_params['data_thres']        = d_thresh;
+        tumor_input_params['rho_inv']           = rho_default if (level == 64) else '${RHO_INIT}';
+        tumor_input_params['k_inv']             = k_default   if (level == 64) else '${K_INIT}';
+        tumor_input_params['gist_maxit']        = 4           if (level == 64) else 2;
+        tumor_input_params['linesearchtype']    = 'mt'    if (level == 64) else 'armijo';
+        tumor_input_params['newton_maxit']      = 30 if (level == 256) else 50;
+        tumor_input_params['gvf']               = gvf_;
+        tumor_input_params['beta']              = betap_prev;
+        tumor_input_params['dd_fac']            = sigma_fac;
+        tumor_input_params['predict_flag']      = pred;
+        tumor_input_params['csf_path']          = os.path.join(inp_dir, 'patient_seg_csf.nc');
+        tumor_input_params['gm_path']           = os.path.join(inp_dir, 'patient_seg_gm.nc');
+        tumor_input_params['wm_path']           = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
+        tumor_input_params['data_path']         = os.path.join(inp_dir, 'patient_seg_tc.nc');
         if gaussian_selection_mode == "C0" or level == 64:
             tumor_input_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
             tumor_input_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');

@@ -141,6 +141,8 @@ def getTumorRunCmd(params):
     grad_tol = 1E-4
     ### Forward solver time order of accuracy
     accuracy_order = 2
+    ### number of line-search attempts
+    ls_max_func_evals = 10
 
     ### TUMOR PARAMETERS SET END
 
@@ -182,6 +184,11 @@ def getTumorRunCmd(params):
         rho_inv = params['rho_inv']
     else:
         print ('Default rho = {} used'.format(rho_inv))
+    # ---
+    if 'ls_max_func_evals' in params:
+        ls_max_func_evals = params['ls_max_func_evals']
+    else:
+        print ('Default ls_max_func_evals = {} used'.format(ls_max_func_evals))
     # ---
     if 'gvf' in params:
         gvf = params['gvf']
@@ -364,6 +371,6 @@ def getTumorRunCmd(params):
     " -forward " + str(forward_flag) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 3"
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     return run_str, error_flag
