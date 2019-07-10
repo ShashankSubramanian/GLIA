@@ -6,6 +6,7 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 #include "TaoL1Solver.h"
+#include "BLMVM.h"
 
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) :
@@ -54,6 +55,9 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
   int np = itctx_->n_misc_->np_;
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
 
+
+  // register copied blmvm solver
+  ierr = TaoRegister ("tao_blmvm_m", TaoCreate_BLMVM_M);                        CHKERRQ (ierr);
   if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
     ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
     itctx_->lam_right = itctx_->n_misc_->lambda_;
@@ -446,7 +450,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   if (nk > 1) ub_ptr[1] = upper_bound_kappa;
   if (nk > 2) ub_ptr[2] = upper_bound_kappa;
   ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
-  
+
 
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound);                    CHKERRQ (ierr);
   ierr = VecDestroy (&lower_bound);                                               CHKERRQ (ierr);
@@ -1853,6 +1857,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
     ierr = VecDuplicate (ctx->tumor_->p_, &g);                                  CHKERRQ(ierr);
     ierr = TaoLineSearchGetSolution(ls, x, &J, g, &step, &ls_flag);             CHKERRQ (ierr);
+
+    ctx->last_ls_step_length = step; // remember last ls step
+
     // display line-search convergence reason
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
@@ -2024,7 +2031,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     const int nstop = 7;
     bool stop[nstop];
     std::stringstream ss;
-    Vec x;
+    Vec x = nullptr, g = nullptr;
 
     CtxInv *ctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
     // get minstep and miniter
@@ -2033,6 +2040,17 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     iterbound = ctx->optsettings_->iterbound;
     // get lower bound for gradient
     gtolbound = ctx->optsettings_->gtolbound;
+
+    TaoLineSearch ls = nullptr;
+    TaoLineSearchConvergedReason ls_flag;
+    ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
+    ierr = VecDuplicate (ctx->tumor_->p_, &g);                                  CHKERRQ(ierr);
+    ierr = TaoLineSearchGetSolution(ls, x, &jx, g, &step, &ls_flag);             CHKERRQ (ierr);
+    // remember last ls step
+    ctx->last_ls_step_length = step;
+    // display line-search convergence reason
+    ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
+
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
         ierr = TaoGetTolerances(tao, &gatol, &grtol, &gttol);                               CHKERRQ(ierr);
@@ -2421,7 +2439,8 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ls->stepmin = minstep;
     } else {
       if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
-        ierr = TaoSetType (tao, "blmvm");   CHKERRQ(ierr);   // set TAO solver type
+        // ierr = TaoSetType (tao, "blmvm");   CHKERRQ(ierr);   // set TAO solver type
+        ierr = TaoSetType (tao, "tao_blmvm_m");   CHKERRQ(ierr);   // set TAO solver type
       } else {
         ierr = TaoSetType (tao, "nls");    CHKERRQ(ierr);  // set TAO solver type
       }
@@ -2526,6 +2545,8 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         msg = "  Newton Trust Region method chosen\n";
     } else if (strcmp(taotype, "blmvm") == 0) {
         msg = "  Limited memory variable metric method chosen\n";
+    } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
+        msg = "  User modified limited memory variable metric method chosen\n";
     } else if (strcmp(taotype, "gpcg") == 0) {
         msg = " Newton Trust Region method for quadratic bound constrained minimization\n";
     } else if (strcmp(taotype, "tao_L1") == 0) {
@@ -2568,6 +2589,14 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       if (ctx->optsettings_->linesearch == ARMIJO) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
         tuMSGstd(" using line-search type: armijo");
+        // set line-search monitor routine
+        // this routine is abused to set an initial step-length for the line-search
+        // (which is remembered from a previously failed L2 solve);
+        // 	TaoLineSearchSetInitialStepLength cannot be used since it is iverwritten with 1 in blmvm
+        // linesearch->usemonitor = PETSC_TRUE;
+        std::stringstream s; s << " .. setting ls initial step length to "<<ctx->last_ls_step_length<<std::endl;
+        tuMSGstd(s.str());
+        ierr = TaoLineSearchSetInitialStepLength(linesearch, ctx->last_ls_step_length);CHKERRQ(ierr);
       } else {
         tuMSGstd(" using line-search type: more-thuene");
       }

@@ -26,7 +26,7 @@ struct CtxInv {
     double grtol;                    // relative tolerance for gradient
     /* steering of reference gradeint reset */
     bool is_ksp_gradnorm_set;        // if false, update reference gradient norm for hessian PCG
-    
+
     bool flag_sparse;                //flag for tracking sparsity of solution when parameter continuation is used
     double lam_right;                //Parameters for performing binary search on parameter continuation
     double lam_left;
@@ -37,6 +37,7 @@ struct CtxInv {
     bool update_reference_objective;
     /* optimization state */
     double jvalold;                 // old value of objective function (previous newton iteration)
+    double last_ls_step_length;     // remebers the last step length of the line-search
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
@@ -56,6 +57,7 @@ struct CtxInv {
         gatol = 1e-6;
         grtol = 1e-12;
         jvalold = 0;
+        last_ls_step_length = 1.0;
         weights = nullptr;
         c0old = nullptr;
         x_old = nullptr;
@@ -75,7 +77,7 @@ struct CtxInv {
             VecDestroy (&x_old);
             x_old = nullptr;
         }
-            
+
         if (c0old != nullptr) {
             VecDestroy (&c0old);
             c0old = nullptr;
