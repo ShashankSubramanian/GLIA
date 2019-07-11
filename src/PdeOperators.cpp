@@ -52,7 +52,7 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc)
     for (int i = 0; i < c_.size(); i++) {
         ierr = VecDestroy (&c_[i]);
         ierr = VecDestroy (&p_[i]);
-        if (c_half_.size() > 0 && i != nt_) ierr = VecDestroy (&c_half_[i]);
+        if (c_half_.size() > 0 && i != c_.size() - 1) ierr = VecDestroy (&c_half_[i]);
     }
 
     c_.resize (nt + 1);                         //Time history of tumor

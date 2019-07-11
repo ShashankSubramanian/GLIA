@@ -44,7 +44,7 @@ def getTumorRunCmd(params):
     obs_mask_path = ""
 
 
-    verbosity = 3
+    verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
     create_synthetic = 1
