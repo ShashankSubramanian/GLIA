@@ -69,52 +69,58 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
     }
     ierr = VecScale(tao->stepdirection,-1.0);CHKERRQ(ierr);
 
-    ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (before): %0.8f \n",stepsize);CHKERRQ(ierr);
+
     /* Perform the linesearch */
     fold = f;
     ierr = VecCopy(tao->solution, blmP->Xold);CHKERRQ(ierr);
     ierr = VecCopy(blmP->unprojected_gradient, blmP->Gold);CHKERRQ(ierr);
-    // ierr = TaoLineSearchSetInitialStepLength(tao->linesearch,1.0);CHKERRQ(ierr);
+    if (tao->niter < 1) {
+      ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
+      ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);       
+    } else {
+      ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, 1.0);CHKERRQ(ierr);
+    }
+    ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (before): %0.8f \n",stepsize);CHKERRQ(ierr);
     ierr = TaoLineSearchApply(tao->linesearch, tao->solution, &f, blmP->unprojected_gradient, tao->stepdirection, &stepsize, &ls_status);CHKERRQ(ierr);
     ierr = TaoAddLineSearchCounts(tao);CHKERRQ(ierr);
 
     ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (after): %0.8f \n",stepsize);CHKERRQ(ierr);
     blmP->last_ls_step = stepsize;
 
-    if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
-      /* Linesearch failed
-         Reset factors and use scaled (projected) gradient step */
-      ++blmP->reset;
-
-      ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls failed with status (%D). Retry with scaled (projected) gradient.\n",(int)ls_status);CHKERRQ(ierr);
-
-      f = fold;
-      ierr = VecCopy(blmP->Xold, tao->solution);CHKERRQ(ierr);
-      ierr = VecCopy(blmP->Gold, blmP->unprojected_gradient);CHKERRQ(ierr);
-
-      if (f != 0.0) {
-        delta = 2.0* PetscAbsScalar(f) / (gnorm*gnorm);
-      } else {
-        delta = 2.0/ (gnorm*gnorm);
-      }
-      ierr = MatLMVMSetDelta(blmP->M,delta);CHKERRQ(ierr);
-      ierr = MatLMVMReset(blmP->M);CHKERRQ(ierr);
-      ierr = MatLMVMUpdate(blmP->M, tao->solution, blmP->unprojected_gradient);CHKERRQ(ierr);
-      ierr = MatLMVMSolve(blmP->M, blmP->unprojected_gradient, tao->stepdirection);CHKERRQ(ierr);
-      ierr = VecScale(tao->stepdirection, -1.0);CHKERRQ(ierr);
-
-      /* This may be incorrect; linesearch has values fo stepmax and stepmin
-         that should be reset. */
-      ierr = TaoLineSearchSetInitialStepLength(tao->linesearch,1.0);CHKERRQ(ierr);
-      ierr = TaoLineSearchApply(tao->linesearch,tao->solution,&f, blmP->unprojected_gradient, tao->stepdirection,  &stepsize, &ls_status);CHKERRQ(ierr);
-      ierr = TaoAddLineSearchCounts(tao);CHKERRQ(ierr);
-
-      if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
-        tao->reason = TAO_DIVERGED_LS_FAILURE;
-        ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls failed after using scaled (projected) gradient. Terminating Solver.\n"); CHKERRQ(ierr);
-        // break;
-      }
-    }
+    // if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
+    //   /* Linesearch failed
+    //      Reset factors and use scaled (projected) gradient step */
+    //   ++blmP->reset;
+    //
+    //   ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls failed with status (%D). Retry with scaled (projected) gradient.\n",(int)ls_status);CHKERRQ(ierr);
+    //
+    //   f = fold;
+    //   ierr = VecCopy(blmP->Xold, tao->solution);CHKERRQ(ierr);
+    //   ierr = VecCopy(blmP->Gold, blmP->unprojected_gradient);CHKERRQ(ierr);
+    //
+    //   if (f != 0.0) {
+    //     delta = 2.0* PetscAbsScalar(f) / (gnorm*gnorm);
+    //   } else {
+    //     delta = 2.0/ (gnorm*gnorm);
+    //   }
+    //   ierr = MatLMVMSetDelta(blmP->M,delta);CHKERRQ(ierr);
+    //   ierr = MatLMVMReset(blmP->M);CHKERRQ(ierr);
+    //   ierr = MatLMVMUpdate(blmP->M, tao->solution, blmP->unprojected_gradient);CHKERRQ(ierr);
+    //   ierr = MatLMVMSolve(blmP->M, blmP->unprojected_gradient, tao->stepdirection);CHKERRQ(ierr);
+    //   ierr = VecScale(tao->stepdirection, -1.0);CHKERRQ(ierr);
+    //
+    //   /* This may be incorrect; linesearch has values fo stepmax and stepmin
+    //      that should be reset. */
+    //   ierr = TaoLineSearchSetInitialStepLength(tao->linesearch,1.0);CHKERRQ(ierr);
+    //   ierr = TaoLineSearchApply(tao->linesearch,tao->solution,&f, blmP->unprojected_gradient, tao->stepdirection,  &stepsize, &ls_status);CHKERRQ(ierr);
+    //   ierr = TaoAddLineSearchCounts(tao);CHKERRQ(ierr);
+    //
+    //   if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
+    //     tao->reason = TAO_DIVERGED_LS_FAILURE;
+    //     ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls failed after using scaled (projected) gradient. Terminating Solver.\n"); CHKERRQ(ierr);
+    //     // break;
+    //   }
+    // }
 
     /* Check for converged */
     ierr = VecBoundGradientProjection(blmP->unprojected_gradient, tao->solution, tao->XL, tao->XU, tao->gradient);CHKERRQ(ierr);

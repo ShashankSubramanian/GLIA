@@ -1893,8 +1893,6 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     g0norm = (g0norm > 0.0) ? g0norm : 1.0;
     ctx->convergence_message.clear();
 
-    ctx->last_ls_step_length = step; // remember last ls step
-
     // check for NaN value
     if (PetscIsInfOrNanReal(J)) {
   		ierr = tuMSGwarn ("objective is NaN");                                      CHKERRQ(ierr);
@@ -2119,8 +2117,6 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     // get old objective function value
     jxold = ctx->jvalold;
     ctx->convergence_message.clear();
-    // remember last ls step
-    ctx->last_ls_step_length = step;
 
     // check for NaN value
     if (PetscIsInfOrNanReal(jx)) {
@@ -2590,14 +2586,6 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       if (ctx->optsettings_->linesearch == ARMIJO) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
         tuMSGstd(" using line-search type: armijo");
-        // set line-search monitor routine
-        // this routine is abused to set an initial step-length for the line-search
-        // (which is remembered from a previously failed L2 solve);
-        // 	TaoLineSearchSetInitialStepLength cannot be used since it is iverwritten with 1 in blmvm
-        // linesearch->usemonitor = PETSC_TRUE;
-        std::stringstream s; s << " .. setting ls initial step length to "<<ctx->last_ls_step_length<<std::endl;
-        tuMSGstd(s.str());
-        ierr = TaoLineSearchSetInitialStepLength(linesearch, ctx->last_ls_step_length);CHKERRQ(ierr);
       } else {
         tuMSGstd(" using line-search type: more-thuene");
       }

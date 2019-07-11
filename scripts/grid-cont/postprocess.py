@@ -180,9 +180,14 @@ def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_rec
     frac_rec_c0_b    = np.sum(prec0_c0.flatten())   / brain;
     # integral fractions
     frac_rec_c0_c1   = np.sum(c0_recon.flatten())  / sum(c1_recon.flatten());
-    frac_rec_c15_c1  = np.sum(c1_pred15.flatten()) / sum(c1_recon.flatten());
-    frac_rec_c15_c12 = np.sum(c1_pred15.flatten()) / sum(c1_pred12.flatten());
-    frac_rec_c15_d   = np.sum(c1_pred15.flatten()) / sum(data.flatten());
+    frac_rec_c15_c12 = 0;
+    frac_rec_c15_c1  = 0;
+    frac_rec_c15_c1  = 0;
+    if c1_pred15 != None:
+        frac_rec_c15_c1  = np.sum(c1_pred15.flatten()) / sum(c1_recon.flatten());
+        frac_rec_c15_d   = np.sum(c1_pred15.flatten()) / sum(data.flatten());
+    if c1_pred12 != None and c1_pred15 != None:
+        frac_rec_c15_c12 = np.sum(c1_pred15.flatten()) / sum(c1_pred12.flatten());
 
     # compute l2-error (everywhere and at observation points)
     diff_virg = c1_recon - data;
@@ -572,6 +577,7 @@ if __name__=='__main__':
     parser.add_argument ('-analyze_concomps',     action='store_true', help = 'analyze connected components');
     parser.add_argument ('--obs_lambda',          type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument ('-generate_slices',      action='store_true', help = 'generates charts of slices');
+    parser.add_argument ('--prediction',          action='store_true', help = 'indicates if to postprocess prediction files');
     args = parser.parse_args();
 
 
@@ -1080,10 +1086,13 @@ if __name__=='__main__':
         c0_recon    = c0_recon.get_fdata();
         c1_recon    = nib.load(tumor_output_path + "cRecon.nii.gz");
         c1_recon    = c1_recon.get_fdata();
-        c1_pred12   = nib.load(tumor_output_path + "cPrediction_[t=1.2].nii.gz");
-        c1_pred12   = c1_pred12.get_fdata();
-        c1_pred15   = nib.load(tumor_output_path + "cPrediction_[t=1.5].nii.gz");
-        c1_pred15   = c1_pred15.get_fdata();
+        c1_pred12 = None
+        c1_pred15 = None
+        if prediction:
+            c1_pred12   = nib.load(tumor_output_path + "cPrediction_[t=1.2].nii.gz");
+            c1_pred12   = c1_pred12.get_fdata();
+            c1_pred15   = nib.load(tumor_output_path + "cPrediction_[t=1.5].nii.gz");
+            c1_pred15   = c1_pred15.get_fdata();
         data        = nib.load(tumor_output_path + "data.nii.gz");
         data        = data.get_fdata();
         if args.patient_labels is not None:

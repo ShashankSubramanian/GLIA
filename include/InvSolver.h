@@ -37,7 +37,6 @@ struct CtxInv {
     bool update_reference_objective;
     /* optimization state */
     double jvalold;                 // old value of objective function (previous newton iteration)
-    double last_ls_step_length;     // remebers the last step length of the line-search
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
@@ -57,7 +56,6 @@ struct CtxInv {
         gatol = 1e-6;
         grtol = 1e-12;
         jvalold = 0;
-        last_ls_step_length = 1.0;
         weights = nullptr;
         c0old = nullptr;
         x_old = nullptr;
