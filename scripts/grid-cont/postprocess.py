@@ -1088,7 +1088,7 @@ if __name__=='__main__':
         c1_recon    = c1_recon.get_fdata();
         c1_pred12 = None
         c1_pred15 = None
-        if prediction:
+        if args.prediction:
             c1_pred12   = nib.load(tumor_output_path + "cPrediction_[t=1.2].nii.gz");
             c1_pred12   = c1_pred12.get_fdata();
             c1_pred15   = nib.load(tumor_output_path + "cPrediction_[t=1.5].nii.gz");
