@@ -28,6 +28,9 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
   ierr = TaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
   if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf pr NaN");
 
+  ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
+  stepsize = blmP->last_ls_step;
+  ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);
   ierr = TaoMonitor(tao, tao->niter, f, gnorm, 0.0, stepsize, &reason);CHKERRQ(ierr);
   if (reason != TAO_CONTINUE_ITERATING) PetscFunctionReturn(0);
 
@@ -74,10 +77,11 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
     fold = f;
     ierr = VecCopy(tao->solution, blmP->Xold);CHKERRQ(ierr);
     ierr = VecCopy(blmP->unprojected_gradient, blmP->Gold);CHKERRQ(ierr);
-    if (tao->niter < 1) {
-      ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
-      ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);       
-    } else {
+    // if (tao->niter < 1) {
+      // ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
+      // ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);
+    // } else {
+    if (tao->niter >= 1) {
       ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, 1.0);CHKERRQ(ierr);
     }
     ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (before): %0.8f \n",stepsize);CHKERRQ(ierr);
@@ -252,7 +256,7 @@ static int TaoView_BLMVM_M(Tao tao, PetscViewer viewer)
 #define __FUNCT__ "TaoComputeDual_BLMVM_M"
 static PetscErrorCode TaoComputeDual_BLMVM_M(Tao tao, Vec DXL, Vec DXU)
 {
-  TAO_BLMVM_M      *blm = (TAO_BLMVM_M *) tao->data;
+  TAO_BLMVM_M *blm = (TAO_BLMVM_M *) tao->data;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -315,6 +319,7 @@ PetscErrorCode TaoCreate_BLMVM_M(Tao tao)
 
   ierr = PetscNewLog(tao,&blmP);CHKERRQ(ierr);
   blmP->H0 = NULL;
+  blmP->last_ls_step = 1.0;
   tao->data = (void*)blmP;
 
   /* Override default settings (unless already changed) */

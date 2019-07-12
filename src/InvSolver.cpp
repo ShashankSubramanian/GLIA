@@ -719,9 +719,16 @@ PetscErrorCode InvSolver::solve () {
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                          CHKERRQ(ierr);
 	ierr = VecCopy (p, xrec_);                                                              CHKERRQ(ierr);
-	/* Get information on termination */
+	/* get information on termination */
 	TaoConvergedReason reason;
 	TaoGetConvergedReason (tao_, &reason);
+  /* get last line-search step used */
+  if (itctx_->optsettings_->linesearch == ARMIJO) {
+    tuMSGstd(".. storing last ls step.");
+    TAO_BLMVM_M *blm = (TAO_BLMVM_M *) tao_->data;
+    itctx_->last_ls_step = blm->last_ls_step;
+  }
+
 	/* get solution status */
 	PetscScalar xdiff;
 	ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
@@ -2586,6 +2593,8 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       if (ctx->optsettings_->linesearch == ARMIJO) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
         tuMSGstd(" using line-search type: armijo");
+        TAO_BLMVM_M *blm = (TAO_BLMVM_M *) tao->data;
+        blm->last_ls_step = ctx->last_ls_step;
       } else {
         tuMSGstd(" using line-search type: more-thuene");
       }
