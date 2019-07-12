@@ -1762,7 +1762,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
       PetscFunctionReturn(ierr);
     }
     if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
-      ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
+      ss << "step  = " << std::scientific << step << ". ls failed. ";
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
       ss.str(std::string());
       ss.clear();
@@ -1937,7 +1937,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     			PetscFunctionReturn(ierr);
     	}
       if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
-        ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
+        ss << "step  = " << std::scientific << step << ". ls failed with status " << ls_flag;
         ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
         ss.str(std::string());
               ss.clear();
@@ -2047,28 +2047,27 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     // get lower bound for gradient
     gtolbound = ctx->optsettings_->gtolbound;
 
+    // get and display line-search convergence reason
     TaoLineSearch ls = nullptr;
     TaoLineSearchConvergedReason ls_flag;
     ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
-    ierr = VecDuplicate (ctx->tumor_->p_, &g);                                  CHKERRQ(ierr);
-    ierr = TaoLineSearchGetSolution(ls, x, &jx, g, &step, &ls_flag);             CHKERRQ (ierr);
-    // display line-search convergence reason
+    ierr = TaoLineSearchGetSolution(ls, x, &jx, g, &step, &ls_flag);            CHKERRQ (ierr);
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
-
-
+    // create temp vector (make sure it's deleted)
+    ierr = VecDuplicate (ctx->tumor_->p_, &g);                                  CHKERRQ(ierr);
+    // get tolerances
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
         ierr = TaoGetTolerances(tao, &gatol, &grtol, &gttol);                               CHKERRQ(ierr);
     #else
         ierr = TaoGetTolerances(tao, NULL, NULL, &gatol, &grtol, &gttol);                   CHKERRQ(ierr);
     #endif
-
+    // get maxiter
     ierr = TaoGetMaximumIterations(tao, &maxiter);                                          CHKERRQ(ierr);
     if (maxiter > iterbound) iterbound = maxiter;
-
     ierr = TaoGetMaximumIterations(tao, &maxiter);                                          CHKERRQ(ierr);
+    // get solution status
     ierr = TaoGetSolutionStatus(tao, &iter, &jx, &gnorm, NULL, &step, NULL);                CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &x);                                                   CHKERRQ(ierr);
-
 
     // update/set reference gradient (with p = zeros)
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
@@ -2145,10 +2144,24 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
         stop[i] = false;
     // only check convergence criteria after a certain number of iterations
     if (iter >= miniter && iter > 1) {
-    	if (step < minstep) {
-			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);                    CHKERRQ(ierr);
-			PetscFunctionReturn(ierr);
+      if (step < minstep) {
+    			ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";
+    			ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
+    			ss.str(std::string());
+                ss.clear();
+    			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
+          if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+    			PetscFunctionReturn(0);
     	}
+      if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
+        ss << "step  = " << std::scientific << step << ". ls failed with status " << ls_flag;
+        ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
+        ss.str(std::string());
+              ss.clear();
+        ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
+        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+        PetscFunctionReturn(0);
+      }
     	// |j(x_{k-1}) - j(x_k)| < tolj*abs(1+J)
     	if (std::abs(jxold-jx) < tolj*theta) {
     		stop[0] = true;
@@ -2231,41 +2244,42 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     	ctx->jvalold = jx;
 
     	if (stop[0] && stop[1] && stop[2]) {
-			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER);                      CHKERRQ(ierr);
-			ctx->optfeedback_->converged = true;
-			PetscFunctionReturn(ierr);
+			  ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER);                  CHKERRQ(ierr);
+			  ctx->optfeedback_->converged = true;
+        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+			  PetscFunctionReturn(0);
     	} else if (stop[3]) {
-			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                     CHKERRQ(ierr);
-			ctx->optfeedback_->converged = true;
-			PetscFunctionReturn(ierr);
+			  ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                 CHKERRQ(ierr);
+			  ctx->optfeedback_->converged = true;
+        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+			  PetscFunctionReturn(0);
     	} else if (stop[4]) {
-			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GTTOL);               CHKERRQ(ierr);
-			ctx->optfeedback_->converged = true;
-			PetscFunctionReturn(ierr);
+			  ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GTTOL);                 CHKERRQ(ierr);
+	      ctx->optfeedback_->converged = true;
+			  PetscFunctionReturn(0);
     	} else if (stop[5]) {
-			ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_MAXITS);                     CHKERRQ(ierr);
-			ctx->optfeedback_->converged = true;
-			PetscFunctionReturn(ierr);
+			  ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_MAXITS);                 CHKERRQ(ierr);
+			  ctx->optfeedback_->converged = true;
+        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+		    PetscFunctionReturn(0);
     	}
     }
     else {
     	// if the gradient is zero, we should terminate immediately
     	if (gnorm < gatol) {
 			ss << "||g|| = " << std::scientific << " < " << gatol;
-			ierr = tuMSGwarn(ss.str());                                                 CHKERRQ(ierr);
-			ss.str(std::string());
-            ss.clear();
-			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                     CHKERRQ(ierr);
-
-			PetscFunctionReturn(ierr);
+			ierr = tuMSGwarn(ss.str());                                               CHKERRQ(ierr);ss.str(std::string()); ss.clear();
+			ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                   CHKERRQ(ierr);
+      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+			PetscFunctionReturn(0);
     	}
       // store objective function value
       ctx->jvalold = jx;
     }
 
     // if we're here, we're good to go
-    ierr = TaoSetConvergedReason(tao, TAO_CONTINUE_ITERATING);                          CHKERRQ(ierr);
-
+    ierr = TaoSetConvergedReason(tao, TAO_CONTINUE_ITERATING);                  CHKERRQ(ierr);
+    if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
     PetscFunctionReturn (0);
 }
 

@@ -77,10 +77,6 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
     fold = f;
     ierr = VecCopy(tao->solution, blmP->Xold);CHKERRQ(ierr);
     ierr = VecCopy(blmP->unprojected_gradient, blmP->Gold);CHKERRQ(ierr);
-    // if (tao->niter < 1) {
-      // ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
-      // ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);
-    // } else {
     if (tao->niter >= 1) {
       ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, 1.0);CHKERRQ(ierr);
     }
@@ -91,7 +87,7 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
     ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (after): %0.8f \n",stepsize);CHKERRQ(ierr);
     blmP->last_ls_step = stepsize;
 
-    // if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
+    if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
     //   /* Linesearch failed
     //      Reset factors and use scaled (projected) gradient step */
     //   ++blmP->reset;
@@ -120,11 +116,11 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
     //   ierr = TaoAddLineSearchCounts(tao);CHKERRQ(ierr);
     //
     //   if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {
-    //     tao->reason = TAO_DIVERGED_LS_FAILURE;
-    //     ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls failed after using scaled (projected) gradient. Terminating Solver.\n"); CHKERRQ(ierr);
+        tao->reason = TAO_DIVERGED_LS_FAILURE;
+        ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls failed with status %D. Terminating Solver.\n", ls_status); CHKERRQ(ierr);
     //     // break;
     //   }
-    // }
+    }
 
     /* Check for converged */
     ierr = VecBoundGradientProjection(blmP->unprojected_gradient, tao->solution, tao->XL, tao->XU, tao->gradient);CHKERRQ(ierr);
