@@ -37,7 +37,14 @@ class Tumor {
 		// adjoint Variables
 		Vec p_t_;
 		Vec p_0_;
-		// work vectors
+		/* update variables: since we use only Gauss-Newton
+		 updates on only \kappa and \rho are required
+		 updates on state are stored in state itself
+		 updates on adjoint are stored in adjoint itself
+		 work vectors */
+		std::vector<double> k_tilde_;
+		std::vector<double> rho_tilde_;
+		
     	Vec *work_;
     	// weights for w-l2
     	Vec weights_;

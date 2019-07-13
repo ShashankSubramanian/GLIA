@@ -49,13 +49,13 @@ def getTumorRunCmd(params):
     ### Flag to create synthetic data
     create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-    rho_inv = 15
+    rho_inv = 12
     k_inv = 0.0
     nt_inv = 20
     dt_inv = 0.05
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
-    reg_type = "L1c"
+    reg_type = "L2"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
@@ -86,7 +86,7 @@ def getTumorRunCmd(params):
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
-    reaction_flag = 1
+    reaction_flag = 0
     ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
     basis_type = 1
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -116,7 +116,7 @@ def getTumorRunCmd(params):
     ### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / meshsize)
     dd_fac = 2
     ### Solver type: QN - Quasi newton, GN - Gauss newton
-    solvertype = "QN"
+    solvertype = "GN"
     ### Newton max iterations
     max_iter = 50
     ### GIST max iterations (for L1 solver)

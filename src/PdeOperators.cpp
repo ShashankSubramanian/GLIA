@@ -283,9 +283,9 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
             ierr = reactionAdjoint (linearized, nt - i - 1);
         }
         //Copy current adjoint time point to use in additional term for moving-atlas formulation
-        if (linearized == 1) {
-            ierr = VecCopy (tumor_->p_0_, p_[nt - i - 1]);            CHKERRQ (ierr);
-        }
+        // if (linearized == 1) {
+        ierr = VecCopy (tumor_->p_0_, p_[nt - i - 1]);            CHKERRQ (ierr);
+        // }
     }
 
     std::stringstream s;

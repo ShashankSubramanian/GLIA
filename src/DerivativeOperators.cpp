@@ -579,8 +579,169 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_hessian_evals++;
 
+    std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
+    Event e ("tumor-eval-hessian");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+    double *y_ptr;
+
     if (n_misc_->diffusivity_inversion_) {
-      TU_assert(false, "not implemented."); CHKERRQ(ierr);
+      /* HESSIAN WITH DIFFUSIVITY INVERSION
+        Hx = [Hpp p_tilde + Hpk k_tilde; Hkp p_tiilde + Hkk k_tilde]
+        Each Matvec is computed separately by eliminating the 
+        incremental forward and adjoint equations and the result is added into y = Hx
+      */
+      // get the update on kappa
+      std::vector<double> kappa_tilde (n_misc_->nk_);
+      ierr = VecGetArray (x, &y_ptr);
+      kappa_tilde[0] = y_ptr[n_misc_->np_];
+      if (n_misc_->nk_ == 2) kappa_tilde[1] = y_ptr[n_misc_->np_ + 1];
+      if (n_misc_->nk_ == 3) kappa_tilde[2] = y_ptr[n_misc_->np_ + 2];
+      ierr = VecRestoreArray (x, &y_ptr);
+
+      //  -------------------  -------------------  -------------------  -------------------  -------------------  ------------------- 
+      // --------------- Compute Hpp * p_tilde -------------------
+      // Solve incr fwd with k_tilde = 0 and c0_tilde = \phi * p_tilde
+      ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
+      ierr = pde_operators_->solveState (1);
+      // Solve incr adj with alpha1_tilde = -OT * O * c1_tilde
+      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
+      ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+      ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
+      ierr = pde_operators_->solveAdjoint (2);
+      // Matvec is \beta\phiT\phi p_tilde - \phiT \alpha0_tilde
+      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
+      ierr = tumor_->phi_->applyTranspose (y, tumor_->c_0_);          CHKERRQ (ierr);
+      ierr = VecScale (y, n_misc_->beta_);                            CHKERRQ (ierr);
+      ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);
+      ierr = VecScale (y, n_misc_->lebesgue_measure_);                CHKERRQ (ierr);
+
+      //  -------------------  -------------------  -------------------  -------------------  -------------------  ------------------- 
+      // --------------- Compute Hkp * p_tilde -- \int \int m_i \grad c . \grad \alpha_tilde -------------------
+      double integration_weight = 1.0;
+      double temp_scalar = 0.;
+      ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
+      // compute numerical time integration using trapezoidal rule
+      for (int i = 0; i < n_misc_->nt_ + 1; i++) {
+        // integration weight for chain trapezoidal rule
+        if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
+        else integration_weight = 1.0;
+
+        // compute x = (grad c)^T grad \alpha_tilde
+        // compute gradient of c(t)
+        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        // compute gradient of \alpha_tilde(t)
+        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        // scalar product (grad c)^T grad \alpha_tilde
+        ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
+        ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
+        ierr = VecAXPY (tumor_->work_[0], 1.0,  tumor_->work_[1]);                       CHKERRQ (ierr);
+        ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[3], tumor_->work_[6]);  CHKERRQ (ierr);  // c_z * \alpha_z
+        ierr = VecAXPY (tumor_->work_[0], 1.0,  tumor_->work_[1]);                       CHKERRQ (ierr);  // result in tumor_->work_[0]
+
+        // numerical time integration using trapezoidal rule
+        ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
+      }
+      // time integration of [ int_0 (grad c)^T grad alpha_tilde dt ] done, result in temp_
+      // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
+      ierr = VecGetArray(y, &y_ptr);                                                  CHKERRQ (ierr);
+      ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &y_ptr[n_misc_->np_]);              CHKERRQ(ierr);
+      y_ptr[n_misc_->np_] *= n_misc_->lebesgue_measure_;
+
+      if (n_misc_->nk_ == 1) {
+        // Inverting for only one parameters a.k.a diffusivity in WM. Provide user with the option of setting a diffusivity for 
+        // other tissue types using n_misc - Hence, the gradient will change accordingly. 
+        // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);              CHKERRQ(ierr);   
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        temp_scalar *= n_misc_->k_gm_wm_ratio_;    // this ratio will control the diffusivity in gm
+        y_ptr[n_misc_->np_] += temp_scalar;
+      }
+
+      if (n_misc_->nk_ > 1) {
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &y_ptr[n_misc_->np_ + 1]);        CHKERRQ(ierr);
+        y_ptr[n_misc_->np_ + 1] *= n_misc_->lebesgue_measure_;
+      }
+      if (n_misc_->nk_ > 2) {
+        ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &y_ptr[n_misc_->np_ + 2]);       CHKERRQ(ierr);
+        y_ptr[n_misc_->np_ + 2] *= n_misc_->lebesgue_measure_;
+      }
+      ierr = VecRestoreArray(y, &y_ptr);                                              CHKERRQ (ierr);
+
+      //  -------------------  -------------------  -------------------  -------------------  -------------------  ------------------- 
+      // --------------- Compute Hpk * k_tilde -- -\phiT \alpha0_tilde -------------------
+      // Set c0_tilde to zero
+      ierr = VecSet (tumor_->c_0_, 0.);                               CHKERRQ (ierr);
+      // solve tumor incr fwd with k_tilde
+      tumor_->k_tilde_ = kappa_tilde;
+      ierr = pde_operators_->solveState (3);                          CHKERRQ (ierr);
+      // Solve incr adj with alpha1_tilde = -OT * O * c1_tilde
+      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
+      ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+      ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
+      ierr = pde_operators_->solveAdjoint (2);
+      // Matvec is  - \phiT \alpha0_tilde
+      ierr = VecSet (ptemp_, 0.);                                     CHKERRQ (ierr);
+      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);     CHKERRQ (ierr);
+      ierr = VecScale (ptemp_, -n_misc_->lebesgue_measure_);          CHKERRQ (ierr);
+      // Add Hpk k_tilde to Hpp p_tilde:  Note the kappa/rho components are zero
+      // so are unchanged in y
+      ierr = VecAXPY (y, 1.0, ptemp_);                                CHKERRQ (ierr);
+
+
+      //  -------------------  -------------------  -------------------  -------------------  -------------------  ------------------- 
+      // --------------- Compute Hkk * k_tilde -- \int \int mi \grad c \grad \alpha_tilde -------------------
+      integration_weight = 1.0;
+      ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
+      // compute numerical time integration using trapezoidal rule
+      for (int i = 0; i < n_misc_->nt_ + 1; i++) {
+        // integration weight for chain trapezoidal rule
+        if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
+        else integration_weight = 1.0;
+
+        // compute x = (grad c)^T grad \alpha_tilde
+        // compute gradient of c(t)
+        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        // compute gradient of \alpha_tilde(t)
+        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        // scalar product (grad c)^T grad \alpha_tilde
+        ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
+        ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
+        ierr = VecAXPY (tumor_->work_[0], 1.0,  tumor_->work_[1]);                       CHKERRQ (ierr);
+        ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[3], tumor_->work_[6]);  CHKERRQ (ierr);  // c_z * \alpha_z
+        ierr = VecAXPY (tumor_->work_[0], 1.0,  tumor_->work_[1]);                       CHKERRQ (ierr);  // result in tumor_->work_[0]
+
+        // numerical time integration using trapezoidal rule
+        ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
+      }
+      // time integration of [ int_0 (grad c)^T grad alpha_tilde dt ] done, result in temp_
+      // integration over omega (i.e., inner product, as periodic boundary and no lebesque measure in tumor code)
+      ierr = VecGetArray(y, &y_ptr);                                                  CHKERRQ (ierr);
+      ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &temp_scalar);                          CHKERRQ (ierr);
+      temp_scalar *= n_misc_->lebesgue_measure_;
+      y_ptr[n_misc_->np_] += temp_scalar;
+      
+      if (n_misc_->nk_ == 1) {
+        // Inverting for only one parameters a.k.a diffusivity in WM. Provide user with the option of setting a diffusivity for 
+        // other tissue types using n_misc - Hence, the gradient will change accordingly. 
+        // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);            CHKERRQ (ierr);   
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        temp_scalar *= n_misc_->k_gm_wm_ratio_;    // this ratio will control the diffusivity in gm
+        y_ptr[n_misc_->np_] += temp_scalar;
+      }
+
+      if (n_misc_->nk_ > 1) {
+        ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar);            CHKERRQ (ierr);
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        y_ptr[n_misc_->np_ + 1] += temp_scalar;
+      }
+      if (n_misc_->nk_ > 2) {
+        ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &temp_scalar);           CHKERRQ (ierr);
+        temp_scalar *= n_misc_->lebesgue_measure_;
+        y_ptr[n_misc_->np_ + 2] += temp_scalar;
+      }
+      ierr = VecRestoreArray(y, &y_ptr);                                       CHKERRQ (ierr);
     }
     else {
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
@@ -610,7 +771,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
         ierr = VecAXPY (y, -1.0, ptemp_);                               CHKERRQ (ierr);
       }
     }
-    PetscFunctionReturn(0);
+    self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
+
+    PetscFunctionReturn (0);
 }
 
 PetscErrorCode DerivativeOperatorsRD::evaluateConstantHessianApproximation  (Vec y, Vec x){
