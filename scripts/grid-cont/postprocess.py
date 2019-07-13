@@ -116,7 +116,8 @@ def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_rec
     prec_tc9    = (c1_recon  >  0.9);   # define tc where c(1)  >  0.9
     prec_tc8    = (c1_recon  >  0.8);   # define tc where c(1)  >  0.8
     prec_nec1   = (c1_recon  >= 0.99);  # define nec where c(1) >= 0.99
-    pred15_tc9  = (c1_pred15 >  0.9);   # define tc where c(t=1.5)  >  0.9
+    if c1_pred15 != None:
+        pred15_tc9  = (c1_pred15 >  0.9);   # define tc where c(t=1.5)  >  0.9
     # edema
     prec_ed8    = np.logical_and((c1_recon < 0.8), (c1_recon > 0.02));    # define ed where 0.8 < c(1) < 0.02
     prec_ed7    = np.logical_and((c1_recon < 0.7), (c1_recon > 0.02));    # define ed where 0.7 < c(1) < 0.02
@@ -176,13 +177,15 @@ def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_rec
     frac_ref_nec_b   = np.sum(pref_nec.flatten())   / brain;
     frac_ref_tc_b    = np.sum(pref_tc.flatten())    / brain;
     frac_rec_tc_b    = np.sum(prec_tc9.flatten())   / brain;
-    frac_pred_tc_b   = np.sum(pred15_tc9.flatten()) / brain;
+    frac_pred_tc_b = -1;
+    if c1_pred15 != None:
+        frac_pred_tc_b   = np.sum(pred15_tc9.flatten()) / brain;
     frac_rec_c0_b    = np.sum(prec0_c0.flatten())   / brain;
     # integral fractions
     frac_rec_c0_c1   = np.sum(c0_recon.flatten())  / sum(c1_recon.flatten());
-    frac_rec_c15_c12 = 0;
-    frac_rec_c15_c1  = 0;
-    frac_rec_c15_c1  = 0;
+    frac_rec_c15_c12 = -1;
+    frac_rec_c15_c1  = -1;
+    frac_rec_c15_d   = -1;
     if c1_pred15 != None:
         frac_rec_c15_c1  = np.sum(c1_pred15.flatten()) / sum(c1_recon.flatten());
         frac_rec_c15_d   = np.sum(c1_pred15.flatten()) / sum(data.flatten());
@@ -585,7 +588,7 @@ if __name__=='__main__':
     # paths
     input_path = args.input_path;
     reg_output_path = os.path.join(input_path, 'registration/')
-    tumor_output_path = os.path.join(input_path, args.tu_path );
+    # tumor_output_path = os.path.join(input_path, args.tu_path );
     path_256 = os.path.join(os.path.join(args.input_path, 'tumor_inversion'), 'nx256');
     path_256 = os.path.join(path_256, "obs-{0:1.1f}".format(args.obs_lambda));
 
@@ -598,7 +601,7 @@ if __name__=='__main__':
 
     # convert all images to original dimension
     if args.convert_images:
-        convertImagesToOriginalSize(args.input_path, tumor_output_path, args.reference_image_path, args.gridcont);
+        convertImagesToOriginalSize(args.input_path, path_256, args.reference_image_path, args.gridcont);
 
     # compute dice scores
     if args.compute_dice_healthy:
@@ -663,6 +666,8 @@ if __name__=='__main__':
             template_fname = "template_nx"+str(l)+".nii.gz" if l < 256 else bratsID + '_seg_tu.nii.gz'
             template_img = nib.load(os.path.join(path_256, template_fname));
             template     = template_img.get_fdata();
+            template_256 = nib.load(os.path.join(path_256, bratsID + '_seg_tu.nii.gz'));
+            template_256 = template_256.get_fdata();
 
             # ### concomp DATA ###
             level = int(res_path.split("nx")[-1].split("/")[0].split("-")[0]);
@@ -1012,8 +1017,10 @@ if __name__=='__main__':
 
                 # visualize evolution of solution over levels
                 p_sum = pvec[l].sum();
-                mag = 400;
-                s = 256./(2*math.pi);
+                mag = 200;
+                sx = template_256.shape[0]/(2*math.pi);
+                sy = template_256.shape[1]/(2*math.pi);
+                sz = template_256.shape[2]/(2*math.pi);
                 for k in range(ncomps_sol[l]):
                     xs = []
                     ys = []
@@ -1021,32 +1028,32 @@ if __name__=='__main__':
                     for r in range(len(comps_sol[l][k])):
                         if p_comp[l][k][r] < 1e-8:
                             continue;
-                        xs.append(comps_sol[l][k][r][2]*s) # x
-                        ys.append(comps_sol[l][k][r][1]*s) # y
-                        zs.append(comps_sol[l][k][r][0]*s) # z
+                        xs.append(round(comps_sol[l][k][r][2]*sx)) # x
+                        ys.append(round(comps_sol[l][k][r][1]*sy)) # y
+                        zs.append(round(comps_sol[l][k][r][0]*sz)) # z
                     ax_l2d[0].scatter(xs, ys, c=cc, marker=m, s=((np.array(p_comp[l][k])/p_sum * mag)))
-                    ax_l2d[1].scatter(xs, zs, c=cc, marker=m, s=((np.array(p_comp[l][k])/p_sum * mag)))
-                    ax_l2d[2].scatter(ys, zs, c=cc, marker=m, s=((np.array(p_comp[l][k])/p_sum * mag)))
+                    ax_l2d[1].scatter(ys, zs, c=cc, marker=m, s=((np.array(p_comp[l][k])/p_sum * mag)))
+                    ax_l2d[2].scatter(xs, zs, c=cc, marker=m, s=((np.array(p_comp[l][k])/p_sum * mag)))
                     Xx.extend(xs);
                     Yy.extend(ys);
                     Zz.extend(zs);
                 for k in range(ncomps_data[l]):
-                    # label = '$x_{cm}$(TC) (l= %d)' % (math.log(level,2)-5);
                     label = '$(l= %d)' % (math.log(level,2)-5);
-                    ax_l2d[0].scatter(xcm_data[l][k][0]*s, xcm_data[l][k][1]*s, c='k', marker='x', s=12);
-                    ax_l2d[0].scatter(wcm_labeled_dcomp[l][k+1][0]*s, wcm_labeled_dcomp[l][k+1][1]*s, c=cc, marker='x', s=12);
-                    ax_l2d[1].scatter(xcm_data[l][k][0]*s, xcm_data[l][k][2]*s, c='k', marker='x', s=12);
-                    ax_l2d[1].scatter(wcm_labeled_dcomp[l][k+1][0]*s, wcm_labeled_dcomp[l][k+1][2]*s, c=cc, marker='x', s=12);
-                    ax_l2d[2].scatter(xcm_data[l][k][1]*s, xcm_data[l][k][2]*s, c='k', marker='x', s=12);
-                    ax_l2d[2].scatter(wcm_labeled_dcomp[l][k+1][1]*s, wcm_labeled_dcomp[l][k+1][2]*s, c=cc, marker='x', s=12);
-                    Xx.append(xcm_data[l][k][0]*s);
-                    Yy.append(xcm_data[l][k][1]*s);
-                    Zz.append(xcm_data[l][k][2]*s);
+                    ax_l2d[0].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][1]*sy), c='k', marker='x', s=12);
+                    ax_l2d[0].scatter(round(wcm_labeled_dcomp[l][k+1][0]*sx), round(wcm_labeled_dcomp[l][k+1][1]*sy), c=cc, marker='x', s=12);
+                    ax_l2d[1].scatter(round(xcm_data[l][k][1]*sy), round(xcm_data[l][k][2]*sz), c='k', marker='x', s=12);
+                    ax_l2d[1].scatter(round(wcm_labeled_dcomp[l][k+1][1]*sy), round(wcm_labeled_dcomp[l][k+1][2]*sz), c=cc, marker='x', s=12);
+                    ax_l2d[2].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][2]*sz), c='k', marker='x', s=12);
+                    ax_l2d[2].scatter(round(wcm_labeled_dcomp[l][k+1][0]*sx), round(wcm_labeled_dcomp[l][k+1][2]*sz), c=cc, marker='x', s=12);
+                    Xx.append(round(xcm_data[l][k][0]*sx));
+                    Yy.append(round(xcm_data[l][k][1]*sy));
+                    Zz.append(round(xcm_data[l][k][2]*sz));
 
         # close components.txt
         concomp_file.close();
         # save components_plot
         if args.generate_slices:
+            pad=20
             Xx = np.asarray(Xx);
             Yy = np.asarray(Yy);
             Zz = np.asarray(Zz);
@@ -1054,148 +1061,165 @@ if __name__=='__main__':
             mid_x = (np.amax(Xx)+np.amin(Xx)) * 0.5
             mid_y = (np.amax(Yy)+np.amin(Yy)) * 0.5
             mid_z = (np.amax(Zz)+np.amin(Zz)) * 0.5
-            ax_l2d[0].set_xlabel('X')
-            ax_l2d[0].set_ylabel('Y')
-            ax_l2d[0].set_xlim(mid_x - max_range/2, mid_x + max_range/2)
-            ax_l2d[0].set_ylim(mid_y - max_range/2, mid_y + max_range/2)
-            ax_l2d[1].set_xlabel('X')
-            ax_l2d[1].set_ylabel('Z')
-            ax_l2d[1].set_xlim(mid_x - max_range/2, mid_x + max_range/2)
-            ax_l2d[1].set_ylim(mid_z - max_range/2, mid_z + max_range/2)
-            ax_l2d[2].set_xlabel('Y')
-            ax_l2d[2].set_ylabel('Z')
-            ax_l2d[2].set_xlim(mid_y - max_range/2, mid_y + max_range/2)
-            ax_l2d[2].set_ylim(mid_z - max_range/2, mid_z + max_range/2)
+            # axial
+            z = int(round(xcm_data[256][0][2]/(2*math.pi)*template_256.shape[2]))
+            ax_l2d[0].imshow(template_256[:,:,z].T, cmap='Spectral_r', interpolation='none', alpha=0.4, origin='upper');
+            # 0=bg,1=nec,4=en,2=ed,8=csf,7=vt,5=gm,6=wm
+            # countours_ax = ax_l2d[0].contour(template_256[:,:,z].T, [0,1,2,4,5,6,7,8], cmap='jet', alpha=0.2, origin='lower', linewidth=0.05);
+            # ax_l2d[0].clabel(countours_ax, [1,2,4,5,6,7,8],  inline=True, fontsize=5)
+            ax_l2d[0].set_title("axial slice " + str(z), size='10');
+            # sagittal
+            x = int(round(xcm_data[256][0][0]/(2*math.pi)*template_256.shape[0]))
+            ax_l2d[1].imshow(template_256[x,:,:].T, cmap='Spectral_r', interpolation='none', alpha=0.4, origin='upper');
+            ax_l2d[1].set_title("sagittal slice " + str(x), size='10');
+            # coronal
+            y = int(round(xcm_data[256][0][1]/(2*math.pi)*template_256.shape[1]))
+            ax_l2d[2].imshow(template_256[:,y,:].T, cmap='Spectral_r', interpolation='none', alpha=0.4, origin='lower');
+            ax_l2d[2].set_title("coronal slice " + str(y), size='10');
+
             ax_l2d[0].set_aspect('equal', adjustable='box')
             ax_l2d[1].set_aspect('equal', adjustable='box')
             ax_l2d[2].set_aspect('equal', adjustable='box')
-            sns.despine(offset=0, trim=True)
+
             fname = 'components_plot'
+            ax_l2d[0].set_xlim(mid_x-max_range/2-pad, mid_x+max_range/2+pad)
+            ax_l2d[0].set_ylim(mid_y-max_range/2-pad, mid_y+max_range/2+pad)
+            ax_l2d[1].set_xlim(mid_y-max_range/2-pad, mid_y+max_range/2+pad)
+            ax_l2d[1].set_ylim(mid_z-max_range/2-pad, mid_z+max_range/2+pad)
+            ax_l2d[2].set_xlim(mid_x-max_range/2-pad, mid_x+max_range/2+pad)
+            ax_l2d[2].set_ylim(mid_z-max_range/2-pad, mid_z+max_range/2+pad)
+            ax_l2d[0].set_ylim(ax_l2d[0].get_ylim()[::-1])        # invert the axis
+            sns.despine(offset=0, trim=True)
+            fig_l2d.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.95, wspace=0.2, hspace=0.5);
+            fig_l2d.savefig(os.path.join(vis_path, fname + '_zoom.pdf'), format='pdf', dpi=1200);
+
+            ax_l2d[0].set_xlim([0,template_256.shape[0]])
+            ax_l2d[0].set_ylim([0,template_256.shape[1]])
+            ax_l2d[1].set_xlim([0,template_256.shape[1]])
+            ax_l2d[1].set_ylim([0,template_256.shape[2]])
+            ax_l2d[2].set_xlim([0,template_256.shape[0]])
+            ax_l2d[2].set_ylim([0,template_256.shape[2]])
+            ax_l2d[0].set_ylim(ax_l2d[0].get_ylim()[::-1])        # invert the axis
+            sns.despine(offset=0, trim=True)
             fig_l2d.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.95, wspace=0.2, hspace=0.5);
             fig_l2d.savefig(os.path.join(vis_path, fname + '.pdf'), format='pdf', dpi=1200);
 
     if args.compute_tumor_stats:
-        # compute tumor stats (dice, frac, etc.)
-        patient_ref = nib.load(args.reference_image_path)
-        # patient_ref = patient_ref.get_fdata();
-        t1_recon_seg = nib.load(tumor_output_path + "seg1.nii.gz");
-        t1_recon_seg = t1_recon_seg.get_fdata();
-        t0_recon_seg = nib.load(tumor_output_path + "seg0.nii.gz");
-        t0_recon_seg = t0_recon_seg.get_fdata();
-        c0_recon    = nib.load(tumor_output_path + "c0Recon.nii.gz");
-        c0_recon    = c0_recon.get_fdata();
-        c1_recon    = nib.load(tumor_output_path + "cRecon.nii.gz");
-        c1_recon    = c1_recon.get_fdata();
-        c1_pred12 = None
-        c1_pred15 = None
-        if args.prediction:
-            c1_pred12   = nib.load(tumor_output_path + "cPrediction_[t=1.2].nii.gz");
-            c1_pred12   = c1_pred12.get_fdata();
-            c1_pred15   = nib.load(tumor_output_path + "cPrediction_[t=1.5].nii.gz");
-            c1_pred15   = c1_pred15.get_fdata();
-        data        = nib.load(tumor_output_path + "data.nii.gz");
-        data        = data.get_fdata();
-        if args.patient_labels is not None:
-            for x in args.patient_labels.split(','):
-                patient_labels[int(x.split('=')[0])] = x.split('=')[1];
-            patient_label_rev = {v:k for k,v in patient_labels.items()};
-
-        print("\n (4) computing DICE and tumor statistics\n");
-
-        csf_dice2,gm_dice2,wm_dice2, \
-        wt_dice, tc_dice, tc9_dice, tc8_dice, nec_dice, nec1_dice, \
-        ed8_dice,ed7_dice,ed6_dice, \
-        frac_ref_wt_b, frac_ref_ed_b, frac_ref_en_b, frac_ref_nec_b, frac_ref_tc_b, \
-        frac_rec_tc_b, frac_pred_tc_b, frac_rec_c0_b, frac_rec_c0_c1, frac_rec_c15_c1, frac_rec_c15_c12, frac_rec_c15_d, \
-        c1_ed_int,c1_tc_int,c1_b_no_wt_int,c1_int, \
-        l2err1_virg, l2err1_obs, l2err1_virg_nonsmooth, l2err1_obs_nonsmooth, \
-        c1_ed_max, c1_ed_min, c1_tc_max, c1_ed_min \
-        = computeTumorStats(patient_ref, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data,  patient_label_rev, tumor_output_path);
-
-        # compute l2 error of c(0) in between levels || c(0)_256 - Ic(0)_64 || / ||c(0)_256 ||
-        print("\n (5) computing c(0) difference across levels (c(0) rescaled to 1)\n");
-        c0_256 = fio.readNetCDF(os.path.join(path_256,"c0Recon.nc"));
-        c0_256_norm = np.linalg.norm(c0_256.flatten(), 2);
-        for l in [64,128]:
+        file_params = 'tumor_parameters-' + "obs-{0:1.1f}".format(args.obs_lambda) + '.txt'
+        infofile = open(os.path.join(args.input_path, file_params),'w');
+        for l in levels:
+            # paths
             lvl_prefix = os.path.join(os.path.join(args.input_path, 'tumor_inversion'), 'nx' + str(l));
             res_path   = os.path.join(lvl_prefix, "obs-{0:1.1f}".format(args.obs_lambda));
-            c0_coarse  = fio.readNetCDF(os.path.join(res_path,"c0Recon.nc"));
-            # resample c(0) of coarser grid to 256 (3-rd order interp.)
-            c0_coarse  = imgtools.resizeImage(c0_coarse, tuple([256, 256, 256]), 3);
-            max_ic = np.amax(c0_coarse.flatten());
-            c0_coarse = c0_coarse * (1./max_ic);
-            diff = c0_256 - c0_coarse;
-            fio.createNetCDF(os.path.join(path_256, "c0Diff_nx"+str(l)+"-nx256.nc"), [256,256,256], diff);
-            l2errc0_over_levels[l] = np.linalg.norm(diff.flatten(), 2) / c0_256_norm;
+            init_path  = os.path.join(lvl_prefix, 'init');
+            vis_path   = os.path.join(args.input_path, 'vis');
+            template_fname = "template_nx"+str(l)+".nii.gz" if l < 256 else bratsID + '_seg_tu.nii.gz'
 
-        path = tumor_output_path
-        tmp = tumor_output_path.split("/")[-2]
-        file_params = 'tumor_parameters-' + tmp + '.txt'
-        # print("suffix:",tmp, ", tumor_out_path:", tmp)
-        print("\n (6) writing parameter file",file_params)
-        infofile = open(os.path.join(input_path, file_params),'w');
-        text = "";
-        text += "Estimated initial condition of tumor ===> " + os.path.join(path,'c0Recon.nii.gz');
-        text += "\nTumor core probability map (inferred from given patient images) ===> " + os.path.join(path,'data.nii.gz');
-        text += "\nReconstructed tumor ===> " + os.path.join(path,'cRecon.nii.gz');
-        text += "\nTumor prediction ===> " + os.path.join(path,'cPrediction_[t=*].nii.gz');
-        if os.path.exists(os.path.join(tumor_output_path,'info.dat')):
-            with open(os.path.join(tumor_output_path,'info.dat'), 'r') as f:
-                lines = f.readlines();
-                if len(lines) > 0:
-                    param = lines[0].split(" ");
-                    values = lines[1].split(" ");
-                    avg_diff = (float(values[1])); ## + float(values[2]) + float(values[3]))/3.;
-                    text += "\n===============================================";
-                    text += "\nEstimated diffusion coefficient=" + "{0:.2e}".format(avg_diff);
-                    text += "\n===============================================";
-                    text += "\nEstimated reaction coefficient=" +   "{0:.2e}".format(float(values[0]));
-                    text += "\n===============================================";
-                    text += "\nL2 Tumor Reconstruction Error=" +    "{0:.2e}".format(float(values[2]));
-                    text += "\n===============================================";
-                else:
-                    print("  Error: output file info.dat is empty for for tumor inversion of patient ");
-        else:
-            print("tumor solver did not generate a parametter output file")
+            # compute tumor stats (dice, frac, etc.)
+            template_img = nib.load(os.path.join(path_256, template_fname));
+            t1_recon_seg = nib.load(os.path.join(res_path,"seg1.nii.gz"));
+            t1_recon_seg = t1_recon_seg.get_fdata();
+            t0_recon_seg = nib.load(os.path.join(res_path, "seg0.nii.gz"));
+            t0_recon_seg = t0_recon_seg.get_fdata();
+            c0_recon  = nib.load(os.path.join(res_path, "c0Recon.nii.gz"));
+            c0_recon  = c0_recon.get_fdata();
+            c1_recon  = nib.load(os.path.join(res_path, "cRecon.nii.gz"));
+            c1_recon  = c1_recon.get_fdata();
+            c1_pred12 = None;
+            c1_pred15 = None;
+            if args.prediction:
+                c1_pred12   = nib.load(os.path.join(res_path,"cPrediction_[t=1.2].nii.gz"));
+                c1_pred12   = c1_pred12.get_fdata();
+                c1_pred15   = nib.load(os.path.join(res_path, "cPrediction_[t=1.5].nii.gz"));
+                c1_pred15   = c1_pred15.get_fdata();
+            data = nib.load(os.path.join(res_path, "data.nii.gz"));
+            data = data.get_fdata();
+            if args.patient_labels is not None:
+                for x in args.patient_labels.split(','):
+                    patient_labels[int(x.split('=')[0])] = x.split('=')[1];
+                patient_label_rev = {v:k for k,v in patient_labels.items()};
 
-        if args.compute_dice_healthy:
-            text += "\ndice outside tumor core (csf,gm,wm)   = (" + "{0:.2f}".format(csf_dice*100) + "," + "{0:.2f}".format(gm_dice*100) + "," + "{0:.2f}".format(wm_dice*100) + ")";
-        if args.compute_tumor_stats:
-            text += "\nhealthy tissue dice (csf,gm,wm)       = (" + "{0:.2f}".format(csf_dice2*100) + "," + "{0:.2f}".format(gm_dice2*100) + "," + "{0:.2f}".format(wm_dice2*100) + ")";
-            text += "\ndice tumor (max): (wt,tc,nec)         = (" + "{0:.2f}".format(wt_dice*100)  + "," + "{0:.2f}".format(tc_dice*100) + "," + "{0:.2f}".format(nec_dice*100)  + ")";
-            text += "\ndice tumor (> x): (tc9,tc8,nec1)      = (" + "{0:.2f}".format(tc9_dice*100)  + "," + "{0:.2f}".format(tc8_dice*100) + "," + "{0:.2f}".format(nec1_dice*100)  + ")";
-            text += "\ndice ed (x<ed<0.02): (ed8,ed7,ed61)   = (" + "{0:.2f}".format(ed8_dice*100)  + "," + "{0:.2f}".format(ed7_dice*100) + "," + "{0:.2f}".format(ed6_dice*100)  + ")";
-            text += "\nc(ed,1) (max,min)                     = (" + "{0:1.2f}".format(c1_ed_max) + "," + "{0:1.2f}".format(c1_ed_min) + ")";
-            text += "\nc(tc,1) (max,min)                     = (" + "{0:1.2f}".format(c1_tc_max) + "," + "{0:1.2f}".format(c1_ed_min) + ")";
-            text += "\nstats #tu/#brain  (wt,ed,en,nec,tc)   = (" + "{0:1.3e}".format(frac_ref_wt_b) + "," + "{0:1.3e}".format(frac_ref_ed_b) + "," + "{0:1.3e}".format(frac_ref_en_b) + "," + "{0:1.3e}".format(frac_ref_nec_b) + "," + "{0:1.3e}".format(frac_ref_tc_b) + ")";
-            text += "\nstats #tu/#brain  (rec_tc,pred_ct,c0) = (" + "{0:1.3e}".format(frac_rec_tc_b) + "," + "{0:1.3e}".format(frac_pred_tc_b) + ","  + "{0:1.3e}".format(frac_rec_c0_b) + ")";
-            text += "\nstats int_B c(1) dx           = " + "{0:1.3e}".format(c1_int);
-            text += "\nstats int_ED c(1) dx          = " + "{0:1.3e}".format(c1_ed_int);
-            text += "\nstats int_TC c(1) dx          = " + "{0:1.3e}".format(c1_tc_int);
-            text += "\nstats int_B/WT c(1) dx        = " + "{0:1.3e}".format(c1_b_no_wt_int);
-            text += "\nstats int c(0)   / int c(1)   = " + "{0:1.3e}".format(frac_rec_c0_c1);
-            text += "\nstats int c(1.5) / int c(1)   = " + "{0:1.3e}".format(frac_rec_c15_c1);
-            text += "\nstats int c(1.5) / int c(1.2) = " + "{0:1.3e}".format(frac_rec_c15_c12);
-            text += "\nstats int c(1.5) / int d      = " + "{0:1.3e}".format(frac_rec_c15_d);
-            text += "\nl2err_c(1) (smooth)(virg,obs) = (" + "{0:1.3e}".format(l2err1_virg) + "," + "{0:1.3e}".format(l2err1_obs)  + ")";
-            text += "\nl2err_c(1)         (virg,obs) = (" + "{0:1.3e}".format(l2err1_virg_nonsmooth) + "," + "{0:1.3e}".format(l2err1_obs_nonsmooth)  + ")";
-            if args.analyze_concomps:
-                text += "\nl2ec(1) sc,TC (l1,l2,l3)      = (" + "{0:1.3e}".format(l2err_TC[64]/l2normref_TC[64]) + "," + "{0:1.3e}".format(l2err_TC[128]/l2normref_TC[128]) + "," + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
-                for l, ll in zip([64,128,256], ["l1", "l2", "l3"]):
-                    t1 = "\nl2ec(1) sc,relC (" + ll + ";#1,..,#n) = (";
-                    t2 = "\nl2ec(1) sc,relD (" + ll + ";#1,..,#n) = (";
-                    nc = len(l2err_percomp_TC[l]);
-                    for i in range(nc):
-                        t1 += "{0:1.3e}".format(l2err_percomp_TC[l][i]/l2normref_percomp[l][i]);
-                        t2 += "{0:1.3e}".format(l2err_percomp_TC[l][i]/l2normref_TC[l]);
-                        sep = "," if i < nc-1 else ")";
-                        t1 += sep;
-                        t2 += sep;
-                    text += t1;
-                    text += t2;
-            text += "\nl2err_c(0) |c_h-c_H|_r (l1,l2)= (" + "{0:1.3e}".format(l2errc0_over_levels[64]) + "," + "{0:1.3e}".format(l2errc0_over_levels[128])  + ")";
-            text += " \n";
+            print("\n (4) computing DICE and tumor statistics\n");
 
+            csf_dice2,gm_dice2,wm_dice2, \
+            wt_dice, tc_dice, tc9_dice, tc8_dice, nec_dice, nec1_dice, \
+            ed8_dice,ed7_dice,ed6_dice, \
+            frac_ref_wt_b, frac_ref_ed_b, frac_ref_en_b, frac_ref_nec_b, frac_ref_tc_b, \
+            frac_rec_tc_b, frac_pred_tc_b, frac_rec_c0_b, frac_rec_c0_c1, frac_rec_c15_c1, frac_rec_c15_c12, frac_rec_c15_d, \
+            c1_ed_int,c1_tc_int,c1_b_no_wt_int,c1_int, \
+            l2err1_virg, l2err1_obs, l2err1_virg_nonsmooth, l2err1_obs_nonsmooth, \
+            c1_ed_max, c1_ed_min, c1_tc_max, c1_ed_min \
+            = computeTumorStats(template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data,  patient_label_rev, res_path);
 
-        infofile.write(text);
+            # compute l2 error of c(0) in between levels || c(0)_256 - Ic(0)_64 || / ||c(0)_256 ||
+            print("\n (5) computing c(0) difference across levels (c(0) rescaled to 1)\n");
+            c0_256 = fio.readNetCDF(os.path.join(path_256,"c0Recon.nc"));
+            c0_256_norm = np.linalg.norm(c0_256.flatten(), 2);
+            for ll in [64,128]:
+                lvl_prefix_ = os.path.join(os.path.join(args.input_path, 'tumor_inversion'), 'nx' + str(ll));
+                res_path_   = os.path.join(lvl_prefix_, "obs-{0:1.1f}".format(args.obs_lambda));
+                c0_coarse  = fio.readNetCDF(os.path.join(res_path_,"c0Recon.nc"));
+                # resample c(0) of coarser grid to 256 (3-rd order interp.)
+                c0_coarse  = imgtools.resizeImage(c0_coarse, tuple([256, 256, 256]), 3);
+                max_ic = np.amax(c0_coarse.flatten());
+                c0_coarse = c0_coarse * (1./max_ic);
+                diff = c0_256 - c0_coarse;
+                fio.createNetCDF(os.path.join(path_256, "c0Diff_nx"+str(ll)+"-nx256.nc"), [256,256,256], diff);
+                l2errc0_over_levels[ll] = np.linalg.norm(diff.flatten(), 2) / c0_256_norm;
+
+            print("\n (6) writing parameter file",file_params)
+            text = "## level " + str(l) + " ##\n";
+            if os.path.exists(os.path.join(res_path,'info.dat')):
+                with open(os.path.join(res_path,'info.dat'), 'r') as f:
+                    lines = f.readlines();
+                    if len(lines) > 0:
+                        param = lines[0].split(" ");
+                        values = lines[1].split(" ");
+                        text += "\nestimated diffusion coefficient       = " + "{0:.2e}".format(float(values[1]));
+                        text += "\nestimated reaction coefficient        = " + "{0:.2e}".format(float(values[0]));
+                        text += "\nreconstruction error (l2)             = " + "{0:.2e}".format(float(values[2]));
+                    else:
+                        print("  Error: output file info.dat is empty for for tumor inversion of patient ");
+            else:
+                print("tumor solver did not generate a parametter output file")
+
+            text += "\n == Tumor Statistics ==";
+            if args.compute_dice_healthy:
+                text += "\ndice outside tumor core (csf,gm,wm)   = (" + "{0:.2f}".format(csf_dice*100) + "," + "{0:.2f}".format(gm_dice*100) + "," + "{0:.2f}".format(wm_dice*100) + ")";
+            if args.compute_tumor_stats:
+                text += "\nhealthy tissue dice (csf,gm,wm)       = (" + "{0:.2f}".format(csf_dice2*100) + "," + "{0:.2f}".format(gm_dice2*100) + "," + "{0:.2f}".format(wm_dice2*100) + ")";
+                text += "\ndice tumor (max): (wt,tc,nec)         = (" + "{0:.2f}".format(wt_dice*100)  + "," + "{0:.2f}".format(tc_dice*100) + "," + "{0:.2f}".format(nec_dice*100)  + ")";
+                text += "\ndice tumor (> x): (tc9,tc8,nec1)      = (" + "{0:.2f}".format(tc9_dice*100)  + "," + "{0:.2f}".format(tc8_dice*100) + "," + "{0:.2f}".format(nec1_dice*100)  + ")";
+                text += "\ndice ed (x<ed<0.02): (ed8,ed7,ed61)   = (" + "{0:.2f}".format(ed8_dice*100)  + "," + "{0:.2f}".format(ed7_dice*100) + "," + "{0:.2f}".format(ed6_dice*100)  + ")";
+                text += "\nc(ed,1) (max,min)                     = (" + "{0:1.2f}".format(c1_ed_max) + "," + "{0:1.2f}".format(c1_ed_min) + ")";
+                text += "\nc(tc,1) (max,min)                     = (" + "{0:1.2f}".format(c1_tc_max) + "," + "{0:1.2f}".format(c1_ed_min) + ")";
+                text += "\nstats #tu/#brain  (wt,ed,en,nec,tc)   = (" + "{0:1.3e}".format(frac_ref_wt_b) + "," + "{0:1.3e}".format(frac_ref_ed_b) + "," + "{0:1.3e}".format(frac_ref_en_b) + "," + "{0:1.3e}".format(frac_ref_nec_b) + "," + "{0:1.3e}".format(frac_ref_tc_b) + ")";
+                text += "\nstats #tu/#brain  (rec_tc,pred_ct,c0) = (" + "{0:1.3e}".format(frac_rec_tc_b) + "," + "{0:1.3e}".format(frac_pred_tc_b) + ","  + "{0:1.3e}".format(frac_rec_c0_b) + ")";
+                text += "\nstats int_B c(1) dx                   = " + "{0:1.3e}".format(c1_int);
+                text += "\nstats int_ED c(1) dx                  = " + "{0:1.3e}".format(c1_ed_int);
+                text += "\nstats int_TC c(1) dx                  = " + "{0:1.3e}".format(c1_tc_int);
+                text += "\nstats int_B/WT c(1) dx                = " + "{0:1.3e}".format(c1_b_no_wt_int);
+                text += "\nstats int c(0)   / int c(1)           = " + "{0:1.3e}".format(frac_rec_c0_c1);
+                text += "\nstats int c(1.5) / int c(1)           = " + "{0:1.3e}".format(frac_rec_c15_c1);
+                text += "\nstats int c(1.5) / int c(1.2)         = " + "{0:1.3e}".format(frac_rec_c15_c12);
+                text += "\nstats int c(1.5) / int d              = " + "{0:1.3e}".format(frac_rec_c15_d);
+                text += "\nl2err_c(1) (smooth)(virg,obs)         = (" + "{0:1.3e}".format(l2err1_virg) + "," + "{0:1.3e}".format(l2err1_obs)  + ")";
+                text += "\nl2err_c(1)         (virg,obs)         = (" + "{0:1.3e}".format(l2err1_virg_nonsmooth) + "," + "{0:1.3e}".format(l2err1_obs_nonsmooth)  + ")";
+                if args.analyze_concomps:
+                    text += "\nl2ec(1) scaled,TC (l1,l2,l3)          = (" + "{0:1.3e}".format(l2err_TC[64]/l2normref_TC[64]) + "," + "{0:1.3e}".format(l2err_TC[128]/l2normref_TC[128]) + "," + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
+                    for lvl, lll in zip([64,128,256], ["l1", "l2", "l3"]):
+                        t1 = "\nl2ec(1) scaled,relC (" + lll + ";#1,..,#n)     = (";
+                        t2 = "\nl2ec(1) scaled,relD (" + lll + ";#1,..,#n)     = (";
+                        nc = len(l2err_percomp_TC[lvl]);
+                        for i in range(nc):
+                            t1 += "{0:1.3e}".format(l2err_percomp_TC[lvl][i]/l2normref_percomp[lvl][i]);
+                            t2 += "{0:1.3e}".format(l2err_percomp_TC[lvl][i]/l2normref_TC[lvl]);
+                            sep = "," if i < nc-1 else ")";
+                            t1 += sep;
+                            t2 += sep;
+                        text += t1;
+                        text += t2;
+                text += "\nl2err_c(0) |c_h-c_H|_r (l1,l2)        = (" + "{0:1.3e}".format(l2errc0_over_levels[64]) + "," + "{0:1.3e}".format(l2errc0_over_levels[128])  + ")";
+                text += " \n\n\n";
+            infofile.write(text);
         infofile.close();
