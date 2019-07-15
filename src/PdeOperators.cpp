@@ -134,10 +134,33 @@ PetscErrorCode PdeOperatorsRD::solveIncremental (Vec c_tilde, std::vector<Vec> c
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     
+    Vec temp = tumor_->work_[11];
     // c_tilde = c_tilde + dt / 2 * (Dc^i+1 + Dc^i)
-    // Set diffusion operator with k_tilde
-    
-     
+    if (mode == 1) {
+        // first split
+        // temp is c(i) + c(i+1)
+        ierr = VecWAXPY (temp, 1., c_history[iter], c_history[iter + 1]);           CHKERRQ (ierr);
+        // temp is 0.5 * (c(i) + c(i+1))
+        ierr = VecScale (temp, 0.5);                                                CHKERRQ (ierr);
+        // temp is 0.5 * c(i+1) + 1.5 * c(i)
+        ierr = VecAXPY (temp, 1.0, c_history[iter]);                                CHKERRQ (ierr);
+        // apply D with secondary coefficients
+        ierr = tumor_->k_->applyDWithSecondaryCoeffs (temp, temp, n_misc_->plan_);  CHKERRQ (ierr);
+        // update c_tilde
+        ierr = VecAXPY (c_tilde, dt / 2, temp);                                     CHKERRQ (ierr);
+    } else {
+        // second split
+        // temp is c(i) + c(i+1)
+        ierr = VecWAXPY (temp, 1., c_history[iter], c_history[iter + 1]);           CHKERRQ (ierr);
+        // temp is 0.5 * (c(i) + c(i+1))
+        ierr = VecScale (temp, 0.5);                                                CHKERRQ (ierr);
+        // temp is 0.5 * c(i) + 1.5 * c(i+1)
+        ierr = VecAXPY (temp, 1.0, c_history[iter + 1]);                            CHKERRQ (ierr);
+        // apply D with secondary coefficients
+        ierr = tumor_->k_->applyDWithSecondaryCoeffs (temp, temp, n_misc_->plan_);  CHKERRQ (ierr);
+        // update c_tilde
+        ierr = VecAXPY (c_tilde, dt / 2, temp);                                     CHKERRQ (ierr);
+    }
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
@@ -183,7 +206,6 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
                          for hessian application
     */
     for (int i = 0; i < nt; i++) {
-
         if (linearized == 2) {
             // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
             // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
@@ -197,6 +219,13 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             }
             ierr = reaction (linearized, i);
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+
+            // diff inv for incr fwd
+            if (linearized == 2) {
+                // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
+                // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
+                ierr = solveIncremental (tumor_->c_t_, c_, dt / 2, i, 2);
+            }
         } else {
             diff_solver_->solve (tumor_->c_t_, dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
             if (linearized == 0 && n_misc_->adjoint_store_) {
@@ -204,21 +233,12 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             }
             ierr = reaction (linearized, i);
         }
-
-         if (linearized == 2) {
-            // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
-            // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
-            ierr = solveIncremental (tumor_->c_t_, c_, dt / 2, i, 2);
-        }
-
-
         //enforce positivity : hack
         if (!linearized) {
             #ifdef POSITIVITY
                 ierr = enforcePositivity (tumor_->c_t_, n_misc_);
             #endif
         }
-
         //Copy current conc to use for the adjoint equation
         if (linearized == 0) {
             ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
