@@ -39,6 +39,22 @@ PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode DiffCoef::setSecondaryCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+
+  /* temp_[0] holds \sum m_i \times \k_tilde_i */
+  ierr = VecCopy (mat_prop->wm_, temp_[0]);     CHKERRQ (ierr);
+  ierr = VecScale (temp_[0], k1);               CHKERRQ (ierr);
+  k2 = (n_misc->nk_ == 1) ? n_misc->k_gm_wm_ratio_ * k1 : k2;
+  k3 = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ * k1 : k3;
+
+  ierr = VecAXPY (temp_[0], k2, mat_prop->gm_);   CHKERRQ (ierr);
+  ierr = VecAXPY (temp_[0], k3, mat_prop->glm_);  CHKERRQ (ierr);  
+
+  PetscFunctionReturn (0);
+}
+
 PetscErrorCode DiffCoef::updateIsotropicCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
   PetscFunctionBegin;
   PetscErrorCode ierr;
@@ -245,6 +261,33 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c, accfft_plan *plan) {
     e.stop ();
     PetscFunctionReturn(0);
 }
+
+PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs (Vec dc, Vec c, accfft_plan *plan) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-diff-coeff-apply-D");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    std::bitset<3> XYZ;
+    XYZ[0] = 1;
+    XYZ[1] = 1;
+    XYZ[2] = 1;
+
+    accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, t.data());
+    ierr = VecPointwiseMult (temp_[1], temp_[0], temp_[4]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[2], temp_[0], temp_[5]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[3], temp_[0], temp_[6]);                 CHKERRQ (ierr);
+    accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, t.data());
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn(0);
+}
+
 
 // TODO: only correct for isotropic diffusion
 // TODO: assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T

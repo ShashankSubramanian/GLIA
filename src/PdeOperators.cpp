@@ -127,6 +127,26 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     PetscFunctionReturn (0);
 }
 
+PetscErrorCode PdeOperatorsRD::solveIncremental (Vec c_tilde, std::vector<Vec> c_history, double dt, int iter, int mode) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-incr-fwd-secdiff-solve");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+    
+    // c_tilde = c_tilde + dt / 2 * (Dc^i+1 + Dc^i)
+    // Set diffusion operator with k_tilde
+    
+     
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (0);
+}
+
 PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -157,7 +177,18 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
     diff_ksp_itr_state_ = 0;
 
+    /* linearized = 0 -- state equation
+       linearized = 1 -- linearized state equation
+       linearized = 2 -- linearized state equation with diffusivity inversion 
+                         for hessian application
+    */
     for (int i = 0; i < nt; i++) {
+
+        if (linearized == 2) {
+            // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
+            // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
+            ierr = solveIncremental (tumor_->c_t_, c_, dt / 2, i, 1);
+        }
 
         if (n_misc_->order_ == 2) {
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
@@ -173,6 +204,13 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             }
             ierr = reaction (linearized, i);
         }
+
+         if (linearized == 2) {
+            // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
+            // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
+            ierr = solveIncremental (tumor_->c_t_, c_, dt / 2, i, 2);
+        }
+
 
         //enforce positivity : hack
         if (!linearized) {

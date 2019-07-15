@@ -372,8 +372,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       }
     }
 
-
-
     // solve state
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
@@ -591,12 +589,16 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
         Each Matvec is computed separately by eliminating the 
         incremental forward and adjoint equations and the result is added into y = Hx
       */
-      // get the update on kappa
-      std::vector<double> kappa_tilde (n_misc_->nk_);
+      // get the update on kappa -- this is used in tandem with the actual kappa in 
+      // the incr fwd solves and hence we cannot re-use the diffusivity vectors
+      // TODO: here, it is assumed that the update is isotropic updates- this has
+      // to be modified later is anisotropy is included
+      double k1, k2, k3;
       ierr = VecGetArray (x, &y_ptr);
-      kappa_tilde[0] = y_ptr[n_misc_->np_];
-      if (n_misc_->nk_ == 2) kappa_tilde[1] = y_ptr[n_misc_->np_ + 1];
-      if (n_misc_->nk_ == 3) kappa_tilde[2] = y_ptr[n_misc_->np_ + 2];
+      k1 = y_ptr[n_misc_->np_];
+      k2 = (n_misc_->nk_ > 1) ? y_ptr[n_misc_->np_ + 1] : 0.;
+      k3 = (n_misc_->nk_ > 2) ? y_ptr[n_misc_->np_ + 2] : 0.;
+      ierr = tumor_->k_->setSecondaryCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);                    CHKERRQ(ierr);
       ierr = VecRestoreArray (x, &y_ptr);
 
       //  -------------------  -------------------  -------------------  -------------------  -------------------  ------------------- 
@@ -673,8 +675,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       // Set c0_tilde to zero
       ierr = VecSet (tumor_->c_0_, 0.);                               CHKERRQ (ierr);
       // solve tumor incr fwd with k_tilde
-      tumor_->k_tilde_ = kappa_tilde;
-      ierr = pde_operators_->solveState (3);                          CHKERRQ (ierr);
+      ierr = pde_operators_->solveState (2);                          CHKERRQ (ierr);
       // Solve incr adj with alpha1_tilde = -OT * O * c1_tilde
       ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
       ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
