@@ -803,6 +803,9 @@ if __name__=='__main__':
             # ### generate slice images ###
             if args.generate_slices:
                 BIN_COMPS = True;
+                CHART_A = False;
+                CHART_B = True;
+                CHART_C = True;
                 fsize = '4';
                 c0recon_img  = nib.load(os.path.join(res_path, "c0Recon.nii.gz"));
                 c0recon      = c0recon_img.get_fdata();
@@ -869,213 +872,216 @@ if __name__=='__main__':
 
                     ###
                     ### CHART A #################################
-                    fig, axis = plt.subplots(2+ncomps_sol[l], max( 1+ ncomps_sol[l], 1 + ncomps_data[l], max_nc));
-                    for ax in axis.flatten():  # remove ticks and labels
-                        ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
+                    if CHART_A:
+                        fig, axis = plt.subplots(2+ncomps_sol[l], max( 1+ ncomps_sol[l], 1 + ncomps_data[l], max_nc));
+                        for ax in axis.flatten():  # remove ticks and labels
+                            ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
 
-                    # weigted center of mass of components(SOL)
-                    ax = axis[0];
-                    z = int(xcm_sol[l][0][0]/(2*math.pi)*template.shape[2])
-                    ax[0].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                    ax[0].imshow(thresh(data[:,:,z].T, cmap_d, thresh=d_thresh), interpolation='none', alpha=0.6);
-                    ax[0].set_ylabel("$x_{cm}$ of components(SOL)", fontsize=fsize)
-                    ax[0].set_title("axial slice %d" % z, size=fsize, y=tpos)
-                    for k in range(len(xcm_sol[l])):
-                        z = int(round(xcm_sol[l][k][0]/(2*math.pi)*template.shape[2]))
-                        y = int(round(xcm_sol[l][k][1]/(2*math.pi)*template.shape[1]))
-                        x = int(round(xcm_sol[l][k][2]/(2*math.pi)*template.shape[0]))
-                        ax[k+1].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                        if vis_c1:
-                            ax[k+1].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
-                        # ax[k+1].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1 );
-                        slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        ax[k+1].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                        # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
-                        ax[k+1].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (xcm_sol[l][k][2]/(2*math.pi)*template.shape[0], xcm_sol[l][k][1]/(2*math.pi)*template.shape[1], xcm_sol[l][k][0]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
-                    for k in range(len(xcm_sol[l]), axis.shape[1]):
-                        ax[k].axis('off');
+                        # weigted center of mass of components(SOL)
+                        ax = axis[0];
+                        z = int(xcm_sol[l][0][0]/(2*math.pi)*template.shape[2])
+                        ax[0].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                        ax[0].imshow(thresh(data[:,:,z].T, cmap_d, thresh=d_thresh), interpolation='none', alpha=0.6);
+                        ax[0].set_ylabel("$x_{cm}$ of components(SOL)", fontsize=fsize)
+                        ax[0].set_title("axial slice %d" % z, size=fsize, y=tpos)
+                        for k in range(len(xcm_sol[l])):
+                            z = int(round(xcm_sol[l][k][0]/(2*math.pi)*template.shape[2]))
+                            y = int(round(xcm_sol[l][k][1]/(2*math.pi)*template.shape[1]))
+                            x = int(round(xcm_sol[l][k][2]/(2*math.pi)*template.shape[0]))
+                            ax[k+1].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                            if vis_c1:
+                                ax[k+1].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
+                            # ax[k+1].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1 );
+                            slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            ax[k+1].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                            ax[k+1].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (xcm_sol[l][k][2]/(2*math.pi)*template.shape[0], xcm_sol[l][k][1]/(2*math.pi)*template.shape[1], xcm_sol[l][k][0]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
+                        for k in range(len(xcm_sol[l]), axis.shape[1]):
+                            ax[k].axis('off');
 
-                    # center of mass of components(DATA)
-                    ax = axis[1];
-                    z = int(round(xcm_data[l][0][2]/(2*math.pi)*template.shape[2]))
-                    ax[0].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                    ax[0].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
-                    ax[0].set_ylabel("$x_{cm}$ of components(DATA)", fontsize=fsize)
-                    ax[0].set_title("axial slice %d\n" % z, size=fsize, y=tpos)
-                    for k in range(len(xcm_data[l])):
-                        z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
-                        y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
-                        x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
-                        ax[k+1].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                        ax[k+1].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
-                        if vis_c1:
-                            ax[k+1].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
-                        # ax[k+1].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
-                        slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        ax[k+1].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                        # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
-                        # ax[k+1].scatter(x, y, marker='x', c='blue', s=3)
-                        ax[k+1].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
-                    for w in range(len(xcm_data[l]), axis.shape[1]):
-                        ax[w].axis('off');
+                        # center of mass of components(DATA)
+                        ax = axis[1];
+                        z = int(round(xcm_data[l][0][2]/(2*math.pi)*template.shape[2]))
+                        ax[0].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                        ax[0].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
+                        ax[0].set_ylabel("$x_{cm}$ of components(DATA)", fontsize=fsize)
+                        ax[0].set_title("axial slice %d\n" % z, size=fsize, y=tpos)
+                        for k in range(len(xcm_data[l])):
+                            z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
+                            y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
+                            x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
+                            ax[k+1].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                            ax[k+1].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
+                            if vis_c1:
+                                ax[k+1].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
+                            # ax[k+1].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
+                            slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            ax[k+1].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                            # ax[k+1].scatter(x, y, marker='x', c='blue', s=3)
+                            ax[k+1].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
+                        for w in range(len(xcm_data[l]), axis.shape[1]):
+                            ax[w].axis('off');
 
-                    # locations of p activations in SOL
-                    for k in range(ncomps_sol[l]):
-                        ax = axis[2+k]
-                        if BIN_COMPS:
-                            for z, r in zip(Z_perC[k], range(len(Z_perC[k]))):
-                                ax[r].imshow(template[:,:,z].T,  cmap='gray', interpolation='none');
-                                ax[0].set_ylabel("$x_i$ of component(SOL) #" + str(k), fontsize=fsize)
-                                if vis_c1:
-                                    ax[r].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
-                                # ax[r].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
-                                slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                ax[r].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                                # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
-                                title = ''
-                                for p in P_perZ[k][z]:
-                                    title += "p_i=" + "{0:1.2e}".format(p) + "\n"
-                                index_max = np.argmax(np.array(P_perZ[k][z]));
-                                ax[r].set_title(title + "x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (X_perZ[k][z][index_max][0]/(2*math.pi)*template.shape[0], X_perZ[k][z][index_max][1]/(2*math.pi)*template.shape[1], X_perZ[k][z][index_max][2]/(2*math.pi)*template.shape[2],z), size=fsize, y=tpos);
-                            for w in range(len(Z_perC[k]), axis.shape[1]):
-                                ax[w].axis('off');
+                        # locations of p activations in SOL
+                        for k in range(ncomps_sol[l]):
+                            ax = axis[2+k]
+                            if BIN_COMPS:
+                                for z, r in zip(Z_perC[k], range(len(Z_perC[k]))):
+                                    ax[r].imshow(template[:,:,z].T,  cmap='gray', interpolation='none');
+                                    ax[0].set_ylabel("$x_i$ of component(SOL) #" + str(k), fontsize=fsize)
+                                    if vis_c1:
+                                        ax[r].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
+                                    # ax[r].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
+                                    slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                                    ax[r].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                                    # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                                    title = ''
+                                    for p in P_perZ[k][z]:
+                                        title += "p_i=" + "{0:1.2e}".format(p) + "\n"
+                                    index_max = np.argmax(np.array(P_perZ[k][z]));
+                                    ax[r].set_title(title + "x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (X_perZ[k][z][index_max][0]/(2*math.pi)*template.shape[0], X_perZ[k][z][index_max][1]/(2*math.pi)*template.shape[1], X_perZ[k][z][index_max][2]/(2*math.pi)*template.shape[2],z), size=fsize, y=tpos);
+                                for w in range(len(Z_perC[k]), axis.shape[1]):
+                                    ax[w].axis('off');
 
-                        else:
-                            for r in range(len(p_comp[l][k])):
-                                if p_comp[l][k][r] < 1e-8:
-                                    continue;
-                                z = int(comps_sol[l][k][r][0]/(2*math.pi)*template.shape[2])
-                                ax[r].imshow(template[:,:,z].T,  cmap='gray', interpolation='none');
-                                if vis_c1:
-                                    ax[r].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
-                                # ax[r].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
-                                slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                ax[r].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                                # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
-                                ax[r].set_title("$p_i$=%1.2e\nx=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (p_comp[l][k][r],comps_sol[l][k][r][2]/(2*math.pi)*template.shape[0], comps_sol[l][k][r][1]/(2*math.pi)*template.shape[1], comps_sol[l][k][r][0]/(2*math.pi)*template.shape[2],z), size=fsize, y=tpos);
+                            else:
+                                for r in range(len(p_comp[l][k])):
+                                    if p_comp[l][k][r] < 1e-8:
+                                        continue;
+                                    z = int(comps_sol[l][k][r][0]/(2*math.pi)*template.shape[2])
+                                    ax[r].imshow(template[:,:,z].T,  cmap='gray', interpolation='none');
+                                    if vis_c1:
+                                        ax[r].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
+                                    # ax[r].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
+                                    slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                                    ax[r].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                                    # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                                    ax[r].set_title("$p_i$=%1.2e\nx=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (p_comp[l][k][r],comps_sol[l][k][r][2]/(2*math.pi)*template.shape[0], comps_sol[l][k][r][1]/(2*math.pi)*template.shape[1], comps_sol[l][k][r][0]/(2*math.pi)*template.shape[2],z), size=fsize, y=tpos);
 
 
                     ###
                     ### CHART B #################################
-                    fig2, axis2 = plt.subplots(3, ncomps_data[l]);
-                    for ax in axis2.flatten(): # remove ticks and labels
-                        ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
+                    if CHART_B:
+                        fig2, axis2 = plt.subplots(3, ncomps_data[l]);
+                        for ax in axis2.flatten(): # remove ticks and labels
+                            ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
 
-                    # center of mass of components(DATA)
-                    idx = tuple([0,0]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 0
-                    axis2[idx].set_ylabel("DATA", fontsize=fsize)
-                    idx = tuple([1,0]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 1
-                    axis2[idx].set_ylabel("$x_{cm}$ of components(DATA)", fontsize=fsize)
-                    idx = tuple([2,0]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 2
-                    axis2[idx].set_ylabel("weighted $x_{cm}$ of SOL", fontsize=fsize)
-                    for k in range(len(xcm_data[l])):
-                        z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
-                        y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
-                        x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
+                        # center of mass of components(DATA)
+                        idx = tuple([0,0]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 0
+                        axis2[idx].set_ylabel("DATA", fontsize=fsize)
+                        idx = tuple([1,0]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 1
+                        axis2[idx].set_ylabel("$x_{cm}$ of components(DATA)", fontsize=fsize)
+                        idx = tuple([2,0]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 2
+                        axis2[idx].set_ylabel("weighted $x_{cm}$ of SOL", fontsize=fsize)
+                        for k in range(len(xcm_data[l])):
+                            z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
+                            y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
+                            x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
 
-                        # row 1, data
-                        idx = tuple([0,k]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 0
-                        axis2[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                        axis2[idx].imshow(thresh(data[:,:,z].T, cmap_d, thresh=d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
-                        axis2[idx].set_title("axial slice %d\n" % z, size=fsize, y=tpos)
+                            # row 1, data
+                            idx = tuple([0,k]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 0
+                            axis2[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                            axis2[idx].imshow(thresh(data[:,:,z].T, cmap_d, thresh=d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
+                            axis2[idx].set_title("axial slice %d\n" % z, size=fsize, y=tpos)
 
-                        # row 2, center of mass of DATA components
-                        idx = tuple([1,k]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 1
-                        axis2[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                        axis2[idx].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
-                        if vis_c1:
-                            axis2[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
-                        slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        axis2[idx].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                        axis2[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
+                            # row 2, center of mass of DATA components
+                            idx = tuple([1,k]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 1
+                            axis2[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                            axis2[idx].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
+                            if vis_c1:
+                                axis2[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
+                            slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            axis2[idx].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            axis2[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
 
-                        # row 3, weighted center of mass of solution, labeled by data components
-                        z = int(round(wcm_labeled_dcomp[l][k+1][2]/(2*math.pi)*template.shape[2]))
-                        y = int(round(wcm_labeled_dcomp[l][k+1][1]/(2*math.pi)*template.shape[1]))
-                        x = int(round(wcm_labeled_dcomp[l][k+1][0]/(2*math.pi)*template.shape[0]))
-                        idx = tuple([2,k]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 2
-                        axis2[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
-                        axis2[idx].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
-                        if vis_c1:
-                            axis2[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
-                        slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        axis2[idx].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                        title = ''
-                        for p in pi_labeled_dcomp[l][k+1]:
-                            title += "p_i=" + "{0:1.2e}".format(p) + "\n"
-                        axis2[idx].text(1.02, 0.5, title, fontsize=fsize, transform=axis2[idx].transAxes)
-                        axis2[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (wcm_labeled_dcomp[l][k+1][0]/(2*math.pi)*template.shape[0], wcm_labeled_dcomp[l][k+1][1]/(2*math.pi)*template.shape[1], wcm_labeled_dcomp[l][k+1][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
+                            # row 3, weighted center of mass of solution, labeled by data components
+                            z = int(round(wcm_labeled_dcomp[l][k+1][2]/(2*math.pi)*template.shape[2]))
+                            y = int(round(wcm_labeled_dcomp[l][k+1][1]/(2*math.pi)*template.shape[1]))
+                            x = int(round(wcm_labeled_dcomp[l][k+1][0]/(2*math.pi)*template.shape[0]))
+                            idx = tuple([2,k]) if isinstance(axis2[0], (np.ndarray, np.generic)) else 2
+                            axis2[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none');
+                            axis2[idx].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=0.6);
+                            if vis_c1:
+                                axis2[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
+                            slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            axis2[idx].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            title = ''
+                            for p in pi_labeled_dcomp[l][k+1]:
+                                title += "p_i=" + "{0:1.2e}".format(p) + "\n"
+                            axis2[idx].text(1.02, 0.5, title, fontsize=fsize, transform=axis2[idx].transAxes)
+                            axis2[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (wcm_labeled_dcomp[l][k+1][0]/(2*math.pi)*template.shape[0], wcm_labeled_dcomp[l][k+1][1]/(2*math.pi)*template.shape[1], wcm_labeled_dcomp[l][k+1][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
 
 
 
                     # ###
                     # ### CHART C #################################
-                    nc = 0
-                    for k in range(len(xcm_data[l])):
-                        if relmass[l][k] > 1E-2:
-                            nc=nc+1
-                    fig3, axis3 = plt.subplots(nc, 3);
-                    for ax in axis3.flatten(): # remove ticks and labels
-                        ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
+                    if CHART_C:
+                        nc = 0
+                        for k in range(len(xcm_data[l])):
+                            if relmass[l][k] > 1E-2:
+                                nc=nc+1
+                        fig3, axis3 = plt.subplots(nc, 3);
+                        for ax in axis3.flatten(): # remove ticks and labels
+                            ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
 
-                    fsize=6;
-                    tpos = 1.0;
-                    # cmap_d = plt.cm.Wistia
-                    cmap_d = plt.cm.YlOrBr_r
-                    # cmap_c1 = plt.cm.winter;
-                    cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, len(lls2)-1);
-                    # cmap_c0c = cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1);
-                    cmap_c0c = cmap=mpl.cm.winter_r
+                        fsize=6;
+                        tpos = 1.0;
+                        # cmap_d = plt.cm.Wistia
+                        cmap_d = plt.cm.YlOrBr_r
+                        # cmap_c1 = plt.cm.winter;
+                        cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, len(lls2)-1);
+                        # cmap_c0c = cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1);
+                        cmap_c0c = cmap=mpl.cm.winter_r
 
-                    for k in range(len(xcm_data[l])):
-                        if relmass[l][k] <= 1E-2:
-                            continue; # son't display if rel mass of component is less then 10%
-                        z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
-                        y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
-                        x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
+                        for k in range(len(xcm_data[l])):
+                            if relmass[l][k] <= 1E-2:
+                                continue; # son't display if rel mass of component is less then 10%
+                            z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
+                            y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
+                            x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
 
-                        # axial
-                        idx = tuple([k,0]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 0
-                        axis3[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none', origin='upper');
-                        axis3[idx].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=1);
-                        slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                        axis3[idx].contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
-                        axis3[idx].contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=0.9);
-                        # axis3[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
-                        slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        axis3[idx].contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
-                        axis3[idx].contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
-                        axis3[idx].set_ylabel("$x_{cm}$ #"+str(k+1)+" of comp(DATA)", fontsize=fsize)
-                        # axis3[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
-                        axis3[idx].set_title("axial slice %d" %  z, size=fsize, y=tpos)
+                            # axial
+                            idx = tuple([k,0]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 0
+                            axis3[idx].imshow(template[:,:,z].T, cmap='gray', interpolation='none', origin='upper');
+                            axis3[idx].imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=1);
+                            slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                            axis3[idx].contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                            axis3[idx].contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=0.9);
+                            # axis3[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
+                            slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            axis3[idx].contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
+                            axis3[idx].contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                            axis3[idx].set_ylabel("$x_{cm}$ #"+str(k+1)+" of comp(DATA)", fontsize=fsize)
+                            # axis3[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
+                            axis3[idx].set_title("axial slice %d" %  z, size=fsize, y=tpos)
 
-                        # sagittal
-                        idx = tuple([k,1]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 1
-                        axis3[idx].imshow(template[x,:,:].T, cmap='gray', interpolation='none', origin='lower');
-                        axis3[idx].imshow(thresh(data[x,:,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
-                        slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                        axis3[idx].contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
-                        axis3[idx].contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=0.9);
-                        # axis3[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
-                        slice, norm = cont(c0recon[x,:,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        axis3[idx].contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
-                        axis3[idx].contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
-                        # axis3[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\ncoronal slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], x), size=fsize, y=tpos)
-                        axis3[idx].set_title("coronal slice %d" %  x, size=fsize, y=tpos)
+                            # sagittal
+                            idx = tuple([k,1]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 1
+                            axis3[idx].imshow(template[x,:,:].T, cmap='gray', interpolation='none', origin='lower');
+                            axis3[idx].imshow(thresh(data[x,:,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
+                            slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                            axis3[idx].contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
+                            axis3[idx].contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=0.9);
+                            # axis3[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
+                            slice, norm = cont(c0recon[x,:,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            axis3[idx].contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
+                            axis3[idx].contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                            # axis3[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\ncoronal slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], x), size=fsize, y=tpos)
+                            axis3[idx].set_title("coronal slice %d" %  x, size=fsize, y=tpos)
 
-                        # coronal
-                        idx = tuple([k,2]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 2
-                        axis3[idx].imshow(template[:,y,:].T, cmap='gray', interpolation='none', origin='lower');
-                        axis3[idx].imshow(thresh(data[:,y,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
-                        slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                        axis3[idx].contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
-                        axis3[idx].contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=0.9);
-                        # axis3[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
-                        slice, norm = cont(c0recon[:,y,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                        axis3[idx].contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'], norm=norm, alpha=0.8);
-                        axis3[idx].contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
-                        # axis3[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\nsagittal slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], y), size=fsize, y=tpos)
-                        axis3[idx].set_title("sagittal slice %d" %  y, size=fsize, y=tpos)
+                            # coronal
+                            idx = tuple([k,2]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 2
+                            axis3[idx].imshow(template[:,y,:].T, cmap='gray', interpolation='none', origin='lower');
+                            axis3[idx].imshow(thresh(data[:,y,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
+                            slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                            axis3[idx].contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                            axis3[idx].contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=0.9);
+                            # axis3[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
+                            slice, norm = cont(c0recon[:,y,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                            axis3[idx].contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'], norm=norm, alpha=0.8);
+                            axis3[idx].contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                            # axis3[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\nsagittal slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], y), size=fsize, y=tpos)
+                            axis3[idx].set_title("sagittal slice %d" %  y, size=fsize, y=tpos)
 
                     # save fig to file
                     if not os.path.exists(vis_path):
@@ -1083,15 +1089,18 @@ if __name__=='__main__':
                     vis_path_more = os.path.join(vis_path, "more");
                     if not os.path.exists(vis_path_more):
                         os.makedirs(vis_path_more)
-                    fname = 'chart-A-c1_nx'+str(l) if vis_c1 else 'chart-A-c0_nx'+str(l);
-                    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.4);
-                    fig.savefig(os.path.join(vis_path_more, fname + '.pdf'), format='pdf', dpi=1200);
-                    fname = 'chart-B-c1_nx'+str(l) if vis_c1 else 'chart-B-c0_nx'+str(l);
-                    fig2.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
-                    fig2.savefig(os.path.join(vis_path_more, fname + '.pdf'), format='pdf', dpi=1200);
-                    fname = 'chart-C-c1-c0_nx'+str(l);
-                    fig3.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
-                    fig3.savefig(os.path.join(vis_path, fname + '.pdf'), format='pdf', dpi=1200);
+                    if CHART_A:
+                        fname = 'chart-A-c1_nx'+str(l) if vis_c1 else 'chart-A-c0_nx'+str(l);
+                        fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.4);
+                        fig.savefig(os.path.join(vis_path_more, fname + '.pdf'), format='pdf', dpi=1200);
+                    if CHART_B:
+                        fname = 'chart-B-c1_nx'+str(l) if vis_c1 else 'chart-B-c0_nx'+str(l);
+                        fig2.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
+                        fig2.savefig(os.path.join(vis_path_more, fname + '.pdf'), format='pdf', dpi=1200);
+                    if CHART_C:
+                        fname = 'chart-C-c1-c0_nx'+str(l);
+                        fig3.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
+                        fig3.savefig(os.path.join(vis_path, fname + '.pdf'), format='pdf', dpi=1200);
 
 
 

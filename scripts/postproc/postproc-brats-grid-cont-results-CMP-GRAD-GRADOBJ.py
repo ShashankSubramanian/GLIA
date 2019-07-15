@@ -63,7 +63,7 @@ if __name__=='__main__':
     parser.add_argument ('-x',  '--dir', type = str, help = 'path to the results folder');
     args = parser.parse_args();
     survival_data = pd.read_csv(os.path.join(basedir,"survival_data.csv"), header = 0, error_bad_lines=True, skipinitialspace=True)
-    col_names = ["BraTS18ID", "level", "conv-crit", "max_#ls", "retain", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time", "N#it", "|g|_r/k", "age", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
+    col_names = ["BraTS18ID", "level", "conv-crit", "max_#ls", "supp", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time", "N#it", "|g|_r/k", "age", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
     df = pd.DataFrame(columns = col_names)
 
     BIDs = []
@@ -88,10 +88,14 @@ if __name__=='__main__':
         if "concomp_on-the-fly-phi_supp-c0-" in dir:
             ls_steps = 20;
         elif "ls-step" in dir:
-            ls_steps = 10;
+            ls_steps = int(dir.split("ls-step-")[-1]);
             remember_step = True;
 
+        if remember_step == False:
+            continue;    
+
         conv_crit = "N/A"
+        supp = "c(0)" if "supp-c0" in dir else "phi";
         if "gradobj" in dir:
             conv_crit = "grad/obj";
         elif "grad" in dir:
@@ -117,7 +121,8 @@ if __name__=='__main__':
                 p_dict = {}
                 p_dict['BraTS18ID'] = args.bid;
                 p_dict['max_#ls'] = ls_steps;
-                p_dict['retain']  = 'yes' if remember_step else 'no';
+                # p_dict['remember_ls-step']  = 'yes' if remember_step else 'no';
+                p_dict['supp'] = supp;
                 p_dict['conv-crit'] = conv_crit;
                 # p_dict['opttol'] = str(run.split("opttol-")[-1]);
                 p_dict['comment']   = "";#str(run.split(args.bid + "-")[-1].split("4-")[-1]);
@@ -288,11 +293,9 @@ if __name__=='__main__':
                             if "Estimated reaction coefficients" in line:
                                 rho_ = float(lines[no+1].split("r1:")[-1])
                                 found_rho = True;
-                                if not info_exist:
-                                    p_dict['rho-inv'] = rho_;                           # rho-inv
-                                    print("  Warning: rho-inv =", rho_, "from tumor_solver_log.txt, info.dat empty");
-                                elif not rho_ == p_dict['rho-inv']:
-                                    print(bcolors.FAIL + "  Error: rho-inv in tumor_solver_log.txt != rho-inv in info.dat." + bcolors.ENDC);
+                                if not p_dict['rho-inv'] != rho_:
+                                    print(bcolors.WARNING + "  WARNING: rho-inv in tumor_solver_log.txt %1.2e != %1.2e rho-inv in info.dat." % (rho_, p_dict['rho-inv']) + bcolors.ENDC);
+                                p_dict['rho-inv'] = rho_;                           # rho-inv
                             if "Estimated diffusion coefficients" in line:
                                 kf_ = float(lines[no+1].split("k1:")[-1]);
                                 if not info_exist:
@@ -339,71 +342,78 @@ if __name__=='__main__':
                 f_exist = False;
                 ###### TUMOR PARAMS ######
                 if os.path.exists(os.path.join(run_path,'tumor_parameters-obs-1.0.txt')):
-                    f_exist = True;
+                    f_exist    = True;
                     dice_found = False;
+                    curr_level = False;
                     with open(os.path.join(run_path,'tumor_parameters-obs-1.0.txt'), 'r') as f:
                         f_empty = True;
                         for line in f.readlines():
+                            if "## level" in line:
+                                if int(line.split("## level")[-1].split("##")[0]) == level:
+                                    curr_level = True;
+                                else:
+                                    curr_level = False;
                             f_empty = False;
-                            if "dice outside tumor core (csf,gm,wm)   =" in line:
-                                dice_healthy_tissue  = line.split("(")[-1].split(")")[0].split(",")
-                                # p_dict['dice_wm'] = float(dice_healthy_tissue[2])/100.;  # dice wm
-                                # p_dict['dice_gm'] = float(dice_healthy_tissue[1])/100.;  # dice gm
-                                # p_dict['dice_csf'] = float(dice_healthy_tissue[0])/100.; # dice csf
-                                dice_found = True;
-                            if "dice tumor (max): (wt,tc,nec)         =" in line:
-                                tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
-                                # p_dict['dice_wt'] = float(tumor_dice[0])/100.;           # dice wt  (whole tumor)
-                                # p_dict['dice_tc'] = float(tumor_dice[1])/100.;           # dice tc  (tumor core)
-                                # p_dict['dec_nec'] = float(tumor_dice[2])/100.;           # dice nec (necrotic)
-                            if "dice tumor (> x): (tc9,tc8,nec1)      =" in line:
-                                tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
-                                # p_dict['dice_tc9'] = float(tumor_dice[0])/100.;          # dice tc(.9)  (tumor core where c(1) > 0.9)
-                                p_dict['dice_tc8'] = float(tumor_dice[1])/100.;          # dice tc(.8)  (tumor core where c(1) > 0.9)
-                            if "stats #tu/#brain  (wt,ed,en,nec,tc)   =" in line:
-                                frac_stats  = line.split("(")[-1].split(")")[0].split(",")
-                                p_dict['#wt/#b']  = float(frac_stats[0]);               # frac #wt/#brain
-                                p_dict['#ed/#b']   = float(frac_stats[1]);               # frac #ed/#brain
-                                # p_dict['#en/#b']  = float(frac_stats[2]);               # frac #en/#brain
-                                # p_dict['#nec/#b'] = float(frac_stats[3]);               # frac #nec/#brain
-                                p_dict['#tc/#b']  = float(frac_stats[4]);               # frac #tc/#brain
-                            if "stats #tu/#brain  (rec_tc,pred_ct,c0) =" in line:
-                                frac_stats  = line.split("(")[-1].split(")")[0].split(",")
-                                # p_dict[col_names[25]] = float(frac_stats[0]);               # frac #rec_tc/#b#
-                                # p_dict[col_names[26]] = float(frac_stats[1]);               # frac #pred_tc/#b#
-                                p_dict['#c0/#b'] = float(frac_stats[2]);                # frac #c0/#b"
-                            if "stats int_B c(1) dx           =" in line:
-                                I_Bc1 = float(line.split("=")[-1]);                     # Int_B c(1)
-                            if "stats int_ED c(1) dx          =" in line:
-                                p_dict['I_EDc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_ED c(1)
-                            if "stats int_TC c(1) dx          =" in line:
-                                p_dict['I_TCc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_TC c(1)
-                            if "stats int_B/WT c(1) dx        = " in line:
-                                p_dict['I_B\WTc1'] = float(line.split("=")[-1])/I_Bc1;        # Int_B\WT c(1)
-                            if "stats int c(0)   / int c(1)   =" in line:
-                                p_dict['Ic0/Ic1'] = float(line.split("=")[-1]);         # frac Int c(0) / Int c(1)
-                            if "l2ec(1) sc,TC (l1,l2,l3)      =" in line:
-                                all_levels = line.split('l2ec(1) sc,TC (l1,l2,l3)      = (')[-1].split(")")[0].split(",");
-                                p_dict['l2c1(TC,s)'] = float(all_levels[int(math.log(level,2))-6]);
-                            if level == 64 and "l2ec(1) sc,relD (l1;#1,..,#n) = " in line:
-                                errs = line.split("l2ec(1) sc,relD (l1;#1,..,#n) = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
-                            if level == 128 and "l2ec(1) sc,relD (l2;#1,..,#n) = " in line:
-                                errs = line.split("l2ec(1) sc,relD (l2;#1,..,#n) = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
-                            if level == 256 and "l2ec(1) sc,relD (l3;#1,..,#n) = " in line:
-                                errs = line.split("l2ec(1) sc,relD (l3;#1,..,#n) = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
-                            # if "stats int c(1.5) / int c(1)   =" in line:
-                                # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
-                            # if "stats int c(1.5) / int c(1.2) =" in line:
-                                # p_dict[col_names[30]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1.2)
-                            # if "stats int c(1.5) / int d      =" in line:
-                                # p_dict[col_names[31]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int data
-                            # if "l2err_c(1)         (virg,obs) =" in line:
-                                # l2_errs  = line.split("(")[-1].split(")")[0].split(",")
-                                # p_dict['l2c1']  = float(l2_errs[0]);                   # l2err | c(1)-d| / |d|
-                                # p_dict['l2Oc1'] = float(l2_errs[1]);                   # l2err |Oc(1)-d| / |d|
+                            if curr_level:
+                                if "healthy tissue dice (csf,gm,wm)       =" in line:
+                                    dice_healthy_tissue  = line.split("(")[-1].split(")")[0].split(",")
+                                    # p_dict['dice_wm'] = float(dice_healthy_tissue[2])/100.;  # dice wm
+                                    # p_dict['dice_gm'] = float(dice_healthy_tissue[1])/100.;  # dice gm
+                                    # p_dict['dice_csf'] = float(dice_healthy_tissue[0])/100.; # dice csf
+                                    dice_found = True;
+                                if "dice tumor (max): (wt,tc,nec)         =" in line:
+                                    tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
+                                    # p_dict['dice_wt'] = float(tumor_dice[0])/100.;           # dice wt  (whole tumor)
+                                    # p_dict['dice_tc'] = float(tumor_dice[1])/100.;           # dice tc  (tumor core)
+                                    # p_dict['dec_nec'] = float(tumor_dice[2])/100.;           # dice nec (necrotic)
+                                if "dice tumor (> x): (tc9,tc8,nec1)      =" in line:
+                                    tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
+                                    # p_dict['dice_tc9'] = float(tumor_dice[0])/100.;          # dice tc(.9)  (tumor core where c(1) > 0.9)
+                                    p_dict['dice_tc8'] = float(tumor_dice[1])/100.;          # dice tc(.8)  (tumor core where c(1) > 0.9)
+                                if "stats #tu/#brain  (wt,ed,en,nec,tc)   =" in line:
+                                    frac_stats  = line.split("(")[-1].split(")")[0].split(",")
+                                    p_dict['#wt/#b']  = float(frac_stats[0]);               # frac #wt/#brain
+                                    p_dict['#ed/#b']   = float(frac_stats[1]);               # frac #ed/#brain
+                                    # p_dict['#en/#b']  = float(frac_stats[2]);               # frac #en/#brain
+                                    # p_dict['#nec/#b'] = float(frac_stats[3]);               # frac #nec/#brain
+                                    p_dict['#tc/#b']  = float(frac_stats[4]);               # frac #tc/#brain
+                                if "stats #tu/#brain  (rec_tc,pred_ct,c0) =" in line:
+                                    frac_stats  = line.split("(")[-1].split(")")[0].split(",")
+                                    # p_dict[col_names[25]] = float(frac_stats[0]);               # frac #rec_tc/#b#
+                                    # p_dict[col_names[26]] = float(frac_stats[1]);               # frac #pred_tc/#b#
+                                    p_dict['#c0/#b'] = float(frac_stats[2]);                # frac #c0/#b"
+                                if "stats int_B c(1) dx                   =" in line:
+                                    I_Bc1 = float(line.split("=")[-1]);                     # Int_B c(1)
+                                if "stats int_ED c(1) dx                  =" in line:
+                                    p_dict['I_EDc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_ED c(1)
+                                if "stats int_TC c(1) dx                  =" in line:
+                                    p_dict['I_TCc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_TC c(1)
+                                if "stats int_B/WT c(1) dx                =" in line:
+                                    p_dict['I_B\WTc1'] = float(line.split("=")[-1])/I_Bc1;        # Int_B\WT c(1)
+                                if "stats int c(0)   / int c(1)           =" in line:
+                                    p_dict['Ic0/Ic1'] = float(line.split("=")[-1]);         # frac Int c(0) / Int c(1)
+                                if "l2ec(1) scaled,TC (l1,l2,l3)          =" in line:
+                                    all_levels = line.split('l2ec(1) scaled,TC (l1,l2,l3)          = (')[-1].split(")")[0].split(",");
+                                    p_dict['l2c1(TC,s)'] = float(all_levels[int(math.log(level,2))-6]);
+                                if level == 64 and "l2ec(1) scaled,relD (l1;#1,..,#n)     = " in line:
+                                    errs = line.split("l2ec(1) scaled,relD (l1;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                if level == 128 and "l2ec(1) scaled,relD (l2;#1,..,#n)     = " in line:
+                                    errs = line.split("l2ec(1) scaled,relD (l2;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                if level == 256 and "l2ec(1) scaled,relD (l3;#1,..,#n)     = " in line:
+                                    errs = line.split("l2ec(1) scaled,relD (l3;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                # if "stats int c(1.5) / int c(1)           =" in line:
+                                    # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
+                                # if "stats int c(1.5) / int c(1.2)         =" in line:
+                                    # p_dict[col_names[30]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1.2)
+                                # if "stats int c(1.5) / int d              =" in line:
+                                    # p_dict[col_names[31]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int data
+                                # if "l2err_c(1)         (virg,obs)         =" in line:
+                                    # l2_errs  = line.split("(")[-1].split(")")[0].split(",")
+                                    # p_dict['l2c1']  = float(l2_errs[0]);                   # l2err | c(1)-d| / |d|
+                                    # p_dict['l2Oc1'] = float(l2_errs[1]);                   # l2err |Oc(1)-d| / |d|
 
                 if f_exist == False or f_empty == True:
                     error   = True;
@@ -421,22 +431,6 @@ if __name__=='__main__':
                     p_dict['Ic0/Ic1']    = float('nan');
                     p_dict['l2c1(TC,s)'] = float('nan');
                     p_dict["l2c1(TC,#1,..,#n)"] = ""
-                if level < 256:
-                    p_dict['dice_tc8'] = float('nan');
-                    p_dict['#wt/#b']   = float('nan');
-                    p_dict['#ed/#b']   = float('nan');
-                    p_dict['#tc/#b']   = float('nan');
-                    p_dict['#c0/#b']   = float('nan');
-                    # p_dict['I_Bc1']    = float('nan');
-                    p_dict['I_EDc1']   = float('nan');
-                    p_dict['I_TCc1']   = float('nan');
-                    p_dict['I_B\WTc1'] = float('nan');
-                    p_dict['Ic0/Ic1']  = float('nan');
-                    # p_dict['l2Oc1']    = float('nan');
-                # if not dice_found:
-                #     print("  Error: no healthy tissue dice found (bug, due to: info.dat file does not exist) " + brats_id);
-                #     for i in range(11,14):
-                #         p_dict[col_names[i]] = float('nan');
 
 
                 ###### ADD PDICT ######
@@ -485,7 +479,7 @@ if __name__=='__main__':
 
     # df = df.sort_values(by=['BraTS18ID','level']);
     # df = df.sort_values(by=['#ed/#b','BraTS18ID','level']);
-    df = df.sort_values(by=['BraTS18ID','level','conv-crit','max_#ls']);
+    df = df.sort_values(by=['BraTS18ID','level','supp', 'conv-crit','max_#ls']);
 
     p = str(BASE).split("/")
     basedir = "./"
@@ -528,6 +522,7 @@ if __name__=='__main__':
 
     HTML = ""
     dftmp = df.loc[df['level'] == 128];
+    # dftmp = dftmp.loc[df['remember_ls-step'] == 'yes'];
     # dftmp = dftmp.loc[dftmp['comment'] == "phi-supp"];
     html = dftmp.style\
         .hide_index()\
@@ -562,6 +557,7 @@ if __name__=='__main__':
 
     HTML = ""
     dftmp = df.loc[df['level'] == 256];
+    # dftmp = dftmp.loc[df['remember_ls-step'] == 'yes'];
     # dftmp = dftmp.loc[dftmp['comment'] == "phi-supp"];
     html = dftmp.style\
         .hide_index()\
@@ -571,7 +567,7 @@ if __name__=='__main__':
         .set_properties(subset=['comment'], **{'width':'3*', 'text-align':'left'})\
         .format(lambda x: '{:1.2e}'.format(x), subset=pd.IndexSlice[:,dftmp.columns[numeric_col_mask_1]])\
         .format(lambda x: '{:1.0f}'.format(x), subset=['np', 'age'])\
-        .format(lambda x: '{:1.2f}'.format(x), subset=['rho-inv','srvl'])\
+        .format(lambda x: '{:1.2e}'.format(x), subset=['rho-inv','srvl'])\
         .format(lambda x: time.strftime('%H:%M:%S', time.gmtime(x)) if not math.isnan(x) else 'nan', subset=['exec-time',])\
         .set_table_styles(styles)\
         .bar(subset=['exec-time'], color='#779ecb')\
