@@ -18,7 +18,7 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
     ierr = VecDuplicate (kxx_, &kzz_);
 
     // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
-    temp_ = new Vec[7];
+    temp_ = new Vec[8];
     temp_accfft_ = (double * ) accfft_alloc (n_misc->accfft_alloc_max_);
 
     ierr = VecSet (kxx_ , 0);
@@ -33,7 +33,7 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
 
 PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
   PetscErrorCode ierr;
-  for (int i = 0; i < 7; ++i){
+  for (int i = 0; i < 8; ++i){
     temp_[i] = workvecs[i];
   }
   PetscFunctionReturn(0);
@@ -43,14 +43,14 @@ PetscErrorCode DiffCoef::setSecondaryCoefficients (double k1, double k2, double 
   PetscFunctionBegin;
   PetscErrorCode ierr;
 
-  /* temp_[0] holds \sum m_i \times \k_tilde_i */
-  ierr = VecCopy (mat_prop->wm_, temp_[0]);     CHKERRQ (ierr);
-  ierr = VecScale (temp_[0], k1);               CHKERRQ (ierr);
+  /* temp_[7] holds \sum m_i \times \k_tilde_i */
+  ierr = VecCopy (mat_prop->wm_, temp_[7]);     CHKERRQ (ierr);
+  ierr = VecScale (temp_[7], k1);               CHKERRQ (ierr);
   k2 = (n_misc->nk_ == 1) ? n_misc->k_gm_wm_ratio_ * k1 : k2;
   k3 = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ * k1 : k3;
 
-  ierr = VecAXPY (temp_[0], k2, mat_prop->gm_);   CHKERRQ (ierr);
-  ierr = VecAXPY (temp_[0], k3, mat_prop->glm_);  CHKERRQ (ierr);  
+  ierr = VecAXPY (temp_[7], k2, mat_prop->gm_);   CHKERRQ (ierr);
+  ierr = VecAXPY (temp_[7], k3, mat_prop->glm_);  CHKERRQ (ierr);  
 
   PetscFunctionReturn (0);
 }
@@ -274,10 +274,13 @@ PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs (Vec dc, Vec c, accfft_plan *
     XYZ[1] = 1;
     XYZ[2] = 1;
 
+    /* NOTE: temp_[7] is unused anywhere else within solveState - this is important else
+       we have to reset temp_[7] everytime */
+
     accfft_grad (temp_[4], temp_[5], temp_[6], c, plan, &XYZ, t.data());
-    ierr = VecPointwiseMult (temp_[1], temp_[0], temp_[4]);                 CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[2], temp_[0], temp_[5]);                 CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[3], temp_[0], temp_[6]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[1], temp_[7], temp_[4]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[2], temp_[7], temp_[5]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[3], temp_[7], temp_[6]);                 CHKERRQ (ierr);
     accfft_divergence (dc, temp_[1], temp_[2], temp_[3], plan, t.data());
 
     self_exec_time += MPI_Wtime();
