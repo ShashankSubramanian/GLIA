@@ -451,6 +451,14 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   if (nk > 2) ub_ptr[2] = upper_bound_kappa;
   ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
 
+  double *lb_ptr;
+  double lower_bound_kappa = 0;
+  ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);
+  lb_ptr[0] = lower_bound_kappa;
+  if (nk > 1) lb_ptr[1] = lower_bound_kappa;
+  if (nk > 2) lb_ptr[2] = lower_bound_kappa;
+  ierr = VecRestoreArray (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
+
 
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound);                    CHKERRQ (ierr);
   ierr = VecDestroy (&lower_bound);                                               CHKERRQ (ierr);
@@ -2521,14 +2529,20 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecDuplicate (ctx->tumor_->p_, &upper_bound);                            CHKERRQ (ierr);
     ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
-    double *ub_ptr;
-    double upper_bound_kappa = 1.;
+    double *ub_ptr, *lb_ptr;
+    double upper_bound_kappa = 1., lower_bound_kappa = 0E-3;
     if (itctx_->n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
       ub_ptr[itctx_->n_misc_->np_] = upper_bound_kappa;
       if (itctx_->n_misc_->nk_ > 1) ub_ptr[itctx_->n_misc_->np_ + 1] = upper_bound_kappa;
       if (itctx_->n_misc_->nk_ > 2) ub_ptr[itctx_->n_misc_->np_ + 2] = upper_bound_kappa;
       ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
+
+      ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);
+      lb_ptr[itctx_->n_misc_->np_] = lower_bound_kappa;
+      if (itctx_->n_misc_->nk_ > 1) lb_ptr[itctx_->n_misc_->np_ + 1] = lower_bound_kappa;
+      if (itctx_->n_misc_->nk_ > 2) lb_ptr[itctx_->n_misc_->np_ + 2] = lower_bound_kappa;
+      ierr = VecRestoreArray (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
     }
 
     ierr = TaoSetVariableBounds(tao, lower_bound, upper_bound);                     CHKERRQ (ierr);
