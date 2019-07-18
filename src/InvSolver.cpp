@@ -53,6 +53,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
 
   int np = itctx_->n_misc_->np_;
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
+  int nr = (itctx_->n_misc_->conv_flag_l2_) ? itctx_->n_misc_->nr_ : 0;
 
   if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
     ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
@@ -72,7 +73,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
       ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                         CHKERRQ(ierr);
     // set up routine to compute the hessian matrix vector product
     if (H_ == nullptr) {
-      ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
+      ierr = MatCreateShell (PETSC_COMM_SELF, np + nk + nr, np + nk + nr, np + nk + nr, np + nk + nr, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
     }
     // create TAO solver object
     if ( tao_ == nullptr && initialize_tao) {
