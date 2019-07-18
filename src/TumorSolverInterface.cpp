@@ -1079,9 +1079,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             PCOUT << "\n\n\n-------------------------------------------------------------------- Final L2 solve -------------------------------------------------------------------- " << std::endl;
             PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- " << std::endl;
 
-            ierr = inv_solver_->solve ();       // L2 solver
-            ierr = VecCopy (inv_solver_->getPrec(), x_L2);                      CHKERRQ (ierr);
-
+//	    bool temp_flag = n_misc_->diffusivity_inversion_;
+//	    n_misc_->diffusivity_inversion_ = (temp_flag == true) ? temp_flag : true;
+	    ierr = inv_solver_->solve ();       // L2 solver
+	    ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
+//	    n_misc_->diffusivity_inversion_ = temp_flag;
 
             // // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
             // ierr = tumor_->obs_->setDefaultFilter (d1);
