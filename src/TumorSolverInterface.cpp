@@ -786,9 +786,14 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     n_misc_->k_ = k_inv_guess;
 
     // set initial guess for k_inv (possibly != zero)
-    ierr = VecGetArray(x_L1, &x_L1_ptr);                                        CHKERRQ (ierr);
-    x_L1_ptr[n_misc_->np_] = n_misc_->k_;
-    ierr = VecRestoreArray(x_L1, &x_L1_ptr);                                    CHKERRQ (ierr);
+    if (n_misc_->diffusivity_inversion_) {
+        ierr = VecGetArray(x_L1, &x_L1_ptr);                                        CHKERRQ (ierr);
+        x_L1_ptr[n_misc_->np_] = n_misc_->k_;
+        ierr = VecRestoreArray(x_L1, &x_L1_ptr);                                    CHKERRQ (ierr);
+    } else {
+        // set diff ops with this guess -- this will not change during the solve
+        ierr = getTumor()->k_->setValues (n_misc_->k_, n_misc_->k_gm_wm_ratio_, n_misc_->k_glm_wm_ratio_, getTumor()->mat_prop_, n_misc_);  CHKERRQ (ierr);
+    }
     ierr = VecCopy(x_L1, x_L1_old);                                             CHKERRQ (ierr);
 
     J = J_ref;
