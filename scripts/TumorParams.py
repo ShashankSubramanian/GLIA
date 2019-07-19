@@ -265,6 +265,9 @@ def getTumorRunCmd(params):
         else:
             print ('Default atlas white matter path = {} used'.format(wm_path))
     # ---
+    if "diffusivity_inversion" in params:
+        diffusivity_flag = params['diffusivity_inversion'];
+    # ---
     if 'csf_path' in params:
         csf_path = params['csf_path']
         print('CSF path = {}'.format(csf_path))

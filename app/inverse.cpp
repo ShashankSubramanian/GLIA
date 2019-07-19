@@ -1395,7 +1395,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     opfile.open (ss_out.str().c_str());
     if (procid == 0) {
         opfile << "rho k c1_rel c0_rel c0_dist \n";
-        opfile << n_misc->rho_ << " " << k1 << " " << error_norm << " "
+        opfile << n_misc->rho_ << " " <<  n_misc->k_ << " " << error_norm << " "
                << error_norm_c0 << " " << dist_err_c0 << std::endl;
     }
     opfile.flush();

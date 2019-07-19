@@ -108,13 +108,14 @@ def gridcont(basedir, args):
     k_default   = 0;
     betap_prev  = 1E-4;
     p_prev      = "";
-    submit      = False;
+    submit      = True;
     pid_prev    = 0;
     obs_masks   = []
-    gaussian_selection_mode = "C0"; # alternatives: {"PHI", "C0", "C0_RANKED"}
+    gaussian_selection_mode = "PHI"; # alternatives: {"PHI", "C0", "C0_RANKED"}
     data_thresh = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-4, 1E-4];
     sparsity_lvl_per_component = 5;
-    ls_max_func_evals = [20, 5, 5];
+    ls_max_func_evals  = [10, 10, 10];
+    invert_diffusivity = [1,1,0];
     # #################################
 
     os.environ['DIR_SUFFIX'] = "{0:1.1f}".format(args.obs_lambda);
@@ -186,16 +187,16 @@ def gridcont(basedir, args):
 
     #   ------------------------------------------------------------------------
     #   - tumor inversion, levels -- N=64^3, N=128^3, N=256^3 --
-    tumor_input_params = {};
+    t_params = {};
     tumor_out_path = os.path.join(output_path, 'tumor_inversion/');
-    tumor_input_params['compute_sys']  = args.compute_cluster;
-    tumor_input_params['code_path']    = os.path.join(basedir, '3rdparty/pglistr_tumor');
+    t_params['compute_sys']  = args.compute_cluster;
+    t_params['code_path']    = os.path.join(basedir, '3rdparty/pglistr_tumor');
 
     cmd_lvl = "\n\n# generate maps, resample\n" + cmd_preproc + "\nwait\n\n# rename\n" + cmd_rename + "\n\n";
     cmd     += cmd_lvl;
 
     # loop over levels
-    for level, sigma_fac, n, p, h, m, pred, gvf_, d_thresh, ls_max_func in zip(levels, dd_fac, nodes, procs, wtime_h, wtime_m, predict, gvf, data_thresh, ls_max_func_evals):
+    for level, sigma_fac, n, p, h, m, pred, gvf_, d_thresh, ls_max_func, diff_inv in zip(levels, dd_fac, nodes, procs, wtime_h, wtime_m, predict, gvf, data_thresh, ls_max_func_evals, invert_diffusivity):
 
         res_dir = os.path.join(tumor_out_path, 'nx' + str(level) + "/");
         res_dir_out = os.path.join(res_dir, obs_dir)
@@ -249,47 +250,48 @@ def gridcont(basedir, args):
             cmd_extractrhok += "source " + os.path.join(res_dir_prev, 'env_rhok.sh') + "\n"
 
         # tumor settings for current level
-        tumor_input_params['num_nodes']         = n;
-        tumor_input_params['mpi_pernode']       = p;
-        tumor_input_params['wtime_h']           = h;
-        tumor_input_params['wtime_m']           = m
-        tumor_input_params['ibrun_man']         = (level <= 64);
-        tumor_input_params['results_path']      = res_dir_out;
-        tumor_input_params['N']                 = level;
-        tumor_input_params['grad_tol']          = args.opttol;
-        tumor_input_params['sparsity_lvl']      = sparsity_lvl_per_component;
-        tumor_input_params['multilevel']        = 1;
-        tumor_input_params['ls_max_func_evals'] = ls_max_func;
-        tumor_input_params['data_thres']        = d_thresh;
-        tumor_input_params['rho_inv']           = rho_default if (level == 64) else '${RHO_INIT}';
-        tumor_input_params['k_inv']             = k_default   if (level == 64) else '${K_INIT}';
-        tumor_input_params['gist_maxit']        = 4           if (level == 64) else 2;
-        tumor_input_params['linesearchtype']    = 'mt'    if (level == 64) else 'armijo';
-        tumor_input_params['newton_maxit']      = 30 if (level == 256) else 50;
-        tumor_input_params['gvf']               = gvf_;
-        tumor_input_params['beta']              = betap_prev;
-        tumor_input_params['dd_fac']            = sigma_fac;
-        tumor_input_params['predict_flag']      = pred;
-        tumor_input_params['csf_path']          = os.path.join(inp_dir, 'patient_seg_csf.nc');
-        tumor_input_params['gm_path']           = os.path.join(inp_dir, 'patient_seg_gm.nc');
-        tumor_input_params['wm_path']           = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
-        tumor_input_params['data_path']         = os.path.join(inp_dir, 'patient_seg_tc.nc');
+        t_params['num_nodes']             = n;
+        t_params['mpi_pernode']           = p;
+        t_params['wtime_h']               = h;
+        t_params['wtime_m']               = m
+        t_params['ibrun_man']             = (level <= 64);
+        t_params['results_path']          = res_dir_out;
+        t_params['N']                     = level;
+        t_params['grad_tol']              = args.opttol;
+        t_params['sparsity_lvl']          = sparsity_lvl_per_component;
+        t_params['multilevel']            = 1;
+        t_params['ls_max_func_evals']     = ls_max_func;
+        t_params['diffusivity_inversion'] = diff_inv;
+        t_params['data_thres']            = d_thresh;
+        t_params['rho_inv']               = rho_default if (level == 64) else '${RHO_INIT}';
+        t_params['k_inv']                 = k_default   if (level == 64) else '${K_INIT}';
+        t_params['gist_maxit']            = 4           if (level == 64) else 2;
+        t_params['linesearchtype']        = 'mt'    if (level == 64) else 'armijo';
+        t_params['newton_maxit']          = 30 if (level == 256) else 50;
+        t_params['gvf']                   = gvf_;
+        t_params['beta']                  = betap_prev;
+        t_params['dd_fac']                = sigma_fac;
+        t_params['predict_flag']          = pred;
+        t_params['csf_path']              = os.path.join(inp_dir, 'patient_seg_csf.nc');
+        t_params['gm_path']               = os.path.join(inp_dir, 'patient_seg_gm.nc');
+        t_params['wm_path']               = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
+        t_params['data_path']             = os.path.join(inp_dir, 'patient_seg_tc.nc');
         if gaussian_selection_mode == "C0" or level == 64:
-            tumor_input_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
-            tumor_input_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
+            t_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
+            t_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
         elif gaussian_selection_mode == "PHI":
-            tumor_input_params['support_data_path']  = os.path.join(inp_dir, 'support_data_phi.nc');
-            tumor_input_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
+            t_params['support_data_path']  = os.path.join(inp_dir, 'support_data_phi.nc');
+            t_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
         else:
-            tumor_input_params['support_data_path']  = os.path.join(inp_dir, 'phi-support-c0.txt');
-            tumor_input_params['data_comp_path']     = "";
-        tumor_input_params['data_comp_dat_path']     = os.path.join(res_dir_out, 'dcomp.dat');
-        tumor_input_params['obs_mask_path']          = os.path.join(inp_dir, 'obs_mask_lbd-${LAMBDA_OBS}.nc') if (args.vary_obs_lambda) else os.path.join(inp_dir, 'obs_mask.nc');
+            t_params['support_data_path']  = os.path.join(inp_dir, 'phi-support-c0.txt');
+            t_params['data_comp_path']     = "";
+        t_params['data_comp_dat_path']     = os.path.join(res_dir_out, 'dcomp.dat');
+        t_params['obs_mask_path']          = os.path.join(inp_dir, 'obs_mask_lbd-${LAMBDA_OBS}.nc') if (args.vary_obs_lambda) else os.path.join(inp_dir, 'obs_mask.nc');
 
         #   ------------------------------------------------------------------------
         #    - get command line for tumor inversion
-        cmdline_tumor, err = TumorParams.getTumorRunCmd(tumor_input_params)
-        cmdline_tumor += " &> " + tumor_input_params["results_path"] + "tumor_solver_log_nx"+str(level)+".txt";
+        cmdline_tumor, err = TumorParams.getTumorRunCmd(t_params)
+        cmdline_tumor += " &> " + t_params["results_path"] + "tumor_solver_log_nx"+str(level)+".txt";
         if err:
             warnings.warn("Error in tumor parameters\n");
             quit();
@@ -307,7 +309,7 @@ def gridcont(basedir, args):
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
         cmd_postproc  = pythoncmd + basedir + '/scripts/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
-        # cmd_postproc += " -tu_path  " + " tumor_inversion/nx256/" + obs_dir;
+        cmd_postproc += " -tu_path  " + " tumor_inversion/nx256/" + obs_dir;
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
         cmd_postproc += " -analyze_concomps ";
@@ -319,7 +321,7 @@ def gridcont(basedir, args):
             cmd += "\n# postproc, compute dice\n" + cmd_postproc + "\n\n";
 
         opt = {}
-        opt['compute_sys'] = args.compute_cluster;
+        opt['compute_sys']  = args.compute_cluster;
         opt['output_dir']  = res_dir_out;
         opt['input_dir']   = inp_dir;
         opt['num_nodes']   = n;
