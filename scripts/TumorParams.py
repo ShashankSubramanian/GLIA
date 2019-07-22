@@ -84,7 +84,7 @@ def getTumorRunCmd(params):
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-    diffusivity_flag = 1
+    diffusivity_flag = 0
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
     reaction_flag = 1
     ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
@@ -118,11 +118,11 @@ def getTumorRunCmd(params):
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "GN"
     ### Newton max iterations
-    max_iter = 50
+    max_iter = 1
     ### GIST max iterations (for L1 solver)
-    max_gist_iter = 2
+    max_gist_iter = 1
     ### Krylov max iterations
-    max_krylov_iter = 30
+    max_krylov_iter = 1
     ### Relative gradient tolerance
     grad_tol = 1E-5
     ### Forward solver time order of accuracy
@@ -241,6 +241,6 @@ def getTumorRunCmd(params):
     " -forward " + str(forward_flag) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10"
+    " -tao_test_hessian -tao_test_hessian_view -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_max_funcs 10"
 
     return run_str, error_flag

@@ -1220,7 +1220,7 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    if (n_misc_->reaction_inversion_) {
+    if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
       k1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
       k2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 1] : 0;
@@ -1229,7 +1229,7 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[7] = {1e-4, 1e-5, 1e-6, 1e-7, 1e-8};
+    double h[6];
     double J, J_taylor, J_p, diff;
 
     Vec dJ;
@@ -1239,8 +1239,7 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     ierr = VecDuplicate (p, &p_tilde);                          CHKERRQ (ierr);
     ierr = VecDuplicate (p, &p_new);                            CHKERRQ (ierr);
 
-    ierr = evaluateGradient (dJ, p, data);
-    ierr = evaluateObjective(&J_p, p, data);
+    ierr = evaluateObjectiveAndGradient (&J_p, dJ, p, data);    CHKERRQ (ierr);
 
     PetscRandom rctx;
     #ifdef SERIAL
@@ -1251,18 +1250,102 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (p_tilde, rctx);                        CHKERRQ (ierr);
 
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
+        h[i] = 1E-5 * std::pow (10, -i);
         ierr = VecWAXPY (p_new, h[i], p_tilde, p);              CHKERRQ (ierr);
         ierr = evaluateObjective (&J, p_new, data);
         ierr = VecDot (dJ, p_tilde, &J_taylor);                 CHKERRQ (ierr);
         J_taylor *= h[i];
         J_taylor +=  J_p;
         diff = std::abs(J - J_taylor);
+        PCOUT << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
+    }
+    PCOUT << "\n\n";
+
+    ierr = VecDestroy (&dJ);               CHKERRQ (ierr);
+    ierr = VecDestroy (&p_tilde);          CHKERRQ (ierr);
+    ierr = VecDestroy (&p_new);            CHKERRQ (ierr);
+    ierr = PetscRandomDestroy (&rctx);     CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode DerivativeOperators::checkHessian (Vec p, Vec data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    PCOUT << "\n\n----- Hessian check with taylor expansion ----- " << std::endl;
+
+    double norm;
+    ierr = VecNorm (p, NORM_2, &norm);                          CHKERRQ (ierr);
+
+    PCOUT << "Hessian check performed at x with norm: " << norm << std::endl;
+    double *x_ptr, k1, k2, k3;
+    if (n_misc_->diffusivity_inversion_) {
+      ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
+      k1 = x_ptr[n_misc_->np_];
+      k2 = (n_misc_->nk_ > 1) ? x_ptr[n_misc_->np_ + 1] : 0;
+      k3 = (n_misc_->nk_ > 2) ? x_ptr[n_misc_->np_ + 2] : 0;
+      PCOUT << "k1: " << k1 << " k2: " << k2 << " k3: " << k3 << std::endl;
+      ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
+    }
+
+    if (n_misc_->flag_reaction_inv_) {
+      ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
+      k1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
+      k2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 1] : 0;
+      k3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->np_ + n_misc_->nk_ + 2] : 0;
+      PCOUT << "r1: " << k1 << " r2: " << k2 << " r3: " << k3 << std::endl;
+      ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
+    }
+
+    double h[6] = {0, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
+    double J, J_taylor, J_p, diff;
+
+    Vec dJ, Hx, temp;
+    Vec p_tilde;
+    Vec p_new;
+    ierr = VecDuplicate (p, &dJ);                               CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &temp);                               CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &Hx);                               CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &p_tilde);                          CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &p_new);                            CHKERRQ (ierr);
+
+    ierr = evaluateObjectiveAndGradient (&J_p, dJ, p, data);    CHKERRQ (ierr);
+
+    PetscRandom rctx;
+    #ifdef SERIAL
+      ierr = PetscRandomCreate (PETSC_COMM_SELF, &rctx);          CHKERRQ (ierr);
+    #else
+      ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);         CHKERRQ (ierr);
+    #endif
+    ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
+    ierr = VecSetRandom (p_tilde, rctx);                        CHKERRQ (ierr);
+    ierr = VecCopy (p_tilde, temp);                             CHKERRQ (ierr);
+    double hess_term = 0.;
+    for (int i = 0; i < 6; i++) {
+        ierr = VecWAXPY (p_new, h[i], p_tilde, p);              CHKERRQ (ierr);
+        ierr = evaluateObjective (&J, p_new, data);
+        ierr = VecDot (dJ, p_tilde, &J_taylor);                 CHKERRQ (ierr);
+        J_taylor *= h[i];
+        J_taylor +=  J_p;
+        // H(p)*p_tilde
+        ierr = VecCopy (p_tilde, temp);                         CHKERRQ (ierr);
+        ierr = VecScale (temp, h[i]);                           CHKERRQ (ierr);
+        ierr = evaluateHessian (Hx, p_tilde);                   CHKERRQ (ierr);
+        ierr = VecDot (p_tilde, Hx, &hess_term);                CHKERRQ (ierr);
+        hess_term *= 0.5 * h[i] * h[i];
+        J_taylor += hess_term;
+        diff = std::abs(J - J_taylor);
         PCOUT << "|J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
     }
     PCOUT << "\n\n";
 
     ierr = VecDestroy (&dJ);               CHKERRQ (ierr);
+    ierr = VecDestroy (&temp);               CHKERRQ (ierr);
+    ierr = VecDestroy (&Hx);               CHKERRQ (ierr);
     ierr = VecDestroy (&p_tilde);          CHKERRQ (ierr);
     ierr = VecDestroy (&p_new);            CHKERRQ (ierr);
     ierr = PetscRandomDestroy (&rctx);     CHKERRQ (ierr);

@@ -1080,9 +1080,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             }
             // Correct the diffusivity and reaction
             if (n_misc_->reaction_inversion_) {
-                x_L1_ptr[np_original] = x_L2_ptr[np];
-                if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
-                if (nk > 2) x_L1_ptr[np_original+2] = x_L2_ptr[np+2];
+                if (n_misc_->diffusivity_inversion_) {
+                    x_L1_ptr[np_original] = x_L2_ptr[np];
+                    if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
+                    if (nk > 2) x_L1_ptr[np_original+2] = x_L2_ptr[np+2];
+                }
 
                 double r1, r2, r3, k1, k2, k3;
                 r1 = x_L2_ptr[np + nk];

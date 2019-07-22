@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/GN_L1/'
+params['results_path'] = tumor_dir + '/results/hesscheck/'
 params['compute_sys'] = 'rebels'
 
 
@@ -39,7 +39,7 @@ if not err:  # No error in tumor input parameters
 	"#SBATCH -o " + params['results_path'] + "/log\n" + \
 	"#SBATCH -p rebels\n" + \
 	"#SBATCH -N 1\n" + \
-	"#SBATCH -n 20\n" + \
+	"#SBATCH -n 1\n" + \
 	"#SBATCH -t 100:00:00\n" + \
 	"source ~/.bashrc\n" + \
 	"export OMP_NUM_THREADS=1\n")
