@@ -10,9 +10,9 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) :
     PetscErrorCode ierr;
 
     n_local_ = n_misc->n_local_;
-    if (!n_misc_->phi_store_) 
+    if (!n_misc_->phi_store_)
         compute_ = true;
-    else 
+    else
         compute_ = false;
 
     np_ = n_misc->np_;
@@ -83,7 +83,7 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
 
     // set phis only if compute is disabled: the subspace is small and all the phis
     // are filtered and stored in memory
-    if (!compute_) { 
+    if (!compute_) {
         double *phi_ptr;
         double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
         Vec all_phis;
@@ -302,14 +302,14 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         } else {
             // compute phi and apply on the fly
             // use phi_vec_[0] as proxy for every phi
-            
+
             double phi_max = 0, max = 0;
             double *phi_ptr;
             double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
             for (int i = 0; i < np_; i++) {
                 ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
-                initialize (phi_ptr, n_misc_, &centers_[3 * i]); 
-                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);      
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
                 ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
@@ -332,7 +332,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
             ierr = VecScale (out, (1.0 / phi_max));                                                        CHKERRQ (ierr);
         }
         ierr = VecRestoreArray (p, &pg_ptr);                                                           CHKERRQ (ierr);
-        
+
 
         self_exec_time += MPI_Wtime();
         accumulateTimers (t, t, self_exec_time);
@@ -366,8 +366,8 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
             double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
             for (int i = 0; i < np_; i++) {
                 ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
-                initialize (phi_ptr, n_misc_, &centers_[3 * i]); 
-                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);      
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
                 ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
@@ -970,16 +970,17 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
     }
     phi_vec_.clear();
-    phi_vec_.resize (np_);
+    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
+    phi_vec_.resize (num_phi_store);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
 
-    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed 
+    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed
     // max size of subspace can be 3 * sparsity_level
     // on the fly
-    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
+
     for (int i = 1; i < num_phi_store; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);

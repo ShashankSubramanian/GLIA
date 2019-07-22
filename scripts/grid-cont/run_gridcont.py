@@ -97,8 +97,9 @@ def gridcont(basedir, args):
     cmd = ""
     # ########### SETTINGS ############
     levels  = [64,128,256]
-    nodes   = [1,2,4]
-    procs   = [24,48,96]
+    nodes   = [1,3,6]
+    # procs   = [24,48,96]
+    procs   = [16,64,144]
     wtime_h = [0,2,10]
     wtime_m = [30,0,0]
     dd_fac  = [1,1,1]                    # on every level, sigma = fac * hx
@@ -339,7 +340,7 @@ def gridcont(basedir, args):
                 print(process)
             else:
                 if args.compute_cluster == 'hazelhen':
-                  process = subprocess.check_output(['qsub', '-W depend=afterany:'+str(pid_prev), job_file]).strip();
+                  process = subprocess.check_output(['qsub', '-W depend=afterok:'+str(pid_prev), job_file]).strip();
                 else:
                   process = subprocess.check_output(['sbatch', '--dependency=afterok:'+str(pid_prev), job_file]).strip();
                 print(process)

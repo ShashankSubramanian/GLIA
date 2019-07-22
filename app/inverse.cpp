@@ -21,14 +21,14 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
 
     ~HealthyProbMaps () {
         PetscErrorCode ierr = 0;
-        ierr = VecDestroy (&gm_data);
-        ierr = VecDestroy (&wm_data);
-        ierr = VecDestroy (&csf_data);
-        ierr = VecDestroy (&bg_data);
-        ierr = VecDestroy (&xi_gm);
-        ierr = VecDestroy (&xi_wm);
-        ierr = VecDestroy (&xi_csf);
-        ierr = VecDestroy (&xi_bg);
+        if(gm_data  != nullptr) {ierr = VecDestroy (&gm_data); gm_data = nullptr;}
+        if(wm_data  != nullptr) {ierr = VecDestroy (&wm_data); wm_data = nullptr;}
+        if(csf_data != nullptr) {ierr = VecDestroy (&csf_data); csf_data = nullptr;}
+        if(bg_data  != nullptr) {ierr = VecDestroy (&bg_data); bg_data = nullptr;}
+        if(xi_gm    != nullptr) {ierr = VecDestroy (&xi_gm); xi_gm = nullptr;}
+        if(xi_wm    != nullptr) {ierr = VecDestroy (&xi_wm); xi_wm = nullptr;}
+        if(xi_csf   != nullptr) {ierr = VecDestroy (&xi_csf); xi_csf = nullptr;}
+        if(xi_bg    != nullptr) {ierr = VecDestroy (&xi_bg); xi_bg = nullptr;}
     }
 };
 
@@ -498,7 +498,7 @@ int main (int argc, char** argv) {
         // if (n_misc->writeOutput_)
         //     dataOut (data, n_misc, "dataNoise.nc");
 
-        ierr = VecDestroy (&temp);          CHKERRQ (ierr);
+        if temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
 
 
         PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
@@ -572,7 +572,7 @@ int main (int argc, char** argv) {
               }
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
               //re-create p_rec
-              ierr = VecDestroy (&p_rec);                                               CHKERRQ (ierr);
+              if (p_rec != nullptr) {ierr = VecDestroy (&p_rec);        CHKERRQ (ierr); p_rec = nullptr;}
               #ifdef SERIAL
                   ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_ + nk, &p_rec);      CHKERRQ (ierr);
               #else
@@ -748,18 +748,17 @@ int main (int argc, char** argv) {
         r.print ("EventsTimings.log", true);
     }
 
-    ierr = VecDestroy (&c_0);               CHKERRQ (ierr);
-    ierr = VecDestroy (&data);              CHKERRQ (ierr);
-    ierr = VecDestroy (&p_rec);             CHKERRQ (ierr);
-    ierr = VecDestroy (&data_nonoise);      CHKERRQ (ierr);
-
-    if (gm != nullptr) {ierr = VecDestroy (&gm);                 CHKERRQ (ierr);}
-    if (wm != nullptr) {ierr = VecDestroy (&wm);                 CHKERRQ (ierr);}
-    if (csf != nullptr) {ierr = VecDestroy (&csf);               CHKERRQ (ierr);}
-    if (bg != nullptr) {ierr = VecDestroy (&bg);                 CHKERRQ (ierr);}
-    if (use_custom_obs_mask) {ierr = VecDestroy (&obs_mask);     CHKERRQ (ierr);}
-    if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr);}
-    if (read_support_data_nc)   {ierr = VecDestroy (&support_data); CHKERRQ (ierr);}
+    if (c_0 != nullptr)          {ierr = VecDestroy (&c_0);               CHKERRQ (ierr); c_0 = nullptr;}
+    if (data != nullptr)         {ierr = VecDestroy (&data);              CHKERRQ (ierr); data = nullptr;}
+    if (p_rec != nullptr)        {ierr = VecDestroy (&p_rec);             CHKERRQ (ierr); p_rec = nullptr;}
+    if (data_nonoise != nullptr) {ierr = VecDestroy (&data_nonoise);      CHKERRQ (ierr); data_nonoise = nullptr;}
+    if (gm != nullptr)           {ierr = VecDestroy (&gm);                CHKERRQ (ierr); gm = nullptr;}
+    if (wm != nullptr)           {ierr = VecDestroy (&wm);                CHKERRQ (ierr); wm = nullptr;}
+    if (csf != nullptr)          {ierr = VecDestroy (&csf);               CHKERRQ (ierr); csf = nullptr;}
+    if (bg != nullptr)           {ierr = VecDestroy (&bg);                CHKERRQ (ierr); bg = nullptr;}
+    if (use_custom_obs_mask)     {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); use_custom_obs_mask = nullptr;}
+    if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); use_data_comps = nullptr;}
+    if (read_support_data_nc)    {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
 
 
 }
@@ -794,7 +793,7 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
     solver_interface->setDistMeassureTargetDataImages (h_maps->wm_data, h_maps->gm_data, h_maps->csf_data, nullptr, h_maps->bg_data);
     solver_interface->setDistMeassureDiffImages (h_maps->xi_wm, h_maps->xi_gm, h_maps->xi_csf, nullptr, h_maps->xi_bg);
 
-    ierr = VecDestroy (&temp);                      CHKERRQ (ierr);
+    if (temp != nullptr) {ierr = VecDestroy (&temp);       CHKERRQ (ierr); temp = nullptr;}
 
     PetscFunctionReturn (0);
 }
@@ -904,7 +903,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = tumor->phi_->apply (c_temp, tumor->p_true_);                     CHKERRQ (ierr);
 
     ierr = VecAXPY (c_0, 1.0, c_temp);                                      CHKERRQ (ierr);
-    ierr = VecDestroy (&c_temp);                                            CHKERRQ (ierr);
+    if (c_temp != nullptr) {ierr = VecDestroy (&c_temp);                    CHKERRQ (ierr); c_temp = nullptr;}
 
     double max, min;
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
@@ -1272,7 +1271,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     PCOUT << "L2 rel error at observation points: " << obs_c_norm << std::endl;
 
-    ierr = VecDestroy (&obs_c_rec);                                         CHKERRQ (ierr);
+    if(obs_c_rec != nullptr) {ierr = VecDestroy (&obs_c_rec);               CHKERRQ (ierr); obs_c_rec = nullptr;}
 
 
     // compute weighted l2 error norm for c0
@@ -1361,10 +1360,10 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     double dist_err_c0 = p_diff_wL2 / p_wL2;
     double l1_err = l1_norm_diff / l1_norm_p;
 
-    ierr = VecDestroy (&weights);        CHKERRQ (ierr);
-    ierr = VecDestroy (&p_true_w);       CHKERRQ (ierr);
-    ierr = VecDestroy (&p_diff_w);       CHKERRQ (ierr);
-    ierr = VecDestroy (&temp);           CHKERRQ (ierr);
+    if(weights != nullptr)  {ierr = VecDestroy (&weights);        CHKERRQ (ierr); weights = nullptr;}
+    if(p_true_w != nullptr) {ierr = VecDestroy (&p_true_w);       CHKERRQ (ierr); p_true_w = nullptr;}
+    if(p_diff_w != nullptr) {ierr = VecDestroy (&p_diff_w);       CHKERRQ (ierr); p_diff_w = nullptr;}
+    if(temp != nullptr)     {ierr = VecDestroy (&temp);           CHKERRQ (ierr); temp = nullptr;}
 
     double *p_rec_ptr;
     ierr = VecGetArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
@@ -1404,8 +1403,8 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecRestoreArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
 
 
-    ierr = VecDestroy (&c_rec_0); CHKERRQ (ierr);
-    ierr = VecDestroy (&c_rec); CHKERRQ (ierr);
+    if(c_rec_0 != nullptr) {ierr = VecDestroy (&c_rec_0); CHKERRQ (ierr); c_rec_0 = nullptr;}
+    if (c_rec != nullptr)  {ierr = VecDestroy (&c_rec); CHKERRQ (ierr); c_rec = nullptr;}
     PetscFunctionReturn (0);
 }
 
@@ -1580,7 +1579,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
         dataOut (max, n_misc, "seg1.nc");
     }
 
-    ierr = VecDestroy (&max);       CHKERRQ (ierr);
+    if(max != nullptr) {ierr = VecDestroy (&max);       CHKERRQ (ierr); max = nullptr;}
 
 
     PetscFunctionReturn(0);
