@@ -92,18 +92,21 @@ def extractRhoK(path, rhofac):
     env_file.write("export K_INIT=0\n")
     empty = False;
     exist = False;
-    level = int(res_path.split("nx")[-1].split("/")[0]);
+    level = int(path.split("nx")[-1].split("/")[0]);
     logfile = 'tumor_solver_log_nx' + str(level) + '.txt'
     if os.path.exists(os.path.join(path,logfile)):
         exist =True;
-        with open(os.path.join(path,logfile'), 'r') as f:
+        print("reading logifle:", os.path.join(path,logfile))
+        with open(os.path.join(path,logfile), 'r',  encoding="utf-8") as f:
             lines  = f.readlines();
+            no = 0;
             if len(lines) > 0:
                 for line in lines:
                     if "Estimated reaction coefficients" in line:
                         rho = rhofac * float(lines[no+1].split("r1:")[-1])
                     if "Estimated diffusion coefficients" in line:
                         k = float(lines[no+1].split("k1:")[-1]);
+                    no += 1;
                 env_file.write("export RHO_INIT="+str(rho)+"\n")
                 env_file.write("export K_INIT="+str(k)+"\n")
                 os.environ['RHO_INIT'] = str(rho);
