@@ -328,6 +328,11 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
   }
   ierr = VecRestoreArray(prec, &ptr_pr_rec);                                    CHKERRQ (ierr);
 
+  // set data
+  inv_solver_->setData (d1);
+  if (d1g == nullptr) {d1g = d1;}
+  inv_solver_->setDataGradient (d1g);
+
   ierr = resetTaoSolver();                                                      CHKERRQ (ierr);
   ierr = setParams (prec, nullptr);                                             CHKERRQ (ierr);
 
@@ -379,8 +384,6 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
       inv_solver_->setData (d1);
       if (d1g == nullptr) {d1g = d1;}
       inv_solver_->setDataGradient (d1g);
-
-
 
       // Guess the reaction coefficient and use as IC.
       Vec prec_copy;
@@ -737,7 +740,7 @@ PetscErrorCode TumorSolverInterface::printStatistics (int its, PetscReal J, Pets
         }
         ierr = VecRestoreArray(x_L1, &x_ptr);                                   CHKERRQ(ierr);
     } else {
-        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << "0";
+        s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << n_misc_->k_;
     }
 
     ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
@@ -1183,11 +1186,11 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             PCOUT << "\n\n\n-------------------------------------------------------------------- Final L2 solve -------------------------------------------------------------------- " << std::endl;
             PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- " << std::endl;
 
-//	    bool temp_flag = n_misc_->diffusivity_inversion_;
-//	    n_misc_->diffusivity_inversion_ = (temp_flag == true) ? temp_flag : true;
-	    ierr = inv_solver_->solve ();       // L2 solver
-	    ierr = VecCopy (inv_solver_->getPrec(), x_L2);                                               CHKERRQ (ierr);
-//	    n_misc_->diffusivity_inversion_ = temp_flag;
+ 	          //bool temp_flag = n_misc_->diffusivity_inversion_;
+	          //n_misc_->diffusivity_inversion_ = (temp_flag == true) ? temp_flag : true;
+	          ierr = inv_solver_->solve ();       // L2 solver
+	          ierr = VecCopy (inv_solver_->getPrec(), x_L2);                        CHKERRQ (ierr);
+	          //n_misc_->diffusivity_inversion_ = temp_flag;
 
             // // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
             // ierr = tumor_->obs_->setDefaultFilter (d1);

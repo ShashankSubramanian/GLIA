@@ -439,7 +439,7 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
       pi++;
     }
     PCOUT << " ... success: " << pi << " values read, size of vector: " << size << std::endl;
-    TU_assert(pi == np-1, "number of read p_i values does not match with number of read Gaussian centers.");
+    TU_assert(pi == np, "number of read p_i values does not match with number of read Gaussian centers.");
     ierr = VecRestoreArray(*x, &x_ptr);                            CHKERRQ (ierr);
     pfile.close();
   } else {
