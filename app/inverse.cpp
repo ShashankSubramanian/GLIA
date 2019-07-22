@@ -498,7 +498,7 @@ int main (int argc, char** argv) {
         // if (n_misc->writeOutput_)
         //     dataOut (data, n_misc, "dataNoise.nc");
 
-        if temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
+        if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
 
 
         PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
@@ -756,8 +756,8 @@ int main (int argc, char** argv) {
     if (wm != nullptr)           {ierr = VecDestroy (&wm);                CHKERRQ (ierr); wm = nullptr;}
     if (csf != nullptr)          {ierr = VecDestroy (&csf);               CHKERRQ (ierr); csf = nullptr;}
     if (bg != nullptr)           {ierr = VecDestroy (&bg);                CHKERRQ (ierr); bg = nullptr;}
-    if (use_custom_obs_mask)     {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); use_custom_obs_mask = nullptr;}
-    if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); use_data_comps = nullptr;}
+    if (use_custom_obs_mask)     {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); obs_mask = nullptr;}
+    if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); data_components = nullptr;}
     if (read_support_data_nc)    {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
 
 
