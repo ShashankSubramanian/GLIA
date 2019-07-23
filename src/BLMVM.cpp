@@ -2,6 +2,50 @@
 #include "petsc/private/taolinesearchimpl.h"
 #include "BLMVM.h"
 
+
+
+
+#undef __FUNCT__
+#define __FUNCT__ "mTaoGradientNorm"
+/*c
+ *    TaoGradientNorm - Compute the norm with respect to the inner product the user has set.
+ *
+ *       Collective on tao
+ *
+ *          Input Parameter:
+ *          .  tao      - the Tao context
+ *          .  gradient - the gradient to be computed
+ *          .  norm     - the norm type
+ *
+ *             Output Parameter:
+ *             .  gnorm    - the gradient norm
+ *
+ *                Level: developer
+ *
+ *                .seealso: TaoSetGradientNorm(), TaoGetGradientNorm()
+ *                @*/
+PetscErrorCode  mTaoGradientNorm(Tao tao, Vec gradient, NormType type, PetscReal *gnorm)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(gradient,VEC_CLASSID,1);
+
+  if (tao->gradient_norm) {
+    PetscScalar gnorms;
+
+    if (type != NORM_2) SETERRQ(PetscObjectComm((PetscObject)gradient), PETSC_ERR_ARG_WRONGSTATE, "Norm type must be NORM_2 if an inner product for the gradient norm is set.");
+    ierr = MatMult(tao->gradient_norm, gradient, tao->gradient_norm_tmp);CHKERRQ(ierr);
+    ierr = VecDot(gradient, tao->gradient_norm_tmp, &gnorms);CHKERRQ(ierr);
+    *gnorm = PetscRealPart(PetscSqrtScalar(gnorms));
+  } else {
+    ierr = VecNorm(gradient, type, gnorm);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+
+
 /*------------------------------------------------------------*/
 #undef __FUNCT__
 #define __FUNCT__ "TaoSolve_BLMVM_M"
@@ -25,7 +69,7 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
   ierr = TaoComputeObjectiveAndGradient(tao, tao->solution,&f,blmP->unprojected_gradient);CHKERRQ(ierr);
   ierr = VecBoundGradientProjection(blmP->unprojected_gradient,tao->solution, tao->XL,tao->XU,tao->gradient);CHKERRQ(ierr);
 
-  ierr = TaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
+  ierr = mTaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
   if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf pr NaN");
 
   ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
@@ -124,7 +168,7 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
 
     /* Check for converged */
     ierr = VecBoundGradientProjection(blmP->unprojected_gradient, tao->solution, tao->XL, tao->XU, tao->gradient);CHKERRQ(ierr);
-    ierr = TaoGradientNorm(tao, tao->gradient, NORM_2, &gnorm);CHKERRQ(ierr);
+    ierr = mTaoGradientNorm(tao, tao->gradient, NORM_2, &gnorm);CHKERRQ(ierr);
 
 
     if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Not-a-Number");

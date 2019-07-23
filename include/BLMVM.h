@@ -33,7 +33,27 @@ typedef struct {
 
 
 PetscErrorCode TaoCreate_BLMVM_M (Tao tao);
+PetscErrorCode mTaoGradientNorm(Tao, Vec, NormType, PetscReal*);
 
+
+#if defined(__cplusplus)
+extern PetscErrorCode MatLMVMReset(Mat);
+extern PetscErrorCode MatLMVMUpdate(Mat,Vec, Vec);
+extern PetscErrorCode MatLMVMSetDelta(Mat,PetscReal);
+extern PetscErrorCode MatLMVMSetScale(Mat,Vec);
+extern PetscErrorCode MatLMVMGetRejects(Mat,PetscInt*);
+extern PetscErrorCode MatLMVMSetH0(Mat,Mat);
+extern PetscErrorCode MatLMVMGetH0(Mat,Mat*);
+extern PetscErrorCode MatLMVMGetH0KSP(Mat,KSP*);
+extern PetscErrorCode MatLMVMSetPrev(Mat,Vec,Vec);
+extern PetscErrorCode MatLMVMGetX0(Mat,Vec);
+extern PetscErrorCode MatLMVMRefine(Mat, Mat, Vec, Vec);
+extern PetscErrorCode MatLMVMAllocateVectors(Mat m, Vec v);
+extern PetscErrorCode MatLMVMSolve(Mat, Vec, Vec);
+extern PetscErrorCode MatCreateLMVM(MPI_Comm,PetscInt,PetscInt,Mat*);
+extern PetscErrorCode MatView_LMVM(Mat,PetscViewer);
+extern PetscErrorCode MatDestroy_LMVM(Mat);
+#else
 PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat);
 PETSC_EXTERN PetscErrorCode MatLMVMUpdate(Mat,Vec, Vec);
 PETSC_EXTERN PetscErrorCode MatLMVMSetDelta(Mat,PetscReal);
@@ -50,6 +70,6 @@ PETSC_EXTERN PetscErrorCode MatLMVMSolve(Mat, Vec, Vec);
 PETSC_EXTERN PetscErrorCode MatCreateLMVM(MPI_Comm,PetscInt,PetscInt,Mat*);
 PETSC_EXTERN PetscErrorCode MatView_LMVM(Mat,PetscViewer);
 PETSC_EXTERN PetscErrorCode MatDestroy_LMVM(Mat);
-
+#endif
 
 #endif
