@@ -310,7 +310,7 @@ def gridcont(basedir, args):
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
         cmd_postproc  = pythoncmd + basedir + '/scripts/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
-        cmd_postproc += " -tu_path  " + " tumor_inversion/nx256/" + obs_dir;
+        cmd_postproc += " -rdir  " + " obs";
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
         cmd_postproc += " -analyze_concomps ";
