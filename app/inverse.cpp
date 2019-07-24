@@ -566,6 +566,8 @@ int main (int argc, char** argv) {
                   tumor->phi_->setLabels (data_components);
                 }
                 ierr = tumor->phi_->setGaussians (support_data);                        CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+              } else if (syn_flag) {
+                ierr = tumor->phi_->setGaussians (data);                        CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               } else {
                 PCOUT << "Error: Expecting user input data -support_data_path *.nc or *.txt. exiting..." <<std::endl;
                 exit(1);
