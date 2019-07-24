@@ -124,11 +124,11 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
     if (tao->niter >= 1) {
       ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, 1.0);CHKERRQ(ierr);
     }
-    ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (before): %0.8f \n",stepsize);CHKERRQ(ierr);
+    // ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (before): %0.8f \n",stepsize);CHKERRQ(ierr);
     ierr = TaoLineSearchApply(tao->linesearch, tao->solution, &f, blmP->unprojected_gradient, tao->stepdirection, &stepsize, &ls_status);CHKERRQ(ierr);
     ierr = TaoAddLineSearchCounts(tao);CHKERRQ(ierr);
 
-    ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (after): %0.8f \n",stepsize);CHKERRQ(ierr);
+    // ierr = PetscPrintf(PETSC_COMM_WORLD,".. ls step-size (after): %0.8f \n",stepsize);CHKERRQ(ierr);
     blmP->last_ls_step = stepsize;
 
     if (ls_status != TAOLINESEARCH_SUCCESS && ls_status != TAOLINESEARCH_SUCCESS_USER) {

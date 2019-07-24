@@ -373,8 +373,8 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
 
   CtxInv *ctx = itctx_.get();
 
-  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                           CHKERRQ (ierr);
-  ierr = TaoSetType (tao_, "blmvm");                                                   CHKERRQ (ierr);
+  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                                 CHKERRQ (ierr);
+  ierr = TaoSetType (tao_, "tao_blmvm_m");                                                   CHKERRQ (ierr);
 
   int x_sz;
   int nk = itctx_->n_misc_->nk_;

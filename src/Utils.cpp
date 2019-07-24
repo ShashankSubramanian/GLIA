@@ -983,7 +983,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
           support.push_back (q.top().second);
         } else {  // if top of the queue is not greater than tol, we are done since none of the elements
                   // below it will ever be greater than tol
-          PCOUT << "  ... no support selected in component " << nc << "; reason: g_i = " << std::abs(q.top().first) << " < " << tol << " = tolerance" << std::endl;
+          PCOUT << "  ... some supports not selected in component " << nc << "; reason: p_i = " << std::abs(q.top().first) << " < " << tol << " = tolerance" << std::endl;
           break;
         }
         q.pop ();
