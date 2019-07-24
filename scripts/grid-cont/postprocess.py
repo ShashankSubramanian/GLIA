@@ -297,7 +297,7 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
                 print('segmentation file found, using NN interpolation')
                 newdata = imgtools.resizeImage(data, tuple(output_size), 0);
             else:
-                newdata = imgtools.resizeImage(data, tuple(output_size), 3);
+                newdata = imgtools.resizeImage(data, tuple(output_size), 1);
             filename = ntpath.basename(f);
             filename, fileext = os.path.splitext(filename);
             newfilename = filename + '.nii.gz';
@@ -341,7 +341,7 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
                     print('segmentation file found, using NN interpolation')
                     newdata = imgtools.resizeImage(data, tuple(template.shape), 0);
                 else:
-                    newdata = imgtools.resizeImage(data, tuple(template.shape), 3);
+                    newdata = imgtools.resizeImage(data, tuple(template.shape), 1);
 
                 filename = ntpath.basename(f);
                 filename, fileext = os.path.splitext(filename);
@@ -606,7 +606,7 @@ if __name__=='__main__':
         if x.startswith('Brats'):
             bratsID = x;
             break;
-    bratsID = bratsID.split("_1")[0] + '_1';
+    bratsID = bratsID.split("_")[0] + "_" +  bratsID.split("_")[1] + "_" +  bratsID.split("_")[2] + '_1';
 
     # convert all images to original dimension
     if args.convert_images:
@@ -875,9 +875,9 @@ if __name__=='__main__':
                     cmap_c0 = plt.cm.Reds;
                     cmap_c1 = plt.cm.cool;
                     cmap_d  = plt.cm.winter;
-                    lls  = [0.05, 0.1, 0.5, 0.7, 0.9];
-                    lls2 = [0.05, 0.1, 0.5, 0.7, 0.9, 1.0];
-                    lls3 = [0.05, 0.1, 0.5, 0.7,];
+                    levels_contour_c0  = [0.01, 0.1, 0.5, 0.7, 0.9];
+                    levels_contour_c1  = [0.05, 0.1, 0.5, 0.7, 0.9, 1.0];
+                    levels_contourf_c1 = [0.05, 0.1, 0.5, 0.7,];
                     cmap_cont = plt.cm.rainbow
 
                     # creating vis dirs
@@ -913,8 +913,8 @@ if __name__=='__main__':
                                 ax[k+1].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
                             # ax[k+1].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1 );
                             slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                            ax[k+1].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                            # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                            ax[k+1].contour(slice,  levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            # ax[r].contourf(slice, levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), norm=norm);
                             ax[k+1].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (xcm_sol[l][k][2]/(2*math.pi)*template.shape[0], xcm_sol[l][k][1]/(2*math.pi)*template.shape[1], xcm_sol[l][k][0]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
                         for k in range(len(xcm_sol[l]), axis.shape[1]):
                             ax[k].axis('off');
@@ -936,8 +936,8 @@ if __name__=='__main__':
                                 ax[k+1].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
                             # ax[k+1].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
                             slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                            ax[k+1].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                            # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                            ax[k+1].contour(slice,  levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            # ax[r].contourf(slice, levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), norm=norm);
                             # ax[k+1].scatter(x, y, marker='x', c='blue', s=3)
                             ax[k+1].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
                         for w in range(len(xcm_data[l]), axis.shape[1]):
@@ -954,8 +954,8 @@ if __name__=='__main__':
                                         ax[r].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
                                     # ax[r].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
                                     slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                    ax[r].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                                    # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                                    ax[r].contour(slice,  levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                                    # ax[r].contourf(slice, levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), norm=norm);
                                     title = ''
                                     for p in P_perZ[k][z]:
                                         title += "p_i=" + "{0:1.2e}".format(p) + "\n"
@@ -974,8 +974,8 @@ if __name__=='__main__':
                                         ax[r].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
                                     # ax[r].imshow(thresh(c0recon[:,:,z].T, cmap_c0, thresh=c0_thresh, v_max=hi, v_min=lo), interpolation='none', alpha=1);
                                     slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                    ax[r].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
-                                    # ax[r].contourf(slice, levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), norm=norm);
+                                    ax[r].contour(slice,  levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                                    # ax[r].contourf(slice, levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), norm=norm);
                                     ax[r].set_title("$p_i$=%1.2e\nx=(%1.1f, %1.1f, %1.1f)\naxial slice %d" % (p_comp[l][k][r],comps_sol[l][k][r][2]/(2*math.pi)*template.shape[0], comps_sol[l][k][r][1]/(2*math.pi)*template.shape[1], comps_sol[l][k][r][0]/(2*math.pi)*template.shape[2],z), size=fsize, y=tpos);
 
 
@@ -1011,7 +1011,7 @@ if __name__=='__main__':
                             if vis_c1:
                                 axis2[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
                             slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                            axis2[idx].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            axis2[idx].contour(slice,  levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
                             axis2[idx].set_title("x=(%1.1f, %1.1f, %1.1f)\naxial slice %d\n" % (xcm_data[l][k][0]/(2*math.pi)*template.shape[0], xcm_data[l][k][1]/(2*math.pi)*template.shape[1], xcm_data[l][k][2]/(2*math.pi)*template.shape[2], z), size=fsize, y=tpos)
 
                             # row 3, weighted center of mass of solution, labeled by data components
@@ -1024,7 +1024,7 @@ if __name__=='__main__':
                             if vis_c1:
                                 axis2[idx].imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=1);
                             slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                            axis2[idx].contour(slice,  levels=lls,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
+                            axis2[idx].contour(slice,  levels=levels_contour_c0,  cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1), linestyles=['-'] ,linewidths=[0.2], norm=norm);
                             title = ''
                             for p in pi_labeled_dcomp[l][k+1]:
                                 title += "p_i=" + "{0:1.2e}".format(p) + "\n"
@@ -1049,8 +1049,8 @@ if __name__=='__main__':
                         # cmap_d = plt.cm.Wistia
                         cmap_d = plt.cm.YlOrBr_r
                         # cmap_c1 = plt.cm.winter;
-                        cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, len(lls2)-1);
-                        # cmap_c0c = cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(lls)-1);
+                        cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c1)-1);
+                        # cmap_c0c = cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1);
                         cmap_c0c = mpl.cm.winter_r
                         # linewidths for contour
                         lwidths = [0.2, 0.2, 0.2, 0.2, 0.6, 0.2]
@@ -1062,24 +1062,24 @@ if __name__=='__main__':
                             y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
                             x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
 
-                            fig_ax = plt.figure(4);
-                            fig_cor   = plt.figure(5);
-                            fig_sag   = plt.figure(6);
+                            fig_ax  = plt.figure(4);
+                            fig_cor = plt.figure(5);
+                            fig_sag = plt.figure(6);
 
                             # axial
-                            bb = bratsID.split("Brats18_")[-1].split("_1")[0]
+                            bb = bratsID.split("_")[0] + "_" +  bratsID.split("_")[1] + "_" +  bratsID.split("_")[2] + '_1';
                             idx = tuple([k,0]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 0
                             for aax, s, t in zip([axis3[idx], fig_ax.add_subplot(1, 1, 1)], [fsize, '14'], [bb+' $x_{cm}$ comp #'+str(k+1), bb]):
                                 aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
                                 aax.imshow(template[:,:,z].T, cmap='gray', interpolation='none', origin='upper');
                                 aax.imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=1);
                                 slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                                aax.contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
-                                aax.contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
+                                aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                                aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
                                 # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
                                 slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                aax.contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
-                                aax.contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                                aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
+                                aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
                                 aax.set_ylabel(t, fontsize=s)
                                 aax.set_title("axial slice %d" %  z, size=s, y=tpos)
 
@@ -1090,12 +1090,12 @@ if __name__=='__main__':
                                 aax.imshow(template[x,:,:].T, cmap='gray', interpolation='none', origin='lower');
                                 aax.imshow(thresh(data[x,:,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
                                 slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                                aax.contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
-                                aax.contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
+                                aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
+                                aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
                                 # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
                                 slice, norm = cont(c0recon[x,:,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                aax.contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
-                                aax.contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                                aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
+                                aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
                                 aax.set_ylabel(t, fontsize=s)
                                 aax.set_title("coronal slice %d" %  x, size=s, y=tpos)
 
@@ -1106,12 +1106,12 @@ if __name__=='__main__':
                                 aax.imshow(template[:,y,:].T, cmap='gray', interpolation='none', origin='lower');
                                 aax.imshow(thresh(data[:,y,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
                                 slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                                aax.contourf(slice,  levels=lls3,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
-                                aax.contour(slice,  levels=lls2,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
+                                aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                                aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
                                 # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
                                 slice, norm = cont(c0recon[:,y,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                aax.contourf(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'], norm=norm, alpha=0.8);
-                                aax.contour(slice,  levels=lls, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                                aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'], norm=norm, alpha=0.8);
+                                aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
                                 aax.set_ylabel(t, fontsize=s)
                                 aax.set_title("sagittal slice %d" %  y, size=s, y=tpos)
 
@@ -1288,7 +1288,7 @@ if __name__=='__main__':
                     res_path_   = os.path.join(lvl_prefix_, args.rdir);
                     c0_coarse  = fio.readNetCDF(os.path.join(res_path_,"c0Recon.nc"));
                     # resample c(0) of coarser grid to 256 (3-rd order interp.)
-                    c0_coarse  = imgtools.resizeImage(c0_coarse, tuple([256, 256, 256]), 3);
+                    c0_coarse  = imgtools.resizeImage(c0_coarse, tuple([256, 256, 256]), 1);
                     max_ic = np.amax(c0_coarse.flatten());
                     c0_coarse = c0_coarse * (1./max_ic);
                     diff = c0_256 - c0_coarse;
@@ -1297,7 +1297,7 @@ if __name__=='__main__':
 
                     if l==256:
                         # convert to brats dims (interpolation order 3)
-                        diff_tonii = imgtools.resizeImage(data, tuple(template_256.shape), 3);
+                        diff_tonii = imgtools.resizeImage(data, tuple(template_256.shape), 1);
                         # write file`
                         fio.writeNII(diff_tonii, os.path.join(path_256, "c0diff_nx"+str(ll)+"-nx256.nii.gz"), affine_256);
                         # fio.createNetCDF(os.path.join(path_256, "c0diff_nx"+str(ll)+"-nx256.nc"), [256,256,256], diff);
