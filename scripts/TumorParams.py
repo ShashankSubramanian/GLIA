@@ -94,7 +94,7 @@ def getTumorRunCmd(params):
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
     solve_rho_k = 0;
     ### Prediction flag -- Flag to predict tumor at a later time
-    predict_flag = 1
+    predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
@@ -124,13 +124,13 @@ def getTumorRunCmd(params):
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
     target_spars = 0.99
     ### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
-    sparsity_lvl = 5
+    sparsity_lvl = 10
     ### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / meshsize)
     dd_fac = 2
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "QN"
     ### Line-search type: armijo - armijo line-search, mt - more-thuene line search (wolfe conditions)
-    linesearchtype = "armijo"
+    linesearchtype = "mt"
     ### Newton max iterations
     newton_maxit = 50
     ### GIST max iterations (for L1 solver)

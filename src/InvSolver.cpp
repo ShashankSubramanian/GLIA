@@ -452,7 +452,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
 
   double *lb_ptr;
-  double lower_bound_kappa = 0;
+  double lower_bound_kappa = 1E-3;
   ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);
   lb_ptr[0] = lower_bound_kappa;
   if (nk > 1) lb_ptr[1] = lower_bound_kappa;
@@ -2530,7 +2530,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
     double *ub_ptr, *lb_ptr;
-    double upper_bound_kappa = 1., lower_bound_kappa = 0E-3;
+    double upper_bound_kappa = 1., lower_bound_kappa = 1E-3;
     if (itctx_->n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
       ub_ptr[itctx_->n_misc_->np_] = upper_bound_kappa;
