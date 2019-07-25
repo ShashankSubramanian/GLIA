@@ -212,35 +212,47 @@ def connectedComponentsData(path_nc, level, target_nc=None, path_nii=None, targe
 
     structure = np.ones((3, 3, 3), dtype=np.int);
     comps       = {}
-    xcm_data_px = {}
-    xcm_data    = {}
     count       = {}
     sums        = {}
     relmass     = {}
+    xcm_data_px = {}
+    xcm_data    = {}
+    comps_sorted       = {}
+    relmass_sorted     = {}
+    xcm_data_px_sorted = {}
+    xcm_data_sorted    = {}
 
     for img in IMG:
         total_mass = 0
         labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
-        print(bcolors.OKBLUE, "   - number of components found: ", ncomponents, bcolors.ENDC)
 
         for i in range(ncomponents):
             comps[i] = (labeled == i+1)
             a, b = scipy.ndimage.measurements._stats(comps[i])
             total_mass += b
-        print("total mass:", total_mass)
-
         for i in range(ncomponents):
-            xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
             count[i], sums[i]  = scipy.ndimage.measurements._stats(comps[i])
             relmass[i] = sums[i]/float(total_mass);
-
-            print("   [comp #%d]" %i)
-            print("    - center of mass:", xcm_data_px[i])
+            xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
             xcm_data[i] = tuple([2 * math.pi * xcm_data_px[i][0] / float(level), 2 * math.pi * xcm_data_px[i][1] / float(level), 2 * math.pi * xcm_data_px[i][2] / float(level)]);
-            print(bcolors.OKGREEN, "                    ", xcm_data[i], bcolors.ENDC)
-            print("    - sum, mass:     ", sums[i], sums[i]/float(total_mass))
 
-    return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
+        # sort components according to their size
+        sorted_rmass = sorted(relmass.items(), key=lambda x: x[1], reverse=True);
+        perm = {}
+        temp = {}
+        labeled_sorted = np.zeros_like(labeled);
+        for i in range(len(sorted_rmass)):
+            perm[i] = sorted_rmass[i][0] # get key from sorted list
+            comps_sorted[i]       = comps[perm[i]];
+            relmass_sorted[i]     = relmass[perm[i]];
+            xcm_data_px_sorted[i] = xcm_data_px[perm[i]];
+            xcm_data_sorted[i]    = xcm_data[perm[i]];
+
+            temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
+            labeled_sorted += temp[i];
+
+    # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
+    return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
 
 
 ###
@@ -347,9 +359,16 @@ if __name__=='__main__':
 
             # compute connected components
             labeled[l], comps_data[l], ncomps_data[l], xcm_data_px[l], xcm_data[l], relmass[l] = connectedComponentsData(init_path, level);
-
             # write labels
             fio.createNetCDF(os.path.join(out_path, 'data_comps_nx'+str(level)+'.nc') , np.shape(labeled[l]), np.swapaxes(labeled[l],0,2));
+
+
+            # # print(labeled[l])
+            # print("ncomps_data:", ncomps_data[l])
+            # # print("comps:\n",     comps_data[l])
+            # print("xcm_data:\n",  xcm_data[l])
+            # print("relmass:\n",   relmass[l])
+
 
         if args.sol:
             print("\n (2) computing connected components of solution\n");

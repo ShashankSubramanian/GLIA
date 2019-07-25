@@ -513,11 +513,15 @@ def connectedComponentsData(path_nc, level, target_nc=None, path_nii=None, targe
 
     structure = np.ones((3, 3, 3), dtype=np.int);
     comps       = {}
-    xcm_data_px = {}
-    xcm_data    = {}
     count       = {}
     sums        = {}
     relmass     = {}
+    xcm_data_px = {}
+    xcm_data    = {}
+    comps_sorted       = {}
+    relmass_sorted     = {}
+    xcm_data_px_sorted = {}
+    xcm_data_sorted    = {}
 
     for img in IMG:
         total_mass = 0
@@ -528,12 +532,29 @@ def connectedComponentsData(path_nc, level, target_nc=None, path_nii=None, targe
             a, b = scipy.ndimage.measurements._stats(comps[i])
             total_mass += b
         for i in range(ncomponents):
-            xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
             count[i], sums[i]  = scipy.ndimage.measurements._stats(comps[i])
             relmass[i] = sums[i]/float(total_mass);
+            xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
             xcm_data[i] = tuple([2 * math.pi * xcm_data_px[i][0] / float(level), 2 * math.pi * xcm_data_px[i][1] / float(level), 2 * math.pi * xcm_data_px[i][2] / float(level)]);
 
-    return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
+        # sort components according to their size
+        sorted_rmass = sorted(relmass.items(), key=lambda x: x[1], reverse=True);
+        perm = {}
+        temp = {}
+        labeled_sorted = np.zeros_like(labeled);
+        for i in range(len(sorted_rmass)):
+            perm[i]               = sorted_rmass[i][0] # get key from sorted list
+            comps_sorted[i]       = comps[perm[i]];
+            relmass_sorted[i]     = relmass[perm[i]];
+            xcm_data_px_sorted[i] = xcm_data_px[perm[i]];
+            xcm_data_sorted[i]    = xcm_data[perm[i]];
+
+            temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
+            labeled_sorted += temp[i];
+
+    # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
+    return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
+
 
 
 ###
@@ -1039,7 +1060,7 @@ if __name__=='__main__':
                         nc = 0
                         for k in range(len(xcm_data[l])):
                             if relmass[l][k] > 1E-2:
-                                nc=nc+1
+                                nc+=1
                         fig3, axis3 = plt.subplots(nc, 3);
                         for ax in axis3.flatten(): # remove ticks and labels
                             ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
