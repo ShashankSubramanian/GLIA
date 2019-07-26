@@ -3,20 +3,20 @@ BRATS=/lustre/cray/ws9/4/ws/ipvscheu-ws-sibia/
 #DSET=b-tcia08   # 
 #DSET=b-tcia06   # 
 #DSET=b-tcia05   # 
-#DSET=b-tcia04   # 
-#DSET=b-tcia03   # 
+#DSET=b-tcia04   # hazel (r)
+#DSET=b-tcia03   # hazel (r)
 #DSET=b-tcia02   # 
-#DSET=b-cbica    # hazel
-#DSET=b-cbica-1  # hazel err at AVG; rerun this and the following
-#DSET=b-cbica-2  # 
-#DSET=b-cbica-3  # 
+#DSET=b-cbica    # hazel (r)
+#DSET=b-cbica-1  # hazel (r)
+#DSET=b-cbica-2  # hazel (r)
+DSET=b-cbica-3  # hazel
 #DSET=b-cbica-4  # 
-#DSET=b-cbica-5  # 
+#DSET=b-cbica-5  # hazel (r) 
 
-DSET=b-obs-train
+#DSET=b-obs-train
 
 TOL=1E-4
-RES=${BRATS}/results/HGG-grid-cont/concomp-gauss-selection-sigma-1.2-sparsity-5/
+RES=${BRATS}/results/HGG-grid-cont/brats19-cc-supphi-kbound-s5-gradls10/
 mkdir -p ${RES}
 python  run_gridcont.py -patient_path   ${BRATS}/training/HGG/${DSET}             \
                         -atlas_path     ${BRATS}/atlas/jakob_segmented_with_cere_lps_240240155_bratslabels.nii.gz \
