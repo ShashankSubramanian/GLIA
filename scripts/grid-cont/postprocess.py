@@ -1074,7 +1074,7 @@ if __name__=='__main__':
                         # cmap_c0c = cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1);
                         cmap_c0c = mpl.cm.winter_r
                         # linewidths for contour
-                        lwidths = [0.2, 0.2, 0.2, 0.2, 0.6, 0.2]
+                        lwidths = [0.1, 0.1, 0.1, 0.1, 0.5, 0.1]
 
                         for k in range(len(xcm_data[l])):
                             if relmass[l][k] <= 1E-2:
@@ -1096,6 +1096,7 @@ if __name__=='__main__':
                                 aax.imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=1);
                                 slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
                                 aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                                slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=False);
                                 aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
                                 # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
                                 slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
@@ -1112,6 +1113,7 @@ if __name__=='__main__':
                                 aax.imshow(thresh(data[x,:,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
                                 slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
                                 aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
+                                slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=False);
                                 aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
                                 # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
                                 slice, norm = cont(c0recon[x,:,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
@@ -1128,6 +1130,7 @@ if __name__=='__main__':
                                 aax.imshow(thresh(data[:,y,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
                                 slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
                                 aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                                slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=False);
                                 aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
                                 # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
                                 slice, norm = cont(c0recon[:,y,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);

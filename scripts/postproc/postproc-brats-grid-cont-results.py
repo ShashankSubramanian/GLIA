@@ -49,8 +49,6 @@ def getSurvivalClass(x):
 def getSurvivalSigma(x, std, mean):
     return (x - mean) / std;
 
-# def connectedComponents(p_Vec, phix, phiy, phiz):
-
 
 
 ###
@@ -67,6 +65,7 @@ if __name__=='__main__':
     df = pd.DataFrame(columns = col_names)
 
     BIDs = []
+    FILTER = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1']
     levels = [64,128,256]
     RUNS = os.listdir(args.dir);
     print(bcolors.BOLD + "   ### DIR = %s ###" % args.dir + bcolors.ENDC);
@@ -80,6 +79,7 @@ if __name__=='__main__':
 
     ncases  = {};
     nfailed = {};
+    fltr    = 0;
     for l in levels:
         ncases[l]  = 0;
         nfailed[l] = 0;
@@ -90,6 +90,10 @@ if __name__=='__main__':
         # print("BID", args.bid)
         if args.bid not in BIDs:
             BIDs.append(args.bid);
+        if args.bid in FILTER:
+            print(bcolors.FAIL + "   --> filtering ", args.bid , " due to errors in simulation." + bcolors.ENDC);
+            fltr += 1;
+            continue;
         print(bcolors.OKBLUE + "   ### processing", run , "###" + bcolors.ENDC)
 
         run_path = os.path.join(args.dir, run);
@@ -115,8 +119,8 @@ if __name__=='__main__':
             ###### COMPONENTS.TXT #####
             p_dict["#comp"]    = -1;
             p_dict["xcm-dist"] = -1;
-            if os.path.exists(os.path.join(run_path,'components.txt')):
-                with open(os.path.join(run_path,'components.txt'), 'r') as f:
+            if os.path.exists(os.path.join(run_path,'components_obs-1.0.txt')):
+                with open(os.path.join(run_path,'components_obs-1.0.txt'), 'r') as f:
                     lines  = f.readlines();
                     curr_level = False;
                     for line, ln in zip(lines,range(len(lines))):
@@ -610,7 +614,8 @@ if __name__=='__main__':
 
     print("Entries on level 128:", len(dftmp_128));
     print("Entries on level 256:", len(dftmp_256));
-    print(bcolors.OKGREEN + "\n\n===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
+    print(bcolors.WARNING + "\n\n===  filtered %d cases ===" % (fltr) + bcolors.ENDC)
+    print(bcolors.OKGREEN + "===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 128 (%d failed to add) ===" % (ncases[128],nfailed[128]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 256 (%d failed to add) ===" % (ncases[256],nfailed[256]) + bcolors.ENDC)
 
