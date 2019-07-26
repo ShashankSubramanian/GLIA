@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 256
+    N = 128
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -54,10 +54,10 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 3
+    verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -124,13 +124,13 @@ def getTumorRunCmd(params):
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
     target_spars = 0.99
     ### Sparsity level we expect for our initial tumor condition -- used in CoSaMp
-    sparsity_lvl = 5
+    sparsity_lvl = 10
     ### Factor (integer only) which controls the variance of the basis function for tumor inversion (\sigma  =  fac * 2 * pi / meshsize)
     dd_fac = 2
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "QN"
     ### Line-search type: armijo - armijo line-search, mt - more-thuene line search (wolfe conditions)
-    linesearchtype = "armijo"
+    linesearchtype = "mt"
     ### Newton max iterations
     newton_maxit = 50
     ### GIST max iterations (for L1 solver)
@@ -138,11 +138,15 @@ def getTumorRunCmd(params):
     ### Krylov max iterations
     max_krylov_iter = 30
     ### Relative gradient tolerance
-    grad_tol = 1E-4
+    grad_tol = 1E-5
     ### Forward solver time order of accuracy
     accuracy_order = 2
     ### number of line-search attempts
     ls_max_func_evals = 10
+    ## lower bound on kappa
+    lower_bound_kappa = 1E-3
+    ## upper bound on kappa
+    upper_bound_kappa = 1
 
     ### TUMOR PARAMETERS SET END
 
@@ -332,7 +336,7 @@ def getTumorRunCmd(params):
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
-    run_str = cmd + tumor_dir + "/build/brats19/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
+    run_str = cmd + tumor_dir + "/build/release/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
     " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
     " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
@@ -374,6 +378,8 @@ def getTumorRunCmd(params):
     " -forward " + str(forward_flag) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
+    " -kappa_lb " + str(lower_bound_kappa) + \
+    " -kappa_ub " + str(upper_bound_kappa) + \
     " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_monitor  -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     return run_str, error_flag
