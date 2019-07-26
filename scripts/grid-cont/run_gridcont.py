@@ -97,9 +97,8 @@ def gridcont(basedir, args):
     cmd = ""
     # ########### SETTINGS ############
     levels  = [64,128,256]
-    nodes   = [1,3,6]
-    # procs   = [24,48,96]
-    procs   = [16,64,144]
+    nodes   = [1,2,4]
+    procs   = [24,48,96]
     wtime_h = [0,2,10]
     wtime_m = [30,0,0]
     dd_fac  = [1,1,1]                    # on every level, sigma = fac * hx
@@ -116,7 +115,7 @@ def gridcont(basedir, args):
     data_thresh = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-4, 1E-4];
     sparsity_lvl_per_component = 5;
     ls_max_func_evals  = [10, 10, 10];
-    invert_diffusivity = [1,1,0];
+    invert_diffusivity = [1,1,1];
     # #################################
 
     os.environ['DIR_SUFFIX'] = "{0:1.1f}".format(args.obs_lambda);
@@ -310,7 +309,7 @@ def gridcont(basedir, args):
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
         cmd_postproc  = pythoncmd + basedir + '/scripts/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
-        cmd_postproc += " -rdir  " + " obs";
+        cmd_postproc += " -rdir obs ";
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
         cmd_postproc += " -analyze_concomps ";
