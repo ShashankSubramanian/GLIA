@@ -351,9 +351,13 @@ def gridcont(basedir, args):
                 else:
                   process = subprocess.check_output(['sbatch', '--dependency=afterok:'+str(pid_prev), job_file]).strip();
                 print(process)
-            print(str(process).split(".")[0])
-            pid_prev = int(str(process,'utf-8').split(".")[0])
-
+            print("\n");
+            if args.compute_cluster == 'hazelhen':
+              print(str(process).split(".")[0])
+              pid_prev = int(str(process,'utf-8').split(".")[0])
+            else:
+              print("\n pid:", str(process, 'utf-8').split("Submitted batch job ")[-1])
+              pid_prev = int(str(process, 'utf-8').split("Submitted batch job ")[-1])
 
 
 
