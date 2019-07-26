@@ -63,7 +63,7 @@ if __name__=='__main__':
     parser.add_argument ('-x',  '--dir', type = str, help = 'path to the results folder');
     args = parser.parse_args();
     survival_data = pd.read_csv(os.path.join(basedir,"survival_data.csv"), header = 0, error_bad_lines=True, skipinitialspace=True)
-    col_names = ["BraTS18ID", "level", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time", "age", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
+    col_names = ["BraTS18ID", "level", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time",  "N#it", "|g|_r/k",  "age", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
     df = pd.DataFrame(columns = col_names)
 
     BIDs = []
@@ -78,13 +78,14 @@ if __name__=='__main__':
     # plt.show()
     print("Survival Data Statistics: mean %1.3f, variance: %1.3f, std: %1.3f" % (survival_mean, survival_var, survival_std));
 
+    ncases  = {};
+    nfailed = {};
+    for l in levels:
+        ncases[l]  = 0;
+        nfailed[l] = 0;
     for run in RUNS:
-        # if not run.startswith(args.bid):
-            # continue;
         if not run.startswith('Brats'):
             continue;
-        # if run.startswith("Brats18_CBICA_AQJ_1"):
-            # continue;
         args.bid = str(run.split('-')[0])
         # print("BID", args.bid)
         if args.bid not in BIDs:
@@ -98,20 +99,17 @@ if __name__=='__main__':
             sum_p = 0;
             p_dict = {}
             p_dict['BraTS18ID'] = args.bid;
-            # p_dict['opttol'] = str(run.split("opttol-")[-1]);
             p_dict['comment']   = "";#str(run.split(args.bid + "-")[-1].split("4-")[-1]);
             p_dict['level']  = level;
             p_dict['np'] = float('nan');
-            # if "beta" not in p_dict['comment']:
-                # p_dict['beta'] = str(1E-4)
-            # else:
-                # p_dict['beta'] = str(run.split(args.bid + "-")[-1].split("-opttol")[0].split("beta-")[-1].split("-double")[0]);
+            p_dict['N#it']  = "";
 
             survival_row = survival_data.loc[survival_data['BraTS18ID'] == args.bid]
             level_path = os.path.join(os.path.join(tumor_output_path, 'nx'+str(level)), 'obs-1.0');
             f_exist = False;
             info_exist = True;
             f_empty = True;
+            t_exec_time = 0;
 
 
             ###### COMPONENTS.TXT #####
@@ -217,13 +215,6 @@ if __name__=='__main__':
                 print(bcolors.FAIL + "  Error: no output file reconP.dat for tumor inversion of patient " + level_path + bcolors.ENDC);
             p_dict['sparsity'] =  sparsity_str;
 
-            ###### PHI-MESH ######
-            # phix, phiy, phiz = np.loadtxt(os.path.join(level_path, 'phi-mesh-scaled.dat'), comments = ["]", "#"], delimiter=',', skiprows=2, unpack=True);
-            # rec_p = np.fromfile(os.path.join(level_path, 'phi-mesh-scaled.dat'))
-            # print("length recon_p: ", p_dict['np'])
-            # print("length cm vector: ", phix.shape)
-
-
             ###### LOGFILE ######
             logfile = 'tumor_solver_log_nx' + str(level) + '.txt'
             log_exist = True;
@@ -240,23 +231,20 @@ if __name__=='__main__':
                         f_empty = False;
                         if "Reaction and diffusivity inversion with scaled L2 solution guess" in line:
                             reac_estimation = True;
-                        # if " optimization done:" in line:
-                        #     i = 0
-                        #     while "J(p) =" in lines[no-3-i]:
-                        #         i+=1
-                        #     l = lines[no-3-i].split();
-                        #     try:
-                        #         its = float(l[1])
-                        #         obj = float(l[2])
-                        #         relgrad = float(l[3])
-                        #         grad = float(l[4])
-                        #         if reac_estimation:
-                        #             p_dict[col_names[33]] = float(relgrad);                # tumor rel grad reac
-                        #         else:
-                        #             p_dict[col_names[32]] = float(relgrad);                # tumor rel grad
-                        #     except (RuntimeError, TypeError, NameError, ValueError):
-                        #         print("Error reading log file of patient ", bratsdir)
-                        #         pass
+                        if " optimization done:" in line:
+                            back = 0;
+                            while not "[  0" in lines[no-back]:
+                                back = back + 1;
+                            try:
+                                p_dict['N#it']    +=  str(int(lines[no-back].split()[1])) + '/'
+                                if reac_estimation:
+                                    p_dict['|g|_r/k']  = float(lines[no-back].split()[3])
+                                    # print(lines[no-back])
+                            except (RuntimeError, TypeError, NameError, ValueError):
+                                print(lines[no-back].split())
+                                print("Error reading log file of patient ", args.bid)
+                                p_dict['N#it']    += ",err"
+                                p_dict['|g|_r/k']  = -1;
                         if " ----- NP:" in line:
                             np_ = int(line.split(" ----- NP:")[-1].split("------")[0])
                             # if not p_dict['np'] == np_:
@@ -268,18 +256,16 @@ if __name__=='__main__':
                         if "Estimated reaction coefficients" in line:
                             rho_ = float(lines[no+1].split("r1:")[-1])
                             found_rho = True;
-                            if not info_exist:
-                                p_dict['rho-inv'] = rho_;                           # rho-inv
-                                print("  Warning: rho-inv =", rho_, "from tumor_solver_log.txt, info.dat empty");
-                            elif not rho_ == p_dict['rho-inv']:
-                                print(bcolors.FAIL + "  Error: rho-inv in tumor_solver_log.txt != rho-inv in info.dat." + bcolors.ENDC);
+                            if info_exist and not np.isclose(p_dict['rho-inv'], rho_):
+                                print(bcolors.WARNING + "  WARNING: rho-inv in tumor_solver_log.txt %1.2e != %1.2e rho-inv in info.dat." % (rho_, p_dict['rho-inv']) + bcolors.ENDC);
+                            p_dict['rho-inv'] = rho_;                           # rho-inv
                         if "Estimated diffusion coefficients" in line:
                             kf_ = float(lines[no+1].split("k1:")[-1]);
                             if not info_exist:
-                                p_dict['k-inv'] = kf_;                            # k-inv
                                 print("  Warning: kf-inv =", kf_, "from tumor_solver_log.txt, info.dat empty");
-                            elif not kf_ == p_dict['k-inv']:
-                                print(bcolors.FAIL + "  Error: kf-inv in tumor_solver_log.txt != kf-inv in info.dat." + bcolors.ENDC);
+                            elif not np.isclose(kf_, p_dict['k-inv']):
+                                print(bcolors.FAIL + "  Error: kf-inv in tumor_solver_log.txt %1.2e != %1.2e kf-inv in info.dat." % (kf_, p_dict['k-inv']) + bcolors.ENDC);
+                            p_dict['k-inv'] = kf_;                            # k-inv
                         if "Reconstructed P Norm:" in line:
                             pnorm = float(line.split("Reconstructed P Norm:")[-1])
                         if "C Reconstructed Max and Min" in line:
@@ -319,71 +305,78 @@ if __name__=='__main__':
             f_exist = False;
             ###### TUMOR PARAMS ######
             if os.path.exists(os.path.join(run_path,'tumor_parameters-obs-1.0.txt')):
-                f_exist = True;
+                f_exist    = True;
                 dice_found = False;
+                curr_level = False;
                 with open(os.path.join(run_path,'tumor_parameters-obs-1.0.txt'), 'r') as f:
                     f_empty = True;
                     for line in f.readlines():
+                        if "## level" in line:
+                            if int(line.split("## level")[-1].split("##")[0]) == level:
+                                curr_level = True;
+                            else:
+                                curr_level = False;
                         f_empty = False;
-                        if "dice outside tumor core (csf,gm,wm)   =" in line:
-                            dice_healthy_tissue  = line.split("(")[-1].split(")")[0].split(",")
-                            # p_dict['dice_wm'] = float(dice_healthy_tissue[2])/100.;  # dice wm
-                            # p_dict['dice_gm'] = float(dice_healthy_tissue[1])/100.;  # dice gm
-                            # p_dict['dice_csf'] = float(dice_healthy_tissue[0])/100.; # dice csf
-                            dice_found = True;
-                        if "dice tumor (max): (wt,tc,nec)         =" in line:
-                            tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
-                            # p_dict['dice_wt'] = float(tumor_dice[0])/100.;           # dice wt  (whole tumor)
-                            # p_dict['dice_tc'] = float(tumor_dice[1])/100.;           # dice tc  (tumor core)
-                            # p_dict['dec_nec'] = float(tumor_dice[2])/100.;           # dice nec (necrotic)
-                        if "dice tumor (> x): (tc9,tc8,nec1)      =" in line:
-                            tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
-                            # p_dict['dice_tc9'] = float(tumor_dice[0])/100.;          # dice tc(.9)  (tumor core where c(1) > 0.9)
-                            p_dict['dice_tc8'] = float(tumor_dice[1])/100.;          # dice tc(.8)  (tumor core where c(1) > 0.9)
-                        if "stats #tu/#brain  (wt,ed,en,nec,tc)   =" in line:
-                            frac_stats  = line.split("(")[-1].split(")")[0].split(",")
-                            p_dict['#wt/#b']  = float(frac_stats[0]);               # frac #wt/#brain
-                            p_dict['#ed/#b']   = float(frac_stats[1]);               # frac #ed/#brain
-                            # p_dict['#en/#b']  = float(frac_stats[2]);               # frac #en/#brain
-                            # p_dict['#nec/#b'] = float(frac_stats[3]);               # frac #nec/#brain
-                            p_dict['#tc/#b']  = float(frac_stats[4]);               # frac #tc/#brain
-                        if "stats #tu/#brain  (rec_tc,pred_ct,c0) =" in line:
-                            frac_stats  = line.split("(")[-1].split(")")[0].split(",")
-                            # p_dict[col_names[25]] = float(frac_stats[0]);               # frac #rec_tc/#b#
-                            # p_dict[col_names[26]] = float(frac_stats[1]);               # frac #pred_tc/#b#
-                            p_dict['#c0/#b'] = float(frac_stats[2]);                # frac #c0/#b"
-                        if "stats int_B c(1) dx           =" in line:
-                            I_Bc1 = float(line.split("=")[-1]);                     # Int_B c(1)
-                        if "stats int_ED c(1) dx          =" in line:
-                            p_dict['I_EDc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_ED c(1)
-                        if "stats int_TC c(1) dx          =" in line:
-                            p_dict['I_TCc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_TC c(1)
-                        if "stats int_B/WT c(1) dx        = " in line:
-                            p_dict['I_B\WTc1'] = float(line.split("=")[-1])/I_Bc1;        # Int_B\WT c(1)
-                        if "stats int c(0)   / int c(1)   =" in line:
-                            p_dict['Ic0/Ic1'] = float(line.split("=")[-1]);         # frac Int c(0) / Int c(1)
-                        if "l2ec(1) sc,TC (l1,l2,l3)      =" in line:
-                            all_levels = line.split('l2ec(1) sc,TC (l1,l2,l3)      = (')[-1].split(")")[0].split(",");
-                            p_dict['l2c1(TC,s)'] = float(all_levels[int(math.log(level,2))-6]);
-                        if level == 64 and "l2ec(1) sc,relD (l1;#1,..,#n) = " in line:
-                            errs = line.split("l2ec(1) sc,relD (l1;#1,..,#n) = ")[-1].split("(")[-1].split(")")[0].split(",");
-                            p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
-                        if level == 128 and "l2ec(1) sc,relD (l2;#1,..,#n) = " in line:
-                            errs = line.split("l2ec(1) sc,relD (l2;#1,..,#n) = ")[-1].split("(")[-1].split(")")[0].split(",");
-                            p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
-                        if level == 256 and "l2ec(1) sc,relD (l3;#1,..,#n) = " in line:
-                            errs = line.split("l2ec(1) sc,relD (l3;#1,..,#n) = ")[-1].split("(")[-1].split(")")[0].split(",");
-                            p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
-                        # if "stats int c(1.5) / int c(1)   =" in line:
-                            # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
-                        # if "stats int c(1.5) / int c(1.2) =" in line:
-                            # p_dict[col_names[30]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1.2)
-                        # if "stats int c(1.5) / int d      =" in line:
-                            # p_dict[col_names[31]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int data
-                        # if "l2err_c(1)         (virg,obs) =" in line:
-                            # l2_errs  = line.split("(")[-1].split(")")[0].split(",")
-                            # p_dict['l2c1']  = float(l2_errs[0]);                   # l2err | c(1)-d| / |d|
-                            # p_dict['l2Oc1'] = float(l2_errs[1]);                   # l2err |Oc(1)-d| / |d|
+                        if curr_level:
+                            if "healthy tissue dice (csf,gm,wm)       =" in line:
+                                dice_healthy_tissue  = line.split("(")[-1].split(")")[0].split(",")
+                                # p_dict['dice_wm'] = float(dice_healthy_tissue[2])/100.;  # dice wm
+                                # p_dict['dice_gm'] = float(dice_healthy_tissue[1])/100.;  # dice gm
+                                # p_dict['dice_csf'] = float(dice_healthy_tissue[0])/100.; # dice csf
+                                dice_found = True;
+                            if "dice tumor (max): (wt,tc,nec)         =" in line:
+                                tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
+                                # p_dict['dice_wt'] = float(tumor_dice[0])/100.;           # dice wt  (whole tumor)
+                                # p_dict['dice_tc'] = float(tumor_dice[1])/100.;           # dice tc  (tumor core)
+                                # p_dict['dec_nec'] = float(tumor_dice[2])/100.;           # dice nec (necrotic)
+                            if "dice tumor (> x): (tc9,tc8,nec1)      =" in line:
+                                tumor_dice  = line.split("(")[-1].split(")")[0].split(",")
+                                # p_dict['dice_tc9'] = float(tumor_dice[0])/100.;          # dice tc(.9)  (tumor core where c(1) > 0.9)
+                                p_dict['dice_tc8'] = float(tumor_dice[1])/100.;          # dice tc(.8)  (tumor core where c(1) > 0.9)
+                            if "stats #tu/#brain  (wt,ed,en,nec,tc)   =" in line:
+                                frac_stats  = line.split("(")[-1].split(")")[0].split(",")
+                                p_dict['#wt/#b']  = float(frac_stats[0]);               # frac #wt/#brain
+                                p_dict['#ed/#b']   = float(frac_stats[1]);               # frac #ed/#brain
+                                # p_dict['#en/#b']  = float(frac_stats[2]);               # frac #en/#brain
+                                # p_dict['#nec/#b'] = float(frac_stats[3]);               # frac #nec/#brain
+                                p_dict['#tc/#b']  = float(frac_stats[4]);               # frac #tc/#brain
+                            if "stats #tu/#brain  (rec_tc,pred_ct,c0) =" in line:
+                                frac_stats  = line.split("(")[-1].split(")")[0].split(",")
+                                # p_dict[col_names[25]] = float(frac_stats[0]);               # frac #rec_tc/#b#
+                                # p_dict[col_names[26]] = float(frac_stats[1]);               # frac #pred_tc/#b#
+                                p_dict['#c0/#b'] = float(frac_stats[2]);                # frac #c0/#b"
+                            if "stats int_B c(1) dx                   =" in line:
+                                I_Bc1 = float(line.split("=")[-1]);                     # Int_B c(1)
+                            if "stats int_ED c(1) dx                  =" in line:
+                                p_dict['I_EDc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_ED c(1)
+                            if "stats int_TC c(1) dx                  =" in line:
+                                p_dict['I_TCc1'] = float(line.split("=")[-1])/I_Bc1;          # Int_TC c(1)
+                            if "stats int_B/WT c(1) dx                =" in line:
+                                p_dict['I_B\WTc1'] = float(line.split("=")[-1])/I_Bc1;        # Int_B\WT c(1)
+                            if "stats int c(0)   / int c(1)           =" in line:
+                                p_dict['Ic0/Ic1'] = float(line.split("=")[-1]);         # frac Int c(0) / Int c(1)
+                            if "l2ec(1) scaled,TC (l1,l2,l3)          =" in line:
+                                all_levels = line.split('l2ec(1) scaled,TC (l1,l2,l3)          = (')[-1].split(")")[0].split(",");
+                                p_dict['l2c1(TC,s)'] = float(all_levels[int(math.log(level,2))-6]);
+                            if level == 64 and "l2ec(1) scaled,relD (l1;#1,..,#n)     = " in line:
+                                errs = line.split("l2ec(1) scaled,relD (l1;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
+                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                            if level == 128 and "l2ec(1) scaled,relD (l2;#1,..,#n)     = " in line:
+                                errs = line.split("l2ec(1) scaled,relD (l2;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
+                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                            if level == 256 and "l2ec(1) scaled,relD (l3;#1,..,#n)     = " in line:
+                                errs = line.split("l2ec(1) scaled,relD (l3;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
+                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                            # if "stats int c(1.5) / int c(1)           =" in line:
+                                # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
+                            # if "stats int c(1.5) / int c(1.2)         =" in line:
+                                # p_dict[col_names[30]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1.2)
+                            # if "stats int c(1.5) / int d              =" in line:
+                                # p_dict[col_names[31]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int data
+                            # if "l2err_c(1)         (virg,obs)         =" in line:
+                                # l2_errs  = line.split("(")[-1].split(")")[0].split(",")
+                                # p_dict['l2c1']  = float(l2_errs[0]);                   # l2err | c(1)-d| / |d|
+                                # p_dict['l2Oc1'] = float(l2_errs[1]);                   # l2err |Oc(1)-d| / |d|
 
             if f_exist == False or f_empty == True:
                 error   = True;
@@ -401,30 +394,17 @@ if __name__=='__main__':
                 p_dict['Ic0/Ic1']    = float('nan');
                 p_dict['l2c1(TC,s)'] = float('nan');
                 p_dict["l2c1(TC,#1,..,#n)"] = ""
-            if level < 256:
-                p_dict['dice_tc8'] = float('nan');
-                p_dict['#wt/#b']   = float('nan');
-                p_dict['#ed/#b']   = float('nan');
-                p_dict['#tc/#b']   = float('nan');
-                p_dict['#c0/#b']   = float('nan');
-                # p_dict['I_Bc1']    = float('nan');
-                p_dict['I_EDc1']   = float('nan');
-                p_dict['I_TCc1']   = float('nan');
-                p_dict['I_B\WTc1'] = float('nan');
-                p_dict['Ic0/Ic1']  = float('nan');
-                # p_dict['l2Oc1']    = float('nan');
-            # if not dice_found:
-            #     print("  Error: no healthy tissue dice found (bug, due to: info.dat file does not exist) " + brats_id);
-            #     for i in range(11,14):
-            #         p_dict[col_names[i]] = float('nan');
+
 
 
             ###### ADD PDICT ######
             try:
                 df.loc[len(df)] = p_dict;
                 print(bcolors.OKGREEN, "Sucessfully added entry for", args.bid, bcolors.ENDC)
+                ncases[level] += 1;
             except (ValueError):
                 print(bcolors.FAIL,  "Failed adding entry for", args.bid, "\n", p_dict, bcolors.ENDC)
+                nfailed[level] += 1;
 
         print("")
 
@@ -463,8 +443,8 @@ if __name__=='__main__':
       # dict(selector="tr:nth-child(even)", props=[('background-color', '#f2f2f2')])
       ]
 
-    # df = df.sort_values(by=['BraTS18ID','level']);
-    df = df.sort_values(by=['#ed/#b','BraTS18ID','level']);
+    df = df.sort_values(by=['BraTS18ID','level']);
+    # df = df.sort_values(by=['#ed/#b','BraTS18ID','level']);
 
     p = str(args.dir).split("/")
     basedir = "./"
@@ -507,6 +487,8 @@ if __name__=='__main__':
 
     HTML = ""
     dftmp = df.loc[df['level'] == 128];
+    dftmp_128 = dftmp;
+    # dftmp = dftmp.loc[df['remember_ls-step'] == 'yes'];
     # dftmp = dftmp.loc[dftmp['comment'] == "phi-supp"];
     html = dftmp.style\
         .hide_index()\
@@ -541,6 +523,8 @@ if __name__=='__main__':
 
     HTML = ""
     dftmp = df.loc[df['level'] == 256];
+    dftmp_256 = dftmp;
+    # dftmp = dftmp.loc[df['remember_ls-step'] == 'yes'];
     # dftmp = dftmp.loc[dftmp['comment'] == "phi-supp"];
     html = dftmp.style\
         .hide_index()\
@@ -550,7 +534,7 @@ if __name__=='__main__':
         .set_properties(subset=['comment'], **{'width':'3*', 'text-align':'left'})\
         .format(lambda x: '{:1.2e}'.format(x), subset=pd.IndexSlice[:,dftmp.columns[numeric_col_mask_1]])\
         .format(lambda x: '{:1.0f}'.format(x), subset=['np', 'age'])\
-        .format(lambda x: '{:1.2f}'.format(x), subset=['rho-inv','srvl'])\
+        .format(lambda x: '{:1.2e}'.format(x), subset=['rho-inv','srvl'])\
         .format(lambda x: time.strftime('%H:%M:%S', time.gmtime(x)) if not math.isnan(x) else 'nan', subset=['exec-time',])\
         .set_table_styles(styles)\
         .bar(subset=['exec-time'], color='#779ecb')\
@@ -623,6 +607,12 @@ if __name__=='__main__':
     print(tabulate(data256, headers='keys', tablefmt='psql'))
     print("\n\n### BraTS simulation data [filtered out] ### ")
     print(tabulate(dat_filtered_out, headers='keys', tablefmt='psql'))
+
+    print("Entries on level 128:", len(dftmp_128));
+    print("Entries on level 256:", len(dftmp_256));
+    print(bcolors.OKGREEN + "\n\n===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
+    print(bcolors.OKGREEN + "===  successfully added %d cases on level 128 (%d failed to add) ===" % (ncases[128],nfailed[128]) + bcolors.ENDC)
+    print(bcolors.OKGREEN + "===  successfully added %d cases on level 256 (%d failed to add) ===" % (ncases[256],nfailed[256]) + bcolors.ENDC)
 
 
 
