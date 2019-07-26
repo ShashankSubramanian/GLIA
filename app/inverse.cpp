@@ -126,6 +126,9 @@ int main (int argc, char** argv) {
 
     double low_freq_noise_scale = -1.0;
 
+    double klb = -1.0;
+    double kub = -1.0;
+
     int predict_flag = 0;
     int order_of_accuracy = -1;
 
@@ -198,6 +201,9 @@ int main (int argc, char** argv) {
     // PetscOptionsGetRealArray(NULL,NULL, "-data_comp_weights", data_comp_weights, &ncomp, &flag);
     PetscOptionsString ("-data_comp_path", "Path to label img of data components", "", data_comp_path, data_comp_path, 400, NULL);
     PetscOptionsString ("-data_comp_dat_path", "Path to .dat file of data components", "", data_comp_dat_path, data_comp_dat_path, 400, NULL);
+
+    PetscOptionsReal ("-kappa_lb", "Lower bound for diffusivity", "", klb, &klb, NULL);
+    PetscOptionsReal ("-kappa_ub", "Upper bound for diffusivity", "", kub, &kub, NULL);
 
 
     PetscOptionsEnd ();
@@ -358,6 +364,9 @@ int main (int argc, char** argv) {
     if (opttolgrad != -1.0) {
         n_misc->opttolgrad_ = opttolgrad;
     }
+
+    if (klb != -1.0) n_misc->k_lb_ = klb;
+    if (kub != -1.0) n_misc->k_ub_ = kub;
 
     PetscStrcmp ("QN", newton_solver, &strflg);
     if (strflg) {

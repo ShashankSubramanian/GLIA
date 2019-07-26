@@ -36,7 +36,7 @@ PetscErrorCode TaoCreate_BLMVM_M (Tao tao);
 PetscErrorCode mTaoGradientNorm(Tao, Vec, NormType, PetscReal*);
 
 
-#if !defined(__cplusplus)
+#if defined(__cplusplus)
 extern PetscErrorCode MatLMVMReset(Mat);
 extern PetscErrorCode MatLMVMUpdate(Mat,Vec, Vec);
 extern PetscErrorCode MatLMVMSetDelta(Mat,PetscReal);

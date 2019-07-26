@@ -324,6 +324,10 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+  // set beta to zero here as the params are rho and kappa
+  double beta_p = itctx_->n_misc_->beta_;
+  itctx_->n_misc_->beta_ = 0.;
+
 
   PetscScalar *d_ptr;
   ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
@@ -375,6 +379,51 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
 
   ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                                 CHKERRQ (ierr);
   ierr = TaoSetType (tao_, "tao_blmvm_m");                                                   CHKERRQ (ierr);
+
+  std::string msg;
+  // TAO type from user input
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    TaoType taotype = NULL;
+    ierr = TaoGetType (tao_, &taotype);                                            CHKERRQ(ierr);
+  #else
+    const TaoType taotype;
+    ierr = TaoGetType (tao_, &taotype);                                            CHKERRQ(ierr);
+  #endif
+  if (strcmp(taotype, "nls") == 0) {
+      msg = " limited memory variable metric method (unconstrained) selected\n";
+  } else if (strcmp(taotype, "ntr") == 0) {
+      msg = " Newton's method with trust region for unconstrained minimization\n";
+  } else if (strcmp(taotype, "ntl") == 0) {
+      msg = " Newton's method with trust region, line search for unconstrained minimization\n";
+  } else if (strcmp(taotype, "nls") == 0) {
+      msg = " Newton's method (line search; unconstrained) selected\n";
+  } else if (strcmp(taotype, "bnls") == 0) {
+      msg = " Newton's method (line search; bound constraints) selected\n";
+  } else if (strcmp(taotype, "bqnls") == 0) {
+      msg = " Quasi-Newton's method (line search; bound constraints) selected\n";
+  } else if (strcmp(taotype, "ntr") == 0) {
+      msg = " Newton's method (trust region; unconstrained) selected\n";
+  } else if (strcmp(taotype, "fd_test") == 0) {
+      msg = " gradient test selected\n";
+  } else if (strcmp(taotype, "cg") == 0) {
+      msg = " CG selected\n";
+  } else if (strcmp(taotype, "tron") == 0) {
+      msg = "  Newton Trust Region method chosen\n";
+  } else if (strcmp(taotype, "blmvm") == 0) {
+      msg = "  Bounded limited memory variable metric method chosen\n";
+  } else if (strcmp(taotype, "lmvm") == 0) {
+      msg = "  Limited memory variable metric method chosen\n";
+  } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
+      msg = "  User modified limited memory variable metric method chosen\n";
+  } else if (strcmp(taotype, "gpcg") == 0) {
+      msg = " Newton Trust Region method for quadratic bound constrained minimization\n";
+  } else if (strcmp(taotype, "tao_L1") == 0) {
+      msg = " User defined solver for L1 minimization\n";
+  } else {
+      msg = " numerical optimization method not supported (setting default: LMVM)\n";
+      ierr = TaoSetType (tao_, "lmvm");                                          CHKERRQ(ierr);
+  }
+  PCOUT << msg;
 
   int x_sz;
   int nk = itctx_->n_misc_->nk_;
@@ -444,7 +493,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
   double *ub_ptr;
-  double upper_bound_kappa = 1.;
+  double upper_bound_kappa = itctx_->n_misc_->k_ub_, lower_bound_kappa = itctx_->n_misc_->k_lb_;
   ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
   ub_ptr[0] = upper_bound_kappa;
   if (nk > 1) ub_ptr[1] = upper_bound_kappa;
@@ -452,7 +501,6 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
 
   double *lb_ptr;
-  double lower_bound_kappa = 1E-3;
   ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);
   lb_ptr[0] = lower_bound_kappa;
   if (nk > 1) lb_ptr[1] = lower_bound_kappa;
@@ -567,6 +615,9 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
 
   ierr = VecDestroy (&noise); CHKERRQ (ierr);
   ierr = VecDestroy (&x);     CHKERRQ (ierr);
+
+  // reset n_misc beta so that the value is not lost -- cursory as its not used anywhere after
+  itctx_->n_misc_->beta_ = beta_p;
 
   PetscFunctionReturn (0);
 }
@@ -2451,6 +2502,10 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     TaoLineSearch linesearch;        // line-search object
     std::string msg;
 
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
     PetscReal minstep;
     minstep = std::pow (2.0, 15.0);
     minstep = 1.0 / minstep;
@@ -2530,7 +2585,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
     double *ub_ptr, *lb_ptr;
-    double upper_bound_kappa = 1., lower_bound_kappa = 1E-3;
+    double upper_bound_kappa = itctx_->n_misc_->k_ub_, lower_bound_kappa = itctx_->n_misc_->k_lb_;
     if (itctx_->n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
       ub_ptr[itctx_->n_misc_->np_] = upper_bound_kappa;
@@ -2567,6 +2622,10 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         msg = " Newton's method with trust region, line search for unconstrained minimization\n";
     } else if (strcmp(taotype, "nls") == 0) {
         msg = " Newton's method (line search; unconstrained) selected\n";
+    } else if (strcmp(taotype, "bnls") == 0) {
+        msg = " Newton's method (line search; bound constraints) selected\n";
+    } else if (strcmp(taotype, "bqnls") == 0) {
+        msg = " Quasi-Newton's method (line search; bound constraints) selected\n";
     } else if (strcmp(taotype, "ntr") == 0) {
         msg = " Newton's method (trust region; unconstrained) selected\n";
     } else if (strcmp(taotype, "fd_test") == 0) {
@@ -2576,6 +2635,8 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     } else if (strcmp(taotype, "tron") == 0) {
         msg = "  Newton Trust Region method chosen\n";
     } else if (strcmp(taotype, "blmvm") == 0) {
+        msg = "  Bounded limited memory variable metric method chosen\n";
+    } else if (strcmp(taotype, "lmvm") == 0) {
         msg = "  Limited memory variable metric method chosen\n";
     } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
         msg = "  User modified limited memory variable metric method chosen\n";
@@ -2587,6 +2648,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         msg = " numerical optimization method not supported (setting default: LMVM)\n";
         ierr = TaoSetType (tao, "lmvm");                                          CHKERRQ(ierr);
     }
+    PCOUT << msg;
     // set tolerances
     // if (itctx_->n_misc_->regularization_norm_ == wL2) ctx->optsettings_->opttolgrad = 1e-6;
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)

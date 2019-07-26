@@ -964,22 +964,22 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         }
     #endif
 
+    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed 
+    // max size of subspace can be 3 * sparsity_level
+    // on the fly
+    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
 
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
         ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
     }
     phi_vec_.clear();
-    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
+
     phi_vec_.resize (num_phi_store);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = VecSetFromOptions (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-
-    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed
-    // max size of subspace can be 3 * sparsity_level
-    // on the fly
 
     for (int i = 1; i < num_phi_store; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
