@@ -1,5 +1,4 @@
 import os, sys, warnings, argparse, subprocess
-import claire
 import TumorParams
 from shutil import copyfile
 import preprocess as prep
@@ -68,6 +67,7 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
         bash_file.write("#SBATCH --mail-user=kscheufele@austin.utexas.edu\n");
         bash_file.write("#SBATCH --mail-type=fail\n");
+        bash_file.write("#SBATCH -A PADAS\n");
         bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
         bash_file.write("\n\n");
         bash_file.write("source ~/.bashrc\n");
