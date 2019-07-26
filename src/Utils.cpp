@@ -966,7 +966,9 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
       component_sparsity.push_back (3 + std::floor (weights[nc] * (sparsity_level - 3 * num_components) ));
       PCOUT << "sparsity of component " << nc << ":" << component_sparsity.at(nc) << std::endl;
     } else { // last component is the remaining support
-      fin_spars = sparsity_level - std::accumulate (component_sparsity.begin(), component_sparsity.end(), 0);
+      int used = 0;  
+      for (auto x : component_sparsity)  {used += x;}
+      fin_spars = sparsity_level - used;
       component_sparsity.push_back (fin_spars);
       PCOUT << "sparsity of component " << nc << ":" << fin_spars << std::endl;
     }

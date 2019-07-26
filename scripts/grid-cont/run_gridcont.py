@@ -1,5 +1,4 @@
 import os, sys, warnings, argparse, subprocess
-import claire
 import TumorParams
 from shutil import copyfile
 import preprocess as prep
@@ -68,6 +67,7 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
         bash_file.write("#SBATCH --mail-user=kscheufele@austin.utexas.edu\n");
         bash_file.write("#SBATCH --mail-type=fail\n");
+        bash_file.write("#SBATCH -A PADAS\n");
         bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
         bash_file.write("\n\n");
         bash_file.write("source ~/.bashrc\n");
@@ -97,8 +97,15 @@ def gridcont(basedir, args):
     cmd = ""
     # ########### SETTINGS ############
     levels  = [64,128,256]
-    nodes   = [1,2,4]
-    procs   = [24,48,96]
+    if args.compute_cluster == "stampede2":
+      nodes   = [1,1,2]
+      procs   = [24,48,96]
+    elif args.compute_cluster == "hazelhen":
+      nodes   = [1,2,4]
+      procs   = [24,48,96]
+    else:
+      nodes   = [1,2,4]
+      procs   = [24,48,96]
     wtime_h = [0,2,10]
     wtime_m = [30,0,0]
     dd_fac  = [1,1,1]                    # on every level, sigma = fac * hx
@@ -106,7 +113,8 @@ def gridcont(basedir, args):
     gvf     = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default = 8;
     k_default   = 0;
-    betap_prev  = 1E-4;
+    betap_prev  = 1E4;
+    opttol      = 1E-4;
     p_prev      = "";
     submit      = True;
     pid_prev    = 0;
@@ -257,7 +265,7 @@ def gridcont(basedir, args):
         t_params['ibrun_man']             = (level <= 64);
         t_params['results_path']          = res_dir_out;
         t_params['N']                     = level;
-        t_params['grad_tol']              = args.opttol;
+        t_params['grad_tol']              = opttol;
         t_params['sparsity_lvl']          = sparsity_lvl_per_component;
         t_params['multilevel']            = 1;
         t_params['ls_max_func_evals']     = ls_max_func;
@@ -343,9 +351,13 @@ def gridcont(basedir, args):
                 else:
                   process = subprocess.check_output(['sbatch', '--dependency=afterok:'+str(pid_prev), job_file]).strip();
                 print(process)
-            print(str(process).split(".")[0])
-            pid_prev = int(str(process,'utf-8').split(".")[0])
-
+            print("\n");
+            if args.compute_cluster == 'hazelhen':
+              print(str(process).split(".")[0])
+              pid_prev = int(str(process,'utf-8').split(".")[0])
+            else:
+              print("\n pid:", str(process, 'utf-8').split("Submitted batch job ")[-1])
+              pid_prev = int(str(process, 'utf-8').split("Submitted batch job ")[-1])
 
 
 
@@ -372,7 +384,6 @@ if __name__=='__main__':
     parser.add_argument (                   '--use_atlas_segmentation',      action='store_true', help = 'indicate whether the input atlas image is a segmentation. Probability maps are then generated from given segmented image');
     parser.add_argument (                   '--vary_obs_lambda',             action='store_true', help = 'indicate wether or not to perform a series of experiment with different obervation operators OBS(lambda)');
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
-    parser.add_argument (                   '--opttol',                      type = float, default = 1e-5,   help = 'optimizer tolerance (gradient reduction)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
     args = parser.parse_args();
 
