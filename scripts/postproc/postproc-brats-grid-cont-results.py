@@ -520,6 +520,7 @@ if __name__=='__main__':
     HTML += "\n\n"
     # write html file
     filename_html = os.path.join(basedir,'brats-grid-cont-analysis(128)_' + str(identifier_dir) + '.html')
+    dftmp_128.to_csv(os.path.join(basedir,'grid-cont-analysis_' + str(identifier_dir) + '_nx128.csv'))
     html_file = open(filename_html, 'w')
     html_file.write(HTML)
     html_file.close()
@@ -557,6 +558,7 @@ if __name__=='__main__':
     HTML += html_128;
     # write html file
     filename_html = os.path.join(basedir,'brats-grid-cont-analysis(256)_' + str(identifier_dir) + '.html')
+    dftmp_256.to_csv(os.path.join(basedir,'grid-cont-analysis_' + str(identifier_dir) + '_nx256.csv'))
     html_file = open(filename_html, 'w')
     html_file.write(HTML)
     html_file.close()
