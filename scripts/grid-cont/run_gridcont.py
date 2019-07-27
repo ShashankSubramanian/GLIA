@@ -96,30 +96,30 @@ def gridcont(basedir, args):
 
     cmd = ""
     # ########### SETTINGS ############
-    levels  = [64,128,256]
+    levels       = [64,128,256]
     if args.compute_cluster == "stampede2":
-      nodes   = [1,1,2]
-      procs   = [24,48,96]
+      nodes      = [1,1,2]
+      procs      = [24,48,96]
     if args.compute_cluster == "hazelhen":
-      nodes   = [1,2,4]
-      procs   = [24,48,96]
-    wtime_h = [0,2,10]
-    wtime_m = [30,0,0]
-    dd_fac  = [1,1,1]                    # on every level, sigma = fac * hx
-    predict = [0,0,1]
-    gvf     = [0.0,0.9,0.9]              # ignored for C0_RANKED
+      nodes      = [1,2,4]
+      procs      = [24,48,96]
+    wtime_h      = [0,2,10]
+    wtime_m      = [30,0,0]
+    sigma_fac    = [1,1,1]                    # on every level, sigma = fac * hx
+    predict      = [0,0,1]
+    gvf          = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default  = 8;
     k_default    = 0;
-    betap_prev   = 1E-4;
+    beta_p       = 1E-4;
     opttol       = 1E-4;
     p_prev       = "";
     submit       = True;
     pid_prev     = 0;
     obs_masks    = []
-    lbound_kappa = [1E-4, 1E-4, 1E-4];
+    lbound_kappa = [1E-4, 1E-4, 1E-4]; # [1E-2, 1E-3, 1E-4];
     ubound_kappa = [1.0, 1.0, 1.0];
     gaussian_selection_mode = "PHI"; # alternatives: {"PHI", "C0", "C0_RANKED"}
-    data_thresh = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-4, 1E-4];
+    data_thresh  = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-4, 1E-4];
     sparsity_lvl_per_component = 5;
     ls_max_func_evals  = [10, 10, 10];
     invert_diffusivity = [1,1,1];
@@ -203,7 +203,7 @@ def gridcont(basedir, args):
     cmd     += cmd_lvl;
 
     # loop over levels
-    for level, sigma_fac, n, p, h, m, pred, gvf_, d_thresh, ls_max_func, diff_inv, ii  in zip(levels, dd_fac, nodes, procs, wtime_h, wtime_m, predict, gvf, data_thresh, ls_max_func_evals, invert_diffusivity, range(len(levels))):
+    for level, ii  in zip(levels, range(len(levels))):
 
         res_dir = os.path.join(tumor_out_path, 'nx' + str(level) + "/");
         res_dir_out = os.path.join(res_dir, obs_dir)
@@ -257,30 +257,30 @@ def gridcont(basedir, args):
             cmd_extractrhok += "source " + os.path.join(res_dir_prev, 'env_rhok.sh') + "\n"
 
         # tumor settings for current level
-        t_params['num_nodes']             = n;
-        t_params['mpi_pernode']           = p;
-        t_params['wtime_h']               = h;
-        t_params['wtime_m']               = m
+        t_params['num_nodes']             = nodes[ii];
+        t_params['mpi_pernode']           = procs[ii];
+        t_params['wtime_h']               = wtime_h[ii];
+        t_params['wtime_m']               = wtime_m[ii];
         t_params['ibrun_man']             = (level <= 64);
         t_params['results_path']          = res_dir_out;
         t_params['N']                     = level;
         t_params['grad_tol']              = opttol;
         t_params['sparsity_lvl']          = sparsity_lvl_per_component;
         t_params['multilevel']            = 1;
-        t_params['ls_max_func_evals']     = ls_max_func;
-        t_params['diffusivity_inversion'] = diff_inv;
-        t_params['data_thres']            = d_thresh;
+        t_params['ls_max_func_evals']     = ls_max_func_evals[ii];
+        t_params['diffusivity_inversion'] = invert_diffusivity[ii];
+        t_params['data_thres']            = data_thresh[ii];
         t_params['rho_inv']               = rho_default if (level == 64) else '${RHO_INIT}';
         t_params['k_inv']                 = k_default   if (level == 64) else '${K_INIT}';
         t_params['gist_maxit']            = 4           if (level == 64) else 2;
-        t_params['linesearchtype']        = 'mt'    if (level == 64) else 'armijo';
+        t_params['linesearchtype']        = 'mt'        if (level == 64) else 'armijo';
         t_params['newton_maxit']          = 30 if (level == 256) else 50;
-        t_params['gvf']                   = gvf_;
-        t_params['beta']                  = betap_prev;
+        t_params['gvf']                   = gvf[ii];
+        t_params['beta']                  = beta_p;
         t_params['lower_bound_kappa']     = lbound_kappa[ii];
         t_params['upper_bound_kappa']     = ubound_kappa[ii];
-        t_params['dd_fac']                = sigma_fac;
-        t_params['predict_flag']          = pred;
+        t_params['dd_fac']                = sigma_fac[ii];
+        t_params['predict_flag']          = predict[ii];
         t_params['csf_path']              = os.path.join(inp_dir, 'patient_seg_csf.nc');
         t_params['gm_path']               = os.path.join(inp_dir, 'patient_seg_gm.nc');
         t_params['wm_path']               = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
