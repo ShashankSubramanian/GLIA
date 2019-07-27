@@ -227,6 +227,18 @@ def getTumorRunCmd(params):
     else:
         print ('Default dd_fac = {} used'.format(dd_fac))
     # ---
+    if 'upper_bound_kappa' in params:
+        upper_bound_kappa = params['upper_bound_kappa']
+        print('Setting upper bound {} on kappa'.format(upper_bound_kappa))
+    else:
+        print('Default upper bound {} on kappa used'.format(upper_bound_kappa))
+    # ---
+    if 'lower_bound_kappa' in params:
+        lower_bound_kappa = params['lower_bound_kappa']
+        print('Setting lower bound {} on kappa'.format(lower_bound_kappa))
+    else:
+        print('Default lower bound {} on kappa used'.format(lower_bound_kappa))
+    # ---
     if 'sparsity_lvl' in params:
         sparsity_lvl = params['sparsity_lvl']
     else:
