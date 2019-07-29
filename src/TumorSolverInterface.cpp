@@ -36,7 +36,8 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     PetscErrorCode ierr = 0;
     if (initialized_) PetscFunctionReturn (0);
 
-    tumor_ = std::make_shared<Tumor> (n_misc);
+    if (n_misc->model_ == 5) tumor_ = std::make_shared<TumorMultispecies> (n_misc);
+    else tumor_ = std::make_shared<Tumor> (n_misc);
     n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
@@ -69,6 +70,10 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     }
     if (n_misc->model_ == 4) {
         pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
+    }
+    if (n_misc_->model_ == 5) {
+        pde_operators_ = std::make_shared<PdeOperatorsMultiSpecies> (tumor_, n_misc);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
     // create tumor inverse solver

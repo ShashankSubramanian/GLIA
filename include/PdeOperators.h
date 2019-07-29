@@ -97,4 +97,17 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 		}
 };
 
+class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
+	public:
+		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
+		}
+
+		virtual PetscErrorCode solveState (int linearized);
+		PetscErrorCode conserveHealthyTissues ();
+
+		virtual ~PdeOperatorsMassEffect () {
+			PetscErrorCode ierr = 0;
+		}
+}
+
 #endif

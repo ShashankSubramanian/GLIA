@@ -38,6 +38,20 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
         force_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
         displacement_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     }
+
+    if (n_misc_->model_ == 5) {
+        std::vector<Vec> c (n_misc->num_species_);
+        for (int i = 0; i < c.size(); i++) {
+            ierr = VecDuplicate (c_t_, &c[i]); 
+            ierr = VecSet (c_t_, 0.);
+        }
+        // Insert the different species
+        species_.insert (std::pair<std::string, Vec> ("proliferative", c[0]));
+        species_.insert (std::pair<std::string, Vec> ("infiltrative", c[1]));
+        species_.insert (std::pair<std::string, Vec> ("necrotic", c[2]));
+        species_.insert (std::pair<std::string, Vec> ("oxygen", c[3]));
+        species_.insert (std::pair<std::string, Vec> ("edema", c[4]));
+    }
 }
 
 
@@ -291,4 +305,8 @@ Tumor::~Tumor () {
     ierr = VecDestroy (&weights_);
 
     ierr = VecDestroy (&seg_);
+
+    for (std::map<std::string, Vec>:: iterator it = species_.begin(); it != species_.end(); it++) {
+        ierr = VecDestroy (&it->second);
+    }
 }

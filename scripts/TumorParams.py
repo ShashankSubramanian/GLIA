@@ -96,7 +96,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 1
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 0
+    forward_flag = 1
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient

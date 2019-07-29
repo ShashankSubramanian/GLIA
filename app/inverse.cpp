@@ -770,8 +770,6 @@ int main (int argc, char** argv) {
     if (use_custom_obs_mask)     {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); obs_mask = nullptr;}
     if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); data_components = nullptr;}
     if (read_support_data_nc)    {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
-
-
 }
 /* --------------------------------------------------------------------------------------------------------------*/
     accfft_destroy_plan (plan);

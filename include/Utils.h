@@ -232,9 +232,10 @@ public:
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
-        : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (5)                            //Reaction Diffusion --  1 , Positivity -- 2
                                                 // Modified Obj -- 3
                                                 // Mass effect -- 4
+                                                // Multi-species -- 5
         , dt_ (0.5)                             // Time step
         , nt_(1)                                // Total number of time steps
         , np_ (1)                               // Number of gaussians for bounding box
@@ -304,6 +305,14 @@ class NMisc {
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                           // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                              // Upper bound on kappa
+        , num_species_ (5)                      // Number of species for the multi-species model - only used if model is 5
+        , ox_inv_ (0.7)                         // invasive oxygen conc
+        , ox_hypoxia_ (0.65)                    // hypoxia threshold
+        , death_rate_ (3)                       // death rate
+        , ox_source_ (55)                       // source of oxygen
+        , ox_consumption (8)                    // consumption of oxygen
+        , beta_0_ (0.2)                         // conversion btw inv and proliferative
+        , alpha_0_ (0.15)                       // conversion btw inv and proliferative
                                 {
 
 
@@ -492,6 +501,10 @@ class NMisc {
         double screen_low_, screen_high_;
 
         double forcing_factor_;
+
+        // multispecies
+        int num_species_;
+        double ox_source_, ox_consumption, alpha_0_, beta_0_;
 };
 
 class VecField {
