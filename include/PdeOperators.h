@@ -99,15 +99,18 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 
 class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 	public:
-		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
+		PdeOperatorsMultiSpecies (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
 		}
 
 		virtual PetscErrorCode solveState (int linearized);
-		PetscErrorCode conserveHealthyTissues ();
+		PetscErrorCode computeReactionRate (Vec m);
+		PetscErrorCode computeTransition (Vec alpha, Vec beta);
+		PetscErrorCode computeThesholder (Vec h);
+		PetscErrorCode computeSources (Vec p, Vec i, Vec n, Vec O, double dt);
 
-		virtual ~PdeOperatorsMassEffect () {
+		virtual ~PdeOperatorsMultiSpecies () {
 			PetscErrorCode ierr = 0;
 		}
-}
+};
 
 #endif

@@ -22,6 +22,7 @@ class TumorSolverInterface {
 		*  @param Vec cT  - target tumor concentration after simulation
 		*/
 		PetscErrorCode solveForward (Vec cT, Vec c0);
+		PetscErrorCode solveForward (Vec cT, Vec c0, std::map<std::string, Vec> *species);
 		/** @brief Solves the inverse tumor problem using Tao, given target concentration
 		 *
 		 *  @param Vec d1     - tumor inverse target data

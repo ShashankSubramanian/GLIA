@@ -36,8 +36,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     PetscErrorCode ierr = 0;
     if (initialized_) PetscFunctionReturn (0);
 
-    if (n_misc->model_ == 5) tumor_ = std::make_shared<TumorMultispecies> (n_misc);
-    else tumor_ = std::make_shared<Tumor> (n_misc);
+    tumor_ = std::make_shared<Tumor> (n_misc);
     n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
@@ -161,6 +160,20 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0) {
     ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
     PetscFunctionReturn(0);
 }
+
+PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0, std::map<std::string,Vec> *species) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    // set the initial condition
+    ierr = VecCopy (c0, tumor_->c_0_);                                          CHKERRQ (ierr);
+    // solve forward
+    ierr = pde_operators_->solveState (0);                                      CHKERRQ (ierr);
+    // get solution
+    ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
+    species = &(tumor_->species_);
+    PetscFunctionReturn(0);
+}
+
 // TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
 PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionBegin;

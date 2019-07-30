@@ -25,6 +25,7 @@
 #include <accfft_utils.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <map>
 #include "EventTimings.hpp"
 
 
@@ -310,7 +311,7 @@ class NMisc {
         , ox_hypoxia_ (0.65)                    // hypoxia threshold
         , death_rate_ (3)                       // death rate
         , ox_source_ (55)                       // source of oxygen
-        , ox_consumption (8)                    // consumption of oxygen
+        , ox_consumption_ (8)                    // consumption of oxygen
         , beta_0_ (0.2)                         // conversion btw inv and proliferative
         , alpha_0_ (0.15)                       // conversion btw inv and proliferative
                                 {
@@ -504,7 +505,7 @@ class NMisc {
 
         // multispecies
         int num_species_;
-        double ox_source_, ox_consumption, alpha_0_, beta_0_;
+        double ox_source_, ox_consumption_, alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
 };
 
 class VecField {

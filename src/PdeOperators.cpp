@@ -680,20 +680,20 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
 
     double *ox_ptr, *m_ptr, *rho_ptr;
     ierr = VecGetArray (m, &m_ptr);                                 CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_['oxygen'], &ox_ptr);       CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 
     double ox_mit = 0.5 * (n_misc_->ox_inv_ + n_misc_->ox_hypoxia_);
     for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (ox_ptr > n_misc_->ox_inv_) m_ptr[i] = rho_ptr[i];
-        else if (ox_ptr <= n_misc_->ox_inv_ && ox_ptr >= n_misc_->ox_mit) 
+        if (ox_ptr[i] > n_misc_->ox_inv_) m_ptr[i] = rho_ptr[i];
+        else if (ox_ptr[i] <= n_misc_->ox_inv_ && ox_ptr[i] >= ox_mit) 
             m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (n_misc_->ox_inv_ - ox_mit);
         else
             m_ptr[i] = 0.;
     }
 
     ierr = VecRestoreArray (m, &m_ptr);                                 CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_['oxygen'], &ox_ptr);       CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 
 
@@ -715,9 +715,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
     double *ox_ptr, *alpha_ptr, *beta_ptr, *p_ptr, *i_ptr;
     ierr = VecGetArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
     ierr = VecGetArray (beta, &beta_ptr);                           CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_['oxygen'], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_['proliferative'], &p_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_['infiltrative'], &i_ptr);        CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
 
 
     double thres = 0.9;
@@ -728,9 +728,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
 
     ierr = VecRestoreArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
     ierr = VecRestoreArray (beta, &beta_ptr);                           CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_['oxygen'], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_['proliferative'], &p_ptr);       CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_['infiltrative'], &i_ptr);        CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
 
 
     self_exec_time += MPI_Wtime();
@@ -750,13 +750,13 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder (Vec h) {
 
     double *ox_ptr, *h_ptr;
     ierr = VecGetArray (h, &h_ptr);                                 CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_['oxygen'], &ox_ptr);       CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) 
-        h_ptr[i] = 0.5 * (1 + std::tanh (500 * (n_misc_->ox_hypoxia_ - ox_)));
+        h_ptr[i] = 0.5 * (1 + std::tanh (500 * (n_misc_->ox_hypoxia_ - ox_ptr[i])));
 
     ierr = VecRestoreArray (h, &h_ptr);                                 CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_['oxygen'], &ox_ptr);       CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
 
 
     self_exec_time += MPI_Wtime();
@@ -796,7 +796,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
     ierr = VecGetArray (O, &ox_ptr);                                                  CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->work_[11], &di_ptr);                                  CHKERRQ (ierr);
 
-    double p_temp, i_temp;
+    double p_temp, i_temp, frac_1, frac_2;
     double ox_heal = 1.;
     double reac_ratio = 0.4;
     double death_ratio = 0.3;
@@ -866,20 +866,34 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    ierr = VecCopy (tumor_->c_0_, tumor_->species_['proliferative']);                     CHKERRQ (ierr);
-    ierr = VecCopy (tumor_->c_0_, tumor_->species_['infiltrative']);                      CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
     // set infiltrative as a small fraction of proliferative
-    ierr = VecScale (tumor_->species_['infiltrative'], 0.1);                              CHKERRQ (ierr); 
+    ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
     diff_ksp_itr_state_ = 0;
-
+    std::stringstream ss;
     for (int i = 0; i < nt; i++) {
+        if (n_misc_->writeOutput_) {
+            ss << "p_t[" << i << "].nc";
+            dataOut (tumor_->species_["proliferative"], n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+
+            ss << "i_t[" << i << "].nc";
+            dataOut (tumor_->species_["infiltrative"], n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+
+            ss << "n_t[" << i << "].nc";
+            dataOut (tumor_->species_["necrotic"], n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+        }
+        
         // diffusion
-        ierr = diff_solver_->solve (tumor_->species_['infiltrative'], dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
-        ierr = diff_solver_->solve (tumor_->species_['oxygen'], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
+        ierr = diff_solver_->solve (tumor_->species_["infiltrative"], dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
+        ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
         
         // explicit source terms for all equations (includes reaction source)
-        ierr = computeSources (tumor_->species_['proliferative'], tumor_->species_['infiltrative'], tumor_->species_['necrotic'], 
-                                tumor_->species_['oxygen'], dt);                                                                    CHKERRQ (ierr);
+        ierr = computeSources (tumor_->species_["proliferative"], tumor_->species_["infiltrative"], tumor_->species_["necrotic"], 
+                                tumor_->species_["oxygen"], dt);                                                                    CHKERRQ (ierr);
     }
 
     std::stringstream s;
