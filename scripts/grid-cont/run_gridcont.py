@@ -71,10 +71,10 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
         bash_file.write("\n\n");
         bash_file.write("source ~/.bashrc\n");
-    bash_file.write("#### define paths\n");
-    bash_file.write("DATA_DIR=" + opt['input_dir'] + "\n");
-    bash_file.write("OUTPUT_DIR=" + opt['output_dir'] + "\n");
-    bash_file.write("cd " + opt['output_dir']  + "\n");
+    # bash_file.write("#### define paths\n");
+    # bash_file.write("DATA_DIR=" + opt['input_dir'] + "\n");
+    # bash_file.write("OUTPUT_DIR=" + opt['output_dir'] + "\n");
+    # bash_file.write("cd " + opt['output_dir']  + "\n");
     bash_file.write("export OMP_NUM_THREADS=1\n");
     bash_file.write("umask 002\n");
     bash_file.write("\n");
@@ -94,7 +94,6 @@ def createJobsubFile(cmd, opt, level):
 ### ------------------------------------------------------------------------ ###
 def gridcont(basedir, args):
 
-    cmd = ""
     # ########### SETTINGS ############
     levels       = [64,128,256]
     if args.compute_cluster == "stampede2":
@@ -106,7 +105,7 @@ def gridcont(basedir, args):
     wtime_h      = [0,2,10]
     wtime_m      = [30,0,0]
     sigma_fac    = [1,1,1]                    # on every level, sigma = fac * hx
-    predict      = [0,0,1]
+    predict      = [0,0,0]
     gvf          = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default  = 8;
     k_default    = 0;
@@ -114,6 +113,7 @@ def gridcont(basedir, args):
     opttol       = 1E-4;
     p_prev       = "";
     submit       = True;
+    separatejobs = False;
     pid_prev     = 0;
     obs_masks    = []
     lbound_kappa = [1E-4, 1E-4, 1E-4]; # [1E-2, 1E-3, 1E-4];
@@ -142,6 +142,9 @@ def gridcont(basedir, args):
     if not os.path.exists(input_folder):
         os.mkdir(input_folder);
 
+
+    ONEJOB  = ""
+    MULTJOB = ""
     #   ------------------------------------------------------------------------
     #   - read atlas segmented image and create probability maps
     #   - read segmented patient or patient probability maps and resize them
@@ -200,10 +203,14 @@ def gridcont(basedir, args):
     t_params['code_path']    = os.path.join(basedir, '3rdparty/pglistr_tumor');
 
     cmd_lvl = "\n\n# generate maps, resample\n" + cmd_preproc + "\nwait\n\n# rename\n" + cmd_rename + "\n\n";
-    cmd     += cmd_lvl;
+    # cmd     += cmd_lvl;
+    ONEJOB  += cmd_lvl;
+    MULTJOB += cmd_lvl;
 
     # loop over levels
+    opt = {}
     for level, ii  in zip(levels, range(len(levels))):
+        cmd = ""
 
         res_dir = os.path.join(tumor_out_path, 'nx' + str(level) + "/");
         res_dir_out = os.path.join(res_dir, obs_dir)
@@ -216,7 +223,7 @@ def gridcont(basedir, args):
 
         cmd += "\n\n### ----------------------------------------- ###\n"
         cmd += "###   LEVEL nx=" + str(level) + ", sigma=2pi/" + str(int(level/sigma_fac)) + "   ###\n"
-
+        cmd += "\n" + "cd " + res_dir_out  + "\n"
         # symlinks
         cmd_symlink  =  "PWDO=${PWD} \n"
         cmd_symlink +=  "cd " + str(inp_dir) + "\n"
@@ -304,7 +311,6 @@ def gridcont(basedir, args):
         if err:
             warnings.warn("Error in tumor parameters\n");
             quit();
-        cmd     += cmd_lvl;
         cmd += "\n\n# symlinks\n" + cmd_symlink;
         cmd += "\n\n# connected components\n" + cmd_concomp;
         if level > 64:
@@ -329,7 +335,9 @@ def gridcont(basedir, args):
         if level == 256:
             cmd += "\n# postproc, compute dice\n" + cmd_postproc + "\n\n";
 
-        opt = {}
+        ONEJOB  += cmd;
+        MULTJOB += cmd;
+
         opt['compute_sys']  = args.compute_cluster;
         opt['output_dir']  = res_dir_out;
         opt['input_dir']   = inp_dir;
@@ -338,27 +346,37 @@ def gridcont(basedir, args):
         opt['wtime_h']     = h;
         opt['wtime_m']     = m;
 
-        job_file = createJobsubFile(cmd, opt, level);
+        if separatejobs:
+            job_file = createJobsubFile(MULTJOB, opt, level);
+            if submit:
+                if level == 64:
+                    if args.compute_cluster == 'hazelhen':
+                      process = subprocess.check_output(['qsub',job_file]).strip();
+                    else:
+                      process = subprocess.check_output(['sbatch',job_file]).strip();
+                    print(process)
+                else:
+                    if args.compute_cluster == 'hazelhen':
+                      process = subprocess.check_output(['qsub', '-W depend=afterok:'+str(pid_prev), job_file]).strip();
+                    else:
+                      process = subprocess.check_output(['sbatch', '--dependency=afterok:'+str(pid_prev), job_file]).strip();
+                    print(process)
+                print("\n");
+                if args.compute_cluster == 'hazelhen':
+                  print(str(process).split(".")[0])
+                  pid_prev = int(str(process,'utf-8').split(".")[0])
+                else:
+                  print("\n pid:", str(process, 'utf-8').split("Submitted batch job ")[-1])
+                  pid_prev = int(str(process, 'utf-8').split("Submitted batch job ")[-1])
+
+    if not separatejobs:
+        job_file = createJobsubFile(ONEJOB, opt, 256);
         if submit:
-            if level == 64:
-                if args.compute_cluster == 'hazelhen':
-                  process = subprocess.check_output(['qsub',job_file]).strip();
-                else:
-                  process = subprocess.check_output(['sbatch',job_file]).strip();
-                print(process)
-            else:
-                if args.compute_cluster == 'hazelhen':
-                  process = subprocess.check_output(['qsub', '-W depend=afterok:'+str(pid_prev), job_file]).strip();
-                else:
-                  process = subprocess.check_output(['sbatch', '--dependency=afterok:'+str(pid_prev), job_file]).strip();
-                print(process)
-            print("\n");
             if args.compute_cluster == 'hazelhen':
-              print(str(process).split(".")[0])
-              pid_prev = int(str(process,'utf-8').split(".")[0])
+              process = subprocess.check_output(['qsub',job_file]).strip();
             else:
-              print("\n pid:", str(process, 'utf-8').split("Submitted batch job ")[-1])
-              pid_prev = int(str(process, 'utf-8').split("Submitted batch job ")[-1])
+              process = subprocess.check_output(['sbatch',job_file]).strip();
+            print(process)
 
 
 
