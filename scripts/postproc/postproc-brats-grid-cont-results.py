@@ -61,11 +61,16 @@ if __name__=='__main__':
     parser.add_argument ('-x',  '--dir', type = str, help = 'path to the results folder');
     args = parser.parse_args();
     survival_data = pd.read_csv(os.path.join(basedir,"survival_data.csv"), header = 0, error_bad_lines=True, skipinitialspace=True)
-    col_names = ["BraTS18ID", "level", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time",  "N#it", "|g|_r/k",  "age", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
+    col_names = ["BraTS18ID", "level", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time",  "N#it", "|g|_r/k",  "age", "srgy", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
     df = pd.DataFrame(columns = col_names)
 
     BIDs = []
-    FILTER = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1']
+
+    ##
+    ## These brains failed due to aliasing. For all brains rho is around 10 and kappa reaches regime of 1E-1.
+    ## If not already failed in L1 phase, rescaling further amplifies spectral errors in c(0).
+    FILTER = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1']
+    FAILEDTOADD = {}
     levels = [64,128,256]
     RUNS = os.listdir(args.dir);
     print(bcolors.BOLD + "   ### DIR = %s ###" % args.dir + bcolors.ENDC);
@@ -83,6 +88,7 @@ if __name__=='__main__':
     for l in levels:
         ncases[l]  = 0;
         nfailed[l] = 0;
+        FAILEDTOADD[l] = []
     for run in RUNS:
         if not run.startswith('Brats'):
             continue;
@@ -169,10 +175,12 @@ if __name__=='__main__':
             p_dict['srvl[]'] = 'N/A';
             # p_dict['srvl(s)'] = -1;
             p_dict['age']    = -1;
+            p_dict['srgy']   = "no"
             if not survival_row.empty:
                 p_dict['age']    = float(survival_row.iloc[0]['Age']);             # age
                 # p_dict['srvl']   = float(survival_row.iloc[0]['Survival']);        # survival
                 p_dict['srvl[]']  = getSurvivalClass(float(survival_row.iloc[0]['Survival']));  # survival class
+                p_dict['srgy']    = str(survival_row.iloc[0]['ResectionStatus']) if (str(survival_row.iloc[0]['ResectionStatus']) != 'nan' and str(survival_row.iloc[0]['ResectionStatus']) != "NA") else "no";
                 # p_dict['srvl(s)'] = getSurvivalSigma(float(survival_row.iloc[0]['Survival']), survival_std, survival_mean);
 
             sparsity_str = "";
@@ -422,6 +430,7 @@ if __name__=='__main__':
                 ncases[level] += 1;
             except (ValueError):
                 print(bcolors.FAIL,  "Failed adding entry for", args.bid, "\n", p_dict, bcolors.ENDC)
+                FAILEDTOADD[level].append(args.bid)
                 nfailed[level] += 1;
 
         print("")
@@ -434,6 +443,9 @@ if __name__=='__main__':
     cm1 = ListedColormap(sns.color_palette("BuGn_r").as_hex())
     cm2 = ListedColormap(sns.color_palette("Blues").as_hex())
     cm3 = ListedColormap(sns.color_palette("GnBu").as_hex())
+
+    df['srgy'] = df['srgy'].astype('str')
+    # df['srvl[]'] = df['srvl[]'].astype('category')
 
     # set CSS properties for th elements in dataframe
     table_props = [
@@ -473,6 +485,8 @@ if __name__=='__main__':
         os.mkdir(basedir)
     df.to_csv(os.path.join(basedir,'grid-cont-analysis_' + str(identifier_dir) + '.csv'))
     numeric_col_mask_1 = df.dtypes.apply(lambda d: issubclass(np.dtype(d).type, np.number))
+
+    # print("numeric columns: ", numeric_col_mask_1)
     HTML = ""
     # for bid in BIDs:
     if True:
@@ -628,8 +642,8 @@ if __name__=='__main__':
     print("\n\n### BraTS simulation data [filtered out] ### ")
     print(tabulate(dat_filtered_out, headers='keys', tablefmt='psql'))
 
-    print("Entries on level 128:", len(dftmp_128));
-    print("Entries on level 256:", len(dftmp_256));
+    print("Entries on level 128: %d" % len(dftmp_128), " ... failed to add (%d) \n" % nfailed[128], FAILEDTOADD[128]);
+    print("Entries on level 256: %d" % len(dftmp_256), " ... failed to add (%d) \n" % nfailed[256], FAILEDTOADD[256]);
     print(bcolors.WARNING + "\n\n===  filtered %d cases ===" % (fltr) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 128 (%d failed to add) ===" % (ncases[128],nfailed[128]) + bcolors.ENDC)
