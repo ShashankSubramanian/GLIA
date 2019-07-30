@@ -532,8 +532,10 @@ int main (int argc, char** argv) {
         std::string file_concomp(data_comp_dat_path);
         if(read_data_comp_file){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
-          PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components = " << n_misc->sparsity_level_ * tumor->phi_->component_weights_.size()<<std::endl;
-          n_misc->sparsity_level_ =  n_misc->sparsity_level_ * tumor->phi_->component_weights_.size();
+          int nnc = 0:
+          for (auto w : tumor->phi_->component_weights_) if (w >= 1E-3) nnc++;
+          PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << n_misc->sparsity_level_ << " x " << nnc << " + " << (tumor->phi_->component_weights_.size() - nnc) << " = " <<  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) <<std::endl;
+          n_misc->sparsity_level_ =  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) ;
         }
 
         if (!n_misc->bounding_box_) {
