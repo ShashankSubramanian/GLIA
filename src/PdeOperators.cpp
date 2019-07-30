@@ -917,6 +917,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             ss << "seg_t[" << i << "].nc";
             ierr = tumor_->computeSegmentation ();
             dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
             ss << "p_t[" << i << "].nc";
             dataOut (tumor_->species_["proliferative"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
