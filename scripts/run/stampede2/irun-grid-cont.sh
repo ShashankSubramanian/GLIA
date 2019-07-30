@@ -3,15 +3,11 @@ BRATS=/scratch/04678/scheufks/brats18/
 
 DSET=ALL
 
-#for ID in  Brats18_CBICA_AQD_1 Brats18_CBICA_AQR_1 Brats18_CBICA_AQA_1  # Brats18_CBICA_AQO_1 Brats18_CBICA_AQP_1 Brats18_TCIA03_257_1 Brats18_TCIA08_406_1  # Brats18_CBICA_AQJ_1 #  Brats18_TCIA04_328_1
-#for ID in  Brats18_CBICA_AQR_1  Brats18_TCIA08_406_1  Brats18_CBICA_AQJ_1 Brats18_TCIA03_257_1 Brats18_CBICA_AQA_1 Brats18_CBICA_AQD_1 Brats18_CBICA_AQO_1 Brats18_CBICA_AQP_1
-#for ID in Brats18_CBICA_AMH_1 Brats18_CBICA_ANG_1 Brats18_CBICA_ANI_1 Brats18_CBICA_ANP_1 Brats18_CBICA_ANZ_1 Brats18_CBICA_AZH_1
-#for ID in Brats18_CBICA_AXO_1 Brats18_CBICA_AQJ_1 Brats18_TCIA03_257_1 Brats18_TCIA04_328_1
-#for ID in Brats18_CBICA_ABM_1 Brats18_CBICA_ABY_1 Brats18_CBICA_ASN_1 Brats18_CBICA_AAG_1 Brats18_CBICA_ASA_1 Brats18_CBICA_ASH_1 Brats18_CBICA_ASO_1 Brats18_CBICA_ASW_1 Brats18_CBICA_AYI_1 Brats18_CBICA_ABO_1 Brats18_CBICA_APY_1 Brats18_CBICA_ASE_1 Brats18_CBICA_ASK_1 Brats18_CBICA_ASU_1
 
-for ID in Brats18_2013_11_1 # Brats18_TCIA03_257_1
+for ID in Brats18_CBICA_ASA_1 # Brats18_2013_20_1 Brats18_CBICA_ASE_1 Brats18_CBICA_ASO_1 Brats18_TCIA03_419_1 Brats18_TCIA06_165_1 Brats18_CBICA_ASY_1 Brats18_2013_11_1 Brats18_CBICA_AQG_1 Brats18_CBICA_AQG_1 Brats18_TCIA05_444_1 Brats18_TCIA02_368_1 Brats18_TCIA06_603_1 Brats18_TCIA03_265_1 Brats18_TCIA08_469_1 Brats18_TCIA08_469_1 Brats18_CBICA_BHM_1 Brats18_CBICA_AQU_1 Brats18_CBICA_AQQ_1 Brats18_TCIA03_296_1 Brats18_TCIA03_296_1 Brats18_CBICA_AMH_1 Brats18_CBICA_AMH_1 Brats18_2013_22_1 Brats18_TCIA03_474_1 Brats18_TCIA08_162_1 Brats18_2013_19_1 Brats18_2013_19_1 Brats18_2013_19_1 Brats18_TCIA02_290_1 Brats18_CBICA_ABO_1 Brats18_CBICA_ABO_1 Brats18_TCIA05_277_1 Brats18_TCIA05_277_1 Brats18_2013_21_1 Brats18_CBICA_AME_1 Brats18_TCIA06_211_1 Brats18_TCIA06_211_1 Brats18_CBICA_AVJ_1 Brats18_TCIA02_605_1 Brats18_CBICA_ASV_1 Brats18_2013_14_1 Brats18_TCIA02_374_1 Brats18_CBICA_AYU_1 Brats18_TCIA02_274_1 Brats18_CBICA_AQY_1
+ 
 do
-  RES=${BRATS}/results/brats19-cc-supphi-kbound-s5-gradls10-beta-1e-4/${ID}
+  RES=${BRATS}/results/brats19-cc-supphi-kbound-s5mod-gradls10-beta-1e-4/${ID}
   mkdir -p ${RES}
   python3  run_gridcont.py -patient_path   ${BRATS}/training/HGG/${DSET}/${ID}/${ID}_seg_tu.nii.gz                   \
                            -atlas_path     ${BRATS}/atlas/jakob_segmented_with_cere_lps_240240155_bratslabels.nii.gz \
