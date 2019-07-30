@@ -222,8 +222,8 @@ def gridcont(basedir, args):
             os.mkdir(inp_dir);
 
         cmd += "\n\n### ----------------------------------------- ###\n"
-        cmd += "###   LEVEL nx=" + str(level) + ", sigma=2pi/" + str(int(level/sigma_fac)) + "   ###\n"
-        cmd += "\n" + "cd " + res_dir_out  + "\n"
+        cmd += "###   LEVEL nx=" + str(level) + ", sigma=2pi/" + str(int(level/sigma_fac[ii])) + "   ###\n"
+        cmd += "\n" + "cd " + str(res_dir_out)  + "\n"
         # symlinks
         cmd_symlink  =  "PWDO=${PWD} \n"
         cmd_symlink +=  "cd " + str(inp_dir) + "\n"
@@ -249,7 +249,7 @@ def gridcont(basedir, args):
 
         # compute connecte components of target data
         cmd_concomp  = pythoncmd + basedir + '/scripts/utils.py -concomp_data  -input_path ' +  os.path.join(tumor_out_path, 'nx' + str(level)) + ' -output_path ' +  input_folder + ' --obs_lambda ' + str(args.obs_lambda);
-        cmd_concomp += " -select_gaussians " + " --sigma " + str(sigma_fac) + " \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
+        cmd_concomp +=  " -select_gaussians " + " --sigma " + str(sigma_fac[ii]) + " \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
         cmd_concomp +=  "PWDO=${PWD} \n"
         cmd_concomp +=  "cd " + str(inp_dir) + "\n"
         cmd_concomp +=  "ln -sf " + "../../../input/data_comps_nx" + str(level)  + ".nc"    " data_comps.nc \n";
@@ -258,7 +258,6 @@ def gridcont(basedir, args):
         #   ------------------------------------------------------------------------
         #   - extract reconstructed rho and k
         if level > 64:
-            cmd = ""
             cmd_extractrhok =  "\n\n# extract reconstructed rho, k\n";
             cmd_extractrhok +=  pythoncmd + basedir + '/scripts/utils.py -extract -output_path ' + res_dir_prev + ' --rho_fac 1' + " \n"
             cmd_extractrhok += "source " + os.path.join(res_dir_prev, 'env_rhok.sh') + "\n"
@@ -341,10 +340,10 @@ def gridcont(basedir, args):
         opt['compute_sys']  = args.compute_cluster;
         opt['output_dir']  = res_dir_out;
         opt['input_dir']   = inp_dir;
-        opt['num_nodes']   = n;
-        opt['mpi_pernode'] = p;
-        opt['wtime_h']     = h;
-        opt['wtime_m']     = m;
+        opt['num_nodes']   = nodes[ii];
+        opt['mpi_pernode'] = procs[ii];
+        opt['wtime_h']     = wtime_h[ii];
+        opt['wtime_m']     = wtime_m[ii];
 
         if separatejobs:
             job_file = createJobsubFile(MULTJOB, opt, level);
