@@ -869,47 +869,132 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
     // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
-    ierr = VecScale (tumor_->species_["infiltrative"], 0.);                              CHKERRQ (ierr); 
+    ierr = VecScale (tumor_->species_["infiltrative"], 0.);                               CHKERRQ (ierr); 
     ierr = VecSet (tumor_->species_["oxygen"], 1.);                                       CHKERRQ (ierr);
 
     // no healthy cells where tumor is maximum
     ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["infiltrative"]);                        CHKERRQ (ierr);
     ierr = tumor_->mat_prop_->filterTumor (tumor_->c_t_);                                                                           CHKERRQ (ierr);
 
+    double k1, k2, k3, r1, r2, r3;
+    k1 = n_misc_->k_;
+    k2 = n_misc_->k_gm_wm_ratio_ * n_misc_->k_; k3 = 0;
+    r1 = n_misc_->rho_;
+    r2 = n_misc_->r_gm_wm_ratio_ * n_misc_->rho_; r3 = 0;
+
+
+    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
+    // force compute
+    ierr = VecCopy (tumor_->species_["proliferative"], tumor_->c_t_);                        CHKERRQ (ierr);
+    ierr = tumor_->computeForce (tumor_->c_t_);
+    // displacement compute through elasticity solve
+    ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
+    // copy displacement to old vector
+    ierr = displacement_old->copy (tumor_->displacement_);
+
     diff_ksp_itr_state_ = 0;
+    double vel_max;
+    double cfl;
     std::stringstream ss;
-    for (int i = 0; i < nt; i++) {
+    double vel_x_norm, vel_y_norm, vel_z_norm;
+    for (int i = 0; i <= nt; i++) {
+        PCOUT << "Time step = " << i << std::endl;
         if (n_misc_->writeOutput_ && i % 10 == 0) {
+            ierr = displacement_old->computeMagnitude();
+            ierr = tumor_->force_->computeMagnitude();
+            ss << "displacement_t[" << i << "].nc";
+            dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "force_t[" << i << "].nc";
+            dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "csf_t[" << i << "].nc";
+            dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "wm_t[" << i << "].nc";
+            dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "seg_t[" << i << "].nc";
+            ierr = tumor_->computeSegmentation ();
+            dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
             ss << "p_t[" << i << "].nc";
             dataOut (tumor_->species_["proliferative"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-
             ss << "i_t[" << i << "].nc";
             dataOut (tumor_->species_["infiltrative"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-
             ss << "n_t[" << i << "].nc";
             dataOut (tumor_->species_["necrotic"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-
             ss << "o_t[" << i << "].nc";
             dataOut (tumor_->species_["oxygen"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
         }
+        // ------------------------------------------------ advection  ------------------------------------------------
+        // Update diffusivity and reaction coefficient
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ (ierr);
+        ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ (ierr);
+        // need to update prefactors for diffusion KSP preconditioner, as k changed
+        ierr = diff_solver_->precFactor();                                                          CHKERRQ (ierr);
+        // Advection of tumor and healthy tissue
+        ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
+        adv_solver_->advection_mode_ = 2;  // pure advection for csf
+        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ (ierr);   adv_solver_->advection_mode_ = 1;  // reset to mass conservation
+        ierr = adv_solver_->solve (tumor_->species_["proliferative"], tumor_->velocity_, dt);       CHKERRQ (ierr);
+        ierr = adv_solver_->solve (tumor_->species_["infiltrative"], tumor_->velocity_, dt);        CHKERRQ (ierr);
+        ierr = adv_solver_->solve (tumor_->species_["necrotic"], tumor_->velocity_, dt);            CHKERRQ (ierr);    
+
         // compute Di to be used for healthy cell evolution equations: make sure work[11] is not used till sources are computed
         ierr = VecCopy (tumor_->species_["infiltrative"], tumor_->work_[11]);      CHKERRQ (ierr);
         ierr = tumor_->k_->applyD (tumor_->work_[11], tumor_->work_[11], n_misc_->plan_);
 
-        // diffusion
+        // ------------------------------------------------ diffusion  ------------------------------------------------
         ierr = diff_solver_->solve (tumor_->species_["infiltrative"], dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
         ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
         
-        // explicit source terms for all equations (includes reaction source)
+        // ------------------------------------------------ explicit source terms for all equations (includes reaction source)  ------------------------------------------------
         ierr = computeSources (tumor_->species_["proliferative"], tumor_->species_["infiltrative"], tumor_->species_["necrotic"], 
                                 tumor_->species_["oxygen"], dt);                                                                    CHKERRQ (ierr);
 
         // set tumor core as c_t_
         ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["necrotic"]);                        CHKERRQ (ierr);
+
+        // ------------------------------------------------ elasticity update ------------------------------------------------ 
+        // force compute
+        ierr = tumor_->computeForce (tumor_->c_t_);
+        // displacement compute through elasticity solve: Linv(force_) = displacement_
+        ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
+        // compute velocity
+        ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
+        PCOUT << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        // compute CFL
+        ierr = tumor_->velocity_->computeMagnitude ();
+        ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
+        cfl = dt * vel_max / n_misc_->h_[0];
+        PCOUT << "CFL = " << cfl << "\n\n";
+        // Adaptively time step if CFL is too large
+        if (cfl > 0.5) {
+            // // TODO: resize time history
+            // dt *= 0.5;
+            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            // n_misc_->dt_ = dt;
+            // n_misc_->nt_ = nt;
+
+            // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
+            PCOUT << "CFL too large: exiting...\n"; break;
+        }
+
+        // copy displacement to old vector
+        ierr = displacement_old->copy (tumor_->displacement_);
     }
 
     std::stringstream s;

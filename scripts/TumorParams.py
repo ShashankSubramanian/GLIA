@@ -69,9 +69,9 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect, 5: Multi-species
     model = 5
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 12
-    k_data = 0.05
-    nt_data = 100
+    rho_data = 15
+    k_data = 0.2
+    nt_data = 150
     dt_data = 0.01
 
     ### Testcase: 0: brain single focal synthetic

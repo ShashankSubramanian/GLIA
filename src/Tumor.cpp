@@ -33,7 +33,7 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     ierr = VecSet (seg_, 0);
 
 
-    if (n_misc->model_ == 4) { // mass effect model -- allocate space for more variables
+    if (n_misc->model_ == 4 || n_misc_->model_ == 5) { // mass effect model -- allocate space for more variables
         velocity_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
         force_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
         displacement_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
