@@ -24,6 +24,7 @@ from sklearn.svm import SVC
 # from sklearn import grid_search
 from sklearn.model_selection import GridSearchCV,cross_validate
 from sklearn import preprocessing
+from sklearn.metrics import classification_report
 
 
 class bcolors:
@@ -40,13 +41,30 @@ class bcolors:
 ###
 ### ------------------------------------------------------------------------ ###
 def svc_param_selection(X, y, nfolds, kernel, w):
-    Cs = [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5]
-    gammas = [1E-6, 1E-5, 1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 'scale']
-    param_grid = {'C': Cs, 'gamma' : gammas} if kernel == 'rbf' or kernel == 'poly' else  {'C': Cs}
-    grid_search = GridSearchCV(svm.SVC(kernel=kernel, class_weight=w), param_grid, cv=nfolds)
-    grid_search.fit(X, y)
-    grid_search.best_params_
-    return grid_search.best_params_
+    # Cs = [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5]
+    # gammas = [1E-6, 1E-5, 1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2]
+    # param_grid = {'C': Cs, 'gamma' : gammas} if kernel == 'rbf' or kernel == 'poly' else  {'C': Cs}
+    # grid_search = GridSearchCV(svm.SVC(kernel=kernel, class_weight=w), param_grid, cv=nfolds)
+    param_grid = [
+    {'C': [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5], 'kernel': ['linear']},
+    {'C': [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5], 'gamma': [1E-6, 1E-5, 1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2], 'kernel': ['rbf']},
+    ]
+    clf = GridSearchCV(SVC(), param_grid, cv=nfolds)
+    clf.fit(X, y)
+
+    print("Best parameters set found on development set:")
+    print()
+    print(clf.best_params_)
+    print()
+    print("Grid scores on development set:")
+    print()
+    means = clf.cv_results_['mean_test_score']
+    stds = clf.cv_results_['std_test_score']
+    for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+        print("%0.3f (+/-%0.03f) for %r"
+              % (mean, std * 2, params))
+    print()
+    return clf, clf.best_params_
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -123,23 +141,25 @@ if __name__=='__main__':
     brats_data    = pd.read_csv(os.path.join(basedir,args.f), header = 0, error_bad_lines=True, skipinitialspace=True)
     print("read brats simulation data of length %d" % len(brats_data))
 
-    # filter data
+    # 1. convert categorial data
     brats_data['srvl[]'] = brats_data['srvl[]'].astype('category')
     brats_data['srvl[]'].cat.categories = [3,2,1]   # alpha numeric sorting: [NA, long, mid, short] -> [-1, 2,1,0]
     brats_data['srvl[]'] = brats_data['srvl[]'].astype('float')
-    # filter data with patient age > 0, i.e., patient IDs where survival data exists
+    brats_data['srgy'] = brats_data['srgy'].astype('category')
+    brats_data['srgy'].cat.categories = [3,2,1] # [tuple([1,0,0]),tuple([0,1,0]), tuple([0,0,1])]
+    # 2. filter survival data
     brats_data['age'] = brats_data['age'].astype('float')
     dat_out = brats_data.loc[brats_data['age'] <= 0]
     brats_data = brats_data.loc[brats_data['age'] >  0]
     dat_out["filter-reason"] = "no survival data"
     dat_filtered_out = dat_out;
-    # filter data with too large misfit
+    # 3. filter data with too large misfit
     brats_data['l2c1'] = brats_data['l2Oc1'].astype('float')
     dat_out = brats_data.loc[brats_data['l2Oc1'] >= max_l2c1error]
     brats_data = brats_data.loc[brats_data['l2Oc1'] <  max_l2c1error]
     dat_out["filter-reason"] = "l2err > "+str(max_l2c1error)
     dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
-    # add rho-over-k
+    # 4. add rho-over-k
     brats_data['rho-inv'] = brats_data['rho-inv'].astype('float')
     brats_data['k-inv']   = brats_data['k-inv'].astype('float')
     dat_out  = brats_data.loc[brats_data['k-inv'] <= 0]
@@ -149,14 +169,14 @@ if __name__=='__main__':
     brats_data["rho-over-k"] = brats_data["rho-inv"]/brats_data["k-inv"]
 
 
-    cols_bio   = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
+    cols_bio   = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
     cols_bio0  = ['rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio1  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio2  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio3  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1']
-    cols_bio4  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
+    cols_bio1  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
+    cols_bio2  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
+    cols_bio3  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1']
+    cols_bio4  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
     cols_bio5  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'Ic0/Ic1']
-    cols_bio6  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv']
+    cols_bio6  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'rho-over-k']
     cols_stat  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b']
 
     brats_data['is_na'] = brats_data[cols_bio].isnull().apply(lambda x: any(x), axis=1)
@@ -184,33 +204,35 @@ if __name__=='__main__':
 
     # select features
     df_stat = brats_data[cols_stat]
-    df_bio  = brats_data[cols_bio0]
+    df_bio  = brats_data[cols_bio5]
+
+    df_bio.hist
+    plt.show()
 
     p_dict_lin = []
     p_dict_rbf = []
     p_dict_ply = []
     # for cols, i in zip([cols_bio0,cols_bio1,cols_bio2,cols_bio3,cols_bio4,cols_bio5,cols_bio6,cols_stat], range(8)):
-    for cols in [cols_bio5]:
+    for cols, i in zip([cols_bio5,cols_bio6,cols_stat], range(3)):
+    # for cols in [cols_bio5]:
         cc = "bio %d" % i if i < 7 else "stat";
         print(bcolors.OKBLUE, "=== %s ===" % cc, bcolors.ENDC)
 
         X = brats_data[cols].values
         Y = np.ravel(brats_data[['srvl[]']].values).astype('int')
-        nfolds=10;
+        nfolds=5;
 
         # scaler     = preprocessing.StandardScaler().fit(X)
         scaler       = preprocessing.MinMaxScaler()
         # normalizer = preprocessing.Normalizer().fit(X)
 
 
-        scaler.fit_transform(X)
-
         # tune hyperparameters of svm with rbf kernel, using grid-search and 10-fold cross validation
-        params_linear = svc_param_selection(X,Y,nfolds,kernel='linear',w=weights);
-        params_rbf = svc_param_selection(X,Y,nfolds,kernel='rbf',w=weights);
+        # params_linear = svc_param_selection(X,Y,nfolds,kernel='linear',w=weights);
+        # params_rbf = svc_param_selection(X,Y,nfolds,kernel='rbf',w=weights);
         # params_poly = svc_param_selection(X,Y,nfolds,kernel='poly',w=weights);
-        print("tuned hyperparams for linear-SVM:", params_linear)
-        print("tuned hyperparams for RBF-SVM:", params_rbf)
+        # print("tuned hyperparams for linear-SVM:", params_linear)
+        # print("tuned hyperparams: ", params_rbf)
         # print("tuned hyperparams for POLY-SVM:", params_poly)
 
         # dividing X, y into train and test data
@@ -219,59 +241,58 @@ if __name__=='__main__':
         scaler.fit_transform(X_train)
         # normalizer.transform(X_train)
 
-        # training a linear SVM classifier
-        svm_model_linear = SVC(kernel = 'linear', C=params_linear['C']).fit(X_train, y_train)
-        svm_model_rbf    = SVC(kernel = 'rbf'   , C=params_rbf['C'], gamma=params_rbf['gamma']).fit(X_train, y_train)
-        # svm_model_poly   = SVC(kernel = 'poly'  , C=params_poly['C']).fit(X_train, y_train)
-        # svm_model_linear = SVC(kernel = 'linear', C=0.1).fit(X_train, y_train)
-        # svm_model_rbf    = SVC(kernel = 'rbf'   , C=10, gamma=0.01).fit(X_train, y_train)
-        # svm_model_poly   = SVC(kernel = 'poly'  , C=0.1, degree=3).fit(X_train, y_train)
-        y_pred_linear    = svm_model_linear.predict(X_test)
-        y_pred_rbf       = svm_model_rbf.predict(X_test)
-        # y_pred_poly      = svm_model_poly.predict(X_test)
+        svm_opt, opt_params = svc_param_selection(X_train,y_train,nfolds,kernel='linear',w=weights);
 
-        print("y_test (true): ", y_test)
-        print("y_pred (linar):", y_pred_linear)
-        print("y_pred (rbf):  ", y_pred_rbf)
-        # print("y_pred (poly): ", y_pred_poly)
+        # training a linear SVM classifier
+        # svm_model_linear = SVC(kernel = 'linear', C=params_linear['C']).fit(X_train, y_train)
+        # svm_model_rbf    = SVC(kernel = 'rbf'   , C=params_rbf['C'], gamma=params_rbf['gamma']).fit(X_train, y_train)
+        # y_pred_linear    = svm_model_linear.predict(X_test)
+        # y_pred_rbf       = svm_model_rbf.predict(X_test)
+
+        # print("y_test (true): ", y_test)
+        # print("y_pred (linar):", y_pred_linear)
+        # print("y_pred (rbf):  ", y_pred_rbf)
 
         # model accuracy for X_test
         scaler.transform(X_test)
+
+        print("Detailed classification report:")
+        print()
+        print("The model is trained on the full development set.")
+        print("The scores are computed on the full evaluation set.")
+        print()
+        y_true, y_pred = y_test, svm_opt.predict(X_test)
+        print(classification_report(y_true, y_pred))
+        print()
+
+
         # normalizer.transform(X_test)
-        accuracy_linear = svm_model_linear.score(X_test, y_test)
-        accuracy_rbf    = svm_model_rbf.score(X_test, y_test)
-        # accuracy_poly   = svm_model_poly.score(X_test, y_test)
+        # accuracy_linear = svm_model_linear.score(X_test, y_test)
+        # accuracy_rbf    = svm_model_rbf.score(X_test, y_test)
+        accuracy    = svm_opt.score(X_test, y_test)
 
-        p_dict_lin.append(accuracy_linear);
-        p_dict_rbf.append(accuracy_rbf);
-        # p_dict_ply.append(accuracy_poly);
+        # p_dict_lin.append(accuracy_linear);
+        # p_dict_rbf.append(accuracy_rbf);
+        # svm_opt.append(accuracy);
 
-        print(bcolors.OKGREEN + "accuracy (linear): ", accuracy_linear, bcolors.ENDC)
-        print(bcolors.OKGREEN + "accuracy (rbf):    ", accuracy_rbf, bcolors.ENDC)
-        # print(bcolors.OKGREEN + "accuracy (poly):   ", accuracy_poly, bcolors.ENDC)
+        print(bcolors.OKGREEN + "accuracy: ", accuracy, bcolors.ENDC)
+        # print(bcolors.OKGREEN + "accuracy (rbf):    ", accuracy_rbf, bcolors.ENDC)
 
         # creating a confusion matrix
         class_names = [1,2,3]
-        # cm = confusion_matrix(y_test, svm_predictions)
-        # plot_confusion_matrix(y_test, y_pred_linear, classes=class_names,title='Linear-SVM, confusion matrix')
-        # plot_confusion_matrix(y_test, y_pred_rbf, classes=class_names,title='RBF-SVM, confusion matrix')
-        print("Linear-SVM, normalized confusion matrix")
-        plot_confusion_matrix(y_test, y_pred_linear, classes=class_names, normalize=True,title='Linear-SVM, normalized confusion matrix')
-        print("RBF-SVM, normalized confusion matrix")
-        plot_confusion_matrix(y_test, y_pred_rbf, classes=class_names, normalize=True,title='RBF-SVM, normalized confusion matrix')
-        # print("POLY-SVM, normalized confusion matrix")
-        # plot_confusion_matrix(y_test, y_pred_rbf, classes=class_names, normalize=True,title='POLY-SVM, normalized confusion matrix')
+        print("normalized confusion matrix")
+        plot_confusion_matrix(y_test, y_pred, classes=class_names, normalize=True,title='normalized confusion matrix')
 
         print("\n========================================\n")
         # plt.show()
 
-    p_dict = {}
-    p_dict['linear'] = p_dict_lin;
-    p_dict['rbf']    = p_dict_rbf;
-    # p_dict['poly']   = p_dict_ply;
-    ddd =pd.DataFrame(p_dict);
-    print("\n\n### SVM Model Evaluation ### ")
-    print(tabulate(ddd, headers='keys', tablefmt='psql'))
+    # p_dict = {}
+    # p_dict['linear'] = p_dict_lin;
+    # p_dict['rbf']    = p_dict_rbf;
+    # # p_dict['poly']   = p_dict_ply;
+    # ddd =pd.DataFrame(p_dict);
+    # print("\n\n### SVM Model Evaluation ### ")
+    # print(tabulate(ddd, headers='keys', tablefmt='psql'))
 
 
 
