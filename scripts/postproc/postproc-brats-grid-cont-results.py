@@ -131,7 +131,13 @@ if __name__=='__main__':
                             else:
                                 curr_level = False;
                         if curr_level and ("SOL(L): #comp:" in line):
-                            p_dict["xcm-dist"] = line.split("=")[-1]
+                            diststr = line.split("=")[-1]
+                            distsep = diststr.split(",");
+                            if len(distsep) > 5:
+                                p_dict["xcm-dist"] = ', '.join(['%s']*5) % tuple([str(distsep[i]) for i in range(5) ])
+                                p_dict["xcm-dist"] += ', ...]';
+                            else:
+                                p_dict["xcm-dist"] = diststr;
 
             ###### INFO.DAT ######
             if os.path.exists(os.path.join(level_path,'info.dat')):
@@ -367,10 +373,18 @@ if __name__=='__main__':
                                 p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
                             if level == 128 and "l2ec(1) scaled,relD (l2;#1,..,#n)     = " in line:
                                 errs = line.split("l2ec(1) scaled,relD (l2;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                if p_dict['#comp'] > 5:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*5) % tuple([float(errs[i]) for i in range(5) ])
+                                    p_dict["l2c1(TC,#1,..,#n)"] += ', ...]';
+                                else:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
                             if level == 256 and "l2ec(1) scaled,relD (l3;#1,..,#n)     = " in line:
                                 errs = line.split("l2ec(1) scaled,relD (l3;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                if p_dict['#comp'] > 5:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*5) % tuple([float(errs[i]) for i in range(5) ])
+                                    p_dict["l2c1(TC,#1,..,#n)"] += ', ...]';
+                                else:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
                             # if "stats int c(1.5) / int c(1)           =" in line:
                                 # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
                             # if "stats int c(1.5) / int c(1.2)         =" in line:
