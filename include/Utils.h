@@ -233,7 +233,7 @@ public:
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
-        : model_ (5)                            //Reaction Diffusion --  1 , Positivity -- 2
+        : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
                                                 // Modified Obj -- 3
                                                 // Mass effect -- 4
                                                 // Multi-species -- 5
@@ -312,7 +312,7 @@ class NMisc {
         , death_rate_ (3)                       // death rate
         , ox_source_ (55)                       // source of oxygen
         , ox_consumption_ (8)                    // consumption of oxygen
-        , beta_0_ (0.2)                         // conversion btw inv and proliferative
+        , beta_0_ (0.02)                         // conversion btw inv and proliferative
         , alpha_0_ (0.15)                       // conversion btw inv and proliferative
                                 {
 

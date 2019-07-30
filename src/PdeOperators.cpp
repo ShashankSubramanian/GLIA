@@ -798,7 +798,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
 
     double p_temp, i_temp, frac_1, frac_2;
     double ox_heal = 1.;
-    double reac_ratio = 0.4;
+    double reac_ratio = 0.1;
     double death_ratio = 0.3;
     for (int i = 0; i < n_misc_->n_local_; i++) {
         p_temp = p_ptr[i]; i_temp = i_ptr[i];
@@ -808,10 +808,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
                             death_ratio * n_misc_->death_rate_ * h_ptr[i] * i_ptr[i]);
         n_ptr[i] += dt * (h_ptr[i] * n_misc_->death_rate_ * (p_ptr[i] + death_ratio * i_ptr[i] + gm_ptr[i] + wm_ptr[i]));
         ox_ptr[i] += dt * (-n_misc_->ox_consumption_ * p_temp + n_misc_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-        ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
+        // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
         // conserve healthy cells
-        if (gm_ptr[i] > 0.1 || wm_ptr[i] > 0.1) {
+        if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
             frac_1 = gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]); frac_2 = wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
         } else {
             frac_1 = 0.; frac_2 = 0.;
@@ -868,12 +868,18 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
 
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
-    // set infiltrative as a small fraction of proliferative
-    ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
+    // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
+    ierr = VecScale (tumor_->species_["infiltrative"], 0.);                              CHKERRQ (ierr); 
+    ierr = VecSet (tumor_->species_["oxygen"], 1.);                                       CHKERRQ (ierr);
+
+    // no healthy cells where tumor is maximum
+    ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["infiltrative"]);                        CHKERRQ (ierr);
+    ierr = tumor_->mat_prop_->filterTumor (tumor_->c_t_);                                                                           CHKERRQ (ierr);
+
     diff_ksp_itr_state_ = 0;
     std::stringstream ss;
     for (int i = 0; i < nt; i++) {
-        if (n_misc_->writeOutput_) {
+        if (n_misc_->writeOutput_ && i % 10 == 0) {
             ss << "p_t[" << i << "].nc";
             dataOut (tumor_->species_["proliferative"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
@@ -885,8 +891,15 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             ss << "n_t[" << i << "].nc";
             dataOut (tumor_->species_["necrotic"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+
+            ss << "o_t[" << i << "].nc";
+            dataOut (tumor_->species_["oxygen"], n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
         }
-        
+        // compute Di to be used for healthy cell evolution equations: make sure work[11] is not used till sources are computed
+        ierr = VecCopy (tumor_->species_["infiltrative"], tumor_->work_[11]);      CHKERRQ (ierr);
+        ierr = tumor_->k_->applyD (tumor_->work_[11], tumor_->work_[11], n_misc_->plan_);
+
         // diffusion
         ierr = diff_solver_->solve (tumor_->species_["infiltrative"], dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
         ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
@@ -894,6 +907,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // explicit source terms for all equations (includes reaction source)
         ierr = computeSources (tumor_->species_["proliferative"], tumor_->species_["infiltrative"], tumor_->species_["necrotic"], 
                                 tumor_->species_["oxygen"], dt);                                                                    CHKERRQ (ierr);
+
+        // set tumor core as c_t_
+        ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["necrotic"]);                        CHKERRQ (ierr);
     }
 
     std::stringstream s;

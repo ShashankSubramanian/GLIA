@@ -66,8 +66,8 @@ def getTumorRunCmd(params):
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
-    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
-    model = 1
+    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect, 5: Multi-species
+    model = 5
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
     k_data = 0.05
