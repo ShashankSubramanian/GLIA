@@ -273,6 +273,7 @@ def gridcont(basedir, args):
         t_params['grad_tol']              = opttol;
         t_params['sparsity_lvl']          = sparsity_lvl_per_component;
         t_params['multilevel']            = 1;
+        t_params['create_synthetic']      = 0;
         t_params['ls_max_func_evals']     = ls_max_func_evals[ii];
         t_params['diffusivity_inversion'] = invert_diffusivity[ii];
         t_params['data_thres']            = data_thresh[ii];

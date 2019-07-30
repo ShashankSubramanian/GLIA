@@ -250,6 +250,9 @@ def getTumorRunCmd(params):
             print ('Results path does not exist, making the required folders and sub-folders...\n')
             os.makedirs(results_path)
     # ---
+    if 'create_synthetic' in params:
+        create_synthetic = params['create_synthetic'];
+    # ---
     if 'data_path' in params:
         data_path = params['data_path']
         print('Tumor data path = {}'.format(data_path))
@@ -348,7 +351,7 @@ def getTumorRunCmd(params):
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
-    run_str = cmd + tumor_dir + "/build/brats19/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
+    run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
     " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
     " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
