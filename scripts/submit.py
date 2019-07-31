@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/check_gpu/'
+params['results_path'] = tumor_dir + '/results/check/'
 params['compute_sys'] = 'stampede2'
 
 
@@ -36,7 +36,7 @@ if not err:  # No error in tumor input parameters
 	submit_file.write ("#!/bin/bash\n" + \
 	"#SBATCH -J ITP\n" + \
 	"#SBATCH -o " + params['results_path'] + "/log\n" + \
-	"#SBATCH -p gtx\n" + \
+	"#SBATCH -p p100\n" + \
 	"#SBATCH -N 1\n" + \
 	"#SBATCH -n 1\n" + \
 	"#SBATCH -t 02:00:00\n" + \

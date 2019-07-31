@@ -205,6 +205,11 @@ int main (int argc, char** argv) {
         default: break;
     }
 
+    // hack
+    #ifdef CUDA
+        cudaSetDevice (1);
+    #endif
+
     accfft_init();
     MPI_Comm c_comm;
     int c_dims[2] = { 0 };
