@@ -67,7 +67,6 @@ PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
-    int factor = 3;
 
     if (right) {
         ierr = VecDuplicate (ctx->disp_, right);                CHKERRQ (ierr);
