@@ -69,7 +69,7 @@ if __name__=='__main__':
     ##
     ## These brains failed due to aliasing. For all brains rho is around 10 and kappa reaches regime of 1E-1.
     ## If not already failed in L1 phase, rescaling further amplifies spectral errors in c(0).
-    FILTER = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1']
+    FILTER = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1', 'Brats18_TCIA02_606_1']
     FAILEDTOADD = {}
     REDO_SPARSITY = {}
     levels = [64,128,256]
