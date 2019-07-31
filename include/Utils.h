@@ -334,14 +334,14 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X
 
                 // tc1 and 2
-                user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                // user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
-                // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
-                // user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                user_cm_[0] = 2 * M_PI / 128 * 66;//72  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
