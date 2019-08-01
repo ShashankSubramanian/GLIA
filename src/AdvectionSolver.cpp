@@ -112,7 +112,7 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     n_ghost_ = 3;
     scalar_field_ghost_ = NULL;
     vector_field_ghost_ = NULL;
-    
+
     n_alloc_ = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g_, istart_g_); // memory allocate
     scalar_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
     vector_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (3 * n_alloc_));    // vector field with ghost points
@@ -381,7 +381,7 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
         ierr = interpolate (temp_[0], scalar);
 
         // Compute source term: -\nu (div v)
-        accfft_divergence (temp_[1], velocity->x_, velocity->y_, velocity->z_, n_misc->plan_, t.data());
+        ierr = spec_ops_->computeDivergence (temp_[1], velocity->x_, velocity->y_, velocity->z_, t.data());
 
         // Interpolate div using the same query points
         ierr = interpolate (temp_[2], temp_[1]);

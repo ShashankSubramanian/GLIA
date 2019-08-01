@@ -235,7 +235,7 @@ void InterpPlan::scatter( int data_dof,
   int nprocs, procid;
   MPI_Comm_rank(c_comm, &procid);
   MPI_Comm_size(c_comm, &nprocs);
-
+  int total_query_points = 0;
   if(this->allocate_baked==false){
     std::cout<<"ERROR InterpPlan Scatter called before calling allocate.\n";
     return;
@@ -383,7 +383,7 @@ void InterpPlan::scatter( int data_dof,
         f_index_procs_self_offset[proc]=f_index_procs_self_offset[proc-1]+f_index_procs_self_sizes[proc-1];
       }
     }
-    int total_query_points = all_query_points_allocation / COORD_DIM;
+    total_query_points = all_query_points_allocation / COORD_DIM;
 
     // This if condition is to allow multiple calls to scatter fucntion with different query points
     // without having to create a new plan
