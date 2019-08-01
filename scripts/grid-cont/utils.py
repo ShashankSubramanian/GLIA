@@ -224,6 +224,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='process input images')
     parser.add_argument ('-output_path',         type=str, help = 'output folder');
     parser.add_argument ('-input_path',          type=str, help = 'input folder');
+    parser.add_argument ('-rdir',                type = str,          help = 'path to tumor solver results');
     parser.add_argument ('-compute_observation_mask',    action='store_true', help = 'computes observation mask OBS = TC + lambda_obs (1-WT)');
     parser.add_argument ('--obs_lambda',          type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument ('--suffix',              type=str, help = 'ob name suffix');
@@ -241,6 +242,12 @@ if __name__=='__main__':
 
     args = parser.parse_args();
 
+    if args.rdir == None:
+        args.rdir = "obs-{0:1.1f}".format(args.obs_lambda);
+    elif "cm-data" in args.rdir:
+        args.rdir = "cm-data-obs-{0:1.1f}".format(args.obs_lambda);
+    elif "obs" in args.rdir:
+        args.rdir = "obs-{0:1.1f}".format(args.obs_lambda);
 
     if args.compute_observation_mask:
         print("computing observation mask OBS = TC + lambda*(1-WT) using lambda=", args.obs_lambda)
@@ -258,7 +265,7 @@ if __name__=='__main__':
         extractRhoK(args.output_path, args.rho_fac);
 
     if args.concomp_data:
-        res_path  = os.path.join(args.input_path, "obs-{0:1.1f}".format(args.obs_lambda));
+        res_path  = os.path.join(args.input_path, args.rdir);
         init_path = os.path.join(args.input_path, 'init');
         level = int(res_path.split("nx")[-1].split("/")[0]);
         print("computing connected components of data ");
@@ -280,6 +287,18 @@ if __name__=='__main__':
         for i in range(ncomps_data):
             concomp_file.write(str(relmass[i]) + "\n" )
         concomp_file.close();
+
+
+        phi_cm_data_file = open(os.path.join(res_path,'phi-cm-data.txt'),'w');
+        p_cm_data_file = open(os.path.join(res_path,'p-cm-data.txt'),'w');
+        phi_cm_data_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (2*math.pi/256, 4*math.pi/256));
+        phi_cm_data_file.write(" centers = [\n")
+        p_cm_data_file.write("p = [\n")
+        for i in range(ncomps_data[l]):
+            phi_cm_data_file.write(" %1.8f, %1.8f, %1.8f\n" % (xcm_data[l][i][2], xcm_data[l][i][1], xcm_data[l][i][0]));
+            p_cm_data_file.write(" %1.8f\n" % 0.);
+        phi_cm_data_file.write("];")
+        p_cm_data_file.write("];")
 
         # compute Gaussian support based on c(0) intensity ranking, with minimum 10 Gaussians per component
         if args.select_gaussians:

@@ -395,6 +395,8 @@ def getTumorRunCmd(params):
     " -verbosity " + str(verbosity) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_monitor  -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+    " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     return run_str, error_flag
