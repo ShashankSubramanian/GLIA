@@ -109,6 +109,10 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     m_dofs_[0] = 1;   // one set of query points for scalar field
     m_dofs_[1] = 3;   // one set of query points (Euler points) for the velocity field: the semilagrangian is second order
 
+    n_ghost_ = 3;
+    scalar_field_ghost_ = NULL;
+    vector_field_ghost_ = NULL;
+    
     n_alloc_ = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g_, istart_g_); // memory allocate
     scalar_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
     vector_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (3 * n_alloc_));    // vector field with ghost points
@@ -131,10 +135,6 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     ierr = VecSetSizes (query_points_, factor * n_misc->n_local_, factor * n_misc->n_global_);
     ierr = setupVec (query_points_);
     ierr = VecSet (query_points_, 0);
-
-    n_ghost_ = 3;
-    scalar_field_ghost_ = NULL;
-    vector_field_ghost_ = NULL;
 
     work_field_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
 
