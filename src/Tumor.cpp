@@ -250,15 +250,15 @@ PetscErrorCode Tumor::computeSegmentation () {
         v.clear();
     }   
     
-    double sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
-    ierr = spec_ops_->weierstrassSmoother (seg_ptr, seg_ptr, n_misc_, sigma_smooth);
-    
     ierr = VecRestoreArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr); 
+
+    double sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
+    ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
 
     PetscFunctionReturn(0);
 }
