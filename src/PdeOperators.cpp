@@ -474,36 +474,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     // displacement compute through elasticity solve
     ierr = elasticity_solver_->solve (displacement_old, tumor_->force_);
 
-    std::stringstream ss;
-
-    if (n_misc_->writeOutput_) {
-        ierr = displacement_old->computeMagnitude();
-        ierr = tumor_->force_->computeMagnitude();
-        ss << "displacement_t[" << 0 << "].nc";
-        dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-        ss << "force_t[" << 0 << "].nc";
-        dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-        ss << "csf_t[" << 0 << "].nc";
-        dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-        ss << "wm_t[" << 0 << "].nc";
-        dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-        ss << "seg_t[" << 0 << "].nc";
-        ierr = tumor_->computeSegmentation ();
-        dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-        ss << "c_t[" << 0 << "].nc";
-        dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-        ss << "velocity_t[" << 0 << "].nc";
-        dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
-        ss.str(std::string()); ss.clear();
-    }
-
-    
+    std::stringstream ss;    
     double vel_max;
     double cfl;
 
