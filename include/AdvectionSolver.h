@@ -45,7 +45,7 @@ class TrapezoidalSolver : public AdvectionSolver {
 // Solve transport equations using semi-Lagrangian
 class SemiLagrangianSolver : public AdvectionSolver {
 	public:
-		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor);
+		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);
 
 		int m_dofs_[2];  						  // controls number of interpolation plans: we need two
 		Vec query_points_;						  // query point coordinates
@@ -57,6 +57,7 @@ class SemiLagrangianSolver : public AdvectionSolver {
 	#else
 		std::shared_ptr<InterpPlan> interp_plan_; // plan for interpolation
 	#endif
+		std::shared_ptr<SpectralOperators> spec_ops_; 
 		int isize_g_[3], istart_g_[3];    		  // local input sizes with ghost layers
 		double *scalar_field_ghost_;			  // local scalar field with ghost points
 		double *vector_field_ghost_;			  // local vector field with ghost points

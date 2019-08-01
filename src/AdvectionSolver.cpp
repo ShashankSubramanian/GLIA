@@ -104,7 +104,7 @@ AdvectionSolver::~AdvectionSolver () {
 }
 
 
-SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {
+SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor) {
     PetscErrorCode ierr = 0;
     m_dofs_[0] = 1;   // one set of query points for scalar field
     m_dofs_[1] = 3;   // one set of query points (Euler points) for the velocity field: the semilagrangian is second order
@@ -112,6 +112,8 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     n_ghost_ = 3;
     scalar_field_ghost_ = NULL;
     vector_field_ghost_ = NULL;
+
+    spec_ops_ = spec_ops;
 
     n_alloc_ = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g_, istart_g_); // memory allocate
     scalar_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
