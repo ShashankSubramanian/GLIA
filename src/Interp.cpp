@@ -235,7 +235,6 @@ void InterpPlan::scatter( int data_dof,
   int nprocs, procid;
   MPI_Comm_rank(c_comm, &procid);
   MPI_Comm_size(c_comm, &nprocs);
-  int total_query_points = 0;
   if(this->allocate_baked==false){
     std::cout<<"ERROR InterpPlan Scatter called before calling allocate.\n";
     return;
