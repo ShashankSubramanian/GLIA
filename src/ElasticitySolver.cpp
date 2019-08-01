@@ -129,7 +129,7 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 #ifdef CUDA
     precFactorElasticityCuda ((cuDoubleComplex*)ux_hat, (cuDoubleComplex*)uy_hat,
     (cuDoubleComplex*)uz_hat, (cuDoubleComplex*)fx_hat, (cuDoubleComplex*)fy_hat, 
-    (cuDoubleComplex*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->isize_);
+    (cuDoubleComplex*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->osize_);
 #else
     double s1, s2, s1_square, s3, scale;
 
