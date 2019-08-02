@@ -362,11 +362,11 @@ __device__ float cubicTex3D_lagrangeFast( cudaTextureObject_t tex, const float3 
  * @parm[in] inv_reg_extent inverse of the dimension of the 3D grid (1/nx, 1/ny, 1/nz)
  * @parm[out] interpolated value
  *******************************************************************/
-__global__ void fixedpointLagrange(PetscScalar* f, 
-                                   const PetscScalar* xq, 
-                                   const PetscScalar* yq, 
-                                   const PetscScalar* zq,
-                                   PetscScalar* fq, 
+__global__ void fixedpointLagrange(float* f, 
+                                   const float* xq, 
+                                   const float* yq, 
+                                   const float* zq,
+                                   float* fq, 
                                    const float3 inv_ext) {
     const int tid = blockDim.x * blockIdx.x + threadIdx.x;
     const float3 qcoord = make_float3(zq[tid], yq[tid], xq[tid]);
@@ -381,7 +381,7 @@ __global__ void fixedpointLagrange(PetscScalar* f,
     float wz[KERNEL_DIM] = {w0.z, w1.z, w2.z, w3.z};
     
     if (threadIdx.x == 0) {
-        PetscScalar *fp = &f[9 + d_nz*9 + d_ny*d_nz*9];
+        float *fp = &f[9 + d_nz*9 + d_ny*d_nz*9];
     // indices for the source points to be loaded in Shared Memory
         for (int k=0; k<KERNEL_DIM; k++) 
             for (int j=0; j<KERNEL_DIM; j++) 
@@ -557,16 +557,13 @@ __device__ float linTex3D(cudaTextureObject_t tex, const float3 coord_grid, cons
 }
 
 // Fast prefilter for B-Splines
-void CubicBSplinePrefilter3D_fast(PetscScalar *m, int* nx, float *mtemp1, float *mtemp2) {
+void CubicBSplinePrefilter3D_fast(float *m, int* nx, float *mtemp1, float *mtemp2) {
     
     // float time=0, dummy_time=0;
     // int repcount = 1;
     cudaEvent_t startEvent, stopEvent;
     cudaEventCreate(&startEvent);
     cudaEventCreate(&stopEvent);
-
-    // SNAFU: static cast to float since texture only works with float
-    m = (float*)m;
 
     float h_c[HALO+1];
     h_c[0] = sqrt(3);
@@ -779,10 +776,10 @@ void updateTextureFromVolume(cudaPitchedPtr volume, cudaExtent extent, cudaTextu
  *******************************************************************/
 __global__ void interp3D_kernel(
         cudaTextureObject_t  yi_tex,
-        const PetscScalar* xq,
-        const PetscScalar* yq,
-        const PetscScalar* zq, 
-        PetscScalar* yo,
+        const float* xq,
+        const float* yq,
+        const float* zq, 
+        float* yo,
         const float3 inv_nx, int nq)
 {
     // Get thread index 
@@ -815,10 +812,10 @@ __global__ void interp3D_kernel(
  *******************************************************************/
 __global__ void interp3D_kernel_linear(
         cudaTextureObject_t  yi_tex,
-        const PetscScalar* xq,
-        const PetscScalar* yq,
-        const PetscScalar* zq, 
-        PetscScalar* yo,
+        const float* xq,
+        const float* yq,
+        const float* zq, 
+        float* yo,
         const float3 inv_nx, int nq) {
     // Get thread index 
     const int tid = blockDim.x * blockIdx.x + threadIdx.x;
@@ -838,11 +835,11 @@ __global__ void interp3D_kernel_linear(
  * @parm[out] interp_time time for computing the interpolation
  *******************************************************************/
 void gpuInterp3Dkernel(
-           PetscScalar* yi,
-           const PetscScalar* xq1,
-           const PetscScalar* xq2,
-           const PetscScalar* xq3,
-           PetscScalar* yo,
+           float* yi,
+           const float* xq1,
+           const float* xq2,
+           const float* xq3,
+           float* yo,
            float *tmp1, float* tmp2,
            int*  nx,
            cudaTextureObject_t yi_tex,
@@ -893,11 +890,11 @@ void gpuInterp3Dkernel(
  * @parm[out] interp_time time for computing the interpolation
  *******************************************************************/
 void gpuInterp3D(
-           PetscScalar* yi,
-           const PetscScalar* xq1,
-           const PetscScalar* xq2,
-           const PetscScalar* xq3,
-           PetscScalar* yo,
+           float* yi,
+           const float* xq1,
+           const float* xq2,
+           const float* xq3,
+           float* yo,
            float *tmp1, float* tmp2,
            int*  nx,
            cudaTextureObject_t yi_tex,
@@ -996,9 +993,9 @@ void gpuInterp3D(
  * @parm[out] interp_time time for computing the interpolation
  *******************************************************************/
 void gpuInterpVec3D(
-           PetscScalar* yi1, PetscScalar* yi2, PetscScalar* yi3,
-           const PetscScalar* xq1, const PetscScalar* xq2, const PetscScalar* xq3,
-           PetscScalar* yo1, PetscScalar* yo2, PetscScalar* yo3,
+           float* yi1, float* yi2, float* yi3,
+           const float* xq1, const float* xq2, const float* xq3,
+           float* yo1, float* yo2, float* yo3,
            float *tmp1, float* tmp2,
            int*  nx, cudaTextureObject_t yi_tex, int iporder, float* interp_time)
 {
