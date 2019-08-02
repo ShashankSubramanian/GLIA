@@ -367,9 +367,10 @@ __global__ void setCoords (double *x_ptr, double *y_ptr, double *z_ptr) {
 
 	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		double hx, hy, hz;
-		hx = 1. / n_cuda[0];
-		hy = 1. / n_cuda[1];
-		hz = 1. / n_cuda[2];
+		double twopi = 2. * CUDART_PI;
+		hx = twopi / n_cuda[0];
+		hy = twopi / n_cuda[1];
+		hz = twopi / n_cuda[2];
 
 		x_ptr[ptr] = hx * static_cast<double> (i + istart_cuda[0]);
         y_ptr[ptr] = hy * static_cast<double> (j + istart_cuda[1]);

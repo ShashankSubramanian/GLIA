@@ -370,9 +370,9 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     // Compute RK2 queries
     // single-GPU
     #if defined(CUDA) && !defined(USEMPICUDA)
-        ierr = VecWAXPY (work_field_->x_, -0.5*dt, work_field_->x_, coords_->x_);   CHKERRQ (ierr);
-        ierr = VecWAXPY (work_field_->y_, -0.5*dt, work_field_->y_, coords_->y_);   CHKERRQ (ierr);
-        ierr = VecWAXPY (work_field_->z_, -0.5*dt, work_field_->z_, coords_->z_);   CHKERRQ (ierr);
+        ierr = VecAYPX (work_field_->x_, -0.5*dt, coords_->x_);                     CHKERRQ (ierr);
+        ierr = VecAYPX (work_field_->y_, -0.5*dt, coords_->y_);                     CHKERRQ (ierr);
+        ierr = VecAYPX (work_field_->z_, -0.5*dt, coords_->z_);                     CHKERRQ (ierr);
         ierr = VecAXPY (work_field_->x_, -0.5*dt, velocity->x_);                    CHKERRQ (ierr);
         ierr = VecAXPY (work_field_->y_, -0.5*dt, velocity->y_);                    CHKERRQ (ierr);
         ierr = VecAXPY (work_field_->z_, -0.5*dt, velocity->z_);                    CHKERRQ (ierr);
