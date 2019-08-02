@@ -59,7 +59,7 @@ following papers:
 #include <cubicPrefilter3D.cu>
 #include <bspline_kernel.cu>
 #include <lagrange_kernel.cu>
-#include "interp3_gpu_new.hpp"
+#include "Interp.h"
 
 #include "cuda_helper.hpp"
 #include "cuda_profiler_api.h"

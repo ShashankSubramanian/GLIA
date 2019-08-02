@@ -210,7 +210,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = VecCUDAGetArrayReadWrite (input, &in_ptr);                            CHKERRQ (ierr);
         ierr = VecCUDAGetArrayReadWrite (output, &out_ptr);                          CHKERRQ (ierr);
-        gpuInterp3D (in_ptr, &query_ptr[0], &query_ptr[n_misc->isize_], &query_ptr[2*n_misc->isize_], 
+        gpuInterp3D (in_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
                      out_ptr, temp_interpol1_, temp_interpol2_, m_texture_, n_ghost_, (float*)t.data());
         ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = VecCUDARestoreArrayReadWrite (input, &in_ptr);                            CHKERRQ (ierr);
@@ -251,7 +251,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = input->getComponentArrays (ix_ptr, iy_ptr, iz_ptr);              CHKERRQ (ierr);
         ierr = output->getComponentArrays (ox_ptr, oy_ptr, oz_ptr);             CHKERRQ (ierr);
-        gpuInterp3D (ix_ptr, iy_ptr, iz_ptr, &query_ptr[0], &query_ptr[n_misc->isize_], &query_ptr[2*n_misc->isize_], 
+        gpuInterp3D (ix_ptr, iy_ptr, iz_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
                      ox_ptr, oy_ptr, oz_ptr, temp_interpol1_, temp_interpol2_, m_texture_, n_ghost_, (float*)t.data());
         ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = input->restoreComponentArrays (ix_ptr, iy_ptr, iz_ptr);              CHKERRQ (ierr);
@@ -312,7 +312,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
         ierr = VecWAXPY (work_field_->y_, -dt, velocity->y_, coords_->y_);           CHKERRQ (ierr);
         ierr = VecWAXPY (work_field_->z_, -dt, velocity->z_, coords_->z_);           CHKERRQ (ierr);
         ierr = work_field_->getIndividualComponents (query_points_);                 CHKERRQ (ierr);
-        ierr = VecScale (query_points_, 2.0 * M_PI);                                 CHKERRQ (ierr);
+        ierr = VecScale (query_points_, 1.0 / (2.0 * M_PI));                                 CHKERRQ (ierr);
     // multi-GPU
     #elif defined(USEMPICUDA)
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
@@ -373,11 +373,11 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
         ierr = VecWAXPY (work_field_->x_, -0.5*dt, work_field_->x_, coords_->x_);   CHKERRQ (ierr);
         ierr = VecWAXPY (work_field_->y_, -0.5*dt, work_field_->y_, coords_->y_);   CHKERRQ (ierr);
         ierr = VecWAXPY (work_field_->z_, -0.5*dt, work_field_->z_, coords_->z_);   CHKERRQ (ierr);
-        ierr = VecAXPY (work_field_->x_, -0.5*dt, velocity->x_, work_field_->x_);   CHKERRQ (ierr);
-        ierr = VecAXPY (work_field_->y_, -0.5*dt, velocity->y_, work_field_->y_);   CHKERRQ (ierr);
-        ierr = VecAXPY (work_field_->z_, -0.5*dt, velocity->z_, work_field_->z_);   CHKERRQ (ierr);
-        ierr = work_field_->getIndividualComponents (query_points_);                 CHKERRQ (ierr);
-        ierr = VecScale (query_points_, 2.0 * M_PI);                                 CHKERRQ (ierr);
+        ierr = VecAXPY (work_field_->x_, -0.5*dt, velocity->x_);                    CHKERRQ (ierr);
+        ierr = VecAXPY (work_field_->y_, -0.5*dt, velocity->y_);                    CHKERRQ (ierr);
+        ierr = VecAXPY (work_field_->z_, -0.5*dt, velocity->z_);                    CHKERRQ (ierr);
+        ierr = work_field_->getIndividualComponents (query_points_);                CHKERRQ (ierr);
+        ierr = VecScale (query_points_, 1.0 / (2.0 * M_PI));                        CHKERRQ (ierr);
     // multi-GPU
     #elif defined(USEMPICUDA)
         ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);
