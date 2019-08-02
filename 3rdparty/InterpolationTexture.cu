@@ -61,10 +61,7 @@ following papers:
 #include <lagrange_kernel.cu>
 #include "Interp.h"
 
-#include "cuda_helper.hpp"
 #include "cuda_profiler_api.h"
-
-#include "zeitgeist.hpp"
 
 
 #define PI ((double)3.14159265358979323846264338327950288419716939937510)

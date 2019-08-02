@@ -109,6 +109,7 @@
 			int* isize, int* isize_g, const int N_pts, pvfmm::Iterator<Real> Q_);
 
 #else
+	#include "UtilsCuda.h"
 	#include "petsc.h"
 	#include <accfft.h>
 	#include <accfftf.h>
