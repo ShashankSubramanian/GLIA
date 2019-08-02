@@ -121,5 +121,6 @@ void computeEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, 
 void computeSecondOrderEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr,
                                        double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt, int *sz);
 void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz);
+void setCoordsCuda (double *x_ptr, double *y_ptr, double *z_ptr);
 
 #endif

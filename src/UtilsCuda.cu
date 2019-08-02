@@ -358,6 +358,39 @@ __global__ void nonlinearForceScaling (double *c_ptr, double *fx_ptr, double *fy
 	}
 }
 
+__global__ void setCoords (double *x_ptr, double *y_ptr, double *z_ptr) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int j = threadIdx.y + blockDim.y * blockIdx.y;
+	int k = threadIdx.z + blockDim.z * blockIdx.z;
+
+	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
+
+	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		double hx, hy, hz, x1, x2, x3;
+		double twopi = 2. * CUDART_PI;
+		hx = 1. / n_cuda[0];
+		hy = 1. / n_cuda[1];
+		hz = 1. / n_cuda[2];
+
+		x_ptr[ptr] = hx * static_cast<double> (i + istart_cuda[0]);
+        y_ptr[ptr] = hy * static_cast<double> (j + istart_cuda[1]);
+        z_ptr[ptr] = hz * static_cast<double> (k + istart_cuda[2]);    
+    }
+}
+
+void setCoordsCuda (double *x_ptr, double *y_ptr, double *z_ptr, int *sz) {
+	int n_th_x = N_THREADS_X;
+	int n_th_y = N_THREADS_Y;
+	int n_th_z = N_THREADS_Z;
+	dim3 n_threads (n_th_x, n_th_y, n_th_z);
+	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+
+	setCoords <<< n_blocks, n_threads >>> (x_ptr, y_ptr, z_ptr);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
 void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz) {
 	int n_th = N_THREADS;
 
