@@ -79,6 +79,7 @@ class SemiLagrangianSolver : public AdvectionSolver {
 		PetscErrorCode computeTrajectories ();														// Computes RK2 trajectories and query points
 		PetscErrorCode interpolate (Vec out, Vec in);												// Interpolated scalar field
 		PetscErrorCode interpolate (std::shared_ptr<VecField> out, std::shared_ptr<VecField> in);	// Interpolates vector field
+		PetscErrorCode setCoords (std::shared_ptr<VecField> coords);								// sets global coordinates
 
 		virtual ~SemiLagrangianSolver ();
 };
