@@ -7,7 +7,6 @@ sourcesPGLISTR = [
 
 sourcesTHIRDPARTY = [
     Glob('./3rdparty/timings/*.cpp'),
-    Glob('./3rdparty/*.cu')
 ]
 
 sourcesDrivers = [
