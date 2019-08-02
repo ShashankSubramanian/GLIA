@@ -294,8 +294,8 @@ if __name__=='__main__':
         phi_cm_data_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (2*math.pi/256, 4*math.pi/256));
         phi_cm_data_file.write(" centers = [\n")
         p_cm_data_file.write("p = [\n")
-        for i in range(ncomps_data[l]):
-            phi_cm_data_file.write(" %1.8f, %1.8f, %1.8f\n" % (xcm_data[l][i][2], xcm_data[l][i][1], xcm_data[l][i][0]));
+        for i in range(ncomps_data):
+            phi_cm_data_file.write(" %1.8f, %1.8f, %1.8f\n" % (xcm_data[i][2], xcm_data[i][1], xcm_data[i][0]));
             p_cm_data_file.write(" %1.8f\n" % 0.);
         phi_cm_data_file.write("];")
         p_cm_data_file.write("];")
