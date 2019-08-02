@@ -557,13 +557,16 @@ __device__ float linTex3D(cudaTextureObject_t tex, const float3 coord_grid, cons
 }
 
 // Fast prefilter for B-Splines
-void CubicBSplinePrefilter3D_fast(float *m, int* nx, float *mtemp1, float *mtemp2) {
+void CubicBSplinePrefilter3D_fast(PetscScalar *m, int* nx, float *mtemp1, float *mtemp2) {
     
-    float time=0, dummy_time=0;
-    int repcount = 1;
+    // float time=0, dummy_time=0;
+    // int repcount = 1;
     cudaEvent_t startEvent, stopEvent;
     cudaEventCreate(&startEvent);
     cudaEventCreate(&stopEvent);
+
+    // SNAFU: static cast to float since texture only works with float
+    m = (float*)m;
 
     float h_c[HALO+1];
     h_c[0] = sqrt(3);
