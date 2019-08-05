@@ -142,20 +142,20 @@ if __name__=='__main__':
                         if curr_level and ("SOL(L): #comp:" in line):
                             diststr = line.split("=")[-1]
                             distsep = diststr.split(",");
-                            if len(distsep) > 5:
-                                p_dict["xcm-dist"] = ', '.join(['%s']*5) % tuple([str(distsep[i]) for i in range(5) ])
-                                p_dict["xcm-dist"] += ', ...]';
+                            if len(distsep) > 3:
+                                p_dict["xcm-dist"] = ', '.join(['%s']*3) % tuple([str(distsep[i]) for i in range(3) ])
+                                p_dict["xcm-dist"] += ', ...]px';
                             else:
                                 p_dict["xcm-dist"] = diststr;
 
-            if p_dict['#comp'] > 4:
+            if p_dict['#comp'] > 3:
                 REDO_SPARSITY[l].append(args.bid)
             ###### INFO.DAT ######
             if os.path.exists(os.path.join(level_path,'info.dat')):
                 with open(os.path.join(level_path,'info.dat'), 'r') as f:
                     f_exist = True;
                     lines  = f.readlines();
-                    if len(lines) > 0:
+                    if len(lines) > 1:
                         f_empty = False;
                         param      = lines[0].split(" ");
                         values     = lines[1].split(" ");
@@ -387,18 +387,18 @@ if __name__=='__main__':
                                 p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
                             if level == 128 and "l2ec(1) scaled,relD (l2;#1,..,#n)     = " in line:
                                 errs = line.split("l2ec(1) scaled,relD (l2;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                if p_dict['#comp'] > 5:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*5) % tuple([float(errs[i]) for i in range(5) ])
+                                if p_dict['#comp'] > 3:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' +  ', '.join(['%.2f']*3) % tuple([float(errs[i]) for i in range(3) ])
                                     p_dict["l2c1(TC,#1,..,#n)"] += ', ...]';
                                 else:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' + ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])  + ']'
                             if level == 256 and "l2ec(1) scaled,relD (l3;#1,..,#n)     = " in line:
                                 errs = line.split("l2ec(1) scaled,relD (l3;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                if p_dict['#comp'] > 5:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*5) % tuple([float(errs[i]) for i in range(5) ])
+                                if p_dict['#comp'] > 3:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' + ', '.join(['%.2f']*3) % tuple([float(errs[i]) for i in range(3) ])
                                     p_dict["l2c1(TC,#1,..,#n)"] += ', ...]';
                                 else:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' + ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs]) + ']'
                             # if "stats int c(1.5) / int c(1)           =" in line:
                                 # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
                             # if "stats int c(1.5) / int c(1.2)         =" in line:
@@ -602,7 +602,7 @@ if __name__=='__main__':
     #### POSTPROC/VISUALIZE ####
     plot_corr     = False;
     plot_pairgrid = False;
-    plot_stats    = True;
+    plot_stats    = False;
     max_l2c1error = 1
     crop_corr     = ["rho-inv", "k-inv", "rho-over-k", "l2Oc1", "l2c1(TC,s)", "#comp", "age", "srvl[]", "Ic0/Ic1", '#tc/#b', '#ed/#b']
 
