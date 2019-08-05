@@ -308,11 +308,10 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     
     // single-GPU
     #if defined(CUDA) && !defined(USEMPICUDA)
-        ierr = VecWAXPY (work_field_->x_, -dt, velocity->x_, coords_->x_);           CHKERRQ (ierr);
-        ierr = VecWAXPY (work_field_->y_, -dt, velocity->y_, coords_->y_);           CHKERRQ (ierr);
-        ierr = VecWAXPY (work_field_->z_, -dt, velocity->z_, coords_->z_);           CHKERRQ (ierr);
+        ierr = VecWAXPY (work_field_->x_, -dt / n_misc->h_[0], velocity->x_, coords_->x_);           CHKERRQ (ierr);
+        ierr = VecWAXPY (work_field_->y_, -dt / n_misc->h_[1], velocity->y_, coords_->y_);           CHKERRQ (ierr);
+        ierr = VecWAXPY (work_field_->z_, -dt / n_misc->h_[2], velocity->z_, coords_->z_);           CHKERRQ (ierr);
         ierr = work_field_->getIndividualComponents (query_points_);                 CHKERRQ (ierr);
-        ierr = VecScale (query_points_, 1.0 / (2.0 * M_PI));                                 CHKERRQ (ierr);
     // multi-GPU
     #elif defined(USEMPICUDA)
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
@@ -370,14 +369,13 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     // Compute RK2 queries
     // single-GPU
     #if defined(CUDA) && !defined(USEMPICUDA)
-        ierr = VecAYPX (work_field_->x_, -0.5*dt, coords_->x_);                     CHKERRQ (ierr);
-        ierr = VecAYPX (work_field_->y_, -0.5*dt, coords_->y_);                     CHKERRQ (ierr);
-        ierr = VecAYPX (work_field_->z_, -0.5*dt, coords_->z_);                     CHKERRQ (ierr);
-        ierr = VecAXPY (work_field_->x_, -0.5*dt, velocity->x_);                    CHKERRQ (ierr);
-        ierr = VecAXPY (work_field_->y_, -0.5*dt, velocity->y_);                    CHKERRQ (ierr);
-        ierr = VecAXPY (work_field_->z_, -0.5*dt, velocity->z_);                    CHKERRQ (ierr);
+        ierr = VecAYPX (work_field_->x_, -0.5*dt / n_misc->h_[0], coords_->x_);                     CHKERRQ (ierr);
+        ierr = VecAYPX (work_field_->y_, -0.5*dt / n_misc->h_[1], coords_->y_);                     CHKERRQ (ierr);
+        ierr = VecAYPX (work_field_->z_, -0.5*dt / n_misc->h_[2], coords_->z_);                     CHKERRQ (ierr);
+        ierr = VecAXPY (work_field_->x_, -0.5*dt / n_misc->h_[0], velocity->x_);                    CHKERRQ (ierr);
+        ierr = VecAXPY (work_field_->y_, -0.5*dt / n_misc->h_[1], velocity->y_);                    CHKERRQ (ierr);
+        ierr = VecAXPY (work_field_->z_, -0.5*dt / n_misc->h_[2], velocity->z_);                    CHKERRQ (ierr);
         ierr = work_field_->getIndividualComponents (query_points_);                CHKERRQ (ierr);
-        ierr = VecScale (query_points_, 1.0 / (2.0 * M_PI));                        CHKERRQ (ierr);
     // multi-GPU
     #elif defined(USEMPICUDA)
         ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);

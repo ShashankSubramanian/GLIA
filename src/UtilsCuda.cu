@@ -366,15 +366,15 @@ __global__ void setCoords (double *x_ptr, double *y_ptr, double *z_ptr) {
 	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
 
 	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		double hx, hy, hz;
-		double twopi = 2. * CUDART_PI;
-		hx = twopi / n_cuda[0];
-		hy = twopi / n_cuda[1];
-		hz = twopi / n_cuda[2];
+		// double hx, hy, hz;
+		// double twopi = 2. * CUDART_PI;
+		// hx = twopi / n_cuda[0];
+		// hy = twopi / n_cuda[1];
+		// hz = twopi / n_cuda[2];
 
-		x_ptr[ptr] = hx * static_cast<double> (i + istart_cuda[0]);
-        y_ptr[ptr] = hy * static_cast<double> (j + istart_cuda[1]);
-        z_ptr[ptr] = hz * static_cast<double> (k + istart_cuda[2]);    
+		x_ptr[ptr] = static_cast<double> (i + istart_cuda[0]);
+        y_ptr[ptr] = static_cast<double> (j + istart_cuda[1]);
+        z_ptr[ptr] = static_cast<double> (k + istart_cuda[2]);    
     }
 }
 
