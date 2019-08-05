@@ -27,6 +27,17 @@ PetscErrorCode VecField::copy (std::shared_ptr<VecField> field) {
 	PetscFunctionReturn (0);
 }
 
+PetscErrorCode VecField::set (double scalar) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	ierr = VecSet (x_, scalar);				CHKERRQ (ierr);
+	ierr = VecSet (y_, scalar);				CHKERRQ (ierr);
+	ierr = VecSet (z_, scalar);				CHKERRQ (ierr);
+	
+	PetscFunctionReturn (0);
+}
+
 PetscErrorCode VecField::getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;

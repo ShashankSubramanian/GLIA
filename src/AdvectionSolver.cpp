@@ -364,6 +364,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     #endif
     
     // Interpolate velocity fields at Euler points
+    ierr = work_field_->set (0.);                                   CHKERRQ (ierr);
     ierr = interpolate (work_field_, velocity);
 
     // Compute RK2 queries
@@ -426,6 +427,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
         ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
     #endif
 
+    ierr = work_field_->set (0.);                                   CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

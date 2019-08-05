@@ -515,6 +515,7 @@ class VecField {
 
         PetscErrorCode computeMagnitude ();
         PetscErrorCode copy (std::shared_ptr<VecField> field);
+        PetscErrorCode set (double scalar);
         PetscErrorCode getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
         PetscErrorCode restoreComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
