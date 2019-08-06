@@ -20,22 +20,22 @@ using ScalarType = PetscReal;
         using ComplexType = Complexf;
         using CudaComplexType = cuFloatComplex;
         using fft_plan = accfft_plan_gpuf;
-        #define accfft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
+        #define fft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
         #define accfft_cleanup accfft_cleanup_gpuf
-        #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpuf
-        #define accfft_execute_r2c accfft_execute_r2c_gpuf
-        #define accfft_execute_c2r accfft_execute_c2r_gpuf 
+        #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpuf
+        #define fft_execute_r2c accfft_execute_r2c_gpuf
+        #define fft_execute_c2r accfft_execute_c2r_gpuf 
         #define makeCudaComplexType make_cuFloatComplex
     #else
         #define MPIType MPI_DOUBLE
         using ComplexType = Complex;
         using CudaComplexType = cuDoubleComplex;
         using fft_plan = accfft_plan_gpu;
-        #define accfft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
+        #define fft_local_size_dft_r2c accfft_local_size_dft_r2c_gpu
         #define accfft_cleanup accfft_cleanup_gpu
-        #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpu
-        #define accfft_execute_r2c accfft_execute_r2c_gpu
-        #define accfft_execute_c2r accfft_execute_c2r_gpu    
+        #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpu
+        #define fft_execute_r2c accfft_execute_r2c_gpu
+        #define fft_execute_c2r accfft_execute_c2r_gpu    
         #define makeCudaComplexType make_cuDoubleComplex
     #endif
 
@@ -49,8 +49,16 @@ using ScalarType = PetscReal;
     // CPU accfft has function overloading for single and double precision; Not the GPU version
     #ifdef SINGLE
         using fft_plan = accfft_planf;
+        #define fft_execute_r2c accfft_execute_r2cf
+        #define fft_execute_c2r accfft_execute_c2rf
+        #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2cf
+        #define fft_local_size_dft_r2c accfft_local_size_dft_r2cf
     #else
         using fft_plan = accfft_plan;
+        #define fft_execute_r2c accfft_execute_r2c
+        #define fft_execute_c2r accfft_execute_c2r
+        #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c
+        #define fft_local_size_dft_r2c accfft_local_size_dft_r2c
     #endif
 
     #define fft_free accfft_free

@@ -1602,9 +1602,6 @@
   }
 
 
-//------------ SINGLE GPU -----------
-#elif CUDA
- // do nothing. cuda files will define the kernels
 //------------ NO CUDA -----------
 #else
 

@@ -117,34 +117,6 @@
 	void rescale_xyzgrid(const int g_size, int* N_reg, int* N_reg_g, int* istart,
 			int* isize, int* isize_g, const int N_pts, pvfmm::Iterator<Real> Q_);
 
-#elif CUDA
-		// use cuda routines
-		#include "petsccuda.h"
-		#include <cuda.h>
-		#include <cuda_runtime.h>
-		
-		void gpuInterp3D(
-           float* yi,
-           const float* xq1,
-           const float* xq2,
-           const float* xq3,
-           float* yo,
-           float *tmp1, float* tmp2,
-           int*  nx,
-           cudaTextureObject_t yi_tex,
-           int iporder,
-           float* interp_time);
-
-		void gpuInterpVec3D(
-           float* yi1, float* yi2, float* yi3,
-           const float* xq1, const float* xq2, const float* xq3,
-           float* yo1, float* yo2, float* yo3,
-           float *tmp1, float* tmp2,
-           int*  nx, cudaTextureObject_t yi_tex, int iporder, float* interp_time);
-
-		extern "C" cudaTextureObject_t gpuInitEmptyTexture(int* nx);
-
-		void interp0(float* m, float* q1, float *q2, float *q3, float *q, int nx[3]);
 #else
 	#include "petsc.h"
 	#include <accfft.h>
@@ -186,6 +158,35 @@
 	#include <set>
 	#include <compact_mem_mgr.hpp>
 
+	#ifdef CUDA
+		// use cuda routines
+		#include "petsccuda.h"
+		#include <cuda.h>
+		#include <cuda_runtime.h>
+		
+		void gpuInterp3D(
+           float* yi,
+           const float* xq1,
+           const float* xq2,
+           const float* xq3,
+           float* yo,
+           float *tmp1, float* tmp2,
+           int*  nx,
+           cudaTextureObject_t yi_tex,
+           int iporder,
+           float* interp_time);
+
+		void gpuInterpVec3D(
+           float* yi1, float* yi2, float* yi3,
+           const float* xq1, const float* xq2, const float* xq3,
+           float* yo1, float* yo2, float* yo3,
+           float *tmp1, float* tmp2,
+           int*  nx, cudaTextureObject_t yi_tex, int iporder, float* interp_time);
+
+		extern "C" cudaTextureObject_t gpuInitEmptyTexture(int* nx);
+
+		void interp0(float* m, float* q1, float *q2, float *q3, float *q, int nx[3]);
+	#endif
 
 	void rescale_xyz(const int g_size, int* N_reg, int* N_reg_g, int* istart,
 			int* isize, int* isize_g, const int N_pts, Real* Q_);

@@ -468,8 +468,8 @@ int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> 
 	#endif
 
 	/* Forward transform */
-	accfft_execute_r2c(plan, f, f_hat);
-	accfft_execute_r2c(plan, c, c_hat);
+	fft_execute_r2c(plan, f, f_hat);
+	fft_execute_r2c(plan, c, c_hat);
 
 	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
 	#ifdef CUDA
@@ -486,7 +486,7 @@ int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> 
 
 
 	/* Backward transform */
-	accfft_execute_c2r(plan, f_hat, Wc);
+	fft_execute_c2r(plan, f_hat, Wc);
 
 	fft_free(f);
 	fft_free(f_hat);

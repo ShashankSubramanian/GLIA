@@ -973,7 +973,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     // ScalarType *freq_scaling;
     // data_hat = (ComplexType*) accfft_alloc (alloc_max);
     // freq_scaling = (ScalarType*) accfft_alloc (alloc_max);
-    // accfft_execute_r2c (plan, d_ptr, data_hat);
+    // fft_execute_r2c (plan, d_ptr, data_hat);
     // MPI_Barrier (c_comm);
 
     // ScalarType *data_hat_mag;
@@ -1035,7 +1035,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     // }
 
     // MPI_Barrier(c_comm);
-    // accfft_execute_c2r(plan, data_hat, d_ptr);
+    // fft_execute_c2r(plan, data_hat, d_ptr);
     // MPI_Barrier(c_comm);
 
     // for (int i = 0; i < n_misc->n_local_; i++)

@@ -7,7 +7,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
     #ifdef CUDA
         cufftResult cufft_status;
-        alloc_max_ = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        alloc_max_ = fft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         isize_ = isize;
         istart_ = istart;
         osize_ = osize;
@@ -19,7 +19,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         cudaMalloc ((void**) &d1_ptr_, alloc_max_);
         cudaMalloc ((void**) &d2_ptr_, alloc_max_);
 
-        plan_ = accfft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);
+        plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);
         if (fft_mode_ == CUFFT) {
             cufft_status = cufftPlan3d (&plan_r2c_, n[0], n[1], n[2], CUFFT_D2Z);   cufftCheckError (cufft_status);
             cufft_status = cufftPlan3d (&plan_c2r_, n[0], n[1], n[2], CUFFT_Z2D);   cufftCheckError (cufft_status);
@@ -28,7 +28,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         // define constants for the gpu
         initCudaConstants (isize, osize, istart, ostart, n);
     #else
-        alloc_max_ = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+        alloc_max_ = fft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         isize_ = isize;
         istart_ = istart;
         osize_ = osize;
@@ -39,7 +39,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         wx_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
 
-        plan_ = accfft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
+        plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
     #endif
 
 }
@@ -48,14 +48,14 @@ void SpectralOperators::executeFFTR2C (ScalarType *f, ComplexType *f_hat) {
     #ifdef CUDA
         cufftResult cufft_status;
         if (fft_mode_ == ACCFFT)
-            accfft_execute_r2c (plan_, f, f_hat);
+            fft_execute_r2c (plan_, f, f_hat);
         else {
             cufft_status = cufftExecD2Z (plan_r2c_, (cufftScalarTypeReal*) f, (cufftScalarTypeComplexType*) f_hat);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
         }
     #else
-        accfft_execute_r2c (plan_, f, f_hat);
+        fft_execute_r2c (plan_, f, f_hat);
     #endif
 }
 
@@ -63,14 +63,14 @@ void SpectralOperators::executeFFTC2R (ComplexType *f_hat, ScalarType *f) {
     #ifdef CUDA
         cufftResult cufft_status;
         if (fft_mode_ == ACCFFT)
-            accfft_execute_c2r (plan_, f_hat, f);
+            fft_execute_c2r (plan_, f_hat, f);
         else {
             cufft_status = cufftExecZ2D (plan_c2r_, (cufftScalarTypeComplexType*) f_hat, (cufftScalarTypeReal*) f);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
         }
     #else
-        accfft_execute_c2r (plan_, f_hat, f);
+        fft_execute_c2r (plan_, f_hat, f);
     #endif
 }
 
