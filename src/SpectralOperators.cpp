@@ -5,14 +5,15 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 	ScalarType *c_0;
     ComplexType *c_hat;
 
+    alloc_max_ = fft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
+    isize_ = isize;
+    istart_ = istart;
+    osize_ = osize;
+    ostart_ = ostart;
+    n_ = n;
+
     #ifdef CUDA
         cufftResult cufft_status;
-        alloc_max_ = fft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-        isize_ = isize;
-        istart_ = istart;
-        osize_ = osize;
-        ostart_ = ostart;
-        n_ = n;
 
         cudaMalloc ((void**) &x_hat_, alloc_max_);
         cudaMalloc ((void**) &wx_hat_, alloc_max_);
@@ -28,12 +29,6 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         // define constants for the gpu
         initCudaConstants (isize, osize, istart, ostart, n);
     #else
-        alloc_max_ = fft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-        isize_ = isize;
-        istart_ = istart;
-        osize_ = osize;
-        ostart_ = ostart;
-        n_ = n;
         d1_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         d2_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);

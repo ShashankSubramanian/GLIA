@@ -1,6 +1,8 @@
 #ifndef _INTERP_H_
 #define _INTERP_H_
 
+#include "TypeDefs.h"
+
 //#define USEMPICUDA
 
 #ifdef USEMPICUDA
