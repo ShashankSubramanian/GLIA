@@ -109,16 +109,16 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
 
 void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz);
 void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz);
-void hadamardComplexTypeProductCuda (CudaComplexTypeType *y, CudaComplexTypeType *x, int *sz);
-void hadamardComplexTypeProductCuda (CudaComplexTypeType *y, ScalarType *x, int *sz);
+void hadamardComplexTypeProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz);
+void hadamardComplexTypeProductCuda (CudaComplexType *y, ScalarType *x, int *sz);
 void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz);
-void precFactorElasticityCuda (CudaComplexTypeType *ux_hat, CudaComplexTypeType *uy_hat, CudaComplexTypeType *uz_hat, CudaComplexTypeType *fx_hat, 
-                              CudaComplexTypeType *fy_hat, CudaComplexTypeType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
+void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, 
+                              CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
 void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int sz, int linearized);
-void multiplyXWaveNumberCuda (CudaComplexTypeType *w_f, CudaComplexTypeType *f, int *sz);
-void multiplyYWaveNumberCuda (CudaComplexTypeType *w_f, CudaComplexTypeType *f, int *sz);
-void multiplyZWaveNumberCuda (CudaComplexTypeType *w_f, CudaComplexTypeType *f, int *sz);
+void multiplyXWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
+void multiplyYWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
+void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
 void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz);
 void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr,
                                        ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *sz);
