@@ -127,9 +127,9 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     ctx->spec_ops_->executeFFTR2C (fz_ptr, fz_hat);
 
 #ifdef CUDA
-    precFactorElasticityCuda ((cuScalarTypeComplexType*)ux_hat, (cuScalarTypeComplexType*)uy_hat,
-    (cuScalarTypeComplexType*)uz_hat, (cuScalarTypeComplexType*)fx_hat, (cuScalarTypeComplexType*)fy_hat, 
-    (cuScalarTypeComplexType*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->osize_);
+    precFactorElasticityCuda ((CudaComplexType*)ux_hat, (CudaComplexType*)uy_hat,
+    (CudaComplexType*)uz_hat, (CudaComplexType*)fx_hat, (CudaComplexType*)fy_hat, 
+    (CudaComplexType*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->osize_);
 #else
     ScalarType s1, s2, s1_square, s3, scale;
 

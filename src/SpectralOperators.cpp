@@ -101,7 +101,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
 
             if (XYZ[0]) {
                 // compute x gradient
-                multiplyXWaveNumberCuda ((cuScalarTypeComplexType*) wx_hat_, (cuScalarTypeComplexType*) x_hat_, osize_);
+                multiplyXWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
                 // backwards transform
                 cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) grad_x_ptr);
                 cufftCheckError (cufft_status);
@@ -110,7 +110,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
 
             if (XYZ[1]) {
                 // compute y gradient
-                multiplyYWaveNumberCuda ((cuScalarTypeComplexType*) wx_hat_, (cuScalarTypeComplexType*) x_hat_, osize_);
+                multiplyYWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
                 // backwards transform
                 cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) grad_y_ptr);
                 cufftCheckError (cufft_status);
@@ -119,7 +119,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
 
             if (XYZ[2]) {
                 // compute z gradient
-                multiplyZWaveNumberCuda ((cuScalarTypeComplexType*) wx_hat_, (cuScalarTypeComplexType*) x_hat_, osize_);
+                multiplyZWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
                 // backwards transform
                 cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) grad_z_ptr);
                 cufftCheckError (cufft_status);
@@ -168,7 +168,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
-            multiplyXWaveNumberCuda ((cuScalarTypeComplexType*) wx_hat_, (cuScalarTypeComplexType*) x_hat_, osize_);
+            multiplyXWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
             cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) d1_ptr_);
             cufftCheckError (cufft_status);
@@ -179,7 +179,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
-            multiplyYWaveNumberCuda ((cuScalarTypeComplexType*) wx_hat_, (cuScalarTypeComplexType*) x_hat_, osize_);
+            multiplyYWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
             cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) d2_ptr_);
             cufftCheckError (cufft_status);
@@ -190,7 +190,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
-            multiplyZWaveNumberCuda ((cuScalarTypeComplexType*) wx_hat_, (cuScalarTypeComplexType*) x_hat_, osize_);
+            multiplyZWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
             cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) div_ptr);
             cufftCheckError (cufft_status);
@@ -354,11 +354,11 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
     // Perform the Hadamard Transform f_hat=f_hat.*c_hat
     #ifdef CUDA
         ScalarType alp = factor * hx * hy * hz;
-        hadamardComplexTypeProductCuda ((cuScalarTypeComplexType*) f_hat, (cuScalarTypeComplexType*) c_hat, osize);
+        hadamardComplexTypeProductCuda ((CudaComplexType*) f_hat, (CudaComplexType*) c_hat, osize);
         #ifdef SINGLE
-        status = cublasZscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuScalarTypeComplexType*) f_hat, 1);
+        status = cublasZscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #else
-        status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuScalarTypeComplexType*) f_hat, 1);
+        status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #endif
         cublasCheckError (status);
     #else   

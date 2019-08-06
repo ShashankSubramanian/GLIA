@@ -25,8 +25,9 @@
 #include <cstring>
 #include <array>
 #include "mpi.h"
-#include "petsc.h"
 
+
+#include "TypeDefs.h"
 
 /* helper function for timer accumulation */
 void accumulateTimers(std::array<PetscReal, 7>& tacc, std::array<PetscReal, 7>& tloc, PetscReal selfexec);
