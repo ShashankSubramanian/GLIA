@@ -18,6 +18,7 @@
 	#include <mpi.h>
 	#include <vector>
 
+	#include "UtilsCuda.h"
 	#include <compact_mem_mgr.hpp>
 
 	#define INTERP_PINNED // if defined will use pinned memory for GPU
@@ -165,6 +166,7 @@
 		#include "petsccuda.h"
 		#include <cuda.h>
 		#include <cuda_runtime.h>
+		#include "UtilsCuda.h"
 		
 		void gpuInterp3D(
            float* yi,
