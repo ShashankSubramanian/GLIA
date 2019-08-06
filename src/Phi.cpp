@@ -258,13 +258,21 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     double twopi = 2.0 * M_PI;
-    const double R = std::sqrt(2.) * sigma_; //0.05*twopi;
-    const double AMPL = 1.;// / (sigma_ * std::sqrt(2*M_PI));
+    double R, c;
     int64_t X, Y, Z;
     double r, ratio;
     int64_t ptr;
     double xc = center[0], yc = center[1], zc = center[2];
     double hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
+    double dx = 0, dy = 0, dz = 0, out = 0;
+
+    // PHI = GAUSSIAN
+    R = std::sqrt(2.) * sigma_;
+    c = 1.;                       // 1./(sigma_ * std::sqrt(2*M_PI));
+
+    // PHI = BUMP
+    // R = sigma_ * sigma_;
+    // c = std::exp(1);
 
     for (int x = 0; x < n_misc->isize_[0]; x++)
         for (int y = 0; y < n_misc->isize_[1]; y++)
@@ -272,12 +280,22 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
                 X = n_misc->istart_[0] + x;
                 Y = n_misc->istart_[1] + y;
                 Z = n_misc->istart_[2] + z;
-                r = sqrt((hx * X - xc) * (hx * X - xc) + (hy * Y - yc) * (hy * Y - yc) + (hz * Z - zc) * (hz * Z - zc));
-                ratio = r / R;
                 ptr = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
-                // set values of Gaussian function, truncate to zero after radius 5\sigma
-                // out[ptr] = (r/sigma_ <= 5) ? AMPL * std::exp(-ratio * ratio) : 0.0;
-                out[ptr] = AMPL * std::exp(-ratio * ratio);
+
+                dx = hx * X - xc;
+                dy = hy * Y - yc;
+                dz = hz * Z - zc;
+
+                // PHI = GAUSSIAN
+                r = sqrt(dx*dx + dy*dy + dz*dz);
+                ratio = r / R;
+                out = (r/sigma_ <= 5) ? c * std::exp(-ratio * ratio) : 0.0;
+
+                // PHI = BUMP
+                // r = sqrt(dx*dx/R + dy*dy/R + dz*dz/R);
+                // out = (r < 1.)        ? c * std::exp(-1./(1.-r*r))   : 0.0;
+
+                out[ptr] = out;
 
             }
   PetscFunctionReturn(0);
@@ -964,7 +982,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         }
     #endif
 
-    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed 
+    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed
     // max size of subspace can be 3 * sparsity_level
     // on the fly
     int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
