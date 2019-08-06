@@ -109,8 +109,8 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
 
 void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz);
 void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz);
-void hadamardComplexTypeProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz);
-void hadamardComplexTypeProductCuda (CudaComplexType *y, ScalarType *x, int *sz);
+void hadamardComplexProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz);
+void hadamardComplexProductCuda (CudaComplexType *y, ScalarType *x, int *sz);
 void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz);
 void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, 
                               CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
