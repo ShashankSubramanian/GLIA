@@ -489,7 +489,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = TaoSolve (tao_);                                                             CHKERRQ(ierr);
 
   self_exec_time_tuninv += MPI_Wtime();
-  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_ScalarType, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPIType, MPI_MAX, 0, MPI_COMM_WORLD);
 
   ierr = VecCopy (itctx_->x_old, xrec_);                                                          CHKERRQ(ierr);
 
@@ -669,7 +669,7 @@ PetscErrorCode InvSolver::solve () {
   ierr = TaoSolve (tao_);                                                                CHKERRQ(ierr);
   // --------
   self_exec_time_tuninv += MPI_Wtime();
-  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_ScalarType, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPIType, MPI_MAX, 0, MPI_COMM_WORLD);
 
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                          CHKERRQ(ierr);

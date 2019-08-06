@@ -697,7 +697,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         displs[i] = displs[i - 1] + center_size[i - 1];
         rcount[i] = center_size[i];
     }
-    MPI_Allgatherv (&center[0], center.size(), MPI_ScalarType, &center_global[0], &rcount[0], &displs[0], MPI_ScalarType, PETSC_COMM_WORLD);
+    MPI_Allgatherv (&center[0], center.size(), MPIType, &center_global[0], &rcount[0], &displs[0], MPIType, PETSC_COMM_WORLD);
 
     np_ = np_global;
     n_misc_->np_ = np_;

@@ -1012,7 +1012,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     // }
     // // allreduce to find the amplitude of the freq
     // ScalarType global_amplitude = 0.;
-    // MPI_Allreduce (&amplitude, &global_amplitude, 1, MPI_ScalarType, MPI_MAX, MPI_COMM_WORLD);
+    // MPI_Allreduce (&amplitude, &global_amplitude, 1, MPIType, MPI_MAX, MPI_COMM_WORLD);
     // MPI_Barrier (c_comm);
 
     // // Now add power law noise

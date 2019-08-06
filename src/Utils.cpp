@@ -357,147 +357,6 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	ierr = VecRestoreArray (A, &a_ptr);
 }
 
-PetscErrorCode weierstrassSmoother (Vec wc, Vec c, std::shared_ptr<NMisc> n_misc, ScalarType sigma) {
-	PetscFunctionBegin;
-	PetscErrorCode ierr = 0;
-
-	ScalarType *wc_ptr, *c_ptr;
-	#ifdef CUDA
-		ierr = VecCUDAGetArrayReadWrite (wc, &wc_ptr);
-		ierr = VecCUDAGetArrayReadWrite (c, &c_ptr);
-
-		ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
-
-		ierr = VecCUDARestoreArrayReadWrite (wc, &wc_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (c, &c_ptr);
-	#else
-		ierr = VecGetArray (wc, &wc_ptr);
-		ierr = VecGetArray (c, &c_ptr);
-
-		ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
-
-		ierr = VecRestoreArray (wc, &wc_ptr);
-		ierr = VecRestoreArray (c, &c_ptr);
-	#endif
-
-
-	PetscFunctionReturn (0);
-}
-
-
-int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma) {
-	MPI_Comm c_comm = n_misc->c_comm_;
-	int nprocs, procid;
-	MPI_Comm_rank(c_comm, &procid);
-	MPI_Comm_size(c_comm, &nprocs);
-
-	int *N = n_misc->n_;
-	int istart[3], isize[3], osize[3], ostart[3];
-	ComplexType *c_hat, *f_hat;
-	ScalarType *f;
-	#ifdef CUDA
-		int alloc_max = accfft_local_size_dft_r2c_gpu(N, isize, istart, osize, ostart,
-			c_comm);
-		cudaMalloc((void**) &c_hat, alloc_max);
-		cudaMalloc((void**) &f_hat, alloc_max);
-		cudaMalloc((void**) &f, alloc_max);
-	#else
-		int alloc_max = accfft_local_size_dft_r2c(N, isize, istart, osize, ostart,
-			c_comm);
-		c_hat = (ComplexType*) accfft_alloc(alloc_max);
-		f_hat = (ComplexType*) accfft_alloc(alloc_max);
-		f = (ScalarType*) accfft_alloc(alloc_max);
-	#endif
-
-	ScalarType self_exec_time = -MPI_Wtime();
-
-	const int Nx = n_misc->n_[0], Ny = n_misc->n_[1], Nz = n_misc->n_[2];
-	const ScalarType pi = M_PI, twopi = 2.0 * pi, factor = 1.0 / (Nx * Ny * Nz);
-	const ScalarType hx = twopi / Nx, hy = twopi / Ny, hz = twopi / Nz;
-	fft_plan * plan = n_misc->plan_;
-
-	ScalarType sum_f_local = 0., sum_f = 0;
-	#ifdef CUDA
-		// user define cuda call
-		computeWeierstrassFilterCuda (f, &sum_f_local, sigma, isize);
-	#else
-		ScalarType X, Y, Z, Xp, Yp, Zp;
-		int64_t ptr;
-		for (int i = 0; i < isize[0]; i++)
-			for (int j = 0; j < isize[1]; j++)
-				for (int k = 0; k < isize[2]; k++) {
-					X = (istart[0] + i) * hx;
-					Xp = X - twopi;
-					Y = (istart[1] + j) * hy;
-					Yp = Y - twopi;
-					Z = (istart[2] + k) * hz;
-					Zp = Z - twopi;
-					ptr = i * isize[1] * isize[2] + j * isize[2] + k;
-					f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
-							+ std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
-
-					f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
-							+ std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
-
-					f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-							+ std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
-
-					f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
-							+ std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
-
-					if (f[ptr] != f[ptr])
-						f[ptr] = 0.; // To avoid Nan
-					sum_f_local += f[ptr];
-				}
-	#endif
-	
-
-	MPI_Allreduce(&sum_f_local, &sum_f, 1, MPI_ScalarType, MPI_SUM, MPI_COMM_WORLD);
-	ScalarType normalize_factor = 1. / (sum_f * hx * hy * hz);
-
-	#ifdef CUDA
-		cublasStatus_t status;
-		cublasHandle_t handle;
-		// cublas for vec scale
-		PetscCUBLASGetHandle (&handle);
-		status = cublasDscal (handle, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
-		cublasCheckError (status);
-	#else
-		for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
-			f[i] = f[i] * normalize_factor;
-	#endif
-
-	/* Forward transform */
-	fft_execute_r2c(plan, f, f_hat);
-	fft_execute_r2c(plan, c, c_hat);
-
-	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
-	#ifdef CUDA
-		ScalarType alp = factor * hx * hy * hz;
-		hadamardComplexTypeProductCuda ((cuScalarTypeComplexType*) f_hat, (cuScalarTypeComplexType*) c_hat, osize);
-		status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuScalarTypeComplexType*) f_hat, 1);
-		cublasCheckError (status);
-	#else	
-		std::ComplexType<ScalarType>* cf_hat = (std::ComplexType<ScalarType>*) (ScalarType*) f_hat;
-		std::ComplexType<ScalarType>* cc_hat = (std::ComplexType<ScalarType>*) (ScalarType*) c_hat;
-		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
-			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
-	#endif
-
-
-	/* Backward transform */
-	fft_execute_c2r(plan, f_hat, Wc);
-
-	fft_free(f);
-	fft_free(f_hat);
-	fft_free(c_hat);
-
-	//PCOUT<<"\033[1;32m weierstrass_smoother } "<<"\033[0m"<<std::endl;
-	//self_exec_time+= MPI_Wtime();
-
-	return 0;
-}
-
 /// @brief computes difference diff = x - y
 PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
@@ -717,8 +576,8 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *
     }
 
     ScalarType sm;
-    MPI_Allreduce (&com, cm, 3, MPI_ScalarType, MPI_SUM, PETSC_COMM_WORLD);
-    MPI_Allreduce (&sum, &sm, 1, MPI_ScalarType, MPI_SUM, PETSC_COMM_WORLD);
+    MPI_Allreduce (&com, cm, 3, MPIType, MPI_SUM, PETSC_COMM_WORLD);
+    MPI_Allreduce (&sum, &sm, 1, MPIType, MPI_SUM, PETSC_COMM_WORLD);
 
     for (int i = 0; i < 3; i++) {
     	cm[i] /= sm;

@@ -185,7 +185,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
         ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
         ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->c_hat_);
 
-        std::ComplexType<ScalarType> *c_a = (std::ComplexType<ScalarType> *) ctx->c_hat_;
+        std::complex<ScalarType> *c_a = (std::complex<ScalarType> *) ctx->c_hat_;
         for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
             c_a[i] *= ctx->precfactor_[i];
         }

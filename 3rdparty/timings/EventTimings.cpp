@@ -187,14 +187,14 @@ int EventData::getCount()
 void EventData::compMaxProcTime()
 {
   std::array<PetscReal, 7> gtimers{ {0,0,0,0,0,0,0} };
-  MPI_Reduce(_timers.data(), gtimers.data(), 7, MPI_PetscReal, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(_timers.data(), gtimers.data(), 7, MPIType, MPI_MAX, 0, MPI_COMM_WORLD);
   std::memcpy(_timers.data(), gtimers.data(), sizeof(PetscReal) * 7);
 }
 
 void EventData::compMaxAccfftTotalTime()
 {
   PetscReal g_accfft_total_time = 0;
-  MPI_Reduce(&_accfft_total_time, &g_accfft_total_time, 1, MPI_PetscReal, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&_accfft_total_time, &g_accfft_total_time, 1, MPIType, MPI_MAX, 0, MPI_COMM_WORLD);
   _accfft_total_time = g_accfft_total_time;
 }
 
