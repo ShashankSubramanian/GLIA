@@ -10,12 +10,12 @@ struct Ctx {
 	std::shared_ptr<NMisc> n_misc_;
 	std::shared_ptr<SpectralOperators> spec_ops_;
 	fft_plan *plan_;
-	double dt_;
+	ScalarType dt_;
 	Vec temp_;
-	double *precfactor_;
-	double *work_cuda_;
+	ScalarType *precfactor_;
+	ScalarType *work_cuda_;
 
-	Complex *c_hat_;
+	ComplexType *c_hat_;
 
 	~Ctx () {
 		fft_free (c_hat_);
@@ -37,7 +37,7 @@ class DiffSolver {
 
 		std::shared_ptr<Ctx> ctx_;
 
-		PetscErrorCode solve (Vec c, double dt);
+		PetscErrorCode solve (Vec c, ScalarType dt);
 		PetscErrorCode precFactor ();
 
 		virtual ~DiffSolver ();
@@ -47,7 +47,7 @@ class DiffSolver {
 //Helper functions for KSP solve
 PetscErrorCode operatorA (Mat A, Vec x, Vec y);
 PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right);
-PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx);
+PetscErrorCode precFactor (ScalarType *precfactor, std::shared_ptr<Ctx> ctx);
 PetscErrorCode applyPC (PC pc, Vec x, Vec y);
 
 #endif

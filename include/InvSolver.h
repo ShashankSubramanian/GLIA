@@ -19,24 +19,24 @@ struct CtxInv {
     /// @brief keeps all the information that is feedbacked to the calling routine
     std::shared_ptr<OptimizerFeedback> optfeedback_;
     /* reference values gradient */
-    double ksp_gradnorm0;            // reference gradient for hessian PCG
+    ScalarType ksp_gradnorm0;            // reference gradient for hessian PCG
     /* optimization options/settings */
-    double gttol;                    // used: relative gradient reduction
-    double gatol;                    // absolute tolerance for gradient
-    double grtol;                    // relative tolerance for gradient
+    ScalarType gttol;                    // used: relative gradient reduction
+    ScalarType gatol;                    // absolute tolerance for gradient
+    ScalarType grtol;                    // relative tolerance for gradient
     /* steering of reference gradeint reset */
     bool is_ksp_gradnorm_set;        // if false, update reference gradient norm for hessian PCG
     
     bool flag_sparse;                //flag for tracking sparsity of solution when parameter continuation is used
-    double lam_right;                //Parameters for performing binary search on parameter continuation
-    double lam_left;
+    ScalarType lam_right;                //Parameters for performing binary search on parameter continuation
+    ScalarType lam_left;
     Vec weights;                     //for weighted L2
 
 
     bool update_reference_gradient;  // if true, update reference gradient for optimization
     bool update_reference_objective;
     /* optimization state */
-    double jvalold;                 // old value of objective function (previous newton iteration)
+    ScalarType jvalold;                 // old value of objective function (previous newton iteration)
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
@@ -127,7 +127,7 @@ class InvSolver {
             PetscFunctionReturn(0);
         }
 
-        std::vector<double> getInvOutParams () {
+        std::vector<ScalarType> getInvOutParams () {
             return out_params_;
         }
 
@@ -154,7 +154,7 @@ class InvSolver {
         std::shared_ptr<OptimizerFeedback> optfeedback_;
         std::shared_ptr<CtxInv> itctx_;
 
-        std::vector<double> out_params_;
+        std::vector<ScalarType> out_params_;
 };
 
 // ============================= non-class methods used for TAO ============================

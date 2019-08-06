@@ -7,7 +7,7 @@ static char help[] = "Inverse Driver \
 
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readDataAndAtlas (Vec &data, Vec &wm, Vec &gm, Vec &glm, Vec &csf, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeError (ScalarType &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 
 int main (int argc, char** argv) {
  /* ACCFFT, PETSC setup begin */
@@ -52,22 +52,22 @@ int main (int argc, char** argv) {
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
     int isize[3], osize[3], istart[3], ostart[3];
-    double *c_0;
-    Complex *c_hat;
+    ScalarType *c_0;
+    ComplexType *c_hat;
     blas_handle *handle;
     #ifdef CUDA
         cublasCreate (handle);  // create blas handle for cublas ops later
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         cudaMalloc((void**) &c_0, alloc_max);
         cudaMalloc((void**) &c_hat, alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+        fft_plan *plan = accfft_plan_dft_3d_r2c_gpu (n, c_0, (ScalarType*) c_hat, c_comm, ACCFFT_MEASURE);
         fft_free (c_0);
         fft_free (c_hat);
     #else
         int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-        c_0= (double*) accfft_alloc (alloc_max);
-        c_hat = (Complex*) accfft_alloc (alloc_max);
-        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
+        c_0= (ScalarType*) accfft_alloc (alloc_max);
+        c_hat = (ComplexType*) accfft_alloc (alloc_max);
+        fft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (ScalarType*) c_hat, c_comm, ACCFFT_MEASURE);
         fft_free (c_0);
         fft_free (c_hat);
     #endif
@@ -121,11 +121,11 @@ int main (int argc, char** argv) {
     //Solve tumor inversion
     ierr = solver_interface->solveInverse (p_rec, data, nullptr);
 
-    double prec_norm;
+    ScalarType prec_norm;
     ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
     PCOUT << "\nReconstructed P Norm: " << prec_norm << std::endl;
 
-    double l2_rel_error = 0.0;
+    ScalarType l2_rel_error = 0.0;
     ierr = computeError (l2_rel_error, p_rec, data, solver_interface, n_misc);
     PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
 
@@ -173,7 +173,7 @@ PetscErrorCode readDataAndAtlas (Vec &data, Vec &wm, Vec &gm, Vec &glm, Vec &csf
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode computeError (ScalarType &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Vec c_rec_0, c_rec;
@@ -182,13 +182,13 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    double data_norm;
+    ScalarType data_norm;
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
-    double *c0_ptr;
+    ScalarType *c0_ptr;
 
     if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_rec_0, &c0_ptr);                              CHKERRQ (ierr);
@@ -203,7 +203,7 @@ PetscErrorCode computeError (double &error_norm, Vec p_rec, Vec data, std::share
 
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
-    double max, min;
+    ScalarType max, min;
     ierr = VecMax (c_rec, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_rec, NULL, &min);                                      CHKERRQ (ierr);
 

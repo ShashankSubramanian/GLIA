@@ -15,8 +15,8 @@ class MatProp {
 		Vec bg_;
 		Vec filter_;
 
-		double force_factor_;
-		double edema_threshold_;	
+		ScalarType force_factor_;
+		ScalarType edema_threshold_;	
 
 		std::shared_ptr<NMisc> n_misc_;
 		std::shared_ptr<SpectralOperators> spec_ops_;

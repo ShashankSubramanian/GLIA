@@ -10,7 +10,7 @@ void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n
 	cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
 }
 
-__global__ void computeWeierstrassFilter (double *f, double sigma) {
+__global__ void computeWeierstrassFilter (ScalarType *f, ScalarType sigma) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -18,8 +18,8 @@ __global__ void computeWeierstrassFilter (double *f, double sigma) {
 	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
 
 	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		double X, Y, Z, Xp, Yp, Zp, twopi;
-		double hx, hy, hz;
+		ScalarType X, Y, Z, Xp, Yp, Zp, twopi;
+		ScalarType hx, hy, hz;
 		
 		twopi = 2. * CUDART_PI;
 		hx = twopi / n_cuda[0];
@@ -50,21 +50,21 @@ __global__ void computeWeierstrassFilter (double *f, double sigma) {
 	}
 }
 
-__global__ void hadamardComplexProduct (cuDoubleComplex *y, double *x) {
+__global__ void hadamardComplexProduct (CudaComplexType *y, ScalarType *x) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) 
-		y[i] = cuCmul (y[i], make_cuDoubleComplex(x[i], 0.));
+		y[i] = cuCmul (y[i], makeCudaComplexType(x[i], 0.));
 }
 
-__global__ void hadamardComplexProduct (cuDoubleComplex *y, cuDoubleComplex *x) {
+__global__ void hadamardComplexProduct (CudaComplexType *y, CudaComplexType *x) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) 
 		y[i] = cuCmul (y[i], x[i]);
 }
 
-__global__ void precFactorDiffusion (double *precfactor, double *work) {
+__global__ void precFactorDiffusion (ScalarType *precfactor, ScalarType *work) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -72,14 +72,14 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
 	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
-		double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
 
-		double X, Y, Z;
+		ScalarType X, Y, Z;
 		X = ostart_cuda[0] + x;
 	    Y = ostart_cuda[1] + y;
 	    Z = ostart_cuda[2] + z;
 
-	    double wx, wy, wz;
+	    ScalarType wx, wy, wz;
 	    wx = X;
 	    wy = Y;
 	    wz = Z;
@@ -99,13 +99,13 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
 	    if (Z == n_cuda[2] / 2.0)
 	        wz = 0;
 
-	    double dt = work[0];
-	    double kxx_avg = work[1];
-	    double kxy_avg = work[2];
-	    double kxz_avg = work[3];
-	    double kyz_avg = work[4];
-	    double kyy_avg = work[5];
-	    double kzz_avg = work[6];
+	    ScalarType dt = work[0];
+	    ScalarType kxx_avg = work[1];
+	    ScalarType kxy_avg = work[2];
+	    ScalarType kxz_avg = work[3];
+	    ScalarType kyz_avg = work[4];
+	    ScalarType kyy_avg = work[5];
+	    ScalarType kzz_avg = work[6];
 
 	    
 	    precfactor[index] = (1. + 0.25 * dt * (kxx_avg * wx * wx + 2.0 * kxy_avg * wx * wy
@@ -118,29 +118,29 @@ __global__ void precFactorDiffusion (double *precfactor, double *work) {
 	}
 }
 
-__global__ void logisticReactionLinearized (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt) {
+__global__ void logisticReactionLinearized (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		double factor = 0., alph = 0.;
+		ScalarType factor = 0., alph = 0.;
 	    factor = exp (rho_ptr[i] * dt);
 	    alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
 	    c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
 	}
 }
 
-__global__ void logisticReaction (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt) {
+__global__ void logisticReaction (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		double factor = 0., alph = 0.;
+		ScalarType factor = 0., alph = 0.;
 	    factor = exp (rho_ptr[i] * dt);
 	    alph = (1.0 - c_t_ptr[i]) / c_t_ptr[i];
 	    c_t_ptr[i] = factor / (factor + alph);
 	}
 }
 
-__global__ void multiplyXWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
+__global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -148,11 +148,11 @@ __global__ void multiplyXWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
 	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
-		double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
-		double X;
+		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+		ScalarType X;
 		X = ostart_cuda[0] + x;
 
-	    double wx;
+	    ScalarType wx;
 	    wx = X;
 
 	    if (X > n_cuda[0] / 2.0)
@@ -165,7 +165,7 @@ __global__ void multiplyXWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	}
 }
 
-__global__ void multiplyYWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
+__global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -173,11 +173,11 @@ __global__ void multiplyYWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
 	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
-		double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
-		double Y;
+		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+		ScalarType Y;
 		Y = ostart_cuda[1] + y;
 
-	    double wy;
+	    ScalarType wy;
 	    wy = Y;
 
 	    if (Y > n_cuda[1] / 2.0)
@@ -190,7 +190,7 @@ __global__ void multiplyYWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	}
 }
 
-__global__ void multiplyZWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
+__global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -198,11 +198,11 @@ __global__ void multiplyZWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
 	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
-		double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
-		double Z;
+		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+		ScalarType Z;
 		Z = ostart_cuda[2] + z;
 
-	    double wz;
+	    ScalarType wz;
 	    wz = Z;
 
 	    if (Z > n_cuda[2] / 2.0)
@@ -215,7 +215,7 @@ __global__ void multiplyZWaveNumber (cuDoubleComplex *w_f, cuDoubleComplex *f) {
 	}
 }
 
-__global__ void computeEulerPoints (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double dt) {
+__global__ void computeEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -223,15 +223,15 @@ __global__ void computeEulerPoints (double *query_ptr, double *vx_ptr, double *v
 	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
 
 	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		double hx, hy, hz, x1, x2, x3;
-		double twopi = 2. * CUDART_PI;
+		ScalarType hx, hy, hz, x1, x2, x3;
+		ScalarType twopi = 2. * CUDART_PI;
 		hx = 1. / n_cuda[0];
 		hy = 1. / n_cuda[1];
 		hz = 1. / n_cuda[2];
 
-		x1 = hx * static_cast<double> (i + istart_cuda[0]);
-        x2 = hy * static_cast<double> (j + istart_cuda[1]);
-        x3 = hz * static_cast<double> (k + istart_cuda[2]);
+		x1 = hx * static_cast<ScalarType> (i + istart_cuda[0]);
+        x2 = hy * static_cast<ScalarType> (j + istart_cuda[1]);
+        x3 = hz * static_cast<ScalarType> (k + istart_cuda[2]);
 
         dt /= twopi;
 
@@ -243,7 +243,7 @@ __global__ void computeEulerPoints (double *query_ptr, double *vx_ptr, double *v
     }
 }
 
-__global__ void computeSecondOrderEulerPoints (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt) {
+__global__ void computeSecondOrderEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -251,15 +251,15 @@ __global__ void computeSecondOrderEulerPoints (double *query_ptr, double *vx_ptr
 	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
 
 	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		double hx, hy, hz, x1, x2, x3;
-		double twopi = 2. * CUDART_PI;
+		ScalarType hx, hy, hz, x1, x2, x3;
+		ScalarType twopi = 2. * CUDART_PI;
 		hx = 1. / n_cuda[0];
 		hy = 1. / n_cuda[1];
 		hz = 1. / n_cuda[2];
 
-		x1 = hx * static_cast<double> (i + istart_cuda[0]);
-        x2 = hy * static_cast<double> (j + istart_cuda[1]);
-        x3 = hz * static_cast<double> (k + istart_cuda[2]);
+		x1 = hx * static_cast<ScalarType> (i + istart_cuda[0]);
+        x2 = hy * static_cast<ScalarType> (j + istart_cuda[1]);
+        x3 = hz * static_cast<ScalarType> (k + istart_cuda[2]);
 
         dt /= twopi;
 
@@ -270,7 +270,7 @@ __global__ void computeSecondOrderEulerPoints (double *query_ptr, double *vx_ptr
     }
 }
 
-__global__ void precFactorElasticity (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat, cuDoubleComplex *uz_hat, cuDoubleComplex *fx_hat, cuDoubleComplex *fy_hat, cuDoubleComplex *fz_hat, double lam_avg, double mu_avg, double screen_avg) {
+__global__ void precFactorElasticity (CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -278,12 +278,12 @@ __global__ void precFactorElasticity (cuDoubleComplex *ux_hat, cuDoubleComplex *
 	int64_t ptr = i * osize_cuda[1] * osize_cuda[2] + j * osize_cuda[2] + k;
 
 	if (ptr < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
-		double s1, s2, s1_square, s3, scale;
+		ScalarType s1, s2, s1_square, s3, scale;
 	    int64_t wx, wy, wz;
-	    double wTw, wTf_real, wTf_imag;
+	    ScalarType wTw, wTf_real, wTf_imag;
 	    int64_t x_global, y_global, z_global;
 
-	    double factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
+	    ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
 	    s2 = lam_avg + mu_avg;
 
 
@@ -341,14 +341,14 @@ __global__ void precFactorElasticity (cuDoubleComplex *ux_hat, cuDoubleComplex *
 	}
 }
 
-__global__ void computeMagnitude (double *mag_ptr, double *x_ptr, double *y_ptr, double *z_ptr, int sz) {
+__global__ void computeMagnitude (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz)  
 		mag_ptr[i] = sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
 }
 
-__global__ void nonlinearForceScaling (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz) {
+__global__ void nonlinearForceScaling (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int sz) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
@@ -358,7 +358,7 @@ __global__ void nonlinearForceScaling (double *c_ptr, double *fx_ptr, double *fy
 	}
 }
 
-__global__ void setCoords (double *x_ptr, double *y_ptr, double *z_ptr) {
+__global__ void setCoords (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -366,19 +366,19 @@ __global__ void setCoords (double *x_ptr, double *y_ptr, double *z_ptr) {
 	int64_t ptr = i * isize_cuda[1] * isize_cuda[2] + j * isize_cuda[2] + k;
 
 	if (ptr < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		// double hx, hy, hz;
-		// double twopi = 2. * CUDART_PI;
+		// ScalarType hx, hy, hz;
+		// ScalarType twopi = 2. * CUDART_PI;
 		// hx = twopi / n_cuda[0];
 		// hy = twopi / n_cuda[1];
 		// hz = twopi / n_cuda[2];
 
-		x_ptr[ptr] = static_cast<double> (i + istart_cuda[0]);
-        y_ptr[ptr] = static_cast<double> (j + istart_cuda[1]);
-        z_ptr[ptr] = static_cast<double> (k + istart_cuda[2]);    
+		x_ptr[ptr] = static_cast<ScalarType> (i + istart_cuda[0]);
+        y_ptr[ptr] = static_cast<ScalarType> (j + istart_cuda[1]);
+        z_ptr[ptr] = static_cast<ScalarType> (k + istart_cuda[2]);    
     }
 }
 
-void setCoordsCuda (double *x_ptr, double *y_ptr, double *z_ptr, int *sz) {
+void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -391,7 +391,7 @@ void setCoordsCuda (double *x_ptr, double *y_ptr, double *z_ptr, int *sz) {
 	cudaCheckKernelError ();
 }
 
-void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz) {
+void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int sz) {
 	int n_th = N_THREADS;
 
 	nonlinearForceScaling <<< std::ceil(sz / n_th), n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, fac, sz);
@@ -400,7 +400,7 @@ void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, d
 	cudaCheckKernelError ();
 }
 
-void computeMagnitudeCuda (double *mag_ptr, double *x_ptr, double *y_ptr, double *z_ptr, int sz) {
+void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz) {
 	int n_th = N_THREADS;
 
 	computeMagnitude <<< std::ceil(sz / n_th), n_th >>> (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
@@ -409,8 +409,8 @@ void computeMagnitudeCuda (double *mag_ptr, double *x_ptr, double *y_ptr, double
 	cudaCheckKernelError ();
 }
 
-void precFactorElasticityCuda (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat, cuDoubleComplex *uz_hat, cuDoubleComplex *fx_hat, 
-                              cuDoubleComplex *fy_hat, cuDoubleComplex *fz_hat, double lam_avg, double mu_avg, double screen_avg, int *sz) {
+void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, 
+                              CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -423,8 +423,8 @@ void precFactorElasticityCuda (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat,
 	cudaCheckKernelError ();
 }
 
-void computeSecondOrderEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr,
-          double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt, int *sz) {
+void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr,
+          ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -437,7 +437,7 @@ void computeSecondOrderEulerPointsCuda (double *query_ptr, double *vx_ptr, doubl
 	cudaCheckKernelError ();
 }
 
-void computeEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double dt, int *sz) {
+void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -451,7 +451,7 @@ void computeEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, 
 }
 
 
-void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz) {
+void multiplyXWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -464,7 +464,7 @@ void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz)
 	cudaCheckKernelError ();
 }
 
-void multiplyYWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz) {
+void multiplyYWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -477,7 +477,7 @@ void multiplyYWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz)
 	cudaCheckKernelError ();
 }
 
-void multiplyZWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz) {
+void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -491,7 +491,7 @@ void multiplyZWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz)
 }
 
 
-void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
+void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -504,7 +504,7 @@ void precFactorDiffusionCuda (double *precfactor, double *work, int *sz) {
 	cudaCheckKernelError ();
 }
 
-void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz) {
+void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
@@ -518,7 +518,7 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 
 	// use thrust for reduction
 	try {
-		thrust::device_ptr<double> f_thrust;
+		thrust::device_ptr<ScalarType> f_thrust;
 		f_thrust = thrust::device_pointer_cast (f);
 		(*sum) = thrust::reduce (f_thrust, f_thrust + (sz[0] * sz[1] * sz[2]));
 	} catch (thrust::system_error &e) {
@@ -528,7 +528,7 @@ void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz
 	cudaDeviceSynchronize();
 }
 
-void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz) {
+void hadamardComplexProductCuda (CudaComplexType *y, ScalarType *x, int *sz) {
 	int n_th = N_THREADS;
 
 	hadamardComplexProduct <<< std::ceil((sz[0] * sz[1] * sz[2]) / n_th), n_th >>> (y, x);
@@ -537,13 +537,13 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz) {
 	cudaCheckKernelError ();
 }
 
-void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz) {
+void hadamardComplexProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz) {
 	try	{
-		thrust::device_ptr<thrust::complex<double>> y_thrust, x_thrust;
-	    y_thrust = thrust::device_pointer_cast ((thrust::complex<double>*)y);
-	    x_thrust = thrust::device_pointer_cast ((thrust::complex<double>*)x);
+		thrust::device_ptr<thrust::complex<ScalarType>> y_thrust, x_thrust;
+	    y_thrust = thrust::device_pointer_cast ((thrust::complex<ScalarType>*)y);
+	    x_thrust = thrust::device_pointer_cast ((thrust::complex<ScalarType>*)x);
 
-	    thrust::transform(y_thrust, y_thrust + (sz[0] * sz[1] * sz[2]), x_thrust, y_thrust, thrust::multiplies<thrust::complex<double>>());
+	    thrust::transform(y_thrust, y_thrust + (sz[0] * sz[1] * sz[2]), x_thrust, y_thrust, thrust::multiplies<thrust::complex<ScalarType>>());
 	} catch (thrust::system_error &e) {
 		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
 	}
@@ -552,7 +552,7 @@ void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz
 }
 
 
-void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized) {
+void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int sz, int linearized) {
 	int n_th = N_THREADS;
 
 	if (linearized == 0)

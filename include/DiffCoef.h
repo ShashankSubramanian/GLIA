@@ -21,9 +21,9 @@ class DiffCoef {
 	public:
 		DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 
-		double k_scale_;         // (= k_f * k_wm),    k_wm  := 1 (fixed)      INVERSION for k_f, k_gm, k_glm
-		double k_gm_wm_ratio_;   // (= k_f * k_gm),    k_gm  := ratio_gm_wm
-		double k_glm_wm_ratio_;  // (= k_f * k_glm),   k_glm := ratio_glm_wm
+		ScalarType k_scale_;         // (= k_f * k_wm),    k_wm  := 1 (fixed)      INVERSION for k_f, k_gm, k_glm
+		ScalarType k_gm_wm_ratio_;   // (= k_f * k_gm),    k_gm  := ratio_gm_wm
+		ScalarType k_glm_wm_ratio_;  // (= k_f * k_glm),   k_glm := ratio_glm_wm
 		int smooth_flag_;
 
 		std::shared_ptr<SpectralOperators> spec_ops_;
@@ -35,22 +35,22 @@ class DiffCoef {
 		Vec kyz_;
 		Vec kzz_;
 
-		double kxx_avg_;
-		double kxy_avg_;
-		double kxz_avg_;
-		double kyy_avg_;
-		double kyz_avg_;
-		double kzz_avg_;
-		double filter_avg_;
+		ScalarType kxx_avg_;
+		ScalarType kxy_avg_;
+		ScalarType kxz_avg_;
+		ScalarType kyy_avg_;
+		ScalarType kyz_avg_;
+		ScalarType kzz_avg_;
+		ScalarType filter_avg_;
 
 		Vec *temp_;
-		double *temp_accfft_;
+		ScalarType *temp_accfft_;
 
-		double *work_cuda_;
+		ScalarType *work_cuda_;
 
-		PetscErrorCode setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		// needs to be called when we invert for diffusivity (in every newton iteration, calls setValues())
-		PetscErrorCode updateIsotropicCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		PetscErrorCode updateIsotropicCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setWorkVecs(Vec * workvecs);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);

@@ -27,7 +27,7 @@ PetscErrorCode VecField::copy (std::shared_ptr<VecField> field) {
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode VecField::set (double scalar) {
+PetscErrorCode VecField::set (ScalarType scalar) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -38,7 +38,7 @@ PetscErrorCode VecField::set (double scalar) {
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode VecField::getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr) {
+PetscErrorCode VecField::getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -56,7 +56,7 @@ PetscErrorCode VecField::getComponentArrays (double *&x_ptr, double *&y_ptr, dou
 }
 
 
-PetscErrorCode VecField::restoreComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr) {
+PetscErrorCode VecField::restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -77,7 +77,7 @@ PetscErrorCode VecField::computeMagnitude () {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	double *mag_ptr, *x_ptr, *y_ptr, *z_ptr;
+	ScalarType *mag_ptr, *x_ptr, *y_ptr, *z_ptr;
 	int sz;
 	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
 	ierr = VecGetLocalSize (x_, &sz); 				CHKERRQ (ierr);
@@ -104,16 +104,16 @@ PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	double *x_ptr, *y_ptr, *z_ptr, *in_ptr;
+	ScalarType *x_ptr, *y_ptr, *z_ptr, *in_ptr;
 	int local_size = 0;
 	ierr = VecGetLocalSize (x_in, &local_size);		CHKERRQ (ierr);
 	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
 
 #ifdef CUDA
 	ierr = VecCUDAGetArrayReadWrite (x_in, &in_ptr);			    CHKERRQ (ierr);
-	cudaMemcpy (x_ptr, in_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (y_ptr, &in_ptr[local_size/3], sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (z_ptr, &in_ptr[2*local_size/3], sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (x_ptr, in_ptr, sizeof (ScalarType) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (y_ptr, &in_ptr[local_size/3], sizeof (ScalarType) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (z_ptr, &in_ptr[2*local_size/3], sizeof (ScalarType) * local_size/3, cudaMemcpyDeviceToDevice);
 	ierr = VecCUDARestoreArrayReadWrite (x_in, &in_ptr);			CHKERRQ (ierr);
 #else
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
@@ -135,16 +135,16 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	double *x_ptr, *y_ptr, *z_ptr, *in_ptr;
+	ScalarType *x_ptr, *y_ptr, *z_ptr, *in_ptr;
 	int local_size = 0;
 	ierr = VecGetLocalSize (x_in, &local_size);		CHKERRQ (ierr);
 	ierr = getComponentArrays (x_ptr, y_ptr, z_ptr);
 
 #ifdef CUDA
 	ierr = VecCUDAGetArrayReadWrite (x_in, &in_ptr);			    CHKERRQ (ierr);
-	cudaMemcpy (in_ptr, x_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (&in_ptr[local_size/3], y_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
-	cudaMemcpy (&in_ptr[2*local_size/3], z_ptr, sizeof (double) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (in_ptr, x_ptr, sizeof (ScalarType) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (&in_ptr[local_size/3], y_ptr, sizeof (ScalarType) * local_size/3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy (&in_ptr[2*local_size/3], z_ptr, sizeof (ScalarType) * local_size/3, cudaMemcpyDeviceToDevice);
 	ierr = VecCUDARestoreArrayReadWrite (x_in, &in_ptr);			CHKERRQ (ierr);
 #else
 	ierr = VecGetArray (x_in, &in_ptr);			    CHKERRQ (ierr);
@@ -218,9 +218,9 @@ PetscErrorCode TumorStatistics::print() {
 	PetscFunctionReturn(0);
 }
 
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, double *timers) {
+void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, ScalarType *timers) {
 	PetscErrorCode ierr = 0;
-	double *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
+	ScalarType *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
 	#ifdef CUDA
 		ierr = VecCUDAGetArrayReadWrite (grad_x, &grad_x_ptr);
 		ierr = VecCUDAGetArrayReadWrite (grad_y, &grad_y_ptr);
@@ -248,9 +248,9 @@ void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std
 	#endif
 }
 
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, double *timers) {
+void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, ScalarType *timers) {
 	PetscErrorCode ierr = 0;
-	double *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
+	ScalarType *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
 	#ifdef CUDA
 		ierr = VecCUDAGetArrayReadWrite (div, &div_ptr);
 		ierr = VecCUDAGetArrayReadWrite (dx, &dx_ptr);
@@ -296,7 +296,7 @@ static bool isLittleEndian () {
 	return (numPtr[0] == 1);
 }
 
-void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+void dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Comm c_comm = n_misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank (c_comm, &procid);
@@ -320,14 +320,14 @@ void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 }
 
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
-	double *a_ptr;
+	ScalarType *a_ptr;
 	PetscErrorCode ierr;
 	ierr = VecGetArray (A, &a_ptr);
 	dataIn(a_ptr, n_misc, fname);
 	ierr = VecRestoreArray (A, &a_ptr);
 }
 
-void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+void dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Comm c_comm = n_misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank(c_comm, &procid);
@@ -350,18 +350,18 @@ void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 }
 
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
-	double *a_ptr;
+	ScalarType *a_ptr;
 	PetscErrorCode ierr;
 	ierr = VecGetArray (A, &a_ptr);
 	dataOut (a_ptr, n_misc, fname);
 	ierr = VecRestoreArray (A, &a_ptr);
 }
 
-PetscErrorCode weierstrassSmoother (Vec wc, Vec c, std::shared_ptr<NMisc> n_misc, double sigma) {
+PetscErrorCode weierstrassSmoother (Vec wc, Vec c, std::shared_ptr<NMisc> n_misc, ScalarType sigma) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	double *wc_ptr, *c_ptr;
+	ScalarType *wc_ptr, *c_ptr;
 	#ifdef CUDA
 		ierr = VecCUDAGetArrayReadWrite (wc, &wc_ptr);
 		ierr = VecCUDAGetArrayReadWrite (c, &c_ptr);
@@ -385,7 +385,7 @@ PetscErrorCode weierstrassSmoother (Vec wc, Vec c, std::shared_ptr<NMisc> n_misc
 }
 
 
-int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma) {
+int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma) {
 	MPI_Comm c_comm = n_misc->c_comm_;
 	int nprocs, procid;
 	MPI_Comm_rank(c_comm, &procid);
@@ -393,8 +393,8 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 
 	int *N = n_misc->n_;
 	int istart[3], isize[3], osize[3], ostart[3];
-	Complex *c_hat, *f_hat;
-	double *f;
+	ComplexType *c_hat, *f_hat;
+	ScalarType *f;
 	#ifdef CUDA
 		int alloc_max = accfft_local_size_dft_r2c_gpu(N, isize, istart, osize, ostart,
 			c_comm);
@@ -404,24 +404,24 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	#else
 		int alloc_max = accfft_local_size_dft_r2c(N, isize, istart, osize, ostart,
 			c_comm);
-		c_hat = (Complex*) accfft_alloc(alloc_max);
-		f_hat = (Complex*) accfft_alloc(alloc_max);
-		f = (double*) accfft_alloc(alloc_max);
+		c_hat = (ComplexType*) accfft_alloc(alloc_max);
+		f_hat = (ComplexType*) accfft_alloc(alloc_max);
+		f = (ScalarType*) accfft_alloc(alloc_max);
 	#endif
 
-	double self_exec_time = -MPI_Wtime();
+	ScalarType self_exec_time = -MPI_Wtime();
 
 	const int Nx = n_misc->n_[0], Ny = n_misc->n_[1], Nz = n_misc->n_[2];
-	const double pi = M_PI, twopi = 2.0 * pi, factor = 1.0 / (Nx * Ny * Nz);
-	const double hx = twopi / Nx, hy = twopi / Ny, hz = twopi / Nz;
+	const ScalarType pi = M_PI, twopi = 2.0 * pi, factor = 1.0 / (Nx * Ny * Nz);
+	const ScalarType hx = twopi / Nx, hy = twopi / Ny, hz = twopi / Nz;
 	fft_plan * plan = n_misc->plan_;
 
-	double sum_f_local = 0., sum_f = 0;
+	ScalarType sum_f_local = 0., sum_f = 0;
 	#ifdef CUDA
 		// user define cuda call
 		computeWeierstrassFilterCuda (f, &sum_f_local, sigma, isize);
 	#else
-		double X, Y, Z, Xp, Yp, Zp;
+		ScalarType X, Y, Z, Xp, Yp, Zp;
 		int64_t ptr;
 		for (int i = 0; i < isize[0]; i++)
 			for (int j = 0; j < isize[1]; j++)
@@ -452,8 +452,8 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 	#endif
 	
 
-	MPI_Allreduce(&sum_f_local, &sum_f, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	double normalize_factor = 1. / (sum_f * hx * hy * hz);
+	MPI_Allreduce(&sum_f_local, &sum_f, 1, MPI_ScalarType, MPI_SUM, MPI_COMM_WORLD);
+	ScalarType normalize_factor = 1. / (sum_f * hx * hy * hz);
 
 	#ifdef CUDA
 		cublasStatus_t status;
@@ -473,13 +473,13 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 
 	// Perform the Hadamard Transform f_hat=f_hat.*c_hat
 	#ifdef CUDA
-		double alp = factor * hx * hy * hz;
-		hadamardComplexProductCuda ((cuDoubleComplex*) f_hat, (cuDoubleComplex*) c_hat, osize);
-		status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuDoubleComplex*) f_hat, 1);
+		ScalarType alp = factor * hx * hy * hz;
+		hadamardComplexTypeProductCuda ((cuScalarTypeComplexType*) f_hat, (cuScalarTypeComplexType*) c_hat, osize);
+		status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (cuScalarTypeComplexType*) f_hat, 1);
 		cublasCheckError (status);
 	#else	
-		std::complex<double>* cf_hat = (std::complex<double>*) (double*) f_hat;
-		std::complex<double>* cc_hat = (std::complex<double>*) (double*) c_hat;
+		std::ComplexType<ScalarType>* cf_hat = (std::ComplexType<ScalarType>*) (ScalarType*) f_hat;
+		std::ComplexType<ScalarType>* cc_hat = (std::ComplexType<ScalarType>*) (ScalarType*) c_hat;
 		for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
 			cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
 	#endif
@@ -499,14 +499,14 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> n_misc, 
 }
 
 /// @brief computes difference diff = x - y
-PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
+PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
 	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
 	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg) {
 
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
-	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+	ScalarType mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
 	// diff = x - y
 	if(x_wm != nullptr) {
 		ierr = VecWAXPY (diff_wm, -1.0, y_wm, x_wm);                 CHKERRQ (ierr);
@@ -531,13 +531,13 @@ PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
 
 	/** @brief computes difference xi = m_data - m_geo
 	 *  - function assumes that on input, xi = m_geo * (1-c(1))   */
-PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
+PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
 	Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
 	Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg) {
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
-	PetscScalar mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+	ScalarType mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
 	if(m_geo_wm != nullptr) {
 		ierr = VecAXPY (xi_wm, -1.0, m_data_wm);                     CHKERRQ (ierr);
 		ierr = VecScale (xi_wm, -1.0);                               CHKERRQ (ierr);
@@ -564,12 +564,12 @@ PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
 }
 
 //Hoyer measure for sparsity of a vector
-PetscErrorCode vecSparsity (Vec x, double &sparsity) {
+PetscErrorCode vecSparsity (Vec x, ScalarType &sparsity) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	int size;
 	ierr = VecGetSize (x, &size);									CHKERRQ (ierr);
-	double norm_1, norm_inf;
+	ScalarType norm_1, norm_inf;
 	ierr = VecNorm (x, NORM_1, &norm_1);							CHKERRQ (ierr);
 	ierr = VecNorm (x, NORM_INFINITY, &norm_inf);					CHKERRQ (ierr);
 
@@ -590,9 +590,9 @@ PetscErrorCode geometricCoupling(
 	Vec c1, std::shared_ptr<NMisc> nmisc) {
 	PetscErrorCode ierr;
 	PetscFunctionBegin;
-	PetscScalar *ptr_wm, *ptr_gm, *ptr_csf, *ptr_glm, *ptr_bg, *ptr_tu;
-	PetscScalar *ptr_m1_wm, *ptr_m1_gm, *ptr_m1_csf, *ptr_m1_glm, *ptr_m1_bg;
-	PetscScalar sum = 0;
+	ScalarType *ptr_wm, *ptr_gm, *ptr_csf, *ptr_glm, *ptr_bg, *ptr_tu;
+	ScalarType *ptr_m1_wm, *ptr_m1_gm, *ptr_m1_csf, *ptr_m1_glm, *ptr_m1_bg;
+	ScalarType sum = 0;
   if(m0_wm  != nullptr) {ierr = VecGetArray(m0_wm,  &ptr_wm);     CHKERRQ(ierr);}
 	if(m0_gm  != nullptr) {ierr = VecGetArray(m0_gm,  &ptr_gm);     CHKERRQ(ierr);}
 	if(m0_csf != nullptr) {ierr = VecGetArray(m0_csf, &ptr_csf);    CHKERRQ(ierr);}
@@ -632,7 +632,7 @@ PetscErrorCode vecSign (Vec x) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	double *x_ptr;
+	ScalarType *x_ptr;
 	int size;
 	ierr = VecGetSize (x, &size);		CHKERRQ (ierr);
 	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
@@ -655,13 +655,13 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 	nnz = 0;
 
 	std::priority_queue<std::pair<PetscReal, int>> q;
-	double *x_ptr;
+	ScalarType *x_ptr;
 	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
 	for (int i = 0; i < sz; i++) {
 		q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
 	}
 
-	double tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
+	ScalarType tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
 						// are (almost)zero to the support 
 	for (int i = 0; i < sparsity_level; i++) {
 		if (std::abs(q.top().first) > tol) {
@@ -679,11 +679,11 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 	PetscFunctionReturn (0);
 }
 
-double myDistance (double *c1, double *c2) {
+ScalarType myDistance (ScalarType *c1, ScalarType *c2) {
     return std::sqrt((c1[0] - c2[0]) * (c1[0] - c2[0]) + (c1[1] - c2[1]) * (c1[1] - c2[1]) + (c1[2] - c2[2]) * (c1[2] - c2[2]));
 }
 
-PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm) {
+PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *h, ScalarType *cm) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -692,9 +692,9 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, d
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
 	int64_t ptr_idx;
-	double X, Y, Z;
-    double *data_ptr;
-    double com[3], sum;
+	ScalarType X, Y, Z;
+    ScalarType *data_ptr;
+    ScalarType com[3], sum;
     for (int i = 0; i < 3; i++) 
     	com[i] = 0.;
     sum = 0;
@@ -716,9 +716,9 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, d
         }
     }
 
-    double sm;
-    MPI_Allreduce (&com, cm, 3, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-    MPI_Allreduce (&sum, &sm, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+    ScalarType sm;
+    MPI_Allreduce (&com, cm, 3, MPI_ScalarType, MPI_SUM, PETSC_COMM_WORLD);
+    MPI_Allreduce (&sum, &sm, 1, MPI_ScalarType, MPI_SUM, PETSC_COMM_WORLD);
 
     for (int i = 0; i < 3; i++) {
     	cm[i] /= sm;

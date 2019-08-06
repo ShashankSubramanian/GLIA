@@ -14,12 +14,12 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
         cudaMalloc ((void**)&ctx_->uy_hat_, n_misc->accfft_alloc_max_);
         cudaMalloc ((void**)&ctx_->uz_hat_, n_misc->accfft_alloc_max_);
     #else
-        ctx_->fx_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-        ctx_->fy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-        ctx_->fz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-        ctx_->ux_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-        ctx_->uy_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
-        ctx_->uz_hat_ = (Complex*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->fx_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->fy_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->fz_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->ux_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->uy_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->uz_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
    
     // compute average coefficients
@@ -84,8 +84,8 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-elasticity-prec");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
     CtxElasticity *ctx;
     ierr = PCShellGetContext (pc, (void **) &ctx);                        CHKERRQ (ierr);
 
@@ -109,36 +109,36 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     ierr = displacement->setIndividualComponents (y);    CHKERRQ (ierr);
 
     // FFT of each component
-    double *fx_ptr, *fy_ptr, *fz_ptr;
-    double *ux_ptr, *uy_ptr, *uz_ptr;
+    ScalarType *fx_ptr, *fy_ptr, *fz_ptr;
+    ScalarType *ux_ptr, *uy_ptr, *uz_ptr;
 
     ierr = force->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
     ierr = displacement->getComponentArrays (ux_ptr, uy_ptr, uz_ptr);
 
-    Complex *fx_hat = ctx->fx_hat_;
-    Complex *fy_hat = ctx->fy_hat_;
-    Complex *fz_hat = ctx->fz_hat_;
-    Complex *ux_hat = ctx->ux_hat_;
-    Complex *uy_hat = ctx->uy_hat_;
-    Complex *uz_hat = ctx->uz_hat_;
+    ComplexType *fx_hat = ctx->fx_hat_;
+    ComplexType *fy_hat = ctx->fy_hat_;
+    ComplexType *fz_hat = ctx->fz_hat_;
+    ComplexType *ux_hat = ctx->ux_hat_;
+    ComplexType *uy_hat = ctx->uy_hat_;
+    ComplexType *uz_hat = ctx->uz_hat_;
 
     ctx->spec_ops_->executeFFTR2C (fx_ptr, fx_hat);
     ctx->spec_ops_->executeFFTR2C (fy_ptr, fy_hat);
     ctx->spec_ops_->executeFFTR2C (fz_ptr, fz_hat);
 
 #ifdef CUDA
-    precFactorElasticityCuda ((cuDoubleComplex*)ux_hat, (cuDoubleComplex*)uy_hat,
-    (cuDoubleComplex*)uz_hat, (cuDoubleComplex*)fx_hat, (cuDoubleComplex*)fy_hat, 
-    (cuDoubleComplex*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->osize_);
+    precFactorElasticityCuda ((cuScalarTypeComplexType*)ux_hat, (cuScalarTypeComplexType*)uy_hat,
+    (cuScalarTypeComplexType*)uz_hat, (cuScalarTypeComplexType*)fx_hat, (cuScalarTypeComplexType*)fy_hat, 
+    (cuScalarTypeComplexType*)fz_hat, ctx->lam_avg_, ctx->mu_avg_, ctx->screen_avg_, n_misc->osize_);
 #else
-    double s1, s2, s1_square, s3, scale;
+    ScalarType s1, s2, s1_square, s3, scale;
 
     int64_t wx, wy, wz;
-    double wTw, wTf_real, wTf_imag;
+    ScalarType wTw, wTf_real, wTf_imag;
     int64_t x_global, y_global, z_global;
     int64_t ptr;
 
-    double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
+    ScalarType factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
 
     s2 = ctx->lam_avg_ + ctx->mu_avg_;
 
@@ -232,8 +232,8 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-elasticity-matvec");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
 
@@ -324,8 +324,8 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	CtxElasticity *ctx;
 	ierr = MatShellGetContext (A_, &ctx);						CHKERRQ (ierr);
 
-	double mu_bg, mu_healthy, mu_tumor, mu_csf;
-	double lam_bg, lam_healthy, lam_tumor, lam_csf;
+	ScalarType mu_bg, mu_healthy, mu_tumor, mu_csf;
+	ScalarType lam_bg, lam_healthy, lam_tumor, lam_csf;
 	std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 	std::shared_ptr<Tumor> tumor = ctx->tumor_;
 
@@ -355,8 +355,8 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	ierr = VecAXPY (ctx->lam_, lam_tumor, tumor->c_t_);				CHKERRQ (ierr);
 
 	// Compute screening vector
-	double c_threshold = 0.005;
-	double *screen_ptr, *c_ptr;
+	ScalarType c_threshold = 0.005;
+	ScalarType *screen_ptr, *c_ptr;
 	ierr = VecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
 	ierr = VecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
 	for (int i = 0; i < n_misc->n_local_; i++) {
@@ -383,8 +383,8 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-elasticity-solve");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -405,7 +405,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 
     int itr;
     ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
-    double res_norm;
+    ScalarType res_norm;
     ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
 
     PCOUT << "[Elasticity solver] GMRES convergence --   iterations: " << itr << "    residual: " << res_norm << std::endl;

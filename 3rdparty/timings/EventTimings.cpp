@@ -30,7 +30,7 @@
 #include <chrono>
 
 
-void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec) {
+void accumulateTimers(std::array<PetscReal, 7>& tacc, std::array<PetscReal, 7>& tloc, PetscReal selfexec) {
 	tloc[5] = selfexec;
 	tacc[0] += tloc[0];
 	tacc[1] += tloc[1];
@@ -41,7 +41,7 @@ void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, 
 	tacc[6] += tloc[6];
 }
 
-void resetTimers(std::array<double, 7>& t) {
+void resetTimers(std::array<PetscReal, 7>& t) {
 	t[0] = 0; t[1] = 0; t[2] = 0; t[3] = 0;
 	t[4] = 0; t[5] = 0; t[6] = 0; t[7] = 0;
 }
@@ -114,13 +114,13 @@ void Event::stop(bool barrier)
   }
 }
 
-void Event::addProp(std::string property, double value)
+void Event::addProp(std::string property, PetscReal value)
 {
   properties[property] += value;
 }
 
-void Event::addTimings(std::array<double, 7>& timings) {
-  std::memcpy(_timers.data(), timings.data(), sizeof(double) * 7);
+void Event::addTimings(std::array<PetscReal, 7>& timings) {
+  std::memcpy(_timers.data(), timings.data(), sizeof(PetscReal) * 7);
 }
 
 Event::Clock::duration Event::getDuration()
@@ -186,31 +186,31 @@ int EventData::getCount()
 
 void EventData::compMaxProcTime()
 {
-  std::array<double, 7> gtimers{ {0,0,0,0,0,0,0} };
-  MPI_Reduce(_timers.data(), gtimers.data(), 7, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  std::memcpy(_timers.data(), gtimers.data(), sizeof(double) * 7);
+  std::array<PetscReal, 7> gtimers{ {0,0,0,0,0,0,0} };
+  MPI_Reduce(_timers.data(), gtimers.data(), 7, MPI_PetscReal, MPI_MAX, 0, MPI_COMM_WORLD);
+  std::memcpy(_timers.data(), gtimers.data(), sizeof(PetscReal) * 7);
 }
 
 void EventData::compMaxAccfftTotalTime()
 {
-  double g_accfft_total_time = 0;
-  MPI_Reduce(&_accfft_total_time, &g_accfft_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  PetscReal g_accfft_total_time = 0;
+  MPI_Reduce(&_accfft_total_time, &g_accfft_total_time, 1, MPI_PetscReal, MPI_MAX, 0, MPI_COMM_WORLD);
   _accfft_total_time = g_accfft_total_time;
 }
 
-std::array<double, 7>& EventData::getTimers()
+std::array<PetscReal, 7>& EventData::getTimers()
 {
   return _timers;
 }
 
-double EventData::getMaxAccfftTotalTime()
+PetscReal EventData::getMaxAccfftTotalTime()
 {
   return _accfft_total_time;
 }
 
 int EventData::getTimePercentage(Event::Clock::duration globalDuration)
 {
-  return ((double) total.count() / globalDuration.count()) * 100;
+  return ((PetscReal) total.count() / globalDuration.count()) * 100;
 }
 
 // -----------------------------------------------------------------------

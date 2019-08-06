@@ -34,7 +34,7 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
 
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*);
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*, char*, char*, char*);
 PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*, bool inversed = true);
@@ -60,15 +60,15 @@ int main (int argc, char** argv) {
     n[1] = 64;
     n[2] = 64;
     int testcase = 0;
-    double beta_user = -1.0;
-    double rho_inv= -1.0;
-    double k_inv = -1.0;
+    ScalarType beta_user = -1.0;
+    ScalarType rho_inv= -1.0;
+    ScalarType k_inv = -1.0;
     int nt_inv = 0.0;
-    double dt_inv = 0.0;
-    double rho_data = -1.0;
-    double k_data = -1.0;
+    ScalarType dt_inv = 0.0;
+    ScalarType rho_data = -1.0;
+    ScalarType k_data = -1.0;
     int nt_data = 0.0;
-    double dt_data = 0.0;
+    ScalarType dt_data = 0.0;
     char reg[10];
     char results_dir[400];
     char data_path[400];
@@ -83,19 +83,19 @@ int main (int argc, char** argv) {
     int reaction_flag = 0;
     int invert_obs_mask = 0;
     int basis_type = 0;
-    double sigma = -1.0;
-    double spacing_factor = -1.0;
-    double gvf = -1.0;
-    double target_spars = -1.0;
+    ScalarType sigma = -1.0;
+    ScalarType spacing_factor = -1.0;
+    ScalarType gvf = -1.0;
+    ScalarType target_spars = -1.0;
     int sparsity_level = -1.0;
     int lam_cont = 0;
     int verbosity_in = 1;
-    double sigma_dd = -1.0;
-    double data_thres = -1.0;
-    double obs_thres = -1.0;
+    ScalarType sigma_dd = -1.0;
+    ScalarType data_thres = -1.0;
+    ScalarType obs_thres = -1.0;
 
-    double k_gm_wm = -1.0;
-    double r_gm_wm = -1.0;
+    ScalarType k_gm_wm = -1.0;
+    ScalarType r_gm_wm = -1.0;
 
     char newton_solver[10];
     int newton_maxit = -1;
@@ -109,11 +109,11 @@ int main (int argc, char** argv) {
 
     int flag_cosamp = 0;
 
-    double sm = -1;
+    ScalarType sm = -1;
 
-    double opttolgrad = -1.0;
+    ScalarType opttolgrad = -1.0;
 
-    double low_freq_noise_scale = -1.0;
+    ScalarType low_freq_noise_scale = -1.0;
 
     int predict_flag = 0;
     int order_of_accuracy = -1;
@@ -238,21 +238,21 @@ int main (int argc, char** argv) {
     Vec c_0, data, p_rec, wm, gm, glm, csf, bg, obs_mask;
 
     PetscErrorCode ierr = 0;
-    double rho_temp, k_temp, dt_temp, nt_temp;
+    ScalarType rho_temp, k_temp, dt_temp, nt_temp;
     bool overwrite_model = true; //don't change -- controlled from the run script
     bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0); // no path to mask has been set
-    double rho = rho_data;
-    double k = k_data;
-    double dt = dt_data;
+    ScalarType rho = rho_data;
+    ScalarType k = k_data;
+    ScalarType dt = dt_data;
     int nt = nt_data;
 
     // Other vars
-    double prec_norm;
-    double *prec_ptr;
-    double l2_rel_error = 0.0;
-    double error_norm_c0 = 0.0;
+    ScalarType prec_norm;
+    ScalarType *prec_ptr;
+    ScalarType l2_rel_error = 0.0;
+    ScalarType error_norm_c0 = 0.0;
 
-    std::vector<double> out_params;
+    std::vector<ScalarType> out_params;
     int n_gist = 0, n_newton;
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
@@ -413,8 +413,8 @@ int main (int argc, char** argv) {
     }
     std::shared_ptr<HealthyProbMaps> h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
 
-    double self_exec_time = -MPI_Wtime ();
-    std::array<double, 7> timers = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> timers = {0};
 
     if (syn_flag == 1) {
         PCOUT << "Generating Synthetic Data --->" << std::endl;
@@ -439,7 +439,7 @@ int main (int argc, char** argv) {
         // add low freq model noise
         ierr = applyLowFreqNoise (data, n_misc);
         Vec temp;
-        double noise_err_norm, rel_noise_err_norm;
+        ScalarType noise_err_norm, rel_noise_err_norm;
         ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
         ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
         ierr = VecCopy (data_nonoise, temp);      CHKERRQ (ierr);
@@ -736,7 +736,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
-    std::array<double, 3> cm;
+    std::array<ScalarType, 3> cm;
 
     n_misc->user_cms_.clear ();
 
@@ -778,7 +778,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecDuplicate (c_0, &c_temp);                                     CHKERRQ (ierr);
     ierr = VecSet (c_temp, 0.);                                             CHKERRQ (ierr);
 
-    double scaling = 1.;
+    ScalarType scaling = 1.;
     // Second tumor location
     // near
     if (n_misc->testcase_ == BRAINNEARMF) {
@@ -816,7 +816,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecAXPY (c_0, 1.0, c_temp);                                      CHKERRQ (ierr);
     ierr = VecDestroy (&c_temp);                                            CHKERRQ (ierr);
 
-    double max, min;
+    ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
 
@@ -870,7 +870,7 @@ PetscErrorCode readData (Vec &data, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc>
     dataIn (data, n_misc, data_path);
 
     // Smooth the data
-    double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
+    ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
     
     ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
     ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
@@ -888,7 +888,7 @@ PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char
     ierr = VecSet (obs_mask, 0.);                                         CHKERRQ (ierr);
 
     dataIn (obs_mask, n_misc, obs_mask_path);
-    double *obs_mask_ptr;
+    ScalarType *obs_mask_ptr;
     ierr = VecGetArray (obs_mask, &obs_mask_ptr);                         CHKERRQ (ierr);
     for (int i = 0; i < n_misc->n_local_; i++) {
         if (inversed) {obs_mask_ptr[i] = (obs_mask_ptr[i] > 0) ? 0.0 : 1.0;}
@@ -916,7 +916,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
 
-    double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
+    ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
     ierr = spec_ops->weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
     ierr = spec_ops->weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
@@ -941,12 +941,12 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     // MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     // srand (time(NULL));
-    // double random_noise;
-    // double noise_level = n_misc->low_freq_noise_scale_;
-    // double mag = 0.;
+    // ScalarType random_noise;
+    // ScalarType noise_level = n_misc->low_freq_noise_scale_;
+    // ScalarType mag = 0.;
     // int64_t x_global, y_global, z_global, x_symm, y_symm, z_symm, global_index;
-    // double freq = 0;
-    // double amplitude = 0.;
+    // ScalarType freq = 0;
+    // ScalarType amplitude = 0.;
 
     // int *osize = n_misc->osize_;
     // int *ostart = n_misc->ostart_;
@@ -957,7 +957,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     // fft_plan *plan = n_misc->plan_;
 
     // // Get the fourier transform of data;
-    // double *d_ptr;
+    // ScalarType *d_ptr;
     // ierr = VecGetArray (data, &d_ptr);          CHKERRQ (ierr);
 
     // // // remove small aliasing errors
@@ -969,17 +969,17 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
 
     // int alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
     // accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-    // Complex *data_hat;
-    // double *freq_scaling;
-    // data_hat = (Complex*) accfft_alloc (alloc_max);
-    // freq_scaling = (double*) accfft_alloc (alloc_max);
+    // ComplexType *data_hat;
+    // ScalarType *freq_scaling;
+    // data_hat = (ComplexType*) accfft_alloc (alloc_max);
+    // freq_scaling = (ScalarType*) accfft_alloc (alloc_max);
     // accfft_execute_r2c (plan, d_ptr, data_hat);
     // MPI_Barrier (c_comm);
 
-    // double *data_hat_mag;
-    // double *d;
-    // data_hat_mag = (double*) accfft_alloc(alloc_max);
-    // double wx, wy, wz;
+    // ScalarType *data_hat_mag;
+    // ScalarType *d;
+    // data_hat_mag = (ScalarType*) accfft_alloc(alloc_max);
+    // ScalarType wx, wy, wz;
 
     // int64_t ptr;
     // // Find the amplitude of the signal (data)
@@ -1011,8 +1011,8 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     //     }
     // }
     // // allreduce to find the amplitude of the freq
-    // double global_amplitude = 0.;
-    // MPI_Allreduce (&amplitude, &global_amplitude, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    // ScalarType global_amplitude = 0.;
+    // MPI_Allreduce (&amplitude, &global_amplitude, 1, MPI_ScalarType, MPI_MAX, MPI_COMM_WORLD);
     // MPI_Barrier (c_comm);
 
     // // Now add power law noise
@@ -1022,7 +1022,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
     //             ptr = i * osize[1] * osize[2] + j * osize[2] + k;
     //             d = data_hat[ptr];
     //             mag = data_hat_mag[ptr];
-    //             random_noise = (double)rand() / (double)RAND_MAX;
+    //             random_noise = (ScalarType)rand() / (ScalarType)RAND_MAX;
     //             data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * freq_scaling[ptr];
     //             // data_hat_mag[ptr] += noise_level * random_noise * global_amplitude * std::sqrt(freq_scaling[ptr]);
     //             // change data_hat accordingly -- this will change only the unique freq
@@ -1050,7 +1050,7 @@ PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc) {
 }
 
 
-PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0_true, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0_true, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Vec c_rec_0, c_rec;
@@ -1061,13 +1061,13 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
-    double data_norm;
+    ScalarType data_norm;
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
 
     ierr = tumor->phi_->apply (c_rec_0, p_rec);
 
-    double *c0_ptr;
+    ScalarType *c0_ptr;
 
     if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_rec_0, &c0_ptr);                              CHKERRQ (ierr);
@@ -1086,7 +1086,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
-    double max, min;
+    ScalarType max, min;
     ierr = VecMax (c_rec, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_rec, NULL, &min);                                      CHKERRQ (ierr);
 
@@ -1126,7 +1126,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     error_norm /= data_norm;
 
-    double obs_c_norm, obs_data_norm;
+    ScalarType obs_c_norm, obs_data_norm;
 
     ierr = VecAXPY (obs_c_rec, -1.0, data_obs);                             CHKERRQ (ierr);
     ierr = VecNorm (obs_c_rec, NORM_2, &obs_c_norm);                        CHKERRQ (ierr);
@@ -1151,12 +1151,12 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecSet (p_diff_w, 0.);                                           CHKERRQ (ierr);
     ierr = VecSet (temp, 0.);                                               CHKERRQ (ierr);
 
-    double *w_ptr, *p_true_ptr;
+    ScalarType *w_ptr, *p_true_ptr;
     ierr = VecGetArray (weights, &w_ptr);                                   CHKERRQ (ierr);
     ierr = VecGetArray (p_true_w, &p_true_ptr);                             CHKERRQ (ierr);
 
-    std::vector<double> dist (n_misc->user_cms_.size());
-    double d = 0.;
+    std::vector<ScalarType> dist (n_misc->user_cms_.size());
+    ScalarType d = 0.;
     int flg = 0;
     for (int i = 0; i < n_misc->np_; i++) {
         dist.clear();
@@ -1208,32 +1208,32 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     // PCOUT << " --------------  -------------- -----------------\n";
 
 
-    double p_wL2, p_diff_wL2;
+    ScalarType p_wL2, p_diff_wL2;
     ierr = VecPointwiseMult (temp, p_true_w, weights);                  CHKERRQ (ierr);
     ierr = VecDot (p_true_w, temp, &p_wL2);                             CHKERRQ (ierr);
     p_wL2 = std::sqrt (p_wL2);
     ierr = VecCopy (p_true_w, p_diff_w);                                CHKERRQ (ierr);
     ierr = VecAXPY (p_diff_w, -1.0, p_rec);                             CHKERRQ (ierr);  // diff in p
-    double l1_norm_diff, l1_norm_p;
+    ScalarType l1_norm_diff, l1_norm_p;
     ierr = VecNorm (p_diff_w, NORM_1, &l1_norm_diff);   CHKERRQ (ierr);
     ierr = VecNorm (p_true_w, NORM_1, &l1_norm_p);      CHKERRQ (ierr);
     ierr = VecPointwiseMult (temp, p_diff_w, weights);                  CHKERRQ (ierr);
     ierr = VecDot (p_diff_w, temp, &p_diff_wL2);                        CHKERRQ (ierr);
     p_diff_wL2 = std::sqrt (p_diff_wL2);
 
-    double dist_err_c0 = p_diff_wL2 / p_wL2;
-    double l1_err = l1_norm_diff / l1_norm_p;
+    ScalarType dist_err_c0 = p_diff_wL2 / p_wL2;
+    ScalarType l1_err = l1_norm_diff / l1_norm_p;
 
     ierr = VecDestroy (&weights);        CHKERRQ (ierr);
     ierr = VecDestroy (&p_true_w);       CHKERRQ (ierr);
     ierr = VecDestroy (&p_diff_w);       CHKERRQ (ierr);
     ierr = VecDestroy (&temp);           CHKERRQ (ierr);
 
-    double *p_rec_ptr;
+    ScalarType *p_rec_ptr;
     ierr = VecGetArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
     int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
 
-    double k1, k2, k3, r1, r2, r3;
+    ScalarType k1, k2, k3, r1, r2, r3;
     k1 = 0.; k2 = 0.; k3 = 0.;
     if (n_misc->diffusivity_inversion_) {
         k1 = p_rec_ptr[n_misc->np_];
@@ -1309,7 +1309,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     PCOUT << " --------------  -------------- -----------------\n";
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
-    double *c0_ptr;
+    ScalarType *c0_ptr;
 
     if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
@@ -1319,7 +1319,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ierr = VecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
     }
 
-    double max, min;
+    ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
 
@@ -1364,9 +1364,9 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     ierr = VecSet(max, 0);                                                  CHKERRQ(ierr);
 
     // compute max of gm, wm, csf, bg, tumor
-    std::vector<double> v;
-    std::vector<double>::iterator max_component;
-    double *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *max_ptr;
+    std::vector<ScalarType> v;
+    std::vector<ScalarType>::iterator max_component;
+    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *max_ptr;
     ierr = VecGetArray(tumor->mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray(tumor->mat_prop_->gm_, &gm_ptr);                    CHKERRQ(ierr);
     ierr = VecGetArray(tumor->mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
@@ -1395,7 +1395,7 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
     }
 
 
-    double sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
+    ScalarType sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
 
     // ierr = spec_ops->weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
 

@@ -56,12 +56,12 @@
   class Trip_GPU{
     public:
       Trip_GPU(){};
-      double x;
-      double y;
-      double z;
+      ScalarType x;
+      ScalarType y;
+      ScalarType z;
       int ind;
       int N[3];
-      double h[3];
+      ScalarType h[3];
 
   };
   static bool ValueCmp(Trip_GPU const & a, Trip_GPU const & b)
@@ -134,7 +134,7 @@
 
     f_cubic_unordered=(Real*) malloc(N_pts*sizeof(Real)*data_dof); // The reshuffled semi-final interpolated values are stored here
 
-    //double time=0;
+    //ScalarType time=0;
     //time=-MPI_Wtime();
   #ifdef INTERP_PINNED
     //cudaMallocHost((void**)&this->ghost_reg_grid_vals_d,g_alloc_max*data_dof);
@@ -230,7 +230,7 @@
    */
   void InterpPlan::scatter( int data_dof,
       int* N_reg, int * isize, int* istart, const int N_pts, const int g_size, Real* query_points_in,
-      int* c_dims, MPI_Comm c_comm, double * timings)
+      int* c_dims, MPI_Comm c_comm, ScalarType * timings)
   {
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
@@ -483,7 +483,7 @@
    */
   void InterpPlan::interpolate( Real* ghost_reg_grid_vals, int data_dof,
       int* N_reg, int * isize, int* istart, const int N_pts, const int g_size,
-      Real* query_values,int* c_dims, MPI_Comm c_comm,double * timings)
+      Real* query_values,int* c_dims, MPI_Comm c_comm,ScalarType * timings)
   {
 
     int nprocs, procid;
@@ -1815,7 +1815,7 @@
       const int qsize = query_outside[proc].size() / COORD_DIM;
       //std::cout << "------------------ total bin size = " << total_bsize << std::endl;
 
-      // double time = -MPI_Wtime();
+      // ScalarType time = -MPI_Wtime();
       std::vector<Real> bins_Q[total_bsize];
       std::vector<int> bins_f[total_bsize];
       Real* x_ptr = &query_outside[proc][0];
@@ -1857,7 +1857,7 @@
       std::vector<Real> tmp_query(query_outside[proc]); // tol hold xyz coordinates
       std::vector<int> tmp_f_index(f_index[proc]); // tol hold xyz coordinates
 
-      //double* x_ptr = &query_outside[proc][i * COORD_DIM + 0];
+      //ScalarType* x_ptr = &query_outside[proc][i * COORD_DIM + 0];
       Real* x_ptr = &query_outside[proc][0];
       for (int i = 0; i < qsize; ++i) {
         int x = (int) std::abs(std::floor(x_ptr[0] / h0));
@@ -1906,7 +1906,7 @@
    */
   void InterpPlan::fast_scatter(int* N_reg, int * isize, int* istart,
       const int N_pts, const int g_size, Real* query_points_in, int* c_dims,
-      MPI_Comm c_comm, double * timings) {
+      MPI_Comm c_comm, ScalarType * timings) {
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
     MPI_Comm_size(c_comm, &nprocs);
@@ -1928,7 +1928,7 @@
     all_query_points_allocation = 0;
 
     {
-      double time = -MPI_Wtime();
+      ScalarType time = -MPI_Wtime();
 
       //int N_reg_g[3], isize_g[3];
       N_reg_g[0] = N_reg[0] + 2 * g_size;
@@ -2311,7 +2311,7 @@
    */
   void InterpPlan::interpolate(Real* __restrict ghost_reg_grid_vals,
       int*__restrict N_reg, int *__restrict isize, int*__restrict istart, const int N_pts, const int g_size,
-      Real*__restrict query_values, int*__restrict c_dims, MPI_Comm c_comm, double *__restrict timings, int version) {
+      Real*__restrict query_values, int*__restrict c_dims, MPI_Comm c_comm, ScalarType *__restrict timings, int version) {
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
     MPI_Comm_size(c_comm, &nprocs);
@@ -2367,7 +2367,7 @@
   #ifdef INTERP_DEBUG
     PCOUT << "finished interpolation, starting comm\n";
   #endif
-    double shuffle_time =0;
+    ScalarType shuffle_time =0;
     timings[0] += -MPI_Wtime();
     {
       int dst_r, dst_s;
@@ -2503,7 +2503,7 @@
 
   //void InterpPlan::high_order_interpolate(Real* ghost_reg_grid_vals, int data_dof,
   //    int* N_reg, int * isize, int* istart, const int N_pts, const int g_size,
-  //    Real* query_values, int* c_dims, MPI_Comm c_comm, double * timings, int interp_order) {
+  //    Real* query_values, int* c_dims, MPI_Comm c_comm, ScalarType * timings, int interp_order) {
   //  int nprocs, procid;
   //  MPI_Comm_rank(c_comm, &procid);
   //  MPI_Comm_size(c_comm, &nprocs);
@@ -2578,7 +2578,7 @@
   //
   void InterpPlan::scatter(int* N_reg, int * isize, int* istart,
       const int N_pts, const int g_size, Real* query_points_in, int* c_dims,
-      MPI_Comm c_comm, double * timings) {
+      MPI_Comm c_comm, ScalarType * timings) {
   #ifdef FAST_INTERP
     return fast_scatter(N_reg, isize, istart, N_pts,
         g_size, query_points_in, c_dims, c_comm, timings);

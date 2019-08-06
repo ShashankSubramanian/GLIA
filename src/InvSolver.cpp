@@ -174,7 +174,7 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
-    double norm_gref = 0.;
+    ScalarType norm_gref = 0.;
     // update/set reference gradient 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
@@ -321,11 +321,11 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
 
-  PetscScalar *d_ptr;
+  ScalarType *d_ptr;
   ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
 
   /* === Add Noise === */
-  Vec noise; double *noise_ptr;
+  Vec noise; ScalarType *noise_ptr;
   ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
   ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
   ierr = setupVec(noise);                                                    CHKERRQ(ierr);
@@ -337,8 +337,8 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   }
   ierr = VecRestoreArray (noise, &noise_ptr);                                         CHKERRQ(ierr);
   ierr = VecRestoreArray (data_, &d_ptr);                                             CHKERRQ(ierr);
-  PetscScalar max, min;                                                // compute d-norm
-  PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
+  ScalarType max, min;                                                // compute d-norm
+  ScalarType d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
   #ifdef POSITIVITY
     ierr = enforcePositivity (data_, itctx_->n_misc_);
     ierr = enforcePositivity (noise, itctx_->n_misc_);
@@ -382,7 +382,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = VecSet (x, 0.);                                                              CHKERRQ (ierr);
 
   // set initial guess to current state
-  double *x_in_ptr, *x_ptr;
+  ScalarType *x_in_ptr, *x_ptr;
   ierr = VecGetArray (x_in, &x_in_ptr);                                               CHKERRQ (ierr);
   ierr = VecGetArray (x, &x_ptr);                                                     CHKERRQ (ierr);
   x_ptr[0] = x_in_ptr[itctx_->n_misc_->np_];   // k1
@@ -391,11 +391,11 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
 
 
   // Guess the reaction coefficient and use as IC.
-  std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate 
+  std::array<ScalarType, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate 
                                                               // roughly where to start, else we could get stuck in 
                                                               // a bad local minimum
 
-  double min_norm = 1E15, norm = 0.;
+  ScalarType min_norm = 1E15, norm = 0.;
   int idx = 0;
   for (int i = 0; i < rho_guess.size(); i++) {
     // update the tumor with this rho    
@@ -482,14 +482,14 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   itctx_->data_gradeval              = data_gradeval_;
 
 
-  double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
+  ScalarType self_exec_time_tuninv = -MPI_Wtime(); ScalarType invtime = 0;
   itctx_->n_misc_->statistics_.reset();
   s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
   ierr = TaoSolve (tao_);                                                             CHKERRQ(ierr);
 
   self_exec_time_tuninv += MPI_Wtime();
-  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_ScalarType, MPI_MAX, 0, MPI_COMM_WORLD);
 
   ierr = VecCopy (itctx_->x_old, xrec_);                                                          CHKERRQ(ierr);
 
@@ -497,7 +497,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   TaoConvergedReason reason;
   TaoGetConvergedReason (tao_, &reason);
   /* get solution status */
-  PetscScalar xdiff;
+  ScalarType xdiff;
   ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
   /* display convergence reason: */
   ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
@@ -539,13 +539,13 @@ PetscErrorCode InvSolver::solve () {
   // apply observer on ground truth, store observed data in d
   // ierr = itctx_->tumor_->obs_->apply (data_, data_);                                  CHKERRQ(ierr);
   // smooth observed data
-  PetscScalar *d_ptr;
-  double sigma_smooth;
+  ScalarType *d_ptr;
+  ScalarType sigma_smooth;
   sigma_smooth = 2.0 * M_PI / itctx_->n_misc_->n_[0];
   ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
 
   /* === Add Noise === */
-  Vec noise; double *noise_ptr;
+  Vec noise; ScalarType *noise_ptr;
   ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
   ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
   ierr = setupVec(noise);                                                    CHKERRQ(ierr);
@@ -557,8 +557,8 @@ PetscErrorCode InvSolver::solve () {
   }
   ierr = VecRestoreArray (noise, &noise_ptr);                                         CHKERRQ(ierr);
   ierr = VecRestoreArray (data_, &d_ptr);                                             CHKERRQ(ierr);
-	PetscScalar max, min;                                                // compute d-norm
-  PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
+	ScalarType max, min;                                                // compute d-norm
+  ScalarType d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
   #ifdef POSITIVITY
     ierr = enforcePositivity (data_, itctx_->n_misc_);
     ierr = enforcePositivity (noise, itctx_->n_misc_);
@@ -614,9 +614,9 @@ PetscErrorCode InvSolver::solve () {
     ierr = resetTao(itctx_->n_misc_);                                                    CHKERRQ(ierr);
   }
 
-  double *p_ptr, *w_ptr;
-  double w = 1.;
-  double p_max;
+  ScalarType *p_ptr, *w_ptr;
+  ScalarType w = 1.;
+  ScalarType p_max;
   if (itctx_->n_misc_->regularization_norm_ == wL2) {//set the weights for w-l2 solve
     itctx_->n_misc_->beta_ = 1.;
     ierr = VecGetArray (itctx_->tumor_->p_, &p_ptr);                                     CHKERRQ (ierr);
@@ -655,7 +655,7 @@ PetscErrorCode InvSolver::solve () {
       //lmP->
     }
   }
-  double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
+  ScalarType self_exec_time_tuninv = -MPI_Wtime(); ScalarType invtime = 0;
   /* === solve === */
   // --------
   itctx_->n_misc_->statistics_.reset();
@@ -669,7 +669,7 @@ PetscErrorCode InvSolver::solve () {
   ierr = TaoSolve (tao_);                                                                CHKERRQ(ierr);
   // --------
   self_exec_time_tuninv += MPI_Wtime();
-  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_ScalarType, MPI_MAX, 0, MPI_COMM_WORLD);
 
 	/* === get solution === */
 	Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                          CHKERRQ(ierr);
@@ -678,7 +678,7 @@ PetscErrorCode InvSolver::solve () {
 	TaoConvergedReason reason;
 	TaoGetConvergedReason (tao_, &reason);
 	/* get solution status */
-	PetscScalar xdiff;
+	ScalarType xdiff;
 	ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
 	/* display convergence reason: */
 	ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
@@ -730,8 +730,8 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	Event e ("tao-eval-obj-tumor");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
   itctx->optfeedback_->nb_objevals++;
 	ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
@@ -755,8 +755,8 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tao-eval-grad-tumor");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
     ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
 
@@ -764,7 +764,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
     std::stringstream s;
     if (itctx->optsettings_->verbosity > 1) {
-        double gnorm;
+        ScalarType gnorm;
         ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
         s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
@@ -789,8 +789,8 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj/grad-tumor");
-  std::array<double, 7> t = {0};
-  double self_exec_time = -MPI_Wtime ();
+  std::array<ScalarType, 7> t = {0};
+  ScalarType self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
   ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
 
@@ -799,7 +799,7 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
   ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
   std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
-      double gnorm;
+      ScalarType gnorm;
       ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
       s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
@@ -817,8 +817,8 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj/grad-tumor-params");
-  std::array<double, 7> t = {0};
-  double self_exec_time = -MPI_Wtime ();
+  std::array<ScalarType, 7> t = {0};
+  ScalarType self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -833,7 +833,7 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
   itctx->optfeedback_->nb_gradevals++;
 
   // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
-  double *x_ptr, *x_full_ptr;
+  ScalarType *x_ptr, *x_full_ptr;
   ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
   ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
@@ -858,7 +858,7 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
 
   ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ_full, itctx->x_old, itctx->data_gradeval);
 
-  double *dj_ptr, *dj_full_ptr;
+  ScalarType *dj_ptr, *dj_full_ptr;
   ierr = VecGetArray (dJ, &dj_ptr);             CHKERRQ (ierr);
   ierr = VecGetArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
 
@@ -874,7 +874,7 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
 
   std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
-      double gnorm;
+      ScalarType gnorm;
       ierr = VecNorm (dJ, NORM_2, &gnorm);                                            CHKERRQ(ierr);
       s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
@@ -904,7 +904,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscErrorCode ierr = 0;
 
     Event e ("tao-hess-matvec-tumor");
-    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0}; ScalarType self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
     ierr = MatShellGetContext (A, &ptr);						             CHKERRQ (ierr);
@@ -914,7 +914,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
     ierr = itctx->derivative_operators_->evaluateHessian (y, x);
     if (itctx->optsettings_->verbosity > 1) {
         PetscPrintf (MPI_COMM_WORLD, " applying hessian done!\n");
-        double xnorm;
+        ScalarType xnorm;
         ierr = VecNorm (x, NORM_2, &xnorm); CHKERRQ(ierr);
         PetscPrintf (MPI_COMM_WORLD, " norm of search direction ||x||_2 = %e\n", xnorm);
     }
@@ -938,7 +938,7 @@ PetscErrorCode constApxHessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscErrorCode ierr = 0;
 
     Event e ("tao-lmvm-init-hess--matvec");
-    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0}; ScalarType self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
     ierr = MatShellGetContext (A, &ptr);						             CHKERRQ (ierr);
@@ -988,9 +988,9 @@ PetscErrorCode applyPreconditioner (void *ptr, Vec x, Vec pinvx) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tao-apply-hess-precond");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
-    double *ptr_pinvx = NULL, *ptr_x = NULL;
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
+    ScalarType *ptr_pinvx = NULL, *ptr_x = NULL;
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
     ierr = VecCopy (x, pinvx);
     // === PRECONDITIONER CURRENTLY DISABLED ===
@@ -1019,7 +1019,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     PetscInt its;
-    PetscScalar J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
+    ScalarType J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
     Vec x = nullptr;
     char msg[256];
     std::string statusmsg;
@@ -1037,7 +1037,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
       Vec dJ, p0;
-      double norm_gref = 0.;
+      ScalarType norm_gref = 0.;
       ierr = VecDuplicate (itctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (itctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
       ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
@@ -1061,7 +1061,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
 
     // ierr = VecAXPY (itctx->x_old, -1.0, tao_x);                                     CHKERRQ (ierr);
 
-    // double dp_norm, p_norm;
+    // ScalarType dp_norm, p_norm;
     // ierr = VecNorm (itctx->x_old, NORM_INFINITY, &dp_norm);                         CHKERRQ (ierr);
     // ierr = VecNorm (tao_x, NORM_INFINITY, &p_norm);                                 CHKERRQ (ierr);
     // accumulate number of newton iterations
@@ -1072,7 +1072,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     //Prints a warning if tumor IC is clipped
     ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr);
 
-    double mx, mn;
+    ScalarType mx, mn;
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
     ierr = VecMin (itctx->tumor_->c_t_, NULL, &mn); CHKERRQ (ierr);
     // this print helps determine if theres any large aliasing errors which is causing ls failure etc
@@ -1106,7 +1106,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step
       ;
       if (itctx->n_misc_->diffusivity_inversion_) {
-        double *x_ptr;
+        ScalarType *x_ptr;
         ierr = VecGetArray(tao_x, &x_ptr);                                         CHKERRQ(ierr);
         s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_];
         if (itctx->n_misc_->nk_ > 1) {
@@ -1136,14 +1136,14 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     PetscInt its;
-    PetscScalar J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
+    ScalarType J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
     Vec x = nullptr;
     char msg[256];
     std::string statusmsg;
     TaoConvergedReason flag;
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
 
-    double norm_gref;
+    ScalarType norm_gref;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
 
@@ -1160,7 +1160,7 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     // accumulate number of newton iterations
     itctx->optfeedback_->nb_newton_it++;
 
-    double *x_ptr, *x_full_ptr;
+    ScalarType *x_ptr, *x_full_ptr;
     ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
     ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
@@ -1178,7 +1178,7 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     //Prints a warning if tumor IC is clipped
     ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr);
 
-    double mx, mn;
+    ScalarType mx, mn;
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
     ierr = VecMin (itctx->tumor_->c_t_, NULL, &mn); CHKERRQ (ierr);
     // this print helps determine if theres any large aliasing errors which is causing ls failure etc
@@ -1253,7 +1253,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     PetscInt its;
-    PetscScalar J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
+    ScalarType J = 0, gnorm = 0, cnorm = 0 , step = 0, D = 0, J0 = 0, D0 = 0, gnorm0 = 0;
     Vec x = nullptr;
     char msg[256];
     std::string statusmsg;
@@ -1270,7 +1270,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
       Vec dJ, p0;
-      double norm_gref = 0.;
+      ScalarType norm_gref = 0.;
       ierr = VecDuplicate (itctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (itctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
       ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
@@ -1317,7 +1317,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
         s.str ("");
         s.clear ();
     }
-    double sparsity;
+    ScalarType sparsity;
     ierr = vecSparsity (tao_x, sparsity);                                  CHKERRQ (ierr);
     s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
@@ -1326,7 +1326,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << sparsity;
       if (itctx->n_misc_->diffusivity_inversion_) {
-        double *x_ptr;
+        ScalarType *x_ptr;
         ierr = VecGetArray(tao_x, &x_ptr);                                         CHKERRQ(ierr);
         s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[itctx->n_misc_->np_];
         if (itctx->n_misc_->nk_ > 1) {
@@ -1340,9 +1340,9 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
     s.clear ();
 
     if (itctx->n_misc_->lambda_continuation_) {
-      double sparsity = 0;
-      double sparsity_old = 0;
-      double threshold = itctx->n_misc_->target_sparsity_;
+      ScalarType sparsity = 0;
+      ScalarType sparsity_old = 0;
+      ScalarType threshold = itctx->n_misc_->target_sparsity_;
       if (its > 0) {
         //lambda continuation
         ierr = vecSparsity (tao_x, sparsity);
@@ -1396,7 +1396,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Vec x; int maxit; PetscScalar divtol, abstol, reltol;
+	Vec x; int maxit; ScalarType divtol, abstol, reltol;
 	ierr = KSPBuildSolution (ksp,NULL,&x);
     ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
@@ -1416,7 +1416,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
 
     // int ksp_itr;
     // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
-    // double e_max, e_min;
+    // ScalarType e_max, e_min;
     // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
     //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
     //   s << "Condition number of hessian is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
@@ -1439,7 +1439,7 @@ PetscErrorCode constHessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, v
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	Vec x; int maxit; PetscScalar divtol, abstol, reltol;
+	Vec x; int maxit; ScalarType divtol, abstol, reltol;
 	ierr = KSPBuildSolution (ksp,NULL,&x);
   ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);     // get user context
@@ -1530,7 +1530,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   ierr = TaoGetSolutionVector(tao, &x);                                     CHKERRQ(ierr);
   TaoLineSearch ls = nullptr;
   TaoLineSearchConvergedReason ls_flag;
-  double norm_g_inf;
+  ScalarType norm_g_inf;
 
   CtxInv *ctx = reinterpret_cast<CtxInv*> (ptr);     // get user context
   verbosity = ctx->optsettings_->verbosity;
@@ -1558,7 +1558,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
   // update/set reference gradient (with p = initial-guess)
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
   if (ctx->update_reference_objective) {
-    double g_percent = 0.1;
+    ScalarType g_percent = 0.1;
     Vec p0, dJ;
     ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
     ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
@@ -1607,8 +1607,8 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
 
   PetscReal J_ref = ctx->optfeedback_->j0;
   J_old = lsctx->J_old;
-  double ftol = ctx->optsettings_->ftol;
-  double norm_rel, norm;
+  ScalarType ftol = ctx->optsettings_->ftol;
+  ScalarType norm_rel, norm;
   stop[0] = false; stop[1] = false;
   if (iter >= miniter) {
     if (verbosity > 1) {
@@ -1738,7 +1738,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
     	Vec dJ, p0;
-    	double norm_gref = 0.;
+    	ScalarType norm_gref = 0.;
     	ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
     	ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
@@ -1928,7 +1928,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if(ctx->update_reference_gradient) {
       Vec dJ, p0;
-      double norm_gref = 0.;
+      ScalarType norm_gref = 0.;
       ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
       ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
@@ -2361,7 +2361,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
     // alternate scheme bounds setting for max tumor location
-    // double *lb_ptr, *ub_ptr;
+    // ScalarType *lb_ptr, *ub_ptr;
     // if (itctx_->n_misc_->flag_reaction_inv_) {
     //   ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
     //   ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);

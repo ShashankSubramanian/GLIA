@@ -8,7 +8,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_obj_evals++;
-    double *x_ptr, k1, k2, k3;
+    ScalarType *x_ptr, k1, k2, k3;
 
     int x_sz;
 
@@ -48,7 +48,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       pde_operators_->diff_solver_->precFactor();
     }
 
-    double r1, r2, r3;
+    ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
@@ -122,13 +122,13 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    PetscScalar *x_ptr, *p_ptr;
+    ScalarType *x_ptr, *p_ptr;
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     n_misc_->statistics_.nb_grad_evals++;
     Event e ("tumor-eval-grad");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
-    double k1, k2, k3;
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
+    ScalarType k1, k2, k3;
 
     int x_sz;
 
@@ -166,7 +166,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       pde_operators_->diff_solver_->precFactor();
     }
 
-    double r1, r2, r3;
+    ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
@@ -212,12 +212,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
     }
 
-    double temp_scalar;
+    ScalarType temp_scalar;
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
-    double integration_weight = 1.0;
+    ScalarType integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
@@ -335,9 +335,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     n_misc_->statistics_.nb_grad_evals++;
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     Event e ("tumor-eval-objandgrad");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
-    double *x_ptr, k1, k2, k3;
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
+    ScalarType *x_ptr, k1, k2, k3;
 
     int x_sz;
 
@@ -376,7 +376,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       pde_operators_->diff_solver_->precFactor();
     }
 
-    double r1, r2, r3;
+    ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
@@ -468,12 +468,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     
 
-    double temp_scalar;
+    ScalarType temp_scalar;
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
-    double integration_weight = 1.0;
+    ScalarType integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
@@ -707,7 +707,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
     ierr = pde_operators_->solveAdjoint (1);
 
     ierr = VecCopy (temp_phip_, temp_);                             CHKERRQ (ierr);
-    double *temp_ptr, *p_ptr;
+    ScalarType *temp_ptr, *p_ptr;
     ierr = VecGetArray (temp_, &temp_ptr);                          CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
         temp_ptr[i] = (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
@@ -755,7 +755,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
 
     ierr = tumor_->phi_->apply (temp_phip_, p_current_);            CHKERRQ (ierr);
     ierr = VecCopy (temp_phip_, tumor_->c_0_);                      CHKERRQ (ierr);
-    double *temp_ptr;
+    ScalarType *temp_ptr;
     ierr = VecGetArray (tumor_->c_0_, &temp_ptr);                   CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
         temp_ptr[i] = (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
@@ -776,7 +776,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
 
     ierr = pde_operators_->solveAdjoint (2);
 
-    double *phip_ptr, *phiptilde_ptr, *p_ptr;
+    ScalarType *phip_ptr, *phiptilde_ptr, *p_ptr;
     ierr = VecGetArray (temp_phip_, &phip_ptr);                     CHKERRQ (ierr);
     ierr = VecGetArray (temp_phiptilde_, &phiptilde_ptr);           CHKERRQ (ierr);
     ierr = VecGetArray (temp_, &temp_ptr);                          CHKERRQ (ierr);
@@ -837,7 +837,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert (data != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
-    PetscScalar misfit_tu = 0, misfit_brain = 0;
+    ScalarType misfit_tu = 0, misfit_brain = 0;
     PetscReal reg;
     n_misc_->statistics_.nb_obj_evals++;
 
@@ -891,11 +891,11 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
 PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    PetscScalar misfit_brain;
+    ScalarType misfit_brain;
     n_misc_->statistics_.nb_grad_evals++;
 
-    PetscScalar dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
-    PetscScalar norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d =0.;
+    ScalarType dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
+    ScalarType norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d =0.;
     std::stringstream s;
 
     if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (data, NORM_2, &norm_d);          CHKERRQ (ierr);}
@@ -1060,11 +1060,11 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PCOUT << "\n\n----- Gradient check with taylor expansion ----- " << std::endl;
 
-    double norm;
+    ScalarType norm;
     ierr = VecNorm (p, NORM_2, &norm);                          CHKERRQ (ierr);
 
     PCOUT << "Gradient check performed at x with norm: " << norm << std::endl;
-    double *x_ptr, k1, k2, k3;
+    ScalarType *x_ptr, k1, k2, k3;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
       k1 = x_ptr[n_misc_->np_];
@@ -1083,8 +1083,8 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[7] = {1e-4, 1e-5, 1e-6, 1e-7, 1e-8};
-    double J, J_taylor, J_p, diff;
+    ScalarType h[7] = {1e-4, 1e-5, 1e-6, 1e-7, 1e-8};
+    ScalarType J, J_taylor, J_p, diff;
 
     Vec dJ;
     Vec p_tilde;

@@ -8,7 +8,6 @@
 
 #include <math.h>
 #include <memory>
-#include <complex>
 #include <iostream>
 #include <algorithm>
 #include <mpi.h>
@@ -25,30 +24,57 @@
 #include <assert.h>
 #include "EventTimings.hpp"
 
+
+using ScalarType PetscReal
+
+
 #ifdef CUDA
     #include "cuda.h"
     #include <cuda_runtime_api.h>
     #include "cublas_v2.h"
-    
     #include "petsccuda.h"
     #include <accfft_gpu.h>
+    #include <accfft_gpuf.h>
     #include <accfft_operators_gpu.h>
     #include <cuComplex.h>
-
     #include "UtilsCuda.h"
 
-    using fft_plan = accfft_plan_gpu;
+    #ifdef SINGLE
+        #define MPIType MPI_FLOAT
+        using ComplexType Complexf
+        using CudaComplexType cuFloatComplex
+        using fft_plan = accfft_plan_gpuf;
+        #define accfft_cleanup accfft_cleanup_gpuf
+        #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpuf
+        #define accfft_execute_r2c accfft_execute_r2c_gpuf
+        #define accfft_execute_c2r accfft_execute_c2r_gpuf 
+        #define makeCudaComplexType make_cuFloatComplex
+    #else
+        #define MPIType MPI_DOUBLE
+        using ComplexType Complex
+        using CudaComplexType cuDoubleComplex
+        using fft_plan = accfft_plan_gpu;
+        #define accfft_cleanup accfft_cleanup_gpu
+        #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpu
+        #define accfft_execute_r2c accfft_execute_r2c_gpu
+        #define accfft_execute_c2r accfft_execute_c2r_gpu    
+        #define makeCudaComplexType make_cuDoubleComplex
+    #endif
 
-    #define accfft_execute_r2c accfft_execute_r2c_gpu
-    #define accfft_execute_c2r accfft_execute_c2r_gpu
-    #define accfft_cleanup accfft_cleanup_gpu
     #define fft_free cudaFree
 
 #else
     #include <accfft.h>
+    #include <accfftf.h>
     #include <accfft_operators.h>
 
-    using fft_plan = accfft_plan;
+    // CPU accfft has function overloading for single and double precision; Not the GPU version
+    #ifdef SINGLE
+        using fft_plan = accfft_planf;
+    #else
+        using fft_plan = accfft_plan;
+    #endif
+
     #define fft_free accfft_free
 #endif
 
@@ -60,13 +86,13 @@ enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 enum {SEQ = 0, MPI = 1};
 
 struct OptimizerSettings {
-    double beta;                 /// @brief regularization parameter
-    double opttolgrad;           /// @brief l2 gradient tolerance for optimization
-    double ftol;                 /// @brief l1 function and solution tolerance
-    double ls_minstep;           /// @brief minimum step length of linesearch
-    double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
-    double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
-    double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
+    ScalarType beta;                 /// @brief regularization parameter
+    ScalarType opttolgrad;           /// @brief l2 gradient tolerance for optimization
+    ScalarType ftol;                 /// @brief l1 function and solution tolerance
+    ScalarType ls_minstep;           /// @brief minimum step length of linesearch
+    ScalarType gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
+    ScalarType grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
+    ScalarType gatol;                /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
     int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
@@ -112,10 +138,10 @@ struct OptimizerFeedback {
     int nb_objevals;             /// @brief stores the number of required (accumulated) objective function evaluations per tumor solve
     int nb_gradevals;            /// @brief stores the number of required (accumulated) gradient evaluations per tumor solve
     std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
-    double gradnorm;             /// @brief final gradient norm
-    double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
-    double j0;                   /// @brief initial objective : needed for L1 convergence tests
-    double jval;                 /// @brief orbjective function value
+    ScalarType gradnorm;             /// @brief final gradient norm
+    ScalarType gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
+    ScalarType j0;                   /// @brief initial objective : needed for L1 convergence tests
+    ScalarType jval;                 /// @brief orbjective function value
     bool converged;              /// @brief true if solver converged within bounds
 
     OptimizerFeedback ()
@@ -136,29 +162,29 @@ struct OptimizerFeedback {
 
 struct TumorSettings {
     int    tumor_model;
-    double time_step_size;
+    ScalarType time_step_size;
     int    time_steps;
-    double time_horizon;
+    ScalarType time_horizon;
     int    np;
     int    nk;
-    double betap;
+    ScalarType betap;
     bool   writeOutput;
     int    verbosity;
-    double obs_threshold;
-    double diff_coeff_scale;        /// @brief (scalar) diffusion rate
-    double diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
-    double reaction_coeff_scale;    /// @brief (scalar) reaction rate
-    double diffusion_ratio_gm_wm;   /// @brief ratio of diffusion coefficient between wm and gm
-    double diffusion_ratio_glm_wm;  /// @brief ratio of diffusion coefficient between wm and gm
-    double reaction_ratio_gm_wm;    /// @brief ratio of reaction coefficient between wm and gm
-    double reaction_ratio_glm_wm;   /// @brief ratio of reaction coefficient between wm and gm
+    ScalarType obs_threshold;
+    ScalarType diff_coeff_scale;        /// @brief (scalar) diffusion rate
+    ScalarType diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
+    ScalarType reaction_coeff_scale;    /// @brief (scalar) reaction rate
+    ScalarType diffusion_ratio_gm_wm;   /// @brief ratio of diffusion coefficient between wm and gm
+    ScalarType diffusion_ratio_glm_wm;  /// @brief ratio of diffusion coefficient between wm and gm
+    ScalarType reaction_ratio_gm_wm;    /// @brief ratio of reaction coefficient between wm and gm
+    ScalarType reaction_ratio_glm_wm;   /// @brief ratio of reaction coefficient between wm and gm
     int rho_linear;                 /// @brief used linearization
-    std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
-    double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
-    double phi_sigma;               /// @brief standard deviation of Gaussians
-    double phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
-    double gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
-    double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
+    std::array<ScalarType, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
+    ScalarType phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
+    ScalarType phi_sigma;               /// @brief standard deviation of Gaussians
+    ScalarType phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
+    ScalarType gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
+    ScalarType target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
     bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
 
@@ -399,7 +425,7 @@ class NMisc {
             writepath_ << "./results/";
         }
 
-        double ic_max_;
+        ScalarType ic_max_;
         int predict_flag_;
         int forward_flag_;
 
@@ -410,14 +436,14 @@ class NMisc {
         int istart_[3];
         int ostart_[3];
         int c_dims_[2];
-        double h_[3];
-        double lebesgue_measure_;
+        ScalarType h_[3];
+        ScalarType lebesgue_measure_;
 
         int np_;
         int nk_;
         int nr_;
-        double time_horizon_;
-        double dt_;
+        ScalarType time_horizon_;
+        ScalarType dt_;
         int nt_;
 
         int model_;
@@ -426,33 +452,33 @@ class NMisc {
         int writeOutput_;
         int verbosity_;
 
-        double exp_shift_;
-        double penalty_;
+        ScalarType exp_shift_;
+        ScalarType penalty_;
 
-        double k_;
-        double kf_;
-        double k_gm_wm_ratio_;
-        double k_glm_wm_ratio_;
-        double r_gm_wm_ratio_;
-        double r_glm_wm_ratio_;
-        double rho_;
-        std::array<double, 3> user_cm_;
-        double p_scale_;
-        double p_scale_true_;
-        double noise_scale_;
-        double low_freq_noise_scale_;
-        double beta_;
-        double lambda_;
+        ScalarType k_;
+        ScalarType kf_;
+        ScalarType k_gm_wm_ratio_;
+        ScalarType k_glm_wm_ratio_;
+        ScalarType r_gm_wm_ratio_;
+        ScalarType r_glm_wm_ratio_;
+        ScalarType rho_;
+        std::array<ScalarType, 3> user_cm_;
+        ScalarType p_scale_;
+        ScalarType p_scale_true_;
+        ScalarType noise_scale_;
+        ScalarType low_freq_noise_scale_;
+        ScalarType beta_;
+        ScalarType lambda_;
 
         bool beta_changed_;
 
-        double phi_sigma_;
-        double phi_sigma_data_driven_;
-        double phi_spacing_factor_;
-        double data_threshold_;
-        double gaussian_vol_frac_;
+        ScalarType phi_sigma_;
+        ScalarType phi_sigma_data_driven_;
+        ScalarType phi_spacing_factor_;
+        ScalarType data_threshold_;
+        ScalarType gaussian_vol_frac_;
 
-        double obs_threshold_;
+        ScalarType obs_threshold_;
 
         bool nk_fixed_;
         bool diffusivity_inversion_;
@@ -460,7 +486,7 @@ class NMisc {
         bool reaction_inversion_;
         bool flag_reaction_inv_;
 
-        double target_sparsity_;
+        ScalarType target_sparsity_;
 
         int max_p_location_;
 
@@ -469,7 +495,7 @@ class NMisc {
         int order_;
 
         TumorStatistics statistics_;
-        std::array<double, 7> timers_;
+        std::array<ScalarType, 7> timers_;
 
         int64_t accfft_alloc_max_;
         int64_t n_local_;
@@ -482,20 +508,20 @@ class NMisc {
         std::stringstream writepath_;
 
         int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
-        double opttolgrad_;
+        ScalarType opttolgrad_;
 
         std::vector<int> support_;      // support of cs guess
 
-        std::vector<double> user_cms_;  // stores the cms for synthetic user data
+        std::vector<ScalarType> user_cms_;  // stores the cms for synthetic user data
 
-        double smoothing_factor_;
+        ScalarType smoothing_factor_;
 
-        double E_csf_, E_healthy_, E_tumor_, E_bg_;
-        double nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
+        ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
+        ScalarType nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
 
-        double screen_low_, screen_high_;
+        ScalarType screen_low_, screen_high_;
 
-        double forcing_factor_;
+        ScalarType forcing_factor_;
 };
 
 class VecField {
@@ -515,9 +541,9 @@ class VecField {
 
         PetscErrorCode computeMagnitude ();
         PetscErrorCode copy (std::shared_ptr<VecField> field);
-        PetscErrorCode set (double scalar);
-        PetscErrorCode getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
-        PetscErrorCode restoreComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
+        PetscErrorCode set (ScalarType scalar);
+        PetscErrorCode getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
+        PetscErrorCode restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
         PetscErrorCode getIndividualComponents (Vec in);  // uses x,y,z to populate in
 };
@@ -530,14 +556,14 @@ struct LSCtx {
     Vec x_work_1;   //Temporary vector for storing steepest descent guess
     Vec x_work_2; //Work vector
     Vec x_sol;
-    double sigma; //Sufficient decrease parameter
-    double lambda; //Regularization parameter for L1: Linesearch needs
+    ScalarType sigma; //Sufficient decrease parameter
+    ScalarType lambda; //Regularization parameter for L1: Linesearch needs
                    //this application specific info
     PetscReal J_old;
 };
 
-int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma);
-PetscErrorCode weierstrassSmoother (Vec Wc, Vec c, std::shared_ptr<NMisc> n_misc, double sigma);
+int weierstrassSmoother (ScalarType *Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma);
+PetscErrorCode weierstrassSmoother (Vec Wc, Vec c, std::shared_ptr<NMisc> n_misc, ScalarType sigma);
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
 
@@ -550,21 +576,21 @@ PetscErrorCode geometricCoupling(
 /** @brief computes difference xi = m_data - m_geo
  *  - function assumes that on input, xi = m_geo * (1-c(1))
  */
-PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
+PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
 	Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
 	Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg);
 
 /// @brief computes difference diff = x - y
-PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
+PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
 	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
 	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg);
 
 //Read/Write function prototypes
-void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+void dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
-void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+void dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 
 /* helper methods for print out to console */
@@ -574,11 +600,11 @@ PetscErrorCode tuMSGwarn(std::string msg, int size = 98);
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
 /* accfft differential operators */
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, double *timers);
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, double *timers);
+void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, ScalarType *timers);
+void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, ScalarType *timers);
 
 PetscErrorCode vecSign (Vec x); //signum of petsc vector
-PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsity of vector
+PetscErrorCode vecSparsity (Vec x, ScalarType &sparsity); //Hoyer measure for sparsity of vector
 
 /* definition of tumor assert */
 #ifndef NDEBUG
@@ -590,9 +616,9 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
-double myDistance (double *c1, double *c2);
+ScalarType myDistance (ScalarType *c1, ScalarType *c2);
 
-PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);
+PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *h, ScalarType *cm);
 PetscErrorCode setupVec (Vec x, int type = MPI);
 
 #endif // end _UTILS_H

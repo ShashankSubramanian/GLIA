@@ -20,8 +20,17 @@
 
 	#define INTERP_PINNED // if defined will use pinned memory for GPU
 
-	typedef double Real;
-	#define MPI_T MPI_DOUBLE
+	#if defined(SINGLE)
+		typedef float Real;
+		#define MPI_T MPI_FLOAT
+		#define TC Complexf
+		#define PL fftwf_plan
+	#else
+		typedef double Real;
+		#define MPI_T MPI_DOUBLE
+		#define TC Complex
+		#define PL fftw_plan
+	#endif
 
 	#define COORD_DIM 3
 
@@ -35,10 +44,10 @@
 	              Real* query_values,int* c_dims, MPI_Comm c_comm);
 	  void scatter(int data_dof,
 	              int* N_reg, int * isize, int* istart, const int N_pts, const int g_size, Real* query_points_in,
-	              int* c_dims, MPI_Comm c_comm, double * timings);
+	              int* c_dims, MPI_Comm c_comm, ScalarType * timings);
 	  void interpolate( Real* ghost_reg_grid_vals, int data_dof,
 	              int* N_reg, int * isize, int* istart, const int N_pts, const int g_size,
-	              Real* query_values,int* c_dims, MPI_Comm c_comm,double * timings);
+	              Real* query_values,int* c_dims, MPI_Comm c_comm,ScalarType * timings);
 
 	  size_t g_alloc_max; // size in bytes of the ghost input
 	  int N_reg_g[3];
@@ -115,7 +124,7 @@
 	#include <accfftf.h>
 	#define FAST_INTERP
 
-	#if defined(PETSC_USE_REAL_SINGLE)
+	#if defined(SINGLE)
 		#define FAST_INTERPV // enable ONLY for single precision
 	#endif
 
@@ -128,7 +137,7 @@
 	#endif
 
 
-	#if defined(PETSC_USE_REAL_SINGLE)
+	#if defined(SINGLE)
 		typedef float Real;
 		#define MPI_T MPI_FLOAT
 		#define TC Complexf
@@ -231,19 +240,19 @@
 					MPI_Comm c_comm);
 			void fast_scatter(int* N_reg, int * isize, int* istart,
 					const int N_pts, const int g_size, Real* query_points_in,
-					int* c_dims, MPI_Comm c_comm, double * timings);
+					int* c_dims, MPI_Comm c_comm, ScalarType * timings);
 			void scatter(int* N_reg, int * isize, int* istart,
 					const int N_pts, const int g_size, Real* query_points_in,
-					int* c_dims, MPI_Comm c_comm, double * timings);
+					int* c_dims, MPI_Comm c_comm, ScalarType * timings);
 			// void interpolate(Real* ghost_reg_grid_vals, int data_dof, int* N_reg,
 			// 		int * isize, int* istart, const int N_pts, const int g_size,
-			// 		Real* query_values, int* c_dims, MPI_Comm c_comm, double * timings);
+			// 		Real* query_values, int* c_dims, MPI_Comm c_comm, ScalarType * timings);
 		  	void interpolate(Real* __restrict ghost_reg_grid_vals,
 				int*__restrict N_reg, int *__restrict isize, int*__restrict istart, const int N_pts, const int g_size,
-				Real*__restrict query_values, int*__restrict c_dims, MPI_Comm c_comm, double *__restrict timings, int version =0);
+				Real*__restrict query_values, int*__restrict c_dims, MPI_Comm c_comm, ScalarType *__restrict timings, int version =0);
 			void high_order_interpolate(Real* ghost_reg_grid_vals, int data_dof, int* N_reg,
 					int * isize, int* istart, const int N_pts, const int g_size,
-					Real* query_values, int* c_dims, MPI_Comm c_comm, double * timings, int interp_order);
+					Real* query_values, int* c_dims, MPI_Comm c_comm, ScalarType * timings, int interp_order);
 
 			int N_reg_g[3];
 			int isize_g[3];

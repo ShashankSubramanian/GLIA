@@ -37,12 +37,12 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-adv-ksp-matvec");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
     CtxAdv *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
 
-    double alph = 1.0 / 2.0 * ctx->dt_;
+    ScalarType alph = 1.0 / 2.0 * ctx->dt_;
 
     ierr = VecPointwiseMult (ctx->temp_[0], ctx->velocity_->x_, x);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_->y_, x);			CHKERRQ (ierr);
@@ -60,13 +60,13 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt) {
+PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-adv-solve");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -75,7 +75,7 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
     ctx->velocity_->y_ = velocity->y_;
     ctx->velocity_->z_ = velocity->z_;
 
-    double alph = -1.0 / 2.0 * ctx->dt_;
+    ScalarType alph = -1.0 / 2.0 * ctx->dt_;
     //rhs for advection solve: b = scalar - dt/2 div(scalar v)
     ierr = VecPointwiseMult (ctx->temp_[0], velocity->x_, scalar);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[1], velocity->y_, scalar);			CHKERRQ (ierr);
@@ -131,8 +131,8 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
         ierr = setCoords (coords_);  // sets the global coordinates
     #else
         n_alloc_ = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g_, istart_g_); // memory allocate
-        scalar_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
-        vector_field_ghost_ = reinterpret_cast<double*> (accfft_alloc (3 * n_alloc_));    // vector field with ghost points
+        scalar_field_ghost_ = reinterpret_cast<ScalarType*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
+        vector_field_ghost_ = reinterpret_cast<ScalarType*> (accfft_alloc (3 * n_alloc_));    // vector field with ghost points
         #ifdef USEMPICUDA
             interp_plan_scalar_ = std::make_shared<InterpPlan> (n_alloc_);
             interp_plan_scalar_->allocate (n_misc->n_local_, 1);
@@ -167,7 +167,7 @@ PetscErrorCode SemiLagrangianSolver::setCoords (std::shared_ptr<VecField> coords
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
     #ifdef CUDA
-        double *x_ptr, *y_ptr, *z_ptr;
+        ScalarType *x_ptr, *y_ptr, *z_ptr;
         ierr = VecCUDAGetArrayReadWrite (coords->x_, &x_ptr);                 CHKERRQ (ierr);
         ierr = VecCUDAGetArrayReadWrite (coords->y_, &y_ptr);                 CHKERRQ (ierr);
         ierr = VecCUDAGetArrayReadWrite (coords->z_, &z_ptr);                 CHKERRQ (ierr);
@@ -188,14 +188,14 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-interp-scafield");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
-    double *in_ptr, *out_ptr, *query_ptr;
+    ScalarType *in_ptr, *out_ptr, *query_ptr;
 
     // Interpolation
     #ifdef USEMPICUDA
@@ -239,15 +239,15 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-interp-vecfield");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
     #if defined(CUDA) && !defined(USEMPICUDA)
-        double *ix_ptr, *iy_ptr, *iz_ptr, *ox_ptr, *oy_ptr, *oz_ptr, *query_ptr;
+        ScalarType *ix_ptr, *iy_ptr, *iz_ptr, *ox_ptr, *oy_ptr, *oz_ptr, *query_ptr;
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = input->getComponentArrays (ix_ptr, iy_ptr, iz_ptr);              CHKERRQ (ierr);
         ierr = output->getComponentArrays (ox_ptr, oy_ptr, oz_ptr);             CHKERRQ (ierr);
@@ -263,7 +263,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
         for (int i = 0; i < 3; i++) {
             nl_ghost *= static_cast<int> (isize_g_[i]);
         }
-        double *query_ptr;
+        ScalarType *query_ptr;
         ierr = VecGetArray (query_points_, &query_ptr);              CHKERRQ (ierr);
         for (int i = 0; i < 3; i++) {
             accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g_, &query_ptr[i * n_misc->n_local_], &vector_field_ghost_[i * nl_ghost]);  // populate vector ghost field with input
@@ -294,17 +294,17 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-adv-eulercomp");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
-    double dt = ctx->dt_;
+    ScalarType dt = ctx->dt_;
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<VecField> velocity = ctx->velocity_;
 
-    double *vx_ptr, *vy_ptr, *vz_ptr, *query_ptr, *wx_ptr, *wy_ptr, *wz_ptr;
-    double x1, x2, x3;
+    ScalarType *vx_ptr, *vy_ptr, *vz_ptr, *query_ptr, *wx_ptr, *wy_ptr, *wz_ptr;
+    ScalarType x1, x2, x3;
     
     // single-GPU
     #if defined(CUDA) && !defined(USEMPICUDA)
@@ -327,9 +327,9 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
         for (int i1 = 0; i1 < n_misc->isize_[0]; i1++) {
             for (int i2 = 0; i2 < n_misc->isize_[1]; i2++) {
                 for (int i3 = 0; i3 < n_misc->isize_[2]; i3++) {
-                    x1 = n_misc->h_[0] * static_cast<double> (i1 + n_misc->istart_[0]);
-                    x2 = n_misc->h_[1] * static_cast<double> (i2 + n_misc->istart_[1]);
-                    x3 = n_misc->h_[2] * static_cast<double> (i3 + n_misc->istart_[2]);
+                    x1 = n_misc->h_[0] * static_cast<ScalarType> (i1 + n_misc->istart_[0]);
+                    x2 = n_misc->h_[1] * static_cast<ScalarType> (i2 + n_misc->istart_[1]);
+                    x3 = n_misc->h_[2] * static_cast<ScalarType> (i3 + n_misc->istart_[2]);
 
                     ptr = i1 * n_misc->isize_[1] * n_misc->isize_[2] + i2 * n_misc->isize_[2] + i3;
 
@@ -393,9 +393,9 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
         for (int i1 = 0; i1 < n_misc->isize_[0]; i1++) {
             for (int i2 = 0; i2 < n_misc->isize_[1]; i2++) {
                 for (int i3 = 0; i3 < n_misc->isize_[2]; i3++) {
-                    x1 = n_misc->h_[0] * static_cast<double> (i1 + n_misc->istart_[0]);
-                    x2 = n_misc->h_[1] * static_cast<double> (i2 + n_misc->istart_[1]);
-                    x3 = n_misc->h_[2] * static_cast<double> (i3 + n_misc->istart_[2]);
+                    x1 = n_misc->h_[0] * static_cast<ScalarType> (i1 + n_misc->istart_[0]);
+                    x2 = n_misc->h_[1] * static_cast<ScalarType> (i2 + n_misc->istart_[1]);
+                    x3 = n_misc->h_[2] * static_cast<ScalarType> (i3 + n_misc->istart_[2]);
 
                     ptr = i1 * n_misc->isize_[1] * n_misc->isize_[2] + i2 * n_misc->isize_[2] + i3;
 
@@ -436,13 +436,13 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt) {
+PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-adv-semilag-solve");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                         CHKERRQ (ierr);

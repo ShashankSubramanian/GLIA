@@ -37,7 +37,7 @@ class TumorSolverInterface {
 
 		/// @brief updates the initial guess for the inverse tumor solver
 		PetscErrorCode setInitialGuess (Vec p);
-		PetscErrorCode setInitialGuess(double d);
+		PetscErrorCode setInitialGuess(ScalarType d);
 		PetscErrorCode resetTaoSolver();
 
 		PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {
@@ -95,7 +95,7 @@ class TumorSolverInterface {
 
 		PetscErrorCode solveInterpolation (Vec data, Vec p_rec, std::shared_ptr<Phi> phi, std::shared_ptr<NMisc> n_misc);
 
-		std::vector<double> getSolverOutParams () {
+		std::vector<ScalarType> getSolverOutParams () {
 			out_params_ = inv_solver_->getInvOutParams ();
 			return out_params_;
 		}
@@ -112,7 +112,7 @@ class TumorSolverInterface {
 		std::shared_ptr<DerivativeOperators> derivative_operators_;
 		std::shared_ptr<InvSolver> inv_solver_;
 
-		std::vector<double> out_params_;
+		std::vector<ScalarType> out_params_;
 };
 
 #endif

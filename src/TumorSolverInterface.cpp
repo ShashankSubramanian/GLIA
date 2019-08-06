@@ -189,7 +189,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
 
     Vec x_L2;
     int np, nk, nr;
-    double *x_L2_ptr, *prec_ptr;
+    ScalarType *x_L2_ptr, *prec_ptr;
     np = n_misc_->np_;
     nk = n_misc_->nk_;
     nr = n_misc_->nr_;
@@ -231,7 +231,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         inv_solver_->setDataGradient (d1g);
 
         // scale p to one according to our modeling assumptions
-        double ic_max, g_norm_ref;
+        ScalarType ic_max, g_norm_ref;
         ic_max = 0;
         // get c0
         ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
@@ -251,7 +251,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         ierr = VecGetArray (x_L2, &x_L2_ptr);                                  CHKERRQ (ierr);
         n_misc_->rho_ = x_L2_ptr[np + nk];
 
-        double r1, r2, r3;
+        ScalarType r1, r2, r3;
         r1 = x_L2_ptr[np + nk];
         r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
         r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
@@ -301,7 +301,7 @@ PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
     ierr = ctx->tumor_->phi_->applyTranspose (y, ctx->temp_);           CHKERRQ (ierr);
 
     // Regularization
-    double beta = 1e-3;
+    ScalarType beta = 1e-3;
     ierr = VecAXPY (y, beta, x);                                        CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
@@ -311,7 +311,7 @@ PetscErrorCode interpolationKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, 
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    Vec x; int maxit; PetscScalar divtol, abstol, reltol;
+    Vec x; int maxit; ScalarType divtol, abstol, reltol;
     ierr = KSPBuildSolution (ksp,NULL,&x);
     ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);           CHKERRQ(ierr);                                                             CHKERRQ(ierr);
     InterpolationContext *itctx = reinterpret_cast<InterpolationContext*>(ptr);     // get user context
@@ -380,13 +380,13 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
 
     ierr = KSPSolve (ksp, rhs, p);                                      CHKERRQ (ierr);
     // Compute extreme singular values for condition number
-    double e_max, e_min;
+    ScalarType e_max, e_min;
     ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
     PCOUT << "Condition number of PhiTPhi is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
     ierr = VecCopy (p, p_out);                                          CHKERRQ (ierr);
 
     //Compute reconstruction error
-    double error_norm, p_norm, d_norm;
+    ScalarType error_norm, p_norm, d_norm;
     ierr = tumor->phi_->apply (phi_p, p);                               CHKERRQ (ierr);
     ierr = tumor->obs_->apply (phi_p, phi_p);                           CHKERRQ (ierr);
     dataOut (phi_p, ctx->n_misc_, "CInterp.nc");
@@ -397,7 +397,7 @@ PetscErrorCode TumorSolverInterface::solveInterpolation (Vec data, Vec p_out, st
     ierr = VecNorm (phi_p, NORM_2, &error_norm);                        CHKERRQ (ierr);
     ierr = VecNorm (p_out, NORM_2, &p_norm);                            CHKERRQ (ierr);
 
-    double err_p0;
+    ScalarType err_p0;
     Vec p_zero;
     ierr = VecDuplicate (p_out, &p_zero);                               CHKERRQ (ierr);
     ierr = VecSet (p_zero, 0);                                          CHKERRQ (ierr);
@@ -469,7 +469,7 @@ PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TumorSolverInterface::setInitialGuess (double d) {
+PetscErrorCode TumorSolverInterface::setInitialGuess (ScalarType d) {
   PetscErrorCode ierr;
   ierr = VecSet (tumor_->p_, d); CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -481,7 +481,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
     // timing
     Event e("update-tumor-coefficients");
-    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0}; ScalarType self_exec_time = -MPI_Wtime ();
 
     if (!use_nmisc) {
         // update matprob, deep copy of probability maps
@@ -559,7 +559,7 @@ PetscErrorCode TumorSolverInterface::printStatistics (int its, PetscReal J, Pets
     << "   " << std::scientific << std::setprecision(12) << std::setw(18) << g_norm
     << "   " << std::scientific << std::setprecision(12) << std::setw(18) << p_rel_norm;
 
-    double *x_ptr;
+    ScalarType *x_ptr;
 
     if (n_misc_->diffusivity_inversion_) {
         ierr = VecGetArray(x_L1, &x_ptr);                                         CHKERRQ(ierr);
@@ -600,7 +600,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     inv_solver_->setDataGradient (d1g);
 
     // count the number of observed voxels
-    double *pixel_ptr;
+    ScalarType *pixel_ptr;
     int sum = 0;
     ierr = VecGetArray (d1, &pixel_ptr);        CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
@@ -614,19 +614,19 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
 
     // // Guess the reaction coefficient and use as IC.
-    // std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate 
+    // std::array<ScalarType, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate 
     //                                                       // roughly where to start, else we could get stuck in 
     //                                                       // a bad local minimum
 
     // // get com of data and assign a Gaussian to it
-    // double com[3];
+    // ScalarType com[3];
     // ierr = computeCenterOfMass (d1, n_misc_->isize_, n_misc_->istart_, n_misc_->h_, com);
 
     // PCOUT << "Center of mass of tumor: " << com[0] << " " << com[1] << " " << com[2] << std::endl;
 
     // // find the Gaussian closest to the CoM
     // int com_idx = 0;
-    // double min_dist = 1E10, dist;
+    // ScalarType min_dist = 1E10, dist;
     // for (int i = 0; i < n_misc_->np_; i++) {
     //     dist = myDistance (com, &tumor_->phi_->centers_[3 * i]);
     //     if (dist < min_dist) {
@@ -638,12 +638,12 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     // // set the com gaussian to 1.
     // int insert_idx[1];
     // insert_idx[0] = com_idx;
-    // double val_arr[1];
+    // ScalarType val_arr[1];
     // val_arr[0] = 1.;
     // ierr = VecSetValues (prec, 1, insert_idx, val_arr, INSERT_VALUES);     CHKERRQ (ierr);
 
 
-    // double min_norm = 1E15, norm_1 = 0.;
+    // ScalarType min_norm = 1E15, norm_1 = 0.;
     // int idx_min = 0;
     // for (int i = 0; i < rho_guess.size(); i++) {
     //     // update the tumor with this rho    
@@ -676,10 +676,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     PetscReal J, J_ref, J_old;        // Objective
     Vec x_L1, x_L1_old;                  // Holds the L1 solution and the previous guess
     // Tolerance for L1 solver 
-    // double ftol = inv_solver_->getOptSettings()->ftol; 
-    double ftol = 1E-5;                                                                                                                           
-    double *x_L2_ptr, *x_L1_ptr, *temp_ptr;
-    double norm_rel, norm, norm_g;
+    // ScalarType ftol = inv_solver_->getOptSettings()->ftol; 
+    ScalarType ftol = 1E-5;                                                                                                                           
+    ScalarType *x_L2_ptr, *x_L1_ptr, *temp_ptr;
+    ScalarType norm_rel, norm, norm_g;
     std::vector<int> idx;  // Holds the idx list after
     std::vector<int> temp_support;
     int np, np_original, nk, nr;
@@ -1026,7 +1026,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 // No need to reset tao solver: This is taken care of in solveForParameters() because the tao solver needs different vector sizes now.
 
                 // scale p to one according to our modeling assumptions
-                double ic_max, g_norm_ref;
+                ScalarType ic_max, g_norm_ref;
                 ic_max = 0;
                 // get c0
                 ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
@@ -1061,7 +1061,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
                 if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
             }
 
-            double r1, r2, r3;
+            ScalarType r1, r2, r3;
             r1 = x_L2_ptr[np + nk];
             r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
             r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;

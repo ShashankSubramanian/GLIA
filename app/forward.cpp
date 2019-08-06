@@ -71,14 +71,14 @@ int main (int argc, char** argv) {
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
-    double self_exec_time = -MPI_Wtime ();
-    std::array<double, 7> timers = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> timers = {0};
 	//Create IC
 	Vec c_0, c_t;
     #ifdef SERIAL
         Vec p;
         ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
-        PetscScalar val[2] = {.9, .2};
+        ScalarType val[2] = {.9, .2};
         PetscInt center = (int) std::floor(n_misc->np_ / 2.);
         PetscInt idx[2] = {center-1, center};
         ierr = VecSetValues(p, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
@@ -110,7 +110,7 @@ int main (int argc, char** argv) {
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
     #endif
-    double max, min;
+    ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 

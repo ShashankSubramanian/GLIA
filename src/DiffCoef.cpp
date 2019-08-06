@@ -21,9 +21,9 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOpera
     temp_ = new Vec[7];
     #ifdef CUDA 
       cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
-      cudaMalloc ((void**) &work_cuda_, 7 * sizeof(double));
+      cudaMalloc ((void**) &work_cuda_, 7 * sizeof(ScalarType));
     #else 
-      temp_accfft_ = (double *) accfft_alloc (n_misc->accfft_alloc_max_);
+      temp_accfft_ = (ScalarType *) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
 
     ierr = VecSet (kxx_ , 0);
@@ -44,7 +44,7 @@ PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DiffCoef::updateIsotropicCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
   PetscFunctionBegin;
   PetscErrorCode ierr;
 
@@ -61,7 +61,7 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients (double k1, double k2, doub
   PetscFunctionReturn (0);
 }
 
-PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     k_scale_ = k_scale;
@@ -71,26 +71,26 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     n_misc->k_glm_wm_ratio_ = k_glm_wm_ratio_;
     n_misc->k_              = k_scale_;
 
-    double dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
-    double dk_dm_wm  = k_scale;                         //WM
-    double dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
+    ScalarType dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
+    ScalarType dk_dm_wm  = k_scale;                         //WM
+    ScalarType dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
     // if ratios <= 0, only diffuse in white matter
     dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
     dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
     if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
-        double *kxx_ptr, *kyy_ptr, *kzz_ptr;
+        ScalarType *kxx_ptr, *kyy_ptr, *kzz_ptr;
         ierr = VecGetArray (kxx_, &kxx_ptr);                     CHKERRQ (ierr);
         ierr = VecGetArray (kyy_, &kyy_ptr);                     CHKERRQ (ierr);
         ierr = VecGetArray (kzz_, &kzz_ptr);                     CHKERRQ (ierr);
         int64_t X, Y, Z, index;
-        double amp;
+        ScalarType amp;
         if (n_misc->testcase_ == CONSTCOEF)
             amp = 0.0;
         else if (n_misc->testcase_ == SINECOEF)
             amp = std::min (1.0, k_scale_);
 
-        double freq = 4.0;
+        ScalarType freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {
                 for (int z = 0; z < n_misc->isize_[2]; z++) {
@@ -148,12 +148,12 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
     kzz_avg_ *= 1.0 / filter_avg_;
 
     #ifdef CUDA
-        cudaMemcpy (&work_cuda_[1], &kxx_avg_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[2], &kxy_avg_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[3], &kxz_avg_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[4], &kyz_avg_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[5], &kyy_avg_, sizeof(double), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[6], &kzz_avg_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[1], &kxx_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[2], &kxy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[3], &kxz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[4], &kyz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[5], &kyy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+        cudaMemcpy (&work_cuda_[6], &kzz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
     #endif
 
     if (smooth_flag_) {
@@ -166,7 +166,7 @@ PetscErrorCode DiffCoef::setValues (double k_scale, double k_gm_wm_ratio, double
 PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
-    double sigma = 2.0 * M_PI / n_misc->n_[0];
+    ScalarType sigma = 2.0 * M_PI / n_misc->n_[0];
     
 
     ierr = spec_ops_->weierstrassSmoother (kxx_, kxx_, n_misc, sigma);
@@ -183,8 +183,8 @@ PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
 PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     PetscErrorCode ierr = 0;
     Event e ("tumor-diff-coeff-apply-K");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     for (int i = 1; i < 4; i++) {
         ierr = VecSet (temp_[i] , 0);                            CHKERRQ (ierr);
@@ -227,8 +227,8 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diff-coeff-apply-D");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     std::bitset<3> XYZ;
     XYZ[0] = 1;
@@ -253,8 +253,8 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-diff-coeff-apply-dKdm-gradc-gradp");
-  std::array<double, 7> t = {0};
-  double self_exec_time = -MPI_Wtime ();
+  std::array<ScalarType, 7> t = {0};
+  ScalarType self_exec_time = -MPI_Wtime ();
 
   std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
   // clear work fields
@@ -272,9 +272,9 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   ierr = VecPointwiseMult (temp_[1], temp_[3], temp_[6]);        CHKERRQ (ierr);  // c_z * \alpha_z
   ierr = VecAXPY (temp_[0], 1.0,  temp_[1]);                     CHKERRQ (ierr);
 
-  PetscScalar dk_dm_gm  = k_scale_ * k_gm_wm_ratio_;        //GM
-  PetscScalar dk_dm_wm  = k_scale_;                         //WM
-  PetscScalar dk_dm_glm = k_scale_ * k_glm_wm_ratio_;       //GLM
+  ScalarType dk_dm_gm  = k_scale_ * k_gm_wm_ratio_;        //GM
+  ScalarType dk_dm_wm  = k_scale_;                         //WM
+  ScalarType dk_dm_glm = k_scale_ * k_glm_wm_ratio_;       //GLM
   // if ratios <= 0, only diffuse in white matter
   dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
   dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;

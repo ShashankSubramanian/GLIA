@@ -10,15 +10,15 @@ ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOpera
     smooth_flag_ = 0;
 }
 
-PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, double r_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode ReacCoef::setValues (ScalarType rho_scale, ScalarType r_gm_wm_ratio, ScalarType r_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     rho_scale_      = rho_scale;
     r_gm_wm_ratio_  = r_gm_wm_ratio;
     r_glm_wm_ratio_ = r_glm_wm_ratio;
-    double dr_dm_gm = rho_scale * r_gm_wm_ratio;                //GM
-    double dr_dm_wm = rho_scale;                                //WM
-    double dr_dm_glm = rho_scale * r_glm_wm_ratio;              //GLM
+    ScalarType dr_dm_gm = rho_scale * r_gm_wm_ratio;                //GM
+    ScalarType dr_dm_wm = rho_scale;                                //WM
+    ScalarType dr_dm_glm = rho_scale * r_glm_wm_ratio;              //GLM
 
     n_misc->r_gm_wm_ratio_  = r_gm_wm_ratio_;    // update values in n_misc
     n_misc->r_glm_wm_ratio_ = r_glm_wm_ratio_;
@@ -28,16 +28,16 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;
 
     if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
-        double *rho_vec_ptr;
+        ScalarType *rho_vec_ptr;
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
         int64_t X, Y, Z, index;
-        double amp;
+        ScalarType amp;
         if (n_misc->testcase_ == CONSTCOEF)
             amp = 0.0;
         else if (n_misc->testcase_ == SINECOEF)
             amp = std::min (1.0, rho_scale_);
 
-        double freq = 4.0;
+        ScalarType freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
             for (int y = 0; y < n_misc->isize_[1]; y++) {
                 for (int z = 0; z < n_misc->isize_[2]; z++) {
@@ -72,7 +72,7 @@ PetscErrorCode ReacCoef::setValues (double rho_scale, double r_gm_wm_ratio, doub
     PetscFunctionReturn(0);
 }
 
-PetscErrorCode ReacCoef::updateIsotropicCoefficients (double rho_1, double rho_2, double rho_3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode ReacCoef::updateIsotropicCoefficients (ScalarType rho_1, ScalarType rho_2, ScalarType rho_3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
   PetscFunctionBegin;
   PetscErrorCode ierr;
   // compute new ratios
@@ -87,7 +87,7 @@ PetscErrorCode ReacCoef::updateIsotropicCoefficients (double rho_1, double rho_2
 PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
-    double sigma = 2.0 * M_PI / n_misc->n_[0];
+    ScalarType sigma = 2.0 * M_PI / n_misc->n_[0];
 
     ierr = spec_ops_->weierstrassSmoother (rho_vec_, rho_vec_, n_misc, sigma);
 
@@ -98,12 +98,12 @@ PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // Event e ("tumor-reac-coeff-apply-dRdm");
-  // std::array<double, 7> t = {0};
-  // double self_exec_time = -MPI_Wtime ();
+  // std::array<ScalarType, 7> t = {0};
+  // ScalarType self_exec_time = -MPI_Wtime ();
 
-  PetscScalar dr_dm_gm  = rho_scale_ * r_gm_wm_ratio_;        // GM
-  PetscScalar dr_dm_wm  = rho_scale_;                         // WM
-  PetscScalar dr_dm_glm = rho_scale_ * r_glm_wm_ratio_;       // GLM
+  ScalarType dr_dm_gm  = rho_scale_ * r_gm_wm_ratio_;        // GM
+  ScalarType dr_dm_wm  = rho_scale_;                         // WM
+  ScalarType dr_dm_glm = rho_scale_ * r_glm_wm_ratio_;       // GLM
   // if ratios <= 0, only diffuse in white matter
   dr_dm_gm   = (dr_dm_gm <= 0)  ? 0.0 : dr_dm_gm;
   dr_dm_glm  = (dr_dm_glm <= 0) ? 0.0 : dr_dm_glm;

@@ -29,10 +29,10 @@ struct CtxElasticity {
 	std::shared_ptr<Tumor> tumor_;
 	std::shared_ptr<SpectralOperators> spec_ops_;
 
-	PetscScalar mu_avg_, lam_avg_, screen_avg_;
+	ScalarType mu_avg_, lam_avg_, screen_avg_;
 
-	Complex *fx_hat_, *fy_hat_, *fz_hat_;
-	Complex *ux_hat_, *uy_hat_, *uz_hat_;
+	ComplexType *fx_hat_, *fy_hat_, *fz_hat_;
+	ComplexType *ux_hat_, *uy_hat_, *uz_hat_;
 
 	Vec mu_;
 	Vec lam_;
@@ -40,11 +40,11 @@ struct CtxElasticity {
 	Vec disp_;
 	std::vector<Vec> temp_;
 
-	double computeMu (double E, double nu) {
+	ScalarType computeMu (ScalarType E, ScalarType nu) {
 		return (E / (2 * (1 + nu)));
 	}
 
-	double computeLam (double E, double nu) {
+	ScalarType computeLam (ScalarType E, ScalarType nu) {
 		return (nu * E / ((1 + nu) * (1 - 2 * nu)));
 	}
 

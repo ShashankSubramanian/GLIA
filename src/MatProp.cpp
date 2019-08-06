@@ -25,7 +25,7 @@ MatProp::MatProp (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperato
 PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr;
-	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
+	ScalarType *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
 	int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
@@ -59,7 +59,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			dataIn (glm_, n_misc, str.str().c_str());
 			
 
-			double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
+			ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
 			ierr = spec_ops_->weierstrassSmoother (gm_, gm_, n_misc, sigma_smooth);
 			ierr = spec_ops_->weierstrassSmoother (wm_, wm_, n_misc, sigma_smooth);
@@ -116,7 +116,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 	else                   { ierr = VecSet (bg_, 0.0);       CHKERRQ(ierr); }
 	if (!n_misc->nk_fixed_) n_misc->nk_ = nk;
 
-	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr, *bg_ptr;
+	ScalarType *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr, *bg_ptr;
 	ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 	ierr = VecGetArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 	ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
@@ -159,7 +159,7 @@ PetscErrorCode MatProp::filterBackgroundAndSmooth (Vec in) {
 	ierr = VecScale (bg_, -1.0);						CHKERRQ (ierr); // bg - 1
 	ierr = VecShift (bg_, 1.0);							CHKERRQ (ierr); // bg
 
-	double sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+	ScalarType sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
 	ierr = spec_ops_->weierstrassSmoother (in, in, n_misc_, sigma_smooth);
 }
 

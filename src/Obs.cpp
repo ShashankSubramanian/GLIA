@@ -12,11 +12,11 @@ Obs::Obs (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
 PetscErrorCode Obs::setDefaultFilter (Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    double *filter_ptr, *data_ptr;
+    ScalarType *filter_ptr, *data_ptr;
     ierr = VecGetArray (filter_, &filter_ptr);                              CHKERRQ (ierr);
     ierr = VecGetArray (data, &data_ptr);                                   CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
-        filter_ptr[i] = double (data_ptr[i] > threshold_);
+        filter_ptr[i] = ScalarType (data_ptr[i] > threshold_);
     }
     ierr = VecRestoreArray (filter_, &filter_ptr);                          CHKERRQ (ierr);
     ierr = VecRestoreArray (data, &data_ptr);                               CHKERRQ (ierr);

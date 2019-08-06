@@ -102,7 +102,7 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    PetscScalar val;
+    ScalarType val;
 
     // if (n_misc->smoothing_factor_ == 1) {
     //     val = 1.38;
@@ -115,7 +115,7 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     // }
 
     val = 1.;
-    double *p_ptr;
+    ScalarType *p_ptr;
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     ierr = VecSet (p_true_, 0);                                     CHKERRQ (ierr);
     ierr = VecGetArray (p_true_, &p_ptr);                           CHKERRQ (ierr);
@@ -132,7 +132,7 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     //     ierr = VecSet (p_true_, val);                                 CHKERRQ (ierr);
     //     PetscFunctionReturn (0);
     // }
-    // // PetscScalar val[2] = {.9, .2}; 
+    // // ScalarType val[2] = {.9, .2}; 
     // // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     // // PetscInt idx[2] = {center-1, center};
     // // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
@@ -148,11 +148,11 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val) {
+PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    double *p_ptr;
+    ScalarType *p_ptr;
     PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     ierr = VecSet (p_true_, 0);                                     CHKERRQ (ierr);
     ierr = VecGetArray (p_true_, &p_ptr);                           CHKERRQ (ierr);
@@ -180,15 +180,15 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-compute-force");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
     std::bitset<3> XYZ;
     XYZ[0] = 1;
     XYZ[1] = 1;
     XYZ[2] = 1;
 
-    double *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
-    double sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
+    ScalarType *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
 
     // snafu: smooth
     ierr = VecCopy (c1, work_[0]);            CHKERRQ (ierr);
@@ -226,9 +226,9 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecSet (seg_, 0);                                                  CHKERRQ(ierr);
 
     // compute seg_ of gm, wm, csf, bg, tumor
-    std::vector<double> v;
-    std::vector<double>::iterator seg_component;
-    double *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *seg_ptr;
+    std::vector<ScalarType> v;
+    std::vector<ScalarType>::iterator seg_component;
+    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *seg_ptr;
     ierr = VecGetArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
@@ -257,7 +257,7 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr); 
 
-    double sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
+    ScalarType sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
     ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
 
     PetscFunctionReturn(0);

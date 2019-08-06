@@ -55,7 +55,7 @@ class Tumor {
 		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
-		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val);
+		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val);
 		PetscErrorCode setTrueP (Vec p);
 		PetscErrorCode computeSegmentation ();
 

@@ -44,7 +44,7 @@ ctx_() {
     #ifdef CUDA
         cudaMalloc ((void**)&ctx_->c_hat_, n_misc->accfft_alloc_max_);
     #else
-        ctx_->c_hat_ = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
+        ctx_->c_hat_ = (ComplexType *) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
 
 }
@@ -72,13 +72,13 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-ksp-matvec");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
     Ctx *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
 
-    double alph = -1.0 / 2.0 * ctx->dt_;
+    ScalarType alph = -1.0 / 2.0 * ctx->dt_;
     ierr = ctx->k_->applyD (ctx->temp_, y);
     ierr = VecAXPY (y, alph, ctx->temp_);                       CHKERRQ (ierr);
 
@@ -92,12 +92,12 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
 PetscErrorCode DiffSolver::precFactor () {
     PetscFunctionBegin;
     Event e ("tumor-diffusion-prec-factor");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
-    double kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
+    ScalarType kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
     kxx_avg = ctx_->k_->kxx_avg_;
     kxy_avg = ctx_->k_->kxy_avg_;
     kxz_avg = ctx_->k_->kxz_avg_;
@@ -105,10 +105,10 @@ PetscErrorCode DiffSolver::precFactor () {
     kyz_avg = ctx_->k_->kyz_avg_;
     kzz_avg = ctx_->k_->kzz_avg_;
 
-    double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
+    ScalarType factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
 
     #ifdef CUDA
-        cudaMemcpy (&ctx_->work_cuda_[0], &ctx_->dt_, sizeof(double), cudaMemcpyHostToDevice);
+        cudaMemcpy (&ctx_->work_cuda_[0], &ctx_->dt_, sizeof(ScalarType), cudaMemcpyHostToDevice);
         precFactorDiffusionCuda (ctx_->precfactor_, ctx_->work_cuda_, n_misc->osize_);
     #else
 
@@ -162,21 +162,21 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-precond");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     Ctx *ctx;
     ierr = PCShellGetContext (pc, (void **) &ctx);              CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
 
-    PetscScalar *y_ptr;
+    ScalarType *y_ptr;
     #ifdef CUDA
         ierr = VecCUDAGetArrayReadWrite (y, &y_ptr);                             CHKERRQ (ierr);
         ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->c_hat_);
 
-        // TODO: is there a better way to do this by somehow casting double* to complex*?
-        hadamardComplexProductCuda ((cuDoubleComplex*) ctx->c_hat_, ctx->precfactor_, n_misc->osize_);
+        // TODO: is there a better way to do this by somehow casting ScalarType* to ComplexType*?
+        hadamardComplexTypeProductCuda ((cuScalarTypeComplexType*) ctx->c_hat_, ctx->precfactor_, n_misc->osize_);
 
         ctx->spec_ops_->executeFFTC2R (ctx->c_hat_, y_ptr);
 
@@ -185,7 +185,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
         ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
         ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->c_hat_);
 
-        std::complex<double> *c_a = (std::complex<double> *) ctx->c_hat_;
+        std::ComplexType<ScalarType> *c_a = (std::ComplexType<ScalarType> *) ctx->c_hat_;
         for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
             c_a[i] *= ctx->precfactor_[i];
         }
@@ -202,12 +202,12 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode DiffSolver::solve (Vec c, double dt) {
+PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-solve");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+    std::array<ScalarType, 7> t = {0};
+    ScalarType self_exec_time = -MPI_Wtime ();
 
     Ctx *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -216,7 +216,7 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
         ksp_itr_ = 0;
         return 0;
     }
-    double alph = 1.0 / 2.0 * ctx->dt_;
+    ScalarType alph = 1.0 / 2.0 * ctx->dt_;
     ierr = VecCopy (c, rhs_);                                   CHKERRQ (ierr);
     ierr = ctx->k_->applyD (ctx->temp_, rhs_);
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);

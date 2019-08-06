@@ -47,9 +47,9 @@ inline void cudaPrintDeviceMemory(int dev=0) {
 
   printf("GPU %i memory usage: used = %lf MiB, free = %lf MiB, total = %lf MiB\n",
     dev,
-    static_cast<double>(total_mem - free_mem)/1048576.0,
-    static_cast<double>(free_mem)/1048576.0,
-    static_cast<double>(total_mem)/1048576.0);
+    static_cast<ScalarType>(total_mem - free_mem)/1048576.0,
+    static_cast<ScalarType>(free_mem)/1048576.0,
+    static_cast<ScalarType>(total_mem)/1048576.0);
 }
 
 //cublas error checking
@@ -105,22 +105,22 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
   return 0;
 }
 
-void computeMagnitudeCuda (double *mag_ptr, double *x_ptr, double *y_ptr, double *z_ptr, int sz);
-void computeWeierstrassFilterCuda (double *f, double *sum, double sigma, int *sz);
-void hadamardComplexProductCuda (cuDoubleComplex *y, cuDoubleComplex *x, int *sz);
-void hadamardComplexProductCuda (cuDoubleComplex *y, double *x, int *sz);
-void precFactorDiffusionCuda (double *precfactor, double *work, int *sz);
-void precFactorElasticityCuda (cuDoubleComplex *ux_hat, cuDoubleComplex *uy_hat, cuDoubleComplex *uz_hat, cuDoubleComplex *fx_hat, 
-                              cuDoubleComplex *fy_hat, cuDoubleComplex *fz_hat, double lam_avg, double mu_avg, double screen_avg, int *sz);
+void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz);
+void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz);
+void hadamardComplexTypeProductCuda (CudaComplexTypeType *y, CudaComplexTypeType *x, int *sz);
+void hadamardComplexTypeProductCuda (CudaComplexTypeType *y, ScalarType *x, int *sz);
+void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz);
+void precFactorElasticityCuda (CudaComplexTypeType *ux_hat, CudaComplexTypeType *uy_hat, CudaComplexTypeType *uz_hat, CudaComplexTypeType *fx_hat, 
+                              CudaComplexTypeType *fy_hat, CudaComplexTypeType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
-void logisticReactionCuda (double *c_t_ptr, double *rho_ptr, double *c_ptr, double dt, int sz, int linearized);
-void multiplyXWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
-void multiplyYWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
-void multiplyZWaveNumberCuda (cuDoubleComplex *w_f, cuDoubleComplex *f, int *sz);
-void computeEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr, double dt, int *sz);
-void computeSecondOrderEulerPointsCuda (double *query_ptr, double *vx_ptr, double *vy_ptr, double *vz_ptr,
-                                       double *wx_ptr, double *wy_ptr, double *wz_ptr, double dt, int *sz);
-void nonlinearForceScalingCuda (double *c_ptr, double *fx_ptr, double *fy_ptr, double *fz_ptr, double fac, int sz);
-void setCoordsCuda (double *x_ptr, double *y_ptr, double *z_ptr, int *sz);
+void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int sz, int linearized);
+void multiplyXWaveNumberCuda (CudaComplexTypeType *w_f, CudaComplexTypeType *f, int *sz);
+void multiplyYWaveNumberCuda (CudaComplexTypeType *w_f, CudaComplexTypeType *f, int *sz);
+void multiplyZWaveNumberCuda (CudaComplexTypeType *w_f, CudaComplexTypeType *f, int *sz);
+void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz);
+void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr,
+                                       ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *sz);
+void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int sz);
+void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz);
 
 #endif
