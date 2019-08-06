@@ -354,7 +354,7 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
     // Perform the Hadamard Transform f_hat=f_hat.*c_hat
     #ifdef CUDA
         ScalarType alp = factor * hx * hy * hz;
-        hadamardComplexTypeProductCuda ((CudaComplexType*) f_hat, (CudaComplexType*) c_hat, osize);
+        hadamardComplexProductCuda ((CudaComplexType*) f_hat, (CudaComplexType*) c_hat, osize);
         #ifdef SINGLE
         status = cublasZscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #else
