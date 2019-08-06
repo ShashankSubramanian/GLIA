@@ -20,6 +20,7 @@ using ScalarType = PetscReal;
         using ComplexType = Complexf;
         using CudaComplexType = cuFloatComplex;
         using fft_plan = accfft_plan_gpuf;
+        #define accfft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
         #define accfft_cleanup accfft_cleanup_gpuf
         #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpuf
         #define accfft_execute_r2c accfft_execute_r2c_gpuf
@@ -30,6 +31,7 @@ using ScalarType = PetscReal;
         using ComplexType = Complex;
         using CudaComplexType = cuDoubleComplex;
         using fft_plan = accfft_plan_gpu;
+        #define accfft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
         #define accfft_cleanup accfft_cleanup_gpu
         #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpu
         #define accfft_execute_r2c accfft_execute_r2c_gpu

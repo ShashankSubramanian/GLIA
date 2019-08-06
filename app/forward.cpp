@@ -1,7 +1,3 @@
-#include "petsctao.h"
-#include "petsc.h"
-#include "accfft.h"
-
 #include "Utils.h"
 #include "Tumor.h"
 #include "TumorSolverInterface.h"

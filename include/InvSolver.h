@@ -2,8 +2,6 @@
 #define INVSOLVER_H_
 
 #include <memory>
-#include "petsctao.h"
-#include "accfft.h"
 #include "DerivativeOperators.h"
 #include "Utils.h"
 

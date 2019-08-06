@@ -7,7 +7,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
     #ifdef CUDA
         cufftResult cufft_status;
-        alloc_max_ = accfft_local_size_dft_r2c_gpu (n, isize, istart, osize, ostart, c_comm);
+        alloc_max_ = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
         isize_ = isize;
         istart_ = istart;
         osize_ = osize;

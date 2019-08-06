@@ -176,7 +176,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
         ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->c_hat_);
 
         // TODO: is there a better way to do this by somehow casting ScalarType* to ComplexType*?
-        hadamardComplexTypeProductCuda ((cuScalarTypeComplexType*) ctx->c_hat_, ctx->precfactor_, n_misc->osize_);
+        hadamardComplexTypeProductCuda ((CudaComplexType*) ctx->c_hat_, ctx->precfactor_, n_misc->osize_);
 
         ctx->spec_ops_->executeFFTC2R (ctx->c_hat_, y_ptr);
 
