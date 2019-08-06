@@ -264,7 +264,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
     int64_t ptr;
     double xc = center[0], yc = center[1], zc = center[2];
     double hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
-    double dx = 0, dy = 0, dz = 0, out = 0;
+    double dx = 0, dy = 0, dz = 0, o = 0;
 
     // PHI = GAUSSIAN
     R = std::sqrt(2.) * sigma_;
@@ -289,13 +289,13 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
                 // PHI = GAUSSIAN
                 r = sqrt(dx*dx + dy*dy + dz*dz);
                 ratio = r / R;
-                out = (r/sigma_ <= 5) ? c * std::exp(-ratio * ratio) : 0.0;
+                o = (r/sigma_ <= 5) ? c * std::exp(-ratio * ratio) : 0.0;
 
                 // PHI = BUMP
                 // r = sqrt(dx*dx/R + dy*dy/R + dz*dz/R);
-                // out = (r < 1.)        ? c * std::exp(-1./(1.-r*r))   : 0.0;
+                // o = (r < 1.)        ? c * std::exp(-1./(1.-r*r))   : 0.0;
 
-                out[ptr] = out;
+                out[ptr] = o;
 
             }
   PetscFunctionReturn(0);
