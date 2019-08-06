@@ -25,7 +25,7 @@
 #include "EventTimings.hpp"
 
 
-using ScalarType PetscReal
+using ScalarType = PetscReal
 
 
 #ifdef CUDA
@@ -41,8 +41,8 @@ using ScalarType PetscReal
 
     #ifdef SINGLE
         #define MPIType MPI_FLOAT
-        using ComplexType Complexf
-        using CudaComplexType cuFloatComplex
+        using ComplexType = Complexf
+        using CudaComplexType = cuFloatComplex
         using fft_plan = accfft_plan_gpuf;
         #define accfft_cleanup accfft_cleanup_gpuf
         #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpuf
@@ -51,8 +51,8 @@ using ScalarType PetscReal
         #define makeCudaComplexType make_cuFloatComplex
     #else
         #define MPIType MPI_DOUBLE
-        using ComplexType Complex
-        using CudaComplexType cuDoubleComplex
+        using ComplexType = Complex
+        using CudaComplexType = cuDoubleComplex
         using fft_plan = accfft_plan_gpu;
         #define accfft_cleanup accfft_cleanup_gpu
         #define accfft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpu
