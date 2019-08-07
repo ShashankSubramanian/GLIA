@@ -2,6 +2,9 @@
 
 AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ctx_ () {
 	PetscErrorCode ierr = 0;
+
+    spec_ops_ = spec_ops;
+
     ctx_ = std::make_shared<CtxAdv> ();
     ctx_->n_misc_ = n_misc;
     ctx_->dt_ = n_misc->dt_;
@@ -48,7 +51,7 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_->y_, x);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->velocity_->z_, x);			CHKERRQ (ierr);
 
-    accfft_divergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], ctx->n_misc_->plan_, t.data());
+    spec_ops_->computeDivergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());
 
     ierr = VecScale (y, alph);									CHKERRQ (ierr);
     ierr = VecAXPY (y, 1.0, x);									CHKERRQ (ierr);
@@ -81,7 +84,7 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
     ierr = VecPointwiseMult (ctx->temp_[1], velocity->y_, scalar);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[2], velocity->z_, scalar);			CHKERRQ (ierr);
 
-    accfft_divergence (rhs_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], ctx->n_misc_->plan_, t.data());
+    spec_ops_->computeDivergence (rhs_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());
 
     ierr = VecScale (rhs_, alph);									CHKERRQ (ierr);
     ierr = VecAXPY (rhs_, 1.0, scalar);							    CHKERRQ (ierr);
@@ -104,7 +107,7 @@ AdvectionSolver::~AdvectionSolver () {
 }
 
 
-SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor) {
+SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {
     PetscErrorCode ierr = 0;
     m_dofs_[0] = 1;   // one set of query points for scalar field
     m_dofs_[1] = 3;   // one set of query points (Euler points) for the velocity field: the semilagrangian is second order
@@ -117,8 +120,6 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     interp_plan_scalar_ = nullptr;
     interp_plan_vector_ = nullptr;
     interp_plan_ = nullptr;
-
-    spec_ops_ = spec_ops;
 
     // three versions of interpolation - multi-CPU, single-GPU, and multi-GPU (<none>, CUDA, MPICUDA)
     #if defined(CUDA) && !defined(MPICUDA)

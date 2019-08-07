@@ -17,13 +17,15 @@ struct CtxAdv {
 
 class AdvectionSolver {
 	public:
-		AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor);   //tumor is needed for its work vectors
+		AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);   //tumor is needed for its work vectors
 
 		KSP ksp_;
 		Mat A_;
 		Vec rhs_;
 
 		std::shared_ptr<CtxAdv> ctx_;
+
+		std::shared_ptr<SpectralOperators> spec_ops_; 
 
 		int advection_mode_;						  // controls the source term of the advection equation
 
@@ -36,7 +38,7 @@ class AdvectionSolver {
 // Solve transport equations using Crank-Nicolson
 class TrapezoidalSolver : public AdvectionSolver {
 	public:
-		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {}
+		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {}
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);
 
 		virtual ~TrapezoidalSolver () {}
@@ -49,7 +51,6 @@ class SemiLagrangianSolver : public AdvectionSolver {
 	public:
 		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);
 
-		std::shared_ptr<SpectralOperators> spec_ops_; 
 		int isize_g_[3], istart_g_[3];    		  			// local input sizes with ghost layers
 		std::shared_ptr<VecField> work_field_;	  			// work vector field
 		std::shared_ptr<VecField> coords_;		  			// x,y,z coordinates 

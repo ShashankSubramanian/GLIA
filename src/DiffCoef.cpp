@@ -263,9 +263,9 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
       ierr = VecSet (temp_[i] , 0);                              CHKERRQ (ierr);
   }
   // compute gradient of state variable c(t)
-  accfft_grad (temp_[1], temp_[2], temp_[3], c, plan, &XYZ, t.data());
+  spec_ops_->computeGradient (temp_[1], temp_[2], temp_[3], c, &XYZ, t.data());
   // compute gradient of adjoint variable p(t)
-  accfft_grad (temp_[4], temp_[5], temp_[6], p, plan, &XYZ, t.data());
+  spec_ops_->computeGradient (temp_[4], temp_[5], temp_[6], p, &XYZ, t.data());
   // scalar product (grad c)^T grad \alpha
   ierr = VecPointwiseMult (temp_[0], temp_[1], temp_[4]);        CHKERRQ (ierr);  // c_x * \alpha_x
   ierr = VecPointwiseMult (temp_[1], temp_[2], temp_[5]);        CHKERRQ (ierr);  // c_y * \alpha_y
