@@ -35,7 +35,7 @@ PetscErrorCode ReacCoef::setValues (ScalarType rho_scale, ScalarType r_gm_wm_rat
         if (n_misc->testcase_ == CONSTCOEF)
             amp = 0.0;
         else if (n_misc->testcase_ == SINECOEF)
-            amp = std::min (1.0, rho_scale_);
+            amp = std::min ((ScalarType)1.0, rho_scale_);
 
         ScalarType freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {

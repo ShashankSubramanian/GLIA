@@ -218,66 +218,6 @@ PetscErrorCode TumorStatistics::print() {
 	PetscFunctionReturn(0);
 }
 
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, ScalarType *timers) {
-	PetscErrorCode ierr = 0;
-	ScalarType *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
-	#ifdef CUDA
-		ierr = VecCUDAGetArrayReadWrite (grad_x, &grad_x_ptr);
-		ierr = VecCUDAGetArrayReadWrite (grad_y, &grad_y_ptr);
-		ierr = VecCUDAGetArrayReadWrite (grad_z, &grad_z_ptr);
-		ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);
-
-		accfft_grad_gpu (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan, pXYZ, timers);
-
-		ierr = VecCUDARestoreArrayReadWrite (grad_x, &grad_x_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (grad_y, &grad_y_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (grad_z, &grad_z_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (x, &x_ptr);
-	#else
-		ierr = VecGetArray (grad_x, &grad_x_ptr);
-		ierr = VecGetArray (grad_y, &grad_y_ptr);
-		ierr = VecGetArray (grad_z, &grad_z_ptr);
-		ierr = VecGetArray (x, &x_ptr);
-
-		accfft_grad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan, pXYZ, timers);
-
-		ierr = VecRestoreArray (grad_x, &grad_x_ptr);
-		ierr = VecRestoreArray (grad_y, &grad_y_ptr);
-		ierr = VecRestoreArray (grad_z, &grad_z_ptr);
-		ierr = VecRestoreArray (x, &x_ptr);
-	#endif
-}
-
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, ScalarType *timers) {
-	PetscErrorCode ierr = 0;
-	ScalarType *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
-	#ifdef CUDA
-		ierr = VecCUDAGetArrayReadWrite (div, &div_ptr);
-		ierr = VecCUDAGetArrayReadWrite (dx, &dx_ptr);
-		ierr = VecCUDAGetArrayReadWrite (dy, &dy_ptr);
-		ierr = VecCUDAGetArrayReadWrite (dz, &dz_ptr);
-
-		accfft_divergence_gpu (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan, timers);
-
-		ierr = VecCUDARestoreArrayReadWrite (div, &div_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (dx, &dx_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (dy, &dy_ptr);
-		ierr = VecCUDARestoreArrayReadWrite (dz, &dz_ptr);
-	#else
-		ierr = VecGetArray (div, &div_ptr);
-		ierr = VecGetArray (dx, &dx_ptr);
-		ierr = VecGetArray (dy, &dy_ptr);
-		ierr = VecGetArray (dz, &dz_ptr);
-
-		accfft_divergence (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan, timers);
-
-		ierr = VecRestoreArray (div, &div_ptr);
-		ierr = VecRestoreArray (dx, &dx_ptr);
-		ierr = VecRestoreArray (dy, &dy_ptr);
-		ierr = VecRestoreArray (dz, &dz_ptr);
-	#endif
-}
-
 /* definition of tumor assert */
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg)
 {

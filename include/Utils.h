@@ -549,10 +549,6 @@ PetscErrorCode tuMSGstd(std::string msg, int size = 98);
 PetscErrorCode tuMSGwarn(std::string msg, int size = 98);
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
-/* accfft differential operators */
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, fft_plan *plan, std::bitset<3> *pXYZ, ScalarType *timers);
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, fft_plan *plan, ScalarType *timers);
-
 PetscErrorCode vecSign (Vec x); //signum of petsc vector
 PetscErrorCode vecSparsity (Vec x, ScalarType &sparsity); //Hoyer measure for sparsity of vector
 
