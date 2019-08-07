@@ -12,6 +12,7 @@ struct CtxAdv {
 	std::shared_ptr<NMisc> n_misc_;
 	std::vector<Vec> temp_;
 	std::shared_ptr<VecField> velocity_;
+	std::shared_ptr<SpectralOperators> spec_ops_; 
 	ScalarType dt_;
 };
 

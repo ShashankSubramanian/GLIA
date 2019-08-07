@@ -7,6 +7,7 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
 
     ctx_ = std::make_shared<CtxAdv> ();
     ctx_->n_misc_ = n_misc;
+    ctx_->spec_ops_ = spec_ops_;
     ctx_->dt_ = n_misc->dt_;
     ctx_->temp_.resize (3);
     for (int i = 0; i < 3; i++)
@@ -51,7 +52,7 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_->y_, x);			CHKERRQ (ierr);
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->velocity_->z_, x);			CHKERRQ (ierr);
 
-    spec_ops_->computeDivergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());
+    ctx->spec_ops_->computeDivergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());
 
     ierr = VecScale (y, alph);									CHKERRQ (ierr);
     ierr = VecAXPY (y, 1.0, x);									CHKERRQ (ierr);
