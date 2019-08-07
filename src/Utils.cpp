@@ -255,7 +255,11 @@ void dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	std::stringstream str;
 	// str << n_misc->readpath_.str().c_str() << fname;
 	str << fname;
+	#ifdef SINGLE
+	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, n_misc->n_, A);
+	#else
 	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
+	#endif
 	return;
 }
 
@@ -285,7 +289,11 @@ void dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	MPI_Offset istart_mpi[3] = { istart[0], istart[1], istart[2] };
 	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
 	str << n_misc->writepath_.str().c_str() << fname;
+	#ifdef SINGLE
+	write_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, n_misc->n_, A);
+	#else
 	write_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
+	#endif
 	return;
 }
 
