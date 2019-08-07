@@ -1,6 +1,6 @@
 #include "AdvectionSolver.h"
 
-AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ctx_ () {
+AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : ctx_ () {
 	PetscErrorCode ierr = 0;
 
     spec_ops_ = spec_ops;
