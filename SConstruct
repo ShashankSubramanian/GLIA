@@ -66,6 +66,7 @@ vars.Add("compiler", "Compiler to use.", "mpicxx")
 vars.Add("platform", "Specify platform.", "local")
 vars.Add(BoolVariable("use_nii", "enable/disable nifti.", False))
 vars.Add(BoolVariable("gpu", "Enables build for GPU support.", False))
+vars.Add(BoolVariable("multi_gpu", "Enables build for GPU support.", False))
 vars.Add(BoolVariable("single_precision", "Enables single precision computation.", False))
 
 env = Environment(variables = vars, ENV = os.environ)   # For configuring build variables
@@ -159,6 +160,9 @@ if env["gpu"] == True:
 
 if env["single_precision"] == True:
     env.Append(CCFLAGS = ['-DSINGLE'])
+
+if env["multi_gpu"] == True:
+    env.Append(CCFLAGS = ['-DMPICUDA'])
 
 # enforce positivity in diffusion inversion for ks
 # env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])

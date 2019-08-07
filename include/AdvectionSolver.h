@@ -44,7 +44,7 @@ class TrapezoidalSolver : public AdvectionSolver {
 
 // Solve transport equations using semi-Lagrangian
 // Some class variables will remain null depending on the interpolation functions used and is controlled by preprocessor dirs CUDA
-// and USEMPICUDA
+// and MPICUDA
 class SemiLagrangianSolver : public AdvectionSolver {
 	public:
 		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);

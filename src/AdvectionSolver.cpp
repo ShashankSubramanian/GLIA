@@ -120,8 +120,8 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
 
     spec_ops_ = spec_ops;
 
-    // three versions of interpolation - multi-CPU, single-GPU, and multi-GPU (<none>, CUDA, USEMPICUDA)
-    #if defined(CUDA) && !defined(USEMPICUDA)
+    // three versions of interpolation - multi-CPU, single-GPU, and multi-GPU (<none>, CUDA, MPICUDA)
+    #if defined(CUDA) && !defined(MPICUDA)
         m_texture_ = gpuInitEmptyTexture (n_misc->n_);
         cudaMalloc ((void**) &temp_interpol1_, sizeof(float) * n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
         cudaMalloc ((void**) &temp_interpol2_, sizeof(float) * n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
@@ -133,7 +133,7 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
         n_alloc_ = accfft_ghost_xyz_local_size_dft_r2c (n_misc->plan_, n_ghost_, isize_g_, istart_g_); // memory allocate
         scalar_field_ghost_ = reinterpret_cast<ScalarType*> (accfft_alloc (n_alloc_));    // scalar field with ghost points
         vector_field_ghost_ = reinterpret_cast<ScalarType*> (accfft_alloc (3 * n_alloc_));    // vector field with ghost points
-        #ifdef USEMPICUDA
+        #ifdef MPICUDA
             interp_plan_scalar_ = std::make_shared<InterpPlan> (n_alloc_);
             interp_plan_scalar_->allocate (n_misc->n_local_, 1);
             interp_plan_vector_ = std::make_shared<InterpPlan> (n_alloc_);
@@ -198,7 +198,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     ScalarType *in_ptr, *out_ptr, *query_ptr;
 
     // Interpolation
-    #ifdef USEMPICUDA
+    #ifdef MPICUDA
         ierr = VecGetArray (input, &in_ptr);                        CHKERRQ (ierr);
         ierr = VecGetArray (output, &out_ptr);                      CHKERRQ (ierr);
         accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g_, in_ptr, scalar_field_ghost_);  // populate scalar ghost field with input
@@ -246,7 +246,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
-    #if defined(CUDA) && !defined(USEMPICUDA)
+    #if defined(CUDA) && !defined(MPICUDA)
         ScalarType *ix_ptr, *iy_ptr, *iz_ptr, *ox_ptr, *oy_ptr, *oz_ptr, *query_ptr;
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = input->getComponentArrays (ix_ptr, iy_ptr, iz_ptr);              CHKERRQ (ierr);
@@ -269,7 +269,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
             accfft_get_ghost_xyz (n_misc->plan_, n_ghost_, isize_g_, &query_ptr[i * n_misc->n_local_], &vector_field_ghost_[i * nl_ghost]);  // populate vector ghost field with input
         }
         // Interpolation
-        #ifdef USEMPICUDA
+        #ifdef MPICUDA
             interp_plan_vector_->interpolate (vector_field_ghost_, 3, n_misc->n_, n_misc->isize_, n_misc->istart_,
                                          n_misc->n_local_, n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
         #else
@@ -307,13 +307,13 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     ScalarType x1, x2, x3;
     
     // single-GPU
-    #if defined(CUDA) && !defined(USEMPICUDA)
+    #if defined(CUDA) && !defined(MPICUDA)
         ierr = VecWAXPY (work_field_->x_, -dt / n_misc->h_[0], velocity->x_, coords_->x_);           CHKERRQ (ierr);
         ierr = VecWAXPY (work_field_->y_, -dt / n_misc->h_[1], velocity->y_, coords_->y_);           CHKERRQ (ierr);
         ierr = VecWAXPY (work_field_->z_, -dt / n_misc->h_[2], velocity->z_, coords_->z_);           CHKERRQ (ierr);
         ierr = work_field_->getIndividualComponents (query_points_);                 CHKERRQ (ierr);
     // multi-GPU
-    #elif defined(USEMPICUDA)
+    #elif defined(MPICUDA)
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);
         computeEulerPointsCuda (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt, n_misc->isize_);
@@ -349,7 +349,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     // coordinates must always be scattered before any interpolation, otherwise the plan
     // will use whatever query points that was set before (if at all)
     // only used if MPICUDA OR MPI
-    #ifdef USEMPICUDA
+    #ifdef MPICUDA
         ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
         interp_plan_scalar_->scatter (1, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
                                 n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
@@ -369,7 +369,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
 
     // Compute RK2 queries
     // single-GPU
-    #if defined(CUDA) && !defined(USEMPICUDA)
+    #if defined(CUDA) && !defined(MPICUDA)
         ierr = VecAYPX (work_field_->x_, -0.5*dt / n_misc->h_[0], coords_->x_);                     CHKERRQ (ierr);
         ierr = VecAYPX (work_field_->y_, -0.5*dt / n_misc->h_[1], coords_->y_);                     CHKERRQ (ierr);
         ierr = VecAYPX (work_field_->z_, -0.5*dt / n_misc->h_[2], coords_->z_);                     CHKERRQ (ierr);
@@ -378,7 +378,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
         ierr = VecAXPY (work_field_->z_, -0.5*dt / n_misc->h_[2], velocity->z_);                    CHKERRQ (ierr);
         ierr = work_field_->getIndividualComponents (query_points_);                CHKERRQ (ierr);
     // multi-GPU
-    #elif defined(USEMPICUDA)
+    #elif defined(MPICUDA)
         ierr = velocity->getComponentArrays (vx_ptr, vy_ptr, vz_ptr);
         ierr = work_field_->getComponentArrays (wx_ptr, wy_ptr, wz_ptr);
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
@@ -413,7 +413,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     
     // scatter final query points
     // only used if MPICUDA OR MPI
-    #ifdef USEMPICUDA
+    #ifdef MPICUDA
         ierr = VecGetArray (query_points_, &query_ptr);             CHKERRQ (ierr);
         interp_plan_scalar_->scatter (1, n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
                                 n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());

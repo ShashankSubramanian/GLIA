@@ -3,9 +3,7 @@
 
 #include "TypeDefs.h"
 
-//#define USEMPICUDA
-
-#ifdef USEMPICUDA
+#ifdef MPICUDA
 
 	#include "petsc.h"
 	#include <accfft.h>
