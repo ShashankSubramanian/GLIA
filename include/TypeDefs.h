@@ -33,6 +33,9 @@ using ScalarType = PetscReal;
         #define fft_execute_r2c accfft_execute_r2c_gpuf
         #define fft_execute_c2r accfft_execute_c2r_gpuf 
         #define makeCudaComplexType make_cuFloatComplex
+
+        #define accfftGrad accfft_grad_gpuf
+        #define accfftDiv accfft_divergence_gpuf
     #else
         #define MPIType MPI_DOUBLE
         using ComplexType = Complex;
@@ -51,6 +54,9 @@ using ScalarType = PetscReal;
         #define fft_execute_r2c accfft_execute_r2c_gpu
         #define fft_execute_c2r accfft_execute_c2r_gpu    
         #define makeCudaComplexType make_cuDoubleComplex
+
+        #define accfftGrad accfft_grad_gpu
+        #define accfftDiv accfft_divergence_gpu
     #endif
 
     #define fft_free cudaFree
@@ -69,6 +75,9 @@ using ScalarType = PetscReal;
         #define fft_execute_c2r accfft_execute_c2rf
         #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2cf
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2cf
+
+        #define accfftGrad accfft_gradf
+        #define accfftDiv accfft_divergencef
     #else
         #define MPIType MPI_DOUBLE
         using ComplexType = Complex;
@@ -77,6 +86,9 @@ using ScalarType = PetscReal;
         #define fft_execute_c2r accfft_execute_c2r
         #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2c
+
+        #define accfftGrad accfft_grad
+        #define accfftDiv accfft_divergence
     #endif
 
     #define fft_free accfft_free

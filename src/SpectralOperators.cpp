@@ -80,7 +80,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
         ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);
 
         if (fft_mode_ == ACCFFT)
-            accfft_grad_gpu (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+            accfftGrad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
         else {
             cufftResult cufft_status;
 
@@ -137,7 +137,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
         ierr = VecGetArray (grad_z, &grad_z_ptr);
         ierr = VecGetArray (x, &x_ptr);
 
-        accfft_grad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+        accfftGrad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
 
         ierr = VecRestoreArray (grad_x, &grad_x_ptr);
         ierr = VecRestoreArray (grad_y, &grad_y_ptr);
@@ -158,7 +158,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
         ierr = VecCUDAGetArrayReadWrite (dz, &dz_ptr);
 
         if (fft_mode_ == ACCFFT) {
-            accfft_divergence_gpu (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+            accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
         } else {
             cufftResult cufft_status;
            
@@ -218,7 +218,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
         ierr = VecGetArray (dy, &dy_ptr);
         ierr = VecGetArray (dz, &dz_ptr);
 
-        accfft_divergence (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+        accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
 
         ierr = VecRestoreArray (div, &div_ptr);
         ierr = VecRestoreArray (dx, &dx_ptr);

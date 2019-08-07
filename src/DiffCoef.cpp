@@ -78,6 +78,7 @@ PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio
     dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
     dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
+
     if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
         ScalarType *kxx_ptr, *kyy_ptr, *kzz_ptr;
         ierr = VecGetArray (kxx_, &kxx_ptr);                     CHKERRQ (ierr);
@@ -88,7 +89,7 @@ PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio
         if (n_misc->testcase_ == CONSTCOEF)
             amp = 0.0;
         else if (n_misc->testcase_ == SINECOEF)
-            amp = std::min (1.0, k_scale_);
+            amp = std::min ((ScalarType)1.0, k_scale_);
 
         ScalarType freq = 4.0;
         for (int x = 0; x < n_misc->isize_[0]; x++) {
