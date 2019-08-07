@@ -537,6 +537,18 @@ PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
 	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg);
 
+void read_pnetcdf(const std::string &filename,
+          MPI_Offset         starts[3],
+          MPI_Offset         counts[3],
+          int                gsizes[3],
+          float            *localData);
+
+void write_pnetcdf(const std::string &filename,
+           MPI_Offset         starts[3],
+           MPI_Offset         counts[3],
+           int                gsizes[3],
+           float            *localData);
+
 //Read/Write function prototypes
 void dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
