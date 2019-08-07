@@ -9,14 +9,13 @@
 #include "BLMVM.h"
 
 
-InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) :
-initialized_(false),
-tao_is_reset_(true),
-data_(),
-data_gradeval_(),
-optsettings_(),
-optfeedback_(),
-itctx_() {
+InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor) : initialized_(false),
+  tao_is_reset_(true),
+  data_(),
+  data_gradeval_(),
+  optsettings_(),
+  optfeedback_(),
+  itctx_() {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     tao_  = nullptr;
@@ -54,6 +53,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
 
   int np = itctx_->n_misc_->np_;
   int nk = (itctx_->n_misc_->diffusivity_inversion_) ?  itctx_->n_misc_->nk_ : 0;
+  int nr = (itctx_->n_misc_->conv_flag_l2_) ? itctx_->n_misc_->nr_ : 0;
 
 
   // register copied blmvm solver
@@ -76,7 +76,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
       ierr = VecDuplicate (itctx_->tumor_->p_, &xrec_);                         CHKERRQ(ierr);
     // set up routine to compute the hessian matrix vector product
     if (H_ == nullptr) {
-      ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
+      ierr = MatCreateShell (PETSC_COMM_SELF, np + nk + nr, np + nk + nr, np + nk + nr, np + nk + nr, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
     }
     // create TAO solver object
     if ( tao_ == nullptr && initialize_tao) {
@@ -377,7 +377,8 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
 
   CtxInv *ctx = itctx_.get();
 
-  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                                 CHKERRQ (ierr);
+
+  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                           CHKERRQ (ierr);
   ierr = TaoSetType (tao_, "tao_blmvm_m");                                                   CHKERRQ (ierr);
 
   std::string msg;
@@ -413,8 +414,6 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
       msg = "  Bounded limited memory variable metric method chosen\n";
   } else if (strcmp(taotype, "lmvm") == 0) {
       msg = "  Limited memory variable metric method chosen\n";
-  } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
-      msg = "  User modified limited memory variable metric method chosen\n";
   } else if (strcmp(taotype, "gpcg") == 0) {
       msg = " Newton Trust Region method for quadratic bound constrained minimization\n";
   } else if (strcmp(taotype, "tao_L1") == 0) {
@@ -1317,6 +1316,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
 
     //Gradient check begin
     // ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
+    // ierr = itctx->derivative_operators_->checkHessian (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (0);
 }
@@ -2523,7 +2523,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         // ierr = TaoSetType (tao, "blmvm");   CHKERRQ(ierr);   // set TAO solver type
         ierr = TaoSetType (tao, "tao_blmvm_m");   CHKERRQ(ierr);   // set TAO solver type
       } else {
-        ierr = TaoSetType (tao, "nls");    CHKERRQ(ierr);  // set TAO solver type
+        ierr = TaoSetType (tao, "bnls");    CHKERRQ(ierr);  // set TAO solver type
       }
 
       PetscBool flag = PETSC_FALSE;

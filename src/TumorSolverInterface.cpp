@@ -1109,8 +1109,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             flag_convergence = 0;
         }
 
-
         if (flag_convergence) {
+            n_misc_->conv_flag_l2_ = true;
             np = n_misc_->support_.size();
             nk = (n_misc_->reaction_inversion_ || n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
             nr = (n_misc_->reaction_inversion_) ? n_misc_->nr_ : 0;

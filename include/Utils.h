@@ -300,10 +300,11 @@ class NMisc {
         , forcing_factor_ (2.0E5)               // mass effect forcing factor
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
-        , phi_store_ (false)                    // Flag to store phis 
+        , phi_store_ (false)                    // Flag to store phis
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                           // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                              // Upper bound on kappa
+        , conv_flag_l2_ (false)                 // Flag to keep track if the solver is in convergence phase and needs to do a final L2 solve
                                 {
 
 
@@ -396,6 +397,7 @@ class NMisc {
 
         bool phi_store_;
         bool adjoint_store_;
+        bool conv_flag_l2_;
 
         int testcase_;
         int n_[3];

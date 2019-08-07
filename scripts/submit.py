@@ -24,7 +24,7 @@ params['compute_sys'] = 'rebels'
 # params['gm_path'] = '/workspace/shashank/label_maps/tcia_09_141/gm.nc'
 # params['wm_path'] = '/workspace/shashank/label_maps/tcia_09_141/wm.nc'
 # params['csf_path'] = '/workspace/shashank/label_maps/tcia_09_141/csf.nc'
-	
+
 
 
 
@@ -39,7 +39,7 @@ if not err:  # No error in tumor input parameters
 	"#SBATCH -o " + params['results_path'] + "/log\n" + \
 	"#SBATCH -p rebels\n" + \
 	"#SBATCH -N 1\n" + \
-	"#SBATCH -n 20\n" + \
+	"#SBATCH -n 1\n" + \
 	"#SBATCH -t 100:00:00\n" + \
 	"source ~/.bashrc\n" + \
 	"export OMP_NUM_THREADS=1\n")

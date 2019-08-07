@@ -98,7 +98,7 @@ def getTumorRunCmd(params):
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-    diffusivity_flag = 1
+    diffusivity_flag = 0
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
     reaction_flag = 1
     ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
@@ -136,7 +136,7 @@ def getTumorRunCmd(params):
     ### GIST max iterations (for L1 solver)
     gist_maxit = 2
     ### Krylov max iterations
-    max_krylov_iter = 30
+    max_krylov_iter = 1
     ### Relative gradient tolerance
     grad_tol = 1E-5
     ### Forward solver time order of accuracy
@@ -399,4 +399,5 @@ def getTumorRunCmd(params):
     " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
+    # -tao_test_hessian -tao_test_hessian_view 
     return run_str, error_flag
