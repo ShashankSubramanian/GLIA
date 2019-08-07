@@ -62,12 +62,16 @@ using ScalarType = PetscReal;
 
     // CPU accfft has function overloading for single and double precision; Not the GPU version
     #ifdef SINGLE
+        #define MPIType MPI_FLOAT
+        using ComplexType = Complexf;
         using fft_plan = accfft_planf;
         #define fft_execute_r2c accfft_execute_r2cf
         #define fft_execute_c2r accfft_execute_c2rf
         #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2cf
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2cf
     #else
+        #define MPIType MPI_DOUBLE
+        using ComplexType = Complex;
         using fft_plan = accfft_plan;
         #define fft_execute_r2c accfft_execute_r2c
         #define fft_execute_c2r accfft_execute_c2r
