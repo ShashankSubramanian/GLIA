@@ -66,7 +66,7 @@ vars.Add("compiler", "Compiler to use.", "mpicxx")
 vars.Add("platform", "Specify platform.", "local")
 vars.Add(BoolVariable("use_nii", "enable/disable nifti.", False))
 vars.Add(BoolVariable("gpu", "Enables build for GPU support.", False))
-vars.Add(BoolVariable("multi_gpu", "Enables build for GPU support.", False))
+vars.Add(BoolVariable("multi_gpu", "Enables build for multi-GPU support.", False))
 vars.Add(BoolVariable("single_precision", "Enables single precision computation.", False))
 
 env = Environment(variables = vars, ENV = os.environ)   # For configuring build variables
