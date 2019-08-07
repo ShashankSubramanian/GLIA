@@ -254,8 +254,8 @@ def gridcont(basedir, args):
         # compute connecte components of target data
         rdir = "obs" if not args.cm_data else "cm-data";
         cmd_concomp  = pythoncmd + basedir + '/scripts/utils.py -concomp_data  -input_path ' +  os.path.join(tumor_out_path, 'nx' + str(level)) + ' -output_path ' +  input_folder + ' --obs_lambda ' + str(args.obs_lambda);
-        cmd_concomp += " -rdir " + rdir + " ";
-        cmd_concomp +=  " -select_gaussians " + " --sigma " + str(sigma_fac[ii]) + " \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
+        cmd_concomp += " -rdir " + rdir  + "  --sigma " + str(sigma_fac[ii]) + " ";
+        cmd_concomp +=  " -select_gaussians  \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
         cmd_concomp +=  "PWDO=${PWD} \n"
         cmd_concomp +=  "cd " + str(inp_dir) + "\n"
         cmd_concomp +=  "ln -sf " + "../../../input/data_comps_nx" + str(level)  + ".nc"    " data_comps.nc \n";

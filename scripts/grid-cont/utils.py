@@ -291,7 +291,7 @@ if __name__=='__main__':
 
         phi_cm_data_file = open(os.path.join(res_path,'phi-cm-data.txt'),'w');
         p_cm_data_file = open(os.path.join(res_path,'p-cm-data.txt'),'w');
-        phi_cm_data_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (2*math.pi/256, 4*math.pi/256));
+        phi_cm_data_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (args.sigma * hx, 2*hx));
         phi_cm_data_file.write(" centers = [\n")
         p_cm_data_file.write("p = [\n")
         for i in range(ncomps_data):

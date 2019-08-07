@@ -70,7 +70,7 @@ if __name__=='__main__':
     ## These brains failed due to aliasing. For all brains rho is around 10 and kappa reaches regime of 1E-1.
     ## If not already failed in L1 phase, rescaling further amplifies spectral errors in c(0).
     FILTER     = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1', 'Brats18_TCIA02_606_1']
-    FILTER_MOD = ['Brats18_TCIA02_605_1','Brats18_TCIA01_378_1']
+    FILTER_MOD = ['Brats18_TCIA02_605_1','Brats18_TCIA01_378_1','Brats18_CBICA_AOD_1','Brats18_TCIA01_180_1', 'Brats18_TCIA01_401_1','Brats18_TCIA06_603_1']
     FILTER     += FILTER_MOD
     FAILEDTOADD = {}
     REDO_SPARSITY = {}
@@ -91,7 +91,7 @@ if __name__=='__main__':
     for l in levels:
         ncases[l]  = 0;
         nfailed[l] = 0;
-        FAILEDTOADD[l  ] = []
+        FAILEDTOADD[l]   = []
         REDO_SPARSITY[l] = []
     for run in RUNS:
         if not run.startswith('Brats'):
@@ -150,7 +150,7 @@ if __name__=='__main__':
                                 p_dict["xcm-dist"] = diststr;
 
             if p_dict['#comp'] > 3:
-                REDO_SPARSITY[l].append(args.bid)
+                REDO_SPARSITY[level].append(args.bid)
             ###### INFO.DAT ######
             if os.path.exists(os.path.join(level_path,'info.dat')):
                 with open(os.path.join(level_path,'info.dat'), 'r') as f:
@@ -601,9 +601,9 @@ if __name__=='__main__':
 
 
     #### POSTPROC/VISUALIZE ####
-    plot_corr     = False;
+    plot_corr     = True;
     plot_pairgrid = False;
-    plot_stats    = False;
+    plot_stats    = True;
     max_l2c1error = 1
     crop_corr     = ["rho-inv", "k-inv", "rho-over-k", "l2Oc1", "l2c1(TC,s)", "#comp", "age", "srvl[]", "Ic0/Ic1", '#tc/#b', '#ed/#b']
 
@@ -652,6 +652,8 @@ if __name__=='__main__':
     print("Entries on level 128: %d" % len(dftmp_128), " ... failed to add (%d) \n" % nfailed[128], FAILEDTOADD[128]);
     print("Entries on level 256: %d" % len(dftmp_256), " ... failed to add (%d) \n" % nfailed[256], FAILEDTOADD[256]);
     print("IDs with more than 4 components (need to be recomputed): \n", REDO_SPARSITY[256])
+
+    print("IDs processed: \n", BIDs)
     print(bcolors.WARNING + "\n\n===  filtered %d cases ===" % (fltr) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 128 (%d failed to add) ===" % (ncases[128],nfailed[128]) + bcolors.ENDC)
