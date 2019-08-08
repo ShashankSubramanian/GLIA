@@ -104,9 +104,10 @@ def gridcont(basedir, args):
       procs      = [24,48,96]
     wtime_h      = [0,2,10]
     wtime_m      = [30,0,0]
-    sigma_fac    = [1,1,1]                    # on every level, sigma = fac * hx
+    sigma_fac    = [2,2,2]                    # on every level, sigma = fac * hx
     predict      = [0,0,0]
     gvf          = [0.0,0.9,0.9]              # ignored for C0_RANKED
+    #gvf          = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default  = 8;
     k_default    = 0;
     beta_p       = 1E-4;
@@ -118,8 +119,8 @@ def gridcont(basedir, args):
     obs_masks    = []
     lbound_kappa = [1E-4, 1E-4, 1E-4]; # [1E-2, 1E-3, 1E-4];
     ubound_kappa = [1.0, 1.0, 1.0];
-    gaussian_selection_mode = "PHI"; # alternatives: {"PHI", "C0", "C0_RANKED"}
-    data_thresh  = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode == "PHI") else [1E-1, 1E-4, 1E-4];
+    gaussian_selection_mode = "PHI"; # alternatives: {"D", "PHI", "C0", "C0_RANKED"}
+    data_thresh  = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode in ["PHI","C0"]) else [1E-1, 1E-1, 1E-1];
     sparsity_lvl_per_component = 5;
     ls_max_func_evals  = [10, 10, 10];
     invert_diffusivity = [1,1,1];
@@ -241,7 +242,7 @@ def gridcont(basedir, args):
             cmd_symlink +=  "ln -sf " + "../../../input/obs_mask_nx" + str(level) + ".nc"           " obs_mask.nc \n";
 
         if not args.cm_data:
-            if level == 64:
+            if level == 64 or gaussian_selection_mode == "D":
                 cmd_symlink +=  "ln -sf " + "../../../input/patient_nx" + str(level) + "_seg_tc.nc"     " support_data.nc \n";
             else:
                 level_prev = int(level/2);
@@ -299,7 +300,7 @@ def gridcont(basedir, args):
         t_params['gm_path']               = os.path.join(inp_dir, 'patient_seg_gm.nc');
         t_params['wm_path']               = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
         t_params['data_path']             = os.path.join(inp_dir, 'patient_seg_tc.nc');
-        if gaussian_selection_mode == "C0" or level == 64:
+        if gaussian_selection_mode in ["C0", "D"] or level == 64:
             t_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
             t_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
         elif gaussian_selection_mode == "PHI":
