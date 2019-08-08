@@ -289,6 +289,7 @@ if __name__=='__main__':
         concomp_file.close();
 
 
+        hx = 2*math.pi/float(level);
         phi_cm_data_file = open(os.path.join(res_path,'phi-cm-data.txt'),'w');
         p_cm_data_file = open(os.path.join(res_path,'p-cm-data.txt'),'w');
         phi_cm_data_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (args.sigma * hx, 2*hx));
