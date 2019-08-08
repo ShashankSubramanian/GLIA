@@ -412,6 +412,8 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
       msg = "  Newton Trust Region method chosen\n";
   } else if (strcmp(taotype, "blmvm") == 0) {
       msg = "  Bounded limited memory variable metric method chosen\n";
+  } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
+      msg = "  Own bounded limited memory variable metric method chosen\n";
   } else if (strcmp(taotype, "lmvm") == 0) {
       msg = "  Limited memory variable metric method chosen\n";
   } else if (strcmp(taotype, "gpcg") == 0) {
