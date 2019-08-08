@@ -769,6 +769,11 @@ PetscErrorCode InvSolver::solve () {
 
   s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
+  if (itctx_->n_misc_->verbosity_ >= 2) {
+    itctx_->n_misc_->outfile_sol_  << "\n\n ## ----- ## \n\n";
+    itctx_->n_misc_->outfile_grad_ << "\n\n ## ----- ## \n\n";
+  }
+
   ierr = TaoSolve (tao_);                                                                CHKERRQ(ierr);
   // --------
   self_exec_time_tuninv += MPI_Wtime();
@@ -1224,15 +1229,37 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // norm of contraint, step length / trust region readius of iteratore
     // and termination reason
     Vec tao_x;
-    ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
-    ierr = TaoGetSolutionVector(tao, &tao_x);                                       CHKERRQ(ierr);
+    ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
+    ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
+
+
+    if (itctx->n_misc_->verbosity_ >= 2) {
+      Vec tao_grad;
+      double *grad_ptr, *sol_ptr;
+      ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
+
+      ierr = VecGetArray(tao_x, &sol_ptr);                                        CHKERRQ(ierr);
+      ierr = VecGetArray(tao_grad, &grad_ptr);                                    CHKERRQ(ierr);
+      for (int i = 0; i < itctx->n_misc_->np_; i++){
+        if(procid == 0){
+          itctx->n_misc_->outfile_sol_  << sol_ptr[i]  << ", ";
+          itctx->n_misc_->outfile_grad_ << grad_ptr[i] << ", ";
+        }
+      }
+      if(procid == 0){
+        itctx->n_misc_->outfile_sol_  << sol_ptr[itctx->n_misc_->np_]  << ";" <<std::endl;
+        itctx->n_misc_->outfile_grad_ << grad_ptr[itctx->n_misc_->np_] << ";" <<std::endl;
+      }
+      ierr = VecRestoreArray(tao_x, &sol_ptr);                                    CHKERRQ(ierr);
+      ierr = VecRestoreArray(tao_grad, &grad_ptr);                                CHKERRQ(ierr);
+    }
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
       Vec dJ, p0;
       double norm_gref = 0.;
-      ierr = VecDuplicate (itctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
-      ierr = VecDuplicate (itctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
+      ierr = VecDuplicate (itctx->tumor_->p_, &dJ);                             CHKERRQ(ierr);
+      ierr = VecDuplicate (itctx->tumor_->p_, &p0);                             CHKERRQ(ierr);
       ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
       ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
 
@@ -1240,7 +1267,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         norm_gref = gnorm;
       } else {
         ierr = evaluateGradient(tao, p0, dJ, (void*) itctx);
-        ierr = VecNorm (dJ, NORM_2, &norm_gref);                                  CHKERRQ(ierr);
+        ierr = VecNorm (dJ, NORM_2, &norm_gref);                                CHKERRQ(ierr);
       }
       itctx->optfeedback_->gradnorm0 = norm_gref;
       //ctx->gradnorm0 = gnorm;
@@ -1608,15 +1635,15 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
     ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
     s.str (""); s.clear ();
 
-    // int ksp_itr;
-    // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
-    // double e_max, e_min;
-    // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
-    //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
-    //   s << "Condition number of hessian is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
-    //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
-    //   s.str (""); s.clear ();
-    // }
+    int ksp_itr;
+    ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
+    double e_max, e_min;
+    if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+      ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+      s << "Condition number of hessian is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+      ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
 	PetscFunctionReturn (0);
 }
 

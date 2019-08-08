@@ -891,6 +891,20 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         ierr = VecCopy (g, temp);                                               CHKERRQ (ierr);
         ierr = VecAbs (temp);                                                   CHKERRQ (ierr);
 
+        if (n_misc_->verbosity_ >= 2) {
+          double *grad_ptr;
+          ierr = VecGetArray(temp, &grad_ptr);                                    CHKERRQ(ierr);
+          for (int i = 0; i < np_original-1; i++){
+            if(procid == 0){
+              n_misc_->outfile_glob_grad_ << grad_ptr[i] << ", ";
+            }
+          }
+          if(procid == 0){
+            n_misc_->outfile_glob_grad_ << grad_ptr[np_original-1] << ";\n" <<std::endl;
+          }
+          ierr = VecRestoreArray(temp, &grad_ptr);                                    CHKERRQ(ierr);
+        }
+
         idx.clear();
         ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx, tumor_->phi_->gaussian_labels_, tumor_->phi_->component_weights_, nnz, tumor_->phi_->num_components_);
 

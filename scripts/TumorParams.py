@@ -54,7 +54,7 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 1
+    verbosity = 2
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
     create_synthetic = 1
