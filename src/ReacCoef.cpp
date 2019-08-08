@@ -98,8 +98,8 @@ PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // Event e ("tumor-reac-coeff-apply-dRdm");
-  // std::array<ScalarType, 7> t = {0};
-  // ScalarType self_exec_time = -MPI_Wtime ();
+  // std::array<double, 7> t = {0};
+  // double self_exec_time = -MPI_Wtime ();
 
   ScalarType dr_dm_gm  = rho_scale_ * r_gm_wm_ratio_;        // GM
   ScalarType dr_dm_wm  = rho_scale_;                         // WM

@@ -126,8 +126,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     n_misc_->statistics_.nb_grad_evals++;
     Event e ("tumor-eval-grad");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     ScalarType k1, k2, k3;
 
     int x_sz;
@@ -335,8 +335,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     n_misc_->statistics_.nb_grad_evals++;
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     Event e ("tumor-eval-objandgrad");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     ScalarType *x_ptr, k1, k2, k3;
 
     int x_sz;

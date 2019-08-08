@@ -69,7 +69,7 @@ void SpectralOperators::executeFFTC2R (ComplexType *f_hat, ScalarType *f) {
     #endif
 }
 
-PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, ScalarType *timers) {
+PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, double *timers) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ScalarType *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
@@ -80,7 +80,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
         ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);
 
         if (fft_mode_ == ACCFFT)
-            accfftGrad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, (double*)timers);
+            accfftGrad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
         else {
             cufftResult cufft_status;
 
@@ -137,7 +137,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
         ierr = VecGetArray (grad_z, &grad_z_ptr);
         ierr = VecGetArray (x, &x_ptr);
 
-        accfftGrad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, (double*)timers);
+        accfftGrad (grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
 
         ierr = VecRestoreArray (grad_x, &grad_x_ptr);
         ierr = VecRestoreArray (grad_y, &grad_y_ptr);
@@ -147,7 +147,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, ScalarType *timers) {
+PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, double *timers) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ScalarType *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
@@ -158,7 +158,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
         ierr = VecCUDAGetArrayReadWrite (dz, &dz_ptr);
 
         if (fft_mode_ == ACCFFT) {
-            accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, (double*)timers);
+            accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
         } else {
             cufftResult cufft_status;
            
@@ -218,7 +218,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
         ierr = VecGetArray (dy, &dy_ptr);
         ierr = VecGetArray (dz, &dz_ptr);
 
-        accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, (double*)timers);
+        accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
 
         ierr = VecRestoreArray (div, &div_ptr);
         ierr = VecRestoreArray (dx, &dx_ptr);
@@ -233,9 +233,9 @@ PetscErrorCode SpectralOperators::weierstrassSmoother (Vec wc, Vec c, std::share
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("spectral-smoother");
-    std::array<ScalarType, 7> t = {0};
+    std::array<double, 7> t = {0};
 
-    ScalarType self_exec_time = -MPI_Wtime ();
+    double self_exec_time = -MPI_Wtime ();
 
     ScalarType *wc_ptr, *c_ptr;
     #ifdef CUDA

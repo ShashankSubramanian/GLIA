@@ -184,8 +184,8 @@ PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
 PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     PetscErrorCode ierr = 0;
     Event e ("tumor-diff-coeff-apply-K");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     for (int i = 1; i < 4; i++) {
         ierr = VecSet (temp_[i] , 0);                            CHKERRQ (ierr);
@@ -228,8 +228,8 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diff-coeff-apply-D");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     std::bitset<3> XYZ;
     XYZ[0] = 1;
@@ -254,8 +254,8 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-diff-coeff-apply-dKdm-gradc-gradp");
-  std::array<ScalarType, 7> t = {0};
-  ScalarType self_exec_time = -MPI_Wtime ();
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
 
   std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
   // clear work fields

@@ -56,8 +56,8 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-phi-setvals");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
 
@@ -218,8 +218,8 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         PetscFunctionBegin;
         PetscErrorCode ierr = 0;
         Event e ("tumor-phi-apply");
-        std::array<ScalarType, 7> t = {0};
-        ScalarType self_exec_time = -MPI_Wtime ();
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
         ScalarType *pg_ptr;
         Vec dummy, pg;
@@ -248,8 +248,8 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         PetscFunctionBegin;
         PetscErrorCode ierr = 0;
         Event e ("tumor-phi-applyT");
-        std::array<ScalarType, 7> t = {0};
-        ScalarType self_exec_time = -MPI_Wtime ();
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
         ScalarType values[np_];
         ScalarType *pout_ptr;
@@ -273,8 +273,8 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         PetscFunctionBegin;
         PetscErrorCode ierr = 0;
         Event e ("tumor-phi-apply");
-        std::array<ScalarType, 7> t = {0};
-        ScalarType self_exec_time = -MPI_Wtime ();
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
         ScalarType * pg_ptr;
         Vec pg;
@@ -323,8 +323,8 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         PetscFunctionBegin;
         PetscErrorCode ierr = 0;
         Event e ("tumor-phi-applyT");
-        std::array<ScalarType, 7> t = {0};
-        ScalarType self_exec_time = -MPI_Wtime ();
+        std::array<double, 7> t = {0};
+        double self_exec_time = -MPI_Wtime ();
 
         ScalarType values[np_];
         int low, high;

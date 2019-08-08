@@ -41,8 +41,8 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-adv-ksp-matvec");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     CtxAdv *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
 
@@ -69,8 +69,8 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-adv-solve");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -190,8 +190,8 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-interp-scafield");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -241,8 +241,8 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-interp-vecfield");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -296,8 +296,8 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-adv-eulercomp");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
@@ -443,8 +443,8 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-adv-semilag-solve");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
     ierr = MatShellGetContext (A_, &ctx);                         CHKERRQ (ierr);

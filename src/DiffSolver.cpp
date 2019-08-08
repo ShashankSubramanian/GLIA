@@ -72,8 +72,8 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-ksp-matvec");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     Ctx *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
@@ -92,8 +92,8 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
 PetscErrorCode DiffSolver::precFactor () {
     PetscFunctionBegin;
     Event e ("tumor-diffusion-prec-factor");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
@@ -162,8 +162,8 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-precond");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     Ctx *ctx;
     ierr = PCShellGetContext (pc, (void **) &ctx);              CHKERRQ (ierr);
@@ -206,8 +206,8 @@ PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-solve");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     Ctx *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);

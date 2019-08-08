@@ -84,8 +84,8 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-elasticity-prec");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     CtxElasticity *ctx;
     ierr = PCShellGetContext (pc, (void **) &ctx);                        CHKERRQ (ierr);
 
@@ -232,8 +232,8 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-elasticity-matvec");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
 
@@ -383,8 +383,8 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 	PetscErrorCode ierr = 0;
 
 	Event e ("tumor-elasticity-solve");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);

@@ -230,7 +230,7 @@
    */
   void InterpPlan::scatter( int data_dof,
       int* N_reg, int * isize, int* istart, const int N_pts, const int g_size, Real* query_points_in,
-      int* c_dims, MPI_Comm c_comm, ScalarType * timings)
+      int* c_dims, MPI_Comm c_comm, double * timings)
   {
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
@@ -483,7 +483,7 @@
    */
   void InterpPlan::interpolate( Real* ghost_reg_grid_vals, int data_dof,
       int* N_reg, int * isize, int* istart, const int N_pts, const int g_size,
-      Real* query_values,int* c_dims, MPI_Comm c_comm,ScalarType * timings)
+      Real* query_values,int* c_dims, MPI_Comm c_comm,double * timings)
   {
 
     int nprocs, procid;
@@ -1906,7 +1906,7 @@
    */
   void InterpPlan::fast_scatter(int* N_reg, int * isize, int* istart,
       const int N_pts, const int g_size, Real* query_points_in, int* c_dims,
-      MPI_Comm c_comm, ScalarType * timings) {
+      MPI_Comm c_comm, double * timings) {
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
     MPI_Comm_size(c_comm, &nprocs);
@@ -2311,7 +2311,7 @@
    */
   void InterpPlan::interpolate(Real* __restrict ghost_reg_grid_vals,
       int*__restrict N_reg, int *__restrict isize, int*__restrict istart, const int N_pts, const int g_size,
-      Real*__restrict query_values, int*__restrict c_dims, MPI_Comm c_comm, ScalarType *__restrict timings, int version) {
+      Real*__restrict query_values, int*__restrict c_dims, MPI_Comm c_comm, double *__restrict timings, int version) {
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
     MPI_Comm_size(c_comm, &nprocs);
@@ -2503,7 +2503,7 @@
 
   //void InterpPlan::high_order_interpolate(Real* ghost_reg_grid_vals, int data_dof,
   //    int* N_reg, int * isize, int* istart, const int N_pts, const int g_size,
-  //    Real* query_values, int* c_dims, MPI_Comm c_comm, ScalarType * timings, int interp_order) {
+  //    Real* query_values, int* c_dims, MPI_Comm c_comm, double * timings, int interp_order) {
   //  int nprocs, procid;
   //  MPI_Comm_rank(c_comm, &procid);
   //  MPI_Comm_size(c_comm, &nprocs);
@@ -2578,7 +2578,7 @@
   //
   void InterpPlan::scatter(int* N_reg, int * isize, int* istart,
       const int N_pts, const int g_size, Real* query_points_in, int* c_dims,
-      MPI_Comm c_comm, ScalarType * timings) {
+      MPI_Comm c_comm, double * timings) {
   #ifdef FAST_INTERP
     return fast_scatter(N_reg, isize, istart, N_pts,
         g_size, query_points_in, c_dims, c_comm, timings);

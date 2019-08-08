@@ -27,11 +27,9 @@
 #include "mpi.h"
 
 
-#include "TypeDefs.h"
-
 /* helper function for timer accumulation */
-void accumulateTimers(std::array<PetscReal, 7>& tacc, std::array<PetscReal, 7>& tloc, PetscReal selfexec);
-void resetTimers(std::array<PetscReal, 7>& t);
+void accumulateTimers(std::array<double, 7>& tacc, std::array<double, 7>& tloc, double selfexec);
+void resetTimers(std::array<double, 7>& t);
 
 
 /// Represents an event that can be started and stopped.
@@ -67,14 +65,14 @@ public:
   Clock::duration getDuration();
 
   /// Map of additional properties that can be set by the user.
-  std::map<std::string, PetscReal> properties;
+  std::map<std::string, double> properties;
 
   /// Adds the value to the propety.
-  void addProp(std::string property, PetscReal value);
+  void addProp(std::string property, double value);
 
-  void addTimings(std::array<PetscReal, 7>& timings);
+  void addTimings(std::array<double, 7>& timings);
 
-  std::array<PetscReal, 7> _timers{ {0,0,0,0,0,0,0} };
+  std::array<double, 7> _timers{ {0,0,0,0,0,0,0} };
 private:
   Clock::time_point starttime;
   Clock::time_point stoptime;
@@ -107,10 +105,10 @@ public:
   int getCount();
 
   /// get accfft timers
-  std::array<PetscReal, 7>& getTimers();
+  std::array<double, 7>& getTimers();
 
   /// get total accfft time
-  PetscReal getMaxAccfftTotalTime();
+  double getMaxAccfftTotalTime();
 
   /// Get the time percentage that the total time of this event took in relation to the globalDuration.
   int getTimePercentage(Event::Clock::duration globalDuration);
@@ -122,7 +120,7 @@ public:
   void compMaxProcTime();
 
   /// Aggregated properties for this event
-  using Properties = std::map<std::string, PetscReal>;
+  using Properties = std::map<std::string, double>;
   Properties properties;
 
 private:
@@ -130,8 +128,8 @@ private:
   Event::Clock::duration total = Event::Clock::duration::zero();
   Event::Clock::duration max   = Event::Clock::duration::min();
   Event::Clock::duration min   = Event::Clock::duration::max();
-  std::array<PetscReal, 7> _timers{ {0,0,0,0,0,0,0} };
-  PetscReal _accfft_total_time = 0;
+  std::array<double, 7> _timers{ {0,0,0,0,0,0,0} };
+  double _accfft_total_time = 0;
 };
 
 

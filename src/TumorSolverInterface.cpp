@@ -481,7 +481,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
     // timing
     Event e("update-tumor-coefficients");
-    std::array<ScalarType, 7> t = {0}; ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
 
     if (!use_nmisc) {
         // update matprob, deep copy of probability maps

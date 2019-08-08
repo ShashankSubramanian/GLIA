@@ -71,8 +71,8 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-reaction");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     ScalarType *c_t_ptr, *rho_ptr;
     ScalarType *c_ptr;
@@ -131,8 +131,8 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-solve-state");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     ScalarType dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
@@ -199,8 +199,8 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-reaction-adj");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
 
     ScalarType *p_0_ptr, *rho_ptr;
@@ -256,8 +256,8 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-solve-adj");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     ScalarType dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
@@ -300,8 +300,8 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tumor-compute-q");
-  std::array<ScalarType, 7> t = {0};
-  ScalarType self_exec_time = -MPI_Wtime ();
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
   ScalarType integration_weight = n_misc_->dt_;
   ScalarType *c_ptr, *p_ptr, *r_ptr;
 
@@ -380,8 +380,8 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-conserve-healthy");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
 
     // gm, wm is conserved with rhs g/(g + w) * (Dc + Rc) : treated explicity
@@ -447,8 +447,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-solve-state");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
     ScalarType dt = n_misc_->dt_;
     int nt = n_misc_->nt_;

@@ -180,8 +180,8 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     PetscErrorCode ierr = 0;
 
     Event e ("tumor-compute-force");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     std::bitset<3> XYZ;
     XYZ[0] = 1;
     XYZ[1] = 1;

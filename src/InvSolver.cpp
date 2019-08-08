@@ -482,7 +482,7 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   itctx_->data_gradeval              = data_gradeval_;
 
 
-  ScalarType self_exec_time_tuninv = -MPI_Wtime(); ScalarType invtime = 0;
+  double self_exec_time_tuninv = -MPI_Wtime(); ScalarType invtime = 0;
   itctx_->n_misc_->statistics_.reset();
   s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
@@ -655,7 +655,7 @@ PetscErrorCode InvSolver::solve () {
       //lmP->
     }
   }
-  ScalarType self_exec_time_tuninv = -MPI_Wtime(); ScalarType invtime = 0;
+  double self_exec_time_tuninv = -MPI_Wtime(); ScalarType invtime = 0;
   /* === solve === */
   // --------
   itctx_->n_misc_->statistics_.reset();
@@ -730,8 +730,8 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 	Event e ("tao-eval-obj-tumor");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 	CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
   itctx->optfeedback_->nb_objevals++;
 	ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
@@ -755,8 +755,8 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tao-eval-grad-tumor");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
     ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
 
@@ -789,8 +789,8 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj/grad-tumor");
-  std::array<ScalarType, 7> t = {0};
-  ScalarType self_exec_time = -MPI_Wtime ();
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
   ierr = VecCopy (x, itctx->derivative_operators_->p_current_);                       CHKERRQ (ierr);
 
@@ -817,8 +817,8 @@ PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscR
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj/grad-tumor-params");
-  std::array<ScalarType, 7> t = {0};
-  ScalarType self_exec_time = -MPI_Wtime ();
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -904,7 +904,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscErrorCode ierr = 0;
 
     Event e ("tao-hess-matvec-tumor");
-    std::array<ScalarType, 7> t = {0}; ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
     ierr = MatShellGetContext (A, &ptr);						             CHKERRQ (ierr);
@@ -938,7 +938,7 @@ PetscErrorCode constApxHessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 	PetscErrorCode ierr = 0;
 
     Event e ("tao-lmvm-init-hess--matvec");
-    std::array<ScalarType, 7> t = {0}; ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     // get context
     void *ptr;
     ierr = MatShellGetContext (A, &ptr);						             CHKERRQ (ierr);
@@ -988,8 +988,8 @@ PetscErrorCode applyPreconditioner (void *ptr, Vec x, Vec pinvx) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tao-apply-hess-precond");
-    std::array<ScalarType, 7> t = {0};
-    ScalarType self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
     ScalarType *ptr_pinvx = NULL, *ptr_x = NULL;
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
     ierr = VecCopy (x, pinvx);

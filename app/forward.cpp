@@ -67,8 +67,8 @@ int main (int argc, char** argv) {
 	std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 	std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc);
 
-    ScalarType self_exec_time = -MPI_Wtime ();
-    std::array<ScalarType, 7> timers = {0};
+    double self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> timers = {0};
 	//Create IC
 	Vec c_0, c_t;
     #ifdef SERIAL

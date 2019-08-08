@@ -413,8 +413,8 @@ int main (int argc, char** argv) {
     }
     std::shared_ptr<HealthyProbMaps> h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
 
-    ScalarType self_exec_time = -MPI_Wtime ();
-    std::array<ScalarType, 7> timers = {0};
+    double self_exec_time = -MPI_Wtime ();
+    std::array<double, 7> timers = {0};
 
     if (syn_flag == 1) {
         PCOUT << "Generating Synthetic Data --->" << std::endl;
