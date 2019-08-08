@@ -447,7 +447,7 @@ class NMisc {
         int order_;
 
         TumorStatistics statistics_;
-        std::array<ScalarType, 7> timers_;
+        std::array<double, 7> timers_;
 
         int64_t accfft_alloc_max_;
         int64_t n_local_;

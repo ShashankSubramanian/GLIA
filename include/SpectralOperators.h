@@ -26,8 +26,8 @@ class SpectralOperators {
 		void executeFFTR2C (ScalarType *f, ComplexType *f_hat);
 		void executeFFTC2R (ComplexType *f_hat, ScalarType *f);
 
-		PetscErrorCode computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, ScalarType *timers);
-		PetscErrorCode computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, ScalarType *timers);
+		PetscErrorCode computeGradient (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, std::bitset<3> *pXYZ, double *timers);
+		PetscErrorCode computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, double *timers);
 
 		PetscErrorCode weierstrassSmoother (Vec Wc, Vec c, std::shared_ptr<NMisc> n_misc, ScalarType sigma);
 		int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma);
