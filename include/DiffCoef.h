@@ -45,12 +45,15 @@ class DiffCoef {
 		double *temp_accfft_;
 
 		PetscErrorCode setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
+		// needs to be called when we invert for diffusivity and use Gauss-Newton 
+		PetscErrorCode setSecondaryCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		// needs to be called when we invert for diffusivity (in every newton iteration, calls setValues())
 		PetscErrorCode updateIsotropicCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setWorkVecs(Vec * workvecs);
 		PetscErrorCode smooth (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode applyK (Vec x, Vec y, Vec z);
 		PetscErrorCode applyD (Vec dc, Vec c, accfft_plan *plan);
+		PetscErrorCode applyDWithSecondaryCoeffs (Vec dc, Vec c, accfft_plan *plan);
 		/** @brief computes x = k_bar (grad c)^T grad \alpha, where k_bar = dK/dm */
 		PetscErrorCode compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, accfft_plan *plan);
 		~DiffCoef ();

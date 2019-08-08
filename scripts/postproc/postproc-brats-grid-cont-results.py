@@ -61,7 +61,7 @@ if __name__=='__main__':
     parser.add_argument ('-x',  '--dir', type = str, help = 'path to the results folder');
     args = parser.parse_args();
     survival_data = pd.read_csv(os.path.join(basedir,"survival_data.csv"), header = 0, error_bad_lines=True, skipinitialspace=True)
-    col_names = ["BraTS18ID", "level", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time",  "N#it", "|g|_r/k",  "age", "srgy", "srvl[]", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
+    col_names = ["BraTS18ID", "level", "rho-inv", "k-inv", "l2Oc1", "l2c1(TC,s)", "l2c1(TC,#1,..,#n)", "l2c1", "sparsity", "np", "#comp", "xcm-dist", "exec-time",  "N#it", "|g|_r/k",  "age", "srgy", "srvl[]", "srvl", "dice_tc8", "#wt/#b", "#ed/#b", "#tc/#b", "#c0/#b", "I_EDc1", "I_TCc1", "I_B\WTc1", "Ic0/Ic1","comment"]
     df = pd.DataFrame(columns = col_names)
 
     BIDs = []
@@ -69,7 +69,9 @@ if __name__=='__main__':
     ##
     ## These brains failed due to aliasing. For all brains rho is around 10 and kappa reaches regime of 1E-1.
     ## If not already failed in L1 phase, rescaling further amplifies spectral errors in c(0).
-    FILTER = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1', 'Brats18_TCIA02_606_1']
+    FILTER     = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1', 'Brats18_TCIA02_606_1']
+    FILTER_MOD = ['Brats18_TCIA02_605_1','Brats18_TCIA01_378_1','Brats18_CBICA_AOD_1','Brats18_TCIA01_180_1', 'Brats18_TCIA01_401_1','Brats18_TCIA06_603_1']
+    FILTER     += FILTER_MOD
     FAILEDTOADD = {}
     REDO_SPARSITY = {}
     levels = [64,128,256]
@@ -89,7 +91,7 @@ if __name__=='__main__':
     for l in levels:
         ncases[l]  = 0;
         nfailed[l] = 0;
-        FAILEDTOADD[l  ] = []
+        FAILEDTOADD[l]   = []
         REDO_SPARSITY[l] = []
     for run in RUNS:
         if not run.startswith('Brats'):
@@ -141,20 +143,20 @@ if __name__=='__main__':
                         if curr_level and ("SOL(L): #comp:" in line):
                             diststr = line.split("=")[-1]
                             distsep = diststr.split(",");
-                            if len(distsep) > 5:
-                                p_dict["xcm-dist"] = ', '.join(['%s']*5) % tuple([str(distsep[i]) for i in range(5) ])
-                                p_dict["xcm-dist"] += ', ...]';
+                            if len(distsep) > 3:
+                                p_dict["xcm-dist"] = ', '.join(['%s']*3) % tuple([str(distsep[i]) for i in range(3) ])
+                                p_dict["xcm-dist"] += ', ...]px';
                             else:
                                 p_dict["xcm-dist"] = diststr;
 
-            if p_dict['#comp'] > 4:
-                REDO_SPARSITY[l].append(args.bid)
+            if p_dict['#comp'] > 3:
+                REDO_SPARSITY[level].append(args.bid)
             ###### INFO.DAT ######
             if os.path.exists(os.path.join(level_path,'info.dat')):
                 with open(os.path.join(level_path,'info.dat'), 'r') as f:
                     f_exist = True;
                     lines  = f.readlines();
-                    if len(lines) > 0:
+                    if len(lines) > 1:
                         f_empty = False;
                         param      = lines[0].split(" ");
                         values     = lines[1].split(" ");
@@ -177,13 +179,14 @@ if __name__=='__main__':
 
             ###### SURVIVAL ######
             p_dict['srvl[]'] = 'N/A';
+            p_dict['srvl'] = -1;
             # p_dict['srvl(s)'] = -1;
             p_dict['age']    = -1;
             p_dict['srgy']   = "no"
             if not survival_row.empty:
-                p_dict['age']    = float(survival_row.iloc[0]['Age']);             # age
-                # p_dict['srvl']   = float(survival_row.iloc[0]['Survival']);        # survival
+                p_dict['age']    = float(survival_row.iloc[0]['Age']);                          # age
                 p_dict['srvl[]']  = getSurvivalClass(float(survival_row.iloc[0]['Survival']));  # survival class
+                p_dict['srvl']    = float(survival_row.iloc[0]['Survival']);                    # survival
                 p_dict['srgy']    = str(survival_row.iloc[0]['ResectionStatus']) if (str(survival_row.iloc[0]['ResectionStatus']) != 'nan' and str(survival_row.iloc[0]['ResectionStatus']) != "NA") else "no";
                 # p_dict['srvl(s)'] = getSurvivalSigma(float(survival_row.iloc[0]['Survival']), survival_std, survival_mean);
 
@@ -385,18 +388,18 @@ if __name__=='__main__':
                                 p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
                             if level == 128 and "l2ec(1) scaled,relD (l2;#1,..,#n)     = " in line:
                                 errs = line.split("l2ec(1) scaled,relD (l2;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                if p_dict['#comp'] > 5:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*5) % tuple([float(errs[i]) for i in range(5) ])
+                                if p_dict['#comp'] > 3:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' +  ', '.join(['%.2f']*3) % tuple([float(errs[i]) for i in range(3) ])
                                     p_dict["l2c1(TC,#1,..,#n)"] += ', ...]';
                                 else:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' + ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])  + ']'
                             if level == 256 and "l2ec(1) scaled,relD (l3;#1,..,#n)     = " in line:
                                 errs = line.split("l2ec(1) scaled,relD (l3;#1,..,#n)     = ")[-1].split("(")[-1].split(")")[0].split(",");
-                                if p_dict['#comp'] > 5:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*5) % tuple([float(errs[i]) for i in range(5) ])
+                                if p_dict['#comp'] > 3:
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' + ', '.join(['%.2f']*3) % tuple([float(errs[i]) for i in range(3) ])
                                     p_dict["l2c1(TC,#1,..,#n)"] += ', ...]';
                                 else:
-                                    p_dict["l2c1(TC,#1,..,#n)"] = ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs])
+                                    p_dict["l2c1(TC,#1,..,#n)"] = '[' + ', '.join(['%.2f']*len(errs)) % tuple([float(x) for x in errs]) + ']'
                             # if "stats int c(1.5) / int c(1)           =" in line:
                                 # p_dict[col_names[29]] = float(line.split("=")[-1]);         # frac Int c(1.5) / Int c(1)
                             # if "stats int c(1.5) / int c(1.2)         =" in line:
@@ -598,11 +601,11 @@ if __name__=='__main__':
 
 
     #### POSTPROC/VISUALIZE ####
-    plot_corr     = False;
+    plot_corr     = True;
     plot_pairgrid = False;
-    plot_stats    = False;
+    plot_stats    = True;
     max_l2c1error = 1
-    crop_corr     = ["rho-inv", "k-inv", "l2c1", "age", "srvl[]", "Ic0/Ic1", '#tc/#b', '#ed/#b', '#c0/#b']
+    crop_corr     = ["rho-inv", "k-inv", "rho-over-k", "l2Oc1", "l2c1(TC,s)", "#comp", "age", "srvl[]", "Ic0/Ic1", '#tc/#b', '#ed/#b']
 
     # discard coarse levels
     data256 = df.loc[df['level'] == 256]
@@ -649,6 +652,8 @@ if __name__=='__main__':
     print("Entries on level 128: %d" % len(dftmp_128), " ... failed to add (%d) \n" % nfailed[128], FAILEDTOADD[128]);
     print("Entries on level 256: %d" % len(dftmp_256), " ... failed to add (%d) \n" % nfailed[256], FAILEDTOADD[256]);
     print("IDs with more than 4 components (need to be recomputed): \n", REDO_SPARSITY[256])
+
+    print("IDs processed: \n", BIDs)
     print(bcolors.WARNING + "\n\n===  filtered %d cases ===" % (fltr) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 128 (%d failed to add) ===" % (ncases[128],nfailed[128]) + bcolors.ENDC)
@@ -660,12 +665,12 @@ if __name__=='__main__':
     # ### correlation matrix ###
     if plot_corr:
         data = data256.loc[:,crop_corr]
-        corr_pearson  = data.corr(method='pearson')
+        # corr_pearson  = data.corr(method='pearson')
         corr_kendall  = data.corr(method='kendall')
         corr_spearman = data.corr(method='spearman')
 
         # generate mask for the upper triangle
-        mask = np.zeros_like(corr_pearson, dtype=np.bool)
+        mask = np.zeros_like(corr_kendall, dtype=np.bool)
         mask[np.triu_indices_from(mask)] = True
         # matplotlib figure
         # f, ax = plt.subplots(figsize=(11, 9))
@@ -674,16 +679,16 @@ if __name__=='__main__':
         # draw the heatmap with the mask and correct aspect ratio
 
         fig = plt.figure(figsize=(17,5))
-        grid = plt.GridSpec(1, 3, wspace=0.2, hspace=0.7)
+        grid = plt.GridSpec(1, 2, wspace=0.2, hspace=0.7)
         ax1 = plt.subplot(grid[0,0])
-        ax1.set_title("Pearson Correlation Coeff.")
-        sns.heatmap(corr_pearson, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
-                    square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax1)
-        ax2 = plt.subplot(grid[0,1])
+        # ax1.set_title("Pearson Correlation Coeff.")
+        # sns.heatmap(corr_pearson, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
+                    # square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax1)
+        ax2 = plt.subplot(grid[0,0])
         ax2.set_title("Kendall Correlation Coeff.")
         sns.heatmap(corr_kendall, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
                     square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax2)
-        ax3 = plt.subplot(grid[0,2])
+        ax3 = plt.subplot(grid[0,1])
         ax3.set_title("Spearman Correlation Coeff.")
         sns.heatmap(corr_spearman, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
                     square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax3)
@@ -715,17 +720,19 @@ if __name__=='__main__':
         flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
         pal = sns.color_palette('Paired')
         # dice_crop = ["BraTS18ID","srvl[]","dice_wm","dice_gm","dice_csf","dice_wt","dice_tc","dice_nec"]
-        stat_crop = ["BraTS18ID","srvl[]","#tc/#b","#wt/#b","#ed/#b","#c0/#b","Ic0/Ic1","I_TCc1", "I_EDc1", "I_WT\Bc1"]
-        inv_crop  = ["BraTS18ID","srvl[]","rho-inv","k-inv"]
+        stat_crop = ["BraTS18ID","srvl[]","#tc/#b","#wt/#b","#ed/#b","Ic0/Ic1","I_TCc1", "I_EDc1", "I_WT\Bc1", "l2Oc1", "l2c1(TC,s)"]
+        inv_crop  = ["BraTS18ID","srvl[]","rho-inv","k-inv","rho-over-k"]
         # dice_dat = data256.loc[:,dice_crop]
         stats_dat = data256.loc[:,stat_crop]
         inv_dat = data256.loc[:,inv_crop]
         # melt data
         # dice_dat_melted    = pd.melt(dice_dat,  id_vars=['BraTS18ID','srvl[]'], value_vars=["dice_wm","dice_gm","dice_csf","dice_wt","dice_tc","dice_nec"], value_name='dice_val', var_name=['dice_tissue'])
-        stats_dat_melted   = pd.melt(stats_dat, id_vars=['BraTS18ID','srvl[]'], value_vars=["#tc/#b","#wt/#b","#ed/#b","#c0/#b","Ic0/Ic1","I_TCc1", "I_EDc1", "I_WT\Bc1"], value_name='stat_val', var_name=['stats'])
-        inv_dat_melted     = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["rho-inv","k-inv"], value_name='value', var_name=['inv_vars'])
-        inv_dat_melted_rho = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["rho-inv"], value_name='value', var_name=['inv_vars'])
-        inv_dat_melted_k   = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["k-inv"],   value_name='value', var_name=['inv_vars'])
+        stats_dat_melted    = pd.melt(stats_dat, id_vars=['BraTS18ID','srvl[]'], value_vars=["#tc/#b","#wt/#b","#ed/#b","Ic0/Ic1"],                   value_name='stat_val', var_name=['stats'])
+        stats_dat_melted2   = pd.melt(stats_dat, id_vars=['BraTS18ID','srvl[]'], value_vars=["I_TCc1", "I_EDc1", "I_WT\Bc1",  "l2Oc1", "l2c1(TC,s)"], value_name='stat_val', var_name=['stats'])
+        inv_dat_melted      = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["rho-inv","k-inv"], value_name='value', var_name=['inv_vars'])
+        inv_dat_melted_rho  = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["rho-inv"],         value_name='value', var_name=['inv_vars'])
+        inv_dat_melted_k    = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["k-inv"],           value_name='value', var_name=['inv_vars'])
+        inv_dat_melted_rhok = pd.melt(inv_dat,   id_vars=['BraTS18ID','srvl[]'], value_vars=["rho-over-k"],      value_name='value', var_name=['inv_vars'])
 
         stats_dat.hist()
         inv_dat.hist()
@@ -771,22 +778,38 @@ if __name__=='__main__':
         # fix legend
         handles, labels = ax2.get_legend_handles_labels()
         labels = ["short", "mid", "long"]
-        lgd = ax2.legend(handles[0:3], labels[0:3], loc='upper left', fontsize='small', handletextpad=0.5)
+        lgd = ax2.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
         lgd.legendHandles[0]._sizes = [40]
         lgd.legendHandles[1]._sizes = [40]
         ax2.xaxis.grid(True)
         ax2.set(xlabel="Value")
-        ax2.set_yticklabels(["$\\frac{\# TC}{\# B}$", "$\\frac{\# WT}{\# B}$", "$\\frac{\# ED}{\# B}$",  "$\\frac{\# c(0)}{\# B}$", "$\\frac{\\int c(0)}{\\int c(1)}$", "$\\frac{\\int_{TC} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{ED} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{B\\ WT} c(1)}{\\int_B c(1)}$"]);
+        ax2.set_yticklabels(["$\\frac{\# TC}{\# B}$", "$\\frac{\# WT}{\# B}$", "$\\frac{\# ED}{\# B}$",  "$\\frac{\\int c(0)}{\\int c(1)}$"]);
         ax2.set(ylabel="")
 
         # === plot ax3 ===
         ax3 =  plt.subplot(grid1[1,0])
+        sns.boxplot(x="stat_val", y="stats", data=stats_dat_melted2, hue="srvl[]", fliersize=0, ax=ax3, **boxplot_kwargs)
+        sns.stripplot(x='stat_val', y='stats', hue='srvl[]', data=stats_dat_melted2, jitter=True, split=True, ax=ax3, **stripplot_kwargs)
+        # fix legend
+        handles, labels = ax3.get_legend_handles_labels()
+        labels = ["short", "mid", "long"]
+        lgd = ax3.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
+        lgd.legendHandles[0]._sizes = [40]
+        lgd.legendHandles[1]._sizes = [40]
+        ax3.xaxis.grid(True)
+        ax3.set(xlabel="Value")
+        ax3.set_yticklabels(["$\\frac{\\int_{TC} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{ED} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{B\\ WT} c(1)}{\\int_B c(1)}$", "$\\|\\left.c(1)\\right|_{TC} - d\\|_{2,rel}$", "$\\|Oc(1) - d\\|_{2,rel}$"]);
+        ax3.set(ylabel="")
+
+
+        # === plot ax4 ===
+        ax3 =  plt.subplot(grid1[2,0])
         sns.boxplot(x="value", y="inv_vars", data=inv_dat_melted_rho, hue="srvl[]", fliersize=0, ax=ax3, **boxplot_kwargs)
         sns.stripplot(x='value', y='inv_vars', hue='srvl[]', data=inv_dat_melted_rho, jitter=True, split=True, ax=ax3, **stripplot_kwargs)
         # fix legend
         handles, labels = ax3.get_legend_handles_labels()
         labels = ["short", "mid", "long"]
-        lgd = ax3.legend(handles[0:3], labels[0:3], loc='upper left', fontsize='small', handletextpad=0.5)
+        lgd = ax3.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
         lgd.legendHandles[0]._sizes = [40]
         lgd.legendHandles[1]._sizes = [40]
         ax3.xaxis.grid(True)
@@ -795,15 +818,15 @@ if __name__=='__main__':
         ax3.set_yticklabels(["$\\rho$"]);
         ax3.set(ylabel="")
 
-        # === plot ax4 ===
-        ax4 =  plt.subplot(grid1[2,0])
+        # === plot ax5 ===
+        ax4 =  plt.subplot(grid1[3,0])
         sns.boxplot(x="value", y="inv_vars", data=inv_dat_melted_k, hue="srvl[]", fliersize=0, ax=ax4, **boxplot_kwargs)
         sns.stripplot(x='value', y='inv_vars', hue='srvl[]', data=inv_dat_melted_k, jitter=True, split=True, ax=ax4, **stripplot_kwargs)
         ax4.set_xscale('log')
         # fix legend
         handles, labels = ax4.get_legend_handles_labels()
         labels = ["short", "mid", "long"]
-        lgd = ax4.legend(handles[0:3], labels[0:3], loc='upper left', fontsize='small', handletextpad=0.5)
+        lgd = ax4.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
         lgd.legendHandles[0]._sizes = [40]
         lgd.legendHandles[1]._sizes = [40]
         ax4.xaxis.grid(True)
@@ -826,21 +849,38 @@ if __name__=='__main__':
 
         fig, ax6 = plt.subplots(figsize=[8,5])
         sns.catplot(ax=ax6, x="stat_val", y="stats", data=stats_dat_melted, hue="srvl[]", kind="boxen", palette=pal)
+        # sns.boxplot(ax=ax6, x="stat_val", y="stats", data=stats_dat_melted, hue="srvl[]", **boxplot_kwargs)
+        sns.stripplot(ax=ax6, x="stat_val", y="stats", data=stats_dat_melted, hue="srvl[]", jitter=True, split=True, **stripplot_kwargs)
         ax6.xaxis.grid(True)
         ax6.set(xlabel="Fraction")
         ax6.set(ylabel="")
-        ax6.set_yticklabels(["$\\frac{\# TC}{\# B}$", "$\\frac{\# WT}{\# B}$", "$\\frac{\# ED}{\# B}$",  "$\\frac{\# c(0)}{\# B}$", "$\\frac{\\int c(0)}{\\int c(1)}$", "$\\frac{\\int_{TC} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{ED} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{B\\ WT} c(1)}{\\int_B c(1)}$"]);
+        ax6.set_yticklabels(["$\\frac{\# TC}{\# B}$", "$\\frac{\# WT}{\# B}$", "$\\frac{\# ED}{\# B}$",  "$\\frac{\\int c(0)}{\\int c(1)}$"]);
         # fix legend
         handles, labels = ax6.get_legend_handles_labels()
         labels = ["short", "mid", "long"]
-        lgd = ax6.legend(handles[0:3], labels[0:3], loc='upper left', fontsize='small', handletextpad=0.5)
+        lgd = ax6.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
+
+        fig, ax3 = plt.subplots(figsize=[8,5])
+        sns.boxplot(x="stat_val", y="stats", data=stats_dat_melted2, hue="srvl[]", fliersize=0, ax=ax3, **boxplot_kwargs)
+        sns.stripplot(x='stat_val', y='stats', hue='srvl[]', data=stats_dat_melted2, jitter=True, split=True, ax=ax3, **stripplot_kwargs)
+        ax3.xaxis.grid(True)
+        ax3.set(xlabel="Fraction")
+        ax3.set_yticklabels(["$\\frac{\\int_{TC} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{ED} c(1)}{\\int_B c(1)}$",  "$\\frac{\\int_{B\\ WT} c(1)}{\\int_B c(1)}$", "$\\|\\left.c(1)\\right|_{TC} - d\\|_{2,rel}$", "$\\|Oc(1) - d\\|_{2,rel}$"]);
+        ax3.set(ylabel="")
+        # fix legend
+        handles, labels = ax3.get_legend_handles_labels()
+        labels = ["short", "mid", "long"]
+        lgd.legendHandles[0]._sizes = [40]
+        lgd.legendHandles[1]._sizes = [40]
+        lgd = ax3.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
 
         fig, ax7 = plt.subplots(figsize=[8,3])
         sns.catplot(x="value", y="inv_vars", data=inv_dat_melted_rho, hue="srvl[]", ax=ax7, kind="boxen", palette=pal)
+        # sns.boxplot(x="value", y="inv_vars", data=inv_dat_melted_rho, hue="srvl[]", ax=ax7, **boxplot_kwargs)
         # fix legend
         handles, labels = ax7.get_legend_handles_labels()
         labels = ["short", "mid", "long"]
-        lgd = ax7.legend(handles[0:3], labels[0:3], loc='upper left', fontsize='small', handletextpad=0.5)
+        lgd = ax7.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
         ax7.xaxis.grid(True)
         ax7.set_xlim([1,15])
         ax7.set(xlabel="$\\rho$")
@@ -849,16 +889,31 @@ if __name__=='__main__':
 
         fig, ax8 = plt.subplots(figsize=[8,3])
         sns.catplot(x="value", y="inv_vars", data=inv_dat_melted_k, hue="srvl[]", ax=ax8, kind="boxen", palette=pal)
+        # sns.boxplot(x="value", y="inv_vars", data=inv_dat_melted_k, hue="srvl[]", ax=ax8, **boxplot_kwargs)
         ax8.set_xscale('log')
         # fix legend
         handles, labels = ax8.get_legend_handles_labels()
         labels = ["short", "mid", "long"]
-        lgd = ax8.legend(handles[0:3], labels[0:3], loc='upper left', fontsize='small', handletextpad=0.5)
+        lgd = ax8.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
         ax8.xaxis.grid(True)
         ax8.set_xlim([1e-4,1e0])
         ax8.set(xlabel="$k$")
         ax8.set_yticklabels(["$k$"]);
         ax8.set(ylabel="")
+
+        fig, ax9 = plt.subplots(figsize=[8,3])
+        sns.catplot(x="value", y="inv_vars", data=inv_dat_melted_rhok, hue="srvl[]", ax=ax9, kind="boxen", palette=pal)
+        # sns.boxplot(x="value", y="inv_vars", data=inv_dat_melted_rhok, hue="srvl[]", ax=ax9, **boxplot_kwargs)
+        ax9.set_xscale('log')
+        # fix legend
+        handles, labels = ax8.get_legend_handles_labels()
+        labels = ["short", "mid", "long"]
+        lgd = ax9.legend(handles[0:3], labels[0:3], loc='upper right', fontsize='small', handletextpad=0.5)
+        ax9.xaxis.grid(True)
+        # ax8.set_xlim([1e-4,1e0])
+        ax9.set(xlabel="$\\frac{\\rho}{\\kappa}$")
+        ax9.set_yticklabels(["$\\frac{\\rho}{\\kappa}$"]);
+        ax9.set(ylabel="")
 
         sns.despine(offset=5, trim=True)
         # sns.despine()

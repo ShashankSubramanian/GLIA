@@ -38,9 +38,18 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
+def getSurvivalClass(x):
+    m = x/30.
+    if m < 10:
+        return 1
+    elif m < 15:
+        return 2
+    else:
+        return 3
+
 ###
 ### ------------------------------------------------------------------------ ###
-def svc_param_selection(X, y, nfolds, kernel, w):
+def svc_param_selection(X, y, nfolds, method, w):
     # Cs = [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5]
     # gammas = [1E-6, 1E-5, 1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2]
     # param_grid = {'C': Cs, 'gamma' : gammas} if kernel == 'rbf' or kernel == 'poly' else  {'C': Cs}
@@ -49,7 +58,10 @@ def svc_param_selection(X, y, nfolds, kernel, w):
     {'C': [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5], 'kernel': ['linear']},
     {'C': [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5], 'gamma': [1E-6, 1E-5, 1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2], 'kernel': ['rbf']},
     ]
-    clf = GridSearchCV(SVC(), param_grid, cv=nfolds)
+    if method=='SVM':
+        clf = GridSearchCV(SVC(), param_grid, cv=nfolds)
+    elif method=='SVR':
+        clf = GridSearchCV(SVR(epsilon=0.2), param_grid, cv=nfolds)
     clf.fit(X, y)
 
     print("Best parameters set found on development set:")
@@ -175,9 +187,11 @@ if __name__=='__main__':
     cols_bio2  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
     cols_bio3  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1']
     cols_bio4  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio5  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'Ic0/Ic1']
-    cols_bio6  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'rho-over-k']
-    cols_stat  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b']
+    cols_bio5  = ['#comp', 'age', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'Ic0/Ic1']
+    cols_bio6  = ['#comp', 'age', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'rho-over-k']
+    cols_bio7  = ['#comp', 'age', '#ed/#b', '#tc/#b',            'k-inv', 'rho-over-k']
+    # cols_stat  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b']
+    cols_stat  = ['#comp', 'age', '#ed/#b', '#tc/#b']
 
     brats_data['is_na'] = brats_data[cols_bio].isnull().apply(lambda x: any(x), axis=1)
     brats_data          = brats_data.loc[brats_data['is_na'] == False]
@@ -209,71 +223,99 @@ if __name__=='__main__':
     df_bio.hist
     plt.show()
 
-    p_dict_lin = []
-    p_dict_rbf = []
-    p_dict_ply = []
+    p_dict_svm = []
     # for cols, i in zip([cols_bio0,cols_bio1,cols_bio2,cols_bio3,cols_bio4,cols_bio5,cols_bio6,cols_stat], range(8)):
-    for cols, i in zip([cols_bio5,cols_bio6,cols_stat], range(3)):
+    for cols, i in zip([cols_bio7,cols_stat], range(2)):
     # for cols in [cols_bio5]:
         cc = "bio %d" % i if i < 7 else "stat";
         print(bcolors.OKBLUE, "=== %s ===" % cc, bcolors.ENDC)
 
         X = brats_data[cols].values
-        Y = np.ravel(brats_data[['srvl[]']].values).astype('int')
+        # Y = np.ravel(brats_data[['srvl[]']].values).astype('int')
+        Y = np.ravel(brats_data[['srvl']].values).astype('int')
         nfolds=5;
 
-        # scaler     = preprocessing.StandardScaler().fit(X)
-        scaler       = preprocessing.MinMaxScaler()
-        # normalizer = preprocessing.Normalizer().fit(X)
+        # scaler    = preprocessing.StandardScaler().fit(X)
+        scaler     = preprocessing.MinMaxScaler()
+        normalizer = preprocessing.Normalizer()
 
 
-        # tune hyperparameters of svm with rbf kernel, using grid-search and 10-fold cross validation
-        # params_linear = svc_param_selection(X,Y,nfolds,kernel='linear',w=weights);
-        # params_rbf = svc_param_selection(X,Y,nfolds,kernel='rbf',w=weights);
-        # params_poly = svc_param_selection(X,Y,nfolds,kernel='poly',w=weights);
-        # print("tuned hyperparams for linear-SVM:", params_linear)
-        # print("tuned hyperparams: ", params_rbf)
-        # print("tuned hyperparams for POLY-SVM:", params_poly)
 
         # dividing X, y into train and test data
         X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
 
         scaler.fit_transform(X_train)
-        # normalizer.transform(X_train)
-
-        svm_opt, opt_params = svc_param_selection(X_train,y_train,nfolds,kernel='linear',w=weights);
-
-        # training a linear SVM classifier
-        # svm_model_linear = SVC(kernel = 'linear', C=params_linear['C']).fit(X_train, y_train)
-        # svm_model_rbf    = SVC(kernel = 'rbf'   , C=params_rbf['C'], gamma=params_rbf['gamma']).fit(X_train, y_train)
-        # y_pred_linear    = svm_model_linear.predict(X_test)
-        # y_pred_rbf       = svm_model_rbf.predict(X_test)
-
-        # print("y_test (true): ", y_test)
-        # print("y_pred (linar):", y_pred_linear)
-        # print("y_pred (rbf):  ", y_pred_rbf)
-
-        # model accuracy for X_test
+        normalizer.fit(X_train)
         scaler.transform(X_test)
+        normalizer.transform(X_train)
+        normalizer.transform(X_test)
+
+        # === grid search for SVM ===
+        # clf, opt_params = svc_param_selection(X_train,y_train,nfolds,kernel='linear',w=weights);
+        # clf             = SVC(kernel='linear', C=0.001, random_state=0).fit(X_train, y_train)
+
+
+        # === SVM Regressor ===
+        from sklearn.svm import SVR
+        # clf, opt_params = svc_param_selection(X_train,y_train,nfolds,method='SVR',w=weights);
+        clf = SVR(gamma='scale', C=1.0, kernel='rbf', epsilon=0.2).fit(X_train, y_train)
+
+        # ==== one vs rest linear svm ===
+        # from sklearn import datasets
+        # from sklearn.multiclass import OneVsOneClassifier
+        # from sklearn.multiclass import OneVsRestClassifier
+        # from sklearn.svm import LinearSVC
+        # # clf = OneVsOneClassifier(LinearSVC(random_state=0)).fit(X_train, y_train)
+        # clf = OneVsRestClassifier(clf).fit(X_train, y_train)
+
+        # === MLP neural network ===
+        # from sklearn.neural_network import MLPClassifier
+        # param_grid = {
+        #     'hidden_layer_sizes': [(15,15,15), (15,), (100,), (100,5,5), (15,2), (10,), (10,5), (10,5,5), (5,5,5)],
+        #     'activation': ['tanh', 'relu'],
+        #     'solver': ['lbfgs', 'adam'],
+        #     'alpha': 10.0 ** -np.arange(1, 7),
+        #     'learning_rate': ['constant', 'invscaling', 'adaptive']
+        # }
+        # clf = GridSearchCV(MLPClassifier(random_state=1, max_iter=1000), param_grid, n_jobs=3, cv=nfolds)
+        # # clf = MLPClassifier(random_state=1, max_iter=10000, activation= 'relu', alpha=1E-6, hidden_layer_sizes=(15,), learning_rate='constant', solver='lbfgs')
+        # clf.fit(X_train, y_train)
+
+        # print("Best parameters set found on development set:")
+        # print()
+        # print(clf.best_params_)
+        # means = clf.cv_results_['mean_test_score']
+        # stds = clf.cv_results_['std_test_score']
+        # for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+            # print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
 
         print("Detailed classification report:")
         print()
         print("The model is trained on the full development set.")
         print("The scores are computed on the full evaluation set.")
         print()
-        y_true, y_pred = y_test, svm_opt.predict(X_test)
-        print(classification_report(y_true, y_pred))
+        y_true, y_pred = y_test, clf.predict(X_test)
+        # print(classification_report(y_true, y_pred))
         print()
+        print("y_true: ", y_true)
+        print("y_pred: ", y_pred)
 
+        plt.step(np.arange(0,len(y_true),1), y_true-y_pred, color='b',where='mid')
+        # plt.step(np.arange(0,len(y_true),1), y_pred, color='r',where='mid')
+        plt.show()
 
-        # normalizer.transform(X_test)
-        # accuracy_linear = svm_model_linear.score(X_test, y_test)
-        # accuracy_rbf    = svm_model_rbf.score(X_test, y_test)
-        accuracy    = svm_opt.score(X_test, y_test)
+        print()
+        class_true = [getSurvivalClass(x) for x in y_true]
+        class_pred = [getSurvivalClass(x) for x in y_pred]
+        print("y_true: ", class_true)
+        print("y_pred: ", class_pred)
+        y_test = class_true
+        y_pred = class_pred
+        print(classification_report(y_test, y_pred))
 
-        # p_dict_lin.append(accuracy_linear);
-        # p_dict_rbf.append(accuracy_rbf);
-        # svm_opt.append(accuracy);
+        accuracy = clf.score(X_test, y_test)
+
+        p_dict_svm.append(accuracy);
 
         print(bcolors.OKGREEN + "accuracy: ", accuracy, bcolors.ENDC)
         # print(bcolors.OKGREEN + "accuracy (rbf):    ", accuracy_rbf, bcolors.ENDC)
@@ -286,13 +328,11 @@ if __name__=='__main__':
         print("\n========================================\n")
         # plt.show()
 
-    # p_dict = {}
-    # p_dict['linear'] = p_dict_lin;
-    # p_dict['rbf']    = p_dict_rbf;
-    # # p_dict['poly']   = p_dict_ply;
-    # ddd =pd.DataFrame(p_dict);
-    # print("\n\n### SVM Model Evaluation ### ")
-    # print(tabulate(ddd, headers='keys', tablefmt='psql'))
+    p_dict = {}
+    p_dict['svm'] = p_dict_svm;
+    ddd =pd.DataFrame(p_dict);
+    print("\n\n### Model Evaluation ### ")
+    print(tabulate(ddd, headers='keys', tablefmt='psql'))
 
 
 
@@ -300,281 +340,23 @@ if __name__=='__main__':
 
 
 
+#
+# ### Model Evaluation ###
+# +----+----------+
+# |    |      svm |
+# |----+----------|
+# |  0 | 0.5      |   # {'C': 0.001, 'kernel': 'linear'}                   # ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
+# |  1 | 0.558824 |   # {'C': 10.0, 'kernel': 'linear'}                    # ['#comp', 'age', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'Ic0/Ic1']
+# |  2 | 0.294118 |   # {'C': 100000.0, 'gamma': 1e-06, 'kernel': 'rbf'}   # ['#comp', 'age', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'rho-over-k']
+# |  3 | 0.352941 |   # {'C': 1, 'gamma': 1e-05, 'kernel': 'rbf'}          # ['#comp', 'age',            '#tc/#b',           'k-inv', 'rho-over-k', 'Ic0/Ic1']
+# |  4 | 0.5      |   # {'C': 0.001, 'kernel': 'linear'}                   # ['#comp', 'age', '#ed/#b', '#tc/#b']
+# +----+----------+
 
 
-
-
-
-# ### using tumor stats only ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 10}
-# tuned hyperparams for RBF-SVM:    {'C': 10, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [3 1 1 1 1 3 1 3 1 1 3 1 1 1 1 1 3 1 1 1 1 1 3 1 1 3]
-# y_pred (rbf):   [2 1 1 1 1 2 1 2 1 1 3 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1]
-# accuracy (linear):  0.7307692307692307
-# accuracy (rbf):     0.5384615384615384
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 3  0  0]
-#  [ 3  0  6]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [1.         0.         0.        ]
-#  [0.33333333 0.         0.66666667]]
-# Confusion matrix, without normalization
-# [[13  1  0]
-#  [ 3  0  0]
-#  [ 5  3  1]]
-# Normalized confusion matrix
-# [[0.92857143 0.07142857 0.        ]
-#  [1.         0.         0.        ]
-#  [0.55555556 0.33333333 0.11111111]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [0] ###
-# ------------------------------------------------------------------------------
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [1 1 1 1 1 1 1 3 1 1 2 1 1 1 1 1 3 1 1 1 1 1 1 1 1 3]
-# y_pred (rbf):   [1 1 1 3 1 1 3 1 1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 3]
-# accuracy (linear):  0.6538461538461539
-# accuracy (rbf):     0.5769230769230769
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 5  1  3]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.55555556 0.11111111 0.33333333]]
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 2  0  1]
-#  [ 7  0  2]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [0.66666667 0.         0.33333333]
-#  [0.77777778 0.         0.22222222]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [1] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 1, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [1 1 1 1 1 1 1 3 1 1 2 1 1 1 1 1 3 1 1 1 1 1 1 1 1 3]
-# y_pred (rbf):   [1 1 1 3 1 1 3 1 1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 3]
-# accuracy (linear):  0.6538461538461539
-# accuracy (rbf):     0.5769230769230769
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 5  1  3]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.55555556 0.11111111 0.33333333]]
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 2  0  1]
-#  [ 7  0  2]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [0.66666667 0.         0.33333333]
-#  [0.77777778 0.         0.22222222]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [2] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 1, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [1 1 1 1 1 1 1 3 1 1 2 1 1 1 1 1 3 1 1 1 1 1 1 1 1 3]
-# y_pred (rbf):   [1 1 1 3 1 1 3 1 1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 3]
-# accuracy (linear):  0.6538461538461539
-# accuracy (rbf):     0.5769230769230769
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 5  1  3]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.55555556 0.11111111 0.33333333]]
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 2  0  1]
-#  [ 7  0  2]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [0.66666667 0.         0.33333333]
-#  [0.77777778 0.         0.22222222]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [3] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 1, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [1 1 1 1 1 1 1 3 1 1 2 1 1 1 1 1 3 1 1 1 1 1 1 1 1 3]
-# y_pred (rbf):   [1 1 1 3 1 1 3 1 1 1 1 1 1 1 1 1 1 1 1 3 1 1 1 1 1 3]
-# accuracy (linear):  0.6538461538461539
-# accuracy (rbf):     0.5769230769230769
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 5  1  3]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.55555556 0.11111111 0.33333333]]
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 2  0  1]
-#  [ 7  0  2]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [0.66666667 0.         0.33333333]
-#  [0.77777778 0.         0.22222222]]
-# ------------------------------------------------------------------------------
-
-
-
-# ------------------------------------------------------------------------------
-#                                 nx=128
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats only ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 10}
-# tuned hyperparams for RBF-SVM:    {'C': 1, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [3 1 1 1 1 3 1 3 1 1 3 1 1 1 1 1 3 1 1 1 1 1 3 1 1 3]
-# y_pred (rbf):   [3 1 1 1 1 3 1 1 1 1 3 1 1 1 1 1 3 1 1 1 1 1 3 1 1 3]
-# accuracy (linear):  0.7307692307692307
-# accuracy (rbf):     0.6923076923076923
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 3  0  0]
-#  [ 3  0  6]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [1.         0.         0.        ]
-#  [0.33333333 0.         0.66666667]]
-# Confusion matrix, without normalization
-# [[13  0  1]
-#  [ 3  0  0]
-#  [ 4  0  5]]
-# Normalized confusion matrix
-# [[0.92857143 0.         0.07142857]
-#  [1.         0.         0.        ]
-#  [0.44444444 0.         0.55555556]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [0] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 0.001, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [3 1 1 1 1 1 1 3 1 1 3 1 1 1 1 1 3 1 1 3 1 1 3 1 1 3]
-# y_pred (rbf):   [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
-# accuracy (linear):  0.8076923076923077
-# accuracy (rbf):     0.5384615384615384
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 2  0  7]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.22222222 0.         0.77777778]]
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 9  0  0]]
-# Normalized confusion matrix
-# [[1. 0. 0.]
-#  [1. 0. 0.]
-#  [1. 0. 0.]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [1] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 0.001, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [3 1 1 1 1 1 1 3 1 1 3 1 1 1 1 1 3 1 1 3 1 1 3 1 1 3]
-# y_pred (rbf):   [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
-# accuracy (linear):  0.8076923076923077
-# accuracy (rbf):     0.5384615384615384
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 2  0  7]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.22222222 0.         0.77777778]]
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 9  0  0]]
-# Normalized confusion matrix
-# [[1. 0. 0.]
-#  [1. 0. 0.]
-#  [1. 0. 0.]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [2] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 0.001, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [3 1 1 1 1 1 1 3 1 1 3 1 1 1 1 1 3 1 1 3 1 1 3 1 1 3]
-# y_pred (rbf):   [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
-# accuracy (linear):  0.8076923076923077
-# accuracy (rbf):     0.5384615384615384
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 2  0  7]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.22222222 0.         0.77777778]]
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 9  0  0]]
-# Normalized confusion matrix
-# [[1. 0. 0.]
-#  [1. 0. 0.]
-#  [1. 0. 0.]]
-# ------------------------------------------------------------------------------
-
-# ### using tumor stats + biomarkers [3] ###
-# ------------------------------------------------------------------------------
-# tuned hyperparams for linear-SVM: {'C': 0.001}
-# tuned hyperparams for RBF-SVM:    {'C': 0.001, 'gamma': 0.001}
-# y_test (true):  [3 1 1 2 1 1 1 3 1 1 3 1 2 1 1 1 3 3 1 3 1 1 3 3 2 3]
-# y_pred (linar): [3 1 1 1 1 1 1 3 1 1 3 1 1 1 1 1 3 1 1 3 1 1 3 1 1 3]
-# y_pred (rbf):   [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
-# accuracy (linear):  0.8076923076923077
-# accuracy (rbf):     0.5384615384615384
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 2  0  7]]
-# Normalized confusion matrix
-# [[1.         0.         0.        ]
-#  [1.         0.         0.        ]
-#  [0.22222222 0.         0.77777778]]
-# Confusion matrix, without normalization
-# [[14  0  0]
-#  [ 3  0  0]
-#  [ 9  0  0]]
-# Normalized confusion matrix
-# [[1. 0. 0.]
-#  [1. 0. 0.]
-#  [1. 0. 0.]]
-# ------------------------------------------------------------------------------
+# ### Model Evaluation ###
+# +----+----------+
+# |    |      svm |
+# |----+----------|
+# |  0 | 0.588235 | # {'C': 0.001, 'kernel': 'linear'}                   # ['#comp', 'age', '#ed/#b', '#tc/#b',            'k-inv', 'rho-over-k', 'Ic0/Ic1']
+# |  1 | 0.5      | # {'C': 0.001, 'kernel': 'linear'}                   # ['#comp', 'age', '#ed/#b', '#tc/#b']
+# +----+----------+

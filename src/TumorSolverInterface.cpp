@@ -385,35 +385,6 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
       if (d1g == nullptr) {d1g = d1;}
       inv_solver_->setDataGradient (d1g);
 
-      // Guess the reaction coefficient and use as IC.
-      Vec prec_copy;
-      ierr = VecDuplicate (prec, &prec_copy);                                   CHKERRQ (ierr);
-      ierr = VecCopy (prec, prec_copy);                                         CHKERRQ (ierr);
-      std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate
-      double min_norm = 1E15, norm_1 = 0.;
-      int idx_min = 0;
-      for (int i = 0; i < rho_guess.size(); i++) {
-         // update the tumor with this rho
-         ierr = tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., tumor_->mat_prop_, n_misc_);
-         ierr = tumor_->phi_->apply (tumor_->c_0_, prec_copy);                  CHKERRQ (ierr);    // apply scaled p to IC
-         ierr = derivative_operators_->pde_operators_->solveState (0);                                             // solve state with guess reaction and zero diffusivity
-         ierr = tumor_->obs_->apply (derivative_operators_->temp_, tumor_->c_t_);               CHKERRQ (ierr);
-         // mismatch between data and c
-         ierr = VecAXPY (derivative_operators_->temp_, -1.0, d1);     CHKERRQ (ierr);    // Oc(1) - d
-         ierr = VecNorm (derivative_operators_->temp_, NORM_2, &norm_1);   CHKERRQ (ierr);
-         if (norm_1 < min_norm) {
-             min_norm = norm_1;
-             idx_min = i;
-         }
-     }
-     PCOUT << "Initial guess for reaction coefficient: " << rho_guess[idx_min] << std::endl;
-     n_misc_->rho_ = rho_guess[idx_min];
-     ierr = tumor_->rho_->updateIsotropicCoefficients (rho_guess[idx_min], 0., 0., tumor_->mat_prop_, n_misc_);
-     ierr = VecDestroy (&prec_copy);                                              CHKERRQ (ierr);
-
-
-
-
       // reaction-inversion solve
       ierr = inv_solver_->solveForParameters (prec);          // With IC as current guess
       ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
@@ -920,6 +891,20 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         ierr = VecCopy (g, temp);                                               CHKERRQ (ierr);
         ierr = VecAbs (temp);                                                   CHKERRQ (ierr);
 
+        if (n_misc_->verbosity_ >= 2) {
+          double *grad_ptr;
+          ierr = VecGetArray(temp, &grad_ptr);                                    CHKERRQ(ierr);
+          for (int i = 0; i < np_original-1; i++){
+            if(procid == 0){
+              n_misc_->outfile_glob_grad_ << grad_ptr[i] << ", ";
+            }
+          }
+          if(procid == 0){
+            n_misc_->outfile_glob_grad_ << grad_ptr[np_original-1] << ";\n" <<std::endl;
+          }
+          ierr = VecRestoreArray(temp, &grad_ptr);                                    CHKERRQ(ierr);
+        }
+
         idx.clear();
         ierr = hardThreshold (temp, 2 * n_misc_->sparsity_level_, np_original, idx, tumor_->phi_->gaussian_labels_, tumor_->phi_->component_weights_, nnz, tumor_->phi_->num_components_);
 
@@ -1138,8 +1123,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
             flag_convergence = 0;
         }
 
-
         if (flag_convergence) {
+            n_misc_->conv_flag_l2_ = true;
             np = n_misc_->support_.size();
             nk = (n_misc_->reaction_inversion_ || n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
             nr = (n_misc_->reaction_inversion_) ? n_misc_->nr_ : 0;

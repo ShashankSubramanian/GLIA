@@ -134,6 +134,9 @@ def gridcont(basedir, args):
 
     os.environ['DIR_SUFFIX'] = "{0:1.1f}".format(args.obs_lambda);
     obs_dir = "obs-{0:1.1f}".format(args.obs_lambda) + "/";
+    if args.cm_data:
+        obs_dir     = "cm-data-obs-{0:1.1f}".format(args.obs_lambda) + "/";
+        obs_dir_std = "obs-{0:1.1f}".format(args.obs_lambda) + "/";
 
     # create output folder
     output_path = args.results_directory
@@ -171,7 +174,7 @@ def gridcont(basedir, args):
         cmd_obs =  "\n\n# observation mask\n";
         cmd_obs_resample64 = ""
         cmd_obs_resample128 = ""
-        for lambda_o in [1, 0.8, 0.6, 0.4, 0.2, 0.1]:
+        for lambda_o in [1]: #[1, 0.8, 0.6, 0.4, 0.2, 0.1]:
             name = "obs_mask" + '_lbd-'+str(lambda_o);
             obs_masks.append(name);
             cmd_obs             += "\n" + pythoncmd + basedir + '/scripts/utils.py -compute_observation_mask --obs_lambda ' + str(lambda_o) + ' -output_path ' + input_folder + ' --suffix ' + '_lbd-'+str(lambda_o)
@@ -244,19 +247,22 @@ def gridcont(basedir, args):
         else:
             cmd_symlink +=  "ln -sf " + "../../../input/obs_mask_nx" + str(level) + ".nc"           " obs_mask.nc \n";
 
-        if level == 64:
-            cmd_symlink +=  "ln -sf " + "../../../input/patient_nx" + str(level) + "_seg_tc.nc"     " support_data.nc \n";
-        else:
-            level_prev = int(level/2);
-            cmd_symlink += pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'c0Recon.nc'           + ' --name_new ' + 'c0Recon_nx'+ str(level)         + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
-            cmd_symlink +=  "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0Recon_nx"+str(level)+".nc"   " support_data.nc \n";
-            cmd_symlink += pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'phiSupportFinal.nc'   + ' --name_new ' + 'phiSupportFinal_nx'+ str(level) + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
-            cmd_symlink +=  "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/phiSupportFinal_nx"+str(level)+".nc"   " support_data_phi.nc \n";
+        if not args.cm_data:
+            if level == 64:
+                cmd_symlink +=  "ln -sf " + "../../../input/patient_nx" + str(level) + "_seg_tc.nc"     " support_data.nc \n";
+            else:
+                level_prev = int(level/2);
+                cmd_symlink += pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'c0Recon.nc'           + ' --name_new ' + 'c0Recon_nx'+ str(level)         + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
+                cmd_symlink +=  "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0Recon_nx"+str(level)+".nc"   " support_data.nc \n";
+                cmd_symlink += pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'phiSupportFinal.nc'   + ' --name_new ' + 'phiSupportFinal_nx'+ str(level) + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
+                cmd_symlink +=  "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/phiSupportFinal_nx"+str(level)+".nc"   " support_data_phi.nc \n";
         cmd_symlink  +=  "cd ${PWDO} \n"
 
         # compute connecte components of target data
+        rdir = "obs" if not args.cm_data else "cm-data";
         cmd_concomp  = pythoncmd + basedir + '/scripts/utils.py -concomp_data  -input_path ' +  os.path.join(tumor_out_path, 'nx' + str(level)) + ' -output_path ' +  input_folder + ' --obs_lambda ' + str(args.obs_lambda);
-        cmd_concomp +=  " -select_gaussians " + " --sigma " + str(sigma_fac[ii]) + " \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
+        cmd_concomp += " -rdir " + rdir  + "  --sigma " + str(sigma_fac[ii]) + " ";
+        cmd_concomp +=  " -select_gaussians  \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
         cmd_concomp +=  "PWDO=${PWD} \n"
         cmd_concomp +=  "cd " + str(inp_dir) + "\n"
         cmd_concomp +=  "ln -sf " + "../../../input/data_comps_nx" + str(level)  + ".nc"    " data_comps.nc \n";
@@ -280,6 +286,7 @@ def gridcont(basedir, args):
         t_params['grad_tol']              = opttol;
         t_params['sparsity_lvl']          = sparsity_lvl_per_component;
         t_params['multilevel']            = 1;
+        t_params['solve_rho_k']           = 1 if args.cm_data else 0;
         t_params['create_synthetic']      = 0;
         t_params['ls_max_func_evals']     = ls_max_func_evals[ii];
         t_params['diffusivity_inversion'] = invert_diffusivity[ii];
@@ -311,6 +318,13 @@ def gridcont(basedir, args):
         t_params['data_comp_dat_path']     = os.path.join(res_dir_out, 'dcomp.dat');
         t_params['obs_mask_path']          = os.path.join(inp_dir, 'obs_mask_lbd-${LAMBDA_OBS}.nc') if (args.vary_obs_lambda) else os.path.join(inp_dir, 'obs_mask.nc');
 
+        if args.cm_data:
+            t_params['support_data_path']  = "";
+            t_params['data_comp_path']     = "";
+            t_params['data_comp_dat_path'] = "";
+            t_params['gaussian_cm_path']   = os.path.join(res_dir_out, 'phi-cm-data.txt');
+            t_params['pvec_path']          = os.path.join(res_dir_out, 'p-cm-data.txt');
+
         #   ------------------------------------------------------------------------
         #    - get command line for tumor inversion
         cmdline_tumor, err = TumorParams.getTumorRunCmd(t_params)
@@ -331,7 +345,7 @@ def gridcont(basedir, args):
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
         cmd_postproc  = pythoncmd + basedir + '/scripts/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
-        cmd_postproc += " -rdir obs ";
+        cmd_postproc += " -rdir " + rdir + " ";
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
         cmd_postproc += " -analyze_concomps ";
@@ -411,6 +425,7 @@ if __name__=='__main__':
     parser.add_argument (                   '--vary_obs_lambda',             action='store_true', help = 'indicate wether or not to perform a series of experiment with different obervation operators OBS(lambda)');
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
+    parser.add_argument (                   '--cm_data',                     action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
     args = parser.parse_args();
 
     if args.patient_image_path is None:

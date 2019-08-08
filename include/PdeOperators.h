@@ -59,6 +59,9 @@ class PdeOperatorsRD : public PdeOperators {
 		virtual PetscErrorCode solveAdjoint (int linearized);
 		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc);
 
+		// This solves the diffusivity update part of the incremental forward equation 
+		PetscErrorCode solveIncremental (Vec c_tilde, std::vector<Vec> c_history, double dt, int iter, int mode);
+
 		/** @brief computes effect of varying/moving material properties, i.e.,
 		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
 		 */

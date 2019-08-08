@@ -827,7 +827,7 @@ if __name__=='__main__':
                 p_cm_data_file.write("p = [\n")
                 for i in range(ncomps_data[l]):
                     phi_cm_data_file.write(" %1.8f, %1.8f, %1.8f\n" % (xcm_data[l][i][2], xcm_data[l][i][1], xcm_data[l][i][0]));
-                    p_cm_data_file.write(" %1.8f\n" % 1.);
+                    p_cm_data_file.write(" %1.8f\n" % 0.);
                 phi_cm_data_file.write("];")
                 p_cm_data_file.write("];")
 

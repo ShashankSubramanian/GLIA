@@ -300,10 +300,14 @@ class NMisc {
         , forcing_factor_ (2.0E5)               // mass effect forcing factor
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
-        , phi_store_ (false)                    // Flag to store phis 
+        , phi_store_ (false)                    // Flag to store phis
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                           // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                              // Upper bound on kappa
+        , conv_flag_l2_ (false)                 // Flag to keep track if the solver is in convergence phase and needs to do a final L2 solve
+        , outfile_sol_()
+        , outfile_grad_()
+        , outfile_glob_grad_()
                                 {
 
 
@@ -384,6 +388,16 @@ class NMisc {
             //Read and write paths
             readpath_ << "./brain_data/" << n_[0] <<"/";
             writepath_ << "./results/";
+
+
+            if (verbosity_ >= 2) {
+              outfile_sol_.open("x_it.dat", std::ios_base::out);
+              outfile_grad_.open("g_it.dat", std::ios_base::out);
+              outfile_glob_grad_.open("glob_g_it.dat", std::ios_base::out);
+              outfile_sol_ << std::setprecision(16)<<std::scientific;
+              outfile_grad_ << std::setprecision(16)<<std::scientific;
+              outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
+            }
         }
 
         double k_lb_;
@@ -396,6 +410,7 @@ class NMisc {
 
         bool phi_store_;
         bool adjoint_store_;
+        bool conv_flag_l2_;
 
         int testcase_;
         int n_[3];
@@ -492,6 +507,10 @@ class NMisc {
         double screen_low_, screen_high_;
 
         double forcing_factor_;
+
+        std::fstream outfile_sol_;
+        std::fstream outfile_grad_;
+        std::fstream outfile_glob_grad_;
 };
 
 class VecField {
