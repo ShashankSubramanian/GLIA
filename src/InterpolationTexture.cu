@@ -47,9 +47,7 @@ following papers:
 #include "petsccuda.h"
 #include "cuda.h"
 #include "cuda_runtime.h"
-#include "cuda_helper.hpp"
 #include "interp_poly_kernel.cu"
-#include "interp3_gpu_new.hpp"
 #include "Interp.h"
 
 #define PI ((double)3.14159265358979323846264338327950288419716939937510)
