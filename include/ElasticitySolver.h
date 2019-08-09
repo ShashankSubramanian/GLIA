@@ -99,5 +99,6 @@ class VariableLinearElasticitySolver : public ElasticitySolver {
 PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y); // this is used as a preconditioner 
 PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y);
 PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right);
+PetscErrorCode elasticitySolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr);
 
 #endif

@@ -47,6 +47,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
     ierr = KSPSetType (ksp_, KSPGMRES);
+    ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
@@ -59,6 +60,40 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
 
     
 }
+
+PetscErrorCode elasticitySolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec x; int maxit; ScalarType divtol, abstol, reltol;
+    ierr = KSPBuildSolution (ksp,NULL,&x);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
+    CtxElasticity *ctx = reinterpret_cast<CtxElasticity*>(ptr);     // get user context
+
+    std::stringstream s;
+    if (its == 0) {
+      s << std::setw(3)  << " KSP:" << " computing solution of elasticity system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
+    s << std::setw(3)  << " KSP:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+    ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    // int ksp_itr;
+    // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
+    // ScalarType e_max, e_min;
+    // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+    //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+    //   s << "Condition number of matrix is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+    //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    //   s.str (""); s.clear ();
+    // }
+    PetscFunctionReturn (0);
+}
+
 
 PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
     PetscFunctionBegin;

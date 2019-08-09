@@ -25,9 +25,9 @@ ctx_() {
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
-    ierr = KSPSetType (ksp_, KSPGMRES);
+    ierr = KSPSetType (ksp_, KSPCG);
     ierr = KSPSetFromOptions (ksp_);
-    ierr = KSPMonitorSet(ksp_, diffsolverKSPMonitor, ctx_.get(), 0);                   
+    ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
     ierr = KSPSetUp (ksp_);
 
     ierr = KSPGetPC (ksp_, &pc_);
@@ -50,7 +50,7 @@ ctx_() {
 
 }
 
-PetscErrorCode diffsolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+PetscErrorCode diffSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
