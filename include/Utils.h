@@ -586,7 +586,7 @@ PetscErrorCode writeBIN(Vec x, std::string f);
 /// @reads in p_vec vector from txt file
 PetscErrorCode readPVec(Vec* x, int size, int np, std::string f);
 /// @brief reads in Gaussian centers from file
-PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data = false, std::vector<int> *comps = nullptr);
+PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data = false, std::vector<int> *comps = nullptr, bool overwrite_sigma = true);
 /// @brief reads connected component data from file
 PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> &centers, std::string f);
 /// @brief write checkpoint for p-vector and Gaussian centers

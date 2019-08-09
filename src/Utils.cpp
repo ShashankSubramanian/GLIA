@@ -334,7 +334,7 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// readPhiMesh /////////////////////////////////////// ###
-PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps) {
+PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps, bool overwrite_sigma) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int nprocs, procid;
@@ -358,8 +358,11 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
     if (pos1 != std::string::npos) {spacing = atof(line.substr(pos1+1, line.length()).c_str());}
     PCOUT << "reading sigma="<<sigma<<", spacing="<<spacing<<std::endl;
     if (n_misc->phi_sigma_data_driven_ != sigma) {
-      PCOUT << "WARNING: specified sigma="<<n_misc->phi_sigma_data_driven_<<" != sigma="<<sigma<<" (read from file). Specified sigma overwritten."<<std::endl;
-      n_misc->phi_sigma_data_driven_ = sigma;
+      PCOUT << "WARNING: specified sigma="<<n_misc->phi_sigma_data_driven_<<" != sigma="<<sigma<<" (read from file).";
+      if (overwrite_sigma) {
+        PCOUT << " Specified sigma overwritten."<<std::endl;
+        n_misc->phi_sigma_data_driven_ = sigma;
+      }
     }
     std::getline(file, line); // throw away;
     std::string t;

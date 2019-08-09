@@ -114,6 +114,7 @@ int main (int argc, char** argv) {
 
     int syn_flag = -1;
     int multilevel_flag = -1;
+    int inject_coarse_solution = -1;
     int model = -1;
 
     int fwd_flag = 0;
@@ -178,7 +179,8 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-krylov_maxit", "Krylov max iterations", "", krylov_maxit, &krylov_maxit, NULL);
     PetscOptionsReal ("-rel_grad_tol", "Relative gradient tolerance for L2 solves", "", opttolgrad, &opttolgrad, NULL);
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
-    PetscOptionsInt ("-multilevel", "Flag indicating wehther or not solver is running in multilevel mode", "", multilevel_flag, &multilevel_flag, NULL);
+    PetscOptionsInt ("-multilevel", "Flag indicating whether or not solver is running in multilevel mode", "", multilevel_flag, &multilevel_flag, NULL);
+    PetscOptionsInt ("-inject_solution", "Flag indicating if solution from coarser level should be injected (need to set pvec_path and gaussian_cm_path)", "", inject_coarse_solution, &inject_coarse_solution, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
     PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
@@ -273,6 +275,10 @@ int main (int argc, char** argv) {
     bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);                   // path set?
     if (warmstart_p  && not (gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0)){
       PCOUT << " ERROR: if initial guess for p is used, Gaussian centers need to be specified. " << std::endl;
+      exit(-1);
+    }
+    if (inject_coarse_solution && (!warmstart_p || !(gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0) )){
+      PCOUT << " ERROR: if coarse solution should be injected, Gaussian centers and p_i values are required. " << std::endl;
       exit(-1);
     }
     double rho = rho_data;
@@ -578,7 +584,7 @@ int main (int argc, char** argv) {
                 }
                 ierr = tumor->phi_->setGaussians (support_data);                        CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               } else if (syn_flag) {
-                ierr = tumor->phi_->setGaussians (data);                        CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
+                ierr = tumor->phi_->setGaussians (data);                                CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               } else {
                 PCOUT << "Error: Expecting user input data -support_data_path *.nc or *.txt. exiting..." <<std::endl;
                 exit(1);
@@ -593,6 +599,46 @@ int main (int argc, char** argv) {
                   ierr = VecSetSizes (p_rec, PETSC_DECIDE, n_misc->np_);                CHKERRQ (ierr);
                   ierr = VecSetFromOptions (p_rec);                                     CHKERRQ (ierr);
               #endif
+            }
+
+            // injection of coarse solution
+            if (inject_coarse_solution) {
+              Vec coarse_sol = nullptr;
+              int np_save = n_misc->np_;
+              int np_coarse = 0;
+              std::vector<double> coarse_sol_centers;
+              std::string file_cm(gaussian_cm_path);
+              std::string file_p(p_vec_path);
+              // read phi mesh save nmisc->np_ since it is overwritten
+              ierr = readPhiMesh(coarse_sol_centers, n_misc, file_cm, false);           CHKERRQ (ierr);
+              ierr = readPVec(&coarse_sol, n_misc->np_ + nk + nr, n_misc->np_, file_p); CHKERRQ (ierr);
+              np_coarse = n_misc->np_;
+              n_misc->np_ = np_save; // reset to correct value
+              // find coarse centers in centers_ of current Phi
+              int xc,yc,zc,xf,yf,zf;
+              double *xf_ptr, *xc_ptr;
+              double hx =  2.0 * M_PI / n_misc->n_[0];
+              double hy =  2.0 * M_PI / n_misc->n_[1];
+              double hz =  2.0 * M_PI / n_misc->n_[2];
+              ierr = VecGetArray (p_rec, &xf_ptr);                                       CHKERRQ (ierr);
+              ierr = VecGetArray (coarse_sol, &xc_ptr);                                  CHKERRQ (ierr);
+              for (int j = 0; j < np_coarse; ++j) {
+                for (int i = 0; i < n_misc->np_; ++i) {
+                  xc = (int)(coarse_sol_centers[3*j + 0]/hx);
+                  yc = (int)(coarse_sol_centers[3*j + 1]/hy);
+                  zc = (int)(coarse_sol_centers[3*j + 2]/hz);
+                  xf = (int)(tumor->phi_->centers_[3*i + 0]/hx);
+                  yf = (int)(tumor->phi_->centers_[3*i + 1]/hy);
+                  zf = (int)(tumor->phi_->centers_[3*i + 2]/hz);
+                  if(xc == xf && yc == yf && zc == zf) {
+                    xf_ptr[i] = 2 * xc_ptr[j];            // set initial guess (times 2 since sigma is halfed in every level)
+                    n_misc->support_.push_back(i);        // add to support
+                  }
+                }
+              }
+              ierr = VecRestoreArray (p_rec, &xf_ptr);                                   CHKERRQ (ierr);
+              ierr = VecRestoreArray (coarse_sol, &xc_ptr);                              CHKERRQ (ierr);
+              if (coarse_sol != nullptr) {ierr = VecDestroy(&coarse_sol); CHKERRQ(ierr); coarse_sol = nullptr;}
             }
             ierr = solver_interface->setParams (p_rec, nullptr);
         }
@@ -638,6 +684,7 @@ int main (int argc, char** argv) {
                 if (!warmstart_p) {PCOUT << "Error: c(0) needs to be set, read in p and Gaussians. exiting solver...\n"; exit(1);}
                 ierr = solver_interface->solveInverseReacDiff (p_rec, data, nullptr);     // solve tumor inversion only for rho and k, read in c(0)
             } else if (flag_cosamp) {
+                // ierr = solver_interface->setInitialGuess (p_rec);
                 ierr = solver_interface->solveInverseCoSaMp (p_rec, data, nullptr);     // solve tumor inversion using cosamp
             } else {
                 ierr = solver_interface->solveInverse (p_rec, data, nullptr);           // solve tumor inversion

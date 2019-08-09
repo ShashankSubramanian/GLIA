@@ -82,6 +82,7 @@ def getTumorRunCmd(params):
     tumor_testcase = 0
 
     multilevel = 0;
+    inject_solution = 0;
 
     ### k_gm_wm ratio
     k_gm_wm = 0.0
@@ -222,6 +223,10 @@ def getTumorRunCmd(params):
     if 'multilevel' in params:
         multilevel = params['multilevel']
     # ---
+    if 'inject_solution' in params:
+        inject_solution = params['inject_solution']
+        print ('Solution from previous level is injected.')
+    # ---
     if 'dd_fac' in params:
         dd_fac = params['dd_fac']
     else:
@@ -353,6 +358,7 @@ def getTumorRunCmd(params):
         cmd = cmd + "mpirun ";
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
+    " -inject_solution " + str(inject_solution) + \
     " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
     " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
     " -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \
@@ -399,5 +405,5 @@ def getTumorRunCmd(params):
     " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
-    # -tao_test_hessian -tao_test_hessian_view 
+    # -tao_test_hessian -tao_test_hessian_view
     return run_str, error_flag

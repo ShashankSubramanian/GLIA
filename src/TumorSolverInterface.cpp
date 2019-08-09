@@ -853,35 +853,61 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
     // Compute reference quantities
     // Save diffusivity guess
-    double k_inv_guess = n_misc_->k_;
-    ierr = inv_solver_->getObjectiveAndGradient (x_L1, &J_ref, g_ref);
-    // reset diffusivity guess as reference gradient has zeroed out the guess
-    n_misc_->k_ = k_inv_guess;
 
+    // compute reference value for  objective
+    double k_inv_guess = n_misc_->k_;
+    // ierr = inv_solver_->getObjective (x_L1, &J_ref);                         CHKERRQ (ierr);
+    ierr = inv_solver_->getObjectiveAndGradient (x_L1, &J_ref, g_ref);          CHKERRQ (ierr);
+    n_misc_->k_ = k_inv_guess; // reset diffusivity guess as reference gradient has zeroed out the guess
+    ierr = VecNorm (g_ref, NORM_2, &norm_g);                                    CHKERRQ (ierr);
+
+    // set initial guess for p
+    double *x_ptr;
+    ierr = VecGetArray(x_L1, &x_L1_ptr);                                        CHKERRQ (ierr);
+    ierr = VecGetArray(prec, &x_ptr);                                           CHKERRQ (ierr);
+    for (int i = 0; i < np_original; ++i) {
+      x_L1_ptr[i] = x_ptr[i];
+    }
     // set initial guess for k_inv (possibly != zero)
     if (n_misc_->diffusivity_inversion_) {
-        ierr = VecGetArray(x_L1, &x_L1_ptr);                                        CHKERRQ (ierr);
-        x_L1_ptr[n_misc_->np_] = n_misc_->k_;
-        ierr = VecRestoreArray(x_L1, &x_L1_ptr);                                    CHKERRQ (ierr);
+        x_L1_ptr[np_original] = n_misc_->k_;
     } else {
         // set diff ops with this guess -- this will not change during the solve
         ierr = getTumor()->k_->setValues (n_misc_->k_, n_misc_->k_gm_wm_ratio_, n_misc_->k_glm_wm_ratio_, getTumor()->mat_prop_, n_misc_);  CHKERRQ (ierr);
     }
+    ierr = VecRestoreArray(prec, &x_ptr);                                       CHKERRQ (ierr);
+    ierr = VecRestoreArray(x_L1, &x_L1_ptr);                                    CHKERRQ (ierr);
     ierr = VecCopy(x_L1, x_L1_old);                                             CHKERRQ (ierr);
 
+    // compute gradient (save and restore diffusivity guess)
+    k_inv_guess = n_misc_->k_;
+    ierr = inv_solver_->getGradient (x_L1, g);                                  CHKERRQ (ierr);
+    n_misc_->k_ = k_inv_guess;
+
     J = J_ref;
-    ierr = VecCopy (g_ref, g);                                                  CHKERRQ (ierr);
-    ierr = VecNorm (g, NORM_2, &norm_g);                                        CHKERRQ (ierr);
-
     int its = 0;
-
+    // ierr = VecCopy (g_ref, g);                                               CHKERRQ (ierr);
     // print statistics
     printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
+
+
     int flag_convergence = 0;
     int nnz = 0;
     std::stringstream ss;
+    // number of connected components
+    tumor_->phi_->num_components_ = tumor_->phi_->component_weights_.size ();
 
-    tumor_->phi_->num_components_ = tumor_->phi_->component_weights_.size ();  // number of connected components
+    ierr = VecNorm (g, NORM_2, &norm_g);                                        CHKERRQ (ierr);
+    PCOUT << "Starting CoSaMP solver with initial support: ";
+    for (int i = 0; i < n_misc_->support_.size(); i++) {
+        PCOUT << n_misc_->support_[i] << " ";
+    }
+    PCOUT << std::endl;
+    PCOUT << "Component label of initial support : ";
+    for (int i = 0; i < n_misc_->support_.size(); i++) {
+        PCOUT << tumor_->phi_->gaussian_labels_[n_misc_->support_[i]] << " ";
+    }
+    PCOUT << std::endl;
 
     // Solver begin
     while (true) {
@@ -1103,7 +1129,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         ierr = VecNorm (x_L1, NORM_INFINITY, &norm);        CHKERRQ (ierr);
         ierr = VecAXPY (temp, -1.0, x_L1_old);              CHKERRQ (ierr);     // temp holds x_L1
         ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);    CHKERRQ (ierr);     // Norm change in the solution
-        ierr = VecNorm (g, NORM_2, &norm_g);              CHKERRQ (ierr);
+        ierr = VecNorm (g, NORM_2, &norm_g);                CHKERRQ (ierr);
         // print statistics
 
         PCOUT << "\n\n\n-------------------------------------------------------------------- L1 solver statistics -------------------------------------------------------------------- " << std::endl;
