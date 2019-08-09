@@ -562,7 +562,7 @@ int main (int argc, char** argv) {
             int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
             int nr = (n_misc->reaction_inversion_)    ? n_misc->nr_ : 0;
             // if p vector and Gaussian centers are read in
-            if (warmstart_p) {
+            if (warmstart_p && !inject_coarse_solution) {
               PCOUT << "Solver warmstart using p and Gaussian centers" << std::endl;
               std::string file_p(p_vec_path);
               std::string file_cm(gaussian_cm_path);
