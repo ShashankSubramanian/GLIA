@@ -25,8 +25,9 @@ ctx_() {
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
-    ierr = KSPSetType (ksp_, KSPCG);
+    ierr = KSPSetType (ksp_, KSPGMRES);
     ierr = KSPSetFromOptions (ksp_);
+    ierr = KSPMonitorSet(ksp_, diffsolverKSPMonitor, ctx_.get(), 0);                   
     ierr = KSPSetUp (ksp_);
 
     ierr = KSPGetPC (ksp_, &pc_);
@@ -47,6 +48,39 @@ ctx_() {
         ctx_->c_hat_ = (ComplexType *) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
 
+}
+
+PetscErrorCode diffsolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec x; int maxit; ScalarType divtol, abstol, reltol;
+    ierr = KSPBuildSolution (ksp,NULL,&x);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
+    Ctx *ctx = reinterpret_cast<Ctx*>(ptr);     // get user context
+
+    std::stringstream s;
+    if (its == 0) {
+      s << std::setw(3)  << " KSP:" << " computing solution of diffusion system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
+    s << std::setw(3)  << " KSP:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+    ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    // int ksp_itr;
+    // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
+    // ScalarType e_max, e_min;
+    // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+    //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+    //   s << "Condition number of matrix is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+    //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    //   s.str (""); s.clear ();
+    // }
+    PetscFunctionReturn (0);
 }
 
 PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
@@ -225,6 +259,14 @@ PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
     ierr = KSPSolve (ksp_, rhs_, c);                            CHKERRQ (ierr);
 
     ierr = KSPGetIterationNumber (ksp_, &ksp_itr_);             CHKERRQ (ierr);
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+ScalarType res_norm;
+    ierr = KSPGetResidualNorm (ksp_, &res_norm);                CHKERRQ (ierr);
+
+    PCOUT << "[DIFF solver] GMRES convergence --   iterations: " << ksp_itr_ << "    residual: " << res_norm << std::endl;
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
