@@ -27,7 +27,7 @@ ctx_() {
     ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
     ierr = KSPSetType (ksp_, KSPCG);
     ierr = KSPSetFromOptions (ksp_);
-    ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
+    // ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
     ierr = KSPSetUp (ksp_);
 
     ierr = KSPGetPC (ksp_, &pc_);
@@ -259,14 +259,6 @@ PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
     ierr = KSPSolve (ksp_, rhs_, c);                            CHKERRQ (ierr);
 
     ierr = KSPGetIterationNumber (ksp_, &ksp_itr_);             CHKERRQ (ierr);
-
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-ScalarType res_norm;
-    ierr = KSPGetResidualNorm (ksp_, &res_norm);                CHKERRQ (ierr);
-
-    PCOUT << "[DIFF solver] GMRES convergence --   iterations: " << ksp_itr_ << "    residual: " << res_norm << std::endl;
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

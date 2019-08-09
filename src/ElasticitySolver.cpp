@@ -47,7 +47,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
     ierr = KSPSetType (ksp_, KSPGMRES);
-    ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
+    // ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
