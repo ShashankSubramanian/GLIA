@@ -25,6 +25,7 @@ using ScalarType = PetscReal;
 
         #define cufftExecuteR2C cufftExecR2C
         #define cufftExecuteC2R cufftExecC2R
+        #define cuComplexMultiply cuCmulf
         #define cublasAXPY cublasSaxpy
         #define cublasScale cublasSscal
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
@@ -46,6 +47,7 @@ using ScalarType = PetscReal;
 
         #define cufftExecuteR2C cufftExecD2Z
         #define cufftExecuteC2R cufftExecZ2D
+        #define cuComplexMultiply cuCmul
         #define cublasAXPY cublasDaxpy
         #define cublasScale cublasDscal
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2c_gpu

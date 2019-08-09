@@ -54,14 +54,14 @@ __global__ void hadamardComplexProduct (CudaComplexType *y, ScalarType *x) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) 
-		y[i] = cuCmul (y[i], makeCudaComplexType(x[i], 0.));
+		y[i] = cuComplexMultiply (y[i], makeCudaComplexType(x[i], 0.));
 }
 
 __global__ void hadamardComplexProduct (CudaComplexType *y, CudaComplexType *x) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) 
-		y[i] = cuCmul (y[i], x[i]);
+		y[i] = cuComplexMultiply (y[i], x[i]);
 }
 
 __global__ void precFactorDiffusion (ScalarType *precfactor, ScalarType *work) {

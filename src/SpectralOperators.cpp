@@ -356,7 +356,7 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
         ScalarType alp = factor * hx * hy * hz;
         hadamardComplexProductCuda ((CudaComplexType*) f_hat, (CudaComplexType*) c_hat, osize);
         #ifdef SINGLE
-        status = cublasZscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
+        status = cublasCsscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #else
         status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #endif
