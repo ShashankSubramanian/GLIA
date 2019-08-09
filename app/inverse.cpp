@@ -624,12 +624,12 @@ int main (int argc, char** argv) {
               ierr = VecGetArray (coarse_sol, &xc_ptr);                                  CHKERRQ (ierr);
               for (int j = 0; j < np_coarse; ++j) {
                 for (int i = 0; i < n_misc->np_; ++i) {
-                  xc = (int)(coarse_sol_centers[3*j + 0]/hx);
-                  yc = (int)(coarse_sol_centers[3*j + 1]/hy);
-                  zc = (int)(coarse_sol_centers[3*j + 2]/hz);
-                  xf = (int)(tumor->phi_->centers_[3*i + 0]/hx);
-                  yf = (int)(tumor->phi_->centers_[3*i + 1]/hy);
-                  zf = (int)(tumor->phi_->centers_[3*i + 2]/hz);
+                  xc = (int)std::round(coarse_sol_centers[3*j + 0]/hx);
+                  yc = (int)std::round(coarse_sol_centers[3*j + 1]/hy);
+                  zc = (int)std::round(coarse_sol_centers[3*j + 2]/hz);
+                  xf = (int)std::round(tumor->phi_->centers_[3*i + 0]/hx);
+                  yf = (int)std::round(tumor->phi_->centers_[3*i + 1]/hy);
+                  zf = (int)std::round(tumor->phi_->centers_[3*i + 2]/hz);
                   if(xc == xf && yc == yf && zc == zf) {
                     xf_ptr[i] = 2 * xc_ptr[j];            // set initial guess (times 2 since sigma is halfed in every level)
                     n_misc->support_.push_back(i);        // add to support
