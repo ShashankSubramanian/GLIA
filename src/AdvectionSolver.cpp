@@ -32,6 +32,8 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
 
     advection_mode_ = 1;    // 1 -- mass conservation
                             // 2 -- pure advection (csf uses this to allow for leakage etc)
+
+    trajectoryIsComputed_ = false;
 }
 
 // LHS for transport equation using Crank-Nicolson 
@@ -447,14 +449,15 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     double self_exec_time = -MPI_Wtime ();
 
     CtxAdv *ctx;
-    ierr = MatShellGetContext (A_, &ctx);                         CHKERRQ (ierr);
+    ierr = MatShellGetContext (A_, &ctx);                     CHKERRQ (ierr);
     ctx->dt_ = dt;
     ctx->velocity_ = velocity;
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    if (!trajectoryIsComputed_) {
+        ierr = computeTrajectories ();                        CHKERRQ (ierr);
+        trajectoryIsComputed_ = true;
+    }
 
     for (int i = 0; i < 4; i++) {
         ierr = VecSet (temp_[i], 0.);                         CHKERRQ (ierr);
@@ -463,9 +466,6 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     if (advection_mode_ == 1) {
         // Mass conservation equation in transport form is:
         // d_t \nu + grad \nu . v = -\nu (div v)
-
-        // Compute trajectories
-        ierr = computeTrajectories ();
 
         // Interpolate scalar at query points
         ierr = interpolate (temp_[0], scalar);
@@ -494,9 +494,6 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     } else if (advection_mode_ == 2) {
         // Pure advection
         // d_t \nu + grad \nu . v = 0
-
-        // Compute trajectories
-        ierr = computeTrajectories ();
 
         // Interpolate scalar at query points
         ierr = interpolate (temp_[0], scalar);

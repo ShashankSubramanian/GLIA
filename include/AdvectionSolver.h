@@ -29,6 +29,7 @@ class AdvectionSolver {
 		std::shared_ptr<SpectralOperators> spec_ops_; 
 
 		int advection_mode_;						  // controls the source term of the advection equation
+		bool trajectoryIsComputed_;
 
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) = 0;
 
@@ -72,6 +73,7 @@ class SemiLagrangianSolver : public AdvectionSolver {
 
 		float *temp_interpol1_;								// temporary floats for more efficient GPU interpolation
 		float *temp_interpol2_;
+
 
 		#ifdef CUDA
 			cudaTextureObject_t m_texture_;			  			//  cuda texture object for interp - only defined in cuda header files

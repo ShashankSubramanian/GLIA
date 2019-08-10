@@ -513,6 +513,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
 
         // Advection of tumor and healthy tissue
+        // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
+        adv_solver_->trajectoryIsComputed_ = false;
         ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
         ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
         adv_solver_->advection_mode_ = 2;  // pure advection for csf
