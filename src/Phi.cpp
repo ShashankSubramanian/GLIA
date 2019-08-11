@@ -1,10 +1,17 @@
 #include "Phi.h"
 
-Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spec_ops) : n_misc_ (n_misc), spec_ops_ (spec_ops) {
+Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spec_ops) : n_misc_ (n_misc), spec_ops_ (spec_ops), gaussian_labels_()
+  , component_weights_()
+  , component_centers_()
+  {
     PetscFunctionBegin;
     PetscErrorCode ierr;
 
     n_local_ = n_misc->n_local_;
+    if (!n_misc_->phi_store_)
+        compute_ = true;
+    else
+        compute_ = false;
 
     np_ = n_misc->np_;
     phi_vec_.resize (np_);
@@ -16,6 +23,11 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spe
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
+
+    labels_ = nullptr;
+
+    // by default one component
+    component_weights_.push_back (1.);
 }
 
 PetscErrorCode Phi::setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType sigma, ScalarType spacing_factor, int np) {
@@ -51,6 +63,8 @@ PetscErrorCode Phi::setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType
 }
 
 
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setValues ///////////////////////////////////////// ###
 PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -59,38 +73,53 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+    mat_prop_ = mat_prop; // this is needed for phi::apply when computation of phis are on the fly
+                          // Use whatever matprop the setvalues uses in default
 
-    ScalarType *phi_ptr;
-    Vec all_phis;
-    ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
-    ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
+    // set phis only if compute is disabled: the subspace is small and all the phis
+    // are filtered and stored in memory
+    if (!compute_) {
+        ScalarType *phi_ptr;
+        ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+        Vec all_phis;
+        ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
+        ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
 
-    ScalarType phi_max;
+        ScalarType phi_max = 0, max = 0;
 
-    for (int i = 0; i < np_; i++) {
-        ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-        initialize (phi_ptr, n_misc_, &centers_[3 * i]);
-        ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-        ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
-
-        if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
-            ierr = spec_ops_->weierstrassSmoother (phi_vec_[i], phi_vec_[i], n_misc_, sigma_smooth);   
+        for (int i = 0; i < np_; i++) {
+            // set values of Gaussian function
+            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+            initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            // filter with brain geometry
+            ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
+            // smooth to avoid sharp edges (FFT)
+            if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+                ierr = spec_ops_->weierstrassSmoother (phi_vec_[i], phi_vec_[i], n_misc_, sigma_smooth);   
+                CHKERRQ (ierr);
+            }
+            // truncate Gaussians after radius of 5*sigma for compact support
+            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+            truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            // find the max
+            ierr = VecMax (phi_vec_[i], NULL, &max);                                CHKERRQ (ierr);
+            if (max > phi_max) {
+              phi_max = max;
+            }
+        }
+        // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
+        for (int i = 0; i < np_; i++) {
+            ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
+            ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
         }
 
-        // Rescale phi so that max is one: this enforces p to be one (needed for reaction inversion)
-        ierr = VecMax (phi_vec_[i], NULL, &phi_max);                            CHKERRQ (ierr);
-        ierr = VecScale (phi_vec_[i], (1.0 / phi_max));                         CHKERRQ (ierr);
-
-        ierr = VecAXPY (all_phis, 1.0, phi_vec_[i]);                            CHKERRQ (ierr);
+        if (n_misc_->writeOutput_) {
+            dataOut (all_phis, n_misc_, "phiGrid.nc");
+        }
+        ierr = VecDestroy (&all_phis);                                              CHKERRQ (ierr);
     }
-
-    if (n_misc_->writeOutput_) {
-        dataOut (all_phis, n_misc_, "phiGrid.nc");
-    }
-
-    ierr = VecDestroy (&all_phis);                                             CHKERRQ (ierr);
-
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
@@ -100,6 +129,8 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionReturn(0);
 }
 
+// ### _____________________________________________________________________ ___
+// ### ///////////////// phiMesh /////////////////////////////////////////// ###
 PetscErrorCode Phi::phiMesh (ScalarType *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -187,13 +218,43 @@ PetscErrorCode Phi::phiMesh (ScalarType *center) {
     PetscFunctionReturn(0);
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// truncate //////////////////////////////////////// ###
+PetscErrorCode Phi::truncate (ScalarType *out, std::shared_ptr<NMisc> n_misc, ScalarType *center) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    ScalarType twopi = 2.0 * M_PI;
+    int64_t X, Y, Z;
+    ScalarType r;
+    int64_t ptr;
+    ScalarType xc = center[0], yc = center[1], zc = center[2];
+    ScalarType hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
+
+    for (int x = 0; x < n_misc->isize_[0]; x++)
+        for (int y = 0; y < n_misc->isize_[1]; y++)
+            for (int z = 0; z < n_misc->isize_[2]; z++) {
+                X = n_misc->istart_[0] + x;
+                Y = n_misc->istart_[1] + y;
+                Z = n_misc->istart_[2] + z;
+                r = sqrt((hx * X - xc) * (hx * X - xc) + (hy * Y - yc) * (hy * Y - yc) + (hz * Z - zc) * (hz * Z - zc));
+                ptr = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
+                // truncate to zero after radius 5*sigma
+                out[ptr] = (r/sigma_ <= 5) ? out[ptr] : 0.0;
+            }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// initialize //////////////////////////////////////// ###
 PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, ScalarType *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ScalarType twopi = 2.0 * M_PI;
     const ScalarType R = std::sqrt(2.) * sigma_; //0.05*twopi;
+    const ScalarType AMPL = 1.;// / (sigma_ * std::sqrt(2*M_PI));
     int64_t X, Y, Z;
-    ScalarType dummy, r, ratio;
+    ScalarType r, ratio;
     int64_t ptr;
     ScalarType xc = center[0], yc = center[1], zc = center[2];
     ScalarType hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
@@ -207,7 +268,9 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
                 r = sqrt((hx * X - xc) * (hx * X - xc) + (hy * Y - yc) * (hy * Y - yc) + (hz * Z - zc) * (hz * Z - zc));
                 ratio = r / R;
                 ptr = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
-                out[ptr] = std::exp(-ratio * ratio);
+                // set values of Gaussian function, truncate to zero after radius 5\sigma
+                // out[ptr] = (r/sigma_ <= 5) ? AMPL * std::exp(-ratio * ratio) : 0.0;
+                out[ptr] = AMPL * std::exp(-ratio * ratio);
 
             }
   PetscFunctionReturn(0);
@@ -221,21 +284,48 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         std::array<double, 7> t = {0};
         double self_exec_time = -MPI_Wtime ();
 
-        ScalarType *pg_ptr;
-        Vec dummy, pg;
-        ierr = VecDuplicate (p, &pg);   CHKERRQ(ierr);
-        ierr = VecCopy (p, pg);         CHKERRQ (ierr);
-        ierr = VecDuplicate (phi_vec_[0], &dummy);                                                      CHKERRQ (ierr);
-        ierr = VecSet (dummy, 0);                                                                       CHKERRQ (ierr);
-        ierr = VecGetArray (pg, &pg_ptr);                                                               CHKERRQ (ierr);
 
-        for (int i = 0; i < np_; i++) {
-            ierr = VecAXPY (dummy, pg_ptr[i], phi_vec_[i]);                                             CHKERRQ (ierr);
+        ScalarType *pg_ptr;
+        ierr = VecSet (out, 0.);                                                                       CHKERRQ (ierr);
+        ierr = VecGetArray (p, &pg_ptr);                                                               CHKERRQ (ierr);
+
+        if (!compute_) {
+            for (int i = 0; i < np_; i++) {
+                ierr = VecAXPY (out, pg_ptr[i], phi_vec_[i]);                                          CHKERRQ (ierr);
+            }
+        } else {
+            // compute phi and apply on the fly
+            // use phi_vec_[0] as proxy for every phi
+            ScalarType phi_max = 0, max = 0;
+            ScalarType *phi_ptr;
+            ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+            for (int i = 0; i < np_; i++) {
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
+                if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+                    ierr = spec_ops_->weierstrassSmoother (phi_vec_[0], phi_vec_[0], n_misc_, sigma_smooth);   
+                    CHKERRQ (ierr);
+                }
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                // truncate Gaussians after radius of 5*sigma for compact support
+                truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
+                // find the max
+                ierr = VecMax (phi_vec_[0], NULL, &max);                                               CHKERRQ (ierr);
+                if (max > phi_max) {
+                  phi_max = max;
+                }
+
+                // accumulate phi*p
+                ierr = VecAXPY (out, pg_ptr[i], phi_vec_[0]);                                          CHKERRQ (ierr);
+            }
+            // scale phi*p with 1/phi_max since all phis are scaled with this.
+            ierr = VecScale (out, (1.0 / phi_max));                                                        CHKERRQ (ierr);
         }
-        ierr = VecRestoreArray (pg, &pg_ptr);                                                           CHKERRQ (ierr);
-        ierr = VecCopy(dummy, out);                                                                     CHKERRQ (ierr);
-        ierr = VecDestroy (&dummy);                                                                     CHKERRQ (ierr);
-        ierr = VecDestroy (&pg);                                                                        CHKERRQ (ierr);
+        ierr = VecRestoreArray (p, &pg_ptr);                                                           CHKERRQ (ierr);
+
 
         self_exec_time += MPI_Wtime();
         accumulateTimers (t, t, self_exec_time);
@@ -254,12 +344,47 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         ScalarType values[np_];
         ScalarType *pout_ptr;
         ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
-        Vec *v = &phi_vec_[0];
-        ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
-        for (int i = 0; i < np_; i++) {
-            pout_ptr[i] = values[i];
+
+        if (!compute_) {
+            Vec *v = &phi_vec_[0];
+            ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
+            for (int i = 0; i < np_; i++) {
+                pout_ptr[i] = values[i];
+            }
+        } else {
+            // compute the phis on the fly
+            // use phi_vec_[0] as proxy for every phi
+            ScalarType *phi_ptr;
+            ScalarType phi_max = 0, max = 0;
+            ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+            for (int i = 0; i < np_; i++) {
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
+                
+                if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
+                    ierr = spec_ops_->weierstrassSmoother (phi_vec_[0], phi_vec_[0], n_misc_, sigma_smooth);   
+                    CHKERRQ (ierr);
+                }
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                // truncate Gaussians after radius of 5*sigma for compact support
+                truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
+                // find the max
+                ierr = VecMax (phi_vec_[0], NULL, &max);                                               CHKERRQ (ierr);
+                if (max > phi_max) {
+                  phi_max = max;
+                }
+
+                // compute phi^T*p
+                ierr = VecDot (phi_vec_[0], in, &pout_ptr[i]);                                         CHKERRQ (ierr);
+            }
+            ierr = VecScale (pout, (1.0 / phi_max));                                                        CHKERRQ (ierr);
         }
         ierr = VecRestoreArray (pout, &pout_ptr);                                                       CHKERRQ (ierr);
+
+
 
         self_exec_time += MPI_Wtime();
         accumulateTimers (t, t, self_exec_time);
@@ -432,6 +557,86 @@ void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, ScalarType r
     }
 }
 
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
+PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ------" << std::endl;
+    PCOUT << " ----- Bounding box not set: Basis functions set from file -----\n" << std::endl;
+    PCOUT << " file: " << file << std::endl;
+
+    // read centers from file (clears centers_)
+    if (!read_comp_data) {
+      ierr = readPhiMesh(centers_, n_misc_, file);                              CHKERRQ (ierr);
+    } else {
+      ierr = readPhiMesh(centers_, n_misc_, file, true, &gaussian_labels_);     CHKERRQ (ierr);
+    }
+
+    ScalarType twopi = 2.0 * M_PI;
+    ScalarType hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
+    sigma_ = n_misc_->phi_sigma_data_driven_;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
+    spacing_factor_ = 2.0;
+    n_misc_->phi_spacing_factor_ = spacing_factor_;
+    ScalarType space = spacing_factor_ * sigma_ / hx;
+
+    //Get gaussian volume
+    ScalarType dist = 0.0;
+    int gaussian_interior = 0;
+    for (int i = -sigma_ / hx; i <= sigma_ / hx; i++)
+        for (int j = -sigma_ / hx; j <= sigma_ / hx; j++)
+            for (int k = -sigma_ / hx; k <= sigma_ / hx; k++) {
+                dist = sqrt (i*i + j*j + k*k);
+                if (dist <= sigma_ / hx) gaussian_interior++;
+            }
+    PCOUT << " ----- Phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_ << std::endl;
+    np_ = n_misc_->np_;
+    PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
+    // write centers to file
+    #ifdef VISUALIZE_PHI
+        std::stringstream phivis;
+        phivis <<" sigma = "<<sigma_<<", spacing = "<<spacing_factor_ * sigma_<<std::endl;
+        phivis <<" centers = ["<<std::endl;
+        for (int ptr = 0; ptr < 3 * np_; ptr += 3) {
+            phivis << " " << centers_[ptr + 0] <<", " << centers_[ptr + 1] << ", "  << centers_[ptr + 2] << std::endl;
+        }
+        phivis << "];"<<std::endl;
+        std::fstream phifile;
+        static int ct = 0;
+        if(procid == 0) {
+            std::stringstream ssct; ssct<<ct;
+            phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+            phifile << phivis.str()<<std::endl;
+            phifile.close();
+            ct++;
+        }
+    #endif
+
+    //Destroy and clear any previously set phis
+    for (int i = 0; i < phi_vec_.size (); i++) {
+        ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
+    }
+    phi_vec_.clear();
+    phi_vec_.resize (np_);
+    ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
+    ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
+    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = VecSet (phi_vec_[0], 0);
+    for (int i = 1; i < np_; i++) {
+        ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
+        ierr = VecSet (phi_vec_[i], 0);
+    }
+    PetscFunctionReturn (0);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
 PetscErrorCode Phi::setGaussians (Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -660,6 +865,13 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         }
     }
 
+    ScalarType *label_ptr;
+    if (labels_ != nullptr) {
+        // connected components has updated the labels
+        ierr = VecGetArray (labels_, &label_ptr);                                  CHKERRQ (ierr);
+    }
+
+
     //Add the local boundary centers to the selected centers vector
     for (int i = 0; i < local_tumor_marker.size(); i++) {
         num_top_ptr[i] = (ScalarType) local_tumor_marker[i] / gaussian_interior;                  //For visualization
@@ -675,9 +887,14 @@ PetscErrorCode Phi::setGaussians (Vec data) {
             center.push_back (X * hx);
             center.push_back (Y * hy);
             center.push_back (Z * hz);
+            if (labels_ != nullptr) gaussian_labels_.push_back (label_ptr[i]);  // each gaussian has the component label
+            else gaussian_labels_.push_back (1);                                // if no labels, assume one component: all gaussians are component 1
         }
     }
 
+    if (labels_ != nullptr) {
+        ierr = VecRestoreArray (labels_, &label_ptr);                             CHKERRQ (ierr);
+    }
     ierr = VecRestoreArray (num_tumor_output, &num_top_ptr);                  CHKERRQ (ierr);
 
     int np_global;
@@ -698,6 +915,22 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         rcount[i] = center_size[i];
     }
     MPI_Allgatherv (&center[0], center.size(), MPIType, &center_global[0], &rcount[0], &displs[0], MPIType, PETSC_COMM_WORLD);
+
+    // gather gaussian labels
+    std::vector<int> g_labels;
+    g_labels.resize (np_global);
+    size = gaussian_labels_.size();
+    MPI_Allgather (&size, 1, MPI_INT, &center_size[0], 1, MPI_INT, PETSC_COMM_WORLD);
+    displs[0] = 0;
+    rcount[0] = center_size[0];
+    for (int i = 1; i < nprocs; i++) {
+        displs[i] = displs[i - 1] + center_size[i - 1];
+        rcount[i] = center_size[i];
+    }
+    MPI_Allgatherv (&gaussian_labels_[0], gaussian_labels_.size(), MPI_INT, &g_labels[0], &rcount[0], &displs[0], MPI_INT, PETSC_COMM_WORLD);
+    gaussian_labels_.clear();
+    gaussian_labels_ = g_labels;
+
 
     np_ = np_global;
     n_misc_->np_ = np_;
@@ -725,21 +958,28 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         }
     #endif
 
+    // create 3 * sparsity_level phis to be re-used every cosamp iteration: if not cosamp this is unused and phi is computed 
+    // max size of subspace can be 3 * sparsity_level
+    // on the fly
+    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
 
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
         ierr = VecDestroy (&phi_vec_[i]);                                       CHKERRQ (ierr);
     }
     phi_vec_.clear();
-    phi_vec_.resize (np_);
+
+    phi_vec_.resize (num_phi_store);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
     ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
-    for (int i = 1; i < np_; i++) {
+
+    for (int i = 1; i < num_phi_store; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
+
     if(n_misc_->writeOutput_) {
         dataOut (num_tumor_output, n_misc_, "phiNumTumor.nc");
     }
@@ -759,7 +999,7 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
     int idx;
     for (int i = 0; i < support_idx.size(); i++) {
         idx = support_idx[i];       // Get the required center idx
-        counter = 3 * idx;      
+        counter = 3 * idx;
         centers_.push_back (centers_temp_[counter]);
         centers_.push_back (centers_temp_[counter + 1]);
         centers_.push_back (centers_temp_[counter + 2]);
@@ -767,15 +1007,14 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
 
     // resize np
     np_ = support_idx.size();
+    if (!n_misc_->phi_store_) compute_ = false;
     PCOUT << "Size of restricted subspace: " << np_ << std::endl;
 
 }
 
-
-
 Phi::~Phi () {
     PetscErrorCode ierr = 0;
-    for (int i = 0; i < np_; i++) {
+    for (int i = 0; i < phi_vec_.size(); i++) {
         ierr = VecDestroy (&phi_vec_[i]);
     }
     phi_vec_.clear();

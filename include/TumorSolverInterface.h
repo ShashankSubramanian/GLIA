@@ -30,8 +30,10 @@ class TumorSolverInterface {
 		 */
 		PetscErrorCode solveInverse (Vec prec, Vec d1, Vec d1g = {});
 
-		
-		// solves the L1 optimization problem using compressive sampling methods
+    	/// @brief: solves only for rho and k, given a (scaled betwenn [0,1]) c(0) initial condition
+    	PetscErrorCode solveInverseReacDiff(Vec prec, Vec d1, Vec d1g = {});
+
+		/// @brief solves the L1 optimization problem using compressive sampling methods
 		PetscErrorCode solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g = {});
 
 
@@ -103,7 +105,7 @@ class TumorSolverInterface {
 		PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
 
 	private :
-	  bool initialized_;
+	  	bool initialized_;
 		bool optimizer_settings_changed_;
 		std::shared_ptr<NMisc> n_misc_;
 		std::shared_ptr<SpectralOperators> spec_ops_;

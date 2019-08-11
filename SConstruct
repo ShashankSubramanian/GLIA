@@ -102,6 +102,7 @@ WARN='-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdis
 env.Append(CCFLAGS = ['-fPIC'])
 env.Append(CCFLAGS = ['-fPIE'])
 env.Append(LINKFLAGS = ["-fpie"])
+#env.Append(LINKFLAGS = ["-fpie", "-Bstatic"])
 
 real_compiler = get_real_compiler(env["compiler"])
 if real_compiler == 'icc':
@@ -183,6 +184,7 @@ if env["gpu"] == True:
     uniqueCheckLib(conf, "cufft")
     uniqueCheckLib(conf, "cublas")
     uniqueCheckLib(conf, "cudart")
+
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
 env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])

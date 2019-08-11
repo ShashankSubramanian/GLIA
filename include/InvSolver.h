@@ -24,7 +24,7 @@ struct CtxInv {
     ScalarType grtol;                    // relative tolerance for gradient
     /* steering of reference gradeint reset */
     bool is_ksp_gradnorm_set;        // if false, update reference gradient norm for hessian PCG
-    
+
     bool flag_sparse;                //flag for tracking sparsity of solution when parameter continuation is used
     ScalarType lam_right;                //Parameters for performing binary search on parameter continuation
     ScalarType lam_left;
@@ -35,6 +35,7 @@ struct CtxInv {
     bool update_reference_objective;
     /* optimization state */
     ScalarType jvalold;                 // old value of objective function (previous newton iteration)
+    ScalarType last_ls_step;            // remeber line-search step of previous solve
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
@@ -54,6 +55,7 @@ struct CtxInv {
         gatol = 1e-6;
         grtol = 1e-12;
         jvalold = 0;
+        last_ls_step = 1.0;
         weights = nullptr;
         c0old = nullptr;
         x_old = nullptr;
@@ -73,7 +75,7 @@ struct CtxInv {
             VecDestroy (&x_old);
             x_old = nullptr;
         }
-            
+
         if (c0old != nullptr) {
             VecDestroy (&c0old);
             c0old = nullptr;
@@ -124,6 +126,11 @@ class InvSolver {
             ierr = itctx_->derivative_operators_->evaluateObjective (J, x, data_);
             PetscFunctionReturn(0);
         }
+        PetscErrorCode getObjectiveAndGradient (Vec x, PetscReal *J, Vec dJ) {
+            PetscFunctionBegin; PetscErrorCode ierr = 0;
+            ierr = itctx_->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, data_);
+            PetscFunctionReturn(0);
+        }
 
         std::vector<ScalarType> getInvOutParams () {
             return out_params_;
@@ -159,6 +166,8 @@ class InvSolver {
 PetscErrorCode evaluateObjectiveFunction (Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient (Tao, Vec, Vec, void*);
 PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao, Vec, PetscReal *, Vec, void *);
+PetscErrorCode evaluateGradientForParameters (Tao tao, Vec x, Vec dJ, void *ptr);
+PetscErrorCode evaluateObjectiveForParameters (Tao tao, Vec x, PetscReal *J, void *ptr);
 PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode hessianMatVec (Mat, Vec, Vec);
 PetscErrorCode constApxHessianMatVec (Mat, Vec, Vec);

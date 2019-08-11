@@ -18,10 +18,10 @@ TIMINGSDIR = ./3rdparty/timings/
 INCDIR+= -I$(TIMINGSDIR)
 
 PSC_INC = -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include  
-PSC_LIB = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
+PSC_LIB = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib  -lpetsc
 
 PSC_DBG_INC = -I$(PETSC_DBG_DIR)/include -I$(PETSC_DBG_DIR)/$(PETSC_DBG_ARCH)/include 
-PSC_DBG_LIB = -L$(PETSC_DBG_DIR)/lib     -L$(PETSC_DBG_DIR)/$(PETSC_DBG_ARCH)/lib -lpetsc
+PSC_DBG_LIB = -L$(PETSC_DBG_DIR)/lib     -L$(PETSC_DBG_DIR)/$(PETSC_DBG_ARCH)/lib  -lpetsc
 
 CXXFLAGS= -O3 -fopenmp -std=c++11 -DPVFMM_MEMDEBUG -DCUDA -DSERIAL  #-DENFORCE_POSITIVE_C #-DINVERT_RHO   -xhost 
 
@@ -30,6 +30,7 @@ N_INC= -I$(CUDA_DIR)/include -I./ -I./include/
 N_LIB= -L$(CUDA_DIR)/lib64/
 
 LDFLAGS=  -L${FFTW_DIR}/lib  -lfftw3 -lfftw3_threads -lfftw3f -lfftw3f_threads -L${ACCFFT_DIR}/lib
+<<<<<<< HEAD
 LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  
 ifeq ($(BUILD_GPU), 1)
 LDFLAGS+= -laccfft_gpu -laccfft_utils_gpu
@@ -37,6 +38,9 @@ endif
 
 LDFLAGS+= -L${PNETCDF_DIR}/lib -lpnetcdf 
 LDFLAGS+= -L${GLOG_DIR}/lib -lglog
+=======
+LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  -L${PNETCDF_DIR}/lib -lpnetcdf 
+>>>>>>> master
 
 ifeq ($(BUILD_GPU), 1)
 LDFLAGS+=-L$(CUDA_DIR)/lib64 -lcusparse -lcufft -lcublas -lcudart
@@ -46,7 +50,24 @@ TARGET_BIN= $(BINDIR)/forward
 TARGET_BIN+= $(BINDIR)/inverse
 TARGET_BIN+= $(BINDIR)/inversedata
 
+<<<<<<< HEAD
 SOURCES = $(wildcard $(SRCDIR)/*.cpp)\
+=======
+SOURCES = $(wildcard $(SRCDIR)/*.cpp) $(TIMINGSDIR)/EventTimings.cpp
+#SOURCES = $(SRCDIR)/DiffCoef.cpp\
+		  $(SRCDIR)/ReacCoef.cpp \
+		  $(SRCDIR)/Phi.cpp \
+		  $(SRCDIR)/Obs.cpp \
+		  $(SRCDIR)/Tumor.cpp \
+		  $(SRCDIR)/MatProp.cpp \
+		  $(SRCDIR)/DiffSolver.cpp \
+		  $(SRCDIR)/PdeOperators.cpp \
+		  $(SRCDIR)/DerivativeOperators.cpp \
+		  $(SRCDIR)/InvSolver.cpp \
+		  $(SRCDIR)/BLMVM.cpp \
+		  $(SRCDIR)/TumorSolverInterface.cpp \
+		  $(SRCDIR)/Utils.cpp \
+>>>>>>> master
 		  $(TIMINGSDIR)/EventTimings.cpp \
 
 GPU_SOURCES =		 

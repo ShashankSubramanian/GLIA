@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include "Phi.h"
 
 VecField::VecField (int nl , int ng) {
 	PetscErrorCode ierr = 0;
@@ -305,6 +306,376 @@ void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	ierr = VecRestoreArray (A, &a_ptr);
 }
 
+// ### _____________________________________________________________________ ___
+// ### ///////////////// writeCheckpoint /////////////////////////////////// ###
+PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path, std::string suffix) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  // write p vector to bin
+  std::string fname_p = path + "p-rec-" + suffix + ".bin";
+  std::string fname_p_txt = path + "p-rec-" + suffix + ".txt";
+  writeBIN(p, fname_p);
+
+  // write p vector to txt
+  ScalarType *p_ptr;
+  ierr = VecGetArray (p, &p_ptr);
+  std::stringstream pvis;
+  pvis <<" p = ["<<std::endl;
+  for (int ptr = 0; ptr < phi->np_; ++ptr) {
+      pvis << " " << p_ptr[ptr] << std::endl;
+  }
+  ierr = VecRestoreArray (p, &p_ptr);
+  pvis << "];"<<std::endl;
+
+  // write Gaussian centers
+  std::string fname_phi = path + "phi-mesh-" + suffix + ".txt";
+  std::stringstream phivis;
+  phivis <<" sigma = "<<phi->sigma_<<", spacing = "<<phi->spacing_factor_ * phi->sigma_<<std::endl;
+  phivis <<" centers = ["<<std::endl;
+  for (int ptr = 0; ptr < 3 * phi->np_; ptr += 3) {
+      phivis << " " << phi->centers_[ptr + 0] <<", " << phi->centers_[ptr + 1] << ", "  << phi->centers_[ptr + 2] << std::endl;
+  }
+  phivis << "];"<<std::endl;
+  std::fstream phifile;
+  std::fstream pfile;
+  if(procid == 0) {
+      phifile.open(fname_phi, std::ios_base::out);
+      phifile << phivis.str()<<std::endl;
+      phifile.close();
+      pfile.open(fname_p_txt, std::ios_base::out);
+      pfile << pvis.str()<<std::endl;
+      pfile.close();
+  }
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readPhiMesh /////////////////////////////////////// ###
+PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  std::ifstream file(f);
+  int np = 0, k = 0;
+  ScalarType sigma = 0, spacing = 0;
+  if (file.is_open()) {
+    PCOUT << "reading Gaussian centers from file " << f << std::endl;
+    centers.clear();
+    if (read_comp_data && comps != nullptr) {(*comps).clear();}
+    std::string line;
+    std::getline(file, line); // sigma, spacing
+    std::string token;
+    size_t pos1 = line.find("=");
+    size_t pos2 = line.find(",");
+    if (pos1 != std::string::npos && pos2 != std::string::npos) {sigma = atof(line.substr(pos1+1, pos2).c_str());}
+    line.erase(0, pos2+1); pos1 = line.find("=");
+    if (pos1 != std::string::npos) {spacing = atof(line.substr(pos1+1, line.length()).c_str());}
+    PCOUT << "reading sigma="<<sigma<<", spacing="<<spacing<<std::endl;
+    if (n_misc->phi_sigma_data_driven_ != sigma) {
+      PCOUT << "WARNING: specified sigma="<<n_misc->phi_sigma_data_driven_<<" != sigma="<<sigma<<" (read from file). Specified sigma overwritten."<<std::endl;
+      n_misc->phi_sigma_data_driven_ = sigma;
+    }
+    std::getline(file, line); // throw away;
+    std::string t;
+    int ii = 0;
+    while (std::getline(file, line)) {
+      if (line.rfind("]") != std::string::npos) break;   // end of file reached, exit out
+      std::stringstream l(line);
+      ii = 0;
+      while (std::getline(l, t, ',')) {
+        if (ii < 3) {
+          centers.push_back(atof(t.c_str()));
+        } else if (read_comp_data && comps != nullptr) {
+          (*comps).push_back(atof(t.c_str()));
+        }
+        ii++;
+        // PCOUT << "reading "<<t<<", np="<<np<<std::endl;
+      }
+      np++;
+    }
+    file.close();
+    n_misc->np_ = np;
+    PCOUT << "np=" << np << " centers read " << std::endl;
+    // if(read_comp_data && comps != nullptr){PCOUT << "component labels read, np=" << comps->size() << std::endl;}
+  } else {
+    PCOUT << "cannot open file " << f << std::endl;
+    PetscFunctionReturn(1);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readPVec ////////////////////////////////////////// ###
+PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  ScalarType *x_ptr;
+  std::string file, msg, path, ext, line;
+
+  TU_assert(!f.empty(), "filename not set");
+  // get file name without path
+  ierr = getFileName(path, file, ext, f);                         CHKERRQ(ierr);
+  msg = "file " + file + " does not exist";
+  TU_assert(fileExists(f), msg.c_str());
+
+  if (strcmp(ext.c_str(),".bin") == 0) {
+    ierr = readBIN(&(*x), size, f);                               CHKERRQ(ierr);
+    PetscFunctionReturn(0);
+  }
+
+  // if not nullptr, clear memory
+  if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
+  // create vec
+  #ifdef SERIAL
+      ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));        CHKERRQ (ierr);
+      ierr = setupVec (*x, SEQ);                                     CHKERRQ (ierr);
+  #else
+      ierr = VecCreate (PETSC_COMM_WORLD, &(*x));                CHKERRQ (ierr);
+      ierr = VecSetSizes (*x, PETSC_DECIDE, size);               CHKERRQ (ierr);
+      ierr = setupVec (*x);                                     CHKERRQ (ierr);
+  #endif
+  ierr = VecSet (*x, 0.);                                        CHKERRQ (ierr);
+
+  // read pvec from file
+  std::ifstream pfile(f);
+  int pi = 0;
+  if (pfile.is_open()) {
+    PCOUT << "reading p_i values from file " << f;
+    std::getline(pfile, line); // throw away (p = [);
+    ierr = VecGetArray(*x, &x_ptr);                                CHKERRQ (ierr);
+    while (std::getline(pfile, line)) {
+      if (line.rfind("]") != std::string::npos) break;   // end of file reached, exit out
+      TU_assert(pi < np, "index out of bounds reading p_vec from file.");
+      x_ptr[pi] = atof(line.c_str());
+      pi++;
+    }
+    PCOUT << " ... success: " << pi << " values read, size of vector: " << size << std::endl;
+    TU_assert(pi == np, "number of read p_i values does not match with number of read Gaussian centers.");
+    ierr = VecRestoreArray(*x, &x_ptr);                            CHKERRQ (ierr);
+    pfile.close();
+  } else {
+    PCOUT << "cannot open file " << f << std::endl;
+    PetscFunctionReturn(1);
+  }
+  if (procid == 0) {
+    ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readBIN /////////////////////////////////////////// ###
+PetscErrorCode readBIN(Vec* x, int size, std::string f) {
+  PetscFunctionBegin;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  PetscErrorCode ierr = 0;
+  PetscViewer viewer=nullptr;
+  std::string file, msg;
+
+  PCOUT << "reading p_i values from binary file " << f << std::endl;
+  TU_assert(!f.empty(), "filename not set");
+  // get file name without path
+  ierr = getFileName(file, f);                                    CHKERRQ(ierr);
+  msg = "file " + file + " does not exist";
+  TU_assert(fileExists(f), msg.c_str());
+  if (*x != nullptr) {ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
+  #ifdef SERIAL
+      ierr = VecCreateSeq (PETSC_COMM_SELF, size, &(*x));        CHKERRQ (ierr);
+      ierr = setupVec (*x, SEQ);                                     CHKERRQ (ierr);
+      ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
+  #else
+      ierr = VecCreate (PETSC_COMM_WORLD, &(*x));                CHKERRQ (ierr);
+      ierr = VecSetSizes (*x, PETSC_DECIDE, size);               CHKERRQ (ierr);
+      ierr = setupVec (*x);                                     CHKERRQ (ierr);
+      ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
+  #endif
+  TU_assert(viewer != NULL, "could not read binary file");
+  ierr = PetscViewerBinarySetFlowControl(viewer, 2);              CHKERRQ(ierr);
+  ierr = VecLoad(*x, viewer);                                     CHKERRQ(ierr);
+
+  if (procid == 0) {
+  ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);                 CHKERRQ (ierr);
+  }
+  // clean up
+  if (viewer!=nullptr) {
+      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
+      viewer=nullptr;
+  }
+  PetscFunctionReturn(0);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// writeBIN ////////////////////////////////////////// ###
+PetscErrorCode writeBIN(Vec x, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  PetscViewer viewer = nullptr;
+  PetscFunctionBegin;
+  TU_assert(x != nullptr, "null pointer");
+  TU_assert(!f.empty(), "filename not set");
+  #ifdef SERIAL
+    ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
+  #else
+    ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
+  #endif
+  TU_assert(viewer != nullptr, "could not write binary file");
+  ierr = VecView(x, viewer);                                      CHKERRQ(ierr);
+  // clean up
+  if (viewer != nullptr) {
+      ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
+      viewer = nullptr;
+  }
+  PetscFunctionReturn(0);
+}
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// readConCompDat /////////////////////////////////////// ###
+PetscErrorCode readConCompDat(std::vector<ScalarType> &weights, std::vector<ScalarType> &centers, std::string f) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int nprocs, procid;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  std::ifstream file(f);
+  int ncomp = 0;
+  if (file.is_open()) {
+    PCOUT << "reading concomp.dat file " << f << std::endl;
+    weights.clear();
+    centers.clear();
+
+    std::string line;
+    std::getline(file, line); // #components
+    std::getline(file, line); // #components (value)
+    ncomp = atoi(line.c_str());
+    std::getline(file, line); // center of mass:
+    for(int i=0; i < ncomp; ++i){
+      std::getline(file, line); // values
+      std::stringstream l(line);
+      std::string t;
+        while (std::getline(l, t, ',')) {
+          centers.push_back(atof(t.c_str()));
+        }
+    }
+    std::getline(file, line); // relative mass:
+    for(int i=0; i < ncomp; ++i){
+      std::getline(file, line); // values
+      weights.push_back(atof(line.c_str()));
+    }
+
+    file.close();
+    PCOUT << "ncomp=" << ncomp << " component read " << std::endl;
+    PCOUT << "weights: ";
+    for(int i=0; i < ncomp; ++i){
+      PCOUT << weights[i];
+      if(i < ncomp) {PCOUT << ", ";}
+    }
+    PCOUT << std::endl;
+    PCOUT << "centers: ";
+    for(int i=0; i < ncomp; ++i){
+      PCOUT << "(";
+      for(int j=0; j < 3; ++j){
+        PCOUT << centers[3*i+j];
+        if(j < 2) {PCOUT << ",";}
+      }
+      PCOUT << "); ";
+    }
+    PCOUT << std::endl;
+  } else {
+    PCOUT << "cannot open file " << f << std::endl;
+    PetscFunctionReturn(1);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// getFileName /////////////////////////////////////// ###
+PetscErrorCode getFileName(std::string& filename, std::string file) {
+    PetscErrorCode ierr = 0;
+    std::string path;
+    size_t sep;
+    PetscFunctionBegin;
+
+    sep = file.find_last_of("\\/");
+    if (sep != std::string::npos) {
+        path=file.substr(0,sep);
+        filename=file.substr(sep + 1);
+    }
+    if (filename == "") { filename = file; }
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// getFileName /////////////////////////////////////// ###
+PetscErrorCode getFileName(std::string& path, std::string& filename,
+                           std::string& extension, std::string file) {
+    PetscErrorCode ierr = 0;
+    int nprocs, procid;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::string::size_type idx;
+
+    PetscFunctionBegin;
+
+    // get path
+    idx = file.find_last_of("\\/");
+    if (idx != std::string::npos) {
+        path = file.substr(0,idx);
+        filename = file.substr(idx + 1);
+    }
+    if (filename == "") {
+        filename = file;
+    }
+
+    // get extension
+    idx = filename.rfind(".");
+    if (idx != std::string::npos) {
+        extension = filename.substr(idx+1);
+
+        // handle zipped files
+        if (strcmp(extension.c_str(),"gz") == 0) {
+            filename = filename.substr(0,idx);
+            idx = filename.rfind(".");
+            if(idx != std::string::npos) {
+                extension = filename.substr(idx+1);
+                extension = extension + ".gz";
+            }
+        }
+        extension = "." + extension;
+        filename  = filename.substr(0,idx);
+
+    } else {
+        PCOUT << "ERROR: no extension found" << std::endl;
+    }
+
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// fileExists //////////////////////////////////////// ###
+bool fileExists(const std::string& filename) {
+    struct stat buffer;
+    return (stat(filename.c_str(), &buffer) == 0);
+}
+
+
 /// @brief computes difference diff = x - y
 PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
@@ -456,31 +827,91 @@ PetscErrorCode vecSign (Vec x) {
 }
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  nnz = 0;
+
+  std::priority_queue<std::pair<PetscReal, int>> q;
+  ScalarType *x_ptr;
+  ierr = VecGetArray (x, &x_ptr);   CHKERRQ (ierr);
+  for (int i = 0; i < sz; i++) {
+    q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
+  }
+
+  ScalarType tol = 0.0; // 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
+            // are (almost)zero to the support
+  for (int i = 0; i < sparsity_level; i++) {
+    if (std::abs(q.top().first) > tol) {
+      nnz++;  // keeps track of how many non-zero (important) components of the signal there are
+      support.push_back (q.top().second);
+    } else {  // if top of the queue is not greater than tol, we are done since none of the elements
+          // below it will every be greater than tol
+      break;
+    }
+    q.pop ();
+  }
+
+  ierr = VecRestoreArray (x, &x_ptr);   CHKERRQ (ierr);
+
+  PetscFunctionReturn (0);
+}
+
+
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<ScalarType> weights, int &nnz, int num_components) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
+  int nprocs, procid;
+	MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
+	MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
 
 	nnz = 0;
+  std::priority_queue<std::pair<PetscReal, int>> q;
+  ScalarType *x_ptr;
+  ScalarType tol = 0.0; // 1E-10; // tolerance for specifying if signal is present: We don't need to add signal components which
+                      // are (almost)zero to the support
+  ierr = VecGetArray (x, &x_ptr);   CHKERRQ (ierr);
 
-	std::priority_queue<std::pair<PetscReal, int>> q;
-	ScalarType *x_ptr;
-	ierr = VecGetArray (x, &x_ptr);		CHKERRQ (ierr);
-	for (int i = 0; i < sz; i++) {
-		q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
-	}
+  std::vector<int> component_sparsity;
+  int fin_spars;
+  for (int nc = 0; nc < num_components; nc++) {
+    if (nc != num_components - 1) {
+      // sparsity level in total is 5 * #nc (number components)
+      // every component gets at 3 degrees of freedom, the remaining 2 * #nc degrees of freedom are distributed based on component weight
+      component_sparsity.push_back (3 + std::floor (weights[nc] * (sparsity_level - 3 * num_components) ));
+      PCOUT << "sparsity of component " << nc << ":" << component_sparsity.at(nc) << std::endl;
+    } else { // last component is the remaining support
+      int used = 0;  
+      for (auto x : component_sparsity)  {used += x;}
+      fin_spars = sparsity_level - used;
+      component_sparsity.push_back (fin_spars);
+      PCOUT << "sparsity of component " << nc << ":" << fin_spars << std::endl;
+    }
 
-	ScalarType tol = 1E-10;	// tolerance for specifying if signal is present: We don't need to add signal components which
-						// are (almost)zero to the support 
-	for (int i = 0; i < sparsity_level; i++) {
-		if (std::abs(q.top().first) > tol) {
-			nnz++;  // keeps track of how many non-zero (important) components of the signal there are
-			support.push_back (q.top().second);
-		} else {  // if top of the queue is not greater than tol, we are done since none of the elements
-				  // below it will every be greater than tol
-			break;
-		}
-		q.pop ();
-	}
 
+    for (int i = 0; i < sz; i++) {
+      if (labels[i] == nc + 1) // push the current components into the priority queue
+        q.push(std::pair<PetscReal, int>(x_ptr[i], i));   // Push values and idxes into a priiority queue
+    }
+
+    for (int i = 0; i < component_sparsity[nc]; i++) {
+      if (q.size() > 0) {
+        if (std::abs(q.top().first) > tol) {
+          nnz++;  // keeps track of how many non-zero (important) components of the signal there are
+          support.push_back (q.top().second);
+        } else {  // if top of the queue is not greater than tol, we are done since none of the elements
+                  // below it will ever be greater than tol
+          PCOUT << "  ... some supports not selected in component " << nc << "; reason: p_i = " << std::abs(q.top().first) << " < " << tol << " = tolerance" << std::endl;
+          break;
+        }
+        q.pop ();
+      } else {
+        PCOUT << "  ... no support selected in component " << nc << "; reason: no value present in queue (possibly component weight very small, w="<< weights[nc]  <<"). " << std::endl;
+        break;
+      }
+    }
+    q = std::priority_queue<std::pair<PetscReal, int>> (); // reset the queue
+  }
 	ierr = VecRestoreArray (x, &x_ptr); 	CHKERRQ (ierr);
 
 	PetscFunctionReturn (0);
@@ -500,28 +931,29 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *
 
 	int64_t ptr_idx;
 	ScalarType X, Y, Z;
-    ScalarType *data_ptr;
-    ScalarType com[3], sum;
-    for (int i = 0; i < 3; i++) 
-    	com[i] = 0.;
-    sum = 0;
-    ierr = VecGetArray (x, &data_ptr);                 CHKERRQ (ierr);
-    for (int x = 0; x < isize[0]; x++) {
-        for (int y = 0; y < isize[1]; y++) {
-            for (int z = 0; z < isize[2]; z++) {
-                X = h[0] * (istart[0] + x);
-                Y = h[1] * (istart[1] + y);
-                Z = h[2] * (istart[2] + z);
+  ScalarType *data_ptr;
+  ScalarType com[3], sum;
+  for (int i = 0; i < 3; i++) 
 
-                ptr_idx = x * isize[1] * isize[2] + y * isize[2] + z;
-                com[0] += (data_ptr[ptr_idx] * X);
-                com[1] += (data_ptr[ptr_idx] * Y);
-                com[2] += (data_ptr[ptr_idx] * Z);
+  	com[i] = 0.;
+  sum = 0;
+  ierr = VecGetArray (x, &data_ptr);                 CHKERRQ (ierr);
+  for (int x = 0; x < isize[0]; x++) {
+      for (int y = 0; y < isize[1]; y++) {
+          for (int z = 0; z < isize[2]; z++) {
+              X = h[0] * (istart[0] + x);
+              Y = h[1] * (istart[1] + y);
+              Z = h[2] * (istart[2] + z);
 
-                sum += data_ptr[ptr_idx];
-            }
-        }
-    }
+              ptr_idx = x * isize[1] * isize[2] + y * isize[2] + z;
+              com[0] += (data_ptr[ptr_idx] * X);
+              com[1] += (data_ptr[ptr_idx] * Y);
+              com[2] += (data_ptr[ptr_idx] * Z);
+
+              sum += data_ptr[ptr_idx];
+          }
+      }
+  }
 
     ScalarType sm;
     MPI_Allreduce (&com, cm, 3, MPIType, MPI_SUM, PETSC_COMM_WORLD);

@@ -22,6 +22,7 @@
 #include <queue>
 #include <accfft_utils.h>
 #include <assert.h>
+#include <sys/stat.h>
 #include "EventTimings.hpp"
 
 #include "TypeDefs.h"
@@ -31,9 +32,12 @@
 #endif
 
 enum {ACCFFT = 0, CUFFT = 1};
+class Phi;
+
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
+enum {ARMIJO = 0, MT = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 enum {SEQ = 0, MPI = 1};
 
@@ -52,6 +56,7 @@ struct OptimizerSettings {
     int    iterbound;            /// @brief if GRADOBJ conv. crit is used, max number newton it
     int    fseqtype;             /// @brief type of forcing sequence (quadratic, superlinear)
     int    newtonsolver;         /// @brief type of newton slver (0=GN, 1=QN, 2=GN/QN)
+    int    linesearch;           /// @brief type of line-search used (0=armijo, 1=mt)
     int    regularization_norm;  /// @brief defines the type of regularization (L1, L2, or weighted-L2)
     int    verbosity;            /// @brief controls verbosity of solver
     bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
@@ -74,6 +79,7 @@ struct OptimizerSettings {
     iterbound (200),
     fseqtype (SLFS),
     newtonsolver (QUASINEWTON),
+    linesearch (MT),
     regularization_norm (L2),
     reset_tao (false),
     lmvm_set_hessian (false),
@@ -230,15 +236,15 @@ public:
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
-        : model_ (1)   //Reaction Diffusion --  1 , Positivity -- 2
-                       // Modified Obj -- 3
-                       // Mass effect -- 4
-        , dt_ (0.5)                            // Time step
-        , nt_(1)                               // Total number of time steps
-        , np_ (1)                              // Number of gaussians for bounding box
+        : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
+                                                // Modified Obj -- 3
+                                                // Mass effect -- 4
+        , dt_ (0.5)                             // Time step
+        , nt_(1)                                // Total number of time steps
+        , np_ (1)                               // Number of gaussians for bounding box
         , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
         , nr_ (1)                               // number of rho_i that we like to invert for (1-3)
-        , k_ (0E-1)                              // Isotropic diffusion coefficient
+        , k_ (0E-1)                             // Isotropic diffusion coefficient
         , kf_(0.0)                              // Anisotropic diffusion coefficient
         , rho_ (10)                             // Reaction coefficient
         , p_scale_ (0.0)                        // Scaling factor for initial guess
@@ -253,33 +259,35 @@ class NMisc {
         , verbosity_ (1)                        // Print flag for optimization routines
         , k_gm_wm_ratio_ (0.0 / 1.0)            // gm to wm diffusion coeff ratio
         , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , r_gm_wm_ratio_ (0.0 / 5.0)                  // gm to wm reaction coeff ratio
+        , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
         , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-        , phi_sigma_ (2 * M_PI / 64)           // Gaussian standard deviation for bounding box
+        , phi_sigma_ (2 * M_PI / 64)            // Gaussian standard deviation for bounding box
         , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
-        , obs_threshold_ (0.0)                 // Observation threshold
+        , obs_threshold_ (0.0)                  // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
-        , data_threshold_ (0.05)                 // Data threshold to set custom gaussians
+        , data_threshold_ (0.05)                // Data threshold to set custom gaussians
         , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
         , bounding_box_ (0)                     // Flag to set bounding box for gaussians
         , testcase_ (testcase)                  // Testcases
         , nk_fixed_ (true)                      // if true, nk cannot be changed anymore
-        , regularization_norm_(L2b)              // defines the tumor regularization norm, L1, L2, or weighted L2
+        , regularization_norm_(L2b)             // defines the tumor regularization norm, L1, L2, or weighted L2
         , diffusivity_inversion_ (false)        // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
         , reaction_inversion_ (false)           // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
         , flag_reaction_inv_ (false)            // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
         , beta_changed_ (false)                 // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
-        , newton_solver_ (QUASINEWTON)           // Newton solver type
+        , write_p_checkpoint_(true)             // if true, p vector and corresponding Gaussian centers are written to file at certain checkpoints
+        , newton_solver_ (QUASINEWTON)          // Newton solver type
+        , linesearch_ (MT)                      // Line-search type
         , newton_maxit_ (30)                    // Newton max itr
         , gist_maxit_ (50)                      // GIST max itr
         , krylov_maxit_ (30)                    // Krylov max itr
         , opttolgrad_ (1E-5)                    // Relative gradient tolerance of L2 solves
-        , sparsity_level_ (1)                   // Level of sparsity for L1 solves
+        , sparsity_level_ (5)                   // Level of sparsity for L1 solves
         , smoothing_factor_ (1)                 // Smoothing factor
-        , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion 
+        , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
         , order_ (2)                            // Order of accuracy for PDE solves
@@ -289,12 +297,18 @@ class NMisc {
         , nu_csf_ (0.1)                         // Poisson's ratio of CSF
         , E_healthy_ (2100)                     // Young's modulus of wm and gm
         , E_bg_ (15000)                         // Young's modulus of background
-        , E_tumor_ (10000)                       // Young's modulus of tumor
-        , E_csf_ (10)                          // Young's modulus of CSF
+        , E_tumor_ (10000)                      // Young's modulus of tumor
+        , E_csf_ (10)                           // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E4)                    // high screening 
-        , forcing_factor_ (2.0E5)                 // mass effect forcing factor
-        , forward_flag_ (0)                      // Flag to perform only forward solve - saves memory
+        , forcing_factor_ (2.0E5)               // mass effect forcing factor
+        , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
+        , prune_components_ (1)                 // prunes L2 solution based on components
+        , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
+        , phi_store_ (false)                    // Flag to store phis 
+        , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
+        , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
+        , k_ub_ (1)                             // Upper bound on kappa
                                 {
 
 
@@ -304,34 +318,34 @@ class NMisc {
                 // user_cm_[1] = 2.53;
                 // user_cm_[2] = 2.57;
 
-                // tumor is near the top edge -- more wm tracts visible 
+                // tumor is near the top edge -- more wm tracts visible
                 // user_cm_[0] = 2 * M_PI / 128 * 68;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 88;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
-                // tumor is top middle 
+                // tumor is top middle
                 // user_cm_[0] = 2 * M_PI / 128 * 80;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 64;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X
 
                 // tc1 and 2
                 user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
                 user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 128 * 84;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 80;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 128 * 80;//52  //X
 
                 // user_cm_[0] = 2 * M_PI / 64 * 32;//82  //Z
                 // user_cm_[1] = 2 * M_PI / 64 * 24;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X 
+                // user_cm_[2] = 2 * M_PI / 64 * 40;//52  //X
 
                 user_cms_.push_back (user_cm_[0]);
                 user_cms_.push_back (user_cm_[1]);
@@ -379,7 +393,13 @@ class NMisc {
 
         ScalarType ic_max_;
         int predict_flag_;
+        int prune_components_;
         int forward_flag_;
+        ScalarType k_lb_;
+        ScalarType k_ub_;
+
+        bool phi_store_;
+        bool adjoint_store_;
 
         int testcase_;
         int n_[3];
@@ -423,6 +443,7 @@ class NMisc {
         ScalarType lambda_;
 
         bool beta_changed_;
+        bool write_p_checkpoint_;
 
         ScalarType phi_sigma_;
         ScalarType phi_sigma_data_driven_;
@@ -437,6 +458,7 @@ class NMisc {
         bool lambda_continuation_;
         bool reaction_inversion_;
         bool flag_reaction_inv_;
+        bool multilevel_;
 
         ScalarType target_sparsity_;
 
@@ -459,7 +481,7 @@ class NMisc {
         std::stringstream readpath_;
         std::stringstream writepath_;
 
-        int newton_solver_, newton_maxit_, gist_maxit_, krylov_maxit_;
+        int newton_solver_, linesearch_, newton_maxit_, gist_maxit_, krylov_maxit_;
         ScalarType opttolgrad_;
 
         std::vector<int> support_;      // support of cs guess
@@ -554,6 +576,24 @@ void dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
+/// @reads in binary vector, serial
+PetscErrorCode readBIN(Vec* x, int size2, std::string f);
+/// @brief writes out vector im binary format, serial
+PetscErrorCode writeBIN(Vec x, std::string f);
+/// @reads in p_vec vector from txt file
+PetscErrorCode readPVec(Vec* x, int size, int np, std::string f);
+/// @brief reads in Gaussian centers from file
+PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data = false, std::vector<int> *comps = nullptr);
+/// @brief reads connected component data from file
+PetscErrorCode readConCompDat(std::vector<ScalarType> &weights, std::vector<ScalarType> &centers, std::string f);
+/// @brief write checkpoint for p-vector and Gaussian centers
+PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path, std::string suffix);
+/// @brief returns only filename
+PetscErrorCode getFileName(std::string& filename, std::string file);
+/// @brief returns filename, extension and path
+PetscErrorCode getFileName(std::string& path, std::string& filename, std::string& extension, std::string file);
+/// @brief checks if file exists
+bool fileExists(const std::string& filename);
 
 /* helper methods for print out to console */
 PetscErrorCode tuMSG(std::string msg, int size = 98);
@@ -575,6 +615,8 @@ void __TU_assert(const char* expr_str, bool expr, const char* file, int line, co
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
 ScalarType myDistance (ScalarType *c1, ScalarType *c2);
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<ScalarType> weights, int &nnz, int num_components);
+
 
 PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *h, ScalarType *cm);
 PetscErrorCode setupVec (Vec x, int type = MPI);

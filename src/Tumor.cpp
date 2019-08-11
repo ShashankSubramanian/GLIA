@@ -29,8 +29,8 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> 
     ierr = VecSet (p_0_, 0);
     ierr = VecSet (p_t_, 0);
 
-    ierr = VecDuplicate (c_t_, &seg_);                                        
-    ierr = VecSet (seg_, 0);                                            
+    ierr = VecDuplicate (c_t_, &seg_);
+    ierr = VecSet (seg_, 0);
 
 
     if (n_misc->model_ == 4) { // mass effect model -- allocate space for more variables
@@ -65,7 +65,8 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     }
     else
         phi_ = phi;
-    ierr = phi_->apply(c_0_, p_);
+    // TODO: for SIBIA this might be needed
+    // ierr = phi_->apply(c_0_, p_);
 
     PetscFunctionReturn(0);
 }
@@ -93,7 +94,9 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     ierr = rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, mat_prop_, n_misc);
     // ierr = phi_->setGaussians (n_misc->user_cm_, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = phi_->setValues (mat_prop_);
-    ierr = phi_->apply(c_0_, p_);
+
+    // TODO: for sibia this might be needed
+    // ierr = phi_->apply(c_0_, p_);
 
     PetscFunctionReturn(0);
 }
@@ -133,13 +136,14 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     //     PetscFunctionReturn (0);
     // }
     // // ScalarType val[2] = {.9, .2}; 
+
     // // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     // // PetscInt idx[2] = {center-1, center};
     // // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
     // // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
     // // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
     // // PetscFunctionReturn (0);
-    
+
     // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     // PetscInt idx = center;
     // ierr = VecSetValues(p_true_, 1, &idx, &val, INSERT_VALUES);         CHKERRQ(ierr);
@@ -237,13 +241,13 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecGetArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
     // segmentation for c0
-    for (int i = 0; i < n_misc_->n_local_; i++) {    
-        v.push_back (bg_ptr[i]); 
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        v.push_back (bg_ptr[i]);
         v.push_back (c_ptr[i]);
         v.push_back (gm_ptr[i]);
         v.push_back (wm_ptr[i]);
         v.push_back (csf_ptr[i]);
-        
+
         seg_component = std::max_element (v.begin(), v.end());
         seg_ptr[i] = std::distance (v.begin(), seg_component);
 
@@ -255,7 +259,7 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecRestoreArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
-    ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr); 
+    ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
     ScalarType sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
     ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
