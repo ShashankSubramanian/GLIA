@@ -37,7 +37,11 @@ PetscErrorCode mTaoGradientNorm(Tao, Vec, NormType, PetscReal*);
 
 
 #if defined(__cplusplus)
-extern PetscErrorCode MatLMVMReset(Mat);
+#if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+  extern PetscErrorCode MatLMVMReset(Mat, bool);
+#else
+  extern PetscErrorCode MatLMVMReset(Mat);
+#endif
 extern PetscErrorCode MatLMVMUpdate(Mat,Vec, Vec);
 extern PetscErrorCode MatLMVMSetDelta(Mat,PetscReal);
 extern PetscErrorCode MatLMVMSetScale(Mat,Vec);
@@ -54,7 +58,11 @@ extern PetscErrorCode MatCreateLMVM(MPI_Comm,PetscInt,PetscInt,Mat*);
 extern PetscErrorCode MatView_LMVM(Mat,PetscViewer);
 extern PetscErrorCode MatDestroy_LMVM(Mat);
 #else
-PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat);
+#if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+  PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat, bool);
+#else
+  PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat);
+#endif
 PETSC_EXTERN PetscErrorCode MatLMVMUpdate(Mat,Vec, Vec);
 PETSC_EXTERN PetscErrorCode MatLMVMSetDelta(Mat,PetscReal);
 PETSC_EXTERN PetscErrorCode MatLMVMSetScale(Mat,Vec);
