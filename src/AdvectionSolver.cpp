@@ -210,12 +210,14 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
                                      n_misc->n_local_, n_ghost_, out_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
         ierr = VecRestoreArray (input, &in_ptr);                    CHKERRQ (ierr);
         ierr = VecRestoreArray (output, &out_ptr);                  CHKERRQ (ierr);
-    #elif CUDA && defined(SINGLE) // interpolation only defined for single
+    #elif CUDA
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = VecCUDAGetArrayReadWrite (input, &in_ptr);                            CHKERRQ (ierr);
         ierr = VecCUDAGetArrayReadWrite (output, &out_ptr);                          CHKERRQ (ierr);
-        gpuInterp3D (in_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
+        #ifdef SINGLE
+            gpuInterp3D (in_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
                      out_ptr, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_ghost_, (float*)t.data());
+        #endif
         ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = VecCUDARestoreArrayReadWrite (input, &in_ptr);                            CHKERRQ (ierr);
         ierr = VecCUDARestoreArrayReadWrite (output, &out_ptr);                          CHKERRQ (ierr);
@@ -250,13 +252,15 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
-    #if defined(CUDA) && !defined(MPICUDA) && defined(SINGLE)  // intepolation only defined for single precision
+    #if defined(CUDA) && !defined(MPICUDA)
         ScalarType *ix_ptr, *iy_ptr, *iz_ptr, *ox_ptr, *oy_ptr, *oz_ptr, *query_ptr;
         ierr = VecCUDAGetArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = input->getComponentArrays (ix_ptr, iy_ptr, iz_ptr);              CHKERRQ (ierr);
         ierr = output->getComponentArrays (ox_ptr, oy_ptr, oz_ptr);             CHKERRQ (ierr);
-        gpuInterpVec3D (ix_ptr, iy_ptr, iz_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
+        #ifdef SINGLE
+            gpuInterpVec3D (ix_ptr, iy_ptr, iz_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
                      ox_ptr, oy_ptr, oz_ptr, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_ghost_, (float*)t.data());
+        #endif
         ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
         ierr = input->restoreComponentArrays (ix_ptr, iy_ptr, iz_ptr);              CHKERRQ (ierr);
         ierr = output->restoreComponentArrays (ox_ptr, oy_ptr, oz_ptr);             CHKERRQ (ierr);
