@@ -1676,7 +1676,7 @@ PetscErrorCode applyPreconditioner (void *ptr, Vec x, Vec pinvx) {
 
 /* ------------------------------------------------------------------- */
 /*
- optimizationMonitor    mointors the inverse Gauß-Newton solve
+ optimizationMonitor    mointors the inverse Gauss-Newton solve
  input parameters:
   . tao       TAO object
   . ptr       optional user defined context
@@ -1784,7 +1784,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         if(itctx->optsettings_->newtonsolver == QUASINEWTON) {
           ierr = tuMSGstd (" starting optimization, TAO's LMVM");                   CHKERRQ(ierr);
         } else {
-          ierr = tuMSGstd (" starting optimization, TAO's Gauß-Newton");            CHKERRQ(ierr);
+          ierr = tuMSGstd (" starting optimization, TAO's Gauss-Newton");            CHKERRQ(ierr);
         }
         ierr = tuMSGstd ("---------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
@@ -1980,7 +1980,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
       itctx->optfeedback_->gradnorm0 = norm_gref;
       //ctx->gradnorm0 = gnorm;
       itctx->update_reference_gradient = false;
-      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << itctx->optfeedback_->gradnorm0;
+      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << itctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
       ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
       ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
@@ -2386,7 +2386,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
 }
 /* ------------------------------------------------------------------- */
 /*
- checkConvergenceGrad    checks convergence of the overall Gauß-Newton tumor inversion
+ checkConvergenceGrad    checks convergence of the overall Gauss-Newton tumor inversion
 
  input parameters:
   . Tao tao       Tao solver object
@@ -2449,7 +2449,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         ctx->optfeedback_->gradnorm0 = norm_gref;
         //ctx->gradnorm0 = gnorm;
         ctx->update_reference_gradient = false;
-      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << ctx->optfeedback_->gradnorm0;
+      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
         ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
       ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
@@ -2578,7 +2578,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
 /* ------------------------------------------------------------------- */
 /*
- checkConvergenceGradObj    checks convergence of the overall Gauß-Newton tumor inversion
+ checkConvergenceGradObj    checks convergence of the overall Gauss-Newton tumor inversion
 
  input parameters:
   . Tao tao       Tao solver object
@@ -2649,7 +2649,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
       ierr = tuMSGstd(s.str());                                                     CHKERRQ(ierr);
       s.str(std::string());
       s.clear();
-      s <<"updated reference gradient for relative convergence criterion, Gauß-Newton solver: " << ctx->optfeedback_->gradnorm0;
+      s <<"updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
         ierr = tuMSGstd(s.str());                                                          CHKERRQ(ierr);
       s.str(std::string());
       s.clear();
@@ -3177,7 +3177,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     }
 
     if (!itctx_->n_misc_->regularization_norm_ == L1) {  //Set other preferences for standard tao solvers
-      // set linesearch (only for gauß-newton, lmvm uses more-thuente type line-search automatically)
+      // set linesearch (only for Gauss-Newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
       linesearch->stepmin = minstep;
 
