@@ -8,8 +8,10 @@
 #include "Utils.h"
 
 struct CtxInv {
-    /* evalJ evalDJ, eval D2J */
+    /// @brief evalJ evalDJ, eval D2J
     std::shared_ptr<DerivativeOperators> derivative_operators_;
+    /// @brief required to reset derivative_operators_
+    std::shared_ptr<PdeOperators> pde_operators_;
     /// @brief common settings/ parameters
     std::shared_ptr<NMisc> n_misc_;
     /// @brief accumulates all tumor related fields and methods
@@ -99,12 +101,16 @@ struct CtxInv {
  */
 class InvSolver {
     public :
-        InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
-        PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
+        InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <PdeOperators> pde_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
+        PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
         PetscErrorCode allocateTaoObjects (bool initialize_tao = true);
-        PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
+        PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
+        PetscErrorCode resetOperators (Vec p);
         PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
         PetscErrorCode solve ();
+        PetscErrorCode solveInverseCoSaMp();
+        PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
+
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
         // setter functions
         void setData (Vec d) {data_ = d;}

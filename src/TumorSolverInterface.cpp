@@ -72,8 +72,8 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
     // create tumor inverse solver
-    inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
-    ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
+    inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, pde_operators_, n_misc, tumor_);
+    ierr = inv_solver_->initialize (derivative_operators_, pde_operators_, n_misc, tumor_);
     initialized_ = true;
     // cleanup
     ierr = VecDestroy (&p);                                                     CHKERRQ (ierr);
@@ -139,7 +139,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
-    inv_solver_->setParams(derivative_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
+    inv_solver_->setParams(derivative_operators_, pde_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
 
     PetscFunctionReturn(0);
 }
@@ -173,18 +173,8 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     ierr = tumor_->obs_->setDefaultFilter (d1);
     ierr = tumor_->obs_->apply (d1, d1);
 
-
-    // double *d_ptr;
-    // double s_fact = 0.5 * 2.0 * M_PI / n_misc_->n_[0];
-    // ierr = VecGetArray (d1, &d_ptr);                                          CHKERRQ(ierr);
-    // ierr = weierstrassSmoother (d_ptr, d_ptr, n_misc_, s_fact);               CHKERRQ(ierr);  // smooth the data a bit after applying obs
-    // ierr = VecRestoreArray (d1, &d_ptr);                                      CHKERRQ(ierr);
-
-
     // set target data for inversion (just sets the vector, no deep copy)
-    inv_solver_->setData (d1);
-    if (d1g == nullptr)
-        d1g = d1;
+    inv_solver_->setData (d1); if (d1g == nullptr) d1g = d1;
     inv_solver_->setDataGradient (d1g);
 
     // solve
@@ -214,9 +204,9 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     ierr = VecRestoreArray (prec, &prec_ptr);                                   CHKERRQ (ierr);
 
     if (n_misc_->reaction_inversion_) {
-        PCOUT << " --------------  -------------- -----------------\n";
-
-        PCOUT << "-------------------------------------------------------------------- Reaction and diffusivity inversion with scaled L2 solution guess --------------------------------------------------------------------" << std::endl;
+        ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+        ierr = tuMSG    ("### rho/kappa inversion with scaled L2 solution guess ###"); CHKERRQ (ierr);
+        ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
 
 
         ierr = resetTaoSolver();
@@ -225,19 +215,8 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         // Now, we invert for only reaction and diffusion after scaling the IC appropriately
         n_misc_->flag_reaction_inv_ = true; // invert only for reaction and diffusion now
 
-        // // Reset all data as this is turned to nullptr after every tao solve. TODO: Ask Klaudius why?
-        // ierr = tumor_->obs_->setDefaultFilter (d1);
-        // // apply observer on ground truth, store observed data in d
-        // ierr = tumor_->obs_->apply (d1, d1);
-        inv_solver_->setData (d1);
-        if (d1g == nullptr)
-            d1g = d1;
+        inv_solver_->setData (d1); if (d1g == nullptr) d1g = d1;
         inv_solver_->setDataGradient (d1g);
-
-        // write out p vector after IC, k inversion (unscaled)
-        // if (n_misc_->write_p_checkpoint_) {
-        //   writeCheckpoint(x_L2, getTumor()->phi_, n_misc_->writepath_ .str(), std::string("unscaled"));
-        // }
 
         // scale p to one according to our modeling assumptions
         double ic_max, g_norm_ref;
@@ -246,7 +225,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
         ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);                        CHKERRQ (ierr);  // max of IC
 
-        ierr = VecGetArray (x_L2, &x_L2_ptr);                           CHKERRQ (ierr);
+        ierr = VecGetArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
         for (int i = 0; i < np; i++){
             if(n_misc_->multilevel_) {
               // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
@@ -348,48 +327,50 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
   // ---------------------------------------------------------------------------
 
   if (n_misc_->reaction_inversion_) {
-      PCOUT << "-------------------------------------------------------------------- Reaction and diffusivity inversion with scaled L2 solution guess --------------------------------------------------------------------" << std::endl;
+    ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+    ierr = tuMSG    ("### rho/kappa inversion with scaled L2 solution guess ###"); CHKERRQ (ierr);
+    ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
 
-      n_misc_->flag_reaction_inv_ = true; // invert only for reaction and diffusion now
+    n_misc_->flag_reaction_inv_ = true; // invert only for reaction and diffusion now
 
-      // scale p to one according to our modeling assumptions
-      double ic_max, g_norm_ref;
-      ic_max = 0;
-      // get c0
-      // ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
-      ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);                          CHKERRQ (ierr);  // max of IC
-      ierr = VecGetArray (prec, &ptr_pr_rec);                                   CHKERRQ (ierr);
-      for (int i = 0; i < np; i++){
-          if(n_misc_->multilevel_) {
-            // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
-            // scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25
-            ptr_pr_rec[i] *= (1.0/4.0 * n_misc_->n_[0]/64.  / ic_max);
-          } else {
-            ptr_pr_rec[i] *= (1.0 / ic_max);
-          }
+    // scale p to one according to our modeling assumptions
+    double ic_max, g_norm_ref;
+    ic_max = 0;
+    // get c0
+    // ierr = getTumor()->phi_->apply (getTumor()->c_0_, x_L2);
+    ierr = VecMax (getTumor()->c_0_, NULL, &ic_max);                          CHKERRQ (ierr);  // max of IC
+    ierr = VecGetArray (prec, &ptr_pr_rec);                                   CHKERRQ (ierr);
+    for (int i = 0; i < np; i++){
+        if(n_misc_->multilevel_) {
+          // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
+          // scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25
+          ptr_pr_rec[i] *= (1.0/4.0 * n_misc_->n_[0]/64.  / ic_max);
+        } else {
+          ptr_pr_rec[i] *= (1.0 / ic_max);
         }
-      ierr = VecRestoreArray (prec, &ptr_pr_rec);                       CHKERRQ (ierr);
-
-      PCOUT << " --------------  L2 scaled-solution guess with incorrect reaction coefficient -----------------\n";
-      if (procid == 0) {
-          ierr = VecView (prec, PETSC_VIEWER_STDOUT_SELF);            CHKERRQ (ierr);
       }
-      PCOUT << " --------------  -------------- -----------------\n";
-      // write out p vector after IC, k inversion (scaled)
-      if (n_misc_->write_p_checkpoint_) {
-        writeCheckpoint(prec, getTumor()->phi_, n_misc_->writepath_ .str(), std::string("scaled"));
-      }
+    ierr = VecRestoreArray (prec, &ptr_pr_rec);                       CHKERRQ (ierr);
 
-      // set data
-      inv_solver_->setData (d1);
-      if (d1g == nullptr) {d1g = d1;}
-      inv_solver_->setDataGradient (d1g);
+    ierr = tuMSG    ("### l2 scaled-solution guess with incorrect reaction coefficient ###"); CHKERRQ (ierr);
+    if (procid == 0) {
+        ierr = VecView (prec, PETSC_VIEWER_STDOUT_SELF);            CHKERRQ (ierr);
+    }
+    ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+    // write out p vector after IC, k inversion (scaled)
+    if (n_misc_->write_p_checkpoint_) {
+      writeCheckpoint(prec, getTumor()->phi_, n_misc_->writepath_ .str(), std::string("scaled"));
+    }
 
-      // reaction-inversion solve
-      ierr = inv_solver_->solveForParameters (prec);          // With IC as current guess
-      ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
+    // set data
+    inv_solver_->setData (d1);
+    if (d1g == nullptr) {d1g = d1;}
+    inv_solver_->setDataGradient (d1g);
+
+    // reaction-inversion solve
+    ierr = inv_solver_->solveForParameters (prec);          // With IC as current guess
+    ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
   } else {
-    PCOUT << " WARNING: Attempting to solve for reaction and diffusion, but reaction inversion is nor enabled. \n";
+    ierr = tuMSGwarn ( " WARNING: Attempting to solve for reaction and diffusion, but reaction inversion is nor enabled."); CHKERRQ (ierr);
   }
 
   ierr = VecGetArray (prec, &ptr_pr_rec);                                   CHKERRQ (ierr);
@@ -676,7 +657,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode TumorSolverInterface::printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1) {
+PetscErrorCode TumorSolverInterface::_printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
@@ -722,8 +703,40 @@ PetscErrorCode TumorSolverInterface::printStatistics (int its, PetscReal J, Pets
     /* -------------------------------------------------------------------- PRINT -------------------------------------------------------------------- */
 }
 
-// L1 solve is done outside InvSolver because the corrective L2 solve needs to be done with tao
+
 PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int procid, nprocs;
+  std::stringstream ss;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  // set target data for inversion (just sets the vector, no deep copy)
+  inv_solver_->setData (d1); if (d1g == nullptr) d1g = d1;
+  inv_solver_->setDataGradient (d1g);
+
+  // count the number of observed voxels
+  int sum = 0, global_sum = 0;
+  double *pixel_ptr;
+  ierr = VecGetArray (d1, &pixel_ptr);                                          CHKERRQ (ierr);
+  for (int i = 0; i < n_misc_->n_local_; i++)
+      if (pixel_ptr[i] > n_misc_->obs_threshold_) sum++;
+  ierr = VecRestoreArray (d1, &pixel_ptr);                                      CHKERRQ (ierr);
+  MPI_Reduce (&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
+  ss << "Number of observed voxels: " << global_sum << std::endl;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+  // solve
+  inv_solver_->solveInverseCoSaMp();
+  ierr= VecCopy (inv_solver_->getPrec(), prec);                                 CHKERRQ (ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+
+// L1 solve is done outside InvSolver because the corrective L2 solve needs to be done with tao
+PetscErrorCode TumorSolverInterface::_solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -888,7 +901,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
     int its = 0;
     // ierr = VecCopy (g_ref, g);                                               CHKERRQ (ierr);
     // print statistics
-    printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
+    _printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
 
 
     int flag_convergence = 0;
@@ -1133,7 +1146,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
         // print statistics
 
         PCOUT << "\n\n\n-------------------------------------------------------------------- L1 solver statistics -------------------------------------------------------------------- " << std::endl;
-        printStatistics (its, J, PetscAbsReal (J_old - J) / PetscAbsReal (1 + J_ref), norm_g, norm_rel / (1 + norm), x_L1);
+        _printStatistics (its, J, PetscAbsReal (J_old - J) / PetscAbsReal (1 + J_ref), norm_g, norm_rel / (1 + norm), x_L1);
         PCOUT << "-------------------------------------------------------------------- -------------------- -------------------------------------------------------------------- \n\n\n" << std::endl;
         if (its >= inv_solver_->getOptSettings()->gist_maxit) { // max iter reached
             PCOUT << "Max L1 iter reached" << std::endl;
