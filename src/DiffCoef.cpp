@@ -18,13 +18,14 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOpera
     ierr = VecDuplicate (kxx_, &kzz_);
 
     // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
-    temp_ = new Vec[7];
+    temp_ = new Vec[8];
     #ifdef CUDA 
       cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
       cudaMalloc ((void**) &work_cuda_, 7 * sizeof(ScalarType));
     #else 
       temp_accfft_ = (ScalarType *) accfft_alloc (n_misc->accfft_alloc_max_);
     #endif
+
 
     ierr = VecSet (kxx_ , 0);
     ierr = VecSet (kxy_ , 0);
@@ -38,10 +39,26 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOpera
 
 PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
   PetscErrorCode ierr;
-  for (int i = 0; i < 7; ++i){
+  for (int i = 0; i < 8; ++i){
     temp_[i] = workvecs[i];
   }
   PetscFunctionReturn(0);
+}
+
+PetscErrorCode DiffCoef::setSecondaryCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+
+  /* temp_[7] holds \sum m_i \times \k_tilde_i */
+  ierr = VecCopy (mat_prop->wm_, temp_[7]);     CHKERRQ (ierr);
+  ierr = VecScale (temp_[7], k1);               CHKERRQ (ierr);
+  k2 = (n_misc->nk_ == 1) ? n_misc->k_gm_wm_ratio_ * k1 : k2;
+  k3 = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ * k1 : k3;
+
+  ierr = VecAXPY (temp_[7], k2, mat_prop->gm_);   CHKERRQ (ierr);
+  ierr = VecAXPY (temp_[7], k3, mat_prop->glm_);  CHKERRQ (ierr);  
+
+  PetscFunctionReturn (0);
 }
 
 PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
@@ -247,6 +264,36 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
     e.stop ();
     PetscFunctionReturn(0);
 }
+
+PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs (Vec dc, Vec c) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    Event e ("tumor-diff-coeff-apply-D");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    std::bitset<3> XYZ;
+    XYZ[0] = 1;
+    XYZ[1] = 1;
+    XYZ[2] = 1;
+
+    /* NOTE: temp_[7] is unused anywhere else within solveState - this is important else
+       we have to reset temp_[7] everytime */
+
+    spec_ops_->computeGradient (temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
+    ierr = VecPointwiseMult (temp_[1], temp_[7], temp_[4]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[2], temp_[7], temp_[5]);                 CHKERRQ (ierr);
+    ierr = VecPointwiseMult (temp_[3], temp_[7], temp_[6]);                 CHKERRQ (ierr);
+    spec_ops_->computeDivergence (dc, temp_[1], temp_[2], temp_[3], t.data());
+
+    self_exec_time += MPI_Wtime();
+    //accumulateTimers (t, t, self_exec_time);
+    t[5] = self_exec_time;
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn(0);
+}
+
 
 // TODO: only correct for isotropic diffusion
 // TODO: assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T

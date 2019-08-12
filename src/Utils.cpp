@@ -874,18 +874,22 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 
   std::vector<int> component_sparsity;
   int fin_spars;
+  int sparsity;
+  int ncc = 0;
+  for (auto w : weights) if (w >= 1E-3) ncc++;
   for (int nc = 0; nc < num_components; nc++) {
     if (nc != num_components - 1) {
       // sparsity level in total is 5 * #nc (number components)
       // every component gets at 3 degrees of freedom, the remaining 2 * #nc degrees of freedom are distributed based on component weight
-      component_sparsity.push_back (3 + std::floor (weights[nc] * (sparsity_level - 3 * num_components) ));
-      PCOUT << "sparsity of component " << nc << ":" << component_sparsity.at(nc) << std::endl;
+      sparsity = (weights[nc] > 1E-3) ? (3 + std::floor (weights[nc] * (sparsity_level - 3 * ncc - (num_components-ncc)))) : 1;
+      component_sparsity.push_back (sparsity);
+      PCOUT << "sparsity of component " << nc << ": " << component_sparsity.at(nc) << std::endl;
     } else { // last component is the remaining support
-      int used = 0;  
+      int used = 0;
       for (auto x : component_sparsity)  {used += x;}
       fin_spars = sparsity_level - used;
       component_sparsity.push_back (fin_spars);
-      PCOUT << "sparsity of component " << nc << ":" << fin_spars << std::endl;
+      PCOUT << "sparsity of component " << nc << ": " << fin_spars << std::endl;
     }
 
 
@@ -935,7 +939,7 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *
   ScalarType com[3], sum;
   for (int i = 0; i < 3; i++) 
 
-  	com[i] = 0.;
+  com[i] = 0.;
   sum = 0;
   ierr = VecGetArray (x, &data_ptr);                 CHKERRQ (ierr);
   for (int x = 0; x < isize[0]; x++) {
@@ -955,15 +959,15 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *
       }
   }
 
-    ScalarType sm;
-    MPI_Allreduce (&com, cm, 3, MPIType, MPI_SUM, PETSC_COMM_WORLD);
-    MPI_Allreduce (&sum, &sm, 1, MPIType, MPI_SUM, PETSC_COMM_WORLD);
+  ScalarType sm;
+  MPI_Allreduce (&com, cm, 3, MPIType, MPI_SUM, PETSC_COMM_WORLD);
+  MPI_Allreduce (&sum, &sm, 1, MPIType, MPI_SUM, PETSC_COMM_WORLD);
 
-    for (int i = 0; i < 3; i++) {
-    	cm[i] /= sm;
-    }
+  for (int i = 0; i < 3; i++) {
+  	cm[i] /= sm;
+  }
 
-    ierr = VecRestoreArray (x, &data_ptr);                 CHKERRQ (ierr);
+  ierr = VecRestoreArray (x, &data_ptr);                 CHKERRQ (ierr);
 
 
 	PetscFunctionReturn (0);

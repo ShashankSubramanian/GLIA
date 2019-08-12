@@ -32,6 +32,7 @@ class DerivativeOperators {
         virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
 		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
         PetscErrorCode checkGradient (Vec p, Vec data);
+        PetscErrorCode checkHessian (Vec p, Vec data);
 
 		virtual ~DerivativeOperators () {
 			VecDestroy (&temp_);

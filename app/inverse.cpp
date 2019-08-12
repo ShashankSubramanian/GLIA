@@ -545,8 +545,10 @@ int main (int argc, char** argv) {
         std::string file_concomp(data_comp_dat_path);
         if(read_data_comp_file){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
-          PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components = " << n_misc->sparsity_level_ * tumor->phi_->component_weights_.size()<<std::endl;
-          n_misc->sparsity_level_ =  n_misc->sparsity_level_ * tumor->phi_->component_weights_.size();
+          int nnc = 0;
+          for (auto w : tumor->phi_->component_weights_) if (w >= 1E-3) nnc++;
+          PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << n_misc->sparsity_level_ << " x " << nnc << " + " << (tumor->phi_->component_weights_.size() - nnc) << " = " <<  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) <<std::endl;
+          n_misc->sparsity_level_ =  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) ;
         }
 
         if (!n_misc->bounding_box_) {
@@ -782,9 +784,9 @@ int main (int argc, char** argv) {
     if (wm != nullptr)           {ierr = VecDestroy (&wm);                CHKERRQ (ierr); wm = nullptr;}
     if (csf != nullptr)          {ierr = VecDestroy (&csf);               CHKERRQ (ierr); csf = nullptr;}
     if (bg != nullptr)           {ierr = VecDestroy (&bg);                CHKERRQ (ierr); bg = nullptr;}
-    if (use_custom_obs_mask)     {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); obs_mask = nullptr;}
-    if (use_data_comps && read_support_data_nc) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); data_components = nullptr;}
-    if (read_support_data_nc)    {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
+    if (use_custom_obs_mask && obs_mask != nullptr)                           {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); obs_mask = nullptr;}
+    if (use_data_comps && read_support_data_nc && data_components != nullptr) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); data_components = nullptr;}
+    if (read_support_data_nc && support_data != nullptr)                      {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
 
 
 }

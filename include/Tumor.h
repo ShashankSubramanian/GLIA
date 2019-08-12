@@ -38,7 +38,7 @@ class Tumor {
 		// adjoint Variables
 		Vec p_t_;
 		Vec p_0_;
-		// work vectors
+		
     	Vec *work_;
     	// weights for w-l2
     	Vec weights_;

@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/gridcont/'
+params['results_path'] = tumor_dir + '/results/test/'
 params['compute_sys'] = 'rebels'
 
 
@@ -24,7 +24,7 @@ params['compute_sys'] = 'rebels'
 # params['gm_path'] = '/workspace/shashank/label_maps/tcia_09_141/gm.nc'
 # params['wm_path'] = '/workspace/shashank/label_maps/tcia_09_141/wm.nc'
 # params['csf_path'] = '/workspace/shashank/label_maps/tcia_09_141/csf.nc'
-	
+
 
 
 

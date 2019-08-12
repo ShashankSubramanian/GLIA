@@ -96,7 +96,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 1
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 1
+    forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -136,7 +136,7 @@ def getTumorRunCmd(params):
     ### GIST max iterations (for L1 solver)
     gist_maxit = 2
     ### Krylov max iterations
-    max_krylov_iter = 30
+    max_krylov_iter = 1
     ### Relative gradient tolerance
     grad_tol = 1E-5
     ### Forward solver time order of accuracy
@@ -227,6 +227,18 @@ def getTumorRunCmd(params):
     else:
         print ('Default dd_fac = {} used'.format(dd_fac))
     # ---
+    if 'upper_bound_kappa' in params:
+        upper_bound_kappa = params['upper_bound_kappa']
+        print('Setting upper bound {} on kappa'.format(upper_bound_kappa))
+    else:
+        print('Default upper bound {} on kappa used'.format(upper_bound_kappa))
+    # ---
+    if 'lower_bound_kappa' in params:
+        lower_bound_kappa = params['lower_bound_kappa']
+        print('Setting lower bound {} on kappa'.format(lower_bound_kappa))
+    else:
+        print('Default lower bound {} on kappa used'.format(lower_bound_kappa))
+    # ---
     if 'sparsity_lvl' in params:
         sparsity_lvl = params['sparsity_lvl']
     else:
@@ -237,6 +249,9 @@ def getTumorRunCmd(params):
         if not os.path.exists(results_path):
             print ('Results path does not exist, making the required folders and sub-folders...\n')
             os.makedirs(results_path)
+    # ---
+    if 'create_synthetic' in params:
+        create_synthetic = params['create_synthetic'];
     # ---
     if 'data_path' in params:
         data_path = params['data_path']
@@ -332,11 +347,11 @@ def getTumorRunCmd(params):
         if params['mpi_pernode'] < 24:
             ppn = params['mpi_pernode'];
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
-    elif params['compute_sys'] == 'stampede2':
+    elif params['compute_sys'] in ['stampede2','frontera']:
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
-    run_str = cmd + tumor_dir + "/build/release/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
+    run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
     " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
     " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
@@ -380,6 +395,8 @@ def getTumorRunCmd(params):
     " -verbosity " + str(verbosity) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 -tumor_tao_ls_monitor  -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+    " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     return run_str, error_flag
