@@ -41,11 +41,14 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream ss;
 
     sigma_ = sigma;                   n_misc_->phi_sigma_ = sigma_;
     spacing_factor_ = spacing_factor; n_misc_->phi_spacing_factor_ = spacing_factor_;
     np_ = np;                         n_misc_->np_ = np_;
-    PCOUT << " ----- Bounding box for Phi set with NP: " << np_ << " and sigma: " << sigma_ << " --------" << std::endl;
+
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+    ss << " ----- bounding box for phi set with np: " << np_ << " and sigma: " << sigma_ << " --------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     centers_.clear ();
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
@@ -590,10 +593,14 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream ss;
 
-    PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ------" << std::endl;
-    PCOUT << " ----- Bounding box not set: Basis functions set from file -----\n" << std::endl;
-    PCOUT << " file: " << file << std::endl;
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+    ss << " ----- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ----- bounding box not set: basis functions set from file -----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+    ss << " file: " << file; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     // read centers from file (clears centers_)
     if (!read_comp_data) {
@@ -618,9 +625,9 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
                 dist = sqrt (i*i + j*j + k*k);
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
-    PCOUT << " ----- Phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_ << std::endl;
+    ss << " ----- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     np_ = n_misc_->np_;
-    PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
+    ss << " ----- np: " << np_ << " ------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     // write centers to file
     #ifdef VISUALIZE_PHI
         std::stringstream phivis;
@@ -668,9 +675,14 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream ss;
 
-    PCOUT << "\n\n ----- BASIS FUNCTIONS OVERWRITTEN ------" << std::endl;
-    PCOUT << " ----- Bounding box not set: Basis functions set to match data -----\n" << std::endl;
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+    ss << " ----- BASIS FUNCTIONS OVERWRITTEN ------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ----- bounding box not set: basis functions set to match data -----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ierr = tuMSGstd(""); CHKERRQ(ierr);
+
     Vec num_tumor_output;
     ierr = VecDuplicate (data, &num_tumor_output);                           CHKERRQ (ierr);
     ierr = VecSet (num_tumor_output, 0);                                     CHKERRQ (ierr);
@@ -698,7 +710,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
-    PCOUT << " ----- Phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_ << std::endl;
+    ss << " ----- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
@@ -958,7 +970,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
 
     np_ = np_global;
     n_misc_->np_ = np_;
-    PCOUT << " ----- NP: " << np_ << " ------" << std::endl;
+    ss << " ----- np: " << np_ << " ------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     centers_.clear ();
     centers_.resize (3 * np_);
     centers_ = center_global;
@@ -1015,6 +1027,7 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream ss;
 
     centers_temp_ = centers_;
     centers_.clear ();
@@ -1032,7 +1045,7 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
     // resize np
     np_ = support_idx.size();
     if (!n_misc_->phi_store_) compute_ = false;
-    PCOUT << "Size of restricted subspace: " << np_ << std::endl;
+    ss << " size of restricted subspace: " << np_; tuMSGstd(ss.str()); ss.str(""); ss.clear();
 
 }
 

@@ -342,10 +342,11 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
   std::ifstream file(f);
+  std::stringstream ss;
   int np = 0, k = 0;
   double sigma = 0, spacing = 0;
   if (file.is_open()) {
-    PCOUT << "reading Gaussian centers from file " << f << std::endl;
+    ss << "reading Gaussian centers from file " << f; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     centers.clear();
     if (read_comp_data && comps != nullptr) {(*comps).clear();}
     std::string line;
@@ -356,13 +357,14 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
     if (pos1 != std::string::npos && pos2 != std::string::npos) {sigma = atof(line.substr(pos1+1, pos2).c_str());}
     line.erase(0, pos2+1); pos1 = line.find("=");
     if (pos1 != std::string::npos) {spacing = atof(line.substr(pos1+1, line.length()).c_str());}
-    PCOUT << "reading sigma="<<sigma<<", spacing="<<spacing<<std::endl;
+    ss << "reading sigma="<<sigma<<", spacing="<<spacing; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     if (n_misc->phi_sigma_data_driven_ != sigma) {
-      PCOUT << "WARNING: specified sigma="<<n_misc->phi_sigma_data_driven_<<" != sigma="<<sigma<<" (read from file).";
+      ss << "WARNING: specified sigma="<<n_misc->phi_sigma_data_driven_<<" != sigma="<<sigma<<" (read from file).";
       if (overwrite_sigma) {
-        PCOUT << " Specified sigma overwritten."<<std::endl;
+        ss << " Specified sigma overwritten.";
         n_misc->phi_sigma_data_driven_ = sigma;
       }
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
     std::getline(file, line); // throw away;
     std::string t;
@@ -378,16 +380,14 @@ PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> 
           (*comps).push_back(atof(t.c_str()));
         }
         ii++;
-        // PCOUT << "reading "<<t<<", np="<<np<<std::endl;
       }
       np++;
     }
     file.close();
     n_misc->np_ = np;
-    PCOUT << "np=" << np << " centers read " << std::endl;
-    // if(read_comp_data && comps != nullptr){PCOUT << "component labels read, np=" << comps->size() << std::endl;}
+    ss << "np=" << np << " centers read "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   } else {
-    PCOUT << "cannot open file " << f << std::endl;
+    ss << "cannot open file " << f; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     PetscFunctionReturn(1);
   }
   PetscFunctionReturn(ierr);
@@ -404,6 +404,7 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   double *x_ptr;
   std::string file, msg, path, ext, line;
+  std::stringstream ss;
 
   TU_assert(!f.empty(), "filename not set");
   // get file name without path
@@ -432,7 +433,8 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
   std::ifstream pfile(f);
   int pi = 0;
   if (pfile.is_open()) {
-    PCOUT << "reading p_i values from file " << f;
+
+    ss << "reading p_i values from file " << f; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     std::getline(pfile, line); // throw away (p = [);
     ierr = VecGetArray(*x, &x_ptr);                                CHKERRQ (ierr);
     while (std::getline(pfile, line)) {
@@ -441,12 +443,12 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
       x_ptr[pi] = atof(line.c_str());
       pi++;
     }
-    PCOUT << " ... success: " << pi << " values read, size of vector: " << size << std::endl;
+    ss << " ... success: " << pi << " values read, size of vector: " << size; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     TU_assert(pi == np, "number of read p_i values does not match with number of read Gaussian centers.");
     ierr = VecRestoreArray(*x, &x_ptr);                            CHKERRQ (ierr);
     pfile.close();
   } else {
-    PCOUT << "cannot open file " << f << std::endl;
+    ss << "cannot open file " << f; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     PetscFunctionReturn(1);
   }
   if (procid == 0) {
@@ -465,8 +467,9 @@ PetscErrorCode readBIN(Vec* x, int size, std::string f) {
   PetscErrorCode ierr = 0;
   PetscViewer viewer=nullptr;
   std::string file, msg;
+  std::stringstream ss;
 
-  PCOUT << "reading p_i values from binary file " << f << std::endl;
+  ss << "reading p_i values from binary file " << f; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   TU_assert(!f.empty(), "filename not set");
   // get file name without path
   ierr = getFileName(file, f);                                    CHKERRQ(ierr);
@@ -532,9 +535,10 @@ PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> 
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
   std::ifstream file(f);
+  std::stringstream ss;
   int ncomp = 0;
   if (file.is_open()) {
-    PCOUT << "reading concomp.dat file " << f << std::endl;
+    ss << "reading concomp.dat file " << f; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     weights.clear();
     centers.clear();
 
@@ -558,25 +562,25 @@ PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> 
     }
 
     file.close();
-    PCOUT << "ncomp=" << ncomp << " component read " << std::endl;
-    PCOUT << "weights: ";
+    ss << "ncomp=" << ncomp << " component read "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << "weights: ";
     for(int i=0; i < ncomp; ++i){
-      PCOUT << weights[i];
-      if(i < ncomp) {PCOUT << ", ";}
+      ss << weights[i];
+      if(i < ncomp) {ss << ", ";}
     }
-    PCOUT << std::endl;
-    PCOUT << "centers: ";
+    ss << std::endl;
+    ss << "centers: ";
     for(int i=0; i < ncomp; ++i){
-      PCOUT << "(";
+      ss << "(";
       for(int j=0; j < 3; ++j){
-        PCOUT << centers[3*i+j];
-        if(j < 2) {PCOUT << ",";}
+        ss << centers[3*i+j];
+        if(j < 2) {ss << ",";}
       }
-      PCOUT << "); ";
+      ss << "); ";
     }
-    PCOUT << std::endl;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   } else {
-    PCOUT << "cannot open file " << f << std::endl;
+    ss << "cannot open file " << f; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     PetscFunctionReturn(1);
   }
   PetscFunctionReturn(ierr);
@@ -610,7 +614,7 @@ PetscErrorCode getFileName(std::string& path, std::string& filename,
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     std::string::size_type idx;
-
+    std::stringstream ss;
     PetscFunctionBegin;
 
     // get path
@@ -641,7 +645,7 @@ PetscErrorCode getFileName(std::string& path, std::string& filename,
         filename  = filename.substr(0,idx);
 
     } else {
-        PCOUT << "ERROR: no extension found" << std::endl;
+        ss << "ERROR: no extension found"; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
 
     PetscFunctionReturn(ierr);
@@ -684,8 +688,6 @@ int weierstrassSmoother (double * Wc, double *c, std::shared_ptr<NMisc> N_Misc, 
 		exit(-1);
 	}
 
-
-	//PCOUT<<"\033[1;32m weierstrass_smoother { "<<"\033[0m"<<std::endl;
 	// Build the filter
 	int num_th = omp_get_max_threads();
 	double sum_th[num_th];
