@@ -75,7 +75,14 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
   ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
   stepsize = blmP->last_ls_step;
   ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);
+
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+  ierr = TaoMonitor(tao, tao->niter, f, gnorm, 0.0, stepsize);CHKERRQ(ierr);
+  reason = tao->reason;
+  #else
   ierr = TaoMonitor(tao, tao->niter, f, gnorm, 0.0, stepsize, &reason);CHKERRQ(ierr);
+  #endif
+
   if (reason != TAO_CONTINUE_ITERATING) PetscFunctionReturn(0);
 
   /* Set initial scaling for the function */
@@ -110,7 +117,11 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
         delta = 2.0 / (gnorm*gnorm);
       }
       ierr = MatLMVMSetDelta(blmP->M,delta);CHKERRQ(ierr);
+      #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+      ierr = MatLMVMReset(blmP->M,PETSC_FALSE);CHKERRQ(ierr);
+      #else
       ierr = MatLMVMReset(blmP->M);CHKERRQ(ierr);
+      #endif
       ierr = MatLMVMUpdate(blmP->M, tao->solution, blmP->unprojected_gradient);CHKERRQ(ierr);
       ierr = MatLMVMSolve(blmP->M,blmP->unprojected_gradient, tao->stepdirection);CHKERRQ(ierr);
     }
@@ -173,7 +184,13 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
 
     if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Not-a-Number");
     tao->niter++;
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    ierr = TaoMonitor(tao, tao->niter, f, gnorm, 0.0, stepsize);CHKERRQ(ierr);
+    reason = tao->reason;
+    #else
     ierr = TaoMonitor(tao, tao->niter, f, gnorm, 0.0, stepsize, &reason);CHKERRQ(ierr);
+    #endif
   }
   PetscFunctionReturn(0);
 }
@@ -321,7 +338,6 @@ static PetscErrorCode TaoComputeDual_BLMVM_M(Tao tao, Vec DXL, Vec DXU)
   TAOBLMVM - Bounded limited memory variable metric is a quasi-Newton method
          for nonlinear minimization with bound constraints. It is an extension
          of TAOLMVM
-
   Options Database Keys:
 +     -tao_lmm_vectors - number of vectors to use for approximation
 .     -tao_lmm_scale_type - "none","scalar","broyden"
@@ -338,7 +354,6 @@ static PetscErrorCode TaoComputeDual_BLMVM_M(Tao tao, Vec DXL, Vec DXU)
 .     -tao_lmm_scalar_history - amount of history for scalar scaling
 .     -tao_lmm_rescale_history - amount of history for rescaling diagonal
 -     -tao_lmm_eps - rejection tolerance
-
   Level: beginner
 M*/
 #undef __FUNCT__
