@@ -182,14 +182,14 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
         if (n_misc_->order_ == 2) {
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
-            if (linearized == 0 && n_misc_->adjoint_store_) {
+            if (linearized == 0 && n_misc_->adjoint_store_ && !n_misc_->forward_flag_) {
                 ierr = VecCopy (tumor_->c_t_, c_half_[i]);                    CHKERRQ (ierr);
             }
             ierr = reaction (linearized, i);
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
         } else {
             diff_solver_->solve (tumor_->c_t_, dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
-            if (linearized == 0 && n_misc_->adjoint_store_) {
+            if (linearized == 0 && n_misc_->adjoint_store_ && !n_misc_->forward_flag_) {
                 ierr = VecCopy (tumor_->c_t_, c_half_[i]);                    CHKERRQ (ierr);
             }
             ierr = reaction (linearized, i);
