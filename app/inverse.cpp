@@ -251,7 +251,7 @@ int main (int argc, char** argv) {
     int isize[3], osize[3], istart[3], ostart[3];
    
     std::shared_ptr<SpectralOperators> spec_ops;
-    #ifdef CUDA && !defined(MPICUDA)
+    #if defined(CUDA) && !defined(MPICUDA)
         spec_ops = std::make_shared<SpectralOperators> (CUFFT);
     #else
         spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
