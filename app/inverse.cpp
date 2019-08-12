@@ -458,6 +458,19 @@ int main (int argc, char** argv) {
         n_misc->nt_ = nt;
     }
 
+    // some checks
+    if (n_misc->model_ >= 4) {
+        #if defined(CUDA) && !defined(MPICUDA)
+            // single gpu mass effect models
+            #ifndef SINGLE
+                PCOUT << "This forward model only runs with single precision on the GPU. Exiting solver...\n";
+                MPI_Comm_free(&c_comm);
+                ierr = PetscFinalize ();
+                exit(-1);
+            #endif
+        #endif
+    }
+
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, spec_ops, nullptr, nullptr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
