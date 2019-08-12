@@ -421,37 +421,37 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
     ierr = TaoGetType (tao_, &taotype);                                            CHKERRQ(ierr);
   #endif
   if (strcmp(taotype, "nls") == 0) {
-      msg = " limited memory variable metric method (unconstrained) selected\n";
+      msg = " limited memory variable metric method (unconstrained) selected";
   } else if (strcmp(taotype, "ntr") == 0) {
-      msg = " Newton's method with trust region for unconstrained minimization\n";
+      msg = " Newton's method with trust region for unconstrained minimization";
   } else if (strcmp(taotype, "ntl") == 0) {
-      msg = " Newton's method with trust region, line search for unconstrained minimization\n";
+      msg = " Newton's method with trust region, line search for unconstrained minimization";
   } else if (strcmp(taotype, "nls") == 0) {
-      msg = " Newton's method (line search; unconstrained) selected\n";
+      msg = " Newton's method (line search; unconstrained) selected";
   } else if (strcmp(taotype, "bnls") == 0) {
-      msg = " Newton's method (line search; bound constraints) selected\n";
+      msg = " Newton's method (line search; bound constraints) selected";
   } else if (strcmp(taotype, "bqnls") == 0) {
-      msg = " Quasi-Newton's method (line search; bound constraints) selected\n";
+      msg = " Quasi-Newton's method (line search; bound constraints) selected";
   } else if (strcmp(taotype, "ntr") == 0) {
-      msg = " Newton's method (trust region; unconstrained) selected\n";
+      msg = " Newton's method (trust region; unconstrained) selected";
   } else if (strcmp(taotype, "fd_test") == 0) {
-      msg = " gradient test selected\n";
+      msg = " gradient test selected";
   } else if (strcmp(taotype, "cg") == 0) {
-      msg = " CG selected\n";
+      msg = " CG selected";
   } else if (strcmp(taotype, "tron") == 0) {
-      msg = "  Newton Trust Region method chosen\n";
+      msg = "  Newton Trust Region method chosen";
   } else if (strcmp(taotype, "blmvm") == 0) {
-      msg = "  Bounded limited memory variable metric method chosen\n";
+      msg = "  Bounded limited memory variable metric method chosen";
   } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
-      msg = "  Own bounded limited memory variable metric method chosen\n";
+      msg = "  Own bounded limited memory variable metric method chosen";
   } else if (strcmp(taotype, "lmvm") == 0) {
-      msg = "  Limited memory variable metric method chosen\n";
+      msg = "  Limited memory variable metric method chosen";
   } else if (strcmp(taotype, "gpcg") == 0) {
-      msg = " Newton Trust Region method for quadratic bound constrained minimization\n";
+      msg = " Newton Trust Region method for quadratic bound constrained minimization";
   } else if (strcmp(taotype, "tao_L1") == 0) {
-      msg = " User defined solver for L1 minimization\n";
+      msg = " User defined solver for L1 minimization";
   } else {
-      msg = " numerical optimization method not supported (setting default: LMVM)\n";
+      msg = " numerical optimization method not supported (setting default: LMVM)";
       ierr = TaoSetType (tao_, "blmvm");                                          CHKERRQ(ierr);
   }
   ierr = tuMSGstd(msg);
@@ -3116,37 +3116,37 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ierr = TaoGetType (tao, &taotype);                                            CHKERRQ(ierr);
     #endif
     if (strcmp(taotype, "nls") == 0) {
-        msg = " limited memory variable metric method (unconstrained) selected\n";
+        msg = " limited memory variable metric method (unconstrained) selected";
     } else if (strcmp(taotype, "ntr") == 0) {
-        msg = " Newton's method with trust region for unconstrained minimization\n";
+        msg = " Newton's method with trust region for unconstrained minimization";
     } else if (strcmp(taotype, "ntl") == 0) {
-        msg = " Newton's method with trust region, line search for unconstrained minimization\n";
+        msg = " Newton's method with trust region, line search for unconstrained minimization";
     } else if (strcmp(taotype, "nls") == 0) {
-        msg = " Newton's method (line search; unconstrained) selected\n";
+        msg = " Newton's method (line search; unconstrained) selected";
     } else if (strcmp(taotype, "bnls") == 0) {
-        msg = " Newton's method (line search; bound constraints) selected\n";
+        msg = " Newton's method (line search; bound constraints) selected";
     } else if (strcmp(taotype, "bqnls") == 0) {
-        msg = " Quasi-Newton's method (line search; bound constraints) selected\n";
+        msg = " Quasi-Newton's method (line search; bound constraints) selected";
     } else if (strcmp(taotype, "ntr") == 0) {
-        msg = " Newton's method (trust region; unconstrained) selected\n";
+        msg = " Newton's method (trust region; unconstrained) selected";
     } else if (strcmp(taotype, "fd_test") == 0) {
-        msg = " gradient test selected\n";
+        msg = " gradient test selected";
     } else if (strcmp(taotype, "cg") == 0) {
         msg = " CG selected\n";
     } else if (strcmp(taotype, "tron") == 0) {
-        msg = "  Newton Trust Region method chosen\n";
+        msg = "  Newton Trust Region method chosen";
     } else if (strcmp(taotype, "blmvm") == 0) {
-        msg = "  Bounded limited memory variable metric method chosen\n";
+        msg = "  Bounded limited memory variable metric method chosen";
     } else if (strcmp(taotype, "lmvm") == 0) {
         msg = "  Limited memory variable metric method chosen\n";
     } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
-        msg = "  User modified limited memory variable metric method chosen\n";
+        msg = "  User modified limited memory variable metric method chosen";
     } else if (strcmp(taotype, "gpcg") == 0) {
-        msg = " Newton Trust Region method for quadratic bound constrained minimization\n";
+        msg = " Newton Trust Region method for quadratic bound constrained minimization";
     } else if (strcmp(taotype, "tao_L1") == 0) {
-        msg = " User defined solver for L1 minimization\n";
+        msg = " User defined solver for L1 minimization";
     } else {
-        msg = " numerical optimization method not supported (setting default: LMVM)\n";
+        msg = " numerical optimization method not supported (setting default: LMVM)";
         ierr = TaoSetType (tao, "lmvm");                                          CHKERRQ(ierr);
     }
     ierr = tuMSGstd(msg); CHKERRQ(ierr);
