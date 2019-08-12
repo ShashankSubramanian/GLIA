@@ -390,14 +390,14 @@ class NMisc {
             writepath_ << "./results/";
 
 
-            if (verbosity_ >= 2) {
+            // if (verbosity_ >= 2) {
               outfile_sol_.open("x_it.dat", std::ios_base::out);
               outfile_grad_.open("g_it.dat", std::ios_base::out);
               outfile_glob_grad_.open("glob_g_it.dat", std::ios_base::out);
               outfile_sol_ << std::setprecision(16)<<std::scientific;
               outfile_grad_ << std::setprecision(16)<<std::scientific;
               outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
-            }
+            // }
         }
 
         double k_lb_;
@@ -599,9 +599,9 @@ PetscErrorCode getFileName(std::string& path, std::string& filename, std::string
 bool fileExists(const std::string& filename);
 
 /* helper methods for print out to console */
-PetscErrorCode tuMSG(std::string msg, int size = 98);
-PetscErrorCode tuMSGstd(std::string msg, int size = 98);
-PetscErrorCode tuMSGwarn(std::string msg, int size = 98);
+PetscErrorCode tuMSG(std::string msg, int size = 111);
+PetscErrorCode tuMSGstd(std::string msg, int size = 111);
+PetscErrorCode tuMSGwarn(std::string msg, int size = 111);
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
 /* accfft differential operators */

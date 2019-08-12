@@ -724,12 +724,12 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
       if (pixel_ptr[i] > n_misc_->obs_threshold_) sum++;
   ierr = VecRestoreArray (d1, &pixel_ptr);                                      CHKERRQ (ierr);
   MPI_Reduce (&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
-  ss << "Number of observed voxels: " << global_sum << std::endl;
+  ss << "Number of observed voxels: " << global_sum;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   // solve
   inv_solver_->solveInverseCoSaMp();
-  ierr= VecCopy (inv_solver_->getPrec(), prec);                                 CHKERRQ (ierr);
+  ierr = VecCopy (inv_solver_->getPrec(), prec);                                CHKERRQ (ierr);
 
   PetscFunctionReturn(ierr);
 }

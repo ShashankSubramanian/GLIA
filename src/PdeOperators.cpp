@@ -133,7 +133,7 @@ PetscErrorCode PdeOperatorsRD::solveIncremental (Vec c_tilde, std::vector<Vec> c
     Event e ("tumor-incr-fwd-secdiff-solve");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-    
+
     Vec temp = tumor_->work_[11];
     // c_tilde = c_tilde + dt / 2 * (Dc^i+1 + Dc^i)
     if (mode == 1) {
@@ -202,7 +202,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
     /* linearized = 0 -- state equation
        linearized = 1 -- linearized state equation
-       linearized = 2 -- linearized state equation with diffusivity inversion 
+       linearized = 2 -- linearized state equation with diffusivity inversion
                          for hessian application
     */
     for (int i = 0; i < nt; i++) {
@@ -540,7 +540,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     r2 = n_misc_->r_gm_wm_ratio_ * n_misc_->rho_; r3 = 0;
 
 
-    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
+    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);
     // force compute
     ierr = tumor_->computeForce (tumor_->c_t_);
     // displacement compute through elasticity solve
@@ -575,7 +575,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ss.str(std::string()); ss.clear();
     }
 
-    
+
     double vel_max;
     double cfl;
 
@@ -714,16 +714,18 @@ PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    std::stringstream s;
     double max, min;
     ierr = VecMax (c, NULL, &max);  CHKERRQ (ierr);
     ierr = VecMin (c, NULL, &min);  CHKERRQ (ierr);
     double tol = 0.;
-    PCOUT << "[---------- Tumor IC bounds: Max = " << max << ", Min = " << min << " -----------]" << std::endl;
+    s << " ---------- tumor c(0) bounds: max = " << max << ", min = " << min << " ----------- ";
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
     if (max > 1 || min < tol) {
         #ifdef POSITIVITY
-            PCOUT << "[---------- Warning! Tumor IC is clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
-        // #else
-            // PCOUT << "[---------- Warning! Tumor IC is out of bounds and not clipped: Max = " << max << ", Min = " << min << "! -----------]" << std::endl;
+            s << " ---------- warning: tumor c(0) si clipped! max = " << max << ", min = " << min << " ----------- ";
+            ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
         #endif
     }
     PetscFunctionReturn (0);
