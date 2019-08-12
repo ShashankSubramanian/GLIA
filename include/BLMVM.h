@@ -38,7 +38,7 @@ PetscErrorCode mTaoGradientNorm(Tao, Vec, NormType, PetscReal*);
 
 #if defined(__cplusplus)
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
-  extern PetscErrorCode MatLMVMReset(Mat, bool);
+  extern PetscErrorCode MatLMVMReset(Mat, PetscBool);
 #else
   extern PetscErrorCode MatLMVMReset(Mat);
 #endif
@@ -59,7 +59,7 @@ extern PetscErrorCode MatView_LMVM(Mat,PetscViewer);
 extern PetscErrorCode MatDestroy_LMVM(Mat);
 #else
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
-  PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat, bool);
+  PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat, PetscBool);
 #else
   PETSC_EXTERN PetscErrorCode MatLMVMReset(Mat);
 #endif
