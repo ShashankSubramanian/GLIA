@@ -48,7 +48,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     np_ = np;                         n_misc_->np_ = np_;
 
     ierr = tuMSGstd(""); CHKERRQ(ierr);
-    ss << " ---- bounding box for phi set with np: " << np_ << " and sigma: " << sigma_ << " ---- ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- bounding box for phi set with np: " << np_ << " and sigma: " << sigma_ << " ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     centers_.clear ();
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
