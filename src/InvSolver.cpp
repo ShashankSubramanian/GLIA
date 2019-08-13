@@ -177,6 +177,11 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
+    // use grad norm explcitly as bqnls used fischer functions as gnorm
+    Vec tao_grad;
+    ierr = TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ (ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                 CHKERRQ (ierr);
+
     ScalarType norm_gref = 0.;
     // update/set reference gradient 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
@@ -1240,11 +1245,15 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
 
+    // use grad norm explcitly as bqnls used fischer functions as gnorm
+    Vec tao_grad;
+    ierr = TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ (ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                 CHKERRQ (ierr);
 
     if (itctx->n_misc_->verbosity_ >= 2) {
-      Vec tao_grad;
+      
       ScalarType *grad_ptr, *sol_ptr;
-      ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
+      
 
       ierr = VecGetArray(tao_x, &sol_ptr);                                        CHKERRQ(ierr);
       ierr = VecGetArray(tao_grad, &grad_ptr);                                    CHKERRQ(ierr);
@@ -1375,6 +1384,11 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     ScalarType norm_gref;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);      CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
+
+    // use grad norm explcitly as bqnls used fischer functions as gnorm    
+    Vec tao_grad;
+    ierr = TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ (ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                 CHKERRQ (ierr);
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
@@ -1963,6 +1977,11 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
+
+    // use grad norm explcitly as bqnls used fischer functions as gnorm
+    Vec tao_grad;
+    ierr = TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ (ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                 CHKERRQ (ierr);
 
     // update/set reference gradient (with p = zeros)
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)

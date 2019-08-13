@@ -393,16 +393,6 @@ class NMisc {
             //Read and write paths
             readpath_ << "./brain_data/" << n_[0] <<"/";
             writepath_ << "./results/";
-
-
-            if (verbosity_ >= 2) {
-              outfile_sol_.open("x_it.dat", std::ios_base::out);
-              outfile_grad_.open("g_it.dat", std::ios_base::out);
-              outfile_glob_grad_.open("glob_g_it.dat", std::ios_base::out);
-              outfile_sol_ << std::setprecision(16)<<std::scientific;
-              outfile_grad_ << std::setprecision(16)<<std::scientific;
-              outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
-            }
         }
 
         ScalarType ic_max_;
