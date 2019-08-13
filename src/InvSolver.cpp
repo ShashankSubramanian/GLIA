@@ -167,10 +167,10 @@ PetscErrorCode InvSolver::resetOperators (Vec p) {
     }
     // re-allocate memory
     itctx_->x_old = nullptr; // Will be set accordingly in the solver
-    // if (tao_  != nullptr) {ierr = TaoDestroy (&tao_);  CHKERRQ(ierr); tao_  = nullptr;}
+    if (tao_  != nullptr) {ierr = TaoDestroy (&tao_);  CHKERRQ(ierr); tao_  = nullptr;}
     if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
     if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
-    ierr = allocateTaoObjects (false); CHKERRQ(ierr);
+    ierr = allocateTaoObjects (true); CHKERRQ(ierr);
     tao_is_reset_ = true;                        // triggers setTaoOptions
     PetscFunctionReturn (0);
 }
@@ -186,7 +186,7 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
     int verbosity;
     std::stringstream ss, sc;
     Vec x = nullptr, g = nullptr;
-    ierr = TaoGetSolutionVector(tao, &x);                                     CHKERRQ(ierr);
+    ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
     TaoLineSearch ls = nullptr;
     TaoLineSearchConvergedReason ls_flag;
 
@@ -219,7 +219,7 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
       norm_gref = gnorm;
       ctx->optfeedback_->gradnorm0 = norm_gref;
       ctx->update_reference_gradient = false;
-      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Quasi-Newton solver: " << ctx->optfeedback_->gradnorm0;
+      std::stringstream s; s <<" updated reference gradient for relative convergence criterion, Quasi-Newton solver: " << ctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     }
     #endif
@@ -1215,10 +1215,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
       ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
       ierr = tuMSG    ("### estimated reaction coefficients:                  ###"); CHKERRQ (ierr);
-      ss << " r1: "<< r1 << ", r2: " << r2 << ", r3: "<< r3;
+      ss << "    r1: "<< r1 << ", r2: " << r2 << ", r3: "<< r3;
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
       ierr = tuMSG    ("### estimated diffusion coefficients:                 ###"); CHKERRQ (ierr);
-      ss << " k1: "<< k1 << ", k2: " << k2 << ", k3: "<< k3;
+      ss << "    k1: "<< k1 << ", k2: " << k2 << ", k3: "<< k3;
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
@@ -1774,7 +1774,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
     ierr = VecMin (itctx->tumor_->c_t_, NULL, &mn); CHKERRQ (ierr);
     // this print helps determine if theres any large aliasing errors which is causing ls failure etc
-    s << " ---------- tumor final bounds: max = " << mx << ", min = " << mn << " ----------- ";
+    s << " ---------- tumor c(1) bounds: max = " << mx << ", min = " << mn << " ----------- ";
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
 
     if (its == 0) {
@@ -1851,7 +1851,7 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
       norm_gref = gnorm;
       itctx->optfeedback_->gradnorm0 = norm_gref;
       itctx->update_reference_gradient = false;
-      s <<"updated reference gradient for relative convergence criterion, Quasi-Newton solver: " << itctx->optfeedback_->gradnorm0;
+      s <<" updated reference gradient for relative convergence criterion, Quasi-Newton solver: " << itctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
     }
     #endif
@@ -1881,7 +1881,7 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
     ierr = VecMin (itctx->tumor_->c_t_, NULL, &mn); CHKERRQ (ierr);
     // this print helps determine if theres any large aliasing errors which is causing ls failure etc
-    s << " ---------- tumor final bounds: max = " << mx << ", min = " << mn << " ----------- ";
+    s << " ---------- tumor c(1) bounds: max = " << mx << ", min = " << mn << " ----------- ";
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
 
     if (its == 0) {
@@ -1984,7 +1984,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
       itctx->optfeedback_->gradnorm0 = norm_gref;
       //ctx->gradnorm0 = gnorm;
       itctx->update_reference_gradient = false;
-      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << itctx->optfeedback_->gradnorm0;
+      std::stringstream s; s <<" updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << itctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
       ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
       ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
@@ -2453,7 +2453,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         ctx->optfeedback_->gradnorm0 = norm_gref;
         //ctx->gradnorm0 = gnorm;
         ctx->update_reference_gradient = false;
-      std::stringstream s; s <<"updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
+      std::stringstream s; s <<" updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
         ierr = VecDestroy(&dJ);                                                   CHKERRQ(ierr);
       ierr = VecDestroy(&p0);                                                   CHKERRQ(ierr);
@@ -2653,7 +2653,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
       ierr = tuMSGstd(s.str());                                                     CHKERRQ(ierr);
       s.str(std::string());
       s.clear();
-      s <<"updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
+      s <<" updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
         ierr = tuMSGstd(s.str());                                                          CHKERRQ(ierr);
       s.str(std::string());
       s.clear();

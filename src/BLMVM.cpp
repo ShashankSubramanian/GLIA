@@ -1,6 +1,7 @@
 #include "petsctaolinesearch.h"
 #include "petsc/private/taolinesearchimpl.h"
 #include "BLMVM.h"
+#include "Utils.h"
 
 
 
@@ -74,7 +75,8 @@ static PetscErrorCode TaoSolve_BLMVM_M(Tao tao)
 
   ierr = TaoLineSearchSetInitialStepLength(tao->linesearch, blmP->last_ls_step);CHKERRQ(ierr);
   stepsize = blmP->last_ls_step;
-  ierr = PetscPrintf(PETSC_COMM_WORLD,".. setting ls initial step length to: %0.8f \n",blmP->last_ls_step);CHKERRQ(ierr);
+
+  std::stringstream ss; ss << " setting ls initial step length to: "<< blmP->last_ls_step; tuMSGstd(ss.str());
 
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
   ierr = TaoMonitor(tao, tao->niter, f, gnorm, 0.0, stepsize);CHKERRQ(ierr);

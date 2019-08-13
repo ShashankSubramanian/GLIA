@@ -211,30 +211,37 @@ int main (int argc, char** argv) {
     PetscOptionsEnd ();
 
 
-    PCOUT << " ----- Grid Size: " << n[0] << "x" << n[1] << "x" << n[2] << " ---- " << std::endl;
+    std::stringstream ss;
+    ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
+    ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+    ierr = tuMSG("###                                         TUMOR INVERSION SOLVER                                        ###");CHKERRQ (ierr);
+    ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+    ss << "    grid size: " << n[0] << "x" << n[1] << "x" << n[2]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     switch (testcase) {
         case CONSTCOEF: {
-            PCOUT << " ----- Test Case 1: No brain, Constant reaction and diffusion ---- " << std::endl;
+            ss << " ----- Test Case 1: No brain, Constant reaction and diffusion ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case SINECOEF: {
-            PCOUT << " ----- Test Case 2: No brain, Sinusoidal reaction and diffusion ---- " << std::endl;
+            ss << " ----- Test Case 2: No brain, Sinusoidal reaction and diffusion ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case BRAIN: {
-            PCOUT << " ----- Full brain test ---- " << std::endl;
+            ss << " ----- Full brain test ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case BRAINNEARMF: {
-            PCOUT << " ----- Full brain test with multifocal nearby synthetic tumors ---- " << std::endl;
+            ss << " ----- Full brain test with multifocal nearby synthetic tumors ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case BRAINFARMF: {
-            PCOUT << " ----- Full brain test with multifocal faroff synthetic tumors ---- " << std::endl;
+            ss << " ----- Full brain test with multifocal faroff synthetic tumors ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         default: break;
     }
+
+    ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
     accfft_init();
     MPI_Comm c_comm;
@@ -251,6 +258,7 @@ int main (int argc, char** argv) {
 /* --------------------------------------------------------------------------------------------------------------*/
 
 {
+    std::stringstream ss;
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data
@@ -274,11 +282,11 @@ int main (int argc, char** argv) {
     bool read_data_comp_file = (data_comp_dat_path != NULL && strlen(data_comp_dat_path) > 0);   // path set?
     bool warmstart_p         = (p_vec_path != NULL && strlen(p_vec_path) > 0);                   // path set?
     if (warmstart_p  && not (gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0)){
-      PCOUT << " ERROR: if initial guess for p is used, Gaussian centers need to be specified. " << std::endl;
+      ss << " ERROR: if initial guess for p is used, Gaussian centers need to be specified. "; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
       exit(-1);
     }
     if (inject_coarse_solution && (!warmstart_p || !(gaussian_cm_path != NULL && strlen(gaussian_cm_path) > 0) )){
-      PCOUT << " ERROR: if coarse solution should be injected, Gaussian centers and p_i values are required. " << std::endl;
+      ss << " ERROR: if coarse solution should be injected, Gaussian centers and p_i values are required. "; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
       exit(-1);
     }
     double rho = rho_data;
@@ -394,7 +402,7 @@ int main (int argc, char** argv) {
 
     if (multilevel_flag != -1.0) {
         n_misc->multilevel_ = multilevel_flag;
-        PCOUT << "Solver is running in multi-level mode" << std::endl;
+        ss << "Solver is running in multi-level mode"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
 
     if (newton_maxit != -1.0) {
@@ -476,7 +484,7 @@ int main (int argc, char** argv) {
     std::array<double, 7> timers = {0};
 
     if (syn_flag == 1) {
-        PCOUT << "Generating Synthetic Data --->" << std::endl;
+        ss << "Generating Synthetic Data"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
         } else {
@@ -488,7 +496,7 @@ int main (int argc, char** argv) {
         ierr = readData (data, support_data, data_components, c_0, p_rec, n_misc, data_path, support_data_path, data_comp_path);
         if(use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
-          PCOUT << "Use custom observation mask\n";
+          ss << "Use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         }
     }
 
@@ -508,7 +516,7 @@ int main (int argc, char** argv) {
         ierr = VecNorm (temp, NORM_2, &noise_err_norm);               CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
         ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
         rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
-        PCOUT << "[--------------- Low frequency relative error = " << rel_noise_err_norm << " -------------------]" << std::endl;
+        ss << " low frequency relative error = " << rel_noise_err_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         // if (n_misc->writeOutput_)
         //     dataOut (data, n_misc, "dataNoise.nc");
@@ -516,15 +524,15 @@ int main (int argc, char** argv) {
         if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
 
 
-        PCOUT << "Data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
+        ss << " data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
-        PCOUT << "Data read\n";
+        ss << " data read"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
 
     if (fwd_flag) {
-        PCOUT << "Forward solve completed: exiting...\n";
+        ss << "forward solve completed: exiting..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
-        PCOUT << "Inverse solver begin" << std::endl;
+        ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         n_misc->rho_ = rho_inv;
         // n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
@@ -532,15 +540,15 @@ int main (int argc, char** argv) {
         n_misc->dt_ = dt_inv;
         n_misc->nt_ = nt_inv;
 
-        PCOUT << "Inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_ << std::endl;
-        PCOUT << "Results in: " << n_misc->writepath_.str().c_str() << std::endl;
+        ss << " inversion with tumor parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << " results in: " << n_misc->writepath_.str().c_str(); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         std::string file_concomp(data_comp_dat_path);
         if(read_data_comp_file){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
           int nnc = 0;
           for (auto w : tumor->phi_->component_weights_) if (w >= 1E-3) nnc++;
-          PCOUT << "Set sparsity level to "<< n_misc->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << n_misc->sparsity_level_ << " x " << nnc << " + " << (tumor->phi_->component_weights_.size() - nnc) << " = " <<  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) <<std::endl;
+          ss << " set sparsity level to "<< n_misc->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << n_misc->sparsity_level_ << " x " << nnc << " + " << (tumor->phi_->component_weights_.size() - nnc) << " = " <<  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
           n_misc->sparsity_level_ =  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) ;
         }
 
@@ -549,10 +557,10 @@ int main (int argc, char** argv) {
             // set the observation operator filter : default filter
             if (use_custom_obs_mask) {
               ierr = tumor->obs_->setCustomFilter (obs_mask);
-              PCOUT << "Set custom observation mask" << std::endl;
+              ss << " set custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             } else {
               ierr = tumor->obs_->setDefaultFilter (data);
-              PCOUT << "Set default observation mask based on input data and threshold " << tumor->obs_->threshold_  << std::endl;
+              ss << " set default observation mask based on input data and threshold " << tumor->obs_->threshold_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             }
             // apply observer on ground truth, store observed data in d
             // observation operator is applied before gaussians are set.
@@ -563,7 +571,7 @@ int main (int argc, char** argv) {
             int nr = (n_misc->reaction_inversion_)    ? n_misc->nr_ : 0;
             // if p vector and Gaussian centers are read in
             if (warmstart_p && !inject_coarse_solution) {
-              PCOUT << "Solver warmstart using p and Gaussian centers" << std::endl;
+              ss << " solver warmstart using p and Gaussian centers"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
               std::string file_p(p_vec_path);
               std::string file_cm(gaussian_cm_path);
               ierr = tumor->phi_->setGaussians (file_cm);                               CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
@@ -579,14 +587,14 @@ int main (int argc, char** argv) {
               // use *.nc support data to determine Gaussian support, labels have to be set beforehand
               } else if (read_support_data_nc) {
                 if(use_data_comps) {
-                  PCOUT << " Set labels of connected components of data. " << std::endl;
+                  ss << " set labels of connected components of data. "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                   tumor->phi_->setLabels (data_components);
                 }
                 ierr = tumor->phi_->setGaussians (support_data);                        CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               } else if (syn_flag) {
                 ierr = tumor->phi_->setGaussians (data);                                CHKERRQ (ierr);     //Overwrites bounding box phis with custom phis
               } else {
-                PCOUT << "Error: Expecting user input data -support_data_path *.nc or *.txt. exiting..." <<std::endl;
+                ss << "Error: Expecting user input data -support_data_path *.nc or *.txt. exiting..."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                 exit(1);
               }
               ierr = tumor->phi_->setValues (tumor->mat_prop_);                         CHKERRQ (ierr);
@@ -656,23 +664,23 @@ int main (int argc, char** argv) {
 
 
         if (interp_flag) {
-            PCOUT << "SOLVING INTERPOLATION WITH DATA" << std::endl;
+            ss << " SOLVING INTERPOLATION WITH DATA"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
-            PCOUT << " --------------  INTERPOLATED P -----------------\n";
+            ss << " --------------  INTERPOLATED P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             if (procid == 0) {
                 ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
             }
-            PCOUT << " --------------  -------------- -----------------\n";
+            ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
             ierr = solver_interface->setInitialGuess (0.);
-            PCOUT << "SOLVING INTERPOLATION WITH IC" << std::endl;
+            ss << "SOLVING INTERPOLATION WITH IC" << std::endl;
             ierr = solver_interface->solveInterpolation (c_0, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
-            PCOUT << " --------------  INTERPOLATED P -----------------\n";
+            ss << " --------------  INTERPOLATED P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             if (procid == 0) {
                 ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
             }
-            PCOUT << " --------------  -------------- -----------------\n";
-            PCOUT << "Interpolation complete; exiting solver...\n";
+            ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << "Interpolation complete; exiting solver..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         } else {
             bool flag_diff = false;
             if (n_misc->regularization_norm_ == L1 && n_misc->diffusivity_inversion_ == true) {
@@ -681,7 +689,7 @@ int main (int argc, char** argv) {
             }
 
             if (solve_rho_k_only_flag) {
-                if (!warmstart_p) {PCOUT << "Error: c(0) needs to be set, read in p and Gaussians. exiting solver...\n"; exit(1);}
+                if (!warmstart_p) {ss << " Error: c(0) needs to be set, read in p and Gaussians. exiting solver..."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear(); exit(1);}
                 ierr = solver_interface->solveInverseReacDiff (p_rec, data, nullptr);     // solve tumor inversion only for rho and k, read in c(0)
             } else if (flag_cosamp) {
                 // ierr = solver_interface->setInitialGuess (p_rec);
@@ -710,22 +718,24 @@ int main (int argc, char** argv) {
 
             if (n_misc->regularization_norm_ == wL2) {
                 ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
-                PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
+                ss << " reconstructed p norm: " << prec_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                 if (n_misc->diffusivity_inversion_) {
                     ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
-                    PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
-                    PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
-                    PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
+                    ss << " k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0);     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                    ss << " k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                    ss << " k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                     ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
                 }
                 ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, data, c_0, solver_interface, n_misc);
-                PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
-                PCOUT << " --------------  RECONST P -----------------\n";
+                ierr = tuMSGstd(""); CHKERRQ(ierr);
+                ss << " l2-error in reconstruction: " << l2_rel_error; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                ss << " --------------  RECONST P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                 if (procid == 0) {
                     ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
                 }
-                PCOUT << " --------------  -------------- -----------------\n";
-                PCOUT << " \n\n --------------- W-L2 solve for sparse components ----------------------\n\n\n";
+                ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                ierr = tuMSGstd(""); CHKERRQ(ierr);
+                ss << " --------------- W-L2 solve for sparse components ----------------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
                 ierr = solver_interface->resetTaoSolver ();                                 //Reset tao objects
                 ierr = solver_interface->setInitialGuess (p_rec);
@@ -736,21 +746,21 @@ int main (int argc, char** argv) {
             }
 
             ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
-            PCOUT << "Reconstructed P Norm: " << prec_norm << std::endl;
+            ss << " reconstructed p norm: " << prec_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             if (n_misc->diffusivity_inversion_ && !n_misc->reaction_inversion_) {
                 ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
-                PCOUT << "k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0) << std::endl;
-                PCOUT << "k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0) << std::endl;
-                PCOUT << "k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0) << std::endl;
+                ss << " k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0);     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                ss << " k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                ss << " k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                 ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
             }
             ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, data, c_0, solver_interface, n_misc);
-            PCOUT << "\nL2 Error in Reconstruction: " << l2_rel_error << std::endl;
-            PCOUT << " --------------  RECONST P -----------------\n";
+            ss << " l2-error in reconstruction: " << l2_rel_error; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << " --------------  RECONST P -----------------";  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             if (procid == 0) {
                 ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
             }
-            PCOUT << " --------------  -------------- -----------------\n";
+            ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
             ierr = computeSegmentation(tumor, n_misc);      // Writes segmentation with c0 and c1
 
@@ -772,7 +782,7 @@ int main (int argc, char** argv) {
             writeBIN(p_rec, fname);
 
             if (n_misc->predict_flag_) {
-                PCOUT << "Predicting future tumor growth..." << std::endl;
+                ss << " predicting future tumor growth..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                 // predict tumor growth using inverted parameter values
                 // set dt and nt to synthetic values to ensure best accuracy
                 n_misc->dt_ = dt_data;
@@ -790,7 +800,7 @@ int main (int argc, char** argv) {
                 dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
                 dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
 
-                PCOUT << "Prediction complete for t = 1.2 and t = 1.5\n";
+                ss << " prediction complete for t = 1.2 and t = 1.5"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             }
         }
 
@@ -861,6 +871,7 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
 PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    std::stringstream ss;
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -916,11 +927,11 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     ierr = tumor->setTrueP (n_misc);
-    PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
+    ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
     }
-    PCOUT << " --------------  -------------- -----------------\n";
+    ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);                        CHKERRQ (ierr);
 
     Vec c_temp;
@@ -955,11 +966,11 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = tumor->phi_->setValues (tumor->mat_prop_);
     // ierr = tumor->setTrueP (n_misc, 0.75);
     ierr = tumor->setTrueP (n_misc, scaling);
-    PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
+    ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
     }
-    PCOUT << " --------------  -------------- -----------------\n";
+    ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tumor->phi_->apply (c_temp, tumor->p_true_);                     CHKERRQ (ierr);
 
     ierr = VecAXPY (c_0, 1.0, c_temp);                                      CHKERRQ (ierr);
@@ -980,7 +991,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
-    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
+    ss << " c data init cond max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
 
@@ -1253,6 +1264,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream ss;
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
@@ -1297,7 +1309,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
                                                 // S: obs should not be applied because we want to see how the model captures the
                                                 // true boundaries
 
-    PCOUT << "\nC Reconstructed Max and Min : " << max << " " << min << std::endl;
+    ss << " c reconstructed max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
 
     if (n_misc->writeOutput_)
@@ -1311,13 +1323,13 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecNorm (c_rec_0, NORM_2, &error_norm_c0);                       CHKERRQ (ierr);
 
     error_norm_c0 /= data_norm;
-    PCOUT << "Error norm in IC: " << error_norm_c0 << std::endl;
+    ss << " error norm in c(0): " << error_norm_c0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
     ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
 
-    PCOUT << "Data mismatch: " << error_norm << std::endl;
+    ss << " data mismatch: " << error_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     error_norm /= data_norm;
 
@@ -1329,7 +1341,7 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     obs_c_norm /= obs_data_norm;
 
-    PCOUT << "L2 rel error at observation points: " << obs_c_norm << std::endl;
+    ss << " rel. l2-error at observation points: " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     if(obs_c_rec != nullptr) {ierr = VecDestroy (&obs_c_rec);               CHKERRQ (ierr); obs_c_rec = nullptr;}
 
@@ -1445,8 +1457,8 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     //     r3 = (n_misc->nr_ > 2) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 2] : 0;
     // }
 
-    PCOUT << "P distance error: " << dist_err_c0 << std::endl;
-    PCOUT << "P l1 norm: " << l1_err << std::endl;
+    ss << " p distance error: " << dist_err_c0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " p l1 norm: " << l1_err; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
@@ -1475,6 +1487,8 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream ss;
+
     //Create p_rec
     int np = n_misc->np_;
     int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
@@ -1497,11 +1511,11 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->setTrueP (n_misc);
-    PCOUT << " --------------  SYNTHETIC TRUE P -----------------\n";
+    ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     if (procid == 0) {
         ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
     }
-    PCOUT << " --------------  -------------- -----------------\n";
+    ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     double *c0_ptr;
@@ -1531,14 +1545,14 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
-    PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
+    ss << " c data initc cond. max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
 
     ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
 
-    PCOUT << "\nC Data Max and Min (Before observation) : " << max << " " << min << std::endl;
+    ss << " c data max and min (before observation) : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     // ierr = tumor->obs_->apply (c_t, c_t);
 
