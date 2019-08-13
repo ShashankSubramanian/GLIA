@@ -219,23 +219,23 @@ int main (int argc, char** argv) {
     ss << "    grid size: " << n[0] << "x" << n[1] << "x" << n[2]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     switch (testcase) {
         case CONSTCOEF: {
-            ss << " ----- Test Case 1: No brain, Constant reaction and diffusion ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << " ----- test case 1: No brain, Constant reaction and diffusion ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case SINECOEF: {
-            ss << " ----- Test Case 2: No brain, Sinusoidal reaction and diffusion ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << " ----- test case 2: No brain, Sinusoidal reaction and diffusion ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case BRAIN: {
-            ss << " ----- Full brain test ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << " ----- full brain test ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case BRAINNEARMF: {
-            ss << " ----- Full brain test with multifocal nearby synthetic tumors ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << " ----- full brain test with multifocal nearby synthetic tumors ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         case BRAINFARMF: {
-            ss << " ----- Full brain test with multifocal faroff synthetic tumors ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << " ----- full brain test with multifocal faroff synthetic tumors ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             break;
         }
         default: break;
@@ -402,7 +402,7 @@ int main (int argc, char** argv) {
 
     if (multilevel_flag != -1.0) {
         n_misc->multilevel_ = multilevel_flag;
-        ss << "Solver is running in multi-level mode"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << " solver is running in multi-level mode"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
 
     if (newton_maxit != -1.0) {
@@ -484,7 +484,7 @@ int main (int argc, char** argv) {
     std::array<double, 7> timers = {0};
 
     if (syn_flag == 1) {
-        ss << "Generating Synthetic Data"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << " generating Synthetic Data"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
         } else {
@@ -496,7 +496,7 @@ int main (int argc, char** argv) {
         ierr = readData (data, support_data, data_components, c_0, p_rec, n_misc, data_path, support_data_path, data_comp_path);
         if(use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
-          ss << "Use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+          ss << " use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         }
     }
 

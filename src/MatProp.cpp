@@ -37,12 +37,13 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	}
 	else {
 		std::stringstream str;
+        std::stringstream ss;
 		const char *prefix = "./brain_data/";
 		str << prefix << "/" << n_misc->n_[0] << "/gray_matter.nc";
 		std::ifstream data_file (str.str().c_str());
 		if (!data_file.is_open()) {
 			//Do nothing
-			PCOUT << "---Brain default data not read: Expecting user data ----" << std::endl;
+			ss << " ---- brain default data not read: expecting user data ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 		}
 		else {
 			ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
@@ -62,7 +63,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			str.str(std::string());
 			str << prefix << "/" << n_misc->n_[0] << "/glial_matter.nc";
 			dataIn (glm_ptr, n_misc, str.str().c_str());
-			
+
 
 			double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
@@ -137,7 +138,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 		dataOut (filter_ptr, n_misc, "filter_zero.nc");
 		dataOut (bg_ptr, n_misc, "bg.nc");
 	}
-			
+
 	ierr = VecRestoreArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 	ierr = VecRestoreArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 	ierr = VecRestoreArray (csf_, &csf_ptr);                  CHKERRQ (ierr);

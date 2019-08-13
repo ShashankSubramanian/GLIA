@@ -48,7 +48,7 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     np_ = np;                         n_misc_->np_ = np_;
 
     ierr = tuMSGstd(""); CHKERRQ(ierr);
-    ss << " ----- bounding box for phi set with np: " << np_ << " and sigma: " << sigma_ << " --------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- bounding box for phi set with np: " << np_ << " and sigma: " << sigma_ << " ---- ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     centers_.clear ();
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
@@ -597,8 +597,8 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
 
     ierr = tuMSGstd(""); CHKERRQ(ierr);
     ierr = tuMSGstd(""); CHKERRQ(ierr);
-    ss << " ----- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    ss << " ----- bounding box not set: basis functions set from file -----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- bounding box not set: basis functions set from file ----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tuMSGstd(""); CHKERRQ(ierr);
     ss << " file: " << file; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
@@ -679,8 +679,8 @@ PetscErrorCode Phi::setGaussians (Vec data) {
 
     ierr = tuMSGstd(""); CHKERRQ(ierr);
     ierr = tuMSGstd(""); CHKERRQ(ierr);
-    ss << " ----- BASIS FUNCTIONS OVERWRITTEN ------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    ss << " ----- bounding box not set: basis functions set to match data -----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- BASIS FUNCTIONS OVERWRITTEN ----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- bounding box not set: basis functions set to match data ----"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tuMSGstd(""); CHKERRQ(ierr);
 
     Vec num_tumor_output;
@@ -710,7 +710,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
                 if (dist <= sigma_ / hx) gaussian_interior++;
             }
 
-    ss << " ----- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ---- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     int flag = 0;
     np_ = 0;
     std::vector<double> center;
