@@ -176,6 +176,7 @@ if __name__=='__main__':
     grid = plt.GridSpec(3, 2, wspace=0.2, hspace=0.4, height_ratios=[2,2,2])
 
     kappa          = []
+    kappa_grad     = []
     kappa_diff     = []
     sol_norm       = []
     sol_diff_norm  = []
@@ -187,6 +188,7 @@ if __name__=='__main__':
         sol_norm.extend([np.linalg.norm(SOL_SOLVE_IT[i][it][:-1]) for it in range(len(SOL_SOLVE_IT[i]))])
         sol_diff_norm.extend(sol_diff_norms_pi[i])
         grad_norm.extend([np.linalg.norm(GRAD_SOLVE_IT[i][it][:-1]) for it in range(len(GRAD_SOLVE_IT[i]))])
+        kappa_grad.extend([GRAD_SOLVE_IT[i][it][-1] for it in range(len(GRAD_SOLVE_IT[i]))])
         grad_diff_norm.extend(grad_diff_norms_pi[i])
     xx = np.linspace(0,len(kappa),len(kappa))
 
@@ -217,6 +219,12 @@ if __name__=='__main__':
     ax = plt.subplot(grid[2,1])
     ax.step(np.linspace(0,len(kappa_diff),len(kappa_diff)), [abs(x) for x in kappa_diff], label='$\\|\\kappa_i-\\kappa_{i-1}\\|$');
     ax.step(np.linspace(0,len(sol_diff_norm),len(sol_diff_norm)), [abs(x) for x in sol_diff_norm], label='$\\|x_{i}-x_{i-1}\\|$');
+    ax.set_yscale('log')
+    ax.legend()
+
+    ax = plt.subplot(grid[2,0])
+    ax.step(np.linspace(0,len(grad_norm),len(grad_norm)), grad_norm, label='$\\|g_i(p_i)\\|$');
+    ax.step(np.linspace(0,len(kappa_grad),len(kappa_grad)), [abs(x) for x in kappa_grad], label='$\\|g_i(\\kappa_i)\\|$');
     ax.set_yscale('log')
     ax.legend()
 
