@@ -151,13 +151,17 @@ PetscErrorCode InvSolver::resetOperators (Vec p) {
     // reset tumor_ object, re-size solution vector and copy p into tumor_->p_
     ierr = itctx_->tumor_->setParams (p, itctx_->n_misc_, true);                CHKERRQ (ierr);
     switch (itctx_->n_misc_->model_) {
-        case 1:  itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
+        case 1:  itctx_->pde_operators_ = std::make_shared<PdeOperatorsRD> (itctx_->tumor_, itctx_->n_misc_);
+                 itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
                  break;
-        case 2:  itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
+        case 2:  itctx_->pde_operators_ = std::make_shared<PdeOperatorsRD> (itctx_->tumor_, itctx_->n_misc_);
+                 itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
                  break;
-        case 3:  itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
+        case 3:  itctx_->pde_operators_ = std::make_shared<PdeOperatorsRD> (itctx_->tumor_, itctx_->n_misc_);
+                 itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
                  break;
-        case 4:  itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
+        case 4:  itctx_->pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (itctx_->tumor_, itctx_->n_misc_);
+                 itctx_->derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
                  break;
         default: break;
     }
