@@ -32,10 +32,8 @@ class TumorSolverInterface {
     /// @brief: solves only for rho and k, given a (scaled betwenn [0,1]) c(0) initial condition
     PetscErrorCode solveInverseReacDiff(Vec prec, Vec d1, Vec d1g = {});
 
-        /// @brief solves the L1 optimization problem using compressive sampling methods
+    /// @brief solves the L1 optimization problem using compressive sampling methods
     PetscErrorCode solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g = {});
-    PetscErrorCode _solveInverseCoSaMp (Vec prec, Vec d1, Vec d1g = {});
-
 
     /// @brief updates the initial guess for the inverse tumor solver
     PetscErrorCode setInitialGuess (Vec p);
@@ -101,8 +99,6 @@ class TumorSolverInterface {
         out_params_ = inv_solver_->getInvOutParams ();
         return out_params_;
     }
-
-    PetscErrorCode _printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
 
     private :
     bool initialized_;
