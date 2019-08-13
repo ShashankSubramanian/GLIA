@@ -38,8 +38,10 @@ if __name__=='__main__':
     sol_file       = 'x_it.dat'
     glob_grad_file = 'glob_g_it.dat'
     SUPP           = {}
+    INIT_SUPP      = []
+    INIT_COMP      = []
     COMP           = {}
-    COLOR          = ['g', 'r', 'y', 'm']
+    COLOR          = ['g', 'r', 'm', 'y']
     GRAD_SOLVE_IT      = {}
     GRAD_DIFF_SOLVE_IT = {}
     SOL_SOLVE_IT       = {}
@@ -68,6 +70,14 @@ if __name__=='__main__':
                     SUPP[j] = []
                     for s in supp:
                         SUPP[j].append(int(s))
+                if "Starting CoSaMP solver with initial support:" in line:
+                    supp = line.split("Starting CoSaMP solver with initial support:")[-1].split()
+                    for s in supp:
+                        INIT_SUPP.append(int(s))
+                if "Component label of initial support :" in line:
+                    comp = line. split("Component label of initial support :")[-1].split()
+                    for c in comp:
+                        INIT_COMP.append(int(c))
                 if "Component label of support :" in line:
                     comp = line. split("Component label of support :")[-1].split()
                     COMP[j] = []
@@ -80,19 +90,22 @@ if __name__=='__main__':
     if os.path.exists(os.path.join(args.dir, glob_grad_file)):
         with open(os.path.join(args.dir, glob_grad_file), 'r') as f:
             lines = f.readlines();
-            L = lines[0].split(",")
-            nl = len(L);
-            print("number entries:", nl, ", number glob_grads: ", int(nl/(np_-1)));
-            # print(L)
             G = {};
-            for j in range(int(nl/(np_-1))):
-                off = j*(np_-1);
+            j = 0;
+            for line in lines:
+                if not line.strip():
+                    continue;
+                L = line.split(";")[0].split(",")
+                nl = len(L);
                 G[j] = []
-                for i in range(off, off+np_-1):
+                # print("number entries:", nl, ", number glob_grads: ", int(nl/(np_-1)));
+                for i in range(0, nl):
                     G[j].append(float(L[i]))
+                j += 1;
 
     # fetch gradient of subspace
     nb_solves = -1;
+    j=0;
     if os.path.exists(os.path.join(args.dir, grad_file)):
         with open(os.path.join(args.dir, grad_file), 'r') as f:
             lines = f.readlines();
@@ -184,9 +197,10 @@ if __name__=='__main__':
     ax.legend()
 
     ax = plt.subplot(grid[0,1])
-    ax.step(np.linspace(0,len(kappa_diff),len(kappa_diff)), kappa_diff, label='$\\|\\kappa_{i}-\\kappa_{i-1}\\|$');
+    ax.step(np.linspace(0,len(kappa_diff),len(kappa_diff)), [abs(x) for x in kappa_diff], label='$\\|\\kappa_{i}-\\kappa_{i-1}\\|$');
+    ax.set_yscale('log')
     ax.legend()
-    # ax.set_yscale('log')
+
 
     ax = plt.subplot(grid[1,0])
     ax.step(np.linspace(0,len(grad_norm),len(grad_norm)), grad_norm, label='$\\|g_i\\|$');
@@ -201,8 +215,8 @@ if __name__=='__main__':
     ax.legend()
 
     ax = plt.subplot(grid[2,1])
-    ax.step(np.linspace(0,len(kappa_diff),len(kappa_diff)), kappa_diff, label='$\\|\\kappa_i-\\kappa_{i-1}\\|$');
-    ax.step(np.linspace(0,len(sol_diff_norm),len(sol_diff_norm)), sol_diff_norm, label='$\\|x_{i}-x_{i-1}\\|$');
+    ax.step(np.linspace(0,len(kappa_diff),len(kappa_diff)), [abs(x) for x in kappa_diff], label='$\\|\\kappa_i-\\kappa_{i-1}\\|$');
+    ax.step(np.linspace(0,len(sol_diff_norm),len(sol_diff_norm)), [abs(x) for x in sol_diff_norm], label='$\\|x_{i}-x_{i-1}\\|$');
     ax.set_yscale('log')
     ax.legend()
 
@@ -221,15 +235,20 @@ if __name__=='__main__':
 
     f = plt.figure(figsize=(8,8))
     grid = plt.GridSpec(2, 1, wspace=0.2, hspace=0.4, height_ratios=[2,2])
-    
+
+
     ax = plt.subplot(grid[0,0])
-    ax.plot(np.linspace(0,np_-1,np_-1), G[0])
+    ax.plot(np.linspace(0,np_,np_), G[0])
     for ss, c in zip(SUPP[0], COMP[0]):
         ax.scatter(ss,G[0][ss], s=30, color=COLOR[c])
+    for ss, c in zip(INIT_SUPP, INIT_COMP):
+        ax.scatter(ss,G[0][ss], s=40, marker='s', color=COLOR[c])
 
     ax = plt.subplot(grid[1,0])
-    ax.plot(np.linspace(0,np_-1,np_-1), G[1])
+    ax.plot(np.linspace(0,np_,np_), G[1])
     for ss, c in zip(SUPP[1], COMP[1]):
         ax.scatter(ss,G[1][ss], s=30, color=COLOR[c])
+    for ss, c in zip(INIT_SUPP, INIT_COMP):
+        ax.scatter(ss,G[1][ss], s=40, marker='s', color=COLOR[c])
 
     plt.show()

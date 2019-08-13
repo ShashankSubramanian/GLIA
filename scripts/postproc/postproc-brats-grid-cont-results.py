@@ -96,7 +96,7 @@ if __name__=='__main__':
     for run in RUNS:
         if not run.startswith('Brats'):
             continue;
-        args.bid = str(run.split('-')[0])
+        args.bid = str(run) #str(run.split('-')[0])
         # print("BID", args.bid)
         if args.bid not in BIDs:
             BIDs.append(args.bid);
