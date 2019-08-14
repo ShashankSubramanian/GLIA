@@ -37,9 +37,9 @@ class DerivativeOperators {
         virtual PetscErrorCode reset(Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
 
 		virtual ~DerivativeOperators () {
-			if (temp_ != nullptr)      {VecDestroy (&temp_);      CHKERRQ (ierr); temp_      = nullptr;}
-            if (ptemp_ != nullptr)     {VecDestroy (&ptemp_);     CHKERRQ (ierr); ptemp_     = nullptr;}
-            if (p_current_ != nullptr) {VecDestroy (&p_current_); CHKERRQ (ierr); p_current_ = nullptr;}
+			if (temp_ != nullptr)      {VecDestroy (&temp_);       temp_      = nullptr;}
+            if (ptemp_ != nullptr)     {VecDestroy (&ptemp_);      ptemp_     = nullptr;}
+            if (p_current_ != nullptr) {VecDestroy (&p_current_);  p_current_ = nullptr;}
 		}
 };
 
@@ -56,7 +56,7 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
 		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x);
-        virtual PetscErrorCode reset (Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
+        // virtual PetscErrorCode reset (Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
 		~DerivativeOperatorsRD () {}
 
 		//Vec work_np_;  // vector of size np to compute objective and part of gradient related to p
@@ -83,8 +83,8 @@ class DerivativeOperatorsPos : public DerivativeOperators {
 
         virtual PetscErrorCode reset (Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
 		~DerivativeOperatorsPos () {
-            if (temp_phip_ != nullptr)      {VecDestroy (&temp_phip_);      CHKERRQ (ierr); temp_phip_     = nullptr;}
-            if (temp_phiptilde_ != nullptr) {VecDestroy (&temp_phiptilde_); CHKERRQ (ierr); temp_phiptilde_ = nullptr;}
+            if (temp_phip_ != nullptr)      {VecDestroy (&temp_phip_);      temp_phip_      = nullptr;}
+            if (temp_phiptilde_ != nullptr) {VecDestroy (&temp_phiptilde_); temp_phiptilde_ = nullptr;}
         }
 };
 
@@ -128,7 +128,7 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
             PetscFunctionReturn(0);
         }
 
-        virtual PetscErrorCode reset (Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
+        // virtual PetscErrorCode reset (Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
         ~DerivativeOperatorsRDObj () {}
 
 	private :

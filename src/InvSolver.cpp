@@ -151,7 +151,7 @@ PetscErrorCode InvSolver::resetOperators (Vec p) {
     // reset tumor_ object, re-size solution vector and copy p into tumor_->p_
     ierr = itctx_->tumor_->setParams (p, itctx_->n_misc_, true);                CHKERRQ (ierr);
     // reset derivative operators, re-size vectors
-    itctx_->derivative_operators_.reset(p, itctx_->pde_operators, itctx_->n_misc_, itctx_->tumor_)
+    itctx_->derivative_operators_->reset(p, itctx_->pde_operators_, itctx_->n_misc_, itctx_->tumor_);
     // re-allocate memory
     itctx_->x_old = nullptr; // Will be set accordingly in the solver
     if (tao_  != nullptr) {ierr = TaoDestroy (&tao_);  CHKERRQ(ierr); tao_  = nullptr;}

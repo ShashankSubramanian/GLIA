@@ -140,8 +140,8 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
         }
     } else {
         // re-allocate vectors, same model
-        if (npchanged) derivative_operators_.reset(p, pde_operators_, n_misc_, tumor_);
-        if (ntchanged) pde_operators_.reset(n_misc_, tumor_);
+        if (npchanged) derivative_operators_->reset(p, pde_operators_, n_misc_, tumor_);
+        if (ntchanged) pde_operators_->reset(n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
     inv_solver_->setParams(derivative_operators_, pde_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
