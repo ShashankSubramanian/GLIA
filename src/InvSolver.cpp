@@ -1100,6 +1100,15 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
       ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
       ierr = VecCopy (x_L1, x_L1_old);                                          CHKERRQ (ierr);
+
+      // print support
+      ierr = VecDuplicate (itctx_->tumor_->phi_->phi_vec_[0], &all_phis);       CHKERRQ (ierr);
+      ierr = VecSet (all_phis, 0.);                                             CHKERRQ (ierr);
+      for (int i = 0; i < itctx_->n_misc_->np_; i++) {ierr = VecAXPY (all_phis, 1.0, itctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
+      ss << "phiSupport_csitr-" << its << ".nc";
+      if (itctx_->n_misc_->writeOutput_) dataOut (all_phis, itctx_->n_misc_, ss.str().c_str()); ss.str(""); ss.clear();
+      ierr = VecDestroy (&all_phis);                                            CHKERRQ (ierr);
+
       ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full);                  CHKERRQ (ierr); // x_L1 <-- P(x_L2)
 
       /* === hard threshold solution to sparsity level === */
@@ -1118,14 +1127,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ss << "component label of support : [";
       for (int i = 0; i < itctx_->n_misc_->support_.size(); i++) ss << itctx_->tumor_->phi_->gaussian_labels_[itctx_->n_misc_->support_[i]] << " "; ss << "]";
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-
-      // print support
-      ierr = VecDuplicate (itctx_->tumor_->phi_->phi_vec_[0], &all_phis);       CHKERRQ (ierr);
-      ierr = VecSet (all_phis, 0.);                                             CHKERRQ (ierr);
-      for (int i = 0; i < itctx_->n_misc_->np_; i++) {ierr = VecAXPY (all_phis, 1.0, itctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
-      ss << "phiSupport_csitr-" << its << ".nc";
-      if (itctx_->n_misc_->writeOutput_) dataOut (all_phis, itctx_->n_misc_, ss.str().c_str()); ss.str(""); ss.clear();
-      ierr = VecDestroy (&all_phis);                                            CHKERRQ (ierr);
 
       // set only support values in x_L1 (rest hard thresholded to zero)
       ierr = VecCopy (x_L1, temp);                                              CHKERRQ (ierr);
