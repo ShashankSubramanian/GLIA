@@ -772,7 +772,7 @@ PetscErrorCode InvSolver::solve () {
     }
 
     s << " using tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-    if (itctx_->n_misc_->verbosity_ >= 2) { itctx_->n_misc_->outfile_sol_  << "\n ## ----- ## \n"; itctx_->n_misc_->outfile_grad_ << "\n ## ----- ## \n"; }
+    if (itctx_->n_misc_->verbosity_ >= 2) { itctx_->n_misc_->outfile_sol_  << "\n ## ----- ##" << std::endl << std::flush; itctx_->n_misc_->outfile_grad_ << "\n ## ----- ## "<< std::endl << std::flush; }
     //Gradient check begin
     //    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
     //Gradient check end
@@ -1037,9 +1037,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       itctx_->n_misc_->np_ = np = np_original; /* reset to full space         */
       itctx_->tumor_->phi_->resetCenters ();   /* reset all the basis centers */
       ierr = resetOperators (x_L1);            /* reset phis and other ops    */CHKERRQ (ierr);
-      // reset solver data
-      // setData (d1); if (d1g == nullptr) d1g = d1;
-      // setDataGradient (d1g);
       ierr = VecDestroy (&x_L2);   /* destroy L2 vector, size will change */    CHKERRQ (ierr);
 
       // print initial guess to file
@@ -1085,7 +1082,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
         x_L2_ptr[np] = x_L1_ptr[np_original];
         if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
         if (nk > 2) x_L2_ptr[np+2] = x_L1_ptr[np_original+2];
-    } 
+    }
 
     ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
     ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                   CHKERRQ (ierr);
@@ -1102,9 +1099,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
     ierr = solve ();                                   /* L2 solver    */
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
-    // reset data
-    // setData (d1); if (d1g == nullptr) d1g = d1;
-    // setDataGradient (d1g);
     // print phi's to file
     ierr = VecDuplicate (itctx_->tumor_->phi_->phi_vec_[0], &all_phis);         CHKERRQ (ierr);
     ierr = VecSet (all_phis, 0.);                                               CHKERRQ (ierr);
