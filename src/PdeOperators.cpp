@@ -1,5 +1,33 @@
 #include "PdeOperators.h"
 
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ======== RESET (CHANGE SIZE OF WORK VECTORS, TIME HISTORY) ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+PetscErrorCode PdeOperatorsRD::reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    resizeTimeHistory(n_misc);
+    n_misc_ = n_misc;
+    if (tumor != nullptr) tumor_ = tumor;
+
+    PetscFunctionReturn(0);
+}
+
+PetscErrorCode PdeOperatorsMassEffect::reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    // no-op so far
+
+    n_misc_ = n_misc;
+    if (tumor != nullptr) tumor_ = tumor;
+
+    PetscFunctionReturn(0);
+}
+
+
 PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc)
         : PdeOperators (tumor, n_misc) {
 
@@ -7,13 +35,10 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     double dt = n_misc_->dt_;
     int nt = n_misc->nt_;
 
-    c_.resize (nt + 1);                         //Time history of tumor
-    p_.resize (nt + 1);                         //Time history of adjoints
-
-    if (n_misc->adjoint_store_) {
-        // store half-time history to avoid unecessary diffusion solves
-        c_half_.resize (nt);
-    }
+    c_.resize (nt + 1);   // time history of tumor
+    p_.resize (nt + 1);   // time history of adjoints
+    // store half-time history to avoid unecessary diffusion solves
+    if (n_misc->adjoint_store_) c_half_.resize (nt);
 
     ierr = VecCreate (PETSC_COMM_WORLD, &c_[0]);
     ierr = VecSetSizes (c_[0], n_misc->n_local_, n_misc->n_global_);
