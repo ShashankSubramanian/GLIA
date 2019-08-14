@@ -878,6 +878,74 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   ierr = VecSet  (x_L1_old, 0);                                                 CHKERRQ (ierr);
   ierr = VecSet  (temp, 0);                                                     CHKERRQ (ierr);
 
+
+  /* ------------------------------------------------------------------------ */
+  // ### (0) (pre-)reaction/diffusion inversion ###
+  // if (itctx_->n_misc_->reaction_inversion_) {
+  //   // create larger x_L2 : size should be np + nk + nr
+  //   np = itctx_->n_misc_->support_.size();
+  //   nk = (itctx_->n_misc_->reaction_inversion_ || itctx_->n_misc_->diffusivity_inversion_) ? itctx_->n_misc_->nk_ : 0;
+  //   nr = (itctx_->n_misc_->reaction_inversion_) ? itctx_->n_misc_->nr_ : 0;
+  //   itctx_->n_misc_->np_ = np;   // change np to solve the smaller L2 subsystem
+  //   ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);                   CHKERRQ (ierr); // create the L2 solution vector
+  //   ierr = VecSet (x_L2, 0);                                                      CHKERRQ (ierr);
+  //   ierr = VecGetArray (x_L2, &x_L2_ptr);                                         CHKERRQ (ierr);
+  //   ierr = VecGetArray (x_L1, &x_L1_ptr);                                         CHKERRQ (ierr);
+  //   // initial guess L2 solver
+  //   for (int i = 0; i < np; i++)
+  //   x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
+  //   // initial guess diffusivity
+  //   x_L2_ptr[np] = itctx_->n_misc_->k_;
+  //   if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
+  //   if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
+  //   // initial guess reaction
+  //   x_L2_ptr[np + nk] = itctx_->n_misc_->rho_;
+  //   if (nr > 1) x_L2_ptr[np + nk + 1] = itctx_->n_misc_->rho_ * itctx_->n_misc_->r_gm_wm_ratio_;
+  //   if (nr > 2) x_L2_ptr[np + nk + 2] = itctx_->n_misc_->rho_ * itctx_->n_misc_->r_glm_wm_ratio_;
+  //
+  //   ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
+  //   ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                   CHKERRQ (ierr);
+  //   ierr = resetOperators (x_L2);         /* reset phis and other operators */  CHKERRQ (ierr);
+  //
+  //   // inversion for reaction and diffusion only (this flag enables derivative operators to compute the gradient w.r.t \rho)
+  //   itctx_->n_misc_->flag_reaction_inv_ = true;
+  //   // scale p to one according to our modeling assumptions
+  //   PetscReal ic_max = 0., g_norm_ref = 0.;
+  //   ierr = itctx_->tumor_->phi_->apply(itctx_->tumor_->c_0_, x_L2);             CHKERRQ (ierr);
+  //   ierr = VecMax (itctx_->tumor_->c_0_, NULL, &ic_max);                        CHKERRQ (ierr);
+  //   ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
+  //   // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
+  //   // scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25
+  //   for (int i = 0; i < np; i++){
+  //       if(itctx_->n_misc_->multilevel_) { x_L2_ptr[i] *= (1.0/4.0 * itctx_->n_misc_->n_[0]/64.  / ic_max);}
+  //       else                             { x_L2_ptr[i] *= (1.0 / ic_max); }
+  //     }
+  //   ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
+  //
+  //   // write out p vector after IC, k inversion (scaled)
+  //   ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
+  //   ierr = tuMSG    ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
+  //   ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+  //   if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);         CHKERRQ (ierr);}
+  //   ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+  //   if (itctx_->n_misc_->write_p_checkpoint_) {writeCheckpoint(x_L2, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("scaled-pre-l1"));}
+  //
+  //   ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
+  //   ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+  //   ierr = tuMSG("###                     (PRE) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
+  //   ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+  //   // === reaction/inversion solve ===
+  //   ierr = solveForParameters (x_L2);            /* with current guess as init cond. */
+  //   ierr = VecCopy (getPrec(), x_L2);            /* get solution */             CHKERRQ (ierr);
+  //
+  //   ierr = tuMSG("### -------------------------------------- (PRE) rho/kappa solver end ----------------------------------- ###");CHKERRQ (ierr);
+  //   ierr = tuMSGstd (""); CHKERRQ (ierr);
+  // }
+
+
+
+  /* ------------------------------------------------------------------------ */
+  // === (1) L1 CoSaMp solver ===
   // compute reference value for  objective
   kappa_store = itctx_->n_misc_->k_;
   ierr = getObjectiveAndGradient (x_L1, &J_ref, g_ref);                         CHKERRQ (ierr);
@@ -962,9 +1030,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       for (int i = 0; i < np; i++) x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
       // initial guess diffusivity
       if (itctx_->n_misc_->diffusivity_inversion_) {
-          x_L2_ptr[np] = x_L1_ptr[np_original];
-          if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
-          if (nk > 2) x_L2_ptr[np+2] = x_L1_ptr[np_original+2];
+          x_L2_ptr[np] = itctx_->n_misc_->k_; // equals x_L1_ptr[np_original];
+          if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_; // equals x_L1_ptr[np_original+1];
+          if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_; // equals x_L1_ptr[np_original+2];
       }
       ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                 CHKERRQ (ierr);
       ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                 CHKERRQ (ierr);
@@ -990,8 +1058,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
         x_L1_ptr[itctx_->n_misc_->support_[i]] = x_L2_ptr[i];
       // correct diffusivity
       if (itctx_->n_misc_->diffusivity_inversion_) {
-          x_L1_ptr[np_original] = x_L2_ptr[np];
-          if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
+          x_L1_ptr[np_original] = itctx_->n_misc_->k_;
+          if (nk > 1) x_L1_ptr[np_original+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
+          if (nk > 2) x_L1_ptr[np_original+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_;
       }
       ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                 CHKERRQ (ierr);
 
@@ -1079,9 +1148,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
     // initial guess diffusivity
     if (itctx_->n_misc_->diffusivity_inversion_) {
-        x_L2_ptr[np] = x_L1_ptr[np_original];
-        if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
-        if (nk > 2) x_L2_ptr[np+2] = x_L1_ptr[np_original+2];
+        x_L2_ptr[np] = itctx_->n_misc_->k_; // equals x_L1_ptr[np_original];
+        if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_; // equals x_L1_ptr[np_original+1];
+        if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_; // equals x_L1_ptr[np_original+2];
     }
 
     ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
@@ -1099,6 +1168,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
     ierr = solve ();                                   /* L2 solver    */
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
+
+    ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
+    ierr = tuMSGstd (""); CHKERRQ (ierr);
+
     // print phi's to file
     ierr = VecDuplicate (itctx_->tumor_->phi_->phi_vec_[0], &all_phis);         CHKERRQ (ierr);
     ierr = VecSet (all_phis, 0.);                                               CHKERRQ (ierr);
@@ -1115,27 +1188,19 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ss << "c1FinalGuess.nc";
     if (itctx_->n_misc_->writeOutput_ && itctx_->n_misc_->verbosity_ >= 4) { dataOut (itctx_->tumor_->c_t_, itctx_->n_misc_, ss.str().c_str()); } ss.str(std::string()); ss.clear();
 
-    ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
-    ierr = tuMSGstd (""); CHKERRQ (ierr);
-
     // write out p vector after IC, k inversion (unscaled)
     if (itctx_->n_misc_->write_p_checkpoint_) {
       writeCheckpoint(x_L2, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("unscaled"));
     }
 
-    ierr = VecSet (x_L1, 0.);                                                 CHKERRQ (ierr);
-    ierr = VecGetArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
-    ierr = VecGetArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
+    ierr = VecSet (x_L1, 0.);                                                   CHKERRQ (ierr);
+    ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
+    ierr = VecGetArray (x_L1, &x_L1_ptr);                                       CHKERRQ (ierr);
     // store the final L2 solve in L1, since x_L2 size will change to accommodate for reaction inversion
     for (int i = 0; i < np; i++)
       x_L1_ptr[itctx_->n_misc_->support_[i]] = x_L2_ptr[i];
-    // correct diffusivity
-    if (itctx_->n_misc_->diffusivity_inversion_) {
-        x_L1_ptr[np_original] = x_L2_ptr[np];
-        if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
-    }
-    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                 CHKERRQ (ierr);
-    ierr = VecDestroy (&x_L2);                                                CHKERRQ (ierr);
+    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
+    ierr = VecDestroy (&x_L2);                                                  CHKERRQ (ierr);
 
     // create larger x_L2 : size should be np + nk + nr
     np = itctx_->n_misc_->support_.size();
@@ -1150,15 +1215,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     for (int i = 0; i < np; i++)
       x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
     // initial guess diffusivity
-    if (itctx_->n_misc_->diffusivity_inversion_) {
-        x_L2_ptr[np] = x_L1_ptr[np_original];
-        if (nk > 1) x_L2_ptr[np+1] = x_L1_ptr[np_original+1];
-        if (nk > 2) x_L2_ptr[np+2] = x_L1_ptr[np_original+2];
-    } else {
-        x_L2_ptr[np] = itctx_->n_misc_->k_;
-        if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
-        if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_;
-    }
+    x_L2_ptr[np] = itctx_->n_misc_->k_;
+    if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
+    if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_;
     // initial guess reaction
     if (itctx_->n_misc_->reaction_inversion_) {
         x_L2_ptr[np + nk] = itctx_->n_misc_->rho_;  // last val is rho: not changed as theres no reaction inversion here
@@ -1168,7 +1227,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
     ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
     ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                   CHKERRQ (ierr);
-    // reset
     ierr = resetOperators (x_L2);         /* reset phis and other operators */  CHKERRQ (ierr);
 
     // === reaction/diffusion inversion ===
@@ -1208,26 +1266,25 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSGstd (""); CHKERRQ (ierr);
   }
 
-  // copy L2 solution to final solution
-  ierr = VecGetArray (x_L2, &x_L2_ptr);                                         CHKERRQ (ierr);
+  // update full space solution
   ierr = VecGetArray (x_L1, &x_L1_ptr);                                         CHKERRQ (ierr);
   for (int i = 0; i < np; i++)
       x_L1_ptr[itctx_->n_misc_->support_[i]] = x_L2_ptr[i];   // correct L1 guess
   // correct the diffusivity and reaction
+  PetscReal r1, r2, r3, k1, k2, k3;
+  r1 = itctx_->n_misc_->rho_; // equals x_L2_ptr[np + nk]
+  r2 = (itctx_->n_misc_->nr_ > 1) ? itctx_->n_misc_->rho_ * itctx_->n_misc_->r_gm_wm_ratio_ : 0;  // equals x_L2_ptr[np + nk + 1]
+  r3 = (itctx_->n_misc_->nr_ > 2) ? itctx_->n_misc_->rho_ * itctx_->n_misc_->r_gm_wm_ratio_ : 0;  // equals x_L2_ptr[np + nk + 2]
+  k1 = itctx_->n_misc_->k_; // equals x_L2_ptr[np];
+  k2 = (nk > 1) ? itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_ : 0; // equals x_L2_ptr[np+1];
+  k3 = (nk > 2) ? itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_ : 0; // equals x_L2_ptr[np+2];
+
   if (itctx_->n_misc_->reaction_inversion_) {
       if (itctx_->n_misc_->diffusivity_inversion_) {
-          x_L1_ptr[np_original] = x_L2_ptr[np];
-          if (nk > 1) x_L1_ptr[np_original+1] = x_L2_ptr[np+1];
-          if (nk > 2) x_L1_ptr[np_original+2] = x_L2_ptr[np+2];
+          x_L1_ptr[np_original]               = k1;
+          if (nk > 1) x_L1_ptr[np_original+1] = k2;
+          if (nk > 2) x_L1_ptr[np_original+2] = k3;
       }
-      // get rho and kappa
-      PetscReal r1, r2, r3, k1, k2, k3;
-      r1 = x_L2_ptr[np + nk];
-      r2 = (itctx_->n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
-      r3 = (itctx_->n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
-      k1 = x_L2_ptr[np];
-      k2 = (nk > 1) ? x_L2_ptr[np + 1] : 0;
-      k3 = (nk > 2) ? x_L2_ptr[np + 2] : 0;
 
       ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
       ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
@@ -1237,8 +1294,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSG    ("### estimated diffusion coefficients:                 ###"); CHKERRQ (ierr);
       ss << "    k1: "<< k1 << ", k2: " << k2 << ", k3: "<< k3;
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
   }
-  ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
   ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
   // reset all values to initial space
   np = np_original;
