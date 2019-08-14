@@ -111,6 +111,9 @@ class InvSolver {
         PetscErrorCode solveInverseCoSaMp();
         PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
 
+        PetscErrorCode restrictSubspace (Vec *x_restricted, Vec x_full, std::shared_ptr<CtxInv> itctx, bool create_rho_dofs);
+        PetscErrorCode prolongateSubspace (Vec x_full, Vec *x_restricted, std::shared_ptr<CtxInv> itctx, int np_full, bool reset_operators);
+
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
         // setter functions
         void setData (Vec d) {data_ = d;}

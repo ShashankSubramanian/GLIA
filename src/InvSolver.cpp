@@ -162,6 +162,81 @@ PetscErrorCode InvSolver::resetOperators (Vec p) {
     PetscFunctionReturn (0);
 }
 
+
+PetscErrorCode InvSolver::restrictSubspace (Vec *x_restricted, Vec x_full, std::shared_ptr<CtxInv> itctx, bool create_rho_dofs = false) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    PetscReal *x_restricted_ptr, *x_full_ptr;
+    int np = itctx->n_misc_->support_.size();        // size of restricted subspace (not necessarily 2s, since merged)
+    int nk = (itctx->n_misc_->diffusivity_inversion_ || (create_rho_dofs &&  itctx->n_misc_->reaction_inversion_)) ? itctx->n_misc_->nk_ : 0;
+    int nr = (itctx->n_misc_->reaction_inversion_ && create_rho_dofs) ? itctx->n_misc_->nr_ : 0;
+
+    itctx->n_misc_->np_ = np;                    // change np to solve the restricted subsystem
+    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, x_restricted);          CHKERRQ (ierr);
+    ierr = VecSet (*x_restricted, 0);                                           CHKERRQ (ierr);
+    ierr = VecGetArray (*x_restricted, &x_restricted_ptr);                      CHKERRQ (ierr);
+    ierr = VecGetArray (x_full, &x_full_ptr);                                   CHKERRQ (ierr);
+    for (int i = 0; i < np; i++)
+        x_restricted_ptr[i] = x_full_ptr[itctx->n_misc_->support_[i]];
+    // initial guess diffusivity
+    if (itctx->n_misc_->diffusivity_inversion_) {
+        x_restricted_ptr[np] = itctx->n_misc_->k_;                                                 // equals x_full_ptr[np_full];
+        if (nk > 1) x_restricted_ptr[np+1] = itctx->n_misc_->k_ * itctx->n_misc_->k_gm_wm_ratio_;  // equals x_full_ptr[np_full+1];
+        if (nk > 2) x_restricted_ptr[np+2] = itctx->n_misc_->k_ * itctx->n_misc_->k_glm_wm_ratio_; // equals x_full_ptr[np_full+2];
+    }
+    // initial guess reaction
+    if (create_rho_dofs && itctx->n_misc_->reaction_inversion_) {
+        x_restricted_ptr[np + nk] = itctx->n_misc_->rho_;
+        if (nr > 1) x_restricted_ptr[np + nk + 1] = itctx->n_misc_->rho_ * itctx->n_misc_->r_gm_wm_ratio_;
+        if (nr > 2) x_restricted_ptr[np + nk + 2] = itctx->n_misc_->rho_ * itctx->n_misc_->r_glm_wm_ratio_;
+    }
+    ierr = VecRestoreArray (*x_restricted, &x_restricted_ptr);                  CHKERRQ (ierr);
+    ierr = VecRestoreArray (x_full, &x_full_ptr);                               CHKERRQ (ierr);
+    // Modifies the centers
+    itctx->tumor_->phi_->modifyCenters (itctx->n_misc_->support_);
+    // resets the phis and other operators, x_restricted is copied into tumor->p_ and is used as init cond for
+    // the L2 solver (needs to be done in every iteration, since location of basis functions updated)
+    ierr = resetOperators (*x_restricted); /* reset phis and other operators */ CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
+
+PetscErrorCode InvSolver::prolongateSubspace (Vec x_full, Vec *x_restricted, std::shared_ptr<CtxInv> itctx, int np_full, bool reset_operators = true) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    PetscReal *x_restricted_ptr, *x_full_ptr;
+    int np_r = itctx->n_misc_->support_.size();        // size of restricted subspace (not necessarily 2s, since merged)
+    int nk   = (itctx->n_misc_->diffusivity_inversion_) ? itctx->n_misc_->nk_ : 0;
+
+    ierr = VecSet (x_full, 0.);                                                 CHKERRQ (ierr);
+    ierr = VecGetArray (*x_restricted, &x_restricted_ptr);                      CHKERRQ (ierr);
+    ierr = VecGetArray (x_full, &x_full_ptr);                                   CHKERRQ (ierr);
+    // correct L1 guess
+    for (int i = 0; i < np_r; i++)
+      x_full_ptr[itctx->n_misc_->support_[i]] = x_restricted_ptr[i];
+    // correct diffusivity
+    if (itctx->n_misc_->diffusivity_inversion_) {
+        x_full_ptr[np_full] = itctx->n_misc_->k_;
+        if (nk > 1) x_full_ptr[np_full+1] = itctx->n_misc_->k_ * itctx->n_misc_->k_gm_wm_ratio_;
+        if (nk > 2) x_full_ptr[np_full+2] = itctx->n_misc_->k_ * itctx->n_misc_->k_glm_wm_ratio_;
+    }
+    ierr = VecRestoreArray (*x_restricted, &x_restricted_ptr);                  CHKERRQ (ierr);
+    ierr = VecRestoreArray (x_full, &x_full_ptr);                               CHKERRQ (ierr);
+
+    itctx->n_misc_->np_ = np_full;         /* reset to full space         */
+    if (reset_operators) {
+        itctx->tumor_->phi_->resetCenters ();  /* reset all the basis centers */
+        ierr = resetOperators (x_full);    /* reset phis and other ops    */ CHKERRQ (ierr);}
+    ierr = VecDestroy (x_restricted);      /* destroy, size will change   */ CHKERRQ (ierr);
+    x_restricted = nullptr;
+
+    PetscFunctionReturn (0);
+}
+
+
 PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -863,10 +938,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   PetscReal norm_rel, norm, norm_g, kappa_store;
   std::vector<int> idx;        // idx list of support after thresholding
   std::vector<int> temp_support;
-  int np, np_original, nk, nr, its = 0, nnz = 0;
+  int np, np_full, nk, nr, its = 0, nnz = 0;
   int flag_convergence = 0;
 
-  np_original = itctx_->n_misc_->np_; // store np of unrestricted ansatz space
+  np_full = itctx_->n_misc_->np_; // store np of unrestricted ansatz space
   ierr = VecDuplicate (itctx_->tumor_->p_, &g);                                 CHKERRQ (ierr);
   ierr = VecDuplicate (itctx_->tumor_->p_, &g_ref);                             CHKERRQ (ierr);
   ierr = VecDuplicate (itctx_->tumor_->p_, &x_L1);                              CHKERRQ (ierr);
@@ -955,7 +1030,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
   // set initial guess for k_inv (possibly != zero)
   ierr = VecGetArray(x_L1, &x_L1_ptr);                                          CHKERRQ (ierr);
-  if (itctx_->n_misc_->diffusivity_inversion_) x_L1_ptr[np_original] = itctx_->n_misc_->k_;
+  if (itctx_->n_misc_->diffusivity_inversion_) x_L1_ptr[np_full] = itctx_->n_misc_->k_;
   else { // set diff ops with this guess -- this will not change during the solve
       ierr = itctx_->tumor_->k_->setValues (itctx_->n_misc_->k_, itctx_->n_misc_->k_gm_wm_ratio_, itctx_->n_misc_->k_glm_wm_ratio_, itctx_->tumor_->mat_prop_, itctx_->n_misc_);  CHKERRQ (ierr);
   }
@@ -991,14 +1066,14 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       // print gradient to file
       if (itctx_->n_misc_->verbosity_ >= 2) {
         ierr = VecGetArray(temp, &grad_ptr);                                    CHKERRQ(ierr);
-        for (int i = 0; i < np_original-1; i++) if(procid == 0) itctx_->n_misc_->outfile_glob_grad_ << grad_ptr[i] << ", ";
-        if(procid == 0)                                         itctx_->n_misc_->outfile_glob_grad_ << grad_ptr[np_original-1] << ";\n" <<std::endl;
+        for (int i = 0; i < np_full-1; i++) if(procid == 0) itctx_->n_misc_->outfile_glob_grad_ << grad_ptr[i] << ", ";
+        if(procid == 0)                                     itctx_->n_misc_->outfile_glob_grad_ << grad_ptr[np_full-1] << ";\n" <<std::endl;
         ierr = VecRestoreArray(temp, &grad_ptr);                                CHKERRQ(ierr);
       }
 
       // threshold gradient
       idx.clear();
-      ierr = hardThreshold (temp, 2 * itctx_->n_misc_->sparsity_level_, np_original, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
+      ierr = hardThreshold (temp, 2 * itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
 
       /* === update support of prev. solution with new support === */
       itctx_->n_misc_->support_.insert (itctx_->n_misc_->support_.end(), idx.begin(), idx.end());
@@ -1018,56 +1093,18 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSG("###                                corrective L2 solver in restricted subspace                            ###");CHKERRQ (ierr);
       ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
-
-      np = itctx_->n_misc_->support_.size();        // size of restricted subspace (not necessarily 2s, since merged)
-      nk = (itctx_->n_misc_->diffusivity_inversion_) ? itctx_->n_misc_->nk_ : 0;
-      itctx_->n_misc_->np_ = np;                    // change np to solve the smaller L2 subsystem
-      ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L2);                    CHKERRQ (ierr);  // Create the L2 solution vector
-      ierr = VecSet (x_L2, 0);                                                  CHKERRQ (ierr);
-      ierr = VecGetArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
-      ierr = VecGetArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
-      // initial guess (p_i) for L2 solver is prev guess support values
-      for (int i = 0; i < np; i++) x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
-      // initial guess diffusivity
-      if (itctx_->n_misc_->diffusivity_inversion_) {
-          x_L2_ptr[np] = itctx_->n_misc_->k_; // equals x_L1_ptr[np_original];
-          if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_; // equals x_L1_ptr[np_original+1];
-          if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_; // equals x_L1_ptr[np_original+2];
-      }
-      ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                 CHKERRQ (ierr);
-      ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                 CHKERRQ (ierr);
-      // Modifies the centers
-      itctx_->tumor_->phi_->modifyCenters (itctx_->n_misc_->support_);
-      // resets the phis and other operators, x_L2 is copied into tumor->p_ and is used as init cond for
-      // the L2 solver (needs to be done in every iteration, since location of basis functions updated)
-      ierr = resetOperators (x_L2);         /* reset phis and other operators */CHKERRQ (ierr);
-      // solve L2
-      ierr = solve ();
+      ierr = restrictSubspace(&x_L2, x_L1, itctx_);                             CHKERRQ (ierr); // x_L2 <-- R(x_L1)
+      ierr = solve ();                                                          CHKERRQ (ierr);
       ierr = VecCopy (getPrec(), x_L2);                                         CHKERRQ (ierr);
-
       ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
       ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
-
-      /* === updates === */
       ierr = VecCopy (x_L1, x_L1_old);                                          CHKERRQ (ierr);
-      ierr = VecSet (x_L1, 0.);                                                 CHKERRQ (ierr);
-      ierr = VecGetArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
-      ierr = VecGetArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
-      // correct L1 guess
-      for (int i = 0; i < np; i++)
-        x_L1_ptr[itctx_->n_misc_->support_[i]] = x_L2_ptr[i];
-      // correct diffusivity
-      if (itctx_->n_misc_->diffusivity_inversion_) {
-          x_L1_ptr[np_original] = itctx_->n_misc_->k_;
-          if (nk > 1) x_L1_ptr[np_original+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
-          if (nk > 2) x_L1_ptr[np_original+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_;
-      }
-      ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                 CHKERRQ (ierr);
+      ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full);                  CHKERRQ (ierr); // x_L1 <-- P(x_L2)
 
       /* === hard threshold solution to sparsity level === */
       idx.clear();
-      if (itctx_->n_misc_->prune_components_) hardThreshold (x_L1, itctx_->n_misc_->sparsity_level_, np_original, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
-      else                                    hardThreshold (x_L1, itctx_->n_misc_->sparsity_level_, np_original, idx, nnz);
+      if (itctx_->n_misc_->prune_components_) hardThreshold (x_L1, itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
+      else                                    hardThreshold (x_L1, itctx_->n_misc_->sparsity_level_, np_full, idx, nnz);
       itctx_->n_misc_->support_.clear ();
       itctx_->n_misc_->support_ = idx;
       // sort and remove duplicates
@@ -1087,26 +1124,24 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       for (int i = 0; i < np; i++) {ierr = VecAXPY (all_phis, 1.0, itctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
       ss << "phiSupport_csitr-" << its << ".nc";
       if (itctx_->n_misc_->writeOutput_) dataOut (all_phis, itctx_->n_misc_, ss.str().c_str()); ss.str(""); ss.clear();
-      ierr = VecDestroy (&all_phis);                                          CHKERRQ (ierr);
+      ierr = VecDestroy (&all_phis);                                            CHKERRQ (ierr);
 
       // set only support values in x_L1 (rest hard thresholded to zero)
-      ierr = VecSet (temp, 0);                                                  CHKERRQ (ierr);
+      ierr = VecCopy (x_L1, temp);                                              CHKERRQ (ierr);
+      ierr = VecSet  (x_L1, 0.0);                                               CHKERRQ (ierr);
       ierr = VecGetArray (temp, &temp_ptr);                                     CHKERRQ (ierr);
+      ierr = VecGetArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
       for (int i = 0; i < itctx_->n_misc_->support_.size(); i++)
-          temp_ptr[itctx_->n_misc_->support_[i]] = x_L1_ptr[itctx_->n_misc_->support_[i]];
+          x_L1_ptr[itctx_->n_misc_->support_[i]] = temp_ptr[itctx_->n_misc_->support_[i]];
       if (itctx_->n_misc_->diffusivity_inversion_) {
-          temp_ptr[np_original] = x_L1_ptr[np_original];
-          if (nk > 1) temp_ptr[np_original+1] = x_L1_ptr[np_original+1];
+          x_L1_ptr[np_full] = temp_ptr[np_full];
+          if (nk > 1) x_L1_ptr[np_full+1] = temp_ptr[np_full+1];
+          if (nk > 2) x_L1_ptr[np_full+2] = temp_ptr[np_full+2];
       }
       ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                 CHKERRQ (ierr);
       ierr = VecRestoreArray (temp, &temp_ptr);                                 CHKERRQ (ierr);
-      // Copy thresholded vector to current L1 solution
-      ierr = VecCopy (temp, x_L1);                                              CHKERRQ (ierr);
-      // revert
-      itctx_->n_misc_->np_ = np = np_original; /* reset to full space         */
-      itctx_->tumor_->phi_->resetCenters ();   /* reset all the basis centers */
-      ierr = resetOperators (x_L1);            /* reset phis and other ops    */CHKERRQ (ierr);
-      ierr = VecDestroy (&x_L2);   /* destroy L2 vector, size will change */    CHKERRQ (ierr);
+      ierr = VecCopy (x_L1, itctx_->tumor_->p_); /* copy initial guess for p */ CHKERRQ (ierr);
+      np = np_full; // revert
 
       // print initial guess to file
       ss << "c0guess_csitr-" << its << ".nc";
@@ -1135,37 +1170,13 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       else { flag_convergence = 0; }  // continue iterating
     } // end while
 
-    // === if converged ===
-    np = itctx_->n_misc_->support_.size();
-    nk = (itctx_->n_misc_->diffusivity_inversion_) ? itctx_->n_misc_->nk_ : 0;
-    itctx_->n_misc_->np_ = np;   // change np to solve the smaller L2 subsystem
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L2);                      CHKERRQ (ierr); // create the L2 solution vector
-    ierr = VecSet (x_L2, 0);                                                    CHKERRQ (ierr);
-    ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
-    ierr = VecGetArray (x_L1, &x_L1_ptr);                                       CHKERRQ (ierr);
-    // initial guess L2 solver
-    for (int i = 0; i < np; i++)
-      x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
-    // initial guess diffusivity
-    if (itctx_->n_misc_->diffusivity_inversion_) {
-        x_L2_ptr[np] = itctx_->n_misc_->k_; // equals x_L1_ptr[np_original];
-        if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_; // equals x_L1_ptr[np_original+1];
-        if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_; // equals x_L1_ptr[np_original+2];
-    }
-
-    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                   CHKERRQ (ierr);
-    // modify centers of Phi
-    itctx_->tumor_->phi_->modifyCenters (itctx_->n_misc_->support_);
-    // reset
-    ierr = resetOperators (x_L2);         /* reset phis and other operators */  CHKERRQ (ierr);
-
-    /* === corrective L2 solver === */
+    /* === (3) if converged: corrective L2 solver === */
     ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
     ierr = tuMSG("###                                              final L2 solve                                           ###");CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
+    ierr = restrictSubspace(&x_L2, x_L1, itctx_);                               CHKERRQ (ierr); // x_L2 <-- R(x_L1)
     ierr = solve ();                                   /* L2 solver    */
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
 
@@ -1193,44 +1204,13 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       writeCheckpoint(x_L2, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("unscaled"));
     }
 
-    ierr = VecSet (x_L1, 0.);                                                   CHKERRQ (ierr);
-    ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
-    ierr = VecGetArray (x_L1, &x_L1_ptr);                                       CHKERRQ (ierr);
-    // store the final L2 solve in L1, since x_L2 size will change to accommodate for reaction inversion
-    for (int i = 0; i < np; i++)
-      x_L1_ptr[itctx_->n_misc_->support_[i]] = x_L2_ptr[i];
-    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
-    ierr = VecDestroy (&x_L2);                                                  CHKERRQ (ierr);
+    // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
+    ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full, false);             CHKERRQ (ierr); // x_L1 <-- P(x_L2)
+    // restrict to new L2 subspace, holding p_i, kappa, and rho
+    ierr = restrictSubspace(&x_L2, x_L1, itctx_, true);                         CHKERRQ (ierr); // x_L2 <-- R(x_L1)
 
-    // create larger x_L2 : size should be np + nk + nr
-    np = itctx_->n_misc_->support_.size();
-    nk = (itctx_->n_misc_->reaction_inversion_ || itctx_->n_misc_->diffusivity_inversion_) ? itctx_->n_misc_->nk_ : 0;
-    nr = (itctx_->n_misc_->reaction_inversion_) ? itctx_->n_misc_->nr_ : 0;
-    itctx_->n_misc_->np_ = np;   // change np to solve the smaller L2 subsystem
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &x_L2);                 CHKERRQ (ierr); // create the L2 solution vector
-    ierr = VecSet (x_L2, 0);                                                    CHKERRQ (ierr);
-    ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
-    ierr = VecGetArray (x_L1, &x_L1_ptr);                                       CHKERRQ (ierr);
-    // initial guess L2 solver
-    for (int i = 0; i < np; i++)
-      x_L2_ptr[i] = x_L1_ptr[itctx_->n_misc_->support_[i]];
-    // initial guess diffusivity
-    x_L2_ptr[np] = itctx_->n_misc_->k_;
-    if (nk > 1) x_L2_ptr[np+1] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_;
-    if (nk > 2) x_L2_ptr[np+2] = itctx_->n_misc_->k_ * itctx_->n_misc_->k_glm_wm_ratio_;
-    // initial guess reaction
-    if (itctx_->n_misc_->reaction_inversion_) {
-        x_L2_ptr[np + nk] = itctx_->n_misc_->rho_;  // last val is rho: not changed as theres no reaction inversion here
-        if (nr > 1) x_L2_ptr[np + nk + 1] = itctx_->n_misc_->rho_ * itctx_->n_misc_->r_gm_wm_ratio_;
-        if (nr > 2) x_L2_ptr[np + nk + 2] = itctx_->n_misc_->rho_ * itctx_->n_misc_->r_glm_wm_ratio_;
-    }
-
-    ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                   CHKERRQ (ierr);
-    ierr = resetOperators (x_L2);         /* reset phis and other operators */  CHKERRQ (ierr);
-
-    // === reaction/diffusion inversion ===
-    // L1 phase finisehd with wrong reaction coefficient, rescale init cond. and invert for rho/kappa
+    // === (4) reaction/diffusion inversion ===
+    // rescale init cond. and invert for rho/kappa
     if (itctx_->n_misc_->reaction_inversion_) {
       PetscReal ic_max = 0., g_norm_ref = 0.;
       // inversion for reaction and diffusion only
@@ -1267,10 +1247,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   }
 
   // update full space solution
-  ierr = VecGetArray (x_L1, &x_L1_ptr);                                         CHKERRQ (ierr);
-  for (int i = 0; i < np; i++)
-      x_L1_ptr[itctx_->n_misc_->support_[i]] = x_L2_ptr[i];   // correct L1 guess
-  // correct the diffusivity and reaction
+  ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full);                      CHKERRQ (ierr); // x_L1 <-- P(x_L2)
+  // pass the reconstructed p vector to the caller (deep copy)
+  ierr = VecCopy (x_L1, xrec_);                                                 CHKERRQ (ierr);
+
+  // get diffusivity and reaction
   PetscReal r1, r2, r3, k1, k2, k3;
   r1 = itctx_->n_misc_->rho_; // equals x_L2_ptr[np + nk]
   r2 = (itctx_->n_misc_->nr_ > 1) ? itctx_->n_misc_->rho_ * itctx_->n_misc_->r_gm_wm_ratio_ : 0;  // equals x_L2_ptr[np + nk + 1]
@@ -1280,12 +1261,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   k3 = (nk > 2) ? itctx_->n_misc_->k_ * itctx_->n_misc_->k_gm_wm_ratio_ : 0; // equals x_L2_ptr[np+2];
 
   if (itctx_->n_misc_->reaction_inversion_) {
-      if (itctx_->n_misc_->diffusivity_inversion_) {
-          x_L1_ptr[np_original]               = k1;
-          if (nk > 1) x_L1_ptr[np_original+1] = k2;
-          if (nk > 2) x_L1_ptr[np_original+2] = k3;
-      }
-
       ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
       ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
       ierr = tuMSG    ("### estimated reaction coefficients:                  ###"); CHKERRQ (ierr);
@@ -1296,18 +1271,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
       ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
   }
-  ierr = VecRestoreArray (x_L1, &x_L1_ptr);                                     CHKERRQ (ierr);
-  // reset all values to initial space
-  np = np_original;
-  itctx_->n_misc_->np_ = np;
-  // reset centers of Phi
-  itctx_->tumor_->phi_->resetCenters ();
-  // reset Phi and other operators`(copy x_L1 in tumor_->p_)
-  ierr = resetOperators (x_L1);         /* reset phis and other operators */    CHKERRQ (ierr);
-  ierr = VecDestroy (&x_L2);                                                    CHKERRQ (ierr);
 
-  // pass the reconstructed p vector to the caller (deep copy)
-  ierr = VecCopy (x_L1, xrec_);                                                 CHKERRQ (ierr);
   if (g != nullptr) { ierr = VecDestroy (&g);CHKERRQ (ierr); g=nullptr; }
   ierr = VecDestroy (&x_L1);                                                    CHKERRQ (ierr);
   ierr = VecDestroy (&g_ref);                                                   CHKERRQ (ierr);
