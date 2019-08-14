@@ -126,14 +126,14 @@ PetscErrorCode tuMSG(std::string msg, int size) {
 
 PetscErrorCode tuMSGstd(std::string msg, int size) {
   PetscErrorCode ierr;
-  std::string color = "\x1b[37;m";
+  std::string color = "\x1b[37;1;49m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode tuMSGwarn(std::string msg, int size) {
   PetscErrorCode ierr;
-  std::string color = "\x1b[1;31;m";
+  std::string color = "\x1b[1;31;5;49m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
