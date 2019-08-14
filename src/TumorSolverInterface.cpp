@@ -685,5 +685,9 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
   inv_solver_->solveInverseCoSaMp();
   ierr = VecCopy (inv_solver_->getPrec(), prec);                                CHKERRQ (ierr);
 
+  // point solver interface pointers to the right mem -- needs to be changed (TODO)
+  pde_operators_ = inv_solver_->getInverseSolverContext()->pde_operators_;
+  derivative_operators_ = inv_solver_->getInverseSolverContext()->derivative_operators_;
+
   PetscFunctionReturn(ierr);
 }

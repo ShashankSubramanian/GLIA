@@ -95,11 +95,11 @@ def getTumorRunCmd(params):
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
     solve_rho_k = 0;
     ### Prediction flag -- Flag to predict tumor at a later time
-    predict_flag = 1
+    predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-    diffusivity_flag = 0
+    diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
     reaction_flag = 1
     ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)

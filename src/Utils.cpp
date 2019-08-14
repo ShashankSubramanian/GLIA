@@ -119,21 +119,21 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 PetscErrorCode tuMSG(std::string msg, int size) {
 	PetscFunctionBegin;
   PetscErrorCode ierr;
-  std::string color = "\x1b[1;34;m";
+  std::string color = "\x1b[1;34m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode tuMSGstd(std::string msg, int size) {
   PetscErrorCode ierr;
-  std::string color = "\x1b[37;m";
+  std::string color = "\x1b[37m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode tuMSGwarn(std::string msg, int size) {
   PetscErrorCode ierr;
-  std::string color = "\x1b[1;31;m";
+  std::string color = "\x1b[1;31m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

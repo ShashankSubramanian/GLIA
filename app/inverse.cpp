@@ -459,6 +459,19 @@ int main (int argc, char** argv) {
         n_misc->nt_ = nt;
     }
 
+    ss.str(std::string()); ss.clear();
+    if (n_misc->verbosity_ >= 2) {
+        ss << n_misc->writepath_.str().c_str() << "x_it.dat";
+        n_misc->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+        ss << n_misc->writepath_.str().c_str() << "g_it.dat";
+        n_misc->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+        ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";        
+        n_misc->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+        n_misc->outfile_sol_ << std::setprecision(16)<<std::scientific;
+        n_misc->outfile_grad_ << std::setprecision(16)<<std::scientific;
+        n_misc->outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
+    }
+
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
