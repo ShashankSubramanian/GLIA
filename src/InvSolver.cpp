@@ -409,82 +409,130 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
 PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-
-  TU_assert (initialized_, "InvSolver::solve (): InvSolver needs to be initialized.")
-  TU_assert (data_ != nullptr, "InvSolver:solve (): requires non-null input data for inversion.");
-  TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
-  TU_assert (xrec_ != nullptr, "InvSolver:solve (): requires non-null p_rec vector to be set");
-  TU_assert (optsettings_ != nullptr, "InvSolver:solve (): requires non-null optimizer settings to be passed.");
+  TU_assert (initialized_,              "InvSolver::solveForParameters (): InvSolver needs to be initialized.")
+  TU_assert (data_ != nullptr,          "InvSolver:solveForParameters (): requires non-null input data for inversion.");
+  TU_assert (data_gradeval_ != nullptr, "InvSolver:solveForParameters (): requires non-null input data for gradient evaluation.");
+  TU_assert (xrec_ != nullptr,          "InvSolver:solveForParameters (): requires non-null p_rec vector to be set");
+  TU_assert (optsettings_ != nullptr,   "InvSolver:solveForParameters (): requires non-null optimizer settings to be passed.");
 
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  std::stringstream ss;
 
   // set beta to zero here as the params are rho and kappa
-  double beta_p = itctx_->n_misc_->beta_;
+  PetscReal beta_p = itctx_->n_misc_->beta_;
   itctx_->n_misc_->beta_ = 0.;
+  PetscReal *d_ptr, *x_in_ptr, *x_ptr, *ub_ptr, *lb_ptr, *x_full_ptr;
+  PetscReal d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0., max, min, xdiff;
+  PetscReal upper_bound_kappa, lower_bound_kappa, minstep;
+  std::string msg;
+  int nk, nr, np, x_sz;
+  Vec x, lower_bound, upper_bound, p;
+  CtxInv *ctx = itctx_.get();
+  TaoLineSearch linesearch;
+  TaoConvergedReason reason;
 
+  // ls ministep
+  minstep = std::pow (2.0, 15.0);
+  minstep = 1.0 / minstep;
 
-  PetscScalar *d_ptr;
-  ierr = VecGetArray (data_, &d_ptr);                                                 CHKERRQ(ierr);
+  // DOFs
+  nk = itctx_->n_misc_->nk_;
+  nr = itctx_->n_misc_->nr_;
+  np = itctx_->n_misc_->np_;
+  x_sz = nk + nr;
 
   /* === Add Noise === */
   Vec noise; double *noise_ptr;
-  ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                        CHKERRQ(ierr);
-  ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);   CHKERRQ(ierr);
-  ierr = VecSetFromOptions(noise);                                                    CHKERRQ(ierr);
-  ierr = VecSetRandom(noise, NULL);                                                   CHKERRQ(ierr);
-  ierr = VecGetArray (noise, &noise_ptr);                                             CHKERRQ(ierr);
+  ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                  CHKERRQ(ierr);
+  ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_); CHKERRQ(ierr);
+  ierr = VecSetFromOptions(noise);                                              CHKERRQ(ierr);
+  ierr = VecSetRandom(noise, NULL);                                             CHKERRQ(ierr);
+  ierr = VecGetArray (noise, &noise_ptr);                                       CHKERRQ(ierr);
+  ierr = VecGetArray (data_, &d_ptr);                                           CHKERRQ(ierr);
   for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {
       d_ptr[i] += noise_ptr[i] * itctx_->n_misc_->noise_scale_;
-      noise_ptr[i] = d_ptr[i];                                                        //just to measure d norm
+      noise_ptr[i] = d_ptr[i];                                                  // just to measure d norm
   }
-  ierr = VecRestoreArray (noise, &noise_ptr);                                         CHKERRQ(ierr);
-  ierr = VecRestoreArray (data_, &d_ptr);                                             CHKERRQ(ierr);
-  PetscScalar max, min;                                                // compute d-norm
-  PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
+  ierr = VecRestoreArray (noise, &noise_ptr);                                   CHKERRQ(ierr);
+  ierr = VecRestoreArray (data_, &d_ptr);                                       CHKERRQ(ierr);
   #ifdef POSITIVITY
     ierr = enforcePositivity (data_, itctx_->n_misc_);
     ierr = enforcePositivity (noise, itctx_->n_misc_);
   #endif
-  ierr = VecNorm (noise, NORM_2, &d_norm);                                            CHKERRQ(ierr);
-  ierr = VecMax (noise, NULL, &max);                                                  CHKERRQ(ierr);
-  ierr = VecMin (noise, NULL, &min);                                                  CHKERRQ(ierr);
-  ierr = VecAXPY (noise, -1.0, data_);                                                CHKERRQ(ierr);
-  ierr = VecNorm (noise, NORM_2, &d_errorl2norm);                                     CHKERRQ(ierr);
-  ierr = VecNorm (noise, NORM_INFINITY, &d_errorInfnorm);                             CHKERRQ(ierr);
-  std::stringstream s;
-  s << "data (ITP), with noise: l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-  s << "IT data error due to thresholding and smoothing: l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  ierr = VecNorm (noise, NORM_2, &d_norm);                                      CHKERRQ(ierr);
+  ierr = VecMax  (noise, NULL, &max);                                           CHKERRQ(ierr);
+  ierr = VecMin  (noise, NULL, &min);                                           CHKERRQ(ierr);
+  ierr = VecAXPY (noise, -1.0, data_);                                          CHKERRQ(ierr);
+  ierr = VecNorm (noise, NORM_2, &d_errorl2norm);                               CHKERRQ(ierr);
+  ierr = VecNorm (noise, NORM_INFINITY, &d_errorInfnorm);                       CHKERRQ(ierr);
+  ss << " tumor inversion target data (with noise): l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ss << " tumor inversion target data error (due to thresholding and smoothing): l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   // Reset tao
-  if (tao_  != nullptr) {ierr = TaoDestroy (&tao_);  CHKERRQ(ierr); tao_  = nullptr;}
-  if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
-  if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
-
-
+  if (tao_  != nullptr)         {ierr = TaoDestroy (&tao_);           CHKERRQ(ierr); tao_  = nullptr;}
+  if (H_    != nullptr)         {ierr = MatDestroy (&H_);             CHKERRQ(ierr); H_    = nullptr;}
+  if (xrec_ != nullptr)         {ierr = VecDestroy (&xrec_);          CHKERRQ(ierr); xrec_ = nullptr;}
+  if (itctx_->x_old != nullptr) {ierr = VecDestroy (&itctx_->x_old);  CHKERRQ(ierr); itctx_->x_old = nullptr;}
   // TODO: x_old here is used to store the full solution vector and not old guess. (Maybe change to new vector to avoid confusion?)
-  if (itctx_->x_old == nullptr)  {
-      ierr = VecDuplicate (x_in, &itctx_->x_old);                                      CHKERRQ (ierr);
-      ierr = VecCopy (x_in, itctx_->x_old);                                            CHKERRQ (ierr);
+  // re-allocate
+  ierr = VecDuplicate (x_in, &itctx_->x_old);                                   CHKERRQ (ierr);
+  ierr = VecCopy      (x_in,  itctx_->x_old);   /* stores full solution vec */  CHKERRQ (ierr);
+  ierr = VecDuplicate (x_in, &xrec_);                                           CHKERRQ(ierr);
+  ierr = VecSet       (xrec_, 0.0);                                             CHKERRQ(ierr);
+  ierr = TaoCreate    (PETSC_COMM_SELF, &tao_);                                 CHKERRQ (ierr);
+  ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+  ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &x);        /* inv rho and k */   CHKERRQ (ierr);
+  ierr = VecSet        (x, 0.);                                                 CHKERRQ (ierr);
+  ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
+
+  // initial guess kappa
+  ierr = VecGetArray (x_in, &x_in_ptr);                                         CHKERRQ (ierr);
+  ierr = VecGetArray (x, &x_ptr);                                               CHKERRQ (ierr);
+  x_ptr[0] = (nk > 0) ? x_in_ptr[itctx_->n_misc_->np_] : 0;   // k1
+  if (nk > 1) x_ptr[1] = x_in_ptr[itctx_->n_misc_->np_ + 1];  // k2
+  if (nk > 2) x_ptr[2] = x_in_ptr[itctx_->n_misc_->np_ + 2];  // k3
+  ss << " initial guess for diffusion coefficient: " << x_ptr[0]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+  // initial guess rho
+  if (itctx_->n_misc_->multilevel_ && itctx_->n_misc_->n_[0] > 64) {
+    x_ptr[nk] = x_in_ptr[itctx_->n_misc_->np_ + nk];                      // r1
+    if (nr > 1) x_ptr[nk + 1] = x_in_ptr[itctx_->n_misc_->np_ + nk + 1];  // r2
+    if (nr > 2) x_ptr[nk + 2] = x_in_ptr[itctx_->n_misc_->np_ + nk + 2];  // r3
+  } else {
+    ss<<" computing rough approximation to rho.."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15};
+    double min_norm = 1E15, norm = 0.;
+    int idx = 0;
+    for (int i = 0; i < rho_guess.size(); i++) {
+      // update the tumor with this rho
+      ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
+      ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_in);          CHKERRQ (ierr);   // apply scaled p to IC
+      ierr = itctx_->derivative_operators_->pde_operators_->solveState (0);    // solve state with guess reaction and inverted diffusivity
+      ierr = itctx_->tumor_->obs_->apply (itctx_->derivative_operators_->temp_, itctx_->tumor_->c_t_);               CHKERRQ (ierr);
+      // mismatch between data and c
+      ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_);       CHKERRQ (ierr);    // Oc(1) - d
+      ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);     CHKERRQ (ierr);
+      if (norm < min_norm) { min_norm = norm; idx = i; }
+    }
+    x_ptr[nk] = rho_guess[idx];  // rho
+    if (nr > 1) x_ptr[nk + 1] = 0;  // r2
+    if (nr > 2) x_ptr[nk + 2] = 0;  // r3
   }
+  ss << " initial guess for reaction coefficient: " << x_ptr[nk]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
-  ierr = VecDuplicate (x_in, &xrec_);                                                 CHKERRQ(ierr);
+  ierr = VecRestoreArray     (x_in, &x_in_ptr);                                 CHKERRQ (ierr);
+  ierr = VecRestoreArray     (x, &x_ptr);                                       CHKERRQ (ierr);
+  ierr = TaoSetInitialVector (tao_, x);                                         CHKERRQ (ierr);
 
-  CtxInv *ctx = itctx_.get();
-
-
-  ierr = TaoCreate (PETSC_COMM_SELF, &tao_);                                           CHKERRQ (ierr);
-  ierr = TaoSetType (tao_, "tao_blmvm_m");                                                   CHKERRQ (ierr);
-
-  std::string msg;
   // TAO type from user input
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     TaoType taotype = NULL;
-    ierr = TaoGetType (tao_, &taotype);                                            CHKERRQ(ierr);
+    ierr = TaoGetType (tao_, &taotype);                                         CHKERRQ(ierr);
   #else
     const TaoType taotype;
-    ierr = TaoGetType (tao_, &taotype);                                            CHKERRQ(ierr);
+    ierr = TaoGetType (tao_, &taotype);                                         CHKERRQ(ierr);
   #endif
   if (strcmp(taotype, "nls") == 0) {
       msg = " limited memory variable metric method (unconstrained) selected";
@@ -517,137 +565,59 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   } else if (strcmp(taotype, "tao_L1") == 0) {
       msg = " User defined solver for L1 minimization";
   } else {
-      msg = " numerical optimization method not supported (setting default: LMVM)";
-      ierr = TaoSetType (tao_, "blmvm");                                          CHKERRQ(ierr);
+      msg = " numerical optimization method not supported (setting default: BLMVM)";
+      ierr = TaoSetType (tao_, "blmvm");                                        CHKERRQ(ierr);
   }
-  ierr = tuMSGstd(msg);
+  ierr = tuMSGstd(msg);                                                         CHKERRQ(ierr);
 
-  int x_sz;
-  int nk = itctx_->n_misc_->nk_;
-  int nr = itctx_->n_misc_->nr_;
-  x_sz = nk + nr;
-  Vec x;
-  ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &x);                                    CHKERRQ (ierr);  // Inversion for rho and k
-  ierr = VecSet (x, 0.);                                                              CHKERRQ (ierr);
-
-  // set initial guess to current state
-  double *x_in_ptr, *x_ptr;
-  ierr = VecGetArray (x_in, &x_in_ptr);                                               CHKERRQ (ierr);
-  ierr = VecGetArray (x, &x_ptr);                                                     CHKERRQ (ierr);
-  x_ptr[0] = (nk > 0) ? x_in_ptr[itctx_->n_misc_->np_] : 0;   // k1
-  if (nk > 1) x_ptr[1] = x_in_ptr[itctx_->n_misc_->np_ + 1];  // k2
-  if (nk > 2) x_ptr[2] = x_in_ptr[itctx_->n_misc_->np_ + 2];  // k3
-
-
-  s << " initial guess for diffusion coefficient: " << x_ptr[0]; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-
-
-  if (itctx_->n_misc_->multilevel_ && itctx_->n_misc_->n_[0] > 64) {
-    x_ptr[nk] = x_in_ptr[itctx_->n_misc_->np_ + nk];  // rho
-    if (nr > 1) x_ptr[nk + 1] = x_in_ptr[itctx_->n_misc_->np_ + nk + 1];  // r2
-    if (nr > 2) x_ptr[nk + 2] = x_in_ptr[itctx_->n_misc_->np_ + nk + 2];  // r3
-  } else {
-    s<<" computing rough approximation to rho."; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-    // Guess the reaction coefficient and use as IC.
-    std::array<double, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15}; // guess values --  these span 0 to 15 so estimate
-                                                                // roughly where to start, else we could get stuck in
-                                                                // a bad local minimum
-    double min_norm = 1E15, norm = 0.;
-    int idx = 0;
-    for (int i = 0; i < rho_guess.size(); i++) {
-      // update the tumor with this rho
-      ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
-      ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_in);                   CHKERRQ (ierr);   // apply scaled p to IC
-      ierr = itctx_->derivative_operators_->pde_operators_->solveState (0);    // solve state with guess reaction and inverted diffusivity
-      ierr = itctx_->tumor_->obs_->apply (itctx_->derivative_operators_->temp_, itctx_->tumor_->c_t_);               CHKERRQ (ierr);
-
-      // mismatch between data and c
-      ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_);       CHKERRQ (ierr);    // Oc(1) - d
-      ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);     CHKERRQ (ierr);
-
-      if (norm < min_norm) {
-        min_norm = norm;
-        idx = i;
-      }
-    }
-
-    x_ptr[nk] = rho_guess[idx];  // rho
-    if (nr > 1) x_ptr[nk + 1] = 0;  // r2
-    if (nr > 2) x_ptr[nk + 2] = 0;  // r3
-  }
-
-  s << " initial guess for reaction coefficient: " << x_ptr[nk]; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-
-  ierr = VecRestoreArray (x_in, &x_in_ptr);                                     CHKERRQ (ierr);
-  ierr = VecRestoreArray (x, &x_ptr);                                           CHKERRQ (ierr);
-  ierr = TaoSetInitialVector (tao_, x);                                         CHKERRQ (ierr);
-
-  // Lower and Upper Bounds
-  Vec lower_bound;
+  // lower and upper bounds
+  upper_bound_kappa = itctx_->n_misc_->k_ub_;
+  lower_bound_kappa = itctx_->n_misc_->k_lb_;
   ierr = VecDuplicate (x, &lower_bound);                                        CHKERRQ (ierr);
-  ierr = VecSet (lower_bound, 0.);                                              CHKERRQ (ierr);
-  Vec upper_bound;
+  ierr = VecSet       (lower_bound, 0.);                                        CHKERRQ (ierr);
   ierr = VecDuplicate (x, &upper_bound);                                        CHKERRQ (ierr);
-  ierr = VecSet (upper_bound, PETSC_INFINITY);                                  CHKERRQ (ierr);
-
-  double *ub_ptr;
-  double upper_bound_kappa = itctx_->n_misc_->k_ub_, lower_bound_kappa = itctx_->n_misc_->k_lb_;
-  ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
+  ierr = VecSet       (upper_bound, PETSC_INFINITY);                            CHKERRQ (ierr);
+  ierr = VecGetArray  (upper_bound, &ub_ptr);                                   CHKERRQ (ierr);
   ub_ptr[0] = upper_bound_kappa;
   if (nk > 1) ub_ptr[1] = upper_bound_kappa;
   if (nk > 2) ub_ptr[2] = upper_bound_kappa;
   ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
-
-  double *lb_ptr;
-  ierr = VecGetArray (lower_bound, &lb_ptr);                                    CHKERRQ (ierr);
+  ierr = VecGetArray     (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
   lb_ptr[0] = lower_bound_kappa;
   if (nk > 1) lb_ptr[1] = lower_bound_kappa;
   if (nk > 2) lb_ptr[2] = lower_bound_kappa;
   ierr = VecRestoreArray (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
-
-
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound);                  CHKERRQ (ierr);
   ierr = VecDestroy (&lower_bound);                                             CHKERRQ (ierr);
   ierr = VecDestroy (&upper_bound);                                             CHKERRQ (ierr);
 
-  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveForParameters, (void*) ctx);                              CHKERRQ(ierr);
-  ierr = TaoSetGradientRoutine (tao_, evaluateGradientForParameters, (void*) ctx);                                CHKERRQ(ierr);
-  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientForParameters, (void*) ctx);        CHKERRQ (ierr);
-
-  ctx->update_reference_gradient = true;
-
+  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveForParameters, (void*) ctx);                                 CHKERRQ(ierr);
+  ierr = TaoSetGradientRoutine (tao_, evaluateGradientForParameters, (void*) ctx);                                   CHKERRQ(ierr);
+  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientForParameters, (void*) ctx);           CHKERRQ (ierr);
   ierr = TaoSetMonitor (tao_, optimizationMonitorForParameters, (void *) ctx, NULL);                                 CHKERRQ(ierr);
   ierr = TaoSetTolerances (tao_, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
   ierr = TaoSetMaximumIterations (tao_, ctx->optsettings_->newton_maxit);                                            CHKERRQ(ierr);
   ierr = TaoSetConvergenceTest (tao_, checkConvergenceGradForParameters, ctx);                                       CHKERRQ(ierr);
 
-  // overwrite linesearch objects
-  TaoLineSearch linesearch;        // line-search object
-  PetscReal minstep;
-  minstep = std::pow (2.0, 15.0);
-  minstep = 1.0 / minstep;
-  itctx_->optsettings_->ls_minstep = minstep;
-
+  // line-search
+  itctx_->update_reference_gradient = true;    // compute ref gradient
+  itctx_->optsettings_->ls_minstep = minstep;  // overwrite linesearch objects
   ierr = TaoGetLineSearch (tao_, &linesearch);                                  CHKERRQ(ierr);
-  if (ctx->optsettings_->linesearch == ARMIJO) {
-    ierr = TaoLineSearchSetType (linesearch, "armijo");                        CHKERRQ(ierr);
-    tuMSGstd(" using line-search type: armijo");
-  } else {
-    tuMSGstd(" using line-search type: more-thuene");
-  }
   linesearch->stepmin = minstep;
-
+  if (ctx->optsettings_->linesearch == ARMIJO) {
+    ierr = TaoLineSearchSetType (linesearch, "armijo");                         CHKERRQ(ierr);
+    ierr = tuMSGstd(" using line-search type: armijo");                         CHKERRQ(ierr);
+  } else { ierr = tuMSGstd(" using line-search type: more-thuene"); CHKERRQ(ierr);}
   ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                   CHKERRQ(ierr);
 
-  std::stringstream ss;
-  tuMSGstd(" parameters (optimizer):");
-  tuMSGstd(" tolerances (stopping conditions):");
-  ss << "   gatol: "<< ctx->optsettings_->gatol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(ss.str()); ss.str(""); ss.clear();
-  ss << "   grtol: "<< ctx->optsettings_->grtol;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(ss.str()); ss.str(""); ss.clear();
-  ss << "   gttol: "<< ctx->optsettings_->opttolgrad;  /*pout(s.str(), cplctx->_fileOutput);*/ tuMSGstd(ss.str()); ss.str(""); ss.clear();
 
-  ierr = TaoSetFromOptions(tao_);                                                     CHKERRQ(ierr);
-
+  ierr = tuMSGstd(" parameters (optimizer):");                                  CHKERRQ(ierr);
+  ierr = tuMSGstd(" tolerances (stopping conditions):");                        CHKERRQ(ierr);
+  ss << "   gatol: "<< ctx->optsettings_->gatol;      tuMSGstd(ss.str()); ss.str(""); ss.clear();
+  ss << "   grtol: "<< ctx->optsettings_->grtol;      tuMSGstd(ss.str()); ss.str(""); ss.clear();
+  ss << "   gttol: "<< ctx->optsettings_->opttolgrad; tuMSGstd(ss.str()); ss.str(""); ss.clear();
+  ierr = TaoSetFromOptions(tao_);                                               CHKERRQ(ierr);
+  // reset feedback variables, reset data
   itctx_->is_ksp_gradnorm_set        = false;
   itctx_->optfeedback_->converged    = false;
   itctx_->optfeedback_->solverstatus = "";
@@ -658,65 +628,51 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   itctx_->optfeedback_->nb_gradevals = 0;
   itctx_->data                       = data_;
   itctx_->data_gradeval              = data_gradeval_;
-
+  itctx_->n_misc_->statistics_.reset();
+  ss << " tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
-  itctx_->n_misc_->statistics_.reset();
-  s << "Tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-
-  ierr = TaoSolve (tao_);                                                             CHKERRQ(ierr);
-
+  // ====== solve ======
+  ierr = TaoSolve (tao_);                                                       CHKERRQ(ierr);
   self_exec_time_tuninv += MPI_Wtime();
   MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-  Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                          CHKERRQ(ierr);
-
-  double *x_full_ptr;
-  ierr = VecGetArray (p, &x_ptr);       CHKERRQ (ierr);
-  ierr = VecGetArray (itctx_->x_old, &x_full_ptr);   CHKERRQ (ierr);
-
-  x_full_ptr[itctx_->n_misc_->np_] = x_ptr[0];   // k1
+  ierr = TaoGetSolutionVector (tao_, &p);                                       CHKERRQ(ierr);
+  ierr = VecGetArray          (p, &x_ptr);                                      CHKERRQ (ierr);
+  ierr = VecGetArray          (itctx_->x_old, &x_full_ptr);                     CHKERRQ (ierr);
+  x_full_ptr[itctx_->n_misc_->np_] = x_ptr[0];                                    // k1
   if (itctx_->n_misc_->nk_ > 1) x_full_ptr[itctx_->n_misc_->np_ + 1] = x_ptr[1];  // k2
   if (itctx_->n_misc_->nk_ > 2) x_full_ptr[itctx_->n_misc_->np_ + 2] = x_ptr[2];  // k3
-  x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_] = x_ptr[itctx_->n_misc_->nk_];  // rho
+  x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_] = x_ptr[itctx_->n_misc_->nk_];                                        // r1
   if (itctx_->n_misc_->nr_ > 1) x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_ + 1] = x_ptr[itctx_->n_misc_->nk_ + 1];  // r2
   if (itctx_->n_misc_->nr_ > 2) x_full_ptr[itctx_->n_misc_->np_ + itctx_->n_misc_->nk_ + 2] = x_ptr[itctx_->n_misc_->nk_ + 2];  // r2
-
-  ierr = VecRestoreArray (p, &x_ptr);       CHKERRQ (ierr);
-  ierr = VecRestoreArray (itctx_->x_old, &x_full_ptr);   CHKERRQ (ierr);
-
-  ierr = VecCopy (itctx_->x_old, xrec_);                                                          CHKERRQ(ierr);
+  ierr = VecRestoreArray      (p, &x_ptr);                                      CHKERRQ (ierr);
+  ierr = VecRestoreArray      (itctx_->x_old, &x_full_ptr);                     CHKERRQ (ierr);
+  // store sol in xrec_
+  ierr = VecCopy (itctx_->x_old, xrec_);                                        CHKERRQ(ierr);
 
   /* Get information on termination */
-  TaoConvergedReason reason;
-  TaoGetConvergedReason (tao_, &reason);
+  ierr = TaoGetConvergedReason (tao_, &reason);                                 CHKERRQ(ierr);
   /* get solution status */
-  PetscScalar xdiff;
   ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
   /* display convergence reason: */
-  ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);                 CHKERRQ(ierr);
-  s << " optimization done: #N-it: " << itctx_->optfeedback_->nb_newton_it    << ", #K-it: " << itctx_->optfeedback_->nb_krylov_it
+  ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);        CHKERRQ(ierr);
+  ss << " optimization done: #N-it: " << itctx_->optfeedback_->nb_newton_it    << ", #K-it: " << itctx_->optfeedback_->nb_krylov_it
                       << ", #matvec: " << itctx_->optfeedback_->nb_matvecs    << ", #evalJ: " << itctx_->optfeedback_->nb_objevals
                       << ", #evaldJ: " << itctx_->optfeedback_->nb_gradevals  << ", exec time: " << invtime;
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-  ierr = tuMSGstd (s.str());                                                                                            CHKERRQ(ierr);  s.str(""); s.clear();
+  ierr = tuMSGstd (ss.str());                                                                                           CHKERRQ(ierr);  ss.str(""); ss.clear();
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
   itctx_->n_misc_->statistics_.print();
   itctx_->n_misc_->statistics_.reset();
 
-  // data_ = nullptr;
-  // data_gradeval_ = nullptr;
   tao_is_reset_ = false;
-
-  ierr = VecDestroy (&itctx_->x_old);  CHKERRQ (ierr);
-  itctx_->x_old = nullptr;
-
-  ierr = VecDestroy (&noise); CHKERRQ (ierr);
-  ierr = VecDestroy (&x);     CHKERRQ (ierr);
-
-  // reset n_misc beta so that the value is not lost -- cursory as its not used anywhere after
-  itctx_->n_misc_->beta_ = beta_p;
-
+  itctx_->n_misc_->beta_ = beta_p; // restore beta value
+  // cleanup
+  if (itctx_->x_old != nullptr) {ierr = VecDestroy (&itctx_->x_old);  CHKERRQ (ierr); itctx_->x_old = nullptr;}
+  if (noise != nullptr)         {ierr = VecDestroy (&noise);          CHKERRQ (ierr);         noise = nullptr;}
+  if (x != nullptr)             {ierr = VecDestroy (&x);              CHKERRQ (ierr);             x = nullptr;}
+  // go home
   PetscFunctionReturn (0);
 }
 
@@ -757,28 +713,28 @@ PetscErrorCode InvSolver::solve () {
     Vec noise;
 
     /* === Add Noise === */
-    ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                  CHKERRQ(ierr);
+    ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                CHKERRQ(ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);CHKERRQ(ierr);
-    ierr = VecSetFromOptions(noise);                                              CHKERRQ(ierr);
-    ierr = VecSetRandom(noise, NULL);                                             CHKERRQ(ierr);
-    ierr = VecGetArray (noise, &noise_ptr);                                       CHKERRQ(ierr);
-    ierr = VecGetArray (data_, &d_ptr);                                           CHKERRQ(ierr);
+    ierr = VecSetFromOptions(noise);                                            CHKERRQ(ierr);
+    ierr = VecSetRandom(noise, NULL);                                           CHKERRQ(ierr);
+    ierr = VecGetArray (noise, &noise_ptr);                                     CHKERRQ(ierr);
+    ierr = VecGetArray (data_, &d_ptr);                                         CHKERRQ(ierr);
     for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {
       d_ptr[i] += noise_ptr[i] * itctx_->n_misc_->noise_scale_;
       noise_ptr[i] = d_ptr[i];     //just to measure d norm
     }
-    ierr = VecRestoreArray (noise, &noise_ptr);                                   CHKERRQ(ierr);
-    ierr = VecRestoreArray (data_, &d_ptr);                                       CHKERRQ(ierr);
+    ierr = VecRestoreArray (noise, &noise_ptr);                                 CHKERRQ(ierr);
+    ierr = VecRestoreArray (data_, &d_ptr);                                     CHKERRQ(ierr);
     #ifdef POSITIVITY
     ierr = enforcePositivity (data_, itctx_->n_misc_);
     ierr = enforcePositivity (noise, itctx_->n_misc_);
     #endif
-    ierr = VecNorm (noise, NORM_2, &d_norm);                                      CHKERRQ(ierr);
-    ierr = VecMax  (noise, NULL, &max);                                           CHKERRQ(ierr);
-    ierr = VecMin  (noise, NULL, &min);                                           CHKERRQ(ierr);
-    ierr = VecAXPY (noise, -1.0, data_);                                          CHKERRQ(ierr);
-    ierr = VecNorm (noise, NORM_2, &d_errorl2norm);                               CHKERRQ(ierr);
-    ierr = VecNorm (noise, NORM_INFINITY, &d_errorInfnorm);                       CHKERRQ(ierr);
+    ierr = VecNorm (noise, NORM_2, &d_norm);                                    CHKERRQ(ierr);
+    ierr = VecMax  (noise, NULL, &max);                                         CHKERRQ(ierr);
+    ierr = VecMin  (noise, NULL, &min);                                         CHKERRQ(ierr);
+    ierr = VecAXPY (noise, -1.0, data_);                                        CHKERRQ(ierr);
+    ierr = VecNorm (noise, NORM_2, &d_errorl2norm);                             CHKERRQ(ierr);
+    ierr = VecNorm (noise, NORM_INFINITY, &d_errorInfnorm);                     CHKERRQ(ierr);
     s << " tumor inversion target data (with noise): l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     s << " tumor inversion target data error (due to thresholding and smoothing): l2norm = "<< d_errorl2norm <<", inf-norm = " <<d_errorInfnorm;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     if (itctx_->n_misc_->writeOutput_) { dataOut (data_, itctx_->n_misc_, "data.nc"); }
@@ -959,15 +915,14 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   if (false && itctx_->n_misc_->n_[0] > 64 && itctx_->n_misc_->reaction_inversion_) {
     // restrict to new L2 subspace, holding p_i, kappa, and rho
     ierr = restrictSubspace(&x_L2, x_L1, itctx_, true);                         CHKERRQ (ierr); // x_L2 <-- R(x_L1)
-    // inversion for reaction and diffusion only (this flag enables derivative operators to compute the gradient w.r.t rho)
     itctx_->n_misc_->flag_reaction_inv_ = true;
-    // scale p to one according to our modeling assumptions
     PetscReal ic_max = 0., g_norm_ref = 0.;
     ierr = itctx_->tumor_->phi_->apply(itctx_->tumor_->c_0_, x_L2);             CHKERRQ (ierr);
     ierr = VecMax (itctx_->tumor_->c_0_, NULL, &ic_max);                        CHKERRQ (ierr);
     ierr = VecGetArray (x_L2, &x_L2_ptr);                                       CHKERRQ (ierr);
-    // scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
-    // scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25
+    /* scale p to one according to our modeling assumptions:
+     * scales INT_Omega phi(x) dx = const across levels, factor in between levels: 2
+     * scales nx=256 to max {Phi p} = 1, nx=128 to max {Phi p} = 0.5, nx=64 to max {Phi p} = 0.25 */
     for (int i = 0; i < itctx_->n_misc_->np_; i++){
         if(itctx_->n_misc_->multilevel_) { x_L2_ptr[i] *= (1.0/4.0 * itctx_->n_misc_->n_[0]/64.  / ic_max);}
         else                             { x_L2_ptr[i] *= (1.0 / ic_max); }
@@ -975,11 +930,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = VecRestoreArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
 
     // write out p vector after IC, k inversion (scaled)
-    ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
+    ierr = tuMSGstd ("");                                                             CHKERRQ (ierr);
     ierr = tuMSG    ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
-    ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
-    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);         CHKERRQ (ierr);}
-    ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+    ierr = tuMSGstd ("### ------------------------------------------------- ###");    CHKERRQ (ierr);
+    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+    ierr = tuMSGstd ("### ------------------------------------------------- ###");    CHKERRQ (ierr);
     if (itctx_->n_misc_->write_p_checkpoint_) {writeCheckpoint(x_L2, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("scaled-pre-l1"));}
 
     ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
@@ -1139,8 +1094,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = VecCopy (x_L1, itctx_->tumor_->p_); /* copy initial guess for p */ CHKERRQ (ierr);
 
       // print initial guess to file
-      ss << "c0guess_csitr-" << its << ".nc"; if (itctx_->n_misc_->writeOutput_) dataOut (itctx_->tumor_->c_0_, itctx_->n_misc_, ss.str().c_str()); ss.str(std::string()); ss.clear();
-      ss << "c1guess_csitr-" << its << ".nc"; if (itctx_->n_misc_->verbosity_ >= 4) dataOut (itctx_->tumor_->c_t_, itctx_->n_misc_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+      if (itctx_->n_misc_->writeOutput_) {
+        ss << "c0guess_csitr-" << its << ".nc";  dataOut (itctx_->tumor_->c_0_, itctx_->n_misc_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+        ss << "c1guess_csitr-" << its << ".nc"; if (itctx_->n_misc_->verbosity_ >= 4) dataOut (itctx_->tumor_->c_t_, itctx_->n_misc_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+      }
 
       /* === convergence check === */
       J_old = J;
@@ -1176,13 +1133,15 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = tuMSGstd (""); CHKERRQ (ierr);
 
     // print phi's to file
-    ierr = VecDuplicate (itctx_->tumor_->phi_->phi_vec_[0], &all_phis);         CHKERRQ (ierr);
-    ierr = VecSet       (all_phis, 0.);                                         CHKERRQ (ierr);
-    for (int i = 0; i < itctx_->n_misc_->np_; i++) {ierr = VecAXPY (all_phis, 1.0, itctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
-    ss << "phiSupportFinal.nc"; if (itctx_->n_misc_->writeOutput_) {dataOut (all_phis, itctx_->n_misc_, ss.str().c_str());} ss.str(std::string()); ss.clear();
-    ierr = VecDestroy (&all_phis);                                              CHKERRQ (ierr);
-    ss << "c0FinalGuess.nc"; if (itctx_->n_misc_->writeOutput_) { dataOut (itctx_->tumor_->c_0_, itctx_->n_misc_, ss.str().c_str()); } ss.str(std::string()); ss.clear();
-    ss << "c1FinalGuess.nc"; if (itctx_->n_misc_->writeOutput_ && itctx_->n_misc_->verbosity_ >= 4) { dataOut (itctx_->tumor_->c_t_, itctx_->n_misc_, ss.str().c_str()); } ss.str(std::string()); ss.clear();
+    if (itctx_->n_misc_->writeOutput_) {
+        ierr = VecDuplicate (itctx_->tumor_->phi_->phi_vec_[0], &all_phis);     CHKERRQ (ierr);
+        ierr = VecSet       (all_phis, 0.);                                     CHKERRQ (ierr);
+        for (int i = 0; i < itctx_->n_misc_->np_; i++) {ierr = VecAXPY (all_phis, 1.0, itctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
+        ss << "phiSupportFinal.nc";  {dataOut (all_phis, itctx_->n_misc_, ss.str().c_str());} ss.str(std::string()); ss.clear();
+        ss << "c0FinalGuess.nc";  dataOut (itctx_->tumor_->c_0_, itctx_->n_misc_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+        ss << "c1FinalGuess.nc"; if (itctx_->n_misc_->verbosity_ >= 4) { dataOut (itctx_->tumor_->c_t_, itctx_->n_misc_, ss.str().c_str()); } ss.str(std::string()); ss.clear();
+        ierr = VecDestroy (&all_phis);                                          CHKERRQ (ierr);
+    }
 
     // write out p vector after IC, k inversion (unscaled)
     if (itctx_->n_misc_->write_p_checkpoint_) {
@@ -1314,9 +1273,9 @@ PetscErrorCode InvSolver::printStatistics (int its, PetscReal J, PetscReal J_rel
 
 InvSolver::~InvSolver () {
     PetscErrorCode ierr = 0;
-    ierr = VecDestroy (&xrec_);
-    ierr = TaoDestroy (&tao_);
-    ierr = MatDestroy (&H_);
+    if (tao_  != nullptr) {TaoDestroy (&tao_);  tao_  = nullptr;}
+    if (H_    != nullptr) {MatDestroy (&H_);    H_    = nullptr;}
+    if (xrec_ != nullptr) {VecDestroy (&xrec_); xrec_ = nullptr;}
 }
 
 
@@ -1921,7 +1880,7 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
         ierr = tuMSGstd ("starting optimization for only biophysical parameters");                   CHKERRQ(ierr);
 
         ierr = tuMSGstd ("---------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-        ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
+        ierr = tuMSGwarn (s.str());                                             CHKERRQ(ierr);
         ierr = tuMSGstd ("---------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         s.str ("");
         s.clear ();
@@ -1947,14 +1906,14 @@ PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
       }
 
 
-      ierr = VecRestoreArray(x, &x_ptr);                                     CHKERRQ(ierr);
+    ierr = VecRestoreArray(x, &x_ptr);                                          CHKERRQ(ierr);
 
-    ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
+    ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
     s.str ("");
     s.clear ();
 
-    s << "c1guess_paraminvitr-" << its << ".nc";
-    if (itctx->n_misc_->verbosity_ >= 4 && its % 5 == 0) {
+    if (itctx->n_misc_->writeOutput_ && itctx->n_misc_->verbosity_ >= 4 && its % 5 == 0) {
+        s << "c1guess_paraminvitr-" << its << ".nc";
         dataOut (itctx->tumor_->c_t_, itctx->n_misc_, s.str().c_str());
     }
     s.str(std::string()); s.clear();
