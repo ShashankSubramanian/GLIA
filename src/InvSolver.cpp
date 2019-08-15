@@ -553,17 +553,17 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   } else if (strcmp(taotype, "cg") == 0) {
       msg = " CG selected";
   } else if (strcmp(taotype, "tron") == 0) {
-      msg = "  Newton Trust Region method chosen";
+      msg = " Newton Trust Region method chosen";
   } else if (strcmp(taotype, "blmvm") == 0) {
       msg = "  Bounded limited memory variable metric method chosen";
   } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
-      msg = "  Own bounded limited memory variable metric method chosen";
+      msg = " user modified bounded limited memory variable metric method chosen";
   } else if (strcmp(taotype, "lmvm") == 0) {
-      msg = "  Limited memory variable metric method chosen";
+      msg = " Limited memory variable metric method chosen";
   } else if (strcmp(taotype, "gpcg") == 0) {
       msg = " Newton Trust Region method for quadratic bound constrained minimization";
   } else if (strcmp(taotype, "tao_L1") == 0) {
-      msg = " User defined solver for L1 minimization";
+      msg = " user defined solver for L1 minimization";
   } else {
       msg = " numerical optimization method not supported (setting default: BLMVM)";
       ierr = TaoSetType (tao_, "blmvm");                                        CHKERRQ(ierr);
@@ -3118,13 +3118,13 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     } else if (strcmp(taotype, "cg") == 0) {
         msg = " CG selected\n";
     } else if (strcmp(taotype, "tron") == 0) {
-        msg = "  Newton Trust Region method chosen";
+        msg = " Newton Trust Region method chosen";
     } else if (strcmp(taotype, "blmvm") == 0) {
-        msg = "  Bounded limited memory variable metric method chosen";
+        msg = " bounded limited memory variable metric method chosen";
     } else if (strcmp(taotype, "lmvm") == 0) {
-        msg = "  Limited memory variable metric method chosen\n";
+        msg = " limited memory variable metric method chosen\n";
     } else if (strcmp(taotype, "tao_blmvm_m") == 0) {
-        msg = "  User modified limited memory variable metric method chosen";
+        msg = " user modified limited memory variable metric method chosen";
     } else if (strcmp(taotype, "gpcg") == 0) {
         msg = " Newton Trust Region method for quadratic bound constrained minimization";
     } else if (strcmp(taotype, "tao_L1") == 0) {
