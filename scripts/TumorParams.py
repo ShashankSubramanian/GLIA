@@ -54,10 +54,10 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 2
+    verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 1
+    create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -81,8 +81,9 @@ def getTumorRunCmd(params):
     ##               4: brain multifocal synthetic tumor with far away ground truths
     tumor_testcase = 0
 
-    multilevel = 0;
-    inject_solution = 0;
+    multilevel         = 0;
+    inject_solution    = 0;
+    pre_reacdiff_solve = 0;
 
     ### k_gm_wm ratio
     k_gm_wm = 0.0
@@ -222,10 +223,15 @@ def getTumorRunCmd(params):
     # ---
     if 'multilevel' in params:
         multilevel = params['multilevel']
+        print ('Solver is running in multilevel mode.')
     # ---
     if 'inject_solution' in params:
         inject_solution = params['inject_solution']
         print ('Solution from previous level is injected.')
+    # ---
+    if 'pre_reacdiff_solve' in params:
+        pre_reacdiff_solve = params['pre_reacdiff_solve']
+        print ('Solve for reaction/diffusion prior to L1-phase.')
     # ---
     if 'dd_fac' in params:
         dd_fac = params['dd_fac']
@@ -359,6 +365,7 @@ def getTumorRunCmd(params):
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
     " -inject_solution " + str(inject_solution) + \
+    " -pre_reacdiff_solve " + str(pre_reacdiff_solve) + \
     " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
     " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
     " -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \

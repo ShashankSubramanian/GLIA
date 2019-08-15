@@ -95,31 +95,31 @@ def createJobsubFile(cmd, opt, level):
 def gridcont(basedir, args):
 
     # ########### SETTINGS ############
-    levels           = [64,128,256]
+    levels             = [64,128,256]
     if args.compute_cluster == "stampede2":
-      nodes          = [1,1,2]
-      procs          = [24,48,96]
+      nodes            = [1,1,2]
+      procs            = [24,48,96]
     if args.compute_cluster == "hazelhen":
-      nodes           = [1,2,4]
-      procs           = [24,48,96]
-    wtime_h           = [0,2,10]
-    wtime_m           = [30,0,0]
-    sigma_fac         = [2,2,2]                    # on every level, sigma = fac * hx
-    predict           = [0,0,0]
-    gvf               = [0.0,0.9,0.9]              # ignored for C0_RANKED
-    #gvf              = [0.0,0.9,0.9]              # ignored for C0_RANKED
-    rho_default       = 8;
-    k_default         = 0;
-    beta_p            = 1E-4;
-    opttol            = 1E-4;
-    p_prev            = "";
-    submit            = True;
-    separatejobs      = False;
-    inject_coarse_sol = True;
-    pid_prev          = 0;
-    obs_masks         = []
-    lbound_kappa      = [1E-4, 1E-4, 1E-4]; # [1E-2, 1E-3, 1E-4];
-    ubound_kappa      = [1.0, 1.0, 1.0];
+      nodes            = [1,2,4]
+      procs            = [24,48,96]
+    wtime_h            = [0,2,10]
+    wtime_m            = [30,0,0]
+    sigma_fac          = [2,2,2]                    # on every level, sigma = fac * hx
+    predict            = [0,0,0]
+    gvf                = [0.0,0.9,0.9]              # ignored for C0_RANKED
+    rho_default        = 8;
+    k_default          = 0;
+    beta_p             = 1E-4;
+    opttol             = 1E-4;
+    p_prev             = "";
+    submit             = True;
+    separatejobs       = False;
+    inject_coarse_sol  = True;
+    pre_reacdiff_solve = True;
+    pid_prev           = 0;
+    obs_masks          = []
+    lbound_kappa       = [1E-4, 1E-4, 1E-4]; # [1E-2, 1E-3, 1E-4];
+    ubound_kappa       = [1.0, 1.0, 1.0];
     gaussian_selection_mode = "PHI"; # alternatives: {"D", "PHI", "C0", "C0_RANKED"}
     data_thresh  = [1E-1, 1E-4, 1E-4] if (gaussian_selection_mode in ["PHI","C0"]) else [1E-1, 1E-1, 1E-1];
     sparsity_lvl_per_component = 5;
@@ -282,7 +282,8 @@ def gridcont(basedir, args):
         t_params['sparsity_lvl']          = sparsity_lvl_per_component;
         t_params['multilevel']            = 1;
         t_params['solve_rho_k']           = 1 if args.cm_data else 0;
-        t_params['inject_solution']       = 1 if (inject_coarse_sol and level > 64) else 0;
+        t_params['inject_solution']       = 1 if (inject_coarse_sol  and level > 64) else 0;
+        t_params['pre_reacdiff_solve']    = 1 if (pre_reacdiff_solve and level > 64) else 0;
         t_params['create_synthetic']      = 0;
         t_params['ls_max_func_evals']     = ls_max_func_evals[ii];
         t_params['diffusivity_inversion'] = invert_diffusivity[ii];

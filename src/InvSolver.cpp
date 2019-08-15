@@ -264,8 +264,9 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   std::stringstream ss;
 
-  // set beta to zero here as the params are rho and kappa
-  PetscReal beta_p = itctx_->n_misc_->beta_;
+
+  PetscReal beta_p = itctx_->n_misc_->beta_;     // set beta to zero here as the params are rho and kappa
+  itctx_->n_misc_->flag_reaction_inv_ = true;    // enables derivative operators to compute the gradient w.r.t rho
   itctx_->n_misc_->beta_ = 0.;
   PetscReal *d_ptr, *x_in_ptr, *x_ptr, *ub_ptr, *lb_ptr, *x_full_ptr;
   PetscReal d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0., max, min, xdiff;
@@ -512,7 +513,8 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
   itctx_->n_misc_->statistics_.reset();
 
   tao_is_reset_ = false;
-  itctx_->n_misc_->beta_ = beta_p; // restore beta value
+  itctx_->n_misc_->beta_ = beta_p;              // restore beta value
+  itctx_->n_misc_->flag_reaction_inv_ = false;  // disables derivative operators to compute the gradient w.r.t rho
   // cleanup
   if (itctx_->x_old != nullptr) {ierr = VecDestroy (&itctx_->x_old);  CHKERRQ (ierr); itctx_->x_old = nullptr;}
   if (noise != nullptr)         {ierr = VecDestroy (&noise);          CHKERRQ (ierr);         noise = nullptr;}
@@ -759,7 +761,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   if (itctx_->n_misc_->pre_reacdiff_solve_ && itctx_->n_misc_->n_[0] > 64 && itctx_->n_misc_->reaction_inversion_) {
     // restrict to new L2 subspace, holding p_i, kappa, and rho
     ierr = restrictSubspace(&x_L2, x_L1, itctx_, true);                         CHKERRQ (ierr); // x_L2 <-- R(x_L1)
-    itctx_->n_misc_->flag_reaction_inv_ = true;
     PetscReal ic_max = 0., g_norm_ref = 0.;
     ierr = itctx_->tumor_->phi_->apply(itctx_->tumor_->c_0_, x_L2);             CHKERRQ (ierr);
     ierr = VecMax (itctx_->tumor_->c_0_, NULL, &ic_max);                        CHKERRQ (ierr);
@@ -1001,7 +1002,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     // rescale init cond. and invert for rho/kappa
     if (itctx_->n_misc_->reaction_inversion_) {
       PetscReal ic_max = 0., g_norm_ref = 0.;
-      itctx_->n_misc_->flag_reaction_inv_ = true;  // enables derivative operators to compute the gradient w.r.t rho
       // scale p to one according to our modeling assumptions
       ierr = VecMax (itctx_->tumor_->c_0_, NULL, &ic_max);                      CHKERRQ (ierr);
       ierr = VecGetArray (x_L2, &x_L2_ptr);                                     CHKERRQ (ierr);
