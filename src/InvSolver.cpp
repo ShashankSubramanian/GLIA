@@ -237,7 +237,7 @@ PetscErrorCode InvSolver::prolongateSubspace (Vec x_full, Vec *x_restricted, std
 }
 
 
-PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
+PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -406,14 +406,14 @@ PetscErrorCode checkConvergenceGradForParameters (Tao tao, void *ptr) {
 }
 
 
-PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
+PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  TU_assert (initialized_,              "InvSolver::solveForParameters (): InvSolver needs to be initialized.")
-  TU_assert (data_ != nullptr,          "InvSolver:solveForParameters (): requires non-null input data for inversion.");
-  TU_assert (data_gradeval_ != nullptr, "InvSolver:solveForParameters (): requires non-null input data for gradient evaluation.");
-  TU_assert (xrec_ != nullptr,          "InvSolver:solveForParameters (): requires non-null p_rec vector to be set");
-  TU_assert (optsettings_ != nullptr,   "InvSolver:solveForParameters (): requires non-null optimizer settings to be passed.");
+  TU_assert (initialized_,              "InvSolver::solveInverseReacDiff (): InvSolver needs to be initialized.")
+  TU_assert (data_ != nullptr,          "InvSolver::solveInverseReacDiff (): requires non-null input data for inversion.");
+  TU_assert (data_gradeval_ != nullptr, "InvSolver::solveInverseReacDiff (): requires non-null input data for gradient evaluation.");
+  TU_assert (xrec_ != nullptr,          "InvSolver::solveInverseReacDiff (): requires non-null p_rec vector to be set");
+  TU_assert (optsettings_ != nullptr,   "InvSolver::solveInverseReacDiff (): requires non-null optimizer settings to be passed.");
 
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -591,13 +591,13 @@ PetscErrorCode InvSolver::solveForParameters (Vec x_in) {
   ierr = VecDestroy (&lower_bound);                                             CHKERRQ (ierr);
   ierr = VecDestroy (&upper_bound);                                             CHKERRQ (ierr);
 
-  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveForParameters, (void*) ctx);                                 CHKERRQ(ierr);
-  ierr = TaoSetGradientRoutine (tao_, evaluateGradientForParameters, (void*) ctx);                                   CHKERRQ(ierr);
-  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientForParameters, (void*) ctx);           CHKERRQ (ierr);
-  ierr = TaoSetMonitor (tao_, optimizationMonitorForParameters, (void *) ctx, NULL);                                 CHKERRQ(ierr);
+  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveReacDiff, (void*) ctx);                                      CHKERRQ(ierr);
+  ierr = TaoSetGradientRoutine (tao_, evaluateGradientReacDiff, (void*) ctx);                                        CHKERRQ(ierr);
+  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientReacDiff, (void*) ctx);                CHKERRQ (ierr);
+  ierr = TaoSetMonitor (tao_, optimizationMonitorReacDiff, (void *) ctx, NULL);                                      CHKERRQ(ierr);
   ierr = TaoSetTolerances (tao_, ctx->optsettings_->gatol, ctx->optsettings_->grtol, ctx->optsettings_->opttolgrad); CHKERRQ(ierr);
   ierr = TaoSetMaximumIterations (tao_, ctx->optsettings_->newton_maxit);                                            CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest (tao_, checkConvergenceGradForParameters, ctx);                                       CHKERRQ(ierr);
+  ierr = TaoSetConvergenceTest (tao_, checkConvergenceGradReacDiff, ctx);                                            CHKERRQ(ierr);
 
   // line-search
   itctx_->update_reference_gradient = true;    // compute ref gradient
@@ -912,7 +912,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
   /* ------------------------------------------------------------------------ */
   // ### (0) (pre-)reaction/diffusion inversion ###
-  if (false && itctx_->n_misc_->n_[0] > 64 && itctx_->n_misc_->reaction_inversion_) {
+  if (itctx_->n_misc_->pre_reacdiff_solve_ && itctx_->n_misc_->n_[0] > 64 && itctx_->n_misc_->reaction_inversion_) {
     // restrict to new L2 subspace, holding p_i, kappa, and rho
     ierr = restrictSubspace(&x_L2, x_L1, itctx_, true);                         CHKERRQ (ierr); // x_L2 <-- R(x_L1)
     itctx_->n_misc_->flag_reaction_inv_ = true;
@@ -942,7 +942,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = tuMSG("###                     (PRE) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
     // === reaction/inversion solve ===
-    ierr = solveForParameters (x_L2);            /* with current guess as init cond. */
+    ierr = solveInverseReacDiff (x_L2);          /* with current guess as init cond. */
     ierr = VecCopy (getPrec(), x_L2);            /* get solution */             CHKERRQ (ierr);
 
     ierr = tuMSG("### -------------------------------------- (PRE) rho/kappa solver end ----------------------------------- ###");CHKERRQ (ierr);
@@ -1182,7 +1182,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSG("###                          rho/kappa inversion with scaled L2 solution guess                            ###");CHKERRQ (ierr);
       ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
       // === reaction/inversion solve ===
-      ierr = solveForParameters (x_L2);            /* with current guess as init cond. */
+      ierr = solveInverseReacDiff (x_L2);          /* with current guess as init cond. */
       ierr = VecCopy (getPrec(), x_L2);            /* get solution */           CHKERRQ (ierr);
 
       ierr = tuMSG("### ---------------------------------------- rho/kappa solver end --------------------------------------- ###");CHKERRQ (ierr);
@@ -1385,7 +1385,7 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode evaluateObjectiveForParameters (Tao tao, Vec x, PetscReal *J, void *ptr){
+PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *ptr){
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj-params");
@@ -1421,7 +1421,7 @@ PetscErrorCode evaluateObjectiveForParameters (Tao tao, Vec x, PetscReal *J, voi
   PetscFunctionReturn (0);
 }
 
-PetscErrorCode evaluateGradientForParameters (Tao tao, Vec x, Vec dJ, void *ptr){
+PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-grad-tumor-params");
@@ -1482,7 +1482,7 @@ PetscErrorCode evaluateGradientForParameters (Tao tao, Vec x, Vec dJ, void *ptr)
   PetscFunctionReturn (0);
 }
 
-PetscErrorCode evaluateObjectiveAndGradientForParameters (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
+PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj/grad-tumor-params");
@@ -1805,7 +1805,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode optimizationMonitorForParameters (Tao tao, void *ptr) {
+PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 

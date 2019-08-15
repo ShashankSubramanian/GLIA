@@ -248,7 +248,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         }
 
         // reaction -inversion solve
-        ierr = inv_solver_->solveForParameters (x_L2);          // With IC as current guess
+        ierr = inv_solver_->solveInverseReacDiff (x_L2);          // With IC as current guess
         ierr = VecCopy (inv_solver_->getPrec(), x_L2);                          CHKERRQ (ierr);
 
         // update rho
@@ -372,7 +372,7 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec d1, Vec 
     inv_solver_->setDataGradient (d1g);
 
     // reaction-inversion solve
-    ierr = inv_solver_->solveForParameters (prec);          // With IC as current guess
+    ierr = inv_solver_->solveInverseReacDiff (prec);          // With IC as current guess
     ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
   } else {
     ierr = tuMSGwarn ( " WARNING: Attempting to solve for reaction and diffusion, but reaction inversion is nor enabled."); CHKERRQ (ierr);

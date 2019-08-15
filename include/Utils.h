@@ -284,6 +284,7 @@ class NMisc {
         , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
+        , pre_reacdiff_solve_ (0)               // Flag indicating of reaction/diffusion solve is performed prior to L1 inversion in CoSaMp
         , order_ (2)                            // Order of accuracy for PDE solves
         , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
         , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
@@ -392,6 +393,7 @@ class NMisc {
 
         double ic_max_;
         int predict_flag_;
+        int pre_reacdiff_solve_;
         int prune_components_;
 
 

@@ -131,6 +131,7 @@ int main (int argc, char** argv) {
     double kub = -1.0;
 
     int predict_flag = 0;
+    int pre_reacdiff_solve = 0;
     int order_of_accuracy = -1;
 
     PetscBool strflg;
@@ -183,6 +184,7 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-inject_solution", "Flag indicating if solution from coarser level should be injected (need to set pvec_path and gaussian_cm_path)", "", inject_coarse_solution, &inject_coarse_solution, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
+    PetscOptionsInt ("-pre_reacdiff_solve", "Flag to enable reaction/diffusion solve prior to L1 inversion", "", pre_reacdiff_solve, &pre_reacdiff_solve, NULL);
     PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
     PetscOptionsInt ("-order", "Order of accuracy of PDE solver", "", order_of_accuracy, &order_of_accuracy, NULL);
 
@@ -443,6 +445,7 @@ int main (int argc, char** argv) {
 
 
     n_misc->predict_flag_ = predict_flag;
+    n_misc->pre_reacdiff_solve_ = pre_reacdiff_solve;
     n_misc->verbosity_ = verbosity_in;
     n_misc->writepath_.str (std::string ());                                       //clear the writepath stringstream
     n_misc->writepath_ << results_dir;
@@ -465,7 +468,7 @@ int main (int argc, char** argv) {
         n_misc->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
         ss << n_misc->writepath_.str().c_str() << "g_it.dat";
         n_misc->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-        ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";        
+        ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";
         n_misc->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
         n_misc->outfile_sol_ << std::setprecision(16)<<std::scientific;
         n_misc->outfile_grad_ << std::setprecision(16)<<std::scientific;
