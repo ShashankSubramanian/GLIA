@@ -162,6 +162,8 @@ class InvSolver {
         Vec data_gradeval_;
         /// @brief holds a copy of the reconstructed p vector
         Vec xrec_;
+        /// @brief holds solution vector for reaction/diffusion
+        Vec xrec_rd_;
         /// @brief petsc tao object, thet solves the inverse problem
         Tao tao_;
         /// @brief petsc matrix object for hessian matrix
