@@ -46,6 +46,9 @@ class Tumor {
     	// segmentation based on max voxel-wise prop
     	Vec seg_;
 
+    	// For multiple species
+    	std::map <std::string, Vec> species_;
+
     	// mass effect parameters
     	// velocity
 		std::shared_ptr<VecField> velocity_;

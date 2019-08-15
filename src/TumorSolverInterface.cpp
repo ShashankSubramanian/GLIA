@@ -74,6 +74,10 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
         pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc, spec_ops);
         derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
+    if (n_misc_->model_ == 5) {
+        pde_operators_ = std::make_shared<PdeOperatorsMultiSpecies> (tumor_, n_misc, spec_ops);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
+    }
     // create tumor inverse solver
     inv_solver_ = std::make_shared<InvSolver> (derivative_operators_, n_misc, tumor_);
     ierr = inv_solver_->initialize (derivative_operators_, n_misc, tumor_);
@@ -159,6 +163,20 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0) {
     ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
     PetscFunctionReturn(0);
 }
+
+PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0, std::map<std::string,Vec> *species) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    // set the initial condition
+    ierr = VecCopy (c0, tumor_->c_0_);                                          CHKERRQ (ierr);
+    // solve forward
+    ierr = pde_operators_->solveState (0);                                      CHKERRQ (ierr);
+    // get solution
+    ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
+    species = &(tumor_->species_);
+    PetscFunctionReturn(0);
+}
+
 // TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
 PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionBegin;

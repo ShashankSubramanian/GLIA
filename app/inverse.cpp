@@ -813,8 +813,6 @@ int main (int argc, char** argv) {
     if (use_custom_obs_mask && obs_mask != nullptr)                           {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); obs_mask = nullptr;}
     if (use_data_comps && read_support_data_nc && data_components != nullptr) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); data_components = nullptr;}
     if (read_support_data_nc && support_data != nullptr)                      {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
-
-
 }
 /* --------------------------------------------------------------------------------------------------------------*/
 
@@ -1511,14 +1509,17 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     PCOUT << "\nC Data IC Max and Min : " << max << " " << min << std::endl;
 
-    ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
+    if (n_misc->model_ == 5) {
+        std::map<std::string, Vec> species;
+        ierr = solver_interface->solveForward (c_t, c_0, &species);
+    } else {
+        ierr = solver_interface->solveForward (c_t, c_0);
+    }
 
     ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
 
     PCOUT << "\nC Data Max and Min (Before observation) : " << max << " " << min << std::endl;
-
-    // ierr = tumor->obs_->apply (c_t, c_t);
 
     if (n_misc->writeOutput_) {
         dataOut (c_t, n_misc, "dataBeforeObservation.nc");

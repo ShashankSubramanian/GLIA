@@ -23,6 +23,7 @@
 #include <accfft_utils.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <map>
 #include "EventTimings.hpp"
 
 #include "TypeDefs.h"
@@ -239,6 +240,7 @@ class NMisc {
         : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
                                                 // Modified Obj -- 3
                                                 // Mass effect -- 4
+                                                // Multi-species -- 5
         , dt_ (0.5)                             // Time step
         , nt_(1)                                // Total number of time steps
         , np_ (1)                               // Number of gaussians for bounding box
@@ -313,6 +315,14 @@ class NMisc {
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
+        , num_species_ (5)                      // Number of species for the multi-species model - only used if model is 5
+        , ox_inv_ (0.7)                         // invasive oxygen conc
+        , ox_hypoxia_ (0.65)                    // hypoxia threshold
+        , death_rate_ (3)                       // death rate
+        , ox_source_ (55)                       // source of oxygen
+        , ox_consumption_ (8)                    // consumption of oxygen
+        , beta_0_ (0.02)                         // conversion btw inv and proliferative
+        , alpha_0_ (0.15)                       // conversion btw inv and proliferative
                                 {
 
 
@@ -333,14 +343,14 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X
 
                 // tc1 and 2
-                user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                // user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
-                // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
-                // user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                user_cm_[0] = 2 * M_PI / 128 * 66;//72  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
@@ -504,6 +514,10 @@ class NMisc {
         std::fstream outfile_sol_;
         std::fstream outfile_grad_;
         std::fstream outfile_glob_grad_;
+
+        // multispecies
+        int num_species_;
+        ScalarType ox_source_, ox_consumption_, alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
 };
 
 class VecField {
