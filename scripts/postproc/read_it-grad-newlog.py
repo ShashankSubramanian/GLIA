@@ -65,11 +65,6 @@ if __name__=='__main__':
             for line in lines:
                 if "----- np:" in line:
                     np_ = int(line.split("----- np:")[-1].split("------")[0])
-                if "support for corrective L2 solve :" in line:
-                    supp = line.split("support for corrective L2 solve : [")[-1].split("]")[0].split()
-                    SUPP[j] = []
-                    for s in supp:
-                        SUPP[j].append(int(s))
                 if "starting CoSaMP solver with initial support:" in line:
                     supp = line.split("starting CoSaMP solver with initial support: [")[-1].split("]")[0].split()
                     for s in supp:
@@ -78,12 +73,17 @@ if __name__=='__main__':
                     comp = line. split("component label of initial support : [")[-1].split("]")[0].split()
                     for c in comp:
                         INIT_COMP.append(int(c))
-                if "component label of support :" in line:
-                    comp = line. split("component label of support : [")[-1].split("]")[0].split()
+                if "support for corrective L2 solve :" in line:
+                    supp = line.split("support for corrective L2 solve : [")[-1].split("]")[0].split()
+                    SUPP[j] = []
+                    for s in supp:
+                        SUPP[j].append(int(s))
+                    comp = lines[no+1]. split("component label of support : [")[-1].split("]")[0].split()
                     COMP[j] = []
                     for c in comp:
                         COMP[j].append(int(c))
                     j += 1
+                no += 1;
 
     # fetch global gradient
     print("np:",np_)
