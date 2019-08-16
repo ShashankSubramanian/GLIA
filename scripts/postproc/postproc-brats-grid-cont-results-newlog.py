@@ -72,6 +72,7 @@ if __name__=='__main__':
     FILTER     = ['Brats18_CBICA_ANG_1','Brats18_CBICA_AUR_1','Brats18_TCIA02_370_1', 'Brats18_TCIA02_118_1', 'Brats18_TCIA05_478_1', 'Brats18_TCIA06_372_1','Brats18_TCIA02_430_1', 'Brats18_TCIA02_606_1']
     FILTER_MOD = ['Brats18_TCIA02_605_1','Brats18_TCIA01_378_1','Brats18_CBICA_AOD_1','Brats18_TCIA01_180_1', 'Brats18_TCIA01_401_1','Brats18_TCIA06_603_1']
     FILTER     += FILTER_MOD
+    FILTER     = [] ### RESET
     FAILEDTOADD = {}
     REDO_SPARSITY = {}
     levels = [64,128,256]
