@@ -464,15 +464,17 @@ int main (int argc, char** argv) {
 
     ss.str(std::string()); ss.clear();
     if (n_misc->verbosity_ >= 2) {
-        ss << n_misc->writepath_.str().c_str() << "x_it.dat";
-        n_misc->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-        ss << n_misc->writepath_.str().c_str() << "g_it.dat";
-        n_misc->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-        ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";
-        n_misc->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-        n_misc->outfile_sol_ << std::setprecision(16)<<std::scientific;
-        n_misc->outfile_grad_ << std::setprecision(16)<<std::scientific;
-        n_misc->outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
+        if (procid == 0) {
+            ss << n_misc->writepath_.str().c_str() << "x_it.dat";
+            n_misc->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+            ss << n_misc->writepath_.str().c_str() << "g_it.dat";
+            n_misc->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+            ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";        
+            n_misc->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+            n_misc->outfile_sol_ << std::setprecision(16)<<std::scientific;
+            n_misc->outfile_grad_ << std::setprecision(16)<<std::scientific;
+            n_misc->outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
+        }
     }
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, nullptr, nullptr);
@@ -782,17 +784,20 @@ int main (int argc, char** argv) {
 
             std::stringstream sstm;
             sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
-            std::ofstream ofile (sstm.str().c_str());
+            std::ofstream ofile;
+
             //write reconstructed p into text file
             if (procid == 0) {
+                ofile.open (sstm.str().c_str());
                 ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
                 int np = n_misc->np_;
                 int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
                 for (int i = 0; i < np + nk; i++)
                     ofile << prec_ptr[i] << std::endl;
                 ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+                ofile.close ();
             }
-            ofile.close ();
+
             // write p to bin file
             std::string fname = n_misc->writepath_ .str() + "p-final.bin";
             writeBIN(p_rec, fname);
@@ -822,6 +827,11 @@ int main (int argc, char** argv) {
 
     }
 
+    if (procid == 0) {
+        n_misc->outfile_sol_.close();
+        n_misc->outfile_grad_.close();
+        n_misc->outfile_glob_grad_.close();
+    }
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
@@ -833,7 +843,6 @@ int main (int argc, char** argv) {
         r.print ();
         r.print ("EventsTimings.log", true);
     }
-
     if (c_0 != nullptr)          {ierr = VecDestroy (&c_0);               CHKERRQ (ierr); c_0 = nullptr;}
     if (data != nullptr)         {ierr = VecDestroy (&data);              CHKERRQ (ierr); data = nullptr;}
     if (p_rec != nullptr)        {ierr = VecDestroy (&p_rec);             CHKERRQ (ierr); p_rec = nullptr;}
@@ -845,7 +854,6 @@ int main (int argc, char** argv) {
     if (use_custom_obs_mask && obs_mask != nullptr)                           {ierr = VecDestroy (&obs_mask);          CHKERRQ (ierr); obs_mask = nullptr;}
     if (use_data_comps && read_support_data_nc && data_components != nullptr) {ierr = VecDestroy (&data_components);   CHKERRQ (ierr); data_components = nullptr;}
     if (read_support_data_nc && support_data != nullptr)                      {ierr = VecDestroy (&support_data);      CHKERRQ (ierr); support_data = nullptr;}
-
 
 }
 /* --------------------------------------------------------------------------------------------------------------*/
@@ -1406,13 +1414,13 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     std::stringstream sstm;
     sstm << n_misc->writepath_ .str().c_str() << "trueP.dat";
     std::ofstream ofile;
-    ofile.open (sstm.str().c_str());
     if (procid == 0) {
+        ofile.open (sstm.str().c_str());
         for (int i = 0; i < n_misc->np_; i++)
             ofile << p_true_ptr[i] << std::endl;
+        ofile.flush ();
+        ofile.close ();
     }
-    ofile.flush();
-    ofile.close ();
 
     ierr = VecRestoreArray (weights, &w_ptr);                               CHKERRQ (ierr);
     ierr = VecRestoreArray (p_true_w, &p_true_ptr);                         CHKERRQ (ierr);
@@ -1439,6 +1447,16 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
     ierr = VecCopy (p_true_w, p_diff_w);                                CHKERRQ (ierr);
     ierr = VecAXPY (p_diff_w, -1.0, p_rec);                             CHKERRQ (ierr);  // diff in p
     double l1_norm_diff, l1_norm_p;
+    double *diff_ptr;
+    ierr = VecGetArray (p_diff_w, &diff_ptr);                       CHKERRQ (ierr);
+    int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+    if (n_misc->diffusivity_inversion_) {
+        diff_ptr[n_misc->np_] = 0;
+        if (nk > 1) diff_ptr[n_misc->np_+1] = 0;
+        if (nk > 2) diff_ptr[n_misc->np_+2] = 0;
+    }
+    ierr = VecRestoreArray (p_diff_w, &diff_ptr);                   CHKERRQ (ierr);
+
     ierr = VecNorm (p_diff_w, NORM_1, &l1_norm_diff);   CHKERRQ (ierr);
     ierr = VecNorm (p_true_w, NORM_1, &l1_norm_p);      CHKERRQ (ierr);
     ierr = VecPointwiseMult (temp, p_diff_w, weights);                  CHKERRQ (ierr);
@@ -1455,7 +1473,6 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
 
     double *p_rec_ptr;
     ierr = VecGetArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
-    int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
 
     double k1, k2, k3, r1, r2, r3;
     k1 = 0.; k2 = 0.; k3 = 0.;
@@ -1467,26 +1484,21 @@ PetscErrorCode computeError (double &error_norm, double &error_norm_c0, Vec p_re
           k3 = p_rec_ptr[n_misc->np_ + 2];
     }
 
-    // if (n_misc->reaction_inversion_) {
-    //     r1 = p_rec_ptr[n_misc->np_ + n_misc->nk_];
-    //     r2 = (n_misc->nr_ > 1) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 1] : 0;
-    //     r3 = (n_misc->nr_ > 2) ? p_rec_ptr[n_misc->np_ + n_misc->nk_ + 2] : 0;
-    // }
-
     ss << " p distance error: " << dist_err_c0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ss << " p l1 norm: " << l1_err; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
     std::ofstream opfile;
-    opfile.open (ss_out.str().c_str());
+    
     if (procid == 0) {
+        opfile.open (ss_out.str().c_str());
         opfile << "rho k c1_rel c0_rel c0_dist \n";
         opfile << n_misc->rho_ << " " <<  n_misc->k_ << " " << error_norm << " "
                << error_norm_c0 << " " << dist_err_c0 << std::endl;
+        opfile.flush();
+        opfile.close ();
     }
-    opfile.flush();
-    opfile.close ();
 
     ierr = VecRestoreArray (p_rec, &p_rec_ptr);     CHKERRQ (ierr);
 
