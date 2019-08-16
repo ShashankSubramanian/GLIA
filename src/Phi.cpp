@@ -1052,7 +1052,7 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
 Phi::~Phi () {
     PetscErrorCode ierr = 0;
     int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
-    for (int i = 0; i < num_phi_store; i++) {
+    for (int i = 0; i < phi_vec_.size(); i++) {
         ierr = VecDestroy (&phi_vec_[i]);
     }
     phi_vec_.clear();
