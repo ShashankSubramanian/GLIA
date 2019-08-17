@@ -102,10 +102,10 @@ def extractRhoK(path, rhofac):
             no = 0;
             if len(lines) > 0:
                 for line in lines:
-                    if "Estimated reaction coefficients" in line:
-                        rho = rhofac * float(lines[no+1].split("r1:")[-1])
-                    if "Estimated diffusion coefficients" in line:
-                        k = float(lines[no+1].split("k1:")[-1]);
+                    if " ### estimated reaction coefficients:                  ###" in line:
+                        rho = rhofac * float(lines[no+1].split("r1:")[-1].split(",")[0])
+                    if " ### estimated diffusion coefficients:                 ### " in line:
+                        k = float(lines[no+1].split("k1:")[-1].split(",")[0]);
                     no += 1;
                 env_file.write("export RHO_INIT="+str(rho)+"\n")
                 env_file.write("export K_INIT="+str(k)+"\n")
