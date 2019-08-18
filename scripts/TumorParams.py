@@ -54,10 +54,10 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 3
+    verbosity = 2
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -69,8 +69,8 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 12
-    k_data = 0.05
+    rho_data = 8
+    k_data = 0.025
     nt_data = 100
     dt_data = 0.01
 

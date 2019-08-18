@@ -226,8 +226,8 @@ PetscErrorCode InvSolver::prolongateSubspace (Vec x_full, Vec *x_restricted, std
     ierr = VecRestoreArray (x_full, &x_full_ptr);                               CHKERRQ (ierr);
 
     itctx->n_misc_->np_ = np_full;         /* reset to full space         */
+    itctx->tumor_->phi_->resetCenters ();  /* reset all the basis centers */
     if (reset_operators) {
-        itctx->tumor_->phi_->resetCenters ();  /* reset all the basis centers */
         ierr = resetOperators (x_full);    /* reset phis and other ops    */    CHKERRQ (ierr);}
     /* destroy, size will change   */
     if (*x_restricted != nullptr) {

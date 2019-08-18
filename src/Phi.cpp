@@ -171,7 +171,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
         static int ct = 0;
         if(procid == 0) {
           std::stringstream ssct; ssct<<ct;
-          phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+          phifile.open(std::string(n_misc_->writepath_.str()+"phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
           phifile << phivis.str()<<std::endl;
           phifile.close();
           ct++;
@@ -218,7 +218,7 @@ PetscErrorCode Phi::phiMesh (double *center) {
     static int ct = 0;
     if(procid == 0) {
       std::stringstream ssct; ssct<<ct;
-      phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+      phifile.open(std::string(n_misc_->writepath_.str()+"phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
       phifile << phivis.str()<<std::endl;
       phifile.close();
       ct++;
@@ -641,7 +641,7 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
         static int ct = 0;
         if(procid == 0) {
             std::stringstream ssct; ssct<<ct;
-            phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+            phifile.open(std::string(n_misc_->writepath_.str()+"phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
             phifile << phivis.str()<<std::endl;
             phifile.close();
             ct++;
@@ -987,7 +987,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         static int ct = 0;
         if(procid == 0) {
             std::stringstream ssct; ssct<<ct;
-            phifile.open(std::string("phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
+            phifile.open(std::string(n_misc_->writepath_.str()+"phi-mesh-"+ssct.str()+".dat"), std::ios_base::out);
             phifile << phivis.str()<<std::endl;
             phifile.close();
             ct++;

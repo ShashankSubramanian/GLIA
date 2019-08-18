@@ -1019,10 +1019,15 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     ierr = solver_interface->solveForward (c_t, c_0);   //Observation operator is applied in InvSolve ()
 
+    ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
+    ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+
+    ss << " c data max and min (before observation) : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
     // ierr = tumor->obs_->apply (c_t, c_t);
 
     if (n_misc->writeOutput_) {
-        dataOut (c_t, n_misc, "data.nc");
+        dataOut (c_t, n_misc, "dataBeforeObservation.nc");
     }
 
     PetscFunctionReturn (0);
