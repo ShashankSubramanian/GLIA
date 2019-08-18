@@ -206,7 +206,7 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     XYZ[2] = 1;
 
     ScalarType *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
-    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
+    ScalarType sigma_smooth = 4.0 * 2.0 * M_PI / n_misc_->n_[0];
 
     // snafu: smooth
     ierr = VecCopy (c1, work_[0]);            CHKERRQ (ierr);

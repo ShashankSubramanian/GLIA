@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -67,7 +67,7 @@ def getTumorRunCmd(params):
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect, 5: Multi-species
-    model = 5
+    model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
     k_data = 0.05
@@ -88,7 +88,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1.5
+    smooth_f = 2.0
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
