@@ -25,6 +25,55 @@ struct InterpolationContext {
     }
 };
 
+struct CtxCoSaMp {
+    int cosamp_stage;               // indicates solver state of CoSaMp function when using warmstart
+    int its_l1;                     // cosamp iterations
+    int np_full;                    // size of unrestricted subspace
+    bool compute_reference_values;  // if true, compute and store reference objective and gradient
+    bool converged_l1;              // indicates if L1 solver converged
+    bool converged_l2;              // indicates if L2 solver converged
+    PetscReal J;                    // objective function value
+    PetscReal J_prev;               // previous objective function value
+    PetscReal J_ref;                // reference objective function value
+    PetscReal g_ref_norm;           // norm of reference gradient
+    PetscReal g_norm;               // norm of reference gradient
+    PetscReal f_tol;                // CoSaMp iteration tolerance
+    Vec g;                          // gradient
+    Vec x_full;                     // solution vector full space
+    Vec x_full_prev;                // solution vector full space
+    Vec x_sub;                      // solution vector subspace
+    Vec work;
+    std::vector<int> temp_support;  // store temporary support
+
+    CtxCoSaMp ()
+    :
+      cosamp_stage(INIT)
+    , its_l1(0)
+    , np_full(0)
+    , compute_reference_values(true)
+    , converged_l1(false)
+    , converged_l2(false)
+    , J(0)
+    , J_prev(0)
+    , J_ref(0)
+    , g_ref_norm(0)
+    , g_norm(0)
+    , f_tol(1E-5)
+    , g(nullptr)
+    , x_full(nullptr)
+    , x_sub(nullptr)
+    , temp_support()
+    {}
+
+    ~CtxCoSaMp () {
+        if (g != nullptr)           { VecDestroy (&g);           g           = nullptr;}
+        if (x_full != nullptr)      { VecDestroy (&x_full);      x_full      = nullptr;}
+        if (x_full_prev != nullptr) { VecDestroy (&x_full_prev); x_full_prev = nullptr;}
+        if (x_sub != nullptr)       { VecDestroy (&x_sub);       x_sub       = nullptr;}
+        if (work != nullptr)        { VecDestroy (&work);        work        = nullptr;}
+    }
+};
+
 struct CtxInv {
     /// @brief evalJ evalDJ, eval D2J
     std::shared_ptr<DerivativeOperators> derivative_operators_;
@@ -38,6 +87,9 @@ struct CtxInv {
     std::shared_ptr<OptimizerSettings>  optsettings_;
     /// @brief keeps all the information that is feedbacked to the calling routine
     std::shared_ptr<OptimizerFeedback> optfeedback_;
+    /// @brief context for CoSaMp L1 solver
+    std::shared_ptr<CtxCoSaMp> cosamp_;
+
     /* reference values gradient */
     double ksp_gradnorm0;            // reference gradient for hessian PCG
     /* optimization options/settings */
@@ -51,8 +103,6 @@ struct CtxInv {
     double lam_right;                //Parameters for performing binary search on parameter continuation
     double lam_left;
     Vec weights;                     //for weighted L2
-
-
     bool update_reference_gradient;  // if true, update reference gradient for optimization
     bool update_reference_objective;
     /* optimization state */
@@ -62,12 +112,14 @@ struct CtxInv {
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
     int verbosity;                  // controls verbosity of inverse solver
-    int cosamp_stage;               // indicates solver state of CoSaMp function when using warmstart
     /* additional data */
     Vec data;                       // data for tumor inversion
     Vec data_gradeval;              // data only for gradient evaluation (may differ)
-    CtxInv () :
-    derivative_operators_ ()
+
+
+    CtxInv ()
+    :
+      derivative_operators_ ()
     , n_misc_ ()
     , tumor_ ()
     , data (nullptr)
@@ -83,32 +135,17 @@ struct CtxInv {
         c0old = nullptr;
         x_old = nullptr;
         verbosity = 3;
-        cosamp_stage = 0;
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
         flag_sparse = false;
         update_reference_gradient = true;
         update_reference_objective = true;
     }
-
     ~CtxInv () {
-        if (weights != nullptr) {
-            VecDestroy (&weights);
-            weights = nullptr;
-        }
-        if (x_old != nullptr) {
-            VecDestroy (&x_old);
-            x_old = nullptr;
-        }
-
-        if (c0old != nullptr) {
-            VecDestroy (&c0old);
-            c0old = nullptr;
-        }
-        if (tmp != nullptr) {
-            VecDestroy (&tmp);
-            tmp = nullptr;
-        }
+        if (weights != nullptr) { VecDestroy (&weights); weights = nullptr;}
+        if (x_old != nullptr)   { VecDestroy (&x_old);   x_old   = nullptr;}
+        if (c0old != nullptr)   { VecDestroy (&c0old);   c0old   = nullptr;}
+        if (tmp != nullptr)     { VecDestroy (&tmp);     tmp     = nullptr;}
     }
 };
 
@@ -130,6 +167,7 @@ class InvSolver {
         PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
         PetscErrorCode solve ();
         PetscErrorCode solveInverseCoSaMp();
+        PetscErrorCode solveInverseCoSaMpRS();
         PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
 
         PetscErrorCode restrictSubspace (Vec *x_restricted, Vec x_full, std::shared_ptr<CtxInv> itctx, bool create_rho_dofs);
