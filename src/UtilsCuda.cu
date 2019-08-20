@@ -420,7 +420,7 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
 	}
 }
 
-__global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
+__global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
