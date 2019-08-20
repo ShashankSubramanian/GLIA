@@ -520,6 +520,9 @@ class NMisc {
         ScalarType ox_source_, ox_consumption_, alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
 };
 
+PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr);
+PetscErrorCode vecRestoreArray (Vec x, ScalarType **x_ptr);
+
 class VecField {
     public:
         VecField (int nl, int ng);

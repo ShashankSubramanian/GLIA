@@ -378,6 +378,26 @@ __global__ void setCoords (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_p
     }
 }
 
+__global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, int sz) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		scale_gm_ptr[i] = 0.0;
+        scale_wm_ptr[i] = 0.0;
+
+        if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
+            scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+        }
+
+        scale_gm_ptr[i] = (isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
+        scale_wm_ptr[i] = (isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+
+        gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
+        wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
+	}
+}
+
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
@@ -559,6 +579,15 @@ void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType 
 		logisticReaction <<< std::ceil(sz / n_th), n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
 	else
 		logisticReactionLinearized <<< std::ceil(sz / n_th), n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, int sz) {
+	int n_th = N_THREADS;
+
+	conserveHealthyTissues <<< std::ceil(sz / n_th), n_th >>> (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

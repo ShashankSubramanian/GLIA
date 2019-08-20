@@ -56,6 +56,31 @@ PetscErrorCode VecField::getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_
 	PetscFunctionReturn (0);
 }
 
+PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+#ifdef CUDA
+  ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);   CHKERRQ (ierr);
+#else
+  ierr = VecGetArray (x, &x_ptr);                CHKERRQ (ierr);
+#endif
+
+  PetscFunctionReturn (0);
+}
+
+PetscErrorCode vecRestoreArray (Vec x, ScalarType **x_ptr) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+#ifdef CUDA
+  ierr = VecCUDARestoreArrayReadWrite (x, &x_ptr);   CHKERRQ (ierr);
+#else
+  ierr = VecRestoreArray (x, &x_ptr);                CHKERRQ (ierr);
+#endif
+
+  PetscFunctionReturn (0);
+}
 
 PetscErrorCode VecField::restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
 	PetscFunctionBegin;
