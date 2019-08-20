@@ -62,6 +62,7 @@ struct CtxInv {
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
     int verbosity;                  // controls verbosity of inverse solver
+    int cosamp_stage;               // indicates solver state of CoSaMp function when using warmstart
     /* additional data */
     Vec data;                       // data for tumor inversion
     Vec data_gradeval;              // data only for gradient evaluation (may differ)
@@ -81,6 +82,8 @@ struct CtxInv {
         weights = nullptr;
         c0old = nullptr;
         x_old = nullptr;
+        verbosity = 3;
+        cosamp_stage = 0;
         tmp = nullptr;
         is_ksp_gradnorm_set = false;
         flag_sparse = false;

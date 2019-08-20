@@ -34,6 +34,7 @@ enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
 enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 enum {ARMIJO = 0, MT = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
+enum {INIT = 0, PRE_RD = 1, COSAMP_L1 = 2, FINAL_L2 = 3, POST_RD = 4};
 
 struct OptimizerSettings {
     double beta;                 /// @brief regularization parameter
@@ -44,6 +45,7 @@ struct OptimizerSettings {
     double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
     double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
+    int    inexact_nit;          /// @brief number of newton iterations per inexact solve
     int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
     int    newton_minit;         /// @brief minimum number of newton steps
@@ -53,32 +55,39 @@ struct OptimizerSettings {
     int    linesearch;           /// @brief type of line-search used (0=armijo, 1=mt)
     int    regularization_norm;  /// @brief defines the type of regularization (L1, L2, or weighted-L2)
     int    verbosity;            /// @brief controls verbosity of solver
+    int    cosamp_stage;         /// @brief indicates stage of cosamp solver for warmstart
     bool   lmvm_set_hessian;     /// @brief if true lmvm initial hessian ist set as matvec routine
     bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
     bool   diffusivity_inversion;/// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
-
+    bool   reaction_inversion;   /// @brief if true, we also invert for rho
+    double k_lb;                 /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
+    double k_ub;                 /// @brief upper bound on kappa
     OptimizerSettings ()
     :
-    beta (0E-3),
-    opttolgrad (1E-5),
-    ftol (1E-5),
-    ls_minstep (1E-9),
-    gtolbound (0.8),
-    grtol (1E-5),
-    gatol (1E-8),
-    newton_maxit (30),
-    gist_maxit (5),
-    krylov_maxit (30),
-    newton_minit (1),
-    iterbound (200),
-    fseqtype (SLFS),
-    newtonsolver (QUASINEWTON),
-    linesearch (MT),
-    regularization_norm (L2),
-    reset_tao (false),
-    lmvm_set_hessian (false),
-    diffusivity_inversion(false),
-    verbosity (1)
+      beta (0E-3)
+    , opttolgrad (1E-5)
+    , ftol (1E-5)
+    , ls_minstep (1E-9)
+    , gtolbound (0.8)
+    , grtol (1E-5)
+    , gatol (1E-8)
+    , newton_maxit (30)
+    , gist_maxit (5)
+    , krylov_maxit (30)
+    , newton_minit (1)
+    , iterbound (200)
+    , fseqtype (SLFS)
+    , newtonsolver (QUASINEWTON)
+    , linesearch (MT)
+    , regularization_norm (L2)
+    , reset_tao (false)
+    , cosamp_stage (0)
+    , lmvm_set_hessian (false)
+    , diffusivity_inversion(true)
+    , reaction_inversion(false)
+    , verbosity (3)
+    , k_lb (1E-3)
+    , k_ub (1)
     {}
 };
 
@@ -139,34 +148,46 @@ struct TumorSettings {
     double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
     bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+    bool reaction_inversion;        /// @brief if true, we also invert for rho
+    bool prune_components;          /// @brief prunes L2 solution based on components
+    bool multilevel;                /// @brief scales INT_Omega phi(x) dx = const across levels
+    bool phi_store;                 /// @brief flag to store phis
+    bool adjoint_store;             /// @brief flag to store half-step concentrations for adjoint solve to speed up time to solution
+    int sparsity_level;             /// @brief required sparsity of the solution
 
     TumorSettings () :
-    tumor_model(1),
-    time_step_size(0.01),
-    time_steps(16),
-    time_horizon(0.16),
-    np(27),
-    nk(2),
-    betap(1E-3),
-    writeOutput(false),
-    verbosity(3),
-    obs_threshold(0.0),
-    diff_coeff_scale(1E-2),
-    diff_coeff_scale_anisotropic(0.0),
-    reaction_coeff_scale(15),
-    diffusion_ratio_gm_wm(1.0 / 10.0),
-    diffusion_ratio_glm_wm(0.0),
-    reaction_ratio_gm_wm(1.0 / 5.0),
-    reaction_ratio_glm_wm(0.0),
-    rho_linear(0),
-    phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} },
-    phi_spacing_factor (1.5),
-    phi_sigma (PETSC_PI/10),
-    phi_sigma_data_driven(2*PETSC_PI/256),
-    gaussian_volume_fraction(0),
-    target_sparsity(0.99),
-    phi_selection_mode_bbox(1),
-    diffusivity_inversion(false)
+     tumor_model(1)
+    , time_step_size(0.01)
+    , time_steps(16)
+    , time_horizon(0.16)
+    , np(27)
+    , nk(2)
+    , betap(1E-3)
+    , writeOutput(false)
+    , verbosity(3)
+    , obs_threshold(0.0)
+    , diff_coeff_scale(1E-2)
+    , diff_coeff_scale_anisotropic(0.0)
+    , reaction_coeff_scale(15)
+    , diffusion_ratio_gm_wm(1.0 / 10.0)
+    , diffusion_ratio_glm_wm(0.0)
+    , reaction_ratio_gm_wm(1.0 / 5.0)
+    , reaction_ratio_glm_wm(0.0)
+    , rho_linear(0)
+    , phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} }
+    , phi_spacing_factor (1.5)
+    , phi_sigma (PETSC_PI/10)
+    , phi_sigma_data_driven(2*PETSC_PI/256)
+    , gaussian_volume_fraction(0)
+    , target_sparsity(0.99)
+    , phi_selection_mode_bbox(1)
+    , diffusivity_inversion(false)
+    , reaction_inversion(false)
+    , prune_components (true)
+    , multilevel (false)
+    , phi_store (false)
+    , adjoint_store (true)
+    , sparsity_level(5)
     {}
 };
 

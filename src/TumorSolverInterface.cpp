@@ -99,7 +99,13 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
         n_misc_->target_sparsity_       = tumor_params->target_sparsity;
         n_misc_->bounding_box_          = tumor_params->phi_selection_mode_bbox;
         n_misc_->diffusivity_inversion_ = tumor_params->diffusivity_inversion;
+        n_misc_->reaction_inversion_    = tumor_params->reaction_inversion;
         n_misc_->nk_                    = tumor_params->nk;
+        n_misc_->phi_store_             = tumor_params->phi_store;
+        n_misc_->adjoint_store_         = tumor_params->adjoint_store;
+        n_misc_->multilevel_            = tumor_params->multilevel;
+        n_misc_->prune_components_      = tumor_params->prune_components;
+        n_misc_->sparsity_level_        = tumor_params->sparsity_level;
     }
     // ++ re-initialize Tumor ++
     ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
@@ -403,23 +409,30 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
     PetscErrorCode ierr = 0;
     TU_assert (inv_solver_->isInitialized(), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
     TU_assert (optset != nullptr,            "TumorSolverInterface::setOptimizerSettings(): requires non-null input.");
-    inv_solver_->getOptSettings ()->beta                = optset->beta;
-    inv_solver_->getOptSettings ()->opttolgrad          = optset->opttolgrad;
-    inv_solver_->getOptSettings ()->gtolbound           = optset->gtolbound;
-    inv_solver_->getOptSettings ()->grtol               = optset->grtol;
-    inv_solver_->getOptSettings ()->gatol               = optset->gatol;
-    inv_solver_->getOptSettings ()->newton_maxit        = optset->newton_maxit;
-    inv_solver_->getOptSettings ()->krylov_maxit        = optset->krylov_maxit;
-    inv_solver_->getOptSettings ()->gist_maxit          = optset->gist_maxit;
-    inv_solver_->getOptSettings ()->iterbound           = optset->iterbound;
-    inv_solver_->getOptSettings ()->fseqtype            = optset->fseqtype;
-    inv_solver_->getOptSettings ()->newtonsolver        = optset->newtonsolver;
-    inv_solver_->getOptSettings ()->lmvm_set_hessian    = optset->lmvm_set_hessian;
-    inv_solver_->getOptSettings ()->verbosity           = optset->verbosity;
-    inv_solver_->getOptSettings ()->regularization_norm = optset->regularization_norm;
+    inv_solver_->getOptSettings ()->beta                  = optset->beta;
+    inv_solver_->getOptSettings ()->opttolgrad            = optset->opttolgrad;
+    inv_solver_->getOptSettings ()->gtolbound             = optset->gtolbound;
+    inv_solver_->getOptSettings ()->grtol                 = optset->grtol;
+    inv_solver_->getOptSettings ()->gatol                 = optset->gatol;
+    inv_solver_->getOptSettings ()->newton_maxit          = optset->newton_maxit;
+    inv_solver_->getOptSettings ()->krylov_maxit          = optset->krylov_maxit;
+    inv_solver_->getOptSettings ()->gist_maxit            = optset->gist_maxit;
+    inv_solver_->getOptSettings ()->iterbound             = optset->iterbound;
+    inv_solver_->getOptSettings ()->fseqtype              = optset->fseqtype;
+    inv_solver_->getOptSettings ()->newtonsolver          = optset->newtonsolver;
+    inv_solver_->getOptSettings ()->lmvm_set_hessian      = optset->lmvm_set_hessian;
+    inv_solver_->getOptSettings ()->verbosity             = optset->verbosity;
+    inv_solver_->getOptSettings ()->regularization_norm   = optset->regularization_norm;
+    inv_solver_->getOptSettings ()->diffusivity_inversion = optset->diffusivity_inversion;
+    inv_solver_->getOptSettings ()->reaction_inversion    = optset->reaction_inversion;
+    inv_solver_->getOptSettings ()->k_lb                  = optset->k_lb;
+    inv_solver_->getOptSettings ()->k_ub                  = optset->k_ub;
     // overwrite n_misc params
-    n_misc_->regularization_norm_                       = optset->regularization_norm;
-    n_misc_->diffusivity_inversion_                     = optset->diffusivity_inversion;
+    n_misc_->regularization_norm_                         = optset->regularization_norm;
+    n_misc_->diffusivity_inversion_                       = optset->diffusivity_inversion;
+    n_misc_->reaction_inversion_                          = optset->reaction_inversion;
+    n_misc_->k_lb_                                        = optset->k_lb;
+    n_misc_->k_ub_                                        = optset->k_ub;
     optimizer_settings_changed_ = true;
 }
 
