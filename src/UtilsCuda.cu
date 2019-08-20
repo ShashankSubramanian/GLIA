@@ -420,7 +420,7 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
 	}
 }
 
-__global__ void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
+__global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
@@ -428,7 +428,7 @@ __global__ void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, Sc
 	}
 }
 
-__global__ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
+__global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
 						ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -443,7 +443,7 @@ __global__ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, Scalar
                             death_rate * h_ptr[i] * p_ptr[i]);
         i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
                             death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
-        n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_ptr[i] + death_ratio * i_ptr[i] + gm_ptr[i] + wm_ptr[i]));
+        n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
         ox_ptr[i] += dt * (-ox_consumption * p_temp + ox_source * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
         // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
