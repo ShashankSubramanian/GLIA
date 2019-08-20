@@ -7,6 +7,24 @@
 #include "DerivativeOperators.h"
 #include "Utils.h"
 
+
+struct InterpolationContext {
+    InterpolationContext (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
+        PetscErrorCode ierr = 0;
+        ierr = VecCreate (PETSC_COMM_WORLD, &temp_);
+        ierr = VecSetSizes (temp_, n_misc->n_local_, n_misc->n_global_);
+        ierr = VecSetFromOptions (temp_);
+        ierr = VecSet (temp_, 0);
+    }
+    std::shared_ptr<Tumor> tumor_;
+    std::shared_ptr<NMisc> n_misc_;
+    Vec temp_;
+    ~InterpolationContext () {
+        PetscErrorCode ierr = 0;
+        ierr = VecDestroy (&temp_);
+    }
+};
+
 struct CtxInv {
     /// @brief evalJ evalDJ, eval D2J
     std::shared_ptr<DerivativeOperators> derivative_operators_;
@@ -148,6 +166,8 @@ class InvSolver {
         }
 
         PetscErrorCode solveInverseReacDiff (Vec x);
+        // solves interpolation with tumor basis phi to fit data
+        PetscErrorCode solveInterpolation (Vec data);
 
         ~InvSolver ();
 

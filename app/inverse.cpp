@@ -682,22 +682,8 @@ int main (int argc, char** argv) {
 
 
         if (interp_flag) {
-            ss << " SOLVING INTERPOLATION WITH DATA"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-            ierr = solver_interface->solveInterpolation (data, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
-            ss << " --------------  INTERPOLATED P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-            if (procid == 0) {
-                ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-            }
-            ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-            ierr = VecSet (p_rec, 0);                                                       CHKERRQ (ierr);
-            ierr = solver_interface->setInitialGuess (0.);
-            ss << "SOLVING INTERPOLATION WITH IC" << std::endl;
-            ierr = solver_interface->solveInterpolation (c_0, p_rec, tumor->phi_, n_misc); //interpolates c_0 or data <---- CHECK
-            ss << " --------------  INTERPOLATED P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-            if (procid == 0) {
-                ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
-            }
-            ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ss << "Running solver in interpolation mode..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = solver_interface->getInvSolver()->solveInterpolation (data);
             ss << "Interpolation complete; exiting solver..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         } else {
             bool flag_diff = false;

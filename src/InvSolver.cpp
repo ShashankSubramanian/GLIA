@@ -161,6 +161,125 @@ PetscErrorCode InvSolver::resetOperators (Vec p) {
     PetscFunctionReturn (0);
 }
 
+PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    //A = phiT * phi
+    InterpolationContext *ctx;
+    ierr = MatShellGetContext (A, &ctx);                                        CHKERRQ (ierr);
+    ierr = ctx->tumor_->phi_->apply (ctx->temp_, x);                            CHKERRQ (ierr);
+    ierr = ctx->tumor_->phi_->applyTranspose (y, ctx->temp_);                   CHKERRQ (ierr);
+
+    // Regularization
+    double beta = 0e-3;
+    ierr = VecAXPY (y, beta, x);                                                CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode interpolationKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec x; int maxit; PetscScalar divtol, abstol, reltol;
+    ierr = KSPBuildSolution (ksp, NULL, &x);                                       CHKERRQ(ierr);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);              CHKERRQ(ierr);                                                           
+    InterpolationContext *itctx = reinterpret_cast<InterpolationContext*>(ptr);     // get user context
+
+    std::stringstream s;
+    if (its == 0) {
+      s << std::setw(3)  << " PCG:" << " computing solution of interpolation system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
+    s << std::setw(3)  << " PCG:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+    ierr = tuMSGstd (s.str());                                                  CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode InvSolver::solveInterpolation (Vec data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    KSP ksp;
+    Mat A;
+    Vec rhs, phi_p, p_out;
+
+    std::shared_ptr<NMisc> n_misc = itctx_->n_misc_;
+    std::shared_ptr<Tumor> tumor = itctx_->tumor_;
+    std::shared_ptr<InterpolationContext> ctx = std::make_shared<InterpolationContext> (n_misc);
+    ctx->tumor_ = tumor;
+    int sz = n_misc->np_;
+    ierr = VecCreateSeq (PETSC_COMM_SELF, sz, &p_out);                          CHKERRQ (ierr);
+
+    std::stringstream ss;
+    ss << " ------- Interpolating within subspace of size = " << sz << " -------"; 
+    ierr = tuMSGstd(ss.str());                                                  CHKERRQ(ierr); 
+    ss.str(""); ss.clear();
+
+    ierr = VecDuplicate (data, &phi_p);                                         CHKERRQ (ierr);
+    ierr = VecDuplicate (p_out, &rhs);                                          CHKERRQ (ierr);
+    ierr = VecSet (rhs, 0);                                                     CHKERRQ (ierr);
+    ierr = VecSet (p_out, 0);                                                   CHKERRQ (ierr);
+
+    ierr = KSPCreate (PETSC_COMM_SELF, &ksp);                                   CHKERRQ (ierr);
+    ierr = MatCreateShell (PETSC_COMM_SELF, sz, sz, sz, sz, ctx.get(), &A);     CHKERRQ (ierr);
+    ierr = MatShellSetOperation (A, MATOP_MULT, (void (*) (void))phiMult);      CHKERRQ (ierr);
+    ierr = KSPSetOperators (ksp, A, A);                                         CHKERRQ (ierr);
+    ierr = KSPSetTolerances (ksp, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 500);     CHKERRQ (ierr);
+    ierr = KSPSetType (ksp, KSPCG);                                             CHKERRQ (ierr);
+    ierr = KSPSetOptionsPrefix (ksp, "phieq_");                                 CHKERRQ (ierr);
+    ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE);                        CHKERRQ (ierr);  // To compute the condition number
+    ierr = KSPSetFromOptions (ksp);                                             CHKERRQ (ierr);
+    ierr = KSPSetUp (ksp);                                                      CHKERRQ (ierr);
+    ierr = KSPMonitorSet (ksp, interpolationKSPMonitor, ctx.get(), 0);          CHKERRQ (ierr);
+
+    //RHS -- phiT * d
+    ierr = tumor->phi_->applyTranspose (rhs, data);                             CHKERRQ (ierr);
+
+    ierr = KSPSolve (ksp, rhs, p_out);                                          CHKERRQ (ierr);
+    // Compute extreme singular values for condition number
+    PetscReal e_max, e_min;
+    ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);               CHKERRQ (ierr);
+    ss << "Condition number of PhiTPhi is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min;
+    ierr = tuMSGstd(ss.str());                                                  CHKERRQ(ierr); 
+    ss.str(""); ss.clear();
+
+    //Compute reconstruction error
+    PetscReal error_norm, p_norm, d_norm;
+    ierr = tumor->phi_->apply (phi_p, p_out);                                   CHKERRQ (ierr);
+    // dataOut (phi_p, ctx->n_misc_, "CInterp.nc");
+
+    ierr = VecNorm (data, NORM_2, &d_norm);                                     CHKERRQ (ierr);
+    ierr = VecAXPY (phi_p, -1.0, data);                                   CHKERRQ (ierr);
+    ierr = VecNorm (phi_p, NORM_2, &error_norm);                                CHKERRQ (ierr);
+    ierr = VecNorm (p_out, NORM_2, &p_norm);                                    CHKERRQ (ierr);
+
+    ss << "Data mismatch using interpolated basis is: " << error_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << "Data mismatch using zero vector is: " << d_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << "Rel error in interpolation reconstruction: " << error_norm / d_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << "Norm of reconstructed p: " << p_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " ------- Interpolation end -------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+    ierr = VecDestroy (&p_out);                                                 CHKERRQ (ierr);
+    ierr = VecDestroy (&rhs);                                                   CHKERRQ (ierr);
+    ierr = VecDestroy (&phi_p);                                                 CHKERRQ (ierr);
+    ierr = MatDestroy (&A);                                                     CHKERRQ (ierr);
+    ierr = KSPDestroy (&ksp);                                                   CHKERRQ (ierr);
+
+    PetscFunctionReturn (0);
+}
+
+
 
 PetscErrorCode InvSolver::restrictSubspace (Vec *x_restricted, Vec x_full, std::shared_ptr<CtxInv> itctx, bool create_rho_dofs = false) {
     PetscFunctionBegin;
@@ -891,6 +1010,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
       ierr = restrictSubspace(&x_L2, x_L1, itctx_);                             CHKERRQ (ierr); // x_L2 <-- R(x_L1)
+
+      // solve interpolation
+      // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
+
       ierr = solve ();                                                          CHKERRQ (ierr);
       ierr = VecCopy (getPrec(), x_L2);                                         CHKERRQ (ierr);
       ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
@@ -971,6 +1094,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
     ierr = restrictSubspace(&x_L2, x_L1, itctx_);                               CHKERRQ (ierr); // x_L2 <-- R(x_L1)
+    // solve interpolation
+    // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
     ierr = solve ();                                   /* L2 solver    */
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
 
