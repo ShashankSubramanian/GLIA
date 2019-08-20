@@ -61,9 +61,9 @@ PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr) {
   PetscErrorCode ierr = 0;
 
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite (x, &x_ptr);   CHKERRQ (ierr);
+  ierr = VecCUDAGetArrayReadWrite (x, x_ptr);   CHKERRQ (ierr);
 #else
-  ierr = VecGetArray (x, &x_ptr);                CHKERRQ (ierr);
+  ierr = VecGetArray (x, x_ptr);                CHKERRQ (ierr);
 #endif
 
   PetscFunctionReturn (0);
@@ -74,9 +74,9 @@ PetscErrorCode vecRestoreArray (Vec x, ScalarType **x_ptr) {
   PetscErrorCode ierr = 0;
 
 #ifdef CUDA
-  ierr = VecCUDARestoreArrayReadWrite (x, &x_ptr);   CHKERRQ (ierr);
+  ierr = VecCUDARestoreArrayReadWrite (x, x_ptr);   CHKERRQ (ierr);
 #else
-  ierr = VecRestoreArray (x, &x_ptr);                CHKERRQ (ierr);
+  ierr = VecRestoreArray (x, x_ptr);                CHKERRQ (ierr);
 #endif
 
   PetscFunctionReturn (0);

@@ -1,1 +1,1 @@
-scons build=release compiler=mpicxx use_nii=yes platform=stampede2 single_precision=yes gpu=no multi_gpu=no -j 20 
+scons build=release compiler=mpicxx use_nii=yes platform=stampede2 single_precision=yes gpu=yes multi_gpu=no -j 20 

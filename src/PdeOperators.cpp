@@ -461,7 +461,7 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     ierr = VecCopy (tumor_->c_t_, temp_[1]);                        CHKERRQ (ierr);
     ierr = tumor_->k_->applyD (temp_[0], temp_[1]);                 CHKERRQ (ierr);     // Dc
     ierr = VecPointwiseMult (temp_[1], temp_[1], tumor_->c_t_);     CHKERRQ (ierr);
-    ierr = VecWAXPY (temp_[1], -1.0, temp_[1], tumor_->c_t_);       CHKERRQ (ierr);
+    ierr = VecAYPX (temp_[1], -1.0, tumor_->c_t_);       	    CHKERRQ (ierr);
     ierr = VecPointwiseMult (temp_[1], temp_[1], tumor_->rho_->rho_vec_);   CHKERRQ (ierr); // Rc
     ierr = VecAXPY (temp_[0], 1.0, temp_[1]);                       CHKERRQ (ierr);         // (Rc + Dc) in temp_[0]
 
@@ -472,7 +472,7 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     ierr = vecGetArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
 
 #ifdef CUDA
-    conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, n_misc_->n_local_);
+    conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
 #else
     for (int i = 0; i < n_misc_->n_local_; i++) {
         scale_gm_ptr[i] = 0.0;
