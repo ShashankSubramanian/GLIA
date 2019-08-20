@@ -688,22 +688,13 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
     double self_exec_time = -MPI_Wtime ();
 
     ScalarType *ox_ptr, *m_ptr, *rho_ptr;
-#ifdef CUDA
-    ierr = VecCUDAGetArrayReadWrite (m, &m_ptr);                                 CHKERRQ (ierr);
-    ierr = VecCUDAGetArrayReadWrite (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecCUDAGetArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-
-
-
-    ierr = VecCUDARestoreArrayReadWrite (m, &m_ptr);                                 CHKERRQ (ierr);
-    ierr = VecCUDARestoreArrayReadWrite (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecCUDARestoreArrayReadWrite (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-#else
-    ierr = VecGetArray (m, &m_ptr);                                 CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-
     ScalarType ox_mit = 0.5 * (n_misc_->ox_inv_ + n_misc_->ox_hypoxia_);
+    ierr = vecGetArray (m, &m_ptr);                                 CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+#ifdef CUDA
+    computeReactionRateCuda (m_ptr, ox_ptr, rho_ptr, n_misc_->ox_inv_, ox_mit, n_misc_->n_local_);
+#else
     for (int i = 0; i < n_misc_->n_local_; i++) {
         if (ox_ptr[i] > n_misc_->ox_inv_) m_ptr[i] = rho_ptr[i];
         else if (ox_ptr[i] <= n_misc_->ox_inv_ && ox_ptr[i] >= ox_mit) 
@@ -711,11 +702,12 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
         else
             m_ptr[i] = 0.;
     }
-
-    ierr = VecRestoreArray (m, &m_ptr);                                 CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
 #endif
+
+    ierr = vecRestoreArray (m, &m_ptr);                                 CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
@@ -733,24 +725,27 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
     double self_exec_time = -MPI_Wtime ();
 
     ScalarType *ox_ptr, *alpha_ptr, *beta_ptr, *p_ptr, *i_ptr;
-    ierr = VecGetArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (beta, &beta_ptr);                           CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
-
-
     ScalarType thres = 0.9;
+    ierr = vecGetArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
+    ierr = vecGetArray (beta, &beta_ptr);                           CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
+
+#ifdef CUDA
+    computeTransitionCuda (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, n_misc_->alpha_0_, n_misc_->beta_0_, n_misc_->ox_inv_, thres, n_misc_->n_local_);
+#else
     for (int i = 0; i < n_misc_->n_local_; i++) {
         alpha_ptr[i] = n_misc_->alpha_0_ * 0.5 * (1 + std::tanh (500 * (n_misc_->ox_inv_ - ox_ptr[i])));
         beta_ptr[i] = n_misc_->beta_0_ * 0.5 * (1 + std::tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
     }
+#endif
 
-    ierr = VecRestoreArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
-    ierr = VecRestoreArray (beta, &beta_ptr);                           CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
+    ierr = vecRestoreArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
+    ierr = vecRestoreArray (beta, &beta_ptr);                           CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
 
 
     self_exec_time += MPI_Wtime();
@@ -764,19 +759,23 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
 PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder (Vec h) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    Event e ("tumor-death");
+    Event e ("tumor-thresholder");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
     ScalarType *ox_ptr, *h_ptr;
-    ierr = VecGetArray (h, &h_ptr);                                 CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = vecGetArray (h, &h_ptr);                                 CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
 
+#ifdef CUDA
+    computeThesholderCuda (h_ptr, ox_ptr, n_misc_->ox_hypoxia_, n_misc_->n_local_);
+#else
     for (int i = 0; i < n_misc_->n_local_; i++) 
         h_ptr[i] = 0.5 * (1 + std::tanh (500 * (n_misc_->ox_hypoxia_ - ox_ptr[i])));
+#endif
 
-    ierr = VecRestoreArray (h, &h_ptr);                                 CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
+    ierr = vecRestoreArray (h, &h_ptr);                                 CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
 
 
     self_exec_time += MPI_Wtime();
@@ -803,20 +802,24 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
     ScalarType *gm_ptr, *wm_ptr;
     ScalarType *ox_ptr;
 
-    ierr = VecGetArray (p, &p_ptr);                                                   CHKERRQ (ierr);
-    ierr = VecGetArray (i, &i_ptr);                                                   CHKERRQ (ierr);
-    ierr = VecGetArray (n, &n_ptr);                                                   CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->work_[0], &m_ptr);                                    CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->work_[1], &al_ptr);                                   CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->work_[2], &bet_ptr);                                  CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->work_[3], &h_ptr);                                    CHKERRQ (ierr);
+    ierr = vecGetArray (p, &p_ptr);                                                   CHKERRQ (ierr);
+    ierr = vecGetArray (i, &i_ptr);                                                   CHKERRQ (ierr);
+    ierr = vecGetArray (n, &n_ptr);                                                   CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->work_[0], &m_ptr);                                    CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->work_[1], &al_ptr);                                   CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->work_[2], &bet_ptr);                                  CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->work_[3], &h_ptr);                                    CHKERRQ (ierr);
 
-    ierr = VecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);                             CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->mat_prop_->wm_, &wm_ptr);                             CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);                             CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->mat_prop_->wm_, &wm_ptr);                             CHKERRQ (ierr);
 
-    ierr = VecGetArray (O, &ox_ptr);                                                  CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->work_[11], &di_ptr);                                  CHKERRQ (ierr);
+    ierr = vecGetArray (O, &ox_ptr);                                                  CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->work_[11], &di_ptr);                                  CHKERRQ (ierr);
 
+#ifdef CUDA
+    computeSourcesCuda (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, 
+        n_misc_->death_rate_, n_misc_->ox_source_, n_misc_->ox_consumption_, n_misc_->n_local_);
+#else
     ScalarType p_temp, i_temp, frac_1, frac_2;
     ScalarType ox_heal = 1.;
     ScalarType reac_ratio = 0.1;
@@ -844,22 +847,21 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
         wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
                          + h_ptr[i] * n_misc_->death_rate_ * wm_ptr[i]); 
     }
+#endif
 
+    ierr = vecRestoreArray (p, &p_ptr);                                                   CHKERRQ (ierr);
+    ierr = vecRestoreArray (i, &i_ptr);                                                   CHKERRQ (ierr);
+    ierr = vecRestoreArray (n, &n_ptr);                                                   CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->work_[0], &m_ptr);                                    CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->work_[1], &al_ptr);                                   CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->work_[2], &bet_ptr);                                  CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->work_[3], &h_ptr);                                    CHKERRQ (ierr);
 
-    ierr = VecRestoreArray (p, &p_ptr);                                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (i, &i_ptr);                                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (n, &n_ptr);                                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->work_[0], &m_ptr);                                    CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->work_[1], &al_ptr);                                   CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->work_[2], &bet_ptr);                                  CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->work_[3], &h_ptr);                                    CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);                             CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->mat_prop_->wm_, &wm_ptr);                             CHKERRQ (ierr);
 
-
-    ierr = VecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);                             CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->mat_prop_->wm_, &wm_ptr);                             CHKERRQ (ierr);
-
-    ierr = VecRestoreArray (O, &ox_ptr);                                                  CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->work_[11], &di_ptr);                                  CHKERRQ (ierr);
+    ierr = vecRestoreArray (O, &ox_ptr);                                                  CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->work_[11], &di_ptr);                                  CHKERRQ (ierr);
 
 
     self_exec_time += MPI_Wtime();

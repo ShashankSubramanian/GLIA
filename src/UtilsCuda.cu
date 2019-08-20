@@ -341,14 +341,14 @@ __global__ void precFactorElasticity (CudaComplexType *ux_hat, CudaComplexType *
 	}
 }
 
-__global__ void computeMagnitude (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz) {
+__global__ void computeMagnitude (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz)  
 		mag_ptr[i] = sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
 }
 
-__global__ void nonlinearForceScaling (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int sz) {
+__global__ void nonlinearForceScaling (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
@@ -398,6 +398,71 @@ __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, 
 	}
 }
 
+
+__global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_inv, ScalarType ox_mit) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		if (ox_ptr[i] > ox_inv) m_ptr[i] = rho_ptr[i];
+        else if (ox_ptr[i] <= ox_inv && ox_ptr[i] >= ox_mit) 
+            m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (ox_inv - ox_mit);
+        else
+            m_ptr[i] = 0.;
+	}
+}
+
+__global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		alpha_ptr[i] = alpha_0 * 0.5 * (1 + tanh (500 * (ox_inv - ox_ptr[i])));
+        beta_ptr[i] = beta_0 * 0.5 * (1 + tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
+	}
+}
+
+__global__ void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		h_ptr[i] = 0.5 * (1 + tanh (500 * (ox_hypoxia - ox_ptr[i])));
+	}
+}
+
+__global__ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
+						ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		ScalarType p_temp, i_temp, frac_1, frac_2;
+	    ScalarType ox_heal = 1.;
+	    ScalarType reac_ratio = 0.1;
+	    ScalarType death_ratio = 0.3;		
+
+	    p_temp = p_ptr[i]; i_temp = i_ptr[i];
+        p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
+                            death_rate * h_ptr[i] * p_ptr[i]);
+        i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
+                            death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
+        n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_ptr[i] + death_ratio * i_ptr[i] + gm_ptr[i] + wm_ptr[i]));
+        ox_ptr[i] += dt * (-ox_consumption * p_temp + ox_source * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
+        // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
+
+        // conserve healthy cells
+        if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
+            frac_1 = gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]); frac_2 = wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+        } else {
+            frac_1 = 0.; frac_2 = 0.;
+        }
+        frac_1 = (std::isnan(frac_1)) ? 0. : frac_1;
+        frac_2 = (std::isnan(frac_2)) ? 0. : frac_2;
+        gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
+                         + h_ptr[i] * death_rate * gm_ptr[i]); 
+        wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
+                         + h_ptr[i] * death_rate * wm_ptr[i]); 
+	}
+}
+
+
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
@@ -411,7 +476,7 @@ void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int
 	cudaCheckKernelError ();
 }
 
-void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int sz) {
+void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz) {
 	int n_th = N_THREADS;
 
 	nonlinearForceScaling <<< std::ceil(sz / n_th), n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, fac, sz);
@@ -420,7 +485,7 @@ void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarTyp
 	cudaCheckKernelError ();
 }
 
-void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int sz) {
+void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
 	computeMagnitude <<< std::ceil(sz / n_th), n_th >>> (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
@@ -572,7 +637,7 @@ void hadamardComplexProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz
 }
 
 
-void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int sz, int linearized) {
+void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int64_t sz, int linearized) {
 	int n_th = N_THREADS;
 
 	if (linearized == 0)
@@ -584,10 +649,47 @@ void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType 
 	cudaCheckKernelError ();
 }
 
-void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt, int sz) {
+void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt, int64_t sz) {
 	int n_th = N_THREADS;
 
 	conserveHealthyTissues <<< std::ceil(sz / n_th), n_th >>> (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_inv, ScalarType ox_mit, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeReactionRate <<< std::ceil(sz / n_th), n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_inv, ox_mit);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeTransition <<< std::ceil(sz / n_th), n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, thres);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeThesholder <<< std::ceil(sz / n_th), n_th >>> (h_ptr, ox_ptr, ox_hypoxia);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
+						ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeSources <<< std::ceil(sz / n_th), n_th >>> (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, death_rate, ox_source, ox_consumption);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
