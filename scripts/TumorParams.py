@@ -88,7 +88,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 2.0
+    smooth_f = 1.5
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in

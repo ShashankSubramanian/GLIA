@@ -349,7 +349,7 @@ class NMisc {
 
                 // casebrats for mass effect
                 user_cm_[0] = 2 * M_PI / 128 * 66;//72  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
+                user_cm_[1] = 2 * M_PI / 128 * 82;//64  //Y
                 user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // tc2

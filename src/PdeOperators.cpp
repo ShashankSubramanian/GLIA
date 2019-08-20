@@ -573,9 +573,15 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     for (int i = 0; i < nt + 1; i++) {
         PCOUT << "Time step = " << i << std::endl;
+        ierr = displacement_old->computeMagnitude();
+        ierr = tumor_->force_->computeMagnitude();
+        ScalarType d_norm, f_norm, c_norm;
+        ierr = VecNorm (displacement_old->magnitude_, NORM_2, &d_norm); CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->force_->magnitude_, NORM_2, &f_norm);           CHKERRQ (ierr);
+        ierr = VecNorm (tumor_->c_t_, NORM_2, &c_norm);                 CHKERRQ (ierr);
+        PCOUT << "Displacement norm: " << d_norm << " Force norm: " << f_norm << " Conc norm: " << c_norm << std::endl;
+
         if (n_misc_->writeOutput_ && i % 10 == 0) {
-            ierr = displacement_old->computeMagnitude();
-            ierr = tumor_->force_->computeMagnitude();
             ss << "displacement_t[" << i << "].nc";
             dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();

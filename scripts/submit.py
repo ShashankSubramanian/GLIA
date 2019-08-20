@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/masseffect-single/'
+params['results_path'] = tumor_dir + '/results/masseffect-single-/'
 params['compute_sys'] = 'rebels'
 
 
