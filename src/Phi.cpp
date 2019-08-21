@@ -292,7 +292,7 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
                 // PHI = GAUSSIAN
                 r = sqrt(dx*dx + dy*dy + dz*dz);
                 ratio = r / R;
-                o = (r/sigma_ <= 5) ? c * std::exp(-ratio * ratio) : 0.0;
+                o = c * std::exp(-ratio * ratio);
 
                 // PHI = BUMP
                 // r = sqrt(dx*dx/R + dy*dy/R + dz*dz/R);
