@@ -22,6 +22,12 @@ class SpectralOperators {
 		ComplexType *x_hat_, *wx_hat_;
 		ScalarType *d1_ptr_, *d2_ptr_;
 
+		// Memory for smoother
+		// Cannot re-use above memory because it seems that accfft is also using these (?) - Needs
+		// to be re-used if we are running out of memory on the GPU ~ 60-70mb max
+		ComplexType *c_hat_, *f_hat_;
+    	ScalarType *f_;
+
 		void setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm);
 		void executeFFTR2C (ScalarType *f, ComplexType *f_hat);
 		void executeFFTC2R (ComplexType *f_hat, ScalarType *f);
