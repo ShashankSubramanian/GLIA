@@ -51,14 +51,14 @@ __global__ void computeWeierstrassFilter (ScalarType *f, ScalarType sigma) {
 }
 
 __global__ void hadamardComplexProduct (CudaComplexType *y, ScalarType *x) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) 
 		y[i] = cuComplexMultiply (y[i], makeCudaComplexType(x[i], 0.));
 }
 
 __global__ void hadamardComplexProduct (CudaComplexType *y, CudaComplexType *x) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) 
 		y[i] = cuComplexMultiply (y[i], x[i]);
@@ -119,7 +119,7 @@ __global__ void precFactorDiffusion (ScalarType *precfactor, ScalarType *work) {
 }
 
 __global__ void logisticReactionLinearized (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType factor = 0., alph = 0.;
@@ -130,7 +130,7 @@ __global__ void logisticReactionLinearized (ScalarType *c_t_ptr, ScalarType *rho
 }
 
 __global__ void logisticReaction (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType factor = 0., alph = 0.;
@@ -342,14 +342,14 @@ __global__ void precFactorElasticity (CudaComplexType *ux_hat, CudaComplexType *
 }
 
 __global__ void computeMagnitude (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz)  
 		mag_ptr[i] = sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
 }
 
 __global__ void nonlinearForceScaling (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
 		fx_ptr[i] *= fac * tanh (c_ptr[i]);
@@ -379,7 +379,7 @@ __global__ void setCoords (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_p
 }
 
 __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		scale_gm_ptr[i] = 0.0;
@@ -400,7 +400,7 @@ __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, 
 
 
 __global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_inv, ScalarType ox_mit) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		if (ox_ptr[i] > ox_inv) m_ptr[i] = rho_ptr[i];
@@ -412,7 +412,7 @@ __global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, Scal
 }
 
 __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		alpha_ptr[i] = alpha_0 * 0.5 * (1 + tanh (500 * (ox_inv - ox_ptr[i])));
@@ -421,7 +421,7 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
 }
 
 __global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		h_ptr[i] = 0.5 * (1 + tanh (500 * (ox_hypoxia - ox_ptr[i])));
@@ -430,7 +430,7 @@ __global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, Scalar
 
 __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
 						ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption) {
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType p_temp, i_temp, frac_1, frac_2;
@@ -459,6 +459,15 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
                          + h_ptr[i] * death_rate * gm_ptr[i]); 
         wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
                          + h_ptr[i] * death_rate * wm_ptr[i]); 
+	}
+}
+
+__global__ void computeScreening (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType screen_low, ScalarType screen_high) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		ScalarType c_threshold = 0.005;
+		screen_ptr[i] = (c_ptr[i] >= c_threshold) ? screen_low : screen_high;
 	}
 }
 
@@ -690,6 +699,15 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 	int n_th = N_THREADS;
 
 	computeSources <<< std::ceil(sz / n_th), n_th >>> (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, death_rate, ox_source, ox_consumption);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeScreening <<< std::ceil(sz / n_th), n_th >>> (screen_ptr, c_ptr, screen_low. screen_high);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

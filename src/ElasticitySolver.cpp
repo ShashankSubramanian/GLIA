@@ -139,9 +139,8 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
-  
-    std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
-    std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+    std::shared_ptr<VecField> force = ctx->force_;
+    std::shared_ptr<VecField> displacement = ctx->displacement_;
 
     ierr = force->setIndividualComponents (x);		     CHKERRQ (ierr);// sets components of x vector in f  
     ierr = displacement->setIndividualComponents (y);    CHKERRQ (ierr);
@@ -289,9 +288,9 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
+    td::shared_ptr<VecField> force = ctx->force_;
+    std::shared_ptr<VecField> displacement = ctx->displacement_;
 
-    std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
-    std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     ierr = displacement->setIndividualComponents (x);                           CHKERRQ (ierr);
 
     // second term: grad(lambda * div(u)) :  stored in work[1],[2],[3]
@@ -400,13 +399,16 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	// Compute screening vector
 	ScalarType c_threshold = 0.005;
 	ScalarType *screen_ptr, *c_ptr;
-	ierr = VecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
-	ierr = VecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
-	for (int i = 0; i < n_misc->n_local_; i++) {
+	ierr = vecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
+	ierr = vecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
+#ifdef CUDA
+    computeScreeningCuda (screen_ptr, c_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
+#else
+	for (int i = 0; i < n_misc->n_local_; i++) 
 		screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
-	}
-	ierr = VecRestoreArray (tumor->c_t_, &c_ptr);					CHKERRQ (ierr);
-	ierr = VecRestoreArray (ctx->screen_, &screen_ptr);				CHKERRQ (ierr);
+#endif
+	ierr = vecRestoreArray (tumor->c_t_, &c_ptr);					CHKERRQ (ierr);
+	ierr = vecRestoreArray (ctx->screen_, &screen_ptr);				CHKERRQ (ierr);
 	ierr = VecAXPY (ctx->screen_, 1E6, tumor->mat_prop_->bg_);		CHKERRQ (ierr); // ensures minimal bg displacement
 
 	// average the material properties for use in preconditioner

@@ -15,6 +15,9 @@ struct CtxElasticity {
 		ierr = VecDuplicate (mu_, &lam_);
 		ierr = VecDuplicate (mu_, &screen_);
 
+		displacement_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+    	force_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+
 		temp_.resize (3);
 		for (int i = 0; i < 3; i++) {
 			ierr = VecDuplicate (mu_, &temp_[i]);
@@ -28,6 +31,10 @@ struct CtxElasticity {
 	std::shared_ptr<NMisc> n_misc_;
 	std::shared_ptr<Tumor> tumor_;
 	std::shared_ptr<SpectralOperators> spec_ops_;
+
+	// vector fields to store KSP vectors while solving
+	std::shared_ptr<VecField> displacement_;
+	std::shared_ptr<VecField> force_;
 
 	ScalarType mu_avg_, lam_avg_, screen_avg_;
 
