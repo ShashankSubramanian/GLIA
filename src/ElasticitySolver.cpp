@@ -288,7 +288,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
-    td::shared_ptr<VecField> force = ctx->force_;
+    std::shared_ptr<VecField> force = ctx->force_;
     std::shared_ptr<VecField> displacement = ctx->displacement_;
 
     ierr = displacement->setIndividualComponents (x);                           CHKERRQ (ierr);

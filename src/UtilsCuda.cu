@@ -707,7 +707,7 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeScreening <<< std::ceil(sz / n_th), n_th >>> (screen_ptr, c_ptr, screen_low. screen_high);
+	computeScreening <<< std::ceil(sz / n_th), n_th >>> (screen_ptr, c_ptr, screen_low, screen_high);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
