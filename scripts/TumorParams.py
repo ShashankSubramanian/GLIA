@@ -54,23 +54,23 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 2
+    verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 1
+    create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
-    nt_inv = 20
-    dt_inv = 0.05
+    nt_inv = 40
+    dt_inv = 0.025
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data = 0.025
+    rho_data = 12
+    k_data = 0.05
     nt_data = 100
     dt_data = 0.01
 
@@ -362,7 +362,7 @@ def getTumorRunCmd(params):
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
-    run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
+    run_str = cmd + tumor_dir + "/build/brats19/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
     " -inject_solution " + str(inject_solution) + \
     " -pre_reacdiff_solve " + str(pre_reacdiff_solve) + \
