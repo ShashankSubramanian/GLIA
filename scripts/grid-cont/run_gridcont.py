@@ -297,7 +297,7 @@ def gridcont(basedir, args):
         t_params['mpi_pernode']           = procs[ii];
         t_params['wtime_h']               = wtime_h[ii];
         t_params['wtime_m']               = wtime_m[ii];
-        t_params['ibrun_man']             = (level <= 64);
+        t_params['ibrun_man']             = (level <= 128);
         t_params['results_path']          = res_dir_out;
         t_params['N']                     = level;
         t_params['grad_tol']              = opttol;
