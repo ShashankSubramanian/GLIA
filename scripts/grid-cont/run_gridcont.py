@@ -51,17 +51,18 @@ def createJobsubFile(cmd, opt, level):
             bash_file.write("#SBATCH -p normal\n");
             opt['num_nodes'] = 2;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
-
         elif opt['compute_sys'] == 'stampede2':
             bash_file.write('#SBATCH -p skx-normal\n');
             #opt['num_nodes'] = 3;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
-
+        elif opt['compute_sys'] == 'frontera':
+            bash_file.write('#SBATCH -p normal\n');
+            #opt['num_nodes'] = 3;
+            bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         elif opt['compute_sys'] == 'local':
             bash_file.write('#SBATCH -p rebels\n');
             opt['num_nodes'] = 1;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
-
         else:
             bash_file.write("#SBATCH -p normal\n");
             opt['num_nodes'] = 1;
@@ -70,7 +71,10 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
         bash_file.write("#SBATCH --mail-user=kscheufele@austin.utexas.edu\n");
         bash_file.write("#SBATCH --mail-type=fail\n");
-        bash_file.write("#SBATCH -A PADAS\n");
+        if opt['compute_sys'] == 'frontera':
+          bash_file.write("#SBATCH -A FTA-Biros\n");
+        else:
+          bash_file.write("#SBATCH -A PADAS\n");
         bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
         bash_file.write("\n\n");
         bash_file.write("source ~/.bashrc\n");
@@ -101,22 +105,25 @@ def gridcont(basedir, args):
     patients_per_job   = 2;
     levels             = [64,128,256]
     if args.compute_cluster == "stampede2":
-      nodes            = [1,1,2]
-      procs            = [24,48,96]
+      nodes      = [1,1,2]
+      procs      = [24,48,96]
+    if args.compute_cluster == "frontera":
+      nodes      = [1,1,2]
+      procs      = [24,48,96]
     if args.compute_cluster == "hazelhen":
       nodes            = [1,2,4]
       procs            = [24,48,96]
-    wtime_h            = [x * patients_per_job for x in [0,2,10]];
+    wtime_h            = [x * patients_per_job for x in [0,2,9]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
-    sigma_fac          = [2,2,2]                    # on every level, sigma = fac * hx
+    sigma_fac          = [1,1,1]                    # on every level, sigma = fac * hx
     predict            = [0,0,0]
     gvf                = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default        = 8;
     k_default          = 0;
-    beta_p             = 1E-4;
+    beta_p             = 1;
     opttol             = 1E-4;
     p_prev             = "";
-    submit             = False;
+    submit             = True;
     separatejobs       = False;
     inject_coarse_sol  = True;
     pre_reacdiff_solve = True;
@@ -158,7 +165,7 @@ def gridcont(basedir, args):
         os.mkdir(output_path);
     # python command
     pythoncmd = "python ";
-    if args.compute_cluster == "stampede2" or args.compute_cluster == "local":
+    if args.compute_cluster in ["stampede2", "frontera", "local"]:
         pythoncmd = "python3 ";
     # create input folder
     input_folder = os.path.join(output_path, 'input');
@@ -290,7 +297,7 @@ def gridcont(basedir, args):
         t_params['mpi_pernode']           = procs[ii];
         t_params['wtime_h']               = wtime_h[ii];
         t_params['wtime_m']               = wtime_m[ii];
-        t_params['ibrun_man']             = (level <= 64);
+        t_params['ibrun_man']             = (level <= 128);
         t_params['results_path']          = res_dir_out;
         t_params['N']                     = level;
         t_params['grad_tol']              = opttol;
@@ -429,7 +436,7 @@ if __name__=='__main__':
     r_args.add_argument ('-patient_labels', '--patient_segmentation_labels', type=str,   help = 'comma separated patient segmented image labels. for ex.\n  0=bg,1=nec,2=ed,4=enh,5=wm,6=gm,7=vt,8=csf\n for BRATS type segmentation. DISCLAIMER vt and every extra label mentioned will be merged with csf');
     r_args.add_argument ('-atlas_path',     '--atlas_image_path',            type = str, help = 'path to a segmented atlas image (affinely registered to given patient)', required=True)
     r_args.add_argument ('-atlas_labels',   '--atlas_segmentation_labels',   type = str, help = 'comma separated atlas segmented image labels. for ex.\n 0=bg,1=vt,2=csf,3=gm,4=wm\n DISCLAIMER vt will be merged with csf')
-    r_args.add_argument ('-cluster',        '--compute_cluster',             type = str, help = 'compute cluster name for creation of job script (ex. stampede2, hazelhen, cbica etc)', required=True);
+    r_args.add_argument ('-cluster',        '--compute_cluster',             type = str, help = 'compute cluster name for creation of job script (ex. stampede2, frontera, hazelhen, cbica etc)', required=True);
     parser.add_argument ('-x',              '--results_directory',           type = str, default = os.path.join(basedir, 'results/'), help = 'path to results directory');
     parser.add_argument ('-np',             '--num_mpi_tasks',               type = int, default = 20,  help = 'number of MPI tasks per node, always run on a single node');
     parser.add_argument ('-nodes',          '--num_nodes',                   type = int, default = 3,   help = 'number of nodes');

@@ -1,34 +1,26 @@
 BRATS=/lustre/cray/ws9/4/ws/ipvscheu-ws-sibia/
-#DSET=b-2013     # 
-#DSET=b-tcia08   # 
-#DSET=b-tcia06   # 
-#DSET=b-tcia05   # 
-#DSET=b-tcia04   # 
-#DSET=b-tcia03   # 
-#DSET=b-tcia02   # 
-#DSET=b-cbica    # hazel
-#DSET=b-cbica-1  # 
-#DSET=b-cbica-2  # 
-#DSET=b-cbica-3  # 
-#DSET=b-cbica-4  # 
-#DSET=b-cbica-5  # 
 
-#DSET=b-obs-train
-DSET=ALL
-TOL=1E-4
+#for ID in Brats18_CBICA_AME_1 Brats18_TCIA08_162_1 Brats18_TCIA06_211_1
 
-#for ID in  Brats18_CBICA_AQD_1 Brats18_CBICA_AQR_1 Brats18_CBICA_AQA_1  # Brats18_CBICA_AQO_1 Brats18_CBICA_AQP_1 Brats18_TCIA03_257_1 Brats18_TCIA08_406_1  # Brats18_CBICA_AQJ_1 #  Brats18_TCIA04_328_1
-#for ID in  Brats18_CBICA_AQR_1  Brats18_TCIA08_406_1  Brats18_CBICA_AQJ_1 Brats18_TCIA03_257_1 Brats18_CBICA_AQA_1 Brats18_CBICA_AQD_1 Brats18_CBICA_AQO_1 Brats18_CBICA_AQP_1
-#for ID in Brats18_CBICA_AMH_1 Brats18_CBICA_ANG_1 Brats18_CBICA_ANI_1 Brats18_CBICA_ANP_1 Brats18_CBICA_ANZ_1 Brats18_CBICA_AZH_1
-#for ID in Brats18_CBICA_AXO_1 Brats18_CBICA_AQJ_1 Brats18_TCIA03_257_1 Brats18_TCIA04_328_1
+#for ID in Brats18_TCIA02_471_1 Brats18_TCIA02_321_1 Brats18_CBICA_AQJ_1 Brats18_TCIA02_171_1 Brats18_CBICA_AQR_1 Brats18_TCIA02_135_1 Brats18_TCIA08_242_1 Brats18_TCIA08_406_1 Brats18_CBICA_AOZ_1 Brats18_CBICA_AOZ_1 Brats18_2013_4_1 Brats18_CBICA_AWG_1 Brats18_CBICA_ASG_1 Brats18_CBICA_APY_1 Brats18_2013_25_1 Brats18_CBICA_AXQ_1 Brats18_2013_10_1
 
-for ID in Brats18_CBICA_ABM_1 Brats18_CBICA_ABY_1 Brats18_CBICA_ASN_1 Brats18_CBICA_AAG_1 Brats18_CBICA_ASA_1 Brats18_CBICA_ASH_1 Brats18_CBICA_ASO_1 Brats18_CBICA_ASW_1 Brats18_CBICA_AYI_1 Brats18_CBICA_ABO_1 Brats18_CBICA_APY_1 Brats18_CBICA_ASE_1 Brats18_CBICA_ASK_1 Brats18_CBICA_ASU_1
+
+#for ID in Brats18_2013_19_1  Brats18_TCIA02_368_1  Brats18_TCIA03_296_1
+#for ID in Brats18_2013_19_1  Brats18_TCIA03_257_1
+#for ID in Brats18_CBICA_AXO_1 # Brats18_CBICA_ANG_1 Brats18_TCIA03_257_1
+#for ID in Brats18_CBICA_AXO_1 Brats18_CBICA_AQJ_1 Brats18_TCIA03_257_1 Brats18_TCIA04_328_1 Brats18_TCIA03_296_1
+#for ID in Brats18_TCIA04_328_1  Brats18_CBICA_AXO_1  Brats18_TCIA03_257_1 Brats18_CBICA_AQJ_1 
+for ID in  Brats18_CBICA_AXO_1 Brats18_TCIA03_257_1
 do
+  #RES=${BRATS}/results/brats19-grad-sol-out/${ID}
+  #RES=${BRATS}/results/brats19-GNK-hessian/${ID}
+  #RES=${BRATS}/results/new_brats19-sigma-2h-inject-sol/${ID}
+  #RES=${BRATS}/results/new_brats19-sigma-h-inject-sol-pre-rho-kappa/${ID}
+  RES=${BRATS}/results/new_regularization_brats19-sigma-h-inject-sol-pre-rho-kappa-double-tstep-grad-rs-beta-0/${ID}
+  #RES=${BRATS}/results/brats19-cm-data-phi-bump/${ID}
 
-  #RES=${BRATS}/results/HGG-grid-cont/opttol-test-armijo-2/${ID}-beta-1e-3-double-rho-opttol-${TOL}
-  RES=${BRATS}/results/HGG-grid-cont/brats19-cc-supphi-kbound-s5-gradls10/${ID}
   mkdir -p ${RES}
-  python  run_gridcont.py -patient_path   ${BRATS}/training/HGG/${DSET}/${ID}/${ID}_seg_tu.nii.gz               \
+  python  run_gridcont.py -patient_path   ${BRATS}/training/HGG/ALL/${ID}/${ID}_seg_tu.nii.gz               \
                       -atlas_path     ${BRATS}/atlas/jakob_segmented_with_cere_lps_240240155_bratslabels.nii.gz \
                       -cluster hazelhen                                           \
                       --use_patient_segmentation                                  \
@@ -38,6 +30,5 @@ do
                       -x              ${RES}                                      \
                       -nx 256                                                     \
                       --obs_lambda 1                                              \
-                      --opttol ${TOL}                                             \
                       --vary_obs_lambda
 done
