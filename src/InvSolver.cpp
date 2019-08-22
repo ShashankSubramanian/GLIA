@@ -930,7 +930,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
     std::stringstream ss;
     std::vector<int> idx;        // idx list of support after thresholding
     PetscReal *x_full_ptr, *x_work_ptr, *grad_ptr;
-    PetscReal kappa_store, norm_rel, norm;
+    PetscReal beta_store, norm_rel, norm;
     int nnz = 0;
     Vec all_phis;
 
@@ -986,14 +986,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
         // ================
         // setting up L1-pahse, computing reference gradeint, and print statistics
         case COSAMP_L1_INIT:
-            // compute reference value for  objective
-            PetscReal kappa_store;
-            kappa_store = itctx_->n_misc_->k_;
-            ierr = getObjectiveAndGradient (itctx_->cosamp_->x_full, &itctx_->cosamp_->J_ref, itctx_->cosamp_->g);CHKERRQ (ierr);
-            itctx_->n_misc_->k_ = kappa_store; // reset diffusivity guess as reference gradient has zeroed out the guess
-            ierr = VecNorm (itctx_->cosamp_->g, NORM_2, &itctx_->cosamp_->g_ref_norm);                            CHKERRQ (ierr);
-            itctx_->cosamp_->J = itctx_->cosamp_->J_ref;
-
             // set initial guess for k_inv (possibly != zero)
             ierr = VecGetArray(itctx_->cosamp_->x_full, &x_full_ptr);                                            CHKERRQ (ierr);
             if (itctx_->n_misc_->diffusivity_inversion_) x_full_ptr[np_full] = itctx_->n_misc_->k_;
@@ -1003,11 +995,12 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             ierr = VecRestoreArray(itctx_->cosamp_->x_full, &x_full_ptr);                                        CHKERRQ (ierr);
             ierr = VecCopy        (itctx_->cosamp_->x_full, itctx_->cosamp_->x_full_prev);                       CHKERRQ (ierr);
 
-            // compute gradient (save and restore diffusivity guess)
-            kappa_store = itctx_->n_misc_->k_;
-            ierr = getGradient (itctx_->cosamp_->x_full, itctx_->cosamp_->g);                                    CHKERRQ (ierr);
-            itctx_->n_misc_->k_ = kappa_store;
-            ierr = VecNorm (itctx_->cosamp_->g, NORM_2, &itctx_->cosamp_->g_norm);                               CHKERRQ (ierr);
+            // compute reference value for  objective
+            beta_store = itctx_->n_misc_->beta_; itctx_->n_misc_->beta_ = 0.; // set beta to zero for gradient thresholding
+            ierr = getObjectiveAndGradient (itctx_->cosamp_->x_full, &itctx_->cosamp_->J_ref, itctx_->cosamp_->g);CHKERRQ (ierr);
+            itctx_->n_misc_->beta_ = beta_store;
+            ierr = VecNorm (itctx_->cosamp_->g, NORM_2, &itctx_->cosamp_->g_norm);                            CHKERRQ (ierr);
+            itctx_->cosamp_->J = itctx_->cosamp_->J_ref;
 
             // print statistics
             ierr = printStatistics (itctx_->cosamp_->its_l1, itctx_->cosamp_->J_ref, 1, itctx_->cosamp_->g_norm, 1, itctx_->cosamp_->x_full); CHKERRQ(ierr);
@@ -1125,7 +1118,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             /* === convergence check === */
             itctx_->cosamp_->J_prev = itctx_->cosamp_->J;
             // compute objective (only mismatch term)
+            beta_store = itctx_->n_misc_->beta_; itctx_->n_misc_->beta_ = 0.; // set beta to zero for gradient thresholding
             ierr = getObjectiveAndGradient (itctx_->cosamp_->x_full, &itctx_->cosamp_->J, itctx_->cosamp_->g);   CHKERRQ (ierr);
+            itctx_->n_misc_->beta_ = beta_store;
             ierr = VecNorm (itctx_->cosamp_->x_full, NORM_INFINITY, &norm);                                      CHKERRQ (ierr);
             ierr = VecAXPY (itctx_->cosamp_->work, -1.0, itctx_->cosamp_->x_full_prev);  /* holds x_L1 */        CHKERRQ (ierr);
             ierr = VecNorm (itctx_->cosamp_->work, NORM_INFINITY, &norm_rel);            /*norm change in sol */ CHKERRQ (ierr);

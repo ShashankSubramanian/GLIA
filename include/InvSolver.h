@@ -35,7 +35,6 @@ struct CtxCoSaMp {
     PetscReal J;                    // objective function value
     PetscReal J_prev;               // previous objective function value
     PetscReal J_ref;                // reference objective function value
-    PetscReal g_ref_norm;           // norm of reference gradient
     PetscReal g_norm;               // norm of reference gradient
     PetscReal f_tol;                // CoSaMp iteration tolerance
     Vec g;                          // gradient
@@ -56,7 +55,6 @@ struct CtxCoSaMp {
     , J(0)
     , J_prev(0)
     , J_ref(0)
-    , g_ref_norm(0)
     , g_norm(0)
     , f_tol(1E-5)
     , g(nullptr)
