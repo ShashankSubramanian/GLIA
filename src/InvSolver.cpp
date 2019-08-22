@@ -1249,11 +1249,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
   std::stringstream ss;
-  Vec g, g_ref, x_L2, x_L1, x_L1_old, temp, all_phis;
+  Vec g, x_L2, x_L1, x_L1_old, temp, all_phis;
   PetscReal *x_L2_ptr, *x_L1_ptr, *temp_ptr, *grad_ptr;
   PetscReal J, J_ref, J_old;   // objective
   PetscReal ftol = 1E-5;
-  PetscReal norm_rel, norm, norm_g, kappa_store;
+  PetscReal norm_rel, norm, norm_g, beta_store;
   std::vector<int> idx;        // idx list of support after thresholding
   std::vector<int> temp_support;
   int np_full, its = 0, nnz = 0;
@@ -1261,12 +1261,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
   np_full = itctx_->n_misc_->np_; // store np of unrestricted ansatz space
   ierr = VecDuplicate (itctx_->tumor_->p_, &g);                                 CHKERRQ (ierr);
-  ierr = VecDuplicate (itctx_->tumor_->p_, &g_ref);                             CHKERRQ (ierr);
   ierr = VecDuplicate (itctx_->tumor_->p_, &x_L1);                              CHKERRQ (ierr);
   ierr = VecDuplicate (itctx_->tumor_->p_, &x_L1_old);                          CHKERRQ (ierr);
   ierr = VecDuplicate (itctx_->tumor_->p_, &temp);                              CHKERRQ (ierr);
   ierr = VecSet  (g, 0);                                                        CHKERRQ (ierr);
-  ierr = VecSet  (g_ref, 0);                                                    CHKERRQ (ierr);
   ierr = VecCopy (itctx_->tumor_->p_, x_L1); /* copy initial guess for p */     CHKERRQ (ierr);
   ierr = VecSet  (x_L1_old, 0);                                                 CHKERRQ (ierr);
   ierr = VecSet  (temp, 0);                                                     CHKERRQ (ierr);
@@ -1289,13 +1287,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
   /* ------------------------------------------------------------------------ */
   // === (1) L1 CoSaMp solver ===
-  // compute reference value for  objective
-  kappa_store = itctx_->n_misc_->k_;
-  ierr = getObjectiveAndGradient (x_L1, &J_ref, g_ref);                         CHKERRQ (ierr);
-  itctx_->n_misc_->k_ = kappa_store; // reset diffusivity guess as reference gradient has zeroed out the guess
-  ierr = VecNorm (g_ref, NORM_2, &norm_g);                                      CHKERRQ (ierr);
-  J = J_ref;
-
   // set initial guess for k_inv (possibly != zero)
   ierr = VecGetArray(x_L1, &x_L1_ptr);                                          CHKERRQ (ierr);
   if (itctx_->n_misc_->diffusivity_inversion_) x_L1_ptr[np_full] = itctx_->n_misc_->k_;
@@ -1305,11 +1296,12 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   ierr = VecRestoreArray(x_L1, &x_L1_ptr);                                      CHKERRQ (ierr);
   ierr = VecCopy        (x_L1, x_L1_old);                                       CHKERRQ (ierr);
 
-  // compute gradient (save and restore diffusivity guess)
-  kappa_store = itctx_->n_misc_->k_;
-  ierr = getGradient (x_L1, g);                                                 CHKERRQ (ierr);
-  itctx_->n_misc_->k_ = kappa_store;
+  // compute reference value for  objective
+  beta_store = itctx_->n_misc_->beta_; itctx_->n_misc_->beta_ = 0.; // set beta to zero for gradient thresholding
+  ierr = getObjectiveAndGradient (x_L1, &J_ref, g);                             CHKERRQ (ierr);
+  itctx_->n_misc_->beta_ = beta_store;
   ierr = VecNorm (g, NORM_2, &norm_g);                                          CHKERRQ (ierr);
+  J = J_ref;
 
   // print statistics
   printStatistics (its, J_ref, 1, norm_g, 1, x_L1);
@@ -1417,8 +1409,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
       /* === convergence check === */
       J_old = J;
+
       // compute objective (only mismatch term)
+      beta_store = itctx_->n_misc_->beta_; itctx_->n_misc_->beta_ = 0.; // set beta to zero for gradient thresholding
       ierr = getObjectiveAndGradient (x_L1, &J, g);                             CHKERRQ (ierr);
+      itctx_->n_misc_->beta_ = beta_store;
       ierr = VecNorm (x_L1, NORM_INFINITY, &norm);                              CHKERRQ (ierr);
       ierr = VecAXPY (temp, -1.0, x_L1_old);            /* holds x_L1 */        CHKERRQ (ierr);
       ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);  /*norm change in sol */ CHKERRQ (ierr);
