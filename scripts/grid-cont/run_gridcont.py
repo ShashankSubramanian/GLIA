@@ -106,17 +106,17 @@ def gridcont(basedir, args):
     if args.compute_cluster == "hazelhen":
       nodes            = [1,2,4]
       procs            = [24,48,96]
-    wtime_h            = [x * patients_per_job for x in [0,2,10]];
+    wtime_h            = [x * patients_per_job for x in [0,2,9]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
-    sigma_fac          = [2,2,2]                    # on every level, sigma = fac * hx
+    sigma_fac          = [1,1,1]                    # on every level, sigma = fac * hx
     predict            = [0,0,0]
     gvf                = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default        = 8;
     k_default          = 0;
-    beta_p             = 1E-4;
+    beta_p             = 1;
     opttol             = 1E-4;
     p_prev             = "";
-    submit             = False;
+    submit             = True;
     separatejobs       = False;
     inject_coarse_sol  = True;
     pre_reacdiff_solve = True;
