@@ -9,6 +9,9 @@ import nibabel as nib
 import file_io as fio
 
 
+P_COUNTER = 0;
+ONEJOB    = "";
+
 ###
 ### ------------------------------------------------------------------------ ###
 def createJobsubFile(cmd, opt, level):
@@ -95,6 +98,7 @@ def createJobsubFile(cmd, opt, level):
 def gridcont(basedir, args):
 
     # ########### SETTINGS ############
+    patients_per_job   = 2;
     levels             = [64,128,256]
     if args.compute_cluster == "stampede2":
       nodes            = [1,1,2]
@@ -102,8 +106,8 @@ def gridcont(basedir, args):
     if args.compute_cluster == "hazelhen":
       nodes            = [1,2,4]
       procs            = [24,48,96]
-    wtime_h            = [0,2,10]
-    wtime_m            = [30,0,0]
+    wtime_h            = [x * patients_per_job for x in [0,2,10]];
+    wtime_m            = [x * patients_per_job for x in [30,0,0]];
     sigma_fac          = [2,2,2]                    # on every level, sigma = fac * hx
     predict            = [0,0,0]
     gvf                = [0.0,0.9,0.9]              # ignored for C0_RANKED
@@ -112,7 +116,7 @@ def gridcont(basedir, args):
     beta_p             = 1E-4;
     opttol             = 1E-4;
     p_prev             = "";
-    submit             = True;
+    submit             = False;
     separatejobs       = False;
     inject_coarse_sol  = True;
     pre_reacdiff_solve = True;
@@ -126,6 +130,20 @@ def gridcont(basedir, args):
     ls_max_func_evals  = [10, 10, 10];
     invert_diffusivity = [1,1,1];
     # #################################
+
+    global P_COUNTER;
+    P_COUNTER = P_COUNTER + 1 if P_COUNTER < patients_per_job else 1;
+    batch_end = P_COUNTER == patients_per_job
+    submit    = submit and batch_end;
+    new_job   = P_COUNTER == 1
+
+    global ONEJOB;
+    if new_job:
+        ONEJOB = ""
+    else:
+        ONEJOB += "\n\n###############################################################\n###############################################################\n###############################################################\n\n\n";
+
+    MULTJOB = ""
 
     os.environ['DIR_SUFFIX'] = "{0:1.1f}".format(args.obs_lambda);
     obs_dir = "obs-{0:1.1f}".format(args.obs_lambda) + "/";
@@ -147,9 +165,6 @@ def gridcont(basedir, args):
     if not os.path.exists(input_folder):
         os.mkdir(input_folder);
 
-
-    ONEJOB  = ""
-    MULTJOB = ""
     #   ------------------------------------------------------------------------
     #   - read atlas segmented image and create probability maps
     #   - read segmented patient or patient probability maps and resize them
@@ -391,7 +406,7 @@ def gridcont(basedir, args):
                   print("\n pid:", str(process, 'utf-8').split("Submitted batch job ")[-1])
                   pid_prev = int(str(process, 'utf-8').split("Submitted batch job ")[-1])
 
-    if not separatejobs:
+    if not separatejobs and batch_end:
         job_file = createJobsubFile(ONEJOB, opt, 256);
         if submit:
             if args.compute_cluster == 'hazelhen':
