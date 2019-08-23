@@ -1230,7 +1230,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     // }
     // pass the reconstructed p vector to the caller (deep copy)
     ierr = VecCopy (itctx_->cosamp_->x_full, xrec_);                                                  CHKERRQ (ierr);
-    if (!rs_mode_active itctx_->cosamp_->cosamp_stage != FINALIZE)
+    if (!rs_mode_active && itctx_->cosamp_->cosamp_stage != FINALIZE)
         {solveInverseCoSaMpRS(false);
     } else {ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();}
 
