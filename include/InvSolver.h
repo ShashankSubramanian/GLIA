@@ -32,6 +32,7 @@ struct CtxCoSaMp {
     bool compute_reference_values;  // if true, compute and store reference objective and gradient
     bool converged_l1;              // indicates if L1 solver converged
     bool converged_l2;              // indicates if L2 solver converged
+    bool initialized;               // indicates if vectors are allocated or destroyed
     PetscReal J;                    // objective function value
     PetscReal J_prev;               // previous objective function value
     PetscReal J_ref;                // reference objective function value
@@ -42,7 +43,6 @@ struct CtxCoSaMp {
     Vec x_full_prev;                // solution vector full space
     Vec x_sub;                      // solution vector subspace
     Vec work;
-    std::vector<int> temp_support;  // store temporary support
 
     CtxCoSaMp ()
     :
@@ -59,16 +59,40 @@ struct CtxCoSaMp {
     , f_tol(1E-5)
     , g(nullptr)
     , x_full(nullptr)
+    , x_full_ptr(nullptr)
     , x_sub(nullptr)
-    , temp_support()
     {}
 
+    PetscErrorCode initialize(Vec p) {
+        PetscFunctionBegin;
+        PetscErrorCode ierr = 0;
+        ierr = VecDuplicate (p, &g);            CHKERRQ (ierr);
+        ierr = VecDuplicate (p, &x_full);       CHKERRQ (ierr);
+        ierr = VecDuplicate (p, &x_full_prev);  CHKERRQ (ierr);
+        ierr = VecDuplicate (p, &work);         CHKERRQ (ierr);
+        ierr = VecSet       (g, 0.0);           CHKERRQ (ierr);
+        ierr = VecSet       (x_full_prev, 0.0); CHKERRQ (ierr);
+        ierr = VecSet       (work, 0.0);        CHKERRQ (ierr);
+        ierr = VecCopy      (p, x_full);        CHKERRQ (ierr);
+        initialized = true;
+        PetscFunctionReturn(ierr);
+    }
+
+    PetscErrorCode cleanup(Vec p) {
+        PetscFunctionBegin;
+        PetscErrorCode ierr = 0;
+        if(initialized) {
+            if (g != nullptr)           { VecDestroy (&g);           g           = nullptr;}
+            if (x_full != nullptr)      { VecDestroy (&x_full);      x_full      = nullptr;}
+            if (x_full_prev != nullptr) { VecDestroy (&x_full_prev); x_full_prev = nullptr;}
+            if (work != nullptr)        { VecDestroy (&work);        work        = nullptr;}
+        }
+        initialized = false;
+        PetscFunctionReturn(ierr);
+    }
+
     ~CtxCoSaMp () {
-        if (g != nullptr)           { VecDestroy (&g);           g           = nullptr;}
-        if (x_full != nullptr)      { VecDestroy (&x_full);      x_full      = nullptr;}
-        if (x_full_prev != nullptr) { VecDestroy (&x_full_prev); x_full_prev = nullptr;}
-        if (x_sub != nullptr)       { VecDestroy (&x_sub);       x_sub       = nullptr;}
-        if (work != nullptr)        { VecDestroy (&work);        work        = nullptr;}
+        if (initialized) {cleanup();}
     }
 };
 

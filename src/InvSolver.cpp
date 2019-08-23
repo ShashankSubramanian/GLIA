@@ -946,15 +946,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             itctx_->cosamp_->converged_l1 = false;
             itctx_->cosamp_->converged_l2 = false;
             itctx_->cosamp_->f_tol = 1E-5;
-            ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->cosamp_->g);      CHKERRQ (ierr);
-            ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->cosamp_->x_full); CHKERRQ (ierr);
-            ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->cosamp_->x_full_prev); CHKERRQ (ierr);
-            ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->cosamp_->work);   CHKERRQ (ierr);
-            ierr = VecSet       (itctx_->cosamp_->g, 0.0);                      CHKERRQ (ierr);
-            ierr = VecSet       (itctx_->cosamp_->x_full_prev, 0.0);            CHKERRQ (ierr);
-            ierr = VecSet       (itctx_->cosamp_->work, 0.0);                   CHKERRQ (ierr);
-            /* copy initial guess for p */
-            ierr = VecCopy      (itctx_->tumor_->p_, itctx_->cosamp_->x_full);  CHKERRQ (ierr);
+            ierr = itctx_->cosamp_->cleanup();                                  CHKERRQ (ierr);
+            /* allocate vecs and copy initial guess for p */
+            ierr = itctx_->cosamp_->initialize(itctx_->tumor_->p_);             CHKERRQ (ierr);
             // no break; go into next case
             itctx_->cosamp_->cosamp_stage = PRE_RD;
             ierr = tuMSG(" << leaving stage INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -1276,7 +1270,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   PetscReal ftol = 1E-5;
   PetscReal norm_rel, norm, norm_g, beta_store;
   std::vector<int> idx;        // idx list of support after thresholding
-  std::vector<int> temp_support;
   int np_full, its = 0, nnz = 0;
   int flag_convergence = 0;
 
