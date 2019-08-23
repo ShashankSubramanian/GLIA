@@ -1162,9 +1162,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             ierr = printStatistics (itctx_->cosamp_->its_l1, itctx_->cosamp_->J, PetscAbsReal (itctx_->cosamp_->J_prev - itctx_->cosamp_->J) / PetscAbsReal (1 + itctx_->cosamp_->J_ref), itctx_->cosamp_->g_norm, norm_rel / (1 + norm), itctx_->cosamp_->x_full); CHKERRQ(ierr);
             ierr = tuMSGstd ("--------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
             ierr = tuMSGstd (""); CHKERRQ(ierr);
-            if (itctx_->cosamp_->its_l1 >= optsettings_->gist_maxit) {ierr = tuMSGstd ("Max L1 iter reached"); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
-            else if (PetscAbsReal (itctx_->cosamp_->J) < 1E-5)       {ierr = tuMSGstd ("L1 absolute objective tolerance reached."); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
-            else if (PetscAbsReal (itctx_->cosamp_->J_prev - itctx_->cosamp_->J) < itctx_->cosamp_->f_tol * PetscAbsReal (1 + itctx_->cosamp_->J_ref)) {ierr = tuMSGstd ("L1 relative objective tolerance reached."); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
+            if (itctx_->cosamp_->its_l1 >= optsettings_->gist_maxit) {ierr = tuMSGwarn (" L1 maxiter reached"); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
+            else if (PetscAbsReal (itctx_->cosamp_->J) < 1E-5)       {ierr = tuMSGwarn (" L1 absolute objective tolerance reached."); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
+            else if (PetscAbsReal (itctx_->cosamp_->J_prev - itctx_->cosamp_->J) < itctx_->cosamp_->f_tol * PetscAbsReal (1 + itctx_->cosamp_->J_ref)) {ierr = tuMSGwarn (" L1 relative objective tolerance reached."); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
             else { itctx_->cosamp_->converged_l1 = false; }  // continue iterating
 
             ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr);
