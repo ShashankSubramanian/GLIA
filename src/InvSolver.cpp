@@ -2776,43 +2776,37 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
           if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
                 PetscFunctionReturn(ierr);
         }
-      if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
-        ss << "step  = " << std::scientific << step << ". ls failed with status " << ls_flag;
-        ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
-        ss.str(std::string());
-              ss.clear();
-        ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
-        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-        PetscFunctionReturn(ierr);
-      }
+        if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
+            ss << "step  = " << std::scientific << step << ". ls failed with status " << ls_flag;
+            ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
+            ss.str(std::string());
+                  ss.clear();
+            ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
+            if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+            PetscFunctionReturn(ierr);
+        }
         // ||g_k||_2 < tol*||g_0||
         if (gnorm < gttol*g0norm) {
-                ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GTTOL);               CHKERRQ(ierr);
-                stop[0] = true;
+            ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GTTOL);               CHKERRQ(ierr);
+            stop[0] = true;
         }
         ss << "  " << stop[0] << "    ||g|| = " << std::setw(14)
-             << std::right << std::scientific << gnorm << "    <    "
+           << std::right << std::scientific << gnorm << "    <    "
            << std::left << std::setw(14) << gttol*g0norm << " = " << "tol";
         ctx->convergence_message.push_back(ss.str());
-      if(verbosity >= 3) {
-          ierr = tuMSGstd(ss.str());                                              CHKERRQ(ierr);
-      }
-        ss.str(std::string());
-        ss.clear();
+        if(verbosity >= 3) { ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); } ss.str(std::string()); ss.clear();
+
         // ||g_k||_2 < tol
         if (gnorm < gatol) {
             ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                   CHKERRQ(ierr);
             stop[1] = true;
         }
         ss  << "  " << stop[1] << "    ||g|| = " << std::setw(14)
-              << std::right << std::scientific << gnorm << "    <    "
-              << std::left << std::setw(14) << gatol << " = " << "tol";
+            << std::right << std::scientific << gnorm << "    <    "
+            << std::left << std::setw(14) << gatol << " = " << "tol";
         ctx->convergence_message.push_back(ss.str());
-      if(verbosity >= 3) {
-          ierr = tuMSGstd(ss.str());                                              CHKERRQ(ierr);
-      }
-        ss.str(std::string());
-        ss.clear();
+        if(verbosity >= 3) { ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); } ss.str(std::string()); ss.clear();
+
         // iteration number exceeds limit
         if (iter > maxiter) {
             ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_MAXITS);                    CHKERRQ(ierr);
@@ -2822,14 +2816,10 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
               << std::right << iter  << "    >    "
               << std::left << std::setw(14) << maxiter << " = " << "maxiter";
         ctx->convergence_message.push_back(ss.str());
-      if(verbosity >= 3) {
-          ierr = tuMSGstd(ss.str());                                              CHKERRQ(ierr);
-      }
-        ss.str(std::string());
-        ss.clear();
+        if(verbosity >= 3) { ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); } ss.str(std::string()); ss.clear();
+
         // store objective function value
         ctx->jvalold = J;
-
         if (stop[0] || stop[1]) {ctx->cosamp_->converged_l2 = true;} // for CoSaMpRS to split up L2 solve
         if (stop[0] || stop[1] || stop[2]) {
             ctx->optfeedback_->converged = true;
@@ -2837,6 +2827,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
             PetscFunctionReturn(ierr);
         }
 
+    // iter < miniter
     } else {
         // if the gradient is zero, we should terminate immediately
         if (gnorm == 0) {

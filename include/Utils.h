@@ -74,7 +74,7 @@ struct OptimizerSettings {
     , newton_maxit (30)
     , gist_maxit (5)
     , krylov_maxit (30)
-    , newton_minit (1)
+    , newton_minit (0)
     , iterbound (200)
     , fseqtype (SLFS)
     , newtonsolver (QUASINEWTON)
