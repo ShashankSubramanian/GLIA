@@ -601,7 +601,6 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = TaoSetMaximumIterations (tao_, ctx->optsettings_->newton_maxit);                                            CHKERRQ(ierr);
     ierr = TaoSetConvergenceTest (tao_, checkConvergenceGradReacDiff, ctx);                                            CHKERRQ(ierr);
 
-    // line-search
     itctx_->update_reference_gradient = true;    // compute ref gradient
     itctx_->optsettings_->ls_minstep = minstep;  // overwrite linesearch objects
     ierr = TaoGetLineSearch (tao_, &linesearch);                                  CHKERRQ(ierr);
@@ -829,8 +828,8 @@ PetscErrorCode InvSolver::solve () {
 
     /* === set TAO options === */
     if (tao_is_reset_) {
-        itctx_->update_reference_gradient = true;
-        itctx_->update_reference_objective = true;
+        // itctx_->update_reference_gradient = true;   // TODO: K: I commented this; for CoSaMp_RS we don't want t ore-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
+        // itctx_->update_reference_objective = true;  // TODO: K: I commented this; for CoSaMp_RS we don't want t ore-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
         ierr = setTaoOptions (tao_, itctx_.get());                              CHKERRQ(ierr);
         if ((itctx_->optsettings_->newtonsolver == QUASINEWTON) &&
             itctx_->optsettings_->lmvm_set_hessian) {
@@ -963,13 +962,14 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             ierr = tuMSG(" >> entering stage PRE_RD"); CHKERRQ(ierr);
             if (itctx_->n_misc_->pre_reacdiff_solve_ && itctx_->n_misc_->n_[0] > 64) {
               if (itctx_->n_misc_->reaction_inversion_) {
-                  // restrict to new L2 subspace, holding p_i, kappa, and rho
+                  // == restrict == to new L2 subspace, holding p_i, kappa, and rho
                   ierr = restrictSubspace(&itctx_->cosamp_->x_sub, itctx_->cosamp_->x_full, itctx_, true);      CHKERRQ (ierr); // x_sub <-- R(x_full)
-                  // solve
                   itctx_->cosamp_->cosamp_stage = PRE_RD;
+                  itctx_->optsettings_->newton_maxit = itctx_->cosamp_->maxit_newton;
+                  // == solve ==
                   ierr = solveInverseReacDiff (itctx_->cosamp_->x_sub);          /* with current guess as init cond. */
                   ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub);            /* get solution */             CHKERRQ (ierr);
-                  // update full space solution
+                  // == prolongate ==
                   ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
               }
           } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr);}
@@ -1057,6 +1057,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // solve interpolation
             // ierr = solveInterpolation (data_);                                   CHKERRQ (ierr);
+
+            itctx_->optsettings_->newton_maxit = itctx_->cosamp_->inexact_nits;
+            // only update reference gradient and referenc objective if this is the first inexact solve for this subspace, otherwise don't
+            itctx_->update_reference_gradient  = (itctx_->cosamp_->nits < itctx_->cosamp_->inexact_nits);
+            itctx_->update_reference_objective = (itctx_->cosamp_->nits < itctx_->cosamp_->inexact_nits);
             // == solve ==
             ierr = solve ();                                                        CHKERRQ (ierr);
             ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub);                     CHKERRQ (ierr);
@@ -1077,7 +1082,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // == convergence test ==
             // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
-            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
+            // if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
+            itctx_->cosamp_->nits += itctx_->optfeedback_->nb_newton_it;
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
@@ -1089,11 +1095,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
                 itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;
                 conv_maxit = itctx_->cosamp_->nits = 0;
                 // if L2 solver converged
-                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr);}
+                if(itctx_->cosamp_->converged_l2)        {ss << "    ... ... L2 solver converged; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
                 // if L2 solver ran into ls-failure
-                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr);}
+                if(itctx_->cosamp_->converged_error_l2)  {ss << "    ... ... L2 solver terminated (ls-failure); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
                 // if L2 solver hit maxit
-                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr);}
+                if(conv_maxit)                           {ss << "    ... ... L2 solver terminated (maxit); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
                 ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr);
             }
 
@@ -1183,6 +1189,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // solve interpolation
             // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
+            itctx_->optsettings_->newton_maxit = itctx_->cosamp_->inexact_nits;
+            // only update reference gradient and referenc objective if this is the first inexact solve for this subspace, otherwise don't
+            itctx_->update_reference_gradient  = (itctx_->cosamp_->nits < itctx_->cosamp_->inexact_nits);
+            itctx_->update_reference_objective = (itctx_->cosamp_->nits < itctx_->cosamp_->inexact_nits);
+            // == solve ==
             ierr = solve ();                                    /* L2 solver    */
             ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub); /* get solution */       CHKERRQ (ierr);
             ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
@@ -1237,8 +1248,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             if (itctx_->n_misc_->reaction_inversion_) {
                 // restrict to new L2 subspace, holding p_i, kappa, and rho
                 ierr = restrictSubspace(&itctx_->cosamp_->x_sub, itctx_->cosamp_->x_full, itctx_, true);     CHKERRQ (ierr); // x_sub <-- R(x_full)
-                // solve
+
                 itctx_->cosamp_->cosamp_stage = POST_RD;
+                itctx_->optsettings_->newton_maxit = itctx_->cosamp_->maxit_newton;
+                // == solve ==
                 ierr = solveInverseReacDiff (itctx_->cosamp_->x_sub); /* with current guess as init cond. */  CHKERRQ (ierr);
                 ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub);   /* get solution */                      CHKERRQ (ierr);
                 // update full space solution
@@ -1401,6 +1414,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       // solve interpolation
       // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
 
+      // update reference gradient and referenc objective (commented in the solve function)
+      itctx_->update_reference_gradient  = true;
+      itctx_->update_reference_objective = true;
       ierr = solve ();                                                          CHKERRQ (ierr);
       ierr = VecCopy (getPrec(), x_L2);                                         CHKERRQ (ierr);
       ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
@@ -1475,9 +1491,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       printStatistics (its, J, PetscAbsReal (J_old - J) / PetscAbsReal (1 + J_ref), norm_g, norm_rel / (1 + norm), x_L1);
       ierr = tuMSGstd ("--------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
       ierr = tuMSGstd (""); CHKERRQ(ierr);
-      if (its >= optsettings_->gist_maxit) {ierr = tuMSGstd ("Max L1 iter reached"); CHKERRQ(ierr); flag_convergence = 1; break;}
-      else if (PetscAbsReal (J) < 1E-5)  {ierr = tuMSGstd ("L1 absolute objective tolerance reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
-      else if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref)) {ierr = tuMSGstd ("L1 relative objective tolerance reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
+      if (its >= optsettings_->gist_maxit) {ierr = tuMSGwarn (" L1 maxiter reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
+      else if (PetscAbsReal (J) < 1E-5)  {ierr = tuMSGwarn (" L1 absolute objective tolerance reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
+      else if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref)) {ierr = tuMSGwarn (" L1 relative objective tolerance reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
       else { flag_convergence = 0; }  // continue iterating
     } // end while
 
@@ -1488,13 +1504,13 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
     ierr = restrictSubspace(&x_L2, x_L1, itctx_);                               CHKERRQ (ierr); // x_L2 <-- R(x_L1)
-
-    // print vec
     if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
-
 
     // solve interpolation
     // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
+    // update reference gradient and referenc objective (commented in the solve function)
+    itctx_->update_reference_gradient  = true;
+    itctx_->update_reference_objective = true;
     ierr = solve ();                                   /* L2 solver    */
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
 
