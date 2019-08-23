@@ -59,7 +59,7 @@ struct CtxCoSaMp {
     , f_tol(1E-5)
     , g(nullptr)
     , x_full(nullptr)
-    , x_full_ptr(nullptr)
+    , x_full_prev(nullptr)
     , x_sub(nullptr)
     {}
 
@@ -78,7 +78,7 @@ struct CtxCoSaMp {
         PetscFunctionReturn(ierr);
     }
 
-    PetscErrorCode cleanup(Vec p) {
+    PetscErrorCode cleanup() {
         PetscFunctionBegin;
         PetscErrorCode ierr = 0;
         if(initialized) {
