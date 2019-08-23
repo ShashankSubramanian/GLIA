@@ -45,7 +45,6 @@ struct OptimizerSettings {
     double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
     double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
-    int    inexact_nit;          /// @brief number of newton iterations per inexact solve
     int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
     int    newton_minit;         /// @brief minimum number of newton steps
@@ -74,7 +73,6 @@ struct OptimizerSettings {
     , newton_maxit (30)
     , gist_maxit (5)
     , krylov_maxit (30)
-    , newton_minit (0)
     , iterbound (200)
     , fseqtype (SLFS)
     , newtonsolver (QUASINEWTON)

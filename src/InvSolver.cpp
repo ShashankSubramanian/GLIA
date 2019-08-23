@@ -1069,16 +1069,31 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             ss << "phiSupport_csitr-" << itctx_->cosamp_->its_l1 << ".nc";
             if (itctx_->n_misc_->writeOutput_) dataOut (all_phis, itctx_->n_misc_, ss.str().c_str()); ss.str(""); ss.clear();
             if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
-
-            // print vec
             if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
             // == prolongate ==
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_L1 <-- P(x_L2)
+            
+            // == convergence test ==
+            // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
+            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
+            bool conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
+            // check if L2 solver converged
+            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
+                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver not converged, inexact solve terminated."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+                break;
+            } else {
+                itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;
+                // if L2 solver converged
+                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                // if L2 solver ran into ls-failure
+                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                // if L2 solver hit maxit
+                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            }
 
-            ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
-            if(itctx_->cosamp_->converged_l2) {itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;}
-            else                              {break;}
 
         // ================
         // thresholding the gradient, restrict subspace
@@ -1183,22 +1198,34 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
                 if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
             }
             // write out p vector after IC, k inversion (unscaled)
-            if (itctx_->n_misc_->write_p_checkpoint_) {
-              writeCheckpoint(itctx_->cosamp_->x_sub, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("unscaled"));
-            }
-
-            // print vec
+            if (itctx_->n_misc_->write_p_checkpoint_) { writeCheckpoint(itctx_->cosamp_->x_sub, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("unscaled"));}
             if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
+            // == prolongate ==
             // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
             // if inversion for reaction disabled, also reset operators
             bool finalize = !itctx_->n_misc_->reaction_inversion_;
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, finalize);  CHKERRQ (ierr); // x_full <-- P(x_sub)
 
-            // no break; go into next case
-            ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
-            if(itctx_->cosamp_->converged_l2) {itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;}
-            else                              {break;}
+            // == convergence test ==
+            // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
+            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
+            bool conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
+            // check if L2 solver converged
+            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
+                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver not converged, inexact solve terminated."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
+                break;
+            } else {
+                itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;
+                // if L2 solver converged
+                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                // if L2 solver ran into ls-failure
+                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                // if L2 solver hit maxit
+                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            }
 
         // ================
         // this case is executed at once without going back to caller in between
@@ -2758,8 +2785,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     //}
     // only check convergence criteria after a certain number of iterations
     stop[0] = false; stop[1] = false; stop[2] = false;
-    ctx->optfeedback_->converged = false;
-    ctx->cosamp_->converged_l2 = false;
+    ctx->optfeedback_->converged     = false;
+    ctx->cosamp_->converged_l2       = false;
+    ctx->cosamp_->converged_error_l2 = false;
     if (iter >= miniter) {
         if (verbosity > 1) {
                 ss << "step size in linesearch: " << std::scientific << step;
@@ -2773,7 +2801,8 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
                 ss.str(std::string());
                 ss.clear();
                 ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
-          if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+                if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+                ctx->cosamp_->converged_error_l2 = true;
                 PetscFunctionReturn(ierr);
         }
         if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
@@ -2783,6 +2812,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
                   ss.clear();
             ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
             if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+            ctx->cosamp_->converged_error_l2 = true;
             PetscFunctionReturn(ierr);
         }
         // ||g_k||_2 < tol*||g_0||
@@ -2836,15 +2866,14 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
             ss.str(std::string());
             ss.clear();
             ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                   CHKERRQ(ierr);
-      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+            if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+            ctx->cosamp_->converged_l2 = true;
             PetscFunctionReturn(ierr);
         }
     }
     // if we're here, we're good to go
     ierr = TaoSetConvergedReason (tao, TAO_CONTINUE_ITERATING);                 CHKERRQ(ierr);
-
     if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-
     PetscFunctionReturn (0);
 }
 

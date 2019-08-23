@@ -29,9 +29,13 @@ struct CtxCoSaMp {
     int cosamp_stage;               // indicates solver state of CoSaMp function when using warmstart
     int its_l1;                     // cosamp iterations
     int np_full;                    // size of unrestricted subspace
+    int maxit_newton;               // global maxit for L2 Newton solver
+    int nits;                       // global iterations performed for L2 Newton solver
+    int inexact_nits;               // Newton its per inexact solve
     bool compute_reference_values;  // if true, compute and store reference objective and gradient
     bool converged_l1;              // indicates if L1 solver converged
     bool converged_l2;              // indicates if L2 solver converged
+    bool converged_error_l2;        // indicates if L2 solver diverged/failed
     bool initialized;               // indicates if vectors are allocated or destroyed
     PetscReal J;                    // objective function value
     PetscReal J_prev;               // previous objective function value
@@ -49,9 +53,13 @@ struct CtxCoSaMp {
       cosamp_stage(INIT)
     , its_l1(0)
     , np_full(0)
+    , maxit_newton(200)
+    , inexact_nits(4)
+    , nits(0)
     , compute_reference_values(true)
     , converged_l1(false)
     , converged_l2(false)
+    , converged_error_l2(false)
     , initialized(false)
     , J(0)
     , J_prev(0)

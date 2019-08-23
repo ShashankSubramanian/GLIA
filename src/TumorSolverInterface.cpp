@@ -539,6 +539,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
   ss << " number of observed voxels: " << global_sum;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
+  // inexact Newton
+  inv_solver_->getInverseSolverContext()->cosamp_->maxit_newton = n_misc_->newton_maxit_;
+  inv_solver_->getOptSettings()->newton_maxit = inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits;
+
   // solve
   // inv_solver_->solveInverseCoSaMp();
   inv_solver_->solveInverseCoSaMpRS(false);
