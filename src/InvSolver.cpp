@@ -1081,7 +1081,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
-                ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< conv_maxit = itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<")."
+                ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<").";
                 ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
                 ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE");
                 break;
@@ -1213,7 +1213,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
-                ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< conv_maxit = itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<")."
+                ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<").";
                 ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
                 break;
