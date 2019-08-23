@@ -540,8 +540,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   // solve
-  inv_solver_->solveInverseCoSaMp();
-  // inv_solver_->solveInverseCoSaMpRS();
+  // inv_solver_->solveInverseCoSaMp();
+  inv_solver_->solveInverseCoSaMpRS();
   ierr = VecCopy (inv_solver_->getPrec(), prec);                                CHKERRQ (ierr);
 
   PetscFunctionReturn(ierr);

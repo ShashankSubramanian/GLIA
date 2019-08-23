@@ -937,7 +937,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
     // abbrev
     int np_full = itctx_->cosamp_->np_full;
 
-    ierr = tuMSG(" << entering inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ierr = tuMSG(" >> entering inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();
     switch(itctx_->cosamp_->cosamp_stage) {
         // ================
         case INIT:

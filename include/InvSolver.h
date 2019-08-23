@@ -52,6 +52,7 @@ struct CtxCoSaMp {
     , compute_reference_values(true)
     , converged_l1(false)
     , converged_l2(false)
+    , initialized(false)
     , J(0)
     , J_prev(0)
     , J_ref(0)
