@@ -932,6 +932,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     PetscReal *x_full_ptr, *x_work_ptr, *grad_ptr;
     PetscReal beta_store, norm_rel, norm;
     int nnz = 0;
+    bool conv_maxit = false;
     Vec all_phis;
 
     // abbrev
@@ -1073,11 +1074,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // == prolongate ==
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_L1 <-- P(x_L2)
-            
+
             // == convergence test ==
             // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
-            bool conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
+            conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
                 if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver not converged, inexact solve terminated."); CHKERRQ(ierr); ss.str(""); ss.clear();}
@@ -1210,7 +1211,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             // == convergence test ==
             // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
-            bool conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
+            conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
                 if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver not converged, inexact solve terminated."); CHKERRQ(ierr); ss.str(""); ss.clear();}
