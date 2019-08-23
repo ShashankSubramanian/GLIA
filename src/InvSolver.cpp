@@ -943,6 +943,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
         case INIT:
             ierr = tuMSG(" >> entering stage INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
             itctx_->cosamp_->np_full = itctx_->n_misc_->np_; // store np of unrestricted ansatz space
+            np_full = itctx_->cosamp_->np_full;
             itctx_->cosamp_->converged_l1 = false;
             itctx_->cosamp_->converged_l2 = false;
             itctx_->cosamp_->f_tol = 1E-5;
