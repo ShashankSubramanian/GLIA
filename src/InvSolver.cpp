@@ -1052,7 +1052,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             // == restrict ==
             ierr = restrictSubspace(&itctx_->cosamp_->x_sub, itctx_->cosamp_->x_full, itctx_); CHKERRQ (ierr); // x_L2 <-- R(x_L1)
             // print vec
-            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+            if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
             // solve interpolation
             // ierr = solveInterpolation (data_);                                   CHKERRQ (ierr);
@@ -1071,7 +1071,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
 
             // print vec
-            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+            if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
             // == prolongate ==
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_L1 <-- P(x_L2)
@@ -1164,7 +1164,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             ierr = restrictSubspace(&itctx_->cosamp_->x_sub, itctx_->cosamp_->x_full, itctx_); CHKERRQ (ierr); // x_sub <-- R(x_full)
 
             // print vec
-            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+            if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
             // solve interpolation
             // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
@@ -1188,7 +1188,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             }
 
             // print vec
-            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+            if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
             // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
             // if inversion for reaction disabled, also reset operators
@@ -1366,7 +1366,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = restrictSubspace(&x_L2, x_L1, itctx_);                             CHKERRQ (ierr); // x_L2 <-- R(x_L1)
 
       // print vec
-      if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+      if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
 
       // solve interpolation
@@ -1387,7 +1387,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
 
       // print vec
-      if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+      if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
 
       ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full);                  CHKERRQ (ierr); // x_L1 <-- P(x_L2)
@@ -1461,7 +1461,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = restrictSubspace(&x_L2, x_L1, itctx_);                               CHKERRQ (ierr); // x_L2 <-- R(x_L1)
 
     // print vec
-    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+    if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
 
     // solve interpolation
@@ -1470,7 +1470,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
 
     // print vec
-    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+    if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
 
     ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
