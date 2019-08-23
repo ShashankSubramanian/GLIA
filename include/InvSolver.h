@@ -53,7 +53,7 @@ struct CtxCoSaMp {
       cosamp_stage(INIT)
     , its_l1(0)
     , np_full(0)
-    , maxit_newton(200)
+    , maxit_newton(50)
     , inexact_nits(4)
     , nits(0)
     , compute_reference_values(true)

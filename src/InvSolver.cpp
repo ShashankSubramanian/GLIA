@@ -938,7 +938,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     // abbrev
     int np_full = itctx_->cosamp_->np_full;
 
-    ierr = tuMSG(" >> entering inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ierr = tuMSG(" >> entering inverse CoSaMp"); CHKERRQ(ierr);
     switch(itctx_->cosamp_->cosamp_stage) {
         // ================
         case INIT:
@@ -953,14 +953,14 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             ierr = itctx_->cosamp_->initialize(itctx_->tumor_->p_);             CHKERRQ (ierr);
             // no break; go into next case
             itctx_->cosamp_->cosamp_stage = PRE_RD;
-            ierr = tuMSG(" << leaving stage INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" << leaving stage INIT"); CHKERRQ(ierr);
 
         // ================
         // this case is executed at once without going back to caller in between
         case PRE_RD:
             /* ------------------------------------------------------------------------ */
             // ### (0) (pre-)reaction/diffusion inversion ###
-            ierr = tuMSG(" >> entering stage PRE_RD"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage PRE_RD"); CHKERRQ(ierr);
             if (itctx_->n_misc_->pre_reacdiff_solve_ && itctx_->n_misc_->n_[0] > 64) {
               if (itctx_->n_misc_->reaction_inversion_) {
                   // restrict to new L2 subspace, holding p_i, kappa, and rho
@@ -972,15 +972,15 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
                   // update full space solution
                   ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
               }
-          } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+          } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr);}
             // no break; go into next case
             itctx_->cosamp_->cosamp_stage = COSAMP_L1_INIT;
-            ierr = tuMSG(" << leaving stage PRE_RD"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" << leaving stage PRE_RD"); CHKERRQ(ierr);
 
         // ================
         // setting up L1-pahse, computing reference gradeint, and print statistics
         case COSAMP_L1_INIT:
-            ierr = tuMSG(" >> entering stage COSAMP_L1_INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage COSAMP_L1_INIT"); CHKERRQ(ierr);
             // set initial guess for k_inv (possibly != zero)
             ierr = VecGetArray(itctx_->cosamp_->x_full, &x_full_ptr);                                            CHKERRQ (ierr);
             if (itctx_->n_misc_->diffusivity_inversion_) x_full_ptr[np_full] = itctx_->n_misc_->k_;
@@ -994,7 +994,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             beta_store = itctx_->n_misc_->beta_; itctx_->n_misc_->beta_ = 0.; // set beta to zero for gradient thresholding
             ierr = getObjectiveAndGradient (itctx_->cosamp_->x_full, &itctx_->cosamp_->J_ref, itctx_->cosamp_->g);CHKERRQ (ierr);
             itctx_->n_misc_->beta_ = beta_store;
-            ierr = VecNorm (itctx_->cosamp_->g, NORM_2, &itctx_->cosamp_->g_norm);                            CHKERRQ (ierr);
+            ierr = VecNorm (itctx_->cosamp_->g, NORM_2, &itctx_->cosamp_->g_norm);                                CHKERRQ (ierr);
             itctx_->cosamp_->J = itctx_->cosamp_->J_ref;
 
             // print statistics
@@ -1007,12 +1007,12 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // no break; go into next case
             itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_GRAD;
-            ierr = tuMSG(" << leaving stage COSAMP_L1_INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" << leaving stage COSAMP_L1_INIT"); CHKERRQ(ierr);
 
         // ================
         // thresholding the gradient, restrict subspace
         case COSAMP_L1_THRES_GRAD:
-            ierr = tuMSG(" >> entering stage COSAMP_L1_THRES_GRAD"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage COSAMP_L1_THRES_GRAD"); CHKERRQ(ierr);
             itctx_->cosamp_->its_l1++;
             /* === hard threshold abs gradient === */
             ierr = VecCopy (itctx_->cosamp_->g, itctx_->cosamp_->work);                                            CHKERRQ (ierr);
@@ -1038,12 +1038,12 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // no break; go into next case
             itctx_->cosamp_->cosamp_stage = COSAMP_L1_SOLVE_SUBSPACE;
-            ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_GRAD"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_GRAD"); CHKERRQ(ierr);
 
         // ================
         // this case may be executed in parts, i.e., going back to caller after inexact_nit Newton iterations
         case COSAMP_L1_SOLVE_SUBSPACE:
-            ierr = tuMSG(" >> entering stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr);
             /* === corrective L2 solver === */
             ierr = tuMSGstd (""); CHKERRQ (ierr);
             ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
@@ -1081,25 +1081,27 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
-                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver not converged, inexact solve terminated."); CHKERRQ(ierr); ss.str(""); ss.clear();}
-                ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+                ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< conv_maxit = itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<")."
+                ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
+                ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE");
                 break;
             } else {
                 itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;
+                conv_maxit = itctx_->cosamp_->nits = 0;
                 // if L2 solver converged
-                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr);}
                 // if L2 solver ran into ls-failure
-                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr);}
                 // if L2 solver hit maxit
-                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
-                ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr);}
+                ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr);
             }
 
 
         // ================
         // thresholding the gradient, restrict subspace
         case COSAMP_L1_THRES_SOL:
-            ierr = tuMSG(" >> entering stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr);
             /* === hard threshold solution to sparsity level === */
             idx.clear();
             if (itctx_->n_misc_->prune_components_) hardThreshold (itctx_->cosamp_->x_full, itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
@@ -1157,20 +1159,17 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             else if (PetscAbsReal (itctx_->cosamp_->J_prev - itctx_->cosamp_->J) < itctx_->cosamp_->f_tol * PetscAbsReal (1 + itctx_->cosamp_->J_ref)) {ierr = tuMSGstd ("L1 relative objective tolerance reached."); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
             else { itctx_->cosamp_->converged_l1 = false; }  // continue iterating
 
-            ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr); ss.str(""); ss.clear();
-            if(itctx_->cosamp_->converged_l1) {
-                // no break; go into next case
+            ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr);
+            if(itctx_->cosamp_->converged_l1) {              // no break; go into next case
                 itctx_->cosamp_->cosamp_stage = FINAL_L2;
-            } else{
-                // break; continue iterating
-                itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_GRAD;
-                break;
+            } else{                                          // break; continue iterating
+                itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_GRAD; break;
             }
 
         // ================
         // this case may be executed in parts, i.e., going back to caller after inexact_nit Newton iterations
         case FINAL_L2:
-            ierr = tuMSG(" >> entering stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage FINAL_L2"); CHKERRQ(ierr);
             /* === (3) if converged: corrective L2 solver === */
             ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
             ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
@@ -1214,24 +1213,26 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
-                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver not converged, inexact solve terminated."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< conv_maxit = itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<")."
+                ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
                 break;
             } else {
                 itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;
+                conv_maxit = itctx_->cosamp_->nits = 0;
                 // if L2 solver converged
-                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr);}
                 // if L2 solver ran into ls-failure
-                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr);}
                 // if L2 solver hit maxit
-                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr);}
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
             }
 
         // ================
         // this case is executed at once without going back to caller in between
         case POST_RD:
-            ierr = tuMSG(" >> entering stage POST_RD"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" >> entering stage POST_RD"); CHKERRQ(ierr);
             // === (4) reaction/diffusion inversion ===
             if (itctx_->n_misc_->reaction_inversion_) {
                 // restrict to new L2 subspace, holding p_i, kappa, and rho
@@ -1242,11 +1243,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
                 ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub);   /* get solution */                      CHKERRQ (ierr);
                 // update full space solution
                 ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
-            } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr); ss.str(""); ss.clear();}
+            } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr);}
 
             // break; go to finalize
             itctx_->cosamp_->cosamp_stage = FINALIZE;
-            ierr = tuMSG(" << leaving stage POST_RD"); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG(" << leaving stage POST_RD"); CHKERRQ(ierr);
             break;
     }
 
@@ -1260,7 +1261,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     ierr = VecCopy (itctx_->cosamp_->x_full, xrec_);                                                  CHKERRQ (ierr);
     if (!rs_mode_active && itctx_->cosamp_->cosamp_stage != FINALIZE)
         {solveInverseCoSaMpRS(false);
-    } else {ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();}
+    } else {ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr);}
 
     // go home
     PetscFunctionReturn (0);
