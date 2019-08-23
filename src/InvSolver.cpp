@@ -1056,6 +1056,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
 
             // == restrict ==
             ierr = restrictSubspace(&itctx_->cosamp_->x_sub, itctx_->cosamp_->x_full, itctx_); CHKERRQ (ierr); // x_L2 <-- R(x_L1)
+            // print vec
+            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
             // solve interpolation
             // ierr = solveInterpolation (data_);                                   CHKERRQ (ierr);
             // == solve ==
@@ -1071,12 +1074,16 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             ss << "phiSupport_csitr-" << itctx_->cosamp_->its_l1 << ".nc";
             if (itctx_->n_misc_->writeOutput_) dataOut (all_phis, itctx_->n_misc_, ss.str().c_str()); ss.str(""); ss.clear();
             if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
+
+            // print vec
+            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
             // == prolongate ==
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_L1 <-- P(x_L2)
 
             ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr); ss.str(""); ss.clear();
-            if(itctx_->cosamp_->converged_l2) itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;
-            else          break;
+            if(itctx_->cosamp_->converged_l2) {itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;}
+            else                              {break;}
 
         // ================
         // thresholding the gradient, restrict subspace
@@ -1164,6 +1171,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
             ierr = restrictSubspace(&itctx_->cosamp_->x_sub, itctx_->cosamp_->x_full, itctx_); CHKERRQ (ierr); // x_sub <-- R(x_full)
+
+            // print vec
+            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
             // solve interpolation
             // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
             ierr = solve ();                                    /* L2 solver    */
@@ -1184,13 +1195,18 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             if (itctx_->n_misc_->write_p_checkpoint_) {
               writeCheckpoint(itctx_->cosamp_->x_sub, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("unscaled"));
             }
+
+            // print vec
+            if (procid == 0) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
             // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
             // if inversion for reaction disabled, also reset operators
             bool finalize = !itctx_->n_misc_->reaction_inversion_;
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, finalize);  CHKERRQ (ierr); // x_full <-- P(x_sub)
 
             // no break; go into next case
-            itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;
+            if(itctx_->cosamp_->converged_l2) {itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;}
+            else                              {break;}
             ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         // ================
@@ -1356,6 +1372,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
       ierr = restrictSubspace(&x_L2, x_L1, itctx_);                             CHKERRQ (ierr); // x_L2 <-- R(x_L1)
 
+      // print vec
+      if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
+
       // solve interpolation
       // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
 
@@ -1372,6 +1392,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ss << "phiSupport_csitr-" << its << ".nc";
       if (itctx_->n_misc_->writeOutput_) dataOut (all_phis, itctx_->n_misc_, ss.str().c_str()); ss.str(""); ss.clear();
       if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
+
+      // print vec
+      if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
 
       ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full);                  CHKERRQ (ierr); // x_L1 <-- P(x_L2)
 
@@ -1442,10 +1466,19 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
     ierr = restrictSubspace(&x_L2, x_L1, itctx_);                               CHKERRQ (ierr); // x_L2 <-- R(x_L1)
+
+    // print vec
+    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
+
     // solve interpolation
     // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
     ierr = solve ();                                   /* L2 solver    */
     ierr = VecCopy (getPrec(), x_L2);                  /* get solution */       CHKERRQ (ierr);
+
+    // print vec
+    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
 
     ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
     ierr = tuMSGstd (""); CHKERRQ (ierr);
