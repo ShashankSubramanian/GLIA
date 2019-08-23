@@ -738,10 +738,10 @@ PetscErrorCode InvSolver::solve () {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     TU_assert (initialized_,              "InvSolver::solve (): InvSolver needs to be initialized.")
-    TU_assert (data_ != nullptr,          "InvSolver:solve (): requires non-null input data for inversion.");
-    TU_assert (data_gradeval_ != nullptr, "InvSolver:solve (): requires non-null input data for gradient evaluation.");
-    TU_assert (xrec_ != nullptr,          "InvSolver:solve (): requires non-null p_rec vector to be set");
-    TU_assert (optsettings_ != nullptr,   "InvSolver:solve (): requires non-null optimizer settings to be passed.");
+    TU_assert (data_ != nullptr,          "InvSolver::solve (): requires non-null input data for inversion.");
+    TU_assert (data_gradeval_ != nullptr, "InvSolver::solve (): requires non-null input data for gradient evaluation.");
+    TU_assert (xrec_ != nullptr,          "InvSolver::solve (): requires non-null p_rec vector to be set");
+    TU_assert (optsettings_ != nullptr,   "InvSolver::solve (): requires non-null optimizer settings to be passed.");
 
     std::stringstream s;
     PetscScalar max, min, w = 1, p_max, xdiff;
@@ -1200,9 +1200,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, finalize);  CHKERRQ (ierr); // x_full <-- P(x_sub)
 
             // no break; go into next case
+            ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
             if(itctx_->cosamp_->converged_l2) {itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;}
             else                              {break;}
-            ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         // ================
         // this case is executed at once without going back to caller in between
@@ -1228,10 +1228,10 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
 
 
     // prolongate (in case we are in a subuspace solve, we still need the solution to be prolongated)
-    if (itctx_->cosamp_->cosamp_stage != FINALIZE) {
-        ierr = tuMSG(" >> entering stage FINALIZE"); CHKERRQ(ierr); ss.str(""); ss.clear();
-        ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
-    }
+    // if (itctx_->cosamp_->cosamp_stage != FINALIZE) {
+        // ierr = tuMSG(" >> entering stage FINALIZE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+        // ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
+    // }
     // pass the reconstructed p vector to the caller (deep copy)
     ierr = VecCopy (itctx_->cosamp_->x_full, xrec_);                                                  CHKERRQ (ierr);
     ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -2760,6 +2760,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     // only check convergence criteria after a certain number of iterations
     stop[0] = false; stop[1] = false; stop[2] = false;
     ctx->optfeedback_->converged = false;
+    ctx->cosamp_->converged_l2 = false;
     if (iter >= miniter) {
         if (verbosity > 1) {
                 ss << "step size in linesearch: " << std::scientific << step;
@@ -2829,14 +2830,15 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         ss.clear();
         // store objective function value
         ctx->jvalold = J;
+
+        if (stop[0] || stop[1]) {ctx->cosamp_->converged_l2 = true;} // for CoSaMpRS to split up L2 solve
         if (stop[0] || stop[1] || stop[2]) {
             ctx->optfeedback_->converged = true;
-        if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+            if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
             PetscFunctionReturn(ierr);
         }
 
-    }
-    else {
+    } else {
         // if the gradient is zero, we should terminate immediately
         if (gnorm == 0) {
             ss << "||g|| = " << std::scientific << 0.0 << " < " << gatol  << " = " << "bound";
