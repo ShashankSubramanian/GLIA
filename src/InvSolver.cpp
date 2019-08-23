@@ -658,6 +658,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL);         CHKERRQ(ierr);
     /* display convergence reason: */
     ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);        CHKERRQ(ierr);
+    itctx_->optfeedback_->nb_newton_it--;
     ss << " optimization done: #N-it: " << itctx_->optfeedback_->nb_newton_it    << ", #K-it: " << itctx_->optfeedback_->nb_krylov_it
                       << ", #matvec: " << itctx_->optfeedback_->nb_matvecs    << ", #evalJ: " << itctx_->optfeedback_->nb_objevals
                       << ", #evaldJ: " << itctx_->optfeedback_->nb_gradevals  << ", exec time: " << invtime;
@@ -878,6 +879,7 @@ PetscErrorCode InvSolver::solve () {
     ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL); CHKERRQ(ierr);
     /* display convergence reason: */
     ierr = dispTaoConvReason (reason, itctx_->optfeedback_->solverstatus);        CHKERRQ(ierr);
+    itctx_->optfeedback_->nb_newton_it--;
     s << " optimization done: #N-it: " << itctx_->optfeedback_->nb_newton_it    << ", #K-it: " << itctx_->optfeedback_->nb_krylov_it
                       << ", #matvec: " << itctx_->optfeedback_->nb_matvecs    << ", #evalJ: " << itctx_->optfeedback_->nb_objevals
                       << ", #evaldJ: " << itctx_->optfeedback_->nb_gradevals  << ", exec time: " << invtime;
@@ -1092,14 +1094,14 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
                 ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE");
                 break;
             } else {
+                // if L2 solver converged
+                if(itctx_->cosamp_->converged_l2)        {ss << "    ... L2 solver converged; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+                // if L2 solver ran into ls-failure
+                if(itctx_->cosamp_->converged_error_l2)  {ss << "    ... L2 solver terminated (ls-failure); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+                // if L2 solver hit maxit
+                if(conv_maxit)                           {ss << "    ... L2 solver terminated (maxit); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
                 itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;
                 conv_maxit = itctx_->cosamp_->nits = 0;
-                // if L2 solver converged
-                if(itctx_->cosamp_->converged_l2)        {ss << "    ... ... L2 solver converged; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
-                // if L2 solver ran into ls-failure
-                if(itctx_->cosamp_->converged_error_l2)  {ss << "    ... ... L2 solver terminated (ls-failure); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
-                // if L2 solver hit maxit
-                if(conv_maxit)                           {ss << "    ... ... L2 solver terminated (maxit); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
                 ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr);
             }
 
@@ -1229,14 +1231,14 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
                 break;
             } else {
+                // if L2 solver converged
+                if(itctx_->cosamp_->converged_l2)        {ss << "    ... L2 solver converged; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+                // if L2 solver ran into ls-failure
+                if(itctx_->cosamp_->converged_error_l2)  {ss << "    ... L2 solver terminated (ls-failure); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+                // if L2 solver hit maxit
+                if(conv_maxit)                           {ss << "    ... L2 solver terminated (maxit); its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
                 itctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;
                 conv_maxit = itctx_->cosamp_->nits = 0;
-                // if L2 solver converged
-                if(itctx_->cosamp_->converged_l2)        {ierr = tuMSG("    ... L2 solver converged."); CHKERRQ(ierr);}
-                // if L2 solver ran into ls-failure
-                if (itctx_->cosamp_->converged_error_l2) {ierr = tuMSG("    ... L2 solver terminated (ls-failure)."); CHKERRQ(ierr);}
-                // if L2 solver hit maxit
-                if(conv_maxit)                           {ierr = tuMSG("    ... L2 solver terminated (maxit)."); CHKERRQ(ierr);}
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
             }
 
