@@ -122,7 +122,8 @@ struct CtxInv {
     , tumor_ ()
     , data (nullptr)
     , data_gradeval (nullptr)
-    , convergence_message () {
+    , convergence_message ()
+    , cosamp_(nullptr) {
         ksp_gradnorm0 = 1.;
         gttol = 1e-3;
         gatol = 1e-6;
@@ -138,6 +139,7 @@ struct CtxInv {
         flag_sparse = false;
         update_reference_gradient = true;
         update_reference_objective = true;
+        cosamp_ = std::make_shared<CtxCoSaMp>();
     }
     ~CtxInv () {
         if (weights != nullptr) { VecDestroy (&weights); weights = nullptr;}
