@@ -1488,7 +1488,6 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     // clean-up
     if (g != nullptr)        { ierr = VecDestroy (&g);        CHKERRQ (ierr); g        = nullptr; }
     if (x_L1 != nullptr)     { ierr = VecDestroy (&x_L1);     CHKERRQ (ierr); x_L1     = nullptr;}
-    if (g_ref != nullptr)    { ierr = VecDestroy (&g_ref);    CHKERRQ (ierr); g_ref    = nullptr;}
     if (x_L1_old != nullptr) { ierr = VecDestroy (&x_L1_old); CHKERRQ (ierr); x_L1_old = nullptr;}
     if (temp != nullptr)     { ierr = VecDestroy (&temp);     CHKERRQ (ierr); temp     = nullptr;}
     PetscFunctionReturn (0);
