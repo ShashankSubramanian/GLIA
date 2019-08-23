@@ -919,7 +919,7 @@ PetscErrorCode InvSolver::solve () {
  .  initial guess is set (TumorSolverInterface::setInitialGuess(Vec p)); stored in tumor->p_
  .  data for objective and gradient is set (InvSolver::setData(Vec d))
  */
-PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
+PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -1141,19 +1141,15 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
             else if (PetscAbsReal (itctx_->cosamp_->J_prev - itctx_->cosamp_->J) < itctx_->cosamp_->f_tol * PetscAbsReal (1 + itctx_->cosamp_->J_ref)) {ierr = tuMSGstd ("L1 relative objective tolerance reached."); CHKERRQ(ierr); itctx_->cosamp_->converged_l1 = true;}
             else { itctx_->cosamp_->converged_l1 = false; }  // continue iterating
 
+            ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr); ss.str(""); ss.clear();
             if(itctx_->cosamp_->converged_l1) {
                 // no break; go into next case
-                itctx_->cosamp_->cosamp_stage = POST_RD;
+                itctx_->cosamp_->cosamp_stage = FINAL_L2;
             } else{
                 // break; continue iterating
                 itctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_GRAD;
                 break;
             }
-
-            // no break; go into next case
-            itctx_->cosamp_->cosamp_stage = FINAL_L2;
-            ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr); ss.str(""); ss.clear();
-
 
         // ================
         // this case may be executed in parts, i.e., going back to caller after inexact_nit Newton iterations
@@ -1234,7 +1230,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS() {
     // }
     // pass the reconstructed p vector to the caller (deep copy)
     ierr = VecCopy (itctx_->cosamp_->x_full, xrec_);                                                  CHKERRQ (ierr);
-    ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();
+    if (!rs_mode_active) {
+        solveInverseCoSaMpRS(false);
+    if (rs_mode_active || itctx_->cosamp_->cosamp_stage == FINALIZE){
+        ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr); ss.str(""); ss.clear();
+    }
     // go home
     PetscFunctionReturn (0);
 }
