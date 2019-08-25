@@ -577,10 +577,24 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ss << "rho_t[" << i << "].nc";
+            dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "kxx_t[" << i << "].nc";
+            dataOut (tumor_->k_->kxx_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
         }
         // Update diffusivity and reaction coefficient
         ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
         ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
+
+        // model fix to no-mass-effect model
+        ierr = VecAXPY (tumor_->k_->kxx_, 1.0, tumor_->c_t_);                                       CHKERRQ (ierr);
+        ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);                                        CHKERRQ (ierr);
+        ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);                                        CHKERRQ (ierr);
+        ierr = VecAXPY (tumor_->rho_->rho_vec_, 1.0, tumor_->c_t_);                                 CHKERRQ (ierr);
+
+
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
 
