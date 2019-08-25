@@ -293,17 +293,17 @@ class NMisc {
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
         , order_ (2)                            // Order of accuracy for PDE solves
-        , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
+        , nu_healthy_ (0.3)                     // Poisson's ratio of wm and gm
         , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
-        , nu_bg_ (0.48)                         // Poisson's ratio of background
+        , nu_bg_ (0.45)                         // Poisson's ratio of background
         , nu_csf_ (0.1)                         // Poisson's ratio of CSF
-        , E_healthy_ (2100)                     // Young's modulus of wm and gm
+        , E_healthy_ (2000)                     // Young's modulus of wm and gm
         , E_bg_ (15000)                         // Young's modulus of background
-        , E_tumor_ (10000)                      // Young's modulus of tumor
-        , E_csf_ (10)                           // Young's modulus of CSF
+        , E_tumor_ (8000)                      // Young's modulus of tumor
+        , E_csf_ (500)                           // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E4)                    // high screening 
-        , forcing_factor_ (2.0E5)               // mass effect forcing factor
+        , forcing_factor_ (1E5)               // mass effect forcing factor
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
@@ -348,7 +348,7 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
-                user_cm_[0] = 2 * M_PI / 128 * 66;//72  //Z
+                user_cm_[0] = 2 * M_PI / 128 * 76;//72  //Z
                 user_cm_[1] = 2 * M_PI / 128 * 82;//64  //Y
                 user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 

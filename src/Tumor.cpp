@@ -200,7 +200,7 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
 
     // snafu: smooth
     ierr = VecCopy (c1, work_[0]);            CHKERRQ (ierr);
-    ierr = spec_ops_->weierstrassSmoother (work_[0], work_[0], n_misc_, sigma_smooth);
+  //  ierr = spec_ops_->weierstrassSmoother (work_[0], work_[0], n_misc_, sigma_smooth);
     spec_ops_->computeGradient (force_->x_, force_->y_, force_->z_, work_[0], &XYZ, t.data());
 
     ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
@@ -265,7 +265,7 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
-    ScalarType sigma_smooth = 1.0 * M_PI / n_misc_->n_[0];
+    ScalarType sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
 
     PetscFunctionReturn(0);
