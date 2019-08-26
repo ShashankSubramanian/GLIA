@@ -25,6 +25,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV,cross_validate
 from sklearn import preprocessing
 from sklearn.metrics import classification_report
+from sklearn.decomposition import PCA
 
 
 class bcolors:
@@ -220,45 +221,67 @@ if __name__=='__main__':
     df_stat = brats_data[cols_stat]
     df_bio  = brats_data[cols_bio5]
 
-    df_bio.hist
-    plt.show()
+    # df_bio.hist
+    # plt.show()
 
     p_dict_svm = []
     # for cols, i in zip([cols_bio0,cols_bio1,cols_bio2,cols_bio3,cols_bio4,cols_bio5,cols_bio6,cols_stat], range(8)):
-    for cols, i in zip([cols_bio7,cols_stat], range(2)):
+    for cols, i in zip([cols_bio6,cols_stat], range(2)):
     # for cols in [cols_bio5]:
         cc = "bio %d" % i if i < 7 else "stat";
         print(bcolors.OKBLUE, "=== %s ===" % cc, bcolors.ENDC)
 
         X = brats_data[cols].values
-        # Y = np.ravel(brats_data[['srvl[]']].values).astype('int')
-        Y = np.ravel(brats_data[['srvl']].values).astype('int')
+        Y = np.ravel(brats_data[['srvl[]']].values).astype('int')
+        # Y = np.ravel(brats_data[['srvl']].values).astype('int')
         nfolds=5;
 
+
+        # === data split ===
+        X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
+
+        # === normalization/scaling ===
         # scaler    = preprocessing.StandardScaler().fit(X)
         scaler     = preprocessing.MinMaxScaler()
         normalizer = preprocessing.Normalizer()
-
-
-
-        # dividing X, y into train and test data
-        X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
-
         scaler.fit_transform(X_train)
         normalizer.fit(X_train)
+
         scaler.transform(X_test)
         normalizer.transform(X_train)
         normalizer.transform(X_test)
 
+        # === dimensionality reduction ===
+        pca = PCA(n_components=3, svd_solver='randomized', whiten=True).fit(X_train)
+        # projecting data
+        X_train_pca = pca.transform(X_train)
+        X_test_pca = pca.transform(X_test)
+
+        # X_train_pca = X_train
+        # X_test_pca  = X_test
+
+        print(X_train.shape, X_train_pca.shape)
+
+
+        # #############################################################################
+        # Train a SVM classification model
+        # print("Fitting the classifier to the training set")
+        # param_grid = {'C':  [1E-5,1E-4, 1E-3, 1E-2, 1E-1, 1, 1E1, 1E2, 1E3, 1E4, 1E5], 'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1], }
+        # clf = GridSearchCV(SVC(kernel='rbf'), param_grid, cv=nfolds)
+        # clf = clf.fit(X_train_pca, y_train)
+        # print("Best estimator found by grid search:")
+        # print(clf.best_estimator_)
+
+
         # === grid search for SVM ===
-        # clf, opt_params = svc_param_selection(X_train,y_train,nfolds,kernel='linear',w=weights);
-        # clf             = SVC(kernel='linear', C=0.001, random_state=0).fit(X_train, y_train)
+        # clf, opt_params = svc_param_selection(X_train_pca,y_train,nfolds,method='SVM',w=weights);
+        clf             = SVC(kernel='linear', C=0.1, random_state=0).fit(X_train_pca, y_train)
 
 
         # === SVM Regressor ===
-        from sklearn.svm import SVR
+        # from sklearn.svm import SVR
         # clf, opt_params = svc_param_selection(X_train,y_train,nfolds,method='SVR',w=weights);
-        clf = SVR(gamma='scale', C=1.0, kernel='rbf', epsilon=0.2).fit(X_train, y_train)
+        # clf = SVR(gamma='scale', C=1.0, kernel='rbf', epsilon=0.2).fit(X_train, y_train)
 
         # ==== one vs rest linear svm ===
         # from sklearn import datasets
@@ -294,26 +317,26 @@ if __name__=='__main__':
         print("The model is trained on the full development set.")
         print("The scores are computed on the full evaluation set.")
         print()
-        y_true, y_pred = y_test, clf.predict(X_test)
+        y_true, y_pred = y_test, clf.predict(X_test_pca)
         # print(classification_report(y_true, y_pred))
         print()
         print("y_true: ", y_true)
         print("y_pred: ", y_pred)
 
-        plt.step(np.arange(0,len(y_true),1), y_true-y_pred, color='b',where='mid')
+        # plt.step(np.arange(0,len(y_true),1), y_true-y_pred, color='b',where='mid')
         # plt.step(np.arange(0,len(y_true),1), y_pred, color='r',where='mid')
-        plt.show()
+        # plt.show()
 
         print()
-        class_true = [getSurvivalClass(x) for x in y_true]
-        class_pred = [getSurvivalClass(x) for x in y_pred]
-        print("y_true: ", class_true)
-        print("y_pred: ", class_pred)
-        y_test = class_true
-        y_pred = class_pred
+        # class_true = [getSurvivalClass(x) for x in y_true]
+        # class_pred = [getSurvivalClass(x) for x in y_pred]
+        # print("y_true: ", class_true)
+        # print("y_pred: ", class_pred)
+        # y_test = class_true
+        # y_pred = class_pred
         print(classification_report(y_test, y_pred))
 
-        accuracy = clf.score(X_test, y_test)
+        accuracy = clf.score(X_test_pca, y_test)
 
         p_dict_svm.append(accuracy);
 

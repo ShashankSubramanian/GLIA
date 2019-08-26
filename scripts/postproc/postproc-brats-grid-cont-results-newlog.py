@@ -482,7 +482,7 @@ if __name__=='__main__':
       ]
 
     df = df.sort_values(by=['BraTS18ID','level']);
-    # df = df.sort_values(by=['#ed/#b','BraTS18ID','level']);
+    # df = df.sort_values(by=['I_EDc1', 'BraTS18ID','level']);
 
     p = str(args.dir).split("/")
     basedir = "./"
@@ -600,16 +600,16 @@ if __name__=='__main__':
     html_file.close()
 
 
-
     #### POSTPROC/VISUALIZE ####
-    plot_corr     = True;
+    plot_corr     = False;
     plot_pairgrid = False;
-    plot_stats    = True;
+    plot_stats    = False;
     max_l2c1error = 1
     crop_corr     = ["rho-inv", "k-inv", "rho-over-k", "l2Oc1", "l2c1(TC,s)", "#comp", "age", "srvl[]", "Ic0/Ic1", '#tc/#b', '#ed/#b']
 
     # discard coarse levels
     data256 = df.loc[df['level'] == 256]
+
     # data256 = data256.loc[data256['comment'] == "phi-supp"];
     # make ordinal column srvl[] numeric
     data256['srvl[]'] = data256['srvl[]'].astype('category')
@@ -652,14 +652,13 @@ if __name__=='__main__':
 
     print("Entries on level 128: %d" % len(dftmp_128), " ... failed to add (%d) \n" % nfailed[128], FAILEDTOADD[128]);
     print("Entries on level 256: %d" % len(dftmp_256), " ... failed to add (%d) \n" % nfailed[256], FAILEDTOADD[256]);
-    print("IDs with more than 4 components (need to be recomputed): \n", REDO_SPARSITY[256])
+    # print("IDs with more than 4 components (need to be recomputed): \n", REDO_SPARSITY[256])
 
     print("IDs processed: \n", BIDs)
     print(bcolors.WARNING + "\n\n===  filtered %d cases ===" % (fltr) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 64  (%d failed to add) ===" % (ncases[64],nfailed[64]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 128 (%d failed to add) ===" % (ncases[128],nfailed[128]) + bcolors.ENDC)
     print(bcolors.OKGREEN + "===  successfully added %d cases on level 256 (%d failed to add) ===" % (ncases[256],nfailed[256]) + bcolors.ENDC)
-
 
 
     # --------------------------
