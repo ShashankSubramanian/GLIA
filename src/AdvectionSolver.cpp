@@ -13,7 +13,7 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
     for (int i = 0; i < 3; i++)
     	ctx_->temp_[i] = tumor->work_[11 - i]; 	// Choose some tumor work vector
 
-    ctx_->velocity_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+    ctx_->velocity_ = tumor->velocity_;
 
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdv);

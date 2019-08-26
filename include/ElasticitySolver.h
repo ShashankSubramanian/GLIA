@@ -15,8 +15,8 @@ struct CtxElasticity {
 		ierr = VecDuplicate (mu_, &lam_);
 		ierr = VecDuplicate (mu_, &screen_);
 
-		displacement_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
-    	force_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+		displacement_ = tumor->displacement_;
+    	force_ = tumor->force_;
 
 		temp_.resize (3);
 		for (int i = 0; i < 3; i++) {
