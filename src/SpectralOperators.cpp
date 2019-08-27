@@ -14,9 +14,11 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
     #ifdef CUDA
         cufftResult cufft_status;
-        cudaMalloc ((void**) &wx_hat_, alloc_max_);
+
         cudaMalloc ((void**) &x_hat_, alloc_max_);
+        cudaMalloc ((void**) &wx_hat_, alloc_max_);
         cudaMalloc ((void**) &d1_ptr_, alloc_max_);
+        cudaMalloc ((void**) &d2_ptr_, alloc_max_);
         cudaMalloc ((void**) &c_hat_, alloc_max_);
         cudaMalloc ((void**) &f_hat_, alloc_max_);
         cudaMalloc ((void**) &f_, alloc_max_);
@@ -31,10 +33,12 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
                 cufft_status = cufftPlan3d (&plan_c2r_, n[0], n[1], n[2], CUFFT_Z2D);   cufftCheckError (cufft_status);
             #endif
         }
+
         // define constants for the gpu
         initCudaConstants (isize, osize, istart, ostart, n);
     #else
         d1_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
+        d2_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         wx_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         c_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
@@ -44,9 +48,6 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
     #endif
 
-    c_hat_ = x_hat_;
-    f_hat_ = wx_hat_;
-    f_ = d1_ptr_;
 }
 
 void SpectralOperators::executeFFTR2C (ScalarType *f, ComplexType *f_hat) {
@@ -171,21 +172,16 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
             accfftDiv (div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
         } else {
             cufftResult cufft_status;
-             // cublas for axpy
-            cublasStatus_t status;
-            cublasHandle_t handle;
-            // cublas for vec scale
-            PetscCUBLASGetHandle (&handle);
-            ScalarType alp = 1.;
            
+
             // compute forward transform for dx
             cufft_status = cufftExecuteR2C (plan_r2c_, (CufftScalarType*) dx_ptr, (CufftComplexType*) x_hat_);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
-            multiplyXWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
+            multiplyXWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
-            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) div_ptr);
+            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) d1_ptr_);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
@@ -194,27 +190,32 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
-            multiplyYWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
+            multiplyYWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
-            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) d1_ptr_);
+            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) d2_ptr_);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
-
-            status = cublasAXPY (handle, isize_[0] * isize_[1] * isize_[2], &alp, d1_ptr_, 1, div_ptr, 1);
-            cublasCheckError (status);
 
             // compute forward transform for dz
             cufft_status = cufftExecuteR2C (plan_r2c_, (CufftScalarType*) dz_ptr, (CufftComplexType*) x_hat_);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
-            multiplyZWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
+            multiplyZWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
-            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) d1_ptr_);
+            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) div_ptr);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
-            
+
+            // cublas for axpy
+            cublasStatus_t status;
+            cublasHandle_t handle;
+            // cublas for vec scale
+            PetscCUBLASGetHandle (&handle);
+            ScalarType alp = 1.;
             status = cublasAXPY (handle, isize_[0] * isize_[1] * isize_[2], &alp, d1_ptr_, 1, div_ptr, 1);
+            cublasCheckError (status);
+            status = cublasAXPY (handle, isize_[0] * isize_[1] * isize_[2], &alp, d2_ptr_, 1, div_ptr, 1);
             cublasCheckError (status);
         }
 
@@ -373,9 +374,11 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
 
 SpectralOperators::~SpectralOperators () {
     accfft_destroy_plan (plan_);
-    fft_free (wx_hat_);
+
     fft_free (x_hat_);
     fft_free (d1_ptr_);
+    fft_free (d2_ptr_);
+    fft_free (wx_hat_);
     fft_free(f_);
     fft_free(f_hat_);
     fft_free(c_hat_);

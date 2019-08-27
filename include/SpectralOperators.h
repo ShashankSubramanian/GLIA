@@ -20,7 +20,7 @@ class SpectralOperators {
 		int64_t alloc_max_;
 
 		ComplexType *x_hat_, *wx_hat_;
-		ScalarType *d1_ptr_;
+		ScalarType *d1_ptr_, *d2_ptr_;
 
 		// these vectors are not created; just pointers for readability
 		ComplexType *c_hat_, *f_hat_;
