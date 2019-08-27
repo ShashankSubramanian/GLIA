@@ -1,10 +1,6 @@
 #include "SpectralOperators.h"
 
 void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm) {
-
-	ScalarType *c_0;
-    ComplexType *c_hat;
-
     alloc_max_ = fft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
     isize_ = isize;
     istart_ = istart;
@@ -246,23 +242,14 @@ PetscErrorCode SpectralOperators::weierstrassSmoother (Vec wc, Vec c, std::share
     double self_exec_time = -MPI_Wtime ();
 
     ScalarType *wc_ptr, *c_ptr;
-    #ifdef CUDA
-        ierr = VecCUDAGetArrayReadWrite (wc, &wc_ptr);
-        ierr = VecCUDAGetArrayReadWrite (c, &c_ptr);
+    
+    ierr = vecGetArray (wc, &wc_ptr);
+    ierr = vecGetArray (c, &c_ptr);
 
-        ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
 
-        ierr = VecCUDARestoreArrayReadWrite (wc, &wc_ptr);
-        ierr = VecCUDARestoreArrayReadWrite (c, &c_ptr);
-    #else
-        ierr = VecGetArray (wc, &wc_ptr);
-        ierr = VecGetArray (c, &c_ptr);
-
-        ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
-
-        ierr = VecRestoreArray (wc, &wc_ptr);
-        ierr = VecRestoreArray (c, &c_ptr);
-    #endif
+    ierr = vecRestoreArray (wc, &wc_ptr);
+    ierr = vecRestoreArray (c, &c_ptr);
 
     self_exec_time += MPI_Wtime ();
 
