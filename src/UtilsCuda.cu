@@ -152,7 +152,7 @@ __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 		ScalarType X;
 		X = ostart_cuda[0] + x;
 
-	    ScalarType wx;
+	    ScalarType wx, temp;
 	    wx = X;
 
 	    if (X > n_cuda[0] / 2.0)
@@ -160,8 +160,9 @@ __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	    if (X == n_cuda[0] / 2.0)
 	        wx = 0;
 
+	    temp = f[index].x; // store this in case input and output are the same vector
 	    w_f[index].x = -factor *  wx * f[index].y;
-	    w_f[index].y = factor * wx * f[index].x;
+	    w_f[index].y = factor * wx * temp;
 	}
 }
 
@@ -177,7 +178,7 @@ __global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 		ScalarType Y;
 		Y = ostart_cuda[1] + y;
 
-	    ScalarType wy;
+	    ScalarType wy, temp;
 	    wy = Y;
 
 	    if (Y > n_cuda[1] / 2.0)
@@ -185,8 +186,9 @@ __global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	    if (Y == n_cuda[1] / 2.0)
 	        wy = 0;
 
+	    temp = f[index].x; // store this in case input and output are the same vector
 	    w_f[index].x = -factor *  wy * f[index].y;
-	    w_f[index].y = factor * wy * f[index].x;
+	    w_f[index].y = factor * wy * temp;
 	}
 }
 
@@ -202,7 +204,7 @@ __global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 		ScalarType Z;
 		Z = ostart_cuda[2] + z;
 
-	    ScalarType wz;
+	    ScalarType wz, temp;
 	    wz = Z;
 
 	    if (Z > n_cuda[2] / 2.0)
@@ -210,8 +212,9 @@ __global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	    if (Z == n_cuda[2] / 2.0)
 	        wz = 0;
 
+	    temp = f[index].x; // store this in case input and output are the same vector
 	    w_f[index].x = -factor *  wz * f[index].y;
-	    w_f[index].y = factor * wz * f[index].x;
+	    w_f[index].y = factor * wz * temp;
 	}
 }
 

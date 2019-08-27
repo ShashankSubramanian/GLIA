@@ -503,7 +503,11 @@ int main (int argc, char** argv) {
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
-    std::shared_ptr<HealthyProbMaps> h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
+
+    std::shared_ptr<HealthyProbMaps> h_maps = nullptr;
+    if (n_misc->model_ == 3) {// Modified objective
+        h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
+    }
 
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
