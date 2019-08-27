@@ -14,7 +14,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
     #ifdef CUDA
         cufftResult cufft_status;
-
+        cudaMalloc ((void**) &wx_hat_, alloc_max_);
         cudaMalloc ((void**) &x_hat_, alloc_max_);
         cudaMalloc ((void**) &d1_ptr_, alloc_max_);
         cudaMalloc ((void**) &c_hat_, alloc_max_);
@@ -36,6 +36,7 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
     #else
         d1_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
+        wx_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         c_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         f_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         f_ = (ScalarType*) accfft_alloc (alloc_max_);
@@ -43,6 +44,9 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
     #endif
 
+    c_hat_ = x_hat_;
+    f_hat_ = wx_hat_;
+    f_ = d1_ptr_;
 }
 
 void SpectralOperators::executeFFTR2C (ScalarType *f, ComplexType *f_hat) {
@@ -107,27 +111,27 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
 
             if (XYZ[0]) {
                 // compute x gradient
-                multiplyXWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
+                multiplyXWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
                 // backwards transform
-                cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) grad_x_ptr);
+                cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) grad_x_ptr);
                 cufftCheckError (cufft_status);
                 cudaDeviceSynchronize ();
             }
 
             if (XYZ[1]) {
                 // compute y gradient
-                multiplyYWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
+                multiplyYWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
                 // backwards transform
-                cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) grad_y_ptr);
+                cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) grad_y_ptr);
                 cufftCheckError (cufft_status);
                 cudaDeviceSynchronize ();
             }
 
             if (XYZ[2]) {
                 // compute z gradient
-                multiplyZWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
+                multiplyZWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
                 // backwards transform
-                cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) grad_z_ptr);
+                cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) grad_z_ptr);
                 cufftCheckError (cufft_status);
                 cudaDeviceSynchronize ();
             }
@@ -369,7 +373,7 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
 
 SpectralOperators::~SpectralOperators () {
     accfft_destroy_plan (plan_);
-
+    fft_free (wx_hat_);
     fft_free (x_hat_);
     fft_free (d1_ptr_);
     fft_free(f_);

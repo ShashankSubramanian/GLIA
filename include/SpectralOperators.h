@@ -19,12 +19,10 @@ class SpectralOperators {
 		#endif
 		int64_t alloc_max_;
 
-		ComplexType *x_hat_;
+		ComplexType *x_hat_, *wx_hat_;
 		ScalarType *d1_ptr_;
 
-		// Memory for smoother
-		// Cannot re-use above memory because it seems that accfft is also using these (?) - Needs
-		// to be re-used if we are running out of memory on the GPU ~ 60-70mb max
+		// these vectors are not created; just pointers for readability
 		ComplexType *c_hat_, *f_hat_;
     	ScalarType *f_;
 
