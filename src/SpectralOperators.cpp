@@ -210,7 +210,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
 
             multiplyZWaveNumberCuda ((CudaComplexType*) wx_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
-            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) d1_ptr);
+            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) wx_hat_, (CufftScalarType*) d1_ptr_);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
