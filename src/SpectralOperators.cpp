@@ -18,9 +18,6 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         cudaMalloc ((void**) &x_hat_, alloc_max_);
         cudaMalloc ((void**) &wx_hat_, alloc_max_);
         cudaMalloc ((void**) &d1_ptr_, alloc_max_);
-        cudaMalloc ((void**) &c_hat_, alloc_max_);
-        cudaMalloc ((void**) &f_hat_, alloc_max_);
-        cudaMalloc ((void**) &f_, alloc_max_);
 
         plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);
         if (fft_mode_ == CUFFT) {
@@ -39,13 +36,13 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         d1_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         wx_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
-        c_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
-        f_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
-        f_ = (ScalarType*) accfft_alloc (alloc_max_);
 
         plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
     #endif
 
+    c_hat_ = x_hat_;
+    f_hat_ = wx_hat_;
+    f_ = d1_ptr_;
 }
 
 void SpectralOperators::executeFFTR2C (ScalarType *f, ComplexType *f_hat) {
@@ -378,9 +375,6 @@ SpectralOperators::~SpectralOperators () {
     fft_free (x_hat_);
     fft_free (d1_ptr_);
     fft_free (wx_hat_);
-    fft_free(f_);
-    fft_free(f_hat_);
-    fft_free(c_hat_);
 
     #ifdef CUDA
         cufftDestroy (plan_r2c_);
