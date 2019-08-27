@@ -19,8 +19,8 @@ class SpectralOperators {
 		#endif
 		int64_t alloc_max_;
 
-		ComplexType *x_hat_, *wx_hat_;
-		ScalarType *d1_ptr_, *d2_ptr_;
+		ComplexType *x_hat_;
+		ScalarType *d1_ptr_;
 
 		// Memory for smoother
 		// Cannot re-use above memory because it seems that accfft is also using these (?) - Needs
