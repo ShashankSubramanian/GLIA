@@ -181,7 +181,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
 
             multiplyXWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
-            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) div_ptr_);
+            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) div_ptr);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
 
@@ -206,7 +206,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
 
             multiplyZWaveNumberCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) x_hat_, osize_);
             // backwards transform
-            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) d1_ptr);
+            cufft_status = cufftExecuteC2R (plan_c2r_, (CufftComplexType*) x_hat_, (CufftScalarType*) d1_ptr_);
             cufftCheckError (cufft_status);
             cudaDeviceSynchronize ();
             
