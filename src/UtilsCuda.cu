@@ -71,7 +71,7 @@ __global__ void precFactorDiffusion (ScalarType *precfactor, ScalarType *work) {
 
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
-	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
+	if (x < osize_cuda[0] && y < osize_cuda[1] && z < osize_cuda[2]) {
 		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
 
 		ScalarType X, Y, Z;
@@ -148,12 +148,12 @@ __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
-	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
+	if (x < osize_cuda[0] && y < osize_cuda[1] && z < osize_cuda[2]) {
 		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
-		ScalarType X;
+		int64_t X;
 		X = ostart_cuda[0] + x;
 
-	    ScalarType wx;
+	    int64_t wx;
 	    wx = X;
 
 	    if (X > n_cuda[0] / 2.0)
@@ -173,12 +173,12 @@ __global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
-	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
+	if (x < osize_cuda[0] && y < osize_cuda[1] && z < osize_cuda[2]) {
 		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
-		ScalarType Y;
+		int64_t Y;
 		Y = ostart_cuda[1] + y;
 
-	    ScalarType wy;
+	    int64_t wy;
 	    wy = Y;
 
 	    if (Y > n_cuda[1] / 2.0)
@@ -198,12 +198,12 @@ __global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 
 	int64_t index = x * osize_cuda[1] * osize_cuda[2] + y * osize_cuda[2] + z;
 
-	if (index < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
+	if (x < osize_cuda[0] && y < osize_cuda[1] && z < osize_cuda[2]) {
 		ScalarType factor = 1.0 / (n_cuda[0] * n_cuda[1] * n_cuda[2]);
-		ScalarType Z;
+		int64_t Z;
 		Z = ostart_cuda[2] + z;
 
-	    ScalarType wz;
+	    int64_t wz;
 	    wz = Z;
 
 	    if (Z > n_cuda[2] / 2.0)
@@ -278,7 +278,7 @@ __global__ void precFactorElasticity (CudaComplexType *ux_hat, CudaComplexType *
 
 	int64_t ptr = i * osize_cuda[1] * osize_cuda[2] + j * osize_cuda[2] + k;
 
-	if (ptr < osize_cuda[0] * osize_cuda[1] * osize_cuda[2]) {
+	if (i < osize_cuda[0] && j < osize_cuda[1] && k < osize_cuda[2]) {
 		ScalarType s1, s2, s1_square, s3, scale;
 	    int64_t wx, wy, wz;
 	    ScalarType wTw, wTf_real, wTf_imag;
