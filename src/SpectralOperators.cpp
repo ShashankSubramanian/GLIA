@@ -35,10 +35,6 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
         plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
     #endif
-
-    c_hat_ = x_hat_;
-    f_hat_ = wx_hat_;
-    f_ = d1_ptr_;
 }
 
 void SpectralOperators::executeFFTR2C (ScalarType *f, ComplexType *f_hat) {
@@ -242,11 +238,11 @@ PetscErrorCode SpectralOperators::weierstrassSmoother (Vec wc, Vec c, std::share
     double self_exec_time = -MPI_Wtime ();
 
     ScalarType *wc_ptr, *c_ptr;
-    
+
     ierr = vecGetArray (wc, &wc_ptr);
     ierr = vecGetArray (c, &c_ptr);
 
-    ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma);
+    ierr = weierstrassSmoother (wc_ptr, c_ptr, n_misc, sigma, x_hat_, wx_hat_, d1_ptr_);
 
     ierr = vecRestoreArray (wc, &wc_ptr);
     ierr = vecRestoreArray (c, &c_ptr);
@@ -260,7 +256,8 @@ PetscErrorCode SpectralOperators::weierstrassSmoother (Vec wc, Vec c, std::share
     PetscFunctionReturn (0);
 }
 
-int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma) {
+int SpectralOperators::weierstrassSmoother (ScalarType* Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma,
+                                            ComplexType* f_hat, ComplexType* c_hat, ScalarType* f) {
     MPI_Comm c_comm = n_misc->c_comm_;
     int nprocs, procid;
     MPI_Comm_rank(c_comm, &procid);
@@ -281,7 +278,7 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
     ScalarType sum_f_local = 0., sum_f = 0;
     #ifdef CUDA
         // user define cuda call
-        computeWeierstrassFilterCuda (f_, &sum_f_local, sigma, isize);
+        computeWeierstrassFilterCuda (f, &sum_f_local, sigma, isize);
     #else
         ScalarType X, Y, Z, Xp, Yp, Zp;
         int64_t ptr;
@@ -295,21 +292,21 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
                     Z = (istart[2] + k) * hz;
                     Zp = Z - twopi;
                     ptr = i * isize[1] * isize[2] + j * isize[2] + k;
-                    f_[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
+                    f[ptr] = std::exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
                             + std::exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 
-                    f_[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
+                    f[ptr] += std::exp((-Xp * Xp - Y * Y - Z * Z) / sigma / sigma / 2.0)
                             + std::exp((-X * X - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
 
-                    f_[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+                    f[ptr] += std::exp((-X * X - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
                             + std::exp((-Xp * Xp - Yp * Yp - Z * Z) / sigma / sigma / 2.0);
 
-                    f_[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
+                    f[ptr] += std::exp((-Xp * Xp - Y * Y - Zp * Zp) / sigma / sigma / 2.0)
                             + std::exp((-X * X - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 
-                    if (f_[ptr] != f_[ptr])
-                        f_[ptr] = 0.; // To avoid Nan
-                    sum_f_local += f_[ptr];
+                    if (f[ptr] != f[ptr])
+                        f[ptr] = 0.; // To avoid Nan
+                    sum_f_local += f[ptr];
                 }
     #endif
     
@@ -322,36 +319,36 @@ int SpectralOperators::weierstrassSmoother (ScalarType * Wc, ScalarType *c, std:
         cublasHandle_t handle;
         // cublas for vec scale
         PetscCUBLASGetHandle (&handle);
-        status = cublasScale (handle, isize[0] * isize[1] * isize[2], &normalize_factor, f_, 1);
+        status = cublasScale (handle, isize[0] * isize[1] * isize[2], &normalize_factor, f, 1);
         cublasCheckError (status);
     #else
         for (int i = 0; i < isize[0] * isize[1] * isize[2]; i++)
-            f_[i] = f_[i] * normalize_factor;
+            f[i] = f[i] * normalize_factor;
     #endif
 
     /* Forward transform */
-    executeFFTR2C (f_, f_hat_);
-    executeFFTR2C (c, c_hat_);    
+    executeFFTR2C (f, f_hat);
+    executeFFTR2C (c, c_hat);    
 
     // Perform the Hadamard Transform f_hat=f_hat.*c_hat
     #ifdef CUDA
         ScalarType alp = factor * hx * hy * hz;
-        hadamardComplexProductCuda ((CudaComplexType*) f_hat_, (CudaComplexType*) c_hat_, osize);
+        hadamardComplexProductCuda ((CudaComplexType*) f_hat, (CudaComplexType*) c_hat, osize);
         #ifdef SINGLE
-        status = cublasCsscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat_, 1);
+        status = cublasCsscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #else
-        status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat_, 1);
+        status = cublasZdscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) f_hat, 1);
         #endif
         cublasCheckError (status);
     #else   
-        std::complex<ScalarType>* cf_hat = (std::complex<ScalarType>*) (ScalarType*) f_hat_;
-        std::complex<ScalarType>* cc_hat = (std::complex<ScalarType>*) (ScalarType*) c_hat_;
+        std::complex<ScalarType>* cf_hat = (std::complex<ScalarType>*) (ScalarType*) f_hat;
+        std::complex<ScalarType>* cc_hat = (std::complex<ScalarType>*) (ScalarType*) c_hat;
         for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
             cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
     #endif
 
     /* Backward transform */
-    executeFFTC2R (f_hat_, Wc);
+    executeFFTC2R (f_hat, Wc);
 
     return 0;
 }

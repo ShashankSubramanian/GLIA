@@ -22,10 +22,6 @@ class SpectralOperators {
 		ComplexType *x_hat_, *wx_hat_;
 		ScalarType *d1_ptr_;
 
-		// these vectors are not created; just pointers for readability
-		ComplexType *c_hat_, *f_hat_;
-    	ScalarType *f_;
-
 		void setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm);
 		void executeFFTR2C (ScalarType *f, ComplexType *f_hat);
 		void executeFFTC2R (ComplexType *f_hat, ScalarType *f);
@@ -34,7 +30,8 @@ class SpectralOperators {
 		PetscErrorCode computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, double *timers);
 
 		PetscErrorCode weierstrassSmoother (Vec Wc, Vec c, std::shared_ptr<NMisc> n_misc, ScalarType sigma);
-		int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma);
+		int weierstrassSmoother (ScalarType * Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma,
+			ComplexType*, ComplexType*, ScalarType*);
 
 		~SpectralOperators ();
 };
