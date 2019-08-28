@@ -22,9 +22,6 @@ class SpectralOperators {
 		ComplexType *x_hat_, *wx_hat_;
 		ScalarType *d1_ptr_;
 
-		// for smoother
-		ComplexType *c_hat_; // For some reason, unable to re-use wx_hat
-
 		void setup (int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm);
 		void executeFFTR2C (ScalarType *f, ComplexType *f_hat);
 		void executeFFTC2R (ComplexType *f_hat, ScalarType *f);
