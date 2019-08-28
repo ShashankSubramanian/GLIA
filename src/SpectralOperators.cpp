@@ -331,12 +331,12 @@ int SpectralOperators::weierstrassSmoother (ScalarType* Wc, ScalarType *c, std::
 
     /* Forward transform */
     executeFFTR2C (d1_ptr_, x_hat_);
-    executeFFTR2C (c, c_hat_);    
+    executeFFTR2C (c, wx_hat_);    
 
     // Perform the Hadamard Transform f_hat=f_hat.*c_hat
     #ifdef CUDA
         ScalarType alp = factor * hx * hy * hz;
-        hadamardComplexProductCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) c_hat_, osize);
+        hadamardComplexProductCuda ((CudaComplexType*) x_hat_, (CudaComplexType*) wx_hat_, osize);
         #ifdef SINGLE
         status = cublasCsscal (handle, osize[0] * osize[1] * osize[2], &alp, (CudaComplexType*) x_hat_, 1);
         #else
@@ -345,7 +345,7 @@ int SpectralOperators::weierstrassSmoother (ScalarType* Wc, ScalarType *c, std::
         cublasCheckError (status);
     #else   
         std::complex<ScalarType>* cf_hat = (std::complex<ScalarType>*) (ScalarType*) x_hat_;
-        std::complex<ScalarType>* cc_hat = (std::complex<ScalarType>*) (ScalarType*) c_hat_;
+        std::complex<ScalarType>* cc_hat = (std::complex<ScalarType>*) (ScalarType*) wx_hat_;
         for (int i = 0; i < osize[0] * osize[1] * osize[2]; i++)
             cf_hat[i] *= (cc_hat[i] * factor * hx * hy * hz);
     #endif

@@ -478,7 +478,7 @@ void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	setCoords <<< n_blocks, n_threads >>> (x_ptr, y_ptr, z_ptr);
 
@@ -489,7 +489,7 @@ void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int
 void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz) {
 	int n_th = N_THREADS;
 
-	nonlinearForceScaling <<< std::ceil(sz / n_th), n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, fac, sz);
+	nonlinearForceScaling <<< (sz + n_th - 1) / n_th, n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, fac, sz);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -498,7 +498,7 @@ void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarTyp
 void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeMagnitude <<< std::ceil(sz / n_th), n_th >>> (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
+	computeMagnitude <<< (sz + n_th - 1) / n_th, n_th >>> (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -510,7 +510,7 @@ void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat,
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	precFactorElasticity <<< n_blocks, n_threads >>> (ux_hat, uy_hat, uz_hat, fx_hat, fy_hat, fz_hat, lam_avg, mu_avg, screen_avg);
 
@@ -524,7 +524,7 @@ void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_pt
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	computeSecondOrderEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, wx_ptr, wy_ptr, wz_ptr, dt);
 
@@ -537,7 +537,7 @@ void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarTy
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	computeEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt);
 
@@ -551,7 +551,7 @@ void multiplyXWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	multiplyXWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
@@ -564,7 +564,7 @@ void multiplyYWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	multiplyYWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
@@ -577,7 +577,7 @@ void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	multiplyZWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
@@ -591,7 +591,7 @@ void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz)
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	precFactorDiffusion <<< n_blocks, n_threads >>> (precfactor, work);
 
@@ -604,7 +604,7 @@ void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType si
 	int n_th_y = N_THREADS_Y;
 	int n_th_z = N_THREADS_Z;
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
-	dim3 n_blocks (std::ceil(sz[0] / n_th_x), std::ceil(sz[1] / n_th_y), std::ceil(sz[2] / n_th_z));
+	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma);
 
@@ -626,7 +626,7 @@ void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType si
 void hadamardComplexProductCuda (CudaComplexType *y, ScalarType *x, int *sz) {
 	int n_th = N_THREADS;
 
-	hadamardComplexProduct <<< std::ceil((sz[0] * sz[1] * sz[2]) / n_th), n_th >>> (y, x);
+	hadamardComplexProduct <<< ((sz[0] * sz[1] * sz[2]) + n_th - 1)/ n_th, n_th >>> (y, x);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -651,9 +651,9 @@ void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType 
 	int n_th = N_THREADS;
 
 	if (linearized == 0)
-		logisticReaction <<< std::ceil(sz / n_th), n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
+		logisticReaction <<< (sz + n_th - 1) / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
 	else
-		logisticReactionLinearized <<< std::ceil(sz / n_th), n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
+		logisticReactionLinearized <<< (sz + n_th - 1) / n_th, n_th >>> (c_t_ptr, rho_ptr, c_ptr, dt);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -662,7 +662,7 @@ void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType 
 void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt, int64_t sz) {
 	int n_th = N_THREADS;
 
-	conserveHealthyTissues <<< std::ceil(sz / n_th), n_th >>> (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt);
+	conserveHealthyTissues <<< (sz + n_th - 1) / n_th, n_th >>> (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -671,7 +671,7 @@ void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarT
 void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_inv, ScalarType ox_mit, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeReactionRate <<< std::ceil(sz / n_th), n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_inv, ox_mit);
+	computeReactionRate <<< (sz + n_th - 1) / n_th, n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_inv, ox_mit);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -680,7 +680,7 @@ void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType 
 void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeTransition <<< std::ceil(sz / n_th), n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, thres);
+	computeTransition <<< (sz + n_th - 1) / n_th, n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, thres);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -689,7 +689,7 @@ void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarT
 void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeThesholder <<< std::ceil(sz / n_th), n_th >>> (h_ptr, ox_ptr, ox_hypoxia);
+	computeThesholder <<< (sz + n_th - 1) / n_th, n_th >>> (h_ptr, ox_ptr, ox_hypoxia);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -699,7 +699,7 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 						ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeSources <<< std::ceil(sz / n_th), n_th >>> (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, death_rate, ox_source, ox_consumption);
+	computeSources <<< (sz + n_th - 1) / n_th, n_th >>> (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, death_rate, ox_source, ox_consumption);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -708,7 +708,7 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeScreening <<< std::ceil(sz / n_th), n_th >>> (screen_ptr, c_ptr, screen_low, screen_high);
+	computeScreening <<< (sz + n_th - 1) / n_th, n_th >>> (screen_ptr, c_ptr, screen_low, screen_high);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
