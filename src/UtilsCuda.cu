@@ -140,6 +140,7 @@ __global__ void logisticReaction (ScalarType *c_t_ptr, ScalarType *rho_ptr, Scal
 	}
 }
 
+// No inplace multiply - be careful
 __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -152,7 +153,7 @@ __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 		ScalarType X;
 		X = ostart_cuda[0] + x;
 
-	    ScalarType wx, temp;
+	    ScalarType wx;
 	    wx = X;
 
 	    if (X > n_cuda[0] / 2.0)
@@ -160,9 +161,8 @@ __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	    if (X == n_cuda[0] / 2.0)
 	        wx = 0;
 
-	    temp = f[index].x; // store this in case input and output are the same vector
 	    w_f[index].x = -factor *  wx * f[index].y;
-	    w_f[index].y = factor * wx * temp;
+	    w_f[index].y = factor * wx * f[index].x;
 	}
 }
 
@@ -178,7 +178,7 @@ __global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 		ScalarType Y;
 		Y = ostart_cuda[1] + y;
 
-	    ScalarType wy, temp;
+	    ScalarType wy;
 	    wy = Y;
 
 	    if (Y > n_cuda[1] / 2.0)
@@ -186,9 +186,8 @@ __global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	    if (Y == n_cuda[1] / 2.0)
 	        wy = 0;
 
-	    temp = f[index].x; // store this in case input and output are the same vector
 	    w_f[index].x = -factor *  wy * f[index].y;
-	    w_f[index].y = factor * wy * temp;
+	    w_f[index].y = factor * wy * f[index].x;
 	}
 }
 
@@ -204,7 +203,7 @@ __global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 		ScalarType Z;
 		Z = ostart_cuda[2] + z;
 
-	    ScalarType wz, temp;
+	    ScalarType wz;
 	    wz = Z;
 
 	    if (Z > n_cuda[2] / 2.0)
@@ -212,9 +211,8 @@ __global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	    if (Z == n_cuda[2] / 2.0)
 	        wz = 0;
 
-	    temp = f[index].x; // store this in case input and output are the same vector
 	    w_f[index].x = -factor *  wz * f[index].y;
-	    w_f[index].y = factor * wz * temp;
+	    w_f[index].y = factor * wz * f[index].x;
 	}
 }
 
