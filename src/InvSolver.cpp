@@ -1222,7 +1222,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
 
             // == convergence test ==
             // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
-            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
+            // if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
+            itctx_->cosamp_->nits += itctx_->optfeedback_->nb_newton_it;
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
             // check if L2 solver converged
             if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {

@@ -154,7 +154,7 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0) {
 PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    TU_assert (inv_solver_->isInitialized (), "TumorSolverInterface::setOptimizerSettings(): InvSolver needs to be initialized.")
+    TU_assert (inv_solver_->isInitialized (), "TumorSolverInterface::solveInverse(): InvSolver needs to be initialized.")
     if (!optimizer_settings_changed_) {
         ierr = tuMSGwarn (" Tumor inverse solver running with default settings."); CHKERRQ (ierr);
     }
@@ -541,6 +541,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
   // inexact Newton
   inv_solver_->getInverseSolverContext()->cosamp_->maxit_newton = n_misc_->newton_maxit_;
+  // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = n_misc_->newton_maxit_;
 
   // solve
   // inv_solver_->solveInverseCoSaMp();
