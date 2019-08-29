@@ -1214,19 +1214,21 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             if (itctx_->n_misc_->write_p_checkpoint_) { writeCheckpoint(itctx_->cosamp_->x_sub, itctx_->tumor_->phi_, itctx_->n_misc_->writepath_ .str(), std::string("unscaled"));}
             if (procid == 0 && itctx_->n_misc_->verbosity_ >= 4) { ierr = VecView (itctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
-            // == prolongate ==
-            // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
-            // if inversion for reaction disabled, also reset operators
-            bool finalize = !itctx_->n_misc_->reaction_inversion_;
-            ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, finalize);  CHKERRQ (ierr); // x_full <-- P(x_sub)
-
             // == convergence test ==
             // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
             // if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2) {itctx_->cosamp_->nits += itctx_->cosamp_->inexact_nits;}
             itctx_->cosamp_->nits += itctx_->optfeedback_->nb_newton_it;
             conv_maxit = itctx_->cosamp_->nits >= itctx_->cosamp_->maxit_newton;
+
+            // == prolongate ==
+            // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
+            // if inversion for reaction disabled, also reset operators
+            bool finalize = !itctx_->n_misc_->reaction_inversion_;
+            bool continue = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
+            ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, (finalize || continue));  CHKERRQ (ierr); // x_full <-- P(x_sub)
+
             // check if L2 solver converged
-            if(!itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit) {
+            if(continue) {
                 ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<").";
                 ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
