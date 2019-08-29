@@ -1224,11 +1224,11 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
             // if inversion for reaction disabled, also reset operators
             bool finalize = !itctx_->n_misc_->reaction_inversion_;
-            bool continue = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
-            ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, (finalize || continue));  CHKERRQ (ierr); // x_full <-- P(x_sub)
+            bool contiterating = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
+            ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, (finalize || contiterating));  CHKERRQ (ierr); // x_full <-- P(x_sub)
 
             // check if L2 solver converged
-            if(continue) {
+            if(contiterating) {
                 ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< itctx_->cosamp_->nits <<"/"<< itctx_->cosamp_->maxit_newton <<").";
                 ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
                 ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
