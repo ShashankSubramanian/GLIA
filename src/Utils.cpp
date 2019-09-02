@@ -223,65 +223,164 @@ static bool isLittleEndian () {
 	return (numPtr[0] == 1);
 }
 
-void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
-	MPI_Comm c_comm = n_misc->c_comm_;
-	int nprocs, procid;
-	MPI_Comm_rank (c_comm, &procid);
-	MPI_Comm_size (c_comm, &nprocs);
+PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file) {                                                                                                                                                                                                                
+    PetscErrorCode ierr = 0;
+    std::stringstream ss; 
+    std::stringstream ss2;
 
-	if (A == NULL) {
-		PCOUT << "Error in DataOut ---> Input data is null" << std::endl;
-		return;
-	}
-	int *istart = n_misc->istart_;
-	int *isize = n_misc->isize_;
+    PetscFunctionBegin;
 
-	MPI_Offset istart_mpi[3] = { istart[0], istart[1], istart[2] };
-	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
+    ss2 << file << ":" << line;
+    ss << std::setw(98-ss2.str().size()) << std::left << msg << std::right << ss2.str();
+    std::string errmsg = "\x1b[31mERROR: " + ss.str() + "\x1b[0m";
+    ierr = PetscError(PETSC_COMM_WORLD, __LINE__, PETSC_FUNCTION_NAME, __FILE__, 1, PETSC_ERROR_INITIAL, errmsg.c_str()); CHKERRQ(ierr);
 
-	std::stringstream str;
-	// str << n_misc->readpath_.str().c_str() << fname;
-	str << fname;
-	read_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
-	return;
+    PetscFunctionReturn(ierr);
 }
 
-void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode myAssert(bool condition, std::string msg) {
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+                                                                                                                                                                                                                                                                                           
+    if (condition == false) {
+        ierr = throwError(msg); CHKERRQ(ierr);
+    }   
+
+    PetscFunctionReturn(ierr);
+}
+
+
+PetscErrorCode NCERRQ (int cerr) {
+    int rank;
+    PetscErrorCode ierr = 0;
+    std::stringstream ss;                                                                                                                                                                                                                                                                  
+    PetscFunctionBegin;
+
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    if (cerr != NC_NOERR) {
+        ss << ncmpi_strerror(cerr);
+        ierr = throwError(ss.str()); CHKERRQ(ierr);
+    }   
+
+    PetscFunctionReturn(ierr);
+}
+
+
+PetscErrorCode dataIn (double *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0; 
+	// get local sizes
+  MPI_Offset istart[3], isize[3];
+  istart[0] = static_cast<MPI_Offset>(n_misc->istart_[0]);
+  istart[1] = static_cast<MPI_Offset>(n_misc->istart_[1]);
+  istart[2] = static_cast<MPI_Offset>(n_misc->istart_[2]);
+
+  isize[0] = static_cast<MPI_Offset>(n_misc->isize_[0]);
+  isize[1] = static_cast<MPI_Offset>(n_misc->isize_[1]);
+  isize[2] = static_cast<MPI_Offset>(n_misc->isize_[2]);
+  int ncerr, fileid, ndims, nvars, ngatts, unlimited, varid[1];  
+  // open file
+  ncerr = ncmpi_open (PETSC_COMM_WORLD, fname, NC_NOWRITE, MPI_INFO_NULL, &fileid);
+  ierr = NCERRQ (ncerr);                                              CHKERRQ (ierr);
+  // query info about field named "data"
+  ncerr = ncmpi_inq (fileid, &ndims, &nvars, &ngatts, &unlimited);
+  ierr = NCERRQ (ncerr);                                              CHKERRQ (ierr);
+  ncerr = ncmpi_inq_varid (fileid, "data", &varid[0]);
+  ierr = NCERRQ(ncerr);                                               CHKERRQ(ierr);
+  ncerr = ncmpi_get_vara_all (fileid, varid[0], istart, isize, p_x, n_misc->n_local_, MPI_DOUBLE);
+  ierr = NCERRQ (ncerr);                                              CHKERRQ(ierr);                                                                                                                                                                                                                                                   
+  ncerr=ncmpi_close(fileid);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	double *a_ptr;
 	PetscErrorCode ierr;
-	ierr = VecGetArray (A, &a_ptr);
-	dataIn(a_ptr, n_misc, fname);
-	ierr = VecRestoreArray (A, &a_ptr);
+	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);  
+	dataIn (a_ptr, n_misc, fname);
+	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);  
+  PetscFunctionReturn (0);
 }
 
-void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
-	MPI_Comm c_comm = n_misc->c_comm_;
-	int nprocs, procid;
-	MPI_Comm_rank(c_comm, &procid);
-	MPI_Comm_size(c_comm, &nprocs);
+PetscErrorCode dataOut (double *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+    int ncerr, mode, dims[3], varid[1], nx[3], iscdf5, fileid;
+    int nl;
+    MPI_Offset istart[3], isize[3];
+    MPI_Comm c_comm;
+    bool usecdf5 = false;   // CDF-5 is mandatory for large files (>= 2x10^9 cells)
 
-	if (A == NULL) {
-		PCOUT << "Error in DataOut ---> Input data is null" << std::endl;
-		return;
-	}
-	/* Write the output */
-	int *istart = n_misc->istart_;
-	int *isize = n_misc->isize_;
+    std::stringstream ss;
+    ss << n_misc->writepath_.str().c_str() << fname;
+    ierr = myAssert(p_x != NULL, "null pointer"); CHKERRQ(ierr);
 
-	std::stringstream str;
-	MPI_Offset istart_mpi[3] = { istart[0], istart[1], istart[2] };
-	MPI_Offset isize_mpi[3] = { isize[0], isize[1], isize[2] };
-	str << n_misc->writepath_.str().c_str() << fname;
-	write_pnetcdf(str.str().c_str(), istart_mpi, isize_mpi, c_comm, n_misc->n_, A);
-	return;
+    // file creation mode
+    mode=NC_CLOBBER;
+    if (usecdf5) {
+        mode = NC_CLOBBER | NC_64BIT_DATA;
+    } else {
+        mode = NC_CLOBBER | NC_64BIT_OFFSET;
+    }    
+
+    c_comm = n_misc->c_comm_;
+
+    // create netcdf file
+    ncerr = ncmpi_create (c_comm, ss.str().c_str(), mode, MPI_INFO_NULL, &fileid);
+    ierr = NCERRQ (ncerr); CHKERRQ (ierr);
+
+    nx[0] = n_misc->n_[0];
+    nx[1] = n_misc->n_[1];
+    nx[2] = n_misc->n_[2];
+    nl = n_misc->n_local_;
+
+    // set size
+    ncerr = ncmpi_def_dim(fileid, "x", nx[0], &dims[0]);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+    ncerr = ncmpi_def_dim(fileid, "y", nx[1], &dims[1]);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+    ncerr = ncmpi_def_dim(fileid, "z", nx[2], &dims[2]);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+
+    // define name for output field
+    ncerr = ncmpi_def_var(fileid, "data", NC_DOUBLE, 3, dims, &varid[0]);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+
+    iscdf5 = usecdf5 ? 1 : 0; 
+    ncerr = ncmpi_put_att_int(fileid, NC_GLOBAL, "CDF-5 mode", NC_INT, 1, &iscdf5);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+    ncerr = ncmpi_enddef(fileid);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+
+    // get local sizes
+    istart[0] = static_cast<MPI_Offset>(n_misc->istart_[0]);
+    istart[1] = static_cast<MPI_Offset>(n_misc->istart_[1]);
+    istart[2] = static_cast<MPI_Offset>(n_misc->istart_[2]);
+
+    isize[0] = static_cast<MPI_Offset>(n_misc->isize_[0]);
+    isize[1] = static_cast<MPI_Offset>(n_misc->isize_[1]);
+    isize[2] = static_cast<MPI_Offset>(n_misc->isize_[2]);
+
+    ierr = myAssert(nl == isize[0]*isize[1]*isize[2], "size error"); CHKERRQ(ierr);
+
+    // write data to file
+    ncerr = ncmpi_put_vara_all(fileid, varid[0], istart, isize, p_x, nl, MPI_DOUBLE);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
+
+    // close file
+    ncerr = ncmpi_close(fileid);
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);  
+    PetscFunctionReturn(0);
 }
 
-void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	double *a_ptr;
 	PetscErrorCode ierr;
-	ierr = VecGetArray (A, &a_ptr);
+	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);  
 	dataOut (a_ptr, n_misc, fname);
-	ierr = VecRestoreArray (A, &a_ptr);
+	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);  
+  PetscFunctionReturn(0);
 }
 
 // ### _____________________________________________________________________ ___

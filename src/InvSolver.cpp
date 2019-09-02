@@ -934,6 +934,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     PetscReal beta_store, norm_rel, norm;
     int nnz = 0;
     bool conv_maxit = false;
+    bool finalize = false, contiterating = true;
     Vec all_phis;
 
     // abbrev
@@ -1223,8 +1224,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             // == prolongate ==
             // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
             // if inversion for reaction disabled, also reset operators
-            bool finalize = !itctx_->n_misc_->reaction_inversion_;
-            bool contiterating = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
+            finalize = !itctx_->n_misc_->reaction_inversion_;
+            contiterating = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, (finalize || contiterating));  CHKERRQ (ierr); // x_full <-- P(x_sub)
 
             // check if L2 solver converged
@@ -2730,7 +2731,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep;
     bool stop[3];
     int verbosity;
-    std::stringstream ss, sc;
+    std::stringstream ss;
     Vec x = nullptr, g = nullptr;
     ierr = TaoGetSolutionVector(tao, &x);                                     CHKERRQ(ierr);
     TaoLineSearch ls = nullptr;
@@ -2762,7 +2763,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     // update/set reference gradient (with p = zeros)
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
-        Vec dJ, p0;
+        Vec dJ = nullptr, p0 = nullptr;
         double norm_gref = 0.;
         ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
@@ -3179,7 +3180,7 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep;
     bool stop[3];
     int verbosity;
-    std::stringstream ss, sc;
+    std::stringstream ss;
     Vec x = nullptr, g = nullptr;
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
     TaoLineSearch ls = nullptr;

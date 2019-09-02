@@ -26,8 +26,11 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "EventTimings.hpp"
+#include <pnetcdf.h>
 
 class Phi;
+
+#define throwError(str) throwErrorMsg(str, __LINE__, __FILE__)
 
 enum {QDFS = 0, SLFS = 1};
 enum {CONSTCOEF = 1, SINECOEF = 2, BRAIN = 0, BRAINNEARMF = 3, BRAINFARMF = 4};
@@ -557,6 +560,11 @@ struct LSCtx {
     PetscReal J_old;
 };
 
+//pnetcdf error handling
+PetscErrorCode NCERRQ (int cerr);
+PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file);
+PetscErrorCode myAssert(bool condition, std::string msg);
+
 int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
@@ -582,10 +590,10 @@ PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
 	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg);
 
 //Read/Write function prototypes
-void dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
-void dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
-void dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
-void dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 /// @reads in binary vector, serial
 PetscErrorCode readBIN(Vec* x, int size2, std::string f);
 /// @brief writes out vector im binary format, serial

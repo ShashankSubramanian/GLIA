@@ -544,8 +544,8 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = n_misc_->newton_maxit_;
 
   // solve
-  // inv_solver_->solveInverseCoSaMp();
-  inv_solver_->solveInverseCoSaMpRS(false);
+  inv_solver_->solveInverseCoSaMp();
+  // inv_solver_->solveInverseCoSaMpRS(false);
   ierr = VecCopy (inv_solver_->getPrec(), prec);                                CHKERRQ (ierr);
 
   PetscFunctionReturn(ierr);
