@@ -74,6 +74,7 @@ struct OptimizerSettings {
     , grtol (1E-5)
     , gatol (1E-8)
     , newton_maxit (30)
+    , newton_minit (1)
     , gist_maxit (5)
     , krylov_maxit (30)
     , iterbound (200)
