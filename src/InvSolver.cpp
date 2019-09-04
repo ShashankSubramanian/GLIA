@@ -2182,6 +2182,7 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
 
+    Vec tao_grad;
     // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
     ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
@@ -3227,6 +3228,7 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
+    Vec tao_grad;
     // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
     ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
