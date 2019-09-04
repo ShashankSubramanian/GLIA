@@ -174,9 +174,7 @@ PetscErrorCode SemiLagrangianSolver::setCoords (std::shared_ptr<VecField> coords
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    CtxAdv *ctx;
-    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
-    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+    std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
 
     #ifdef CUDA
         ScalarType *x_ptr, *y_ptr, *z_ptr;
@@ -203,9 +201,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    CtxAdv *ctx;
-    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
-    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+    std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
 
     ScalarType *in_ptr, *out_ptr, *query_ptr;
 
@@ -241,7 +237,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
 
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
@@ -256,9 +252,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    CtxAdv *ctx;
-    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
-    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+    std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
 
     #if defined(CUDA) && !defined(MPICUDA)
         ScalarType *ix_ptr, *iy_ptr, *iz_ptr, *ox_ptr, *oy_ptr, *oz_ptr, *query_ptr;
@@ -298,7 +292,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     #endif
     
     self_exec_time += MPI_Wtime();
-    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
@@ -313,11 +307,9 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
-    CtxAdv *ctx;
-    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
-    ScalarType dt = ctx->dt_;
-    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
-    std::shared_ptr<VecField> velocity = ctx->velocity_;
+    ScalarType dt = ctx_->dt_;
+    std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
+    std::shared_ptr<VecField> velocity = ctx_->velocity_;
 
     ScalarType *vx_ptr, *vy_ptr, *vz_ptr, *query_ptr, *wx_ptr, *wy_ptr, *wz_ptr;
     ScalarType x1, x2, x3;
@@ -446,7 +438,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     ierr = work_field_->set (0.);                                   CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
@@ -459,12 +451,10 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     Event e ("tumor-adv-semilag-solve");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-
-    CtxAdv *ctx;
-    ierr = MatShellGetContext (A_, &ctx);                     CHKERRQ (ierr);
-    ctx->dt_ = dt;
-    ctx->velocity_ = velocity;
-    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+    
+    ctx_->dt_ = dt;
+    ctx_->velocity_ = velocity;
+    std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
 
     if (!trajectoryIsComputed_) {
         ierr = computeTrajectories ();                        CHKERRQ (ierr);
@@ -519,7 +509,7 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     
 
     self_exec_time += MPI_Wtime();
-    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
     PetscFunctionReturn (0);
