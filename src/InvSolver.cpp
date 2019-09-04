@@ -2765,9 +2765,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
         Vec dJ, p0;
         double norm_gref = 0.;
         ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
-      ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
+        ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
         ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
-      ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
+        ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
 
       if (ctx->n_misc_->flag_reaction_inv_) {
         norm_gref = gnorm;

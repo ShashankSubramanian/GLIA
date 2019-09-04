@@ -29,60 +29,6 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-
-# ###
-# ### ------------------------------------------------------------------------ ###
-# def extractRhoK(path, rhofac):
-#     env_file = open(os.path.join(path,'env_rhok.sh'), 'w')
-#     env_file.write("#!/bin/bash\n")
-#     env_file.write("export RHO_INIT=8\n")
-#     env_file.write("export K_INIT=0\n")
-#     empty = False;
-#     exist = False;
-#     if os.path.exists(os.path.join(path,'info.dat')):
-#         exist =True;
-#         with open(os.path.join(path,'info.dat'), 'r') as f:
-#             lines  = f.readlines();
-#             if len(lines) > 0:
-#                 rho = rhofac * float(lines[1].split(" ")[0]);
-#                 k   = float(lines[1].split(" ")[1]);
-#                 env_file.write("export RHO_INIT="+str(rho)+"\n")
-#                 env_file.write("export K_INIT="+str(k)+"\n")
-#                 os.environ['RHO_INIT'] = str(rho);
-#                 os.environ['K_INIT']   = str(k);
-#                 print( bcolors.OKBLUE + " ... setting init guess (rho, k) = (",rho,",",k,") " + bcolors.ENDC);
-#             else:
-#                 empty = True;
-#     if empty or not exist:
-#         print("Error: info.dat file in ", path, "does not exist.");
-#         print("Try extracting rho/k from log file ... ")
-#         files = os.listdir(path)
-#         for file in files:
-#             if not "tumor_solver_log" in file:
-#                 continue;
-#             print("reading logfile: ", file)
-#             if os.path.exists(os.path.join(path, file)):
-#                 with open(os.path.join(path, file), 'r',  encoding='utf-8') as f:
-#                     lines = f.readlines();
-#                     rho_ = -1;
-#                     k_   = -1;
-#                     for line in lines:
-#                         if "r1:" in line:
-#                             rho_ = float(line.split("r1:")[-1])
-#                         if "k1:" in line:
-#                             k_ = float(line.split("k1:")[-1])
-#                     if rho_ >= 0 and k_ >= 0:
-#                         rho = rhofac * rho_;
-#                         k   =  k_;
-#                         env_file.write("export RHO_INIT="+str(rho)+"\n")
-#                         env_file.write("export K_INIT="+str(k)+"\n")
-#                         os.environ['RHO_INIT'] = str(rho);
-#                         os.environ['K_INIT']   = str(k);
-#                         print( bcolors.OKBLUE + " ... setting init guess (rho, k) = (",rho,",",k,") " + bcolors.ENDC);
-#                     else:
-#                         print( bcolors.WARNING + " Error: failed to set rho and k; using default values " + bcolors.ENDC);
-#     env_file.close();
-
 ###
 ### ------------------------------------------------------------------------ ###
 def extractRhoK(path, rhofac):
