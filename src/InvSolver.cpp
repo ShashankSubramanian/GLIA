@@ -6,7 +6,9 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 #include "TaoL1Solver.h"
-#include "BLMVM.h"
+#ifdef BLMVM_USER
+    #include "BLMVM.h"
+#endif
 
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor)
@@ -61,7 +63,9 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
 
 
   // register copied blmvm solver
-  ierr = TaoRegister ("tao_blmvm_m", TaoCreate_BLMVM_M);                        CHKERRQ (ierr);
+  #ifdef BLMVM_USER 
+    ierr = TaoRegister ("tao_blmvm_m", TaoCreate_BLMVM_M);                        CHKERRQ (ierr);
+  #endif
   if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
     ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
     itctx_->lam_right = itctx_->n_misc_->lambda_;
@@ -484,7 +488,11 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = VecDuplicate (x_in, &xrec_);                                           CHKERRQ(ierr);
     ierr = VecSet       (xrec_, 0.0);                                             CHKERRQ(ierr);
     ierr = TaoCreate    (PETSC_COMM_SELF, &tao_);                                 CHKERRQ (ierr);
-    ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+    #ifdef BLMVM_USER
+        ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+    #else
+        ierr = TaoSetType   (tao_, "bqnls");                                    CHKERRQ (ierr);
+    #endif        
     ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &xrec_rd_); /* inv rho and k */   CHKERRQ (ierr);
     ierr = VecSet        (xrec_rd_, 0.);                                          CHKERRQ (ierr);
     ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
@@ -867,6 +875,7 @@ PetscErrorCode InvSolver::solve () {
     const TaoType taotype; ierr = TaoGetType (tao_, &taotype);                  CHKERRQ(ierr);
     #endif
     ierr = TaoGetType (tao_, &taotype); CHKERRQ(ierr);
+    #ifdef BLMVM_USER
     if (strcmp(taotype, "tao_blmvm_m") == 0) {
         if (itctx_->optsettings_->linesearch == ARMIJO) {
           tuMSGstd(".. storing last ls step.");
@@ -874,6 +883,7 @@ PetscErrorCode InvSolver::solve () {
           itctx_->last_ls_step = blm->last_ls_step;
         }
     }
+    #endif
 
     /* === get solution status === */
     ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL); CHKERRQ(ierr);
@@ -3517,8 +3527,11 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ls->stepmin = minstep;
     } else {
       if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
-        // ierr = TaoSetType (tao, "blmvm");   CHKERRQ(ierr);   // set TAO solver type
-        ierr = TaoSetType (tao, "tao_blmvm_m");   CHKERRQ(ierr);   // set TAO solver type
+        #ifdef BLMVM_USER
+        ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+        #else
+        ierr = TaoSetType   (tao_, "bqnls");                                          CHKERRQ (ierr);
+        #endif        
       } else {
         ierr = TaoSetType (tao, "bnls");    CHKERRQ(ierr);  // set TAO solver type
       }
@@ -3678,10 +3691,12 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       if (ctx->optsettings_->linesearch == ARMIJO) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
         tuMSGstd(" using line-search type: armijo");
+        #ifdef BLMVM_USER
         if (strcmp(taotype, "tao_blmvm_m") == 0) {
           TAO_BLMVM_M *blm = (TAO_BLMVM_M *) tao->data;
           blm->last_ls_step = ctx->last_ls_step;
         }
+        #endif
       } else {
         tuMSGstd(" using line-search type: more-thuene");
       }

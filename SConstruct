@@ -154,6 +154,9 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
 
+# use user-defined blmvm solver
+env.Append(CCFLAGS = ['-DBLMVM_USER'])
+
 # enforce positivity in diffusion inversion for ks
 # env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
@@ -235,11 +238,11 @@ bininv = env.Program (
 )
 env.Alias("bin", bininv)
 
-solib = env.SharedLibrary (
-     target = buildpath + '/libtumor',
-     source = [sourcesPGLISTR],
-)
-env.Alias("solib", solib)
+# solib = env.SharedLibrary (
+#      target = buildpath + '/libtumor',
+#      source = [sourcesPGLISTR],
+# )
+# env.Alias("solib", solib)
 
 # Creates a symlink that always points to the latest build
 symlink = env.Command(
@@ -249,7 +252,7 @@ symlink = env.Command(
 )
 
 #Default(staticlib, solib, bin, symlink)
-Default(bininv, solib, symlink)
+Default(bininv, symlink)
 AlwaysBuild(symlink)
 
 print ("Targets:   " + ", ".join([str(i) for i in BUILD_TARGETS]))
