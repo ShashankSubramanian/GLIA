@@ -303,7 +303,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ctx->spec_ops_->computeGradient (tumor->work_[7], tumor->work_[8], tumor->work_[9], displacement->y_, &XYZ, t.data());
     ctx->spec_ops_->computeGradient (tumor->work_[10], tumor->work_[11], tumor->work_[0], displacement->z_, &XYZ, t.data());
 
-    ierr = VecAXPY (tumor->work_[4], 1.0, tumor->work_[4]);                     CHKERRQ (ierr);   // dudx + dudx
+    ierr = VecScale (tumor->work_[4], 2.);                                      CHKERRQ (ierr);   // dudx + dudx
     ierr = VecWAXPY (tumor->work_[8], 1.0, tumor->work_[5], tumor->work_[7]);   CHKERRQ (ierr);   // dudy + dvdx
     ierr = VecWAXPY (tumor->work_[0], 1.0, tumor->work_[6], tumor->work_[10]);  CHKERRQ (ierr);   // dudz + dwdx
     ierr = VecPointwiseMult (tumor->work_[4], ctx->mu_, tumor->work_[4]);       CHKERRQ (ierr);   // mu * (...)
@@ -314,7 +314,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	ierr = VecAXPY (force->x_, 1.0, tumor->work_[1]);							CHKERRQ (ierr);   // first term + second term
 
     ierr = VecWAXPY (tumor->work_[4], 1.0, tumor->work_[7], tumor->work_[5]);   CHKERRQ (ierr);   // dvdx + dudy
-    ierr = VecAXPY (tumor->work_[8], 1.0, tumor->work_[8]);                     CHKERRQ (ierr);   // dvdy + dvdy
+    ierr = VecScale (tumor->work_[8], 2.);                                      CHKERRQ (ierr);   // dvdy + dvdy
     ierr = VecWAXPY (tumor->work_[0], 1.0, tumor->work_[9], tumor->work_[11]);  CHKERRQ (ierr);   // dvdz + dwdy
     ierr = VecPointwiseMult (tumor->work_[4], ctx->mu_, tumor->work_[4]);       CHKERRQ (ierr);   // mu * (...)
     ierr = VecPointwiseMult (tumor->work_[8], ctx->mu_, tumor->work_[8]);       CHKERRQ (ierr);   // mu * (...)
@@ -325,7 +325,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 
     ierr = VecWAXPY (tumor->work_[4], 1.0, tumor->work_[10], tumor->work_[6]);  CHKERRQ (ierr);   // dwdx + dudz
     ierr = VecWAXPY (tumor->work_[8], 1.0, tumor->work_[11], tumor->work_[9]);  CHKERRQ (ierr);   // dwdy + dvdz
-    ierr = VecAXPY (tumor->work_[0], 1.0, tumor->work_[0]);                     CHKERRQ (ierr);   // dwdz + dwdz
+    ierr = VecScale (tumor->work_[0], 2.);                                      CHKERRQ (ierr);   // dwdz + dwdz
     ierr = VecPointwiseMult (tumor->work_[4], ctx->mu_, tumor->work_[4]);       CHKERRQ (ierr);   // mu * (...)
     ierr = VecPointwiseMult (tumor->work_[8], ctx->mu_, tumor->work_[8]);       CHKERRQ (ierr);   // mu * (...)
     ierr = VecPointwiseMult (tumor->work_[0], ctx->mu_, tumor->work_[0]);       CHKERRQ (ierr);   // mu * (...)
