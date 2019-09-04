@@ -5,7 +5,6 @@ DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralO
 :
 ctx_() {
     PetscErrorCode ierr = 0;
-
     ksp_itr_ = 0;
     ctx_ = std::make_shared<Ctx> ();
     ctx_->k_ = k;
@@ -44,13 +43,6 @@ ctx_() {
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
     ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
-
-    #ifdef CUDA
-        cudaMalloc ((void**)&ctx_->c_hat_, n_misc->accfft_alloc_max_);
-    #else
-        ctx_->c_hat_ = (ComplexType *) accfft_alloc (n_misc->accfft_alloc_max_);
-    #endif
-
 }
 
 PetscErrorCode diffSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
@@ -208,29 +200,20 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
 
     ScalarType *y_ptr;
+    ierr = vecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
     #ifdef CUDA
-        ierr = VecCUDAGetArrayReadWrite (y, &y_ptr);                             CHKERRQ (ierr);
-        ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->c_hat_);
-
-        // TODO: is there a better way to do this by somehow casting ScalarType* to ComplexType*?
-        hadamardComplexProductCuda ((CudaComplexType*) ctx->c_hat_, ctx->precfactor_, n_misc->osize_);
-
-        ctx->spec_ops_->executeFFTC2R (ctx->c_hat_, y_ptr);
-
-        ierr = VecCUDARestoreArrayReadWrite (y, &y_ptr);                         CHKERRQ (ierr);
-    #else
-        ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
-        ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->c_hat_);
-
-        std::complex<ScalarType> *c_a = (std::complex<ScalarType> *) ctx->c_hat_;
+        ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->spec_ops_->x_hat_);
+        hadamardComplexProductCuda ((CudaComplexType*) ctx->spec_ops_->x_hat_, ctx->precfactor_, n_misc->osize_);
+        ctx->spec_ops_->executeFFTC2R (ctx->spec_ops_->x_hat_, y_ptr);
+    #else    
+        ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->spec_ops_->x_hat_);
+        std::complex<ScalarType> *c_a = (std::complex<ScalarType> *) ctx->spec_ops_->x_hat_;
         for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
             c_a[i] *= ctx->precfactor_[i];
         }
-
-        ctx->spec_ops_->executeFFTC2R (ctx->c_hat_, y_ptr);
-
-        ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
+        ctx->spec_ops_->executeFFTC2R (ctx->spec_ops_->x_hat_, y_ptr);
     #endif
+    ierr = vecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
     
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc->timers_, t, self_exec_time);

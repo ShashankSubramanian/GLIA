@@ -930,6 +930,18 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
     for (int i = 0; i <= nt; i++) {
         PCOUT << "Time step = " << i << std::endl;
+        // Update diffusivity and reaction coefficient
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ (ierr);
+        ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ (ierr);
+
+        // model fix to no-mass-effect model
+        ierr = VecAXPY (tumor_->k_->kxx_, n_misc_->k_, tumor_->c_t_);                               CHKERRQ (ierr);
+        ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);                                        CHKERRQ (ierr);
+        ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);                                        CHKERRQ (ierr);
+        ierr = VecAXPY (tumor_->rho_->rho_vec_, n_misc_->rho_, tumor_->c_t_);                       CHKERRQ (ierr);
+
+        // need to update prefactors for diffusion KSP preconditioner, as k changed
+        ierr = diff_solver_->precFactor();                                                          CHKERRQ (ierr);
         if (n_misc_->writeOutput_ && i % 10 == 0) {
             ierr = displacement_old->computeMagnitude();
             ierr = tumor_->force_->computeMagnitude();
@@ -963,11 +975,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             ss.str(std::string()); ss.clear();
         }
         // ------------------------------------------------ advection  ------------------------------------------------
-        // Update diffusivity and reaction coefficient
-        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ (ierr);
-        ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ (ierr);
-        // need to update prefactors for diffusion KSP preconditioner, as k changed
-        ierr = diff_solver_->precFactor();                                                          CHKERRQ (ierr);
+
         // Advection of tumor and healthy tissue
         // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
         adv_solver_->trajectoryIsComputed_ = false;

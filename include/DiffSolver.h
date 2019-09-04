@@ -15,11 +15,7 @@ struct Ctx {
 	ScalarType *precfactor_;
 	ScalarType *work_cuda_;
 
-	ComplexType *c_hat_;
-
-	~Ctx () {
-		fft_free (c_hat_);
-	}
+	~Ctx () {}
 };
 
 class DiffSolver {

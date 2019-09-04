@@ -15,6 +15,15 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
 
     ctx_->velocity_ = tumor->velocity_;
 
+    advection_mode_ = 1;    // 1 -- mass conservation
+                            // 2 -- pure advection (csf uses this to allow for leakage etc)
+
+    trajectoryIsComputed_ = false;
+}
+
+
+TrapezoidalSolver::TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {
+    PetscErrorCode ierr = 0;
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdv);
 
@@ -29,12 +38,8 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
     ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
-
-    advection_mode_ = 1;    // 1 -- mass conservation
-                            // 2 -- pure advection (csf uses this to allow for leakage etc)
-
-    trajectoryIsComputed_ = false;
 }
+
 
 // LHS for transport equation using Crank-Nicolson 
 // y = Ax = (x + dt/2 div (xv))
@@ -103,8 +108,11 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
 
 
 AdvectionSolver::~AdvectionSolver () {
-	PetscErrorCode ierr = 0;
-	ierr = MatDestroy (&A_);
+}
+
+TrapezoidalSolver::~TrapezoidalSolver () {
+    PetscErrorCode ierr = 0;
+    ierr = MatDestroy (&A_);
     ierr = KSPDestroy (&ksp_);
     ierr = VecDestroy (&rhs_);
 }

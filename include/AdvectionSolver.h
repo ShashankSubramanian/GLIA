@@ -20,12 +20,7 @@ class AdvectionSolver {
 	public:
 		AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);   //tumor is needed for its work vectors
 
-		KSP ksp_;
-		Mat A_;
-		Vec rhs_;
-
 		std::shared_ptr<CtxAdv> ctx_;
-
 		std::shared_ptr<SpectralOperators> spec_ops_; 
 
 		int advection_mode_;						  // controls the source term of the advection equation
@@ -40,10 +35,14 @@ class AdvectionSolver {
 // Solve transport equations using Crank-Nicolson
 class TrapezoidalSolver : public AdvectionSolver {
 	public:
-		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {}
+		KSP ksp_;
+		Mat A_;
+		Vec rhs_;
+
+		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);
 
-		virtual ~TrapezoidalSolver () {}
+		virtual ~TrapezoidalSolver ();
 };
 
 // Solve transport equations using semi-Lagrangian
