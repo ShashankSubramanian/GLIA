@@ -2038,7 +2038,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     TaoConvergedReason flag;
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
 
-
+    Vec tao_grad;
     // get current iteration, objective value, norm of gradient, norm of
     // norm of contraint, step length / trust region readius of iteratore
     // and termination reason
@@ -2046,12 +2046,12 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
 
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     if (itctx->n_misc_->verbosity_ >= 2) {
-      Vec tao_grad;
       double *grad_ptr, *sol_ptr;
-      ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
-
       ierr = VecGetArray(tao_x, &sol_ptr);                                        CHKERRQ(ierr);
       ierr = VecGetArray(tao_grad, &grad_ptr);                                    CHKERRQ(ierr);
       for (int i = 0; i < itctx->n_misc_->np_; i++){
@@ -2181,6 +2181,10 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     double norm_gref;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
+
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
@@ -2770,14 +2774,19 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
+    Vec tao_grad;
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
+
     // update/set reference gradient (with p = zeros)
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
-        Vec dJ = nullptr, p0 = nullptr;
-        double norm_gref = 0.;
-        ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
+      Vec dJ = nullptr, p0 = nullptr;
+      double norm_gref = 0.;
+      ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
-        ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
+      ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
       ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
 
       if (ctx->n_misc_->flag_reaction_inv_) {
@@ -2786,9 +2795,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
           ierr = evaluateGradient(tao, p0, dJ, (void*) ctx);
           ierr = VecNorm (dJ, NORM_2, &norm_gref);                                  CHKERRQ(ierr);
       }
-        ctx->optfeedback_->gradnorm0 = norm_gref;
-        //ctx->gradnorm0 = gnorm;
-        ctx->update_reference_gradient = false;
+      ctx->optfeedback_->gradnorm0 = norm_gref;
+      //ctx->gradnorm0 = gnorm;
+      ctx->update_reference_gradient = false;
       std::stringstream s; s <<" updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
       if (dJ != nullptr) {ierr = VecDestroy(&dJ); CHKERRQ(ierr); dJ = nullptr;}
@@ -3217,6 +3226,10 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
+
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     double norm_gref = 0.;
     // update/set reference gradient
