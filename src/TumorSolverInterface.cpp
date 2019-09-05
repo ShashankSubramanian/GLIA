@@ -21,7 +21,7 @@
 #include "EventTimings.hpp"
 
 
-namespace pglistr {
+//namespace pglistr {
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// constructor /////////////////////////////////////// ###
@@ -166,8 +166,8 @@ PetscErrorCode TumorSolverInterface::initialize (
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setParams ///////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setParams (
-    Vec p, s
-    td::shared_ptr<TumorSettings> tumor_params = {})
+    Vec p, 
+    std::shared_ptr<TumorSettings> tumor_params = {})
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -281,7 +281,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     inv_solver_->setDataGradient (data_gradeval);
 
     // count the number of observed voxels
-    if (n_misc_->verbosity > 2) {
+    if (n_misc_->verbosity_ > 2) {
       int sum = 0, global_sum = 0;
       double *pixel_ptr;
       ierr = VecGetArray (data, &pixel_ptr);                                        CHKERRQ (ierr);
@@ -324,9 +324,9 @@ PetscErrorCode TumorSolverInterface::solveInverse (
     if (!optimizer_settings_changed_) {ierr = tuMSGwarn (" Tumor inverse solver running with default settings."); CHKERRQ (ierr);}
 
     // reset TAO object if either the solver type changes or the regularization norm
-    if(_newton_solver_type_changed || _regularization_norm_changed) {
+    if(newton_solver_type_changed_ || regularization_norm_changed_) {
         ierr = resetTaoSolver();                                                     CHKERRQ(ierr);
-        _newton_solver_type_changed = false; _regularization_norm_changed = false;
+        newton_solver_type_changed_ = false; regularization_norm_changed_ = false;
     }
 
     // TODO[CHANGE]: set the observation operator filter : default filter
@@ -413,21 +413,21 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(
 // ### ///////////////// computeGradient /////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::computeGradient (
     Vec dJ, Vec p, Vec data_gradeval) {
-	PetscFunctionBegin;
-	PetscErrorCode ierr = 0;
-	if (!initialized_) {ierr = tuMSGwarn("Error: (solveForward) computeGradient needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    if (!initialized_) {ierr = tuMSGwarn("Error: (solveForward) computeGradient needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
     // TODO[SETTING]: set tumor regularization weight
     // compute gradient for given data 'data_gradeval' and control variable 'p'
     ierr = derivative_operators_->evaluateGradient (dJ, p, data_gradeval);      CHKERRQ(ierr);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn(ierr);
 }
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setOptimizerFeedback ////////////////////////////// ###
-PetscErrorCode setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {
+PetscErrorCode TumorSolverInterface::setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-    ierr = inv_solver_->setOptFeedback(optfeed); CHKERRQ(ierr);
+    inv_solver_->setOptFeedback(optfeed);
     PetscFunctionReturn(ierr);
 }
 
@@ -551,9 +551,9 @@ PetscErrorCode TumorSolverInterface::setGaussians (Vec data) {
 PetscErrorCode TumorSolverInterface::setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-    _tuparams->user_cm_             = cm;
-    _tuparams->phi_spacing_factor_  = spacing;
-    _tuparams->phi_sigma_           = sigma;
+    n_misc_->user_cm_             = cm;
+    n_misc_->phi_spacing_factor_  = spacing;
+    n_misc_->phi_sigma_           = sigma;
     ierr = tumor_->phi_->setGaussians(cm, sigma, spacing, np); CHKERRQ(ierr);
     PetscFunctionReturn(ierr);
 }
@@ -563,8 +563,8 @@ PetscErrorCode TumorSolverInterface::setGaussians (std::array<double, 3> cm, dou
 PetscErrorCode TumorSolverInterface::setTumorSolverType (int type) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-    _newton_solver_type_changed = (type != inv_solver_->_optsettings->newtonsolver);
-    inv_solver_->_optsettings->newtonsolver = type;
+    newton_solver_type_changed_ = (type != inv_solver_->optsettings_->newtonsolver);
+    inv_solver_->optsettings_->newtonsolver = type;
     PetscFunctionReturn(ierr);
 }
 
@@ -573,8 +573,8 @@ PetscErrorCode TumorSolverInterface::setTumorSolverType (int type) {
 PetscErrorCode TumorSolverInterface::setTumorRegularizationNorm (int type) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-  _regularization_norm_changed = (type != inv_solver->_optsettings->regularization_norm);
-  inv_solver_->_optsettings->regularization_norm = type;
+  regularization_norm_changed_ = (type != inv_solver_->optsettings_->regularization_norm);
+  inv_solver_->optsettings_->regularization_norm = type;
   PetscFunctionReturn(ierr);
 }
 
@@ -629,10 +629,10 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
     std::stringstream s;
 
     // TODO[SETTINGS]:
-    n_misc_->k_ = tumor_params->diff_coeff_scalel;
+    n_misc_->k_ = tumor_params->diff_coeff_scale;
     n_misc_->k_gm_wm_ratio_ = tumor_params->diffusion_ratio_gm_wm;
-    n_misc_->rho_ = tumor_params->reaction_coeff_Scale;
-    n_misc_->rho_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
+    n_misc_->rho_ = tumor_params->reaction_coeff_scale;
+    n_misc_->r_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
 
     s << " updating tumor material properties; update values of kappa = " <<n_misc_->k_ << ", and rho = " << n_misc_->rho_;
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
@@ -686,4 +686,4 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
     PetscFunctionReturn (ierr);
 }
 
-} // namespace pglistr
+//} // namespace pglistr

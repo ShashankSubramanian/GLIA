@@ -494,7 +494,7 @@ int main (int argc, char** argv) {
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, gm_path, wm_path, csf_path, glm_path);
         ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
-        ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
+        ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
     std::shared_ptr<HealthyProbMaps> h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
 
@@ -854,7 +854,7 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    solver_interface->setDistMeassureSimulationGeoImages (h_maps->wm, h_maps->gm, h_maps->csf, nullptr, h_maps->bg);
+    solver_interface->setDistMeassureSimulationGeoImages (h_maps->wm, h_maps->gm, h_maps->csf);
 
     Vec temp;
     ierr = VecDuplicate (data, &temp);                   CHKERRQ (ierr);
@@ -870,8 +870,8 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
     ierr = VecPointwiseMult (h_maps->csf_data, h_maps->csf_data, temp);     CHKERRQ (ierr);
     ierr = VecPointwiseMult (h_maps->bg_data, h_maps->bg_data, temp);       CHKERRQ (ierr);
 
-    solver_interface->setDistMeassureTargetDataImages (h_maps->wm_data, h_maps->gm_data, h_maps->csf_data, nullptr, h_maps->bg_data);
-    solver_interface->setDistMeassureDiffImages (h_maps->xi_wm, h_maps->xi_gm, h_maps->xi_csf, nullptr, h_maps->xi_bg);
+    solver_interface->setDistMeassureTargetDataImages (h_maps->wm_data, h_maps->gm_data, h_maps->csf_data);
+    solver_interface->setDistMeassureDiffImages (h_maps->xi_wm, h_maps->xi_gm, h_maps->xi_csf);
 
     if (temp != nullptr) {ierr = VecDestroy (&temp);       CHKERRQ (ierr); temp = nullptr;}
 
