@@ -236,7 +236,7 @@ int main (int argc, char** argv) {
 
     // hack
     #ifdef CUDA
-        cudaSetDevice (1);
+        cudaSetDevice (0);
     #endif
 
     accfft_init();
@@ -509,7 +509,9 @@ int main (int argc, char** argv) {
         h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
     }
 
-    cudaPrintDeviceMemory ();
+    #ifdef CUDA
+        cudaPrintDeviceMemory ();
+    #endif
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
 

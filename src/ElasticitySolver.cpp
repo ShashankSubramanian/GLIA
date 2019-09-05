@@ -48,7 +48,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
-    ierr = KSPSetType (ksp_, KSPGMRES);
+    ierr = KSPSetType (ksp_, KSPCG);
     // ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetFromOptions (ksp_);
@@ -441,9 +441,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
 
-    int procid, nprocs;
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    std::stringstream s;
 
     ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
     ierr = VecSet (ctx->disp_, 0.);									CHKERRQ (ierr);
@@ -462,7 +460,9 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
 
 
-    PCOUT << "[Elasticity solver] GMRES convergence --   iterations: " << itr << "    residual: " << res_norm << std::endl;
+    s << "[Elasticity solver] Conjugate gradients convergence - iterations: " << itr << "    residual: " << res_norm << std::endl;
+    ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+    s.str (""); s.clear ();
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);

@@ -543,9 +543,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     std::stringstream ss;    
     ScalarType vel_max;
     ScalarType cfl;
-
+    std::stringstream s;
     for (int i = 0; i < nt + 1; i++) {
-        PCOUT << "Time step = " << i << std::endl;
+        s << "Time step = " << i << std::endl;
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
         ierr = displacement_old->computeMagnitude();
         ierr = tumor_->force_->computeMagnitude();
         // Update diffusivity and reaction coefficient
@@ -624,12 +626,16 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        PCOUT << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude ();
         ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
-        PCOUT << "CFL = " << cfl << "\n\n";
+        s << "CFL = " << cfl << "\n\n";
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
         if (cfl > 0.5) {
             // // TODO: resize time history
@@ -639,14 +645,20 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             // n_misc_->nt_ = nt;
 
             // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            PCOUT << "CFL too large: exiting...\n"; break;
+            s << "CFL too large: exiting...\n"; 
+            ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            s.str (""); s.clear ();
+            break;
         }
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);
     }
 
-    PCOUT << "Forward solve complete...\n"; cudaPrintDeviceMemory();
+    #ifdef CUDA
+        cudaPrintDeviceMemory ();
+    #endif
+
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
     t[5] = self_exec_time;
@@ -929,8 +941,11 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     ScalarType cfl;
     std::stringstream ss;
     ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
+    std::stringstream s;
     for (int i = 0; i <= nt; i++) {
-        PCOUT << "Time step = " << i << std::endl;
+        s << "Time step = " << i << std::endl;
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
         // Update diffusivity and reaction coefficient
         ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ (ierr);
         ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ (ierr);
@@ -1018,12 +1033,16 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        PCOUT << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude ();
         ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
-        PCOUT << "CFL = " << cfl << "\n\n";
+        s << "CFL = " << cfl << "\n\n";
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
         if (cfl > 0.5) {
             // // TODO: resize time history
@@ -1033,7 +1052,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             // n_misc_->nt_ = nt;
 
             // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            PCOUT << "CFL too large: exiting...\n"; break;
+            s << "CFL too large: exiting...\n"; 
+            ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            s.str (""); s.clear ();
+            break;
         }
 
         // copy displacement to old vector
@@ -1045,6 +1067,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
         ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
+
+    #ifdef CUDA
+        cudaPrintDeviceMemory ();
+    #endif
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
