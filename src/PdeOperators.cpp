@@ -545,7 +545,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     ScalarType cfl;
     std::stringstream s;
     for (int i = 0; i < nt + 1; i++) {
-        s << "Time step = " << i << std::endl;
+        s << "Time step = " << i;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         ierr = displacement_old->computeMagnitude();
@@ -626,14 +626,14 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude ();
         ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
-        s << "CFL = " << cfl << "\n\n";
+        s << "CFL = " << cfl;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
@@ -645,7 +645,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             // n_misc_->nt_ = nt;
 
             // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            s << "CFL too large: exiting...\n"; 
+            s << "CFL too large: exiting..."; 
             ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
             s.str (""); s.clear ();
             break;
@@ -948,7 +948,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
     std::stringstream s;
     for (int i = 0; i <= nt; i++) {
-        s << "Time step = " << i << std::endl;
+        s << "Time step = " << i;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Update diffusivity and reaction coefficient
@@ -1038,14 +1038,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")\n";
+        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude ();
         ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
-        s << "CFL = " << cfl << "\n\n";
+        s << "CFL = " << cfl;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
@@ -1057,7 +1057,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             // n_misc_->nt_ = nt;
 
             // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            s << "CFL too large: exiting...\n"; 
+            s << "CFL too large: exiting..."; 
             ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
             s.str (""); s.clear ();
             break;

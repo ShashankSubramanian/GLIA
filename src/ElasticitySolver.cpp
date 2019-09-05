@@ -460,7 +460,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
 
 
-    s << "[Elasticity solver] Conjugate gradients convergence - iterations: " << itr << "    residual: " << res_norm << std::endl;
+    s << "[Elasticity solver] Conjugate gradients convergence - iterations: " << itr << "    residual: " << res_norm;
     ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
     s.str (""); s.clear ();
 
