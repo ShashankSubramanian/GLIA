@@ -1598,8 +1598,8 @@ PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr
         gm_ptr[i] = gm_ptr[i] * (1 - c_ptr[i]);
 
         v.push_back(bg_ptr[i]);
-        v.push_back(gm_ptr[i]);
         v.push_back(wm_ptr[i]);
+        v.push_back(gm_ptr[i]);
         v.push_back(csf_ptr[i]);
         v.push_back(c_ptr[i]);
 

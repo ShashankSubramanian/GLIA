@@ -248,8 +248,8 @@ PetscErrorCode Tumor::computeSegmentation () {
     for (int i = 0; i < n_misc_->n_local_; i++) {
         v.push_back (bg_ptr[i]);
         v.push_back (c_ptr[i]);
-        v.push_back (gm_ptr[i]);
         v.push_back (wm_ptr[i]);
+        v.push_back (gm_ptr[i]);
         v.push_back (csf_ptr[i]);
 
         seg_component = std::max_element (v.begin(), v.end());
@@ -265,8 +265,8 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
-    ScalarType sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
-    ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
+    // ScalarType sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
+    // ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
 
     PetscFunctionReturn(0);
 }
