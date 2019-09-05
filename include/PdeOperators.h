@@ -78,8 +78,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
 			temp_ = new Vec[3];
 			for (int i = 0; i <3; i++) {
-				ierr = VecDuplicate (tumor->work_[0], &temp_[i]);
-				ierr = VecSet (temp_[i], 0.);
+				temp_[i] = tumor->work_[11 - i];
 			}
 		}
 
@@ -94,8 +93,6 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 
 		virtual ~PdeOperatorsMassEffect () {
 			PetscErrorCode ierr = 0;
-			for (int i = 0; i < 3; i++)
-				ierr = VecDestroy (&temp_[i]);
 			ierr = VecDestroy (&magnitude_);
 			delete [] temp_;
 		}
