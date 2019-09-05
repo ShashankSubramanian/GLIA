@@ -1508,6 +1508,6 @@ if __name__=='__main__':
         infofile.close();
 
         # write featuee dict to file
-        (pd.DataFrame.from_dict(data=FEATURES[64], orient='index').to_csv(os.path.join(args.input_path, 'features_64.csv'), header=False, sep=';', float_format='%1.3e'));
-        (pd.DataFrame.from_dict(data=FEATURES[128], orient='index').to_csv(os.path.join(args.input_path, 'features_128.csv'), header=False, sep=';', float_format='%1.3e'));
-        (pd.DataFrame.from_dict(data=FEATURES[256], orient='index').to_csv(os.path.join(args.input_path, 'features_256.csv'), header=False, sep=';', float_format='%1.3e'));
+        (pd.DataFrame.from_dict(data=FEATURES[64], orient='index').to_csv(os.path.join(args.input_path, 'features_64.csv'), header=False, sep=';', float_format='%.16g'));
+        (pd.DataFrame.from_dict(data=FEATURES[128], orient='index').to_csv(os.path.join(args.input_path, 'features_128.csv'), header=False, sep=';', float_format='%.16g'));
+        (pd.DataFrame.from_dict(data=FEATURES[256], orient='index').to_csv(os.path.join(args.input_path, 'features_256.csv'), header=False, sep=';', float_format='%.16g'));
