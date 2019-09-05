@@ -1,4 +1,4 @@
-data_gradeval/*************************************************************************
+/*************************************************************************
  *  Copyright (c) 2016-2017.
  *  All rights reserved.
  *  This file is part of the SIBIA library.
@@ -47,7 +47,8 @@ TumorSolverInterface::TumorSolverInterface (
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// finalize ////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::finalize ()
+PetscErrorCode TumorSolverInterface::finalize (
+    DataDistributionParameters& ivars)
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -61,14 +62,14 @@ PetscErrorCode TumorSolverInterface::finalize ()
 }
 
 // ### _____________________________________________________________________ ___
-// ### ///////////////// initializeFFT ///////////////////////////////////// ###
+// ### ///////////////// initializedFFT ///////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::initializeFFT (
     DataDistributionParameters& ivars)
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     // don't do it twice
-    if (initializeFFT_) PetscFunctionReturn (0);
+    if (initializedFFT_) PetscFunctionReturn (0);
     // initialize accfft, data distribution and comm plan
     accfft_init();
     accfft_create_comm(MPI_COMM_WORLD, ivars.cdims, &ivars.comm);
@@ -78,7 +79,7 @@ PetscErrorCode TumorSolverInterface::initializeFFT (
     ivars.plan = accfft_plan_dft_3d_r2c (ivars.n, c_0, (double*) c_hat, ivars.comm, ACCFFT_MEASURE);
     accfft_free (c_0);
     accfft_free (c_hat);
-    initializeFFT_ = true;
+    initializedFFT_ = true;
     PetscFunctionReturn(ierr);
 }
 
@@ -103,14 +104,14 @@ PetscErrorCode TumorSolverInterface::initialize (
     // don't do it twice
     if (initialized_) PetscFunctionReturn (0);
     // FFT needs to be initialized
-    if (!initializeFFT_) {ierr = tuMSGwarn("Error: FFT needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (!initializedFFT_) {ierr = tuMSGwarn("Error: FFT needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
     // create n_misc
     n_misc_ =  std::make_shared<NMisc> (
         ivars.n, ivars.isize, ivars.osize, ivars.istart, ivars.ostart,
         ivars.plan, ivars.comm, ivars.cdims, ivars.testcase);
 
     // initialize tumor, initialize dummy phi, initialize mat probs
-    initialize(n_misc_, nullptr, nullptr)
+    initialize(n_misc_, nullptr, nullptr);
     PetscFunctionReturn(ierr);
 }
 

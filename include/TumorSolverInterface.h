@@ -10,7 +10,7 @@
 namespace pglistr {
 
     struct DataDistributionParameters {
-        int64_t alloc_mac;
+        int64_t alloc_max;
         int nlocal;
         int nglobal;
         int n[3];
@@ -28,12 +28,12 @@ namespace pglistr {
           alloc_max(0)
         , nlocal(0)
         , nglobal(0)
-        , cdims{{0,0}}
-        , n{{256,256,256}}
-        , istart{{0,0,0}}
-        , isize{{0,0,0}}
-        , ostart{{0,0,0}}
-        , osize{{0,0,0}}
+        , cdims{0,0}
+        , n{256,256,256}
+        , istart{0,0,0}
+        , isize{0,0,0}
+        , ostart{0,0,0}
+        , osize{0,0,0}
         , testcase(0)
         , plan(nullptr)
         , comm (MPI_COMM_WORLD)
@@ -62,7 +62,8 @@ class TumorSolverInterface {
 
     /** @brief: Destroys accfft related objects.
     */
-    PetscErrorCode finalize ();
+    PetscErrorCode finalize (
+        DataDistributionParameters& ivars);
 
     /** @brief: Initializes accFFT, communication plan, data distribution, cartesian communicator, etc.
     *
@@ -175,7 +176,7 @@ class TumorSolverInterface {
     std::shared_ptr<Tumor> getTumor()  {return tumor_;}
     std::shared_ptr<CtxInv> getITctx() {return inv_solver_->getInverseSolverContext();}
     std::shared_ptr<OptimizerFeedback> getOptFeedback() {return inv_solver_->optfeedback_;}
-    std::shared_ptr<OptimizerFeedback> getOptSettings() {return inv_solver_->optsettings_;}
+    std::shared_ptr<OptimizerSettings> getOptSettings() {return inv_solver_->optsettings_;}
     std::shared_ptr<InvSolver> getInvSolver() {return inv_solver_;}
     std::shared_ptr<PdeOperators> getPdeOperators() {return pde_operators_;}
     std::vector<double> getSolverOutParams()  {return out_params_ = inv_solver_->getInvOutParams (); }
@@ -191,7 +192,7 @@ class TumorSolverInterface {
     /// @brief: sets Gaussians adaptively based on data
     PetscErrorCode setGaussians (Vec data);
     /// @brief: sets Gaussians as bbox around center of mass
-    PetscErrorCode setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np)
+    PetscErrorCode setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np);
     PetscErrorCode setTumorRegularizationNorm (int type);
     PetscErrorCode setTumorSolverType (int type);
 
