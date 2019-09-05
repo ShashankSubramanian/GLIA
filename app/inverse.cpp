@@ -797,6 +797,9 @@ int main (int argc, char** argv) {
 
     }
 
+    #ifdef CUDA
+        cudaPrintDeviceMemory();
+    #endif
 
     self_exec_time += MPI_Wtime ();
     accumulateTimers (n_misc->timers_, timers, self_exec_time);
