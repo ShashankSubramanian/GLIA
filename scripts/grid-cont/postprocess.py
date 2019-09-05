@@ -222,7 +222,7 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
             features['vol(NEC|_#c)_r(#c='+str(nc)+')'] =  np.sum(ed_in_comp.flatten())/features['vol(TC)_a'] if nc < 3 else -1;
 
             features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] =  distance.euclidean(np.zeros_like(c0_in_comp.flatten()), c0_in_comp.flatten()) if nc < 3 else -1;
-            features['l2[c(0)|_#c]_r(#c='+str(nc)+')'] =  features['l2[c(0)|_#c)_a(#c='+str(nc)+')'] / distance.euclidean(np.zeros_like(c0_recon.flatten()), c0_recon.astype(float).flatten()) if nc < 3 else -1;
+            features['l2[c(0)|_#c]_r(#c='+str(nc)+')'] =  features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] / distance.euclidean(np.zeros_like(c0_recon.flatten()), c0_recon.astype(float).flatten()) if nc < 3 else -1;
 
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
