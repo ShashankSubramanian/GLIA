@@ -7,7 +7,7 @@
 #include "DerivativeOperators.h"
 #include "InvSolver.h"
 
-namespace pglistr {
+//namespace pglistr {
 
     struct DataDistributionParameters {
         int64_t alloc_max;
@@ -211,6 +211,6 @@ class TumorSolverInterface {
     std::vector<double> out_params_;
 };
 
-} // namespace pglistr
+//} // namespace pglistr
 
 #endif

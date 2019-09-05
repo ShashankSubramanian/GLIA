@@ -8,8 +8,6 @@
 
 #include "Interp.h"
 
-namespace pglistr {
-
 struct CtxAdv {
 	std::shared_ptr<NMisc> n_misc_;
 	std::vector<Vec> temp_;
@@ -56,8 +54,8 @@ class SemiLagrangianSolver : public AdvectionSolver {
 		double *scalar_field_ghost_;			  // local scalar field with ghost points
 		double *vector_field_ghost_;			  // local vector field with ghost points
 		std::shared_ptr<VecField> work_field_;	  // work vector field
-		Vec *temp_;								  // temp vectors
-
+		Vec *temp_;								  // temp vectors	
+		
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt);	// solve transport equation
 		PetscErrorCode computeTrajectories ();														// Computes RK2 trajectories and query points
 		PetscErrorCode interpolate (Vec out, Vec in);												// Interpolated scalar field
@@ -68,7 +66,5 @@ class SemiLagrangianSolver : public AdvectionSolver {
 
 //Helper functions for KSP solve
 PetscErrorCode operatorAdv (Mat A, Vec x, Vec y);
-
-}
 
 #endif

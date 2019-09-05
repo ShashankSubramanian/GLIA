@@ -7,7 +7,6 @@
 #include "DerivativeOperators.h"
 #include "Utils.h"
 
-namespace pglistr {
 
 struct InterpolationContext {
     InterpolationContext (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
@@ -293,7 +292,5 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);
-
-}
 
 #endif

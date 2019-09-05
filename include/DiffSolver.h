@@ -6,8 +6,6 @@
 #include <mpi.h>
 #include <omp.h>
 
-namespace pglistr {
-
 struct Ctx {
 	std::shared_ptr<DiffCoef> k_;
 	std::shared_ptr<NMisc> n_misc_;
@@ -43,7 +41,5 @@ class DiffSolver {
 PetscErrorCode operatorA (Mat A, Vec x, Vec y);
 PetscErrorCode precFactor (double *precfactor, std::shared_ptr<Ctx> ctx);
 PetscErrorCode applyPC (PC pc, Vec x, Vec y);
-
-}
 
 #endif

@@ -1,7 +1,5 @@
 #include "TaoL1Solver.h"
 
-namespace pglistr {
-
 PetscErrorCode TaoCreate_ISTA (Tao tao) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
@@ -124,14 +122,14 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	if (ctx->x_sol == nullptr) {
 		ierr = VecDuplicate (x, &ctx->x_sol);					    			CHKERRQ (ierr);
 	}
-
+	
 	ls->step = ls->initstep;
 	while (ls->step >= ls->stepmin) {	//Default step min is 1e-20
 		ierr = VecCopy (x, ctx->x_work_1);									CHKERRQ (ierr);
 		ierr = VecAXPY (ctx->x_work_1, -1.0 * ls->step, g);					CHKERRQ (ierr); //gradient descent guess
 
 		ierr = VecCopy (ctx->x_work_1, ctx->x_work_2);						CHKERRQ (ierr);
-		ierr = proximalOperator (ctx->x_work_2, ctx->x_work_1, ctx->lambda, ls->step);
+		ierr = proximalOperator (ctx->x_work_2, ctx->x_work_1, ctx->lambda, ls->step); 
 		ierr = VecCopy (ctx->x_work_2, ctx->x_sol);							CHKERRQ (ierr);
 
 		//Sufficient descent criterion
@@ -218,7 +216,7 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 		#else
 			ierr = TaoMonitor (tao, iter, f, gnorm, 0.0, steplength, &reason);		CHKERRQ (ierr);
 		#endif
-		if (reason != TAO_CONTINUE_ITERATING)
+		if (reason != TAO_CONTINUE_ITERATING) 
 			break;
 		ierr = TaoComputeObjectiveAndGradient (tao, x, &f, g);								CHKERRQ (ierr);
 		ierr = TaoLineSearchApply (tao->linesearch, x, &f, g, s, &steplength, &lsflag);		CHKERRQ (ierr);		//Perform linesearch and update function, solution and gradient values
@@ -228,6 +226,4 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 	}
 
 	PetscFunctionReturn (0);
-}
-
 }

@@ -6,7 +6,6 @@
 #include <mpi.h>
 #include <omp.h>
 
-namespace pglistr {
 class ReacCoef {
 	public:
 		ReacCoef (std::shared_ptr<NMisc> n_misc);
@@ -25,6 +24,6 @@ class ReacCoef {
 
 		~ReacCoef ();
 };
-}
+
 
 #endif

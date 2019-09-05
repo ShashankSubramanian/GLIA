@@ -1,7 +1,5 @@
 #include "DiffCoef.h"
 
-namespace pglistr {
-
 DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc) :
   k_scale_(1E-2)
 , k_gm_wm_ratio_(1.0 / 5.0)
@@ -52,7 +50,7 @@ PetscErrorCode DiffCoef::setSecondaryCoefficients (double k1, double k2, double 
   k3 = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ * k1 : k3;
 
   ierr = VecAXPY (temp_[7], k2, mat_prop->gm_);   CHKERRQ (ierr);
-  ierr = VecAXPY (temp_[7], k3, mat_prop->glm_);  CHKERRQ (ierr);
+  ierr = VecAXPY (temp_[7], k3, mat_prop->glm_);  CHKERRQ (ierr);  
 
   PetscFunctionReturn (0);
 }
@@ -362,6 +360,4 @@ DiffCoef::~DiffCoef () {
     ierr = VecDestroy (&kzz_);
     delete [] temp_;
     accfft_free (temp_accfft_);
-}
-
 }

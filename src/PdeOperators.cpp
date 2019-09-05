@@ -1,6 +1,5 @@
 #include "PdeOperators.h"
 
-namespace pglistr {
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ======== RESET (CHANGE SIZE OF WORK VECTORS, TIME HISTORY) ======== #### */
@@ -755,6 +754,4 @@ PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
         #endif
     }
     PetscFunctionReturn (0);
-}
-
 }

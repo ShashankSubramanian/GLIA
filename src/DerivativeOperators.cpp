@@ -1,8 +1,6 @@
 #include "DerivativeOperators.h"
 #include "Utils.h"
 
-namespace pglistr {
-
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========         RESET (CHANGE SIZE OF WORK VECTORS)       ======== #### */
 /* #### ------------------------------------------------------------------- #### */
@@ -1386,6 +1384,4 @@ PetscErrorCode DerivativeOperators::checkHessian (Vec p, Vec data) {
     ierr = PetscRandomDestroy (&rctx);     CHKERRQ (ierr);
 
     PetscFunctionReturn (0);
-}
-
 }

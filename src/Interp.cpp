@@ -1,5 +1,3 @@
-namespace pglistr {
-
 // This function performs a 3D cubic interpolation.
 
 #define _mm256_set_m128(va, vb) \
@@ -6372,4 +6370,3 @@ void accfft_get_ghost_xyz(accfft_plan* plan, int g_size, int* isize_g,
   accfft_get_ghost_xyz((accfft_plan_t<Real, TC, PL>*)plan, g_size, isize_g, data, ghost_data);
 }
 
-}

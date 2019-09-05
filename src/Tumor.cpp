@@ -1,7 +1,5 @@
 #include "Tumor.h"
 
-namespace pglistr {
-
 Tumor::Tumor (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -293,6 +291,4 @@ Tumor::~Tumor () {
     ierr = VecDestroy (&weights_);
 
     ierr = VecDestroy (&seg_);
-}
-
 }

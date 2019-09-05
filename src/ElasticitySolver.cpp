@@ -1,11 +1,9 @@
 #include <ElasticitySolver.h>
 
-namespace pglistr {
-
 ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ctx_ () {
     PetscErrorCode ierr = 0;
     ctx_ = std::make_shared<CtxElasticity> (n_misc, tumor);
-
+   
     // compute average coefficients
     ctx_->mu_avg_ = (ctx_->computeMu (n_misc->E_healthy_, n_misc->nu_healthy_) + ctx_->computeMu (n_misc->E_bg_, n_misc->nu_bg_)
                     + ctx_->computeMu (n_misc->E_csf_, n_misc->nu_csf_) + ctx_->computeMu (n_misc->E_tumor_, n_misc->nu_tumor_)) / 4;
@@ -51,7 +49,7 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::shared_ptr<Tumor> tumor = ctx->tumor_;
-
+  
     std::shared_ptr<VecField> force = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     std::shared_ptr<VecField> displacement = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
 
@@ -126,24 +124,24 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
 
                 // real part
                 scale = -1.0 * wx * wTf_real;
-                ux_hat[ptr][0] = factor * (fx_hat[ptr][0] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale);
+                ux_hat[ptr][0] = factor * (fx_hat[ptr][0] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
                 // imaginary part
                 scale = -1.0 * wx * wTf_imag;
-                ux_hat[ptr][1] = factor * (fx_hat[ptr][1] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale);
+                ux_hat[ptr][1] = factor * (fx_hat[ptr][1] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
 
                 // real part
                 scale = -1.0 * wy * wTf_real;
-                uy_hat[ptr][0] = factor * (fy_hat[ptr][0] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale);
+                uy_hat[ptr][0] = factor * (fy_hat[ptr][0] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
                 // imaginary part
                 scale = -1.0 * wy * wTf_imag;
-                uy_hat[ptr][1] = factor * (fy_hat[ptr][1] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale);
+                uy_hat[ptr][1] = factor * (fy_hat[ptr][1] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
 
                 // real part
                 scale = -1.0 * wz * wTf_real;
-                uz_hat[ptr][0] = factor * (fz_hat[ptr][0] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale);
+                uz_hat[ptr][0] = factor * (fz_hat[ptr][0] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
                 // imaginary part
                 scale = -1.0 * wz * wTf_imag;
-                uz_hat[ptr][1] = factor * (fz_hat[ptr][1] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale);
+                uz_hat[ptr][1] = factor * (fz_hat[ptr][1] * (1.0 / s1) - (1.0 / s1_square) * s2 * s3 * scale); 
             }
         }
     }
@@ -151,7 +149,7 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     accfft_execute_c2r (n_misc->plan_, ux_hat, ux_ptr);
     accfft_execute_c2r (n_misc->plan_, uy_hat, uy_ptr);
     accfft_execute_c2r (n_misc->plan_, uz_hat, uz_ptr);
-
+    
     ierr = force->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr);
     ierr = displacement->restoreComponentArrays (ux_ptr, uy_ptr, uz_ptr);
 
@@ -211,7 +209,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);           CHKERRQ (ierr);   // mu * (...)
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);           CHKERRQ (ierr);   // mu * (...)
 
-    accfft_divergence (force->x_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());
+    accfft_divergence (force->x_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
     ierr = VecAXPY (force->x_, 1.0, tumor->work_[1]);                           CHKERRQ (ierr);   // first term + second term
 
     ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[7], tumor->work_[5]);     CHKERRQ (ierr);   // dvdx + dudy
@@ -221,7 +219,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);           CHKERRQ (ierr);   // mu * (...)
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);           CHKERRQ (ierr);   // mu * (...)
 
-    accfft_divergence (force->y_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());
+    accfft_divergence (force->y_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
     ierr = VecAXPY (force->y_, 1.0, tumor->work_[2]);                           CHKERRQ (ierr);   // first term + second term
 
     ierr = VecWAXPY (ctx->temp_[0], 1.0, tumor->work_[10], tumor->work_[6]);    CHKERRQ (ierr);   // dwdx + dudz
@@ -231,7 +229,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     ierr = VecPointwiseMult (ctx->temp_[1], ctx->mu_, ctx->temp_[1]);           CHKERRQ (ierr);   // mu * (...)
     ierr = VecPointwiseMult (ctx->temp_[2], ctx->mu_, ctx->temp_[2]);           CHKERRQ (ierr);   // mu * (...)
 
-    accfft_divergence (force->z_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());
+    accfft_divergence (force->z_, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], n_misc->plan_, t.data());    
     ierr = VecAXPY (force->z_, 1.0, tumor->work_[3]);                           CHKERRQ (ierr);   // first term + second term
 
     // screening term
@@ -363,6 +361,4 @@ ElasticitySolver::~ElasticitySolver () {
     ierr = MatDestroy (&A_);
     ierr = KSPDestroy (&ksp_);
     ierr = VecDestroy (&rhs_);
-}
-
 }

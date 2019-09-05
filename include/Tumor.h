@@ -15,8 +15,6 @@ Tumor class
 #include <mpi.h>
 #include <omp.h>
 
-namespace pglistr {
-
 class Tumor {
 	public:
 		Tumor (std::shared_ptr<NMisc> n_misc);
@@ -39,7 +37,7 @@ class Tumor {
 		// adjoint Variables
 		Vec p_t_;
 		Vec p_0_;
-
+		
     	Vec *work_;
     	// weights for w-l2
     	Vec weights_;
@@ -65,6 +63,5 @@ class Tumor {
 
 		~Tumor ();
 };
-}
 
 #endif

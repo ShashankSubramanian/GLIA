@@ -1,7 +1,5 @@
 #include "ReacCoef.h"
 
-namespace pglistr {
-
 ReacCoef::ReacCoef (std::shared_ptr<NMisc> n_misc) {
     PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &rho_vec_);
@@ -128,6 +126,4 @@ PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
 ReacCoef::~ReacCoef () {
     PetscErrorCode ierr;
     ierr = VecDestroy (&rho_vec_);
-}
-
 }
