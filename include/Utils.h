@@ -529,16 +529,14 @@ class VecField {
         Vec x_;
         Vec y_;
         Vec z_;
-        Vec magnitude_;
         ~VecField () {
             PetscErrorCode ierr = 0;
             ierr = VecDestroy (&x_);
             ierr = VecDestroy (&y_);
             ierr = VecDestroy (&z_);
-            ierr = VecDestroy (&magnitude_);
         }
 
-        PetscErrorCode computeMagnitude ();
+        PetscErrorCode computeMagnitude (Vec);
         PetscErrorCode copy (std::shared_ptr<VecField> field);
         PetscErrorCode set (ScalarType scalar);
         PetscErrorCode getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);

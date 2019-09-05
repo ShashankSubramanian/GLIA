@@ -544,12 +544,13 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     ScalarType vel_max;
     ScalarType cfl;
     std::stringstream s;
+    ierr = tumor_->velocity_->computeMagnitude (magnitude_);
+
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
-        ierr = displacement_old->computeMagnitude();
-        ierr = tumor_->force_->computeMagnitude();
+    
         // Update diffusivity and reaction coefficient
         ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
         ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
@@ -560,16 +561,20 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);                                        CHKERRQ (ierr);
         ierr = VecAXPY (tumor_->rho_->rho_vec_, n_misc_->rho_, tumor_->c_t_);                       CHKERRQ (ierr);
 
-
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
 
         if (n_misc_->writeOutput_ && i % 10 == 0) {
-            ss << "displacement_t[" << i << "].nc";
-            dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+            ss << "velocity_t[" << i << "].nc";
+            dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ierr = displacement_old->computeMagnitude(magnitude_);
+            ss << "displacement_t[" << i << "].nc";
+            dataOut (magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ierr = tumor_->force_->computeMagnitude(magnitude_);
             ss << "force_t[" << i << "].nc";
-            dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+            dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
             ss << "csf_t[" << i << "].nc";
             dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
@@ -583,9 +588,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss.str(std::string()); ss.clear();
             ss << "c_t[" << i << "].nc";
             dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "velocity_t[" << i << "].nc";
-            dataOut (tumor_->velocity_->magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
             ss << "rho_t[" << i << "].nc";
             dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
@@ -630,8 +632,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // compute CFL
-        ierr = tumor_->velocity_->computeMagnitude ();
-        ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
+        ierr = tumor_->velocity_->computeMagnitude (magnitude_);
+        ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
         s << "CFL = " << cfl;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
@@ -947,6 +949,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     std::stringstream ss;
     ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
     std::stringstream s;
+    ierr = tumor_->velocity_->computeMagnitude (magnitude_);
     for (int i = 0; i <= nt; i++) {
         s << "Time step = " << i;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
@@ -964,13 +967,16 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         ierr = diff_solver_->precFactor();                                                          CHKERRQ (ierr);
         if (n_misc_->writeOutput_ && i % 10 == 0) {
-            ierr = displacement_old->computeMagnitude();
-            ierr = tumor_->force_->computeMagnitude();
-            ss << "displacement_t[" << i << "].nc";
-            dataOut (displacement_old->magnitude_, n_misc_, ss.str().c_str());
+            ss << "velocity_t[" << i << "].nc";
+            dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ierr = displacement_old->computeMagnitude(magnitude_);
+            ss << "displacement_t[" << i << "].nc";
+            dataOut (magnitude_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ierr = tumor_->force_->computeMagnitude(magnitude_);
             ss << "force_t[" << i << "].nc";
-            dataOut (tumor_->force_->magnitude_, n_misc_, ss.str().c_str());
+            dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
             ss << "csf_t[" << i << "].nc";
             dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
@@ -1042,8 +1048,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // compute CFL
-        ierr = tumor_->velocity_->computeMagnitude ();
-        ierr = VecMax (tumor_->velocity_->magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
+        ierr = tumor_->velocity_->computeMagnitude (magnitude_);
+        ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
         s << "CFL = " << cfl;
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);

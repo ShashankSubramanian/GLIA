@@ -75,7 +75,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
 			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor, spec_ops);
 			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor, spec_ops);
-
+			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
 			temp_ = new Vec[3];
 			for (int i = 0; i <3; i++) {
 				ierr = VecDuplicate (tumor->work_[0], &temp_[i]);
@@ -87,6 +87,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 		std::shared_ptr<ElasticitySolver> elasticity_solver_;
 
 		Vec *temp_;
+		Vec magnitude_;
 
 		virtual PetscErrorCode solveState (int linearized);
 		PetscErrorCode conserveHealthyTissues ();
@@ -95,6 +96,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 			PetscErrorCode ierr = 0;
 			for (int i = 0; i < 3; i++)
 				ierr = VecDestroy (&temp_[i]);
+			ierr = VecDestroy (&magnitude_);
 			delete [] temp_;
 		}
 };

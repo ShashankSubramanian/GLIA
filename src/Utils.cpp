@@ -10,10 +10,8 @@ VecField::VecField (int nl , int ng) {
 
     ierr = VecDuplicate (x_, &y_);
     ierr = VecDuplicate (x_, &z_);
-    ierr = VecDuplicate (x_, &magnitude_);
     ierr = VecSet (y_, 0.);
     ierr = VecSet (z_, 0.);
-    ierr = VecSet (magnitude_, 0.);
 }
 
 
@@ -99,7 +97,7 @@ PetscErrorCode VecField::restoreComponentArrays (ScalarType *&x_ptr, ScalarType 
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode VecField::computeMagnitude () {
+PetscErrorCode VecField::computeMagnitude (Vec magnitude) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
@@ -109,17 +107,16 @@ PetscErrorCode VecField::computeMagnitude () {
 	ierr = VecGetLocalSize (x_, &sz); 				CHKERRQ (ierr);
 
 #ifdef CUDA
-	ierr = VecCUDAGetArrayReadWrite (magnitude_, &mag_ptr);		CHKERRQ (ierr);
+	ierr = VecCUDAGetArrayReadWrite (magnitude, &mag_ptr);		CHKERRQ (ierr);
 	computeMagnitudeCuda (mag_ptr, x_ptr, y_ptr, z_ptr, sz);
-	ierr = VecCUDARestoreArrayReadWrite (magnitude_, &mag_ptr);	CHKERRQ (ierr);
+	ierr = VecCUDARestoreArrayReadWrite (magnitude, &mag_ptr);	CHKERRQ (ierr);
 #else
-	ierr = VecGetArray (magnitude_, &mag_ptr);		CHKERRQ (ierr);
+	ierr = VecGetArray (magnitude, &mag_ptr);		CHKERRQ (ierr);
 	for (int i = 0; i < sz; i++) {
 		mag_ptr[i] = std::sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
 	}
-	ierr = VecRestoreArray (magnitude_, &mag_ptr);	CHKERRQ (ierr);
+	ierr = VecRestoreArray (magnitude, &mag_ptr);	CHKERRQ (ierr);
 #endif
-
 
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
