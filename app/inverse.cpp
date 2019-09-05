@@ -509,6 +509,7 @@ int main (int argc, char** argv) {
         h_maps = std::make_shared<HealthyProbMaps> (gm, wm, csf, nullptr, bg);
     }
 
+    cudaPrintDeviceMemory ();
     double self_exec_time = -MPI_Wtime ();
     std::array<double, 7> timers = {0};
 

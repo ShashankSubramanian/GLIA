@@ -646,6 +646,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = displacement_old->copy (tumor_->displacement_);
     }
 
+    PCOUT << "Forward solve complete...\n"; cudaPrintDeviceMemory();
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
     t[5] = self_exec_time;
