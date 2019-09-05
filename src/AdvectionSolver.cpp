@@ -1,5 +1,7 @@
 #include "AdvectionSolver.h"
 
+namespace pglistr {
+
 AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : ctx_ () {
 	PetscErrorCode ierr = 0;
     ctx_ = std::make_shared<CtxAdv> ();
@@ -30,7 +32,7 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
                             // 2 -- pure advection (csf uses this to allow for leakage etc)
 }
 
-// LHS for transport equation using Crank-Nicolson 
+// LHS for transport equation using Crank-Nicolson
 // y = Ax = (x + dt/2 div (xv))
 PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
 	PetscFunctionBegin;
@@ -110,7 +112,7 @@ SemiLagrangianSolver::SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::
     interp_plan_ = std::make_shared<InterpPlan> ();
     interp_plan_->allocate (n_misc->n_local_, m_dofs_, 2);  // allocate memory for two sets of plans
                                                             // one plan will deal with query points for scalar field
-                                                            // second plan will deal with vecfield query points: the interpolation is done      
+                                                            // second plan will deal with vecfield query points: the interpolation is done
                                                             // for all components in one interpolation call
     int factor = 3;
     ierr = VecCreate (PETSC_COMM_WORLD, &query_points_);
@@ -212,7 +214,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
 
     // set interpolated values back into array
     ierr = output->setIndividualComponents (query_points_);
-    
+
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
@@ -251,19 +253,19 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
 
                 // compute the Euler points: xstar = x - dt * vel.
                 // coords are normalized - requirement from interpolation
-                query_ptr[ptr * 3 + 0] = (x1 - dt * vx_ptr[ptr]) / (2.0 * M_PI);   
-                query_ptr[ptr * 3 + 1] = (x2 - dt * vy_ptr[ptr]) / (2.0 * M_PI);   
-                query_ptr[ptr * 3 + 2] = (x3 - dt * vz_ptr[ptr]) / (2.0 * M_PI);   
+                query_ptr[ptr * 3 + 0] = (x1 - dt * vx_ptr[ptr]) / (2.0 * M_PI);
+                query_ptr[ptr * 3 + 1] = (x2 - dt * vy_ptr[ptr]) / (2.0 * M_PI);
+                query_ptr[ptr * 3 + 2] = (x3 - dt * vz_ptr[ptr]) / (2.0 * M_PI);
             }
         }
     }
     ierr = velocity->restoreComponentArrays (vx_ptr, vy_ptr, vz_ptr);
-    
+
 
     // communicate coordinates to all processes: this function keeps track of query points
     // coordinates must always be scattered before any interpolation, otherwise the plan
     // will use whatever query points that was set before (if at all)
-    interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
+    interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_,
                             n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
     ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
 
@@ -284,9 +286,9 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
                 ptr = i1 * n_misc->isize_[1] * n_misc->isize_[2] + i2 * n_misc->isize_[2] + i3;
 
                 // compute query points
-                query_ptr[ptr * 3 + 0] = (x1 - 0.5 * dt * (vx_ptr[ptr] + wx_ptr[ptr])) / (2.0 * M_PI);   
-                query_ptr[ptr * 3 + 1] = (x2 - 0.5 * dt * (vy_ptr[ptr] + wy_ptr[ptr])) / (2.0 * M_PI);   
-                query_ptr[ptr * 3 + 2] = (x3 - 0.5 * dt * (vz_ptr[ptr] + wz_ptr[ptr])) / (2.0 * M_PI);   
+                query_ptr[ptr * 3 + 0] = (x1 - 0.5 * dt * (vx_ptr[ptr] + wx_ptr[ptr])) / (2.0 * M_PI);
+                query_ptr[ptr * 3 + 1] = (x2 - 0.5 * dt * (vy_ptr[ptr] + wy_ptr[ptr])) / (2.0 * M_PI);
+                query_ptr[ptr * 3 + 2] = (x3 - 0.5 * dt * (vz_ptr[ptr] + wz_ptr[ptr])) / (2.0 * M_PI);
             }
         }
     }
@@ -294,7 +296,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     ierr = work_field_->restoreComponentArrays (wx_ptr, wy_ptr, wz_ptr);
 
     // scatter final query points
-    interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_, 
+    interp_plan_->scatter (n_misc->n_, n_misc->isize_, n_misc->istart_, n_misc->n_local_,
                             n_ghost_, query_ptr, n_misc->c_dims_, n_misc->c_comm_, t.data());
     ierr = VecRestoreArray (query_points_, &query_ptr);         CHKERRQ (ierr);
 
@@ -375,7 +377,7 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     } else {
         TU_assert (false, "advection mode not implemented.");   CHKERRQ(ierr);
     }
-    
+
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
@@ -392,65 +394,8 @@ SemiLagrangianSolver::~SemiLagrangianSolver () {
     if (vector_field_ghost_ != NULL) accfft_free (vector_field_ghost_);
     delete [] temp_;
 
-    ierr = VecDestroy (&query_points_);  
+    ierr = VecDestroy (&query_points_);
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

@@ -21,7 +21,7 @@
 #include "EventTimings.hpp"
 
 
-//namespace pglistr {
+namespace pglistr {
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// constructor /////////////////////////////////////// ###
@@ -166,7 +166,7 @@ PetscErrorCode TumorSolverInterface::initialize (
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setParams ///////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setParams (
-    Vec p, 
+    Vec p,
     std::shared_ptr<TumorSettings> tumor_params = {})
 {
     PetscFunctionBegin;
@@ -686,4 +686,4 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
     PetscFunctionReturn (ierr);
 }
 
-//} // namespace pglistr
+} // namespace pglistr

@@ -1,5 +1,7 @@
 #include "Obs.h"
 
+namespace pglistr {
+
 Obs::Obs (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
     threshold_ = n_misc->obs_threshold_;
     PetscErrorCode ierr;
@@ -40,4 +42,6 @@ PetscErrorCode Obs::apply(Vec y, Vec x) {
 Obs::~Obs () {
     PetscErrorCode ierr;
     ierr = VecDestroy (&filter_);
+}
+
 }

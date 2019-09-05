@@ -6,10 +6,12 @@
 #include <mpi.h>
 #include <omp.h>
 
+namespace pglistr {
+
 struct CtxElasticity {
 	CtxElasticity (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : n_misc_ (n_misc), tumor_ (tumor) {
 		PetscErrorCode ierr = 0;
-		ierr = VecDuplicate (tumor_->mat_prop_->gm_, &mu_); 
+		ierr = VecDuplicate (tumor_->mat_prop_->gm_, &mu_);
 		ierr = VecDuplicate (mu_, &lam_);
 		ierr = VecDuplicate (mu_, &screen_);
 
@@ -19,7 +21,7 @@ struct CtxElasticity {
 			ierr = VecSet (temp_[i], 0.);
 		}
 
-		ierr = VecSet (mu_, 0.); 
+		ierr = VecSet (mu_, 0.);
 		ierr = VecSet (lam_, 0.);
 		ierr = VecSet (screen_, 0.);
 	}
@@ -80,8 +82,10 @@ class VariableLinearElasticitySolver : public ElasticitySolver {
 		virtual ~VariableLinearElasticitySolver () {}
 };
 
-//Helper functions 
-PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y); // this is used as a preconditioner 
+//Helper functions
+PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y); // this is used as a preconditioner
 PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y);
+
+}
 
 #endif

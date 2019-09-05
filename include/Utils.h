@@ -28,6 +28,7 @@
 #include "EventTimings.hpp"
 #include <pnetcdf.h>
 
+namespace pglistr {
 class Phi;
 
 #define throwError(str) throwErrorMsg(str, __LINE__, __FILE__)
@@ -642,5 +643,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 double myDistance (double *c1, double *c2);
 
 PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);
+
+}
 
 #endif // end _UTILS_H

@@ -10,6 +10,7 @@
     #include "BLMVM.h"
 #endif
 
+namespace pglistr {
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor)
 :
@@ -3768,4 +3769,6 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       }
     }
     PetscFunctionReturn (0);
+}
+
 }

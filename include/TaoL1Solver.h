@@ -10,6 +10,8 @@ Environment for creating new Tao solver for PDE-constrained L1 minimization
 #undef __FUNCT__
 #define __FUNCT__ __func__
 
+
+namespace pglistr {
 // Context to hold relevant parameters for the solve
 struct TaoCtx {
 	PetscReal f_tol;
@@ -28,7 +30,8 @@ PetscErrorCode TaoLineSearchCreate_ISTA (TaoLineSearch ls);
 PetscErrorCode TaoLineSearchDestroy_ISTA (TaoLineSearch ls);
 PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s);
 
-//Other 
+//Other
 PetscErrorCode proximalOperator (Vec y, Vec x, double lambda, PetscReal step);
+}
 
 #endif

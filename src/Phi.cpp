@@ -1,5 +1,7 @@
 #include "Phi.h"
 
+namespace pglistr {
+
 Phi::Phi (std::shared_ptr<NMisc> n_misc) :
     n_misc_ (n_misc)
   , gaussian_labels_()
@@ -1056,4 +1058,6 @@ Phi::~Phi () {
         ierr = VecDestroy (&phi_vec_[i]);
     }
     phi_vec_.clear();
+}
+
 }

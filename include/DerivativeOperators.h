@@ -4,6 +4,8 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 
+namespace pglistr {
+
 class DerivativeOperators {
 	public :
 		DerivativeOperators (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
@@ -153,5 +155,5 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 		int nc_;
 };
 
-
+}
 #endif

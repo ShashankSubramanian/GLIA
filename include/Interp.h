@@ -4,8 +4,10 @@
 #include "petsc.h"
 #include <accfft.h>
 #include <accfftf.h>
-#define FAST_INTERP
 
+namespace pglistr {
+
+#define FAST_INTERP
 #if defined(PETSC_USE_REAL_SINGLE)
 	#define FAST_INTERPV // enable ONLY for single precision
 #endif
@@ -177,5 +179,7 @@ void accfft_get_ghost_xyz(accfft_plan_t<Real, TC, PL>* plan, int g_size, int* is
 		Real* data, Real* ghost_data);
 //void accfft_get_ghost_xyz(accfft_plan* plan, int g_size, int* isize_g,
 //		Real* data, Real* ghost_data);
+
+}
 
 #endif

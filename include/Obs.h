@@ -5,6 +5,7 @@
 #include <mpi.h>
 #include <omp.h>
 
+namespace pglistr {
 class Obs {
 	public:
 		Obs (std::shared_ptr<NMisc> n_misc);
@@ -21,6 +22,6 @@ class Obs {
 
 		~Obs ();
 };
-
+}
 
 #endif

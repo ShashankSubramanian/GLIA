@@ -1,5 +1,7 @@
 #include "MatProp.h"
 
+namespace pglistr {
+
 MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &gm_);
@@ -173,4 +175,6 @@ MatProp::~MatProp() {
 	ierr = VecDestroy (&glm_);
 	ierr = VecDestroy (&bg_);
 	ierr = VecDestroy (&filter_);
+}
+
 }

@@ -1,5 +1,7 @@
 #include "DiffSolver.h"
 
+namespace pglistr {
+
 DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k)
 :
 ctx_() {
@@ -192,4 +194,6 @@ DiffSolver::~DiffSolver () {
     ierr = MatDestroy (&A_);
     ierr = KSPDestroy (&ksp_);
     ierr = VecDestroy (&rhs_);
+}
+
 }

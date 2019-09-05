@@ -6,6 +6,7 @@
 #include <mpi.h>
 #include <omp.h>
 
+namespace pglistr {
 
 /** Diffusion koefficient is defined as follows:
  *
@@ -45,7 +46,7 @@ class DiffCoef {
 		double *temp_accfft_;
 
 		PetscErrorCode setValues (double k_scale, double k_gm_wm_ratio, double k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
-		// needs to be called when we invert for diffusivity and use Gauss-Newton 
+		// needs to be called when we invert for diffusivity and use Gauss-Newton
 		PetscErrorCode setSecondaryCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
 		// needs to be called when we invert for diffusivity (in every newton iteration, calls setValues())
 		PetscErrorCode updateIsotropicCoefficients (double k1, double k2, double k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc);
@@ -59,4 +60,5 @@ class DiffCoef {
 		~DiffCoef ();
 };
 
+}
 #endif

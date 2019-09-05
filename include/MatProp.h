@@ -5,6 +5,8 @@
 #include <mpi.h>
 #include <omp.h>
 
+namespace pglistr {
+
 class MatProp {
 	public:
 		MatProp (std::shared_ptr<NMisc> n_misc);
@@ -17,7 +19,7 @@ class MatProp {
 		Vec filter_;
 
 		double force_factor_;
-		double edema_threshold_;	
+		double edema_threshold_;
 
 		std::shared_ptr<NMisc> n_misc_;
 
@@ -28,5 +30,6 @@ class MatProp {
 
 		~MatProp ();
 };
+}
 
 #endif

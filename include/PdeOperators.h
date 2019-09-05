@@ -10,6 +10,8 @@
 #include <mpi.h>
 #include <omp.h>
 
+namespace pglistr {
+
 class PdeOperators {
 	public:
 		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
@@ -102,5 +104,6 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 			delete [] temp_;
 		}
 };
+}
 
 #endif
