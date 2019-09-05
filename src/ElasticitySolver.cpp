@@ -300,8 +300,12 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 
     // first term: div (mu .* (gradu + graduT))
     ctx->spec_ops_->computeGradient (tumor->work_[4], tumor->work_[5], tumor->work_[6], displacement->x_, &XYZ, t.data());
+    XYZ[1] = 0; // work_[8] is re-used
     ctx->spec_ops_->computeGradient (tumor->work_[7], tumor->work_[8], tumor->work_[9], displacement->y_, &XYZ, t.data());
+    XYZ[1] = 1; // reset back
+    XYZ[2] = 0;
     ctx->spec_ops_->computeGradient (tumor->work_[10], tumor->work_[11], tumor->work_[0], displacement->z_, &XYZ, t.data());
+    XYZ[2] = 1;
 
     ierr = VecScale (tumor->work_[4], 2.);                                      CHKERRQ (ierr);   // dudx + dudx
     ierr = VecWAXPY (tumor->work_[8], 1.0, tumor->work_[5], tumor->work_[7]);   CHKERRQ (ierr);   // dudy + dvdx
@@ -313,6 +317,9 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	ctx->spec_ops_->computeDivergence (force->x_, tumor->work_[4], tumor->work_[8], tumor->work_[0], t.data());    
 	ierr = VecAXPY (force->x_, 1.0, tumor->work_[1]);							CHKERRQ (ierr);   // first term + second term
 
+    XYZ[0] = 0; XYZ[1] = 1; XYZ[2] = 0;
+    ctx->spec_ops_->computeGradient (tumor->work_[7], tumor->work_[8], tumor->work_[9], displacement->y_, &XYZ, t.data());
+    XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     ierr = VecWAXPY (tumor->work_[4], 1.0, tumor->work_[7], tumor->work_[5]);   CHKERRQ (ierr);   // dvdx + dudy
     ierr = VecScale (tumor->work_[8], 2.);                                      CHKERRQ (ierr);   // dvdy + dvdy
     ierr = VecWAXPY (tumor->work_[0], 1.0, tumor->work_[9], tumor->work_[11]);  CHKERRQ (ierr);   // dvdz + dwdy
@@ -323,6 +330,9 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
 	ctx->spec_ops_->computeDivergence (force->y_, tumor->work_[4], tumor->work_[8], tumor->work_[0], t.data());    
 	ierr = VecAXPY (force->y_, 1.0, tumor->work_[2]);							CHKERRQ (ierr);   // first term + second term
 
+    XYZ[0] = 0; XYZ[1] = 0; XYZ[2] = 1;
+    ctx->spec_ops_->computeGradient (tumor->work_[10], tumor->work_[11], tumor->work_[0], displacement->z_, &XYZ, t.data());
+    XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     ierr = VecWAXPY (tumor->work_[4], 1.0, tumor->work_[10], tumor->work_[6]);  CHKERRQ (ierr);   // dwdx + dudz
     ierr = VecWAXPY (tumor->work_[8], 1.0, tumor->work_[11], tumor->work_[9]);  CHKERRQ (ierr);   // dwdy + dvdz
     ierr = VecScale (tumor->work_[0], 2.);                                      CHKERRQ (ierr);   // dwdz + dwdz
