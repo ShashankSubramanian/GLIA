@@ -655,6 +655,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = displacement_old->copy (tumor_->displacement_);
     }
 
+    if (n_misc_->verbosity_ >= 3) {
+        s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    }
+
     #ifdef CUDA
         cudaPrintDeviceMemory ();
     #endif
@@ -1062,7 +1067,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         ierr = displacement_old->copy (tumor_->displacement_);
     }
 
-    std::stringstream s;
     if (n_misc_->verbosity_ >= 3) {
         s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
         ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
