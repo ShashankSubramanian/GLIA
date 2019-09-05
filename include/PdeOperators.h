@@ -108,10 +108,14 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
 			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
 			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor, spec_ops);
+
+			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
 		}
 
 		std::shared_ptr<AdvectionSolver> adv_solver_;
 		std::shared_ptr<ElasticitySolver> elasticity_solver_;
+
+		Vec magnitude_;
 
 		virtual PetscErrorCode solveState (int linearized);
 		PetscErrorCode computeReactionRate (Vec m);
@@ -121,6 +125,7 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 
 		virtual ~PdeOperatorsMultiSpecies () {
 			PetscErrorCode ierr = 0;
+			ierr = VecDestroy (&magnitude_);
 		}
 };
 
