@@ -471,6 +471,13 @@ int main (int argc, char** argv) {
         #endif
     }
 
+    int fwd_temp;
+    if (syn_flag == 1) {
+        // data is being generated -- time history should not be stored
+        fwd_temp = n_misc->forward_flag_; // keep track of whether solver is in forward or inverse mode
+        n_misc->forward_flag_ = 1;
+    }
+
     std::stringstream ss;
     if (n_misc->verbosity_ >= 2) {
         ss << n_misc->writepath_.str().c_str() << "x_it.dat";
@@ -560,6 +567,8 @@ int main (int argc, char** argv) {
     } else {
         PCOUT << "Data read\n";
     }
+
+    n_misc->forward_flag_ = fwd_temp; // reset forward flag so that time-history can be stored now if solver is in inverse-mode
 
     if (fwd_flag) {
         PCOUT << "Forward solve completed: exiting...\n";
