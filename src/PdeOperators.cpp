@@ -439,8 +439,9 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
 
 PdeOperatorsRD::~PdeOperatorsRD () {
     PetscErrorCode ierr = 0;
-    if (!n_misc_->forward_flag_) {        
-        for (int i = 0; i < nt_ + 1; i++) {
+    if (!n_misc_->forward_flag_) {  
+        // use c_.size() not nt      
+        for (int i = 0; i < c_.size(); i++) {
             ierr = VecDestroy (&c_[i]);
             ierr = VecDestroy (&p_[i]);
             if (c_half_.size() > 0 && i != nt_) ierr = VecDestroy (&c_half_[i]);
