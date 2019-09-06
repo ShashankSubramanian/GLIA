@@ -524,24 +524,24 @@ int main (int argc, char** argv) {
 
     if (syn_flag == 1) {
         // add low freq model noise
-        ierr = applyLowFreqNoise (data, n_misc);
-        Vec temp;
-        double noise_err_norm, rel_noise_err_norm;
-        ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
-        ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
-        ierr = VecCopy (data_nonoise, temp);    CHKERRQ (ierr);
-        ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
-        ierr = VecNorm (temp, NORM_2, &noise_err_norm);               CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
-        ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
-        rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
-        ss << " low frequency relative error = " << rel_noise_err_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (n_misc->low_freq_noise_scale_ != 0) {
+            ierr = applyLowFreqNoise (data, n_misc);
+            Vec temp;
+            double noise_err_norm, rel_noise_err_norm;
+            ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
+            ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
+            ierr = VecCopy (data_nonoise, temp);    CHKERRQ (ierr);
+            ierr = VecAXPY (temp, -1.0, data);      CHKERRQ (ierr);
+            ierr = VecNorm (temp, NORM_2, &noise_err_norm);               CHKERRQ (ierr);  // diff btw noise corrupted signal and ground truth
+            ierr = VecNorm (data_nonoise, NORM_2, &rel_noise_err_norm);   CHKERRQ (ierr);
+            rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
+            ss << " low frequency relative error = " << rel_noise_err_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
-        // if (n_misc->writeOutput_)
-        //     dataOut (data, n_misc, "dataNoise.nc");
+            // if (n_misc->writeOutput_)
+            //     dataOut (data, n_misc, "dataNoise.nc");
 
-        if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
-
-
+            if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
+        }
         ss << " data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
         ss << " data read"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -1558,8 +1558,9 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
     #endif
-    if (n_misc->writeOutput_)
-        dataOut (c_0, n_misc, "c0True.nc");
+    if (n_misc->writeOutput_) {
+        ierr = dataOut (c_0, n_misc, "c0True.nc");                        CHKERRQ (ierr);
+    }
 
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);

@@ -6,7 +6,9 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 #include "TaoL1Solver.h"
-#include "BLMVM.h"
+#ifdef BLMVM_USER
+    #include "BLMVM.h"
+#endif
 
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor)
@@ -61,7 +63,9 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
 
 
   // register copied blmvm solver
-  ierr = TaoRegister ("tao_blmvm_m", TaoCreate_BLMVM_M);                        CHKERRQ (ierr);
+  #ifdef BLMVM_USER
+    ierr = TaoRegister ("tao_blmvm_m", TaoCreate_BLMVM_M);                        CHKERRQ (ierr);
+  #endif
   if (itctx_->n_misc_->regularization_norm_ == L1) {//Register new Tao solver and initialize variables for parameter continuation
     ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
     itctx_->lam_right = itctx_->n_misc_->lambda_;
@@ -484,7 +488,11 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = VecDuplicate (x_in, &xrec_);                                           CHKERRQ(ierr);
     ierr = VecSet       (xrec_, 0.0);                                             CHKERRQ(ierr);
     ierr = TaoCreate    (PETSC_COMM_SELF, &tao_);                                 CHKERRQ (ierr);
-    ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+    #ifdef BLMVM_USER
+        ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+    #else
+        ierr = TaoSetType   (tao_, "bqnls");                                    CHKERRQ (ierr);
+    #endif
     ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &xrec_rd_); /* inv rho and k */   CHKERRQ (ierr);
     ierr = VecSet        (xrec_rd_, 0.);                                          CHKERRQ (ierr);
     ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
@@ -867,6 +875,7 @@ PetscErrorCode InvSolver::solve () {
     const TaoType taotype; ierr = TaoGetType (tao_, &taotype);                  CHKERRQ(ierr);
     #endif
     ierr = TaoGetType (tao_, &taotype); CHKERRQ(ierr);
+    #ifdef BLMVM_USER
     if (strcmp(taotype, "tao_blmvm_m") == 0) {
         if (itctx_->optsettings_->linesearch == ARMIJO) {
           tuMSGstd(".. storing last ls step.");
@@ -874,6 +883,7 @@ PetscErrorCode InvSolver::solve () {
           itctx_->last_ls_step = blm->last_ls_step;
         }
     }
+    #endif
 
     /* === get solution status === */
     ierr = TaoGetSolutionStatus (tao_, NULL, &itctx_->optfeedback_->jval, &itctx_->optfeedback_->gradnorm, NULL, &xdiff, NULL); CHKERRQ(ierr);
@@ -934,6 +944,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     PetscReal beta_store, norm_rel, norm;
     int nnz = 0;
     bool conv_maxit = false;
+    bool finalize = false, contiterating = true;
     Vec all_phis;
 
     // abbrev
@@ -1223,8 +1234,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             // == prolongate ==
             // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
             // if inversion for reaction disabled, also reset operators
-            bool finalize = !itctx_->n_misc_->reaction_inversion_;
-            bool contiterating = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
+            finalize = !itctx_->n_misc_->reaction_inversion_;
+            contiterating = !itctx_->cosamp_->converged_l2 && !itctx_->cosamp_->converged_error_l2 && !conv_maxit;
             ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full, (finalize || contiterating));  CHKERRQ (ierr); // x_full <-- P(x_sub)
 
             // check if L2 solver converged
@@ -2027,7 +2038,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     TaoConvergedReason flag;
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
 
-
+    Vec tao_grad;
     // get current iteration, objective value, norm of gradient, norm of
     // norm of contraint, step length / trust region readius of iteratore
     // and termination reason
@@ -2035,12 +2046,12 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &tao_x);                                   CHKERRQ(ierr);
 
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     if (itctx->n_misc_->verbosity_ >= 2) {
-      Vec tao_grad;
       double *grad_ptr, *sol_ptr;
-      ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
-
       ierr = VecGetArray(tao_x, &sol_ptr);                                        CHKERRQ(ierr);
       ierr = VecGetArray(tao_grad, &grad_ptr);                                    CHKERRQ(ierr);
       for (int i = 0; i < itctx->n_misc_->np_; i++){
@@ -2170,6 +2181,11 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     double norm_gref;
     ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag);  CHKERRQ(ierr);
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
+
+    Vec tao_grad;
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
@@ -2730,7 +2746,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep;
     bool stop[3];
     int verbosity;
-    std::stringstream ss, sc;
+    std::stringstream ss;
     Vec x = nullptr, g = nullptr;
     ierr = TaoGetSolutionVector(tao, &x);                                     CHKERRQ(ierr);
     TaoLineSearch ls = nullptr;
@@ -2759,14 +2775,19 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
 
+    Vec tao_grad;
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
+
     // update/set reference gradient (with p = zeros)
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
-        Vec dJ, p0;
-        double norm_gref = 0.;
-        ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
+      Vec dJ = nullptr, p0 = nullptr;
+      double norm_gref = 0.;
+      ierr = VecDuplicate (ctx->tumor_->p_, &dJ);                               CHKERRQ(ierr);
       ierr = VecDuplicate (ctx->tumor_->p_, &p0);                               CHKERRQ(ierr);
-        ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
+      ierr = VecSet (dJ, 0.);                                                   CHKERRQ(ierr);
       ierr = VecSet (p0, 0.);                                                   CHKERRQ(ierr);
 
       if (ctx->n_misc_->flag_reaction_inv_) {
@@ -2775,9 +2796,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
           ierr = evaluateGradient(tao, p0, dJ, (void*) ctx);
           ierr = VecNorm (dJ, NORM_2, &norm_gref);                                  CHKERRQ(ierr);
       }
-        ctx->optfeedback_->gradnorm0 = norm_gref;
-        //ctx->gradnorm0 = gnorm;
-        ctx->update_reference_gradient = false;
+      ctx->optfeedback_->gradnorm0 = norm_gref;
+      //ctx->gradnorm0 = gnorm;
+      ctx->update_reference_gradient = false;
       std::stringstream s; s <<" updated reference gradient for relative convergence criterion, Gauss-Newton solver: " << ctx->optfeedback_->gradnorm0;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
       if (dJ != nullptr) {ierr = VecDestroy(&dJ); CHKERRQ(ierr); dJ = nullptr;}
@@ -3179,7 +3200,7 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep;
     bool stop[3];
     int verbosity;
-    std::stringstream ss, sc;
+    std::stringstream ss;
     Vec x = nullptr, g = nullptr;
     ierr = TaoGetSolutionVector(tao, &x);                                       CHKERRQ(ierr);
     TaoLineSearch ls = nullptr;
@@ -3206,6 +3227,11 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
+
+    Vec tao_grad;
+    // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
+    ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
+    ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     double norm_gref = 0.;
     // update/set reference gradient
@@ -3516,8 +3542,11 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       ls->stepmin = minstep;
     } else {
       if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
-        // ierr = TaoSetType (tao, "blmvm");   CHKERRQ(ierr);   // set TAO solver type
-        ierr = TaoSetType (tao, "tao_blmvm_m");   CHKERRQ(ierr);   // set TAO solver type
+        #ifdef BLMVM_USER
+        ierr = TaoSetType   (tao_, "tao_blmvm_m");                                    CHKERRQ (ierr);
+        #else
+        ierr = TaoSetType   (tao_, "bqnls");                                          CHKERRQ (ierr);
+        #endif
       } else {
         ierr = TaoSetType (tao, "bnls");    CHKERRQ(ierr);  // set TAO solver type
       }
@@ -3677,10 +3706,12 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       if (ctx->optsettings_->linesearch == ARMIJO) {
         ierr = TaoLineSearchSetType (linesearch, "armijo");                          CHKERRQ(ierr);
         tuMSGstd(" using line-search type: armijo");
+        #ifdef BLMVM_USER
         if (strcmp(taotype, "tao_blmvm_m") == 0) {
           TAO_BLMVM_M *blm = (TAO_BLMVM_M *) tao->data;
           blm->last_ls_step = ctx->last_ls_step;
         }
+        #endif
       } else {
         tuMSGstd(" using line-search type: more-thuene");
       }

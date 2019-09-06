@@ -95,8 +95,8 @@ WARN='-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdis
 
 # Produce position independent code for dynamic linking
 env.Append(CCFLAGS = ['-fPIC'])
-env.Append(CCFLAGS = ['-fPIE'])
-env.Append(LINKFLAGS = ["-fpie"])
+#env.Append(CCFLAGS = ['-fPIE'])
+#env.Append(LINKFLAGS = ["-fpie"])
 #env.Append(LINKFLAGS = ["-fpie", "-Bstatic"])
 
 real_compiler = get_real_compiler(env["compiler"])
@@ -153,6 +153,9 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
+
+# use user-defined blmvm solver
+env.Append(CCFLAGS = ['-DBLMVM_USER'])
 
 # enforce positivity in diffusion inversion for ks
 # env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
@@ -228,11 +231,18 @@ binfwd = env.Program (
     target = buildpath + '/forward',
     source = [sourcesPGLISTR, './app/forward.cpp']
 )
+
 bininv = env.Program (
     target = buildpath + '/inverse',
     source = [sourcesPGLISTR, './app/inverse.cpp']
 )
 env.Alias("bin", bininv)
+
+# solib = env.SharedLibrary (
+#      target = buildpath + '/libtumor',
+#      source = [sourcesPGLISTR],
+# )
+# env.Alias("solib", solib)
 
 # Creates a symlink that always points to the latest build
 symlink = env.Command(
@@ -242,7 +252,7 @@ symlink = env.Command(
 )
 
 #Default(staticlib, solib, bin, symlink)
-Default(bininv, binfwd, symlink)
+Default(bininv, symlink)
 AlwaysBuild(symlink)
 
 print ("Targets:   " + ", ".join([str(i) for i in BUILD_TARGETS]))

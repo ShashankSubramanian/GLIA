@@ -4,6 +4,7 @@ import os
 import collections
 from os import listdir
 import numpy as np
+import pandas as pd
 import imageTools as imgtools
 import nibabel as nib
 import nibabel.processing
@@ -403,7 +404,7 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data,  patient_labels, tumor_output_path):
+def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_labels, tumor_output_path):
     """
     @short - computes the dice coefficient for the tumor and further statistics
            - assumes t1_recon_seg to have the segmentation definend in inverse.cpp
@@ -451,15 +452,6 @@ def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_rec
     fio.writeNII(c1_ed,      os.path.join(tumor_output_path, "c1(ED).nii.gz"), affine);
     fio.writeNII(c1_tc,      os.path.join(tumor_output_path, "c1(TC).nii.gz"), affine);
     fio.writeNII(c1_b_no_wt, os.path.join(tumor_output_path, "c1(B\WT).nii.gz"), affine);
-    # max and min c(1) value in edema and tumor core mask
-    c1_ed_max = np.amax(c1_ed);
-    c1_ed_min = np.amin(c1_ed);
-    c1_tc_max = np.amax(c1_tc);
-    c1_tc_min = np.amin(c1_tc);
-    c1_int    = 2*math.pi/256 * np.sum(c1_recon.flatten());
-    c1_ed_int = 2*math.pi/256 * np.sum(c1_ed.flatten());
-    c1_tc_int = 2*math.pi/256 * np.sum(c1_tc.flatten());
-    c1_b_no_wt_int = 2*math.pi/256 * np.sum(c1_b_no_wt.flatten());
 
     # bool map t0_recon_seg wm, gm, csf, tu
     prec0_csf = (t0_recon_seg == 3);
@@ -467,48 +459,135 @@ def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_rec
     prec0_wm  = (t0_recon_seg == 2);
     prec0_c0  = (t0_recon_seg == 4);
 
-    # compute dice
-    # tc_dice:  ground truth vs. c(1), where c(1) max. prob. map
-    # tc9_dice: ground truth vs. c(1), where c(1) > 0.9
-    csf_dice  = 1.0 - distance.dice(pref_csf.flatten(), prec_csf.flatten());
-    gm_dice   = 1.0 - distance.dice(pref_gm.flatten(),  prec_gm.flatten());
-    wm_dice   = 1.0 - distance.dice(pref_wm.flatten(),  prec_wm.flatten());
-    wt_dice   = 1.0 - distance.dice(pref_wt.flatten(),  prec_wt.flatten());
-    nec_dice  = 1.0 - distance.dice(pref_nec.flatten(), prec_wt.flatten());
-    tc_dice   = 1.0 - distance.dice(pref_tc.flatten(),  prec_wt.flatten());
-    tc9_dice  = 1.0 - distance.dice(pref_tc.flatten(),  prec_tc9.flatten());
-    tc8_dice  = 1.0 - distance.dice(pref_tc.flatten(),  prec_tc8.flatten());
-    nec1_dice = 1.0 - distance.dice(pref_nec.flatten(), prec_nec1.flatten());
+    # -- a) compute dice --
+    features['csf_dice']  = 1.0 - distance.dice(pref_csf.flatten(), prec_csf.flatten());
+    features['gm_dice']   = 1.0 - distance.dice(pref_gm.flatten(),  prec_gm.flatten());
+    features['wm_dice']   = 1.0 - distance.dice(pref_wm.flatten(),  prec_wm.flatten());
+    features['wt_dice']   = 1.0 - distance.dice(pref_wt.flatten(),  prec_wt.flatten());
+    features['nec_dice']  = 1.0 - distance.dice(pref_nec.flatten(), prec_wt.flatten());
+    features['tc_dice']   = 1.0 - distance.dice(pref_tc.flatten(),  prec_wt.flatten());
+    features['tc_c(1)[x>0.9]_dice']  = 1.0 - distance.dice(pref_tc.flatten(),  prec_tc9.flatten());
+    features['tc_c(1)[x>0.8]_dice']  = 1.0 - distance.dice(pref_tc.flatten(),  prec_tc8.flatten());
+    features['nec_c(1)[x=1.0]_dice'] = 1.0 - distance.dice(pref_nec.flatten(), prec_nec1.flatten());
 
-    ed8_dice  = 1.0 - distance.dice(pref_ed.flatten(),  prec_ed8.flatten());
-    ed7_dice  = 1.0 - distance.dice(pref_ed.flatten(),  prec_ed7.flatten());
-    ed6_dice  = 1.0 - distance.dice(pref_ed.flatten(),  prec_ed6.flatten());
+    features['ed_c(1)[0.02<x<0.8]_dice']  = 1.0 - distance.dice(pref_ed.flatten(),  prec_ed8.flatten());
+    features['ed_c(1)[0.02<x<0.7]_dice']  = 1.0 - distance.dice(pref_ed.flatten(),  prec_ed7.flatten());
+    features['ed_c(1)[0.02<x<0.6]_dice']  = 1.0 - distance.dice(pref_ed.flatten(),  prec_ed6.flatten());
 
-    # compute stats
-    # voxel fractions
-    # smooth_tc = imgtools.smoothBinaryMap(pref_tc).astype(float);
+    # -- b) max and min c(1) value in edema and tumor core mask --
+    features['max{c(1)|_ED}'] = np.amax(c1_ed);
+    features['min{c(1)|_ED}'] = np.amin(c1_ed);
+    features['max{c(1)|_TC}'] = np.amax(c1_tc);
+    features['min{c(1)|_TC}'] = np.amin(c1_tc);
+    features['int{c(1)}']     = 2*math.pi/256 * np.sum(c1_recon.flatten());
+    features['int{c(1)|_ED}'] = 2*math.pi/256 * np.sum(c1_ed.flatten());
+    features['int{c(1)|_TC}'] = 2*math.pi/256 * np.sum(c1_tc.flatten());
+    features['int{c(1)|_B-WT}'] = 2*math.pi/256 * np.sum(c1_b_no_wt.flatten());
+
+    # -- c) rel. volume --
     data_nonsmooth = pref_tc.astype(float);
     brain = float(np.sum(pref_brain.flatten()));
-    frac_ref_wt_b    = np.sum(pref_wt.flatten())    / brain;
-    frac_ref_ed_b    = np.sum(pref_ed.flatten())    / brain;
-    frac_ref_en_b    = np.sum(pref_en.flatten())    / brain;
-    frac_ref_nec_b   = np.sum(pref_nec.flatten())   / brain;
-    frac_ref_tc_b    = np.sum(pref_tc.flatten())    / brain;
-    frac_rec_tc_b    = np.sum(prec_tc9.flatten())   / brain;
-    frac_pred_tc_b = -1;
+    features['vol(WT)_a']   = np.sum(pref_wt.flatten());
+    features['vol(ED)_a']   = np.sum(pref_ed.flatten());
+    features['vol(EN)_a']   = np.sum(pref_en.flatten());
+    features['vol(NEC)_a']  = np.sum(pref_nec.flatten());
+    features['vol(TC)_a']   = np.sum(pref_tc.flatten());
+    features['vol(c(0))_a'] = np.sum(prec0_c0.flatten());
+    features['vol(WT)_r']   = features['vol(WT)_a'] / brain;
+    features['vol(ED)_r']   = features['vol(ED)_a'] / brain;
+    features['vol(EN)_r']   = features['vol(EN)_a'] / brain;
+    features['vol(NEC)_r']  = features['vol(NEC)_a'] / brain;
+    features['vol(TC)_r']   = features['vol(TC)_a'] / brain;
+    features['vol(c(0))_r'] = features['vol(c(0))_a'] / brain;
+    features['vol(c(1)[x>0.9])_a']   = np.sum(prec_tc9.flatten());
+    features['vol(c(1)[x>0.9])_r']   = features['vol(c(1)[x>0.9])_a'] / brain;
+    features['vol(c(1.5)[x>0.9])_r'] = -1;
     if c1_pred15 != None:
-        frac_pred_tc_b   = np.sum(pred15_tc9.flatten()) / brain;
-    frac_rec_c0_b    = np.sum(prec0_c0.flatten())   / brain;
-    # integral fractions
-    frac_rec_c0_c1   = np.sum(c0_recon.flatten())  / sum(c1_recon.flatten());
-    frac_rec_c15_c12 = -1;
-    frac_rec_c15_c1  = -1;
-    frac_rec_c15_d   = -1;
+        features['vol(c(1.5)[x>0.9])_r']   = np.sum(pred15_tc9.flatten()) / brain;
+
+    x_cm_tc  = {}
+    x_cm_nec = {}
+    x_cm_c0  = {}
+    nnc = 0
+    if component_mask:
+        for nc in range(min(3,len(component_mask))):
+            # convert to brats dimensions
+            mask = imgtools.resizeImage(component_mask[nc], tuple(patient_ref.shape), 0);
+            tc_in_comp  = np.multiply(pref_tc.astype(int),    mask.astype(int));
+            ed_in_comp  = np.multiply(pref_ed.astype(int),    mask.astype(int));
+            nec_in_comp = np.multiply(pref_nec.astype(int),   mask.astype(int));
+            en_in_comp  = np.multiply(pref_en.astype(int),    mask.astype(int));
+            c0_in_comp  = np.multiply(c0_recon.astype(float), mask.astype(int));
+
+            # compute center of mass of necrotic tumor in component #nc
+            x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
+            x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(TC|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
+            x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(NEC|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
+            x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(c(0)|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+
+            features['vol(TC|_#c)_a(#c='+str(nc)+')']  =  np.sum(tc_in_comp.flatten())                       if nc < 3 else -1;
+            features['vol(TC|_#c)_r(#c='+str(nc)+')']  =  np.sum(tc_in_comp.flatten())/features['vol(TC)_a'] if nc < 3 else -1;
+            features['vol(ED|_#c)_a(#c='+str(nc)+')']  =  np.sum(ed_in_comp.flatten())                       if nc < 3 else -1;
+            features['vol(ED|_#c)_r(#c='+str(nc)+')']  =  np.sum(ed_in_comp.flatten())/features['vol(ED)_a'] if nc < 3 else -1;
+            features['vol(EN|_#c)_a(#c='+str(nc)+')']  =  np.sum(ed_in_comp.flatten())                       if nc < 3 else -1;
+            features['vol(EN|_#c)_r(#c='+str(nc)+')']  =  np.sum(ed_in_comp.flatten())/features['vol(TC)_a'] if nc < 3 else -1;
+            features['vol(NEC|_#c)_a(#c='+str(nc)+')'] =  np.sum(ed_in_comp.flatten())                       if nc < 3 else -1;
+            features['vol(NEC|_#c)_r(#c='+str(nc)+')'] =  np.sum(ed_in_comp.flatten())/features['vol(TC)_a'] if nc < 3 else -1;
+
+            features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] =  distance.euclidean(np.zeros_like(c0_in_comp.flatten()), c0_in_comp.flatten()) if nc < 3 else -1;
+            features['l2[c(0)|_#c]_r(#c='+str(nc)+')'] =  features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] / distance.euclidean(np.zeros_like(c0_recon.flatten()), c0_recon.astype(float).flatten()) if nc < 3 else -1;
+
+            nnc += 1
+        if nnc < 2: # less than 3 components, fill with -1 dummy vals.
+            for i in range (nnc, 3):
+                features['cm(NEC|_#c) (#c='+str(nc)+')']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(nc)+')']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(nc)+')']  = "n/a";
+                features['vol(TC|_#c)_a(#c='+str(nc)+')']  = -1;
+                features['vol(TC|_#c)_r(#c='+str(nc)+')']  = -1;
+                features['vol(ED|_#c)_a(#c='+str(nc)+')']  = -1;
+                features['vol(ED|_#c)_r(#c='+str(nc)+')']  = -1;
+                features['vol(EN|_#c)_a(#c='+str(nc)+')']  = -1;
+                features['vol(EN|_#c)_r(#c='+str(nc)+')']  = -1;
+                features['vol(NEC|_#c)_a(#c='+str(nc)+')'] = -1;
+                features['vol(NEC|_#c)_r(#c='+str(nc)+')'] = -1;
+                features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] = -1;
+                features['l2[c(0)|_#c]_r(#c='+str(nc)+')'] = -1;
+
+
+    # -- d) rel. surface --
+    # compute area of spheres that have same volume as ROI
+    area_sphere_tc  = 4 * math.pi * (3/(4*math.pi) * features['vol(TC)_a']) ** (2./3);
+    area_sphere_ed  = 4 * math.pi * (3/(4*math.pi) * features['vol(ED)_a']) ** (2./3);
+    area_sphere_nec = 4 * math.pi * (3/(4*math.pi) * features['vol(NEC)_a']) ** (2./3);
+    features['area(TC)_a'] = 0;
+    features['area(ED)_a'] = 0;
+    features['area(NEC)_a'] = 0;
+    dx,dy,dz = np.gradient(pref_tc.astype(int), 1./patient_ref.shape[0], 1./patient_ref.shape[1], 1./patient_ref.shape[2]);
+    features['area(TC)_a'] = np.sum(np.multiply(pref_tc.astype(int), np.sqrt(np.multiply(dx,dx) + np.multiply(dy,dy) + np.multiply(dz,dz))));
+    dx,dy,dz = np.gradient(pref_ed.astype(int), 1./patient_ref.shape[0], 1./patient_ref.shape[1], 1./patient_ref.shape[2]);
+    features['area(ED)_a'] = np.sum(np.multiply(pref_ed.astype(int), np.sqrt(np.multiply(dx,dx) + np.multiply(dy,dy) + np.multiply(dz,dz))));
+    dx,dy,dz = np.gradient(pref_nec.astype(int), 1./patient_ref.shape[0], 1./patient_ref.shape[1], 1./patient_ref.shape[2]);
+    features['area(NEC)_a'] = np.sum(np.multiply(pref_nec.astype(int), np.sqrt(np.multiply(dx,dx) + np.multiply(dy,dy) + np.multiply(dz,dz))));
+    features['area(TC)_r']  = features['area(TC)_a']  / area_sphere_tc;
+    features['area(ED)_r']  = features['area(ED)_a']  / area_sphere_ed;
+    features['area(NEC)_r'] = features['area(NEC)_a'] / area_sphere_tc;
+
+    # -- e) integral fractions --
+    features['int{c(0)}/int{c(1)}']     = np.sum(c0_recon.flatten())  / sum(c1_recon.flatten());
+    features['int{c(1.5)}/int{c(1.2)}'] = -1;
+    features['int{c(1.5)}/int{c(1)}']   = -1;
+    features['int{c(1.5)}/int{TC}']     = -1;
     if c1_pred15 != None:
-        frac_rec_c15_c1  = np.sum(c1_pred15.flatten()) / sum(c1_recon.flatten());
-        frac_rec_c15_d   = np.sum(c1_pred15.flatten()) / sum(data.flatten());
+        features['int{c(1.5)}/int{c(1)}'] = np.sum(c1_pred15.flatten()) / sum(c1_recon.flatten());
+        features['int{c(1.5)}/int{TC}']   = np.sum(c1_pred15.flatten()) / sum(data.flatten());
     if c1_pred12 != None and c1_pred15 != None:
-        frac_rec_c15_c12 = np.sum(c1_pred15.flatten()) / sum(c1_pred12.flatten());
+        features['int{c(1.5)}/int{c(1.2)}'] = np.sum(c1_pred15.flatten()) / sum(c1_pred12.flatten());
 
     # compute l2-error (everywhere and at observation points)
     diff_virg = c1_recon - data;
@@ -516,37 +595,27 @@ def computeTumorStats(patient_ref_, t1_recon_seg, t0_recon_seg, c1_recon, c0_rec
     obs_mask = ~pref_ed;
     diff_obs              = np.multiply(c1_recon, obs_mask)  - data;
     diff_obs_nonsmooth    = np.multiply(c1_recon, obs_mask)  - data_nonsmooth;
-    l2err1_virg           = np.linalg.norm(diff_virg.flatten(), 2)           / np.linalg.norm(data.flatten(), 2)
-    l2err1_virg_nonsmooth = np.linalg.norm(diff_virg_nonsmooth.flatten(), 2) / np.linalg.norm(data_nonsmooth.flatten(), 2)
-    l2err1_obs            = np.linalg.norm(diff_obs.flatten(), 2)            / np.linalg.norm(data.flatten(), 2)
-    l2err1_obs_nonsmooth  = np.linalg.norm(diff_obs_nonsmooth.flatten(), 2)  / np.linalg.norm(data_nonsmooth.flatten(), 2)
+    features['l2[c(1)-TC]']           = np.linalg.norm(diff_virg.flatten(), 2)           / np.linalg.norm(data.flatten(), 2)
+    features['l2[c(1)-TC]_nonsmooth'] = np.linalg.norm(diff_virg_nonsmooth.flatten(), 2) / np.linalg.norm(data_nonsmooth.flatten(), 2)
+    features['l2[Oc(1)-TC]']            = np.linalg.norm(diff_obs.flatten(), 2)            / np.linalg.norm(data.flatten(), 2)
+    features['l2[Oc(1)-TC]_nonsmooth']  = np.linalg.norm(diff_obs_nonsmooth.flatten(), 2)  / np.linalg.norm(data_nonsmooth.flatten(), 2)
 
-    print("healthy tissue dice: (csf_dice, gm_dice, wm_dice)    =", csf_dice,gm_dice,wm_dice);
-    print("tumor dice (max):    (wt_dice, tc_dice, nec_dice)    =", wt_dice,tc_dice,nec_dice);
-    print("tumor dice (> x):    (tc9_dice, tc8_dice, nec1_dice) =", tc9_dice,tc8_dice,nec1_dice);
-    print("ed dice (x<ed<0.02): (ed8_dice, ed7_dice, ed6_dice)  =", ed8_dice,ed7_dice,ed6_dice);
-    print("c(ed,1) (max,min):                                   =", c1_ed_max, c1_ed_min);
-    print("c(tc,1) (max,min):                                   =", c1_tc_max, c1_tc_min);
-    print("stats: #tu/#brain    (wt,ed,en,nec,c0)               =", frac_ref_wt_b, frac_ref_ed_b, frac_ref_en_b, frac_ref_nec_b, frac_rec_c0_b);
-    print("stats: #tc/#brain    (ref_tc,rec_tc9,pred_tc9)       =", frac_ref_tc_b,frac_rec_tc_b,frac_pred_tc_b);
-    print("stats: int_ED c(1), int_TC c(t), int_B/WT c(1), int_B c(1) =", c1_ed_int,c1_tc_int,c1_b_no_wt_int, c1_int);
-    print("stats: int c(0)   / int c(1)   =", frac_rec_c0_c1);
-    print("stats: int c(1.5) / int c(1)   =", frac_rec_c15_c1);
-    print("stats: int c(1.5) / int c(1.2) =", frac_rec_c15_c12);
-    print("stats: int c(1.5) / int d      =", frac_rec_c15_d);
-    print("l2err_c(1):(smooth) (virg,obs) =", l2err1_virg, l2err1_obs);
-    print("l2err_c(1):         (virg,obs) =", l2err1_virg_nonsmooth, l2err1_obs_nonsmooth);
+    print("healthy tissue dice: (features['csf_dice'], features['gm_dice'], features['wm_dice'])    =", features['csf_dice'],features['gm_dice'],features['wm_dice']);
+    print("tumor dice (max):    (features['wt_dice'], features['tc_dice'], features['nec_dice'])    =", features['wt_dice'],features['tc_dice'],features['nec_dice']);
+    print("tumor dice (> x):    (features['tc_c(1)[x>0.9]_dice'], features['tc_c(1)[x>0.8]_dice'], features['nec_c(1)[x=1.0]_dice']) =", features['tc_c(1)[x>0.9]_dice'],features['tc_c(1)[x>0.8]_dice'],features['nec_c(1)[x=1.0]_dice']);
+    print("ed dice (x<ed<0.02): (features['ed_c(1)[0.02<x<0.8]_dice'], features['ed_c(1)[0.02<x<0.7]_dice'], features['ed_c(1)[0.02<x<0.6]_dice'])  =", features['ed_c(1)[0.02<x<0.8]_dice'],features['ed_c(1)[0.02<x<0.7]_dice'],features['ed_c(1)[0.02<x<0.6]_dice']);
+    print("c(ed,1) (max,min):                                   =", features['max{c(1)|_ED}'], features['min{c(1)|_ED}']);
+    print("c(tc,1) (max,min):                                   =", features['max{c(1)|_TC}'], features['min{c(1)|_TC}']);
+    print("stats: #tu/#brain    (wt,ed,en,nec,c0)               =", features['vol(WT)_r'], features['vol(ED)_r'], features['vol(EN)_r'], features['vol(NEC)_r'], features['vol(c(0))_r']);
+    print("stats: #tc/#brain    (ref_tc,rec_tc9,pred_tc9)       =", features['vol(TC)_r'],features['vol(c(1)[x>0.9])_r'],features['vol(c(1.5)[x>0.9])_r']);
+    print("stats: int_ED c(1), int_TC c(t), int_B/WT c(1), int_B c(1) =", features['int{c(1)|_ED}'],features['int{c(1)|_TC}'],features['int{c(1)|_B-WT}'], features['int{c(1)}']);
+    print("stats: int c(0)   / int c(1)   =", features['int{c(0)}/int{c(1)}']);
+    print("stats: int c(1.5) / int c(1)   =", features['int{c(1.5)}/int{c(1)}']);
+    print("stats: int c(1.5) / int c(1.2) =", features['int{c(1.5)}/int{c(1.2)}']);
+    print("stats: int c(1.5) / int d      =", features['int{c(1.5)}/int{TC}']);
+    print("l2err_c(1):(smooth) (virg,obs) =", features['l2[c(1)-TC]'], features['l2[Oc(1)-TC]']);
+    print("l2err_c(1):         (virg,obs) =", features['l2[c(1)-TC]_nonsmooth'], features['l2[Oc(1)-TC]_nonsmooth']);
 
-    # plt.show()
-
-    return csf_dice,gm_dice,wm_dice, \
-           wt_dice,tc_dice,tc9_dice,tc8_dice,nec_dice,nec1_dice, \
-           ed8_dice,ed7_dice,ed6_dice, \
-           frac_ref_wt_b,frac_ref_ed_b,frac_ref_en_b,frac_ref_nec_b, frac_ref_tc_b, \
-           frac_rec_tc_b, frac_pred_tc_b, frac_rec_c0_b,frac_rec_c0_c1,frac_rec_c15_c1,frac_rec_c15_c12,frac_rec_c15_d, \
-           c1_ed_int,c1_tc_int,c1_b_no_wt_int,c1_int, \
-           l2err1_virg,l2err1_obs, l2err1_virg_nonsmooth, l2err1_obs_nonsmooth, \
-           c1_ed_max, c1_ed_min, c1_tc_max, c1_ed_min;
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -935,6 +1004,8 @@ if __name__=='__main__':
     elif "obs" in args.rdir:
         args.rdir = "obs-{0:1.1f}".format(args.obs_lambda);
 
+
+    FEATURES = {}
     patient_labels = {};
     # paths
     input_path = args.input_path;
@@ -973,8 +1044,8 @@ if __name__=='__main__':
         patient_ref = nib.load(args.reference_image_path)
         patient_ref = patient_ref.get_fdata();
         atlas_img = nib.load(reg_output_path + "atlas_in_Pspace_seg.nii.gz")
-        atlas_img = atlas_img.get_fdata()        
-        csf_dice,gm_dice,wm_dice = computeDice(patient_ref, atlas_img, patient_label_rev);
+        atlas_img = atlas_img.get_fdata()
+        FEATURES[256]['csf_dice'],FEATURES[256]['gm_dice'],FEATURES[256]['wm_dice'] = computeDice(patient_ref, atlas_img, patient_label_rev);
 
 
     if args.analyze_concomps:
@@ -1018,6 +1089,8 @@ if __name__=='__main__':
         if args.generate_slices:
             fig_l2d, ax_l2d = plt.subplots(1,3, figsize=(12,4));
         for l, m, cc in zip(levels, markers, colors):
+
+            FEATURES[l] = {};
             # paths
             lvl_prefix = os.path.join(os.path.join(args.input_path, 'tumor_inversion'), 'nx' + str(l));
             res_path   = os.path.join(lvl_prefix, args.rdir);
@@ -1140,9 +1213,19 @@ if __name__=='__main__':
             c1smin    = np.amin(c1recs_nc.flatten());
             c1smax    = np.amax(c1recs_nc.flatten());
             print("     .. min/max{c(1)} %1.2e/%1.2e --> rescaling in [min,1] .. checking %1.2e/%1.2e" % (c1min, c1max, c1smin, c1smax))
+            nnc = 0;
             for nc in range(ncomps_data[l]):
                 l2err_percomp_TC[l][nc]  =  distance.euclidean(c1recs_nc.flatten(), data_nc.flatten(), comps_data[l][nc].flatten());
                 l2normref_percomp[l][nc] =  distance.euclidean(np.zeros_like(data_nc.flatten()), data_nc.flatten(), comps_data[l][nc].flatten());
+                if nc < 3:
+                    FEATURES[l]['l2[c(1)|_#c - TC|_#c]_a(#c='+str(nc)+')'] =  l2err_percomp_TC[l][nc]
+                    FEATURES[l]['l2[TC|_#c]_a(#c='+str(nc)+')'] =  l2err_percomp_TC[l][nc]
+
+            if nnc < 2: # less than 3 components, fill with -1 dummy vals.
+                for i in range (nnc, 3):
+                    FEATURES[l]['l2[c(1)|_#c - TC|_#c]_a(#c='+str(nc)+')'] = -1;
+                    FEATURES[l]['l2[TC|_#c]_a(#c='+str(nc)+')'] = -1;
+
 
             mask_TC = labeled[l] > 0;
             l2normref_TC[l] = distance.euclidean(np.zeros_like(data_nc.flatten()), data_nc.flatten());
@@ -1390,7 +1473,7 @@ if __name__=='__main__':
                     if CHART_C:
                         nc = 0
                         for k in range(len(xcm_data[l])):
-                            if relmass[l][k] > 1E-2:
+                            if relmass[l][k] > 1E-3:
                                 nc+=1
                         fig3, axis3 = plt.subplots(nc, 3);
                         for ax in axis3.flatten(): # remove ticks and labels
@@ -1408,8 +1491,8 @@ if __name__=='__main__':
                         lwidths = [0.1, 0.1, 0.1, 0.1, 0.5, 0.1]
 
                         for k in range(len(xcm_data[l])):
-                            if relmass[l][k] <= 1E-2:
-                                continue; # son't display if rel mass of component is less then 10%
+                            if relmass[l][k] <= 1E-3:
+                                continue; # don't display if rel mass of component is less then 10%
                             z = int(round(xcm_data[l][k][2]/(2*math.pi)*template.shape[2]))
                             y = int(round(xcm_data[l][k][1]/(2*math.pi)*template.shape[1]))
                             x = int(round(xcm_data[l][k][0]/(2*math.pi)*template.shape[0]))
@@ -1516,9 +1599,9 @@ if __name__=='__main__':
                         Zz.extend(zs);
                 if l == 256:
                     for k in range(ncomps_data[l]):
-                            mm = 'x' if relmass[l][k] > 1E-2 else '1'
-                            ss = 30 if relmass[l][k] > 1E-2 else 10
-                            ccc = 'k' if relmass[l][k] > 1E-2 else 'k'
+                            mm = 'x' if relmass[l][k] > 1E-3 else '1'
+                            ss = 30 if relmass[l][k] > 1E-3 else 10
+                            ccc = 'k' if relmass[l][k] > 1E-3 else 'k'
                             label = '$(l= %d)' % (math.log(level,2)-5);
                             ax_l2d[0].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][1]*sy), c=ccc, marker=mm, s=ss);
                             ax_l2d[1].scatter(round(xcm_data[l][k][1]*sy), round(xcm_data[l][k][2]*sz), c=ccc, marker=mm, s=ss);
@@ -1621,17 +1704,17 @@ if __name__=='__main__':
                     patient_labels[int(x.split('=')[0])] = x.split('=')[1];
                 patient_label_rev = {v:k for k,v in patient_labels.items()};
 
-            print("\n (4) computing DICE and tumor statistics\n");
 
-            csf_dice2,gm_dice2,wm_dice2, \
-            wt_dice, tc_dice, tc9_dice, tc8_dice, nec_dice, nec1_dice, \
-            ed8_dice,ed7_dice,ed6_dice, \
-            frac_ref_wt_b, frac_ref_ed_b, frac_ref_en_b, frac_ref_nec_b, frac_ref_tc_b, \
-            frac_rec_tc_b, frac_pred_tc_b, frac_rec_c0_b, frac_rec_c0_c1, frac_rec_c15_c1, frac_rec_c15_c12, frac_rec_c15_d, \
-            c1_ed_int,c1_tc_int,c1_b_no_wt_int,c1_int, \
-            l2err1_virg, l2err1_obs, l2err1_virg_nonsmooth, l2err1_obs_nonsmooth, \
-            c1_ed_max, c1_ed_min, c1_tc_max, c1_ed_min \
-            = computeTumorStats(template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data,  patient_label_rev, res_path);
+            component_mask = comps_data[l] if args.analyze_concomps else None;
+
+            print("\n (4) computing DICE and tumor statistics\n");
+            computeTumorStats(FEATURES[l], template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_label_rev, res_path);
+
+            FEATURES[l]['n_comps[all]'] = len(xcm_data[l])
+            for k in range(len(xcm_data[l])):
+                if relmass[l][k] <= 1E-3:
+                    break;
+            FEATURES[l]['n_comps'] = k;
 
             # compute l2 error of c(0) in between levels || c(0)_256 - Ic(0)_64 || / ||c(0)_256 ||
             if 64 in levels and 128 in levels:
@@ -1705,31 +1788,35 @@ if __name__=='__main__':
 
             text += "\n == Tumor Statistics ==";
             if args.compute_dice_healthy:
-                text += "\ndice outside tumor core (csf,gm,wm)   = (" + "{0:.2f}".format(csf_dice*100) + "," + "{0:.2f}".format(gm_dice*100) + "," + "{0:.2f}".format(wm_dice*100) + ")";
+                text += "\ndice outside tumor core (csf,gm,wm)   = (" + "{0:.2f}".format(FEATURES[l]['csf_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['gm_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['wm_dice']*100) + ")";
             if args.compute_tumor_stats:
-                text += "\nhealthy tissue dice (csf,gm,wm)       = (" + "{0:.2f}".format(csf_dice2*100) + "," + "{0:.2f}".format(gm_dice2*100) + "," + "{0:.2f}".format(wm_dice2*100) + ")";
-                text += "\ndice tumor (max): (wt,tc,nec)         = (" + "{0:.2f}".format(wt_dice*100)  + "," + "{0:.2f}".format(tc_dice*100) + "," + "{0:.2f}".format(nec_dice*100)  + ")";
-                text += "\ndice tumor (> x): (tc9,tc8,nec1)      = (" + "{0:.2f}".format(tc9_dice*100)  + "," + "{0:.2f}".format(tc8_dice*100) + "," + "{0:.2f}".format(nec1_dice*100)  + ")";
-                text += "\ndice ed (x<ed<0.02): (ed8,ed7,ed61)   = (" + "{0:.2f}".format(ed8_dice*100)  + "," + "{0:.2f}".format(ed7_dice*100) + "," + "{0:.2f}".format(ed6_dice*100)  + ")";
-                text += "\nc(ed,1) (max,min)                     = (" + "{0:1.2f}".format(c1_ed_max) + "," + "{0:1.2f}".format(c1_ed_min) + ")";
-                text += "\nc(tc,1) (max,min)                     = (" + "{0:1.2f}".format(c1_tc_max) + "," + "{0:1.2f}".format(c1_ed_min) + ")";
-                text += "\nstats #tu/#brain  (wt,ed,en,nec,tc)   = (" + "{0:1.3e}".format(frac_ref_wt_b) + "," + "{0:1.3e}".format(frac_ref_ed_b) + "," + "{0:1.3e}".format(frac_ref_en_b) + "," + "{0:1.3e}".format(frac_ref_nec_b) + "," + "{0:1.3e}".format(frac_ref_tc_b) + ")";
-                text += "\nstats #tu/#brain  (rec_tc,pred_ct,c0) = (" + "{0:1.3e}".format(frac_rec_tc_b) + "," + "{0:1.3e}".format(frac_pred_tc_b) + ","  + "{0:1.3e}".format(frac_rec_c0_b) + ")";
-                text += "\nstats int_B c(1) dx                   = " + "{0:1.3e}".format(c1_int);
-                text += "\nstats int_ED c(1) dx                  = " + "{0:1.3e}".format(c1_ed_int);
-                text += "\nstats int_TC c(1) dx                  = " + "{0:1.3e}".format(c1_tc_int);
-                text += "\nstats int_B/WT c(1) dx                = " + "{0:1.3e}".format(c1_b_no_wt_int);
-                text += "\nstats int c(0)   / int c(1)           = " + "{0:1.3e}".format(frac_rec_c0_c1);
-                text += "\nstats int c(1.5) / int c(1)           = " + "{0:1.3e}".format(frac_rec_c15_c1);
-                text += "\nstats int c(1.5) / int c(1.2)         = " + "{0:1.3e}".format(frac_rec_c15_c12);
-                text += "\nstats int c(1.5) / int d              = " + "{0:1.3e}".format(frac_rec_c15_d);
-                text += "\nl2err_c(1) (smooth)(virg,obs)         = (" + "{0:1.3e}".format(l2err1_virg) + "," + "{0:1.3e}".format(l2err1_obs)  + ")";
-                text += "\nl2err_c(1)         (virg,obs)         = (" + "{0:1.3e}".format(l2err1_virg_nonsmooth) + "," + "{0:1.3e}".format(l2err1_obs_nonsmooth)  + ")";
+                text += "\nhealthy tissue dice (csf,gm,wm)       = (" + "{0:.2f}".format(FEATURES[l]['csf_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['gm_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['wm_dice']*100) + ")";
+                text += "\ndice tumor (max): (wt,tc,nec)         = (" + "{0:.2f}".format(FEATURES[l]['wt_dice']*100)  + "," + "{0:.2f}".format(FEATURES[l]['tc_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['nec_dice']*100)  + ")";
+                text += "\ndice tumor (> x): (tc9,tc8,nec1)      = (" + "{0:.2f}".format(FEATURES[l]['tc_c(1)[x>0.9]_dice']*100)  + "," + "{0:.2f}".format(FEATURES[l]['tc_c(1)[x>0.8]_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['nec_c(1)[x=1.0]_dice']*100)  + ")";
+                text += "\ndice ed (x<ed<0.02): (ed8,ed7,ed61)   = (" + "{0:.2f}".format(FEATURES[l]['ed_c(1)[0.02<x<0.8]_dice']*100)  + "," + "{0:.2f}".format(FEATURES[l]['ed_c(1)[0.02<x<0.7]_dice']*100) + "," + "{0:.2f}".format(FEATURES[l]['ed_c(1)[0.02<x<0.6]_dice']*100)  + ")";
+                text += "\nc(ed,1) (max,min)                     = (" + "{0:1.2f}".format(FEATURES[l]['max{c(1)|_ED}']) + "," + "{0:1.2f}".format(FEATURES[l]['min{c(1)|_ED}']) + ")";
+                text += "\nc(tc,1) (max,min)                     = (" + "{0:1.2f}".format(FEATURES[l]['max{c(1)|_TC}']) + "," + "{0:1.2f}".format(FEATURES[l]['min{c(1)|_ED}']) + ")";
+                text += "\nstats #tu/#brain  (wt,ed,en,nec,tc)   = (" + "{0:1.3e}".format(FEATURES[l]['vol(WT)_r']) + "," + "{0:1.3e}".format(FEATURES[l]['vol(ED)_r']) + "," + "{0:1.3e}".format(FEATURES[l]['vol(EN)_r']) + "," + "{0:1.3e}".format(FEATURES[l]['vol(NEC)_r']) + "," + "{0:1.3e}".format(FEATURES[l]['vol(TC)_r']) + ")";
+                text += "\nstats #tu/#brain  (rec_tc,pred_ct,c0) = (" + "{0:1.3e}".format(FEATURES[l]['vol(c(1)[x>0.9])_r']) + "," + "{0:1.3e}".format(FEATURES[l]['vol(c(1.5)[x>0.9])_r']) + ","  + "{0:1.3e}".format(FEATURES[l]['vol(c(0))_r']) + ")";
+                text += "\nstats int_B c(1) dx                   = " + "{0:1.3e}".format(FEATURES[l]['int{c(1)}']);
+                text += "\nstats int_ED c(1) dx                  = " + "{0:1.3e}".format(FEATURES[l]['int{c(1)|_ED}']);
+                text += "\nstats int_TC c(1) dx                  = " + "{0:1.3e}".format(FEATURES[l]['int{c(1)|_TC}']);
+                text += "\nstats int_B/WT c(1) dx                = " + "{0:1.3e}".format(FEATURES[l]['int{c(1)|_B-WT}']);
+                text += "\nstats int c(0)   / int c(1)           = " + "{0:1.3e}".format(FEATURES[l]['int{c(0)}/int{c(1)}']);
+                text += "\nstats int c(1.5) / int c(1)           = " + "{0:1.3e}".format(FEATURES[l]['int{c(1.5)}/int{c(1)}']);
+                text += "\nstats int c(1.5) / int c(1.2)         = " + "{0:1.3e}".format(FEATURES[l]['int{c(1.5)}/int{c(1.2)}']);
+                text += "\nstats int c(1.5) / int d              = " + "{0:1.3e}".format(FEATURES[l]['int{c(1.5)}/int{TC}']);
+                text += "\nl2err_c(1) (smooth)(virg,obs)         = (" + "{0:1.3e}".format(FEATURES[l]['l2[c(1)-TC]']) + "," + "{0:1.3e}".format(FEATURES[l]['l2[Oc(1)-TC]'])  + ")";
+                text += "\nl2err_c(1)         (virg,obs)         = (" + "{0:1.3e}".format(FEATURES[l]['l2[c(1)-TC]_nonsmooth']) + "," + "{0:1.3e}".format(FEATURES[l]['l2[Oc(1)-TC]_nonsmooth'])  + ")";
                 if args.analyze_concomps:
                     if 64 in levels and 128 in levels:
                         text += "\nl2ec(1) scaled,TC (l1,l2,l3)          = (" + "{0:1.3e}".format(l2err_TC[64]/l2normref_TC[64]) + "," + "{0:1.3e}".format(l2err_TC[128]/l2normref_TC[128]) + "," + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
+                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l64'] = l2err_TC[64]/l2normref_TC[64];
+                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l128'] = l2err_TC[128]/l2normref_TC[128];
+                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l256'] = l2err_TC[256]/l2normref_TC[256];
                     else:
                         text += "\nl2ec(1) scaled,TC (l3)                = (" + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
+                        FEATURES[l]['l2[c(1)|_TC,scaled]_l256'] = l2err_TC[256]/l2normref_TC[256]
                     llabels = ["l1", "l2", "l3"] if args.gridcont else ["l3"];
                     for lvl, lll in zip(levels, llabels):
                         t1 = "\nl2ec(1) scaled,relC (" + lll + ";#1,..,#n)     = (";
@@ -1745,6 +1832,13 @@ if __name__=='__main__':
                         text += t2;
                 if 64 in levels and 128 in levels:
                     text += "\nl2err_c(0) |c_h-c_H|_r (l1,l2)        = (" + "{0:1.3e}".format(l2errc0_over_levels[64]) + "," + "{0:1.3e}".format(l2errc0_over_levels[128])  + ")";
+                    FEATURES[l]['l2[c(0)-Pc(0)]_128_64'] = l2errc0_over_levels[64];
+                    FEATURES[l]['l2[c(0)-Pc(0)]_256_128'] = l2errc0_over_levels[128];
                 text += " \n\n\n";
             infofile.write(text);
         infofile.close();
+
+        # write featuee dict to file
+        (pd.DataFrame.from_dict(data=FEATURES[64], orient='index').to_csv(os.path.join(args.input_path, 'features_64.csv'), header=False, sep=';', float_format='%.16g'));
+        (pd.DataFrame.from_dict(data=FEATURES[128], orient='index').to_csv(os.path.join(args.input_path, 'features_128.csv'), header=False, sep=';', float_format='%.16g'));
+        (pd.DataFrame.from_dict(data=FEATURES[256], orient='index').to_csv(os.path.join(args.input_path, 'features_256.csv'), header=False, sep=';', float_format='%.16g'));

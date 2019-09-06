@@ -54,10 +54,10 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 3
+    verbosity = 2
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
     lam_cont = 1
     ### Tumor L2 regularization
-    beta = 1e-4
+    beta = 1
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)

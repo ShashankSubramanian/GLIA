@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/gridcont-tc1/'
+params['results_path'] = tumor_dir + '/results/cleanup-beta1/'
 params['compute_sys'] = 'rebels'
 
 
