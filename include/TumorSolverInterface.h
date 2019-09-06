@@ -125,7 +125,7 @@ class TumorSolverInterface {
     *  @param Vec c0  - initial tumor concentration
     *  @param Vec cT  - target tumor concentration after simulation
     */
-    PetscErrorCode solveForward (Vec cT, Vec c0);
+    PetscErrorCode solveForward (Vec c1, Vec c0);
 
     /** @brief: Solves the inverse tumor problem using Tao, given target concentration
      *
@@ -189,7 +189,7 @@ class TumorSolverInterface {
     /** @brief: computes effect of varying/moving material properties, i.e.,
      *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
      */
-    PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q4);
+    PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3);
 
     //  ---------  getter functions -------------
     bool isInitialized()     {return initialized_;}

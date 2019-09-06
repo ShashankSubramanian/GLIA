@@ -148,7 +148,7 @@ struct TumorSettings {
     double phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
     double gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
     double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
-    int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
+    int phi_selection_mode;         /// @brief flag for phi selectin mode. If set, initialize bounding box
     bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
     bool reaction_inversion;        /// @brief if true, we also invert for rho
     bool prune_components;          /// @brief prunes L2 solution based on components
@@ -159,12 +159,12 @@ struct TumorSettings {
 
     TumorSettings () :
      tumor_model(1)
-    , time_step_size(0.01)
-    , time_steps(16)
-    , time_horizon(0.16)
-    , np(27)
-    , nk(2)
-    , betap(1E-3)
+    , time_step_size(0.025)
+    , time_steps(40)
+    , time_horizon(1)
+    , np(225)
+    , nk(1)
+    , betap(1E-4)
     , writeOutput(false)
     , verbosity(3)
     , obs_threshold(0.0)
@@ -177,14 +177,14 @@ struct TumorSettings {
     , reaction_ratio_glm_wm(0.0)
     , rho_linear(0)
     , phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} }
-    , phi_spacing_factor (1.5)
+    , phi_spacing_factor (2)
     , phi_sigma (PETSC_PI/10)
     , phi_sigma_data_driven(2*PETSC_PI/256)
     , gaussian_volume_fraction(0)
     , target_sparsity(0.99)
-    , phi_selection_mode_bbox(1)
-    , diffusivity_inversion(false)
-    , reaction_inversion(false)
+    , phi_selection_mode(2)
+    , diffusivity_inversion(true)
+    , reaction_inversion(true)
     , prune_components (true)
     , multilevel (false)
     , phi_store (false)

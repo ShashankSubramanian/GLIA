@@ -204,7 +204,7 @@ PetscErrorCode TumorSolverInterface::setParams (
         n_misc_->phi_sigma_data_driven_ = tumor_params->phi_sigma_data_driven;
         n_misc_->gaussian_vol_frac_     = tumor_params->gaussian_volume_fraction;
         n_misc_->target_sparsity_       = tumor_params->target_sparsity;
-        n_misc_->bounding_box_          = tumor_params->phi_selection_mode_bbox;
+        n_misc_->bounding_box_          = tumor_params->phi_selection_mode == 1;
         n_misc_->diffusivity_inversion_ = tumor_params->diffusivity_inversion;
         n_misc_->reaction_inversion_    = tumor_params->reaction_inversion;
         n_misc_->nk_                    = tumor_params->nk;
