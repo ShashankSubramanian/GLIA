@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
     lam_cont = 1
     ### Tumor L2 regularization
-    beta = 1
+    beta = 0
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)
