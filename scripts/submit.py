@@ -41,7 +41,7 @@ elif params['compute_sys'] == 'maverick2':
 	queue = 'p100'
 	N = 1
 	n = 1
-else
+else:
 	queue = 'normal'
 	N = 1
 	n = 1
@@ -56,8 +56,8 @@ if not err:  # No error in tumor input parameters
 	"#SBATCH -J ITP\n" + \
 	"#SBATCH -o " + params['results_path'] + "/log\n" + \
 	"#SBATCH -p " + queue + "\n" + \
-	"#SBATCH -N " + N "\n" + \
-	"#SBATCH -n " + n "\n" + \
+	"#SBATCH -N " + str(N) + "\n" + \
+	"#SBATCH -n " + str(n) + "\n" + \
 	"#SBATCH -t 01:00:00\n" + \
 	"source ~/.bashrc\n" + \
 	"export OMP_NUM_THREADS=1\n")
