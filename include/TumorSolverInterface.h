@@ -24,7 +24,7 @@
 
 #include "Utils.h"
 #include "Tumor.h"
-#include "MatProb.h"
+#include "MatProp.h"
 #include "PdeOperators.h"
 #include "DerivativeOperators.h"
 #include "InvSolver.h"
