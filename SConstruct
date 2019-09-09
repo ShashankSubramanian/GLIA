@@ -239,7 +239,7 @@ bininv = env.Program (
 env.Alias("bin", bininv)
 
 solib = env.SharedLibrary (
-      target = buildpath + '/libtumor',
+      target = buildpath + '/pglistr',
       source = [sourcesPGLISTR],
 )
 env.Alias("solib", solib)

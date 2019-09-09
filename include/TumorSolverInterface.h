@@ -213,6 +213,7 @@ class TumorSolverInterface {
     /// @brief: sets Gaussians adaptively based on data
     PetscErrorCode setGaussians (Vec data);
     /// @brief: sets Gaussians as bbox around center of mass
+    PetscErrorCode setGaussians (double* cm, double sigma, double spacing, int np);
     PetscErrorCode setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np);
     PetscErrorCode setTumorRegularizationNorm (int type);
     PetscErrorCode setTumorSolverType (int type);

@@ -550,6 +550,19 @@ PetscErrorCode TumorSolverInterface::setGaussians (Vec data) {
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// computeTumorContributionRegistration ////////////// ###
+PetscErrorCode TumorSolverInterface::setGaussians (double* cm, double sigma, double spacing, int np) {
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+    std::array<double, 3> cm_ = {{cm[0], cm[1], cm[2]}}; 
+    n_misc_->user_cm_             = cm_;
+    n_misc_->phi_spacing_factor_  = spacing;
+    n_misc_->phi_sigma_           = sigma;
+    ierr = tumor_->phi_->setGaussians(cm_, sigma, spacing, np); CHKERRQ(ierr);
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// computeTumorContributionRegistration ////////////// ###
 PetscErrorCode TumorSolverInterface::setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
