@@ -69,7 +69,7 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 10
+    rho_data = 8
     k_data = 0.025
     nt_data = 100
     dt_data = 0.01
@@ -79,7 +79,7 @@ def getTumorRunCmd(params):
     ###              2: No-brain sinusoidal coefficients
     ###              3: brain multifocal synthetic tumor with nearby ground truths
     ##               4: brain multifocal synthetic tumor with far away ground truths
-    tumor_testcase = 3
+    tumor_testcase = 0
 
     multilevel         = 0;
     inject_solution    = 0;
@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
     lam_cont = 1
     ### Tumor L2 regularization
-    beta = 1
+    beta = 0
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)
@@ -120,7 +120,7 @@ def getTumorRunCmd(params):
     ### Threshold of data tumor concentration above which Gaussians are switched on
     data_thres = 0.1
     ### Observation detection threshold
-    obs_thres = 0.0
+    obs_thres = 1E-5
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -358,7 +358,7 @@ def getTumorRunCmd(params):
         if params['mpi_pernode'] < 24:
             ppn = params['mpi_pernode'];
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
-    elif params['compute_sys'] in ['stampede2', 'frontera']:
+    elif params['compute_sys'] in ['stampede2', 'frontera', 'maverick2']:
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";

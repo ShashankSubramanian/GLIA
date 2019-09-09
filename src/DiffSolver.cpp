@@ -20,7 +20,7 @@ ctx_() {
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
-    ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 5000);
     ierr = KSPSetType (ksp_, KSPCG);
     // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetFromOptions (ksp_);

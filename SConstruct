@@ -154,9 +154,6 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
 
-# use user-defined blmvm solver
-env.Append(CCFLAGS = ['-DBLMVM_USER'])
-
 # enforce positivity in diffusion inversion for ks
 # env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
