@@ -3585,7 +3585,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
     double *ub_ptr, *lb_ptr;
-    double upper_bound_kappa = itctx_->n_misc_->k_ub_, lower_bound_kappa = itctx_->n_misc_->k_lb_;
+    double upper_bound_kappa = PETSC_INFINITY, lower_bound_kappa = 0.;
     if (itctx_->n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
       ub_ptr[itctx_->n_misc_->np_] = upper_bound_kappa;
