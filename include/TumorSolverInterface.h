@@ -175,7 +175,7 @@ class TumorSolverInterface {
      *         growth has to be passed (updates the \Phi filter)
      */
     PetscErrorCode updateTumorCoefficients (
-        Vec wm, Vec gm, Vec csf,
+        Vec wm, Vec gm, Vec csf, Vec bg
         Vec filter,
         std::shared_ptr<TumorSettings> tumor_params,
         bool use_nmisc = false);
@@ -207,9 +207,9 @@ class TumorSolverInterface {
     PetscErrorCode setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset);
     PetscErrorCode setInitialGuess(Vec p);
     PetscErrorCode setInitialGuess(double d);
-    PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf);
-    PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf);
-    PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf);
+    PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec bg);
+    PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec bg);
+    PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec bg);
     /// @brief: sets Gaussians adaptively based on data
     PetscErrorCode setGaussians (Vec data);
     /// @brief: sets Gaussians as bbox around center of mass

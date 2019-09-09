@@ -471,7 +471,7 @@ PetscErrorCode TumorSolverInterface::setOptimizerSettings (std::shared_ptr<Optim
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setDistMeassureSimulationGeoImages //////////////// ###
 PetscErrorCode TumorSolverInterface::setDistMeassureSimulationGeoImages(
-    Vec wm, Vec gm, Vec csf)
+    Vec wm, Vec gm, Vec csf, Vec bg)
 {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
@@ -489,7 +489,7 @@ PetscErrorCode TumorSolverInterface::setDistMeassureSimulationGeoImages(
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setDistMeassureTargetDataImages /////////////////// ###
 PetscErrorCode TumorSolverInterface::setDistMeassureTargetDataImages(
-    Vec wm, Vec gm, Vec csf)
+    Vec wm, Vec gm, Vec csf, Vec bg)
 {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
@@ -508,7 +508,7 @@ PetscErrorCode TumorSolverInterface::setDistMeassureTargetDataImages(
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setDistMeassureDiffImages ///////////////////////// ###
 PetscErrorCode TumorSolverInterface::setDistMeassureDiffImages(
-    Vec wm, Vec gm, Vec csf)
+    Vec wm, Vec gm, Vec csf, Vec bg)
 {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
@@ -626,7 +626,7 @@ PetscErrorCode TumorSolverInterface::setInitialGuess (double d) {
 // ### _____________________________________________________________________ ___
 // ### ///////////////// updateTumorCoefficients /////////////////////////// ###
 PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
-    Vec wm, Vec gm, Vec csf,
+    Vec wm, Vec gm, Vec csf, Vec bg,
     Vec filter,
     std::shared_ptr<TumorSettings> tumor_params,
     bool use_nmisc)
@@ -661,7 +661,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
         n_misc_->r_gm_wm_ratio_ = tumor_params->reaction_ratio_gm_wm;
 
         s << " updating tumor material properties; update values of kappa = " <<n_misc_->k_ << ", and rho = " << n_misc_->rho_;
-        ierr = tuMSGstd(s.str()); CHKERRQ(ierr);    
+        ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
 
         // don't apply k_i values coming from outside if we invert for diffusivity
         if(n_misc_->diffusivity_inversion_) {
