@@ -25,8 +25,26 @@ params['compute_sys'] = 'rebels'
 # params['wm_path'] = '/workspace/shashank/label_maps/tcia_09_141/wm.nc'
 # params['csf_path'] = '/workspace/shashank/label_maps/tcia_09_141/csf.nc'
 
-
-
+if params['compute_sys'] == 'rebels':
+	queue = 'rebels'
+	N = 1
+	n = 20
+elif params['compute_sys'] == 'stampede2':
+	queue = 'skx-normal'
+	N = 3
+	n = 64
+elif params['compute_sys'] == 'frontera':
+	queue = 'normal'
+	N = 2
+	n = 64
+elif params['compute_sys'] == 'maverick2':
+	queue = 'p100'
+	N = 1
+	n = 1
+else
+	queue = 'normal'
+	N = 1
+	n = 1
 
 run_str, err = getTumorRunCmd (params)  ### Use default parameters (if not, define dict with usable values)
 
@@ -37,16 +55,14 @@ if not err:  # No error in tumor input parameters
 	submit_file.write ("#!/bin/bash\n" + \
 	"#SBATCH -J ITP\n" + \
 	"#SBATCH -o " + params['results_path'] + "/log\n" + \
-	"#SBATCH -p rebels\n" + \
-	"#SBATCH -N 1\n" + \
-	"#SBATCH -n 20\n" + \
-	"#SBATCH -t 100:00:00\n" + \
+	"#SBATCH -p " + queue + "\n" + \
+	"#SBATCH -N " + N "\n" + \
+	"#SBATCH -n " + n "\n" + \
+	"#SBATCH -t 01:00:00\n" + \
 	"source ~/.bashrc\n" + \
 	"export OMP_NUM_THREADS=1\n")
 	submit_file.write(run_str)
-
 	submit_file.close()
-
 	### submit jobfile
 	subprocess.call(['sbatch', fname])
 else:
