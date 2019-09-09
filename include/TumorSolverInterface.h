@@ -175,7 +175,7 @@ class TumorSolverInterface {
      *         growth has to be passed (updates the \Phi filter)
      */
     PetscErrorCode updateTumorCoefficients (
-        Vec wm, Vec gm, Vec csf, Vec bg
+        Vec wm, Vec gm, Vec csf, Vec bg,
         Vec filter,
         std::shared_ptr<TumorSettings> tumor_params,
         bool use_nmisc = false);
