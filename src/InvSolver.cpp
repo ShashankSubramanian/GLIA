@@ -393,7 +393,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     TaoConvergedReason reason;
 
     // ls ministep
-    minstep = std::pow (2.0, 15.0);
+    minstep = std::pow (2.0, 18.0);
     minstep = 1.0 / minstep;
 
     // DOFs
@@ -3508,7 +3508,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 15.0);
+    minstep = std::pow (2.0, 18.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 
