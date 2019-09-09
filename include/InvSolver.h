@@ -245,9 +245,6 @@ class InvSolver {
 
         ~InvSolver ();
 
-        std::shared_ptr<OptimizerSettings> optsettings_;
-        std::shared_ptr<OptimizerFeedback> optfeedback_;
-        std::shared_ptr<CtxInv> itctx_;
     private:
         /// @brief true if tumor adapter is correctly initialized. mendatory
         bool initialized_;
@@ -265,6 +262,9 @@ class InvSolver {
         Tao tao_;
         /// @brief petsc matrix object for hessian matrix
         Mat H_;
+        std::shared_ptr<OptimizerSettings> optsettings_;
+        std::shared_ptr<OptimizerFeedback> optfeedback_;
+        std::shared_ptr<CtxInv> itctx_;
 
         std::vector<double> out_params_;
 };
