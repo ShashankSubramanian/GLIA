@@ -405,7 +405,7 @@ PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const ch
     ierr = myAssert(nl == isize[0]*isize[1]*isize[2], "size error"); CHKERRQ(ierr);
 
     // write data to file
-    ncerr = ncmpi_put_vara_all(fileid, varid[0], istart, isize, p_x, nl, MPI_DOUBLE);
+    ncerr = ncmpi_put_vara_all(fileid, varid[0], istart, isize, p_x, nl, MPIType);
     ierr = NCERRQ(ncerr); CHKERRQ(ierr);
 
     // close file
