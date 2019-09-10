@@ -148,7 +148,7 @@ def getTumorRunCmd(params):
     ## lower bound on kappa
     lower_bound_kappa = 1E-3
     ## upper bound on kappa
-    upper_bound_kappa = 1
+    upper_bound_kappa = 5E-1
 
     ### TUMOR PARAMETERS SET END
 
