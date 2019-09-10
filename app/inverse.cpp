@@ -565,7 +565,7 @@ int main (int argc, char** argv) {
         if (n_misc->low_freq_noise_scale_ != 0) {
             ierr = applyLowFreqNoise (data, n_misc);
             Vec temp;
-            double noise_err_norm, rel_noise_err_norm;
+            ScalarType noise_err_norm, rel_noise_err_norm;
             ierr = VecDuplicate (data, &temp);      CHKERRQ (ierr);
             ierr = VecSet (temp, 0.);               CHKERRQ (ierr);
             ierr = VecCopy (data_nonoise, temp);    CHKERRQ (ierr);
@@ -675,7 +675,7 @@ int main (int argc, char** argv) {
               Vec coarse_sol = nullptr;
               int np_save = n_misc->np_;
               int np_coarse = 0;
-              std::vector<double> coarse_sol_centers;
+              std::vector<ScalarType> coarse_sol_centers;
               std::string file_cm(gaussian_cm_path);
               std::string file_p(p_vec_path);
               // read phi mesh save nmisc->np_ since it is overwritten
@@ -685,10 +685,10 @@ int main (int argc, char** argv) {
               n_misc->np_ = np_save; // reset to correct value
               // find coarse centers in centers_ of current Phi
               int xc,yc,zc,xf,yf,zf;
-              double *xf_ptr, *xc_ptr;
-              double hx =  2.0 * M_PI / n_misc->n_[0];
-              double hy =  2.0 * M_PI / n_misc->n_[1];
-              double hz =  2.0 * M_PI / n_misc->n_[2];
+              ScalarType *xf_ptr, *xc_ptr;
+              ScalarType hx =  2.0 * M_PI / n_misc->n_[0];
+              ScalarType hy =  2.0 * M_PI / n_misc->n_[1];
+              ScalarType hz =  2.0 * M_PI / n_misc->n_[2];
               ierr = VecGetArray (p_rec, &xf_ptr);                                       CHKERRQ (ierr);
               ierr = VecGetArray (coarse_sol, &xc_ptr);                                  CHKERRQ (ierr);
               for (int j = 0; j < np_coarse; ++j) {

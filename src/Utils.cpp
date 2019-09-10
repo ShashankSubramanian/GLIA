@@ -989,6 +989,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
     MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
     MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
 
+    std::stringstream ss;
     nnz = 0;
     std::priority_queue<std::pair<PetscReal, int>> q;
     ScalarType *x_ptr;

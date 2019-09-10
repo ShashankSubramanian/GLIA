@@ -121,16 +121,16 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     // invcludes re-allocating time history for adjoint,
     if(modelchanged) {
         switch (n_misc_->model_) {
-            case 1: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+            case 1: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
                     break;
-            case 2: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+            case 2: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
                     break;
-            case 3: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_);
+            case 3: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
                     break;
-            case 4: pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc_);
+            case 4: pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
                     break;
             default: break;
@@ -550,7 +550,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (Vec prec, Vec d1, Vec d
 
   // count the number of observed voxels
   int sum = 0, global_sum = 0;
-  double *pixel_ptr;
+  ScalarType *pixel_ptr;
   ierr = VecGetArray (d1, &pixel_ptr);                                          CHKERRQ (ierr);
   for (int i = 0; i < n_misc_->n_local_; i++)
       if (pixel_ptr[i] > n_misc_->obs_threshold_) sum++;
