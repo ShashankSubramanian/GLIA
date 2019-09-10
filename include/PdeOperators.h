@@ -6,14 +6,12 @@
 #include "DiffSolver.h"
 #include "AdvectionSolver.h"
 #include "ElasticitySolver.h"
-
-#include <mpi.h>
-#include <omp.h>
+#include "SpectralOperators.h"
 
 class PdeOperators {
 	public:
-		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : tumor_(tumor), n_misc_(n_misc) {
-			diff_solver_ = std::make_shared<DiffSolver> (n_misc, tumor->k_);
+		PdeOperators (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : tumor_(tumor), n_misc_(n_misc), spec_ops_(spec_ops) {
+			diff_solver_ = std::make_shared<DiffSolver> (n_misc, spec_ops, tumor->k_);
 			nt_ = n_misc->nt_;
 			diff_ksp_itr_state_ = 0;
 			diff_ksp_itr_adj_ = 0;
@@ -22,6 +20,7 @@ class PdeOperators {
 		std::shared_ptr<Tumor> tumor_;
 		std::shared_ptr<DiffSolver> diff_solver_;
 		std::shared_ptr<NMisc> n_misc_;
+		std::shared_ptr<SpectralOperators> spec_ops_;
 
 		// @brief time history of state variable
 		std::vector<Vec> c_;
@@ -52,7 +51,7 @@ class PdeOperators {
 
 class PdeOperatorsRD : public PdeOperators {
 	public:
-		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc);
+		PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 
 		virtual PetscErrorCode solveState (int linearized);
 		virtual PetscErrorCode reaction (int linearized, int i);
@@ -61,8 +60,8 @@ class PdeOperatorsRD : public PdeOperators {
 		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc);
         virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
 
-		// This solves the diffusivity update part of the incremental forward equation
-		PetscErrorCode solveIncremental (Vec c_tilde, std::vector<Vec> c_history, double dt, int iter, int mode);
+		// This solves the diffusivity update part of the incremental forward equation 
+		PetscErrorCode solveIncremental (Vec c_tilde, std::vector<Vec> c_history, ScalarType dt, int iter, int mode);
 
 		/** @brief computes effect of varying/moving material properties, i.e.,
 		 *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
@@ -73,16 +72,15 @@ class PdeOperatorsRD : public PdeOperators {
 
 class PdeOperatorsMassEffect : public PdeOperatorsRD {
 	public:
-		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc) : PdeOperatorsRD (tumor, n_misc) {
+		PdeOperatorsMassEffect (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : PdeOperatorsRD (tumor, n_misc, spec_ops) {
 			PetscErrorCode ierr = 0;
-			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor);
-			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
-			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor);
-
+			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
+			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor, spec_ops);
+			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor, spec_ops);
+			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
 			temp_ = new Vec[3];
 			for (int i = 0; i <3; i++) {
-				ierr = VecDuplicate (tumor->work_[0], &temp_[i]);
-				ierr = VecSet (temp_[i], 0.);
+				temp_[i] = tumor->work_[11 - i];
 			}
 		}
 
@@ -90,6 +88,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 		std::shared_ptr<ElasticitySolver> elasticity_solver_;
 
 		Vec *temp_;
+		Vec magnitude_;
 
 		virtual PetscErrorCode solveState (int linearized);
 		PetscErrorCode conserveHealthyTissues ();
@@ -97,9 +96,37 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 
 		virtual ~PdeOperatorsMassEffect () {
 			PetscErrorCode ierr = 0;
-			for (int i = 0; i < 3; i++)
-				ierr = VecDestroy (&temp_[i]);
+			ierr = VecDestroy (&magnitude_);
 			delete [] temp_;
+		}
+};
+
+class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
+	public:
+		PdeOperatorsMultiSpecies (std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : PdeOperatorsRD (tumor, n_misc, spec_ops) {
+			PetscErrorCode ierr = 0;
+			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
+			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
+			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor, spec_ops);
+
+			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
+		}
+
+		std::shared_ptr<AdvectionSolver> adv_solver_;
+		std::shared_ptr<ElasticitySolver> elasticity_solver_;
+
+		Vec magnitude_;
+
+		virtual PetscErrorCode solveState (int linearized);
+		PetscErrorCode computeReactionRate (Vec m);
+		PetscErrorCode computeTransition (Vec alpha, Vec beta);
+		PetscErrorCode computeThesholder (Vec h);
+		PetscErrorCode computeSources (Vec p, Vec i, Vec n, Vec O, ScalarType dt);
+		virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
+
+		virtual ~PdeOperatorsMultiSpecies () {
+			PetscErrorCode ierr = 0;
+			ierr = VecDestroy (&magnitude_);
 		}
 };
 

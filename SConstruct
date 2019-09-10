@@ -66,6 +66,8 @@ vars.Add("compiler", "Compiler to use.", "mpicxx")
 vars.Add("platform", "Specify platform.", "local")
 vars.Add(BoolVariable("use_nii", "enable/disable nifti.", False))
 vars.Add(BoolVariable("gpu", "Enables build for GPU support.", False))
+vars.Add(BoolVariable("multi_gpu", "Enables build for multi-GPU support.", False))
+vars.Add(BoolVariable("single_precision", "Enables single precision computation.", False))
 
 env = Environment(variables = vars, ENV = os.environ)   # For configuring build variables
 conf = Configure(env) # For checking libraries, headers, ...
@@ -77,6 +79,9 @@ env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
 
 print
 print_options(vars)
+
+if env["gpu"] == True:
+    env.Tool('nvcc', toolpath = [os.getcwd()])
 
 buildpath = os.path.join(env["builddir"], "") # Ensures to have a trailing slash
 
@@ -124,9 +129,6 @@ elif real_compiler == "g++-mp-4.9":
 env.Replace(CXX = env["compiler"])
 env.Replace(CC = env["compiler"])
 
-if not conf.CheckCXX():
-    Exit(1)
-
 # ====== Build Directories ======
 if env["build"] == 'debug':
     # The Assert define does not actually switches asserts on/off, these are controlled by NDEBUG.
@@ -154,6 +156,15 @@ env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
 
+if env["gpu"] == True:
+    env.Append(CCFLAGS = ['-DCUDA'])
+
+if env["single_precision"] == True:
+    env.Append(CCFLAGS = ['-DSINGLE'])
+
+if env["multi_gpu"] == True:
+    env.Append(CCFLAGS = ['-DMPICUDA'])
+
 # enforce positivity in diffusion inversion for ks
 # env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
@@ -164,12 +175,25 @@ env.Append(CCFLAGS = ['-DSERIAL'])
 #if env["platform"] != "stampede2":
 env.Append(CCFLAGS = ['-march=native'])
 
+# ====== CUDA =======
+if env["gpu"] == True:
+    CUDA_DIR = checkset_var("CUDA_DIR", "")
+    env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
+    uniqueCheckLib(conf, "cusparse")
+    uniqueCheckLib(conf, "cufft")
+    uniqueCheckLib(conf, "cublas")
+    uniqueCheckLib(conf, "cudart")
+
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
 env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( ACCFFT_DIR, "lib")])
 uniqueCheckLib(conf, "accfft")
 uniqueCheckLib(conf, "accfft_utils")
+if env["gpu"] == True:
+    uniqueCheckLib(conf, "accfft_gpu")
+    uniqueCheckLib(conf, "accfft_utils_gpu")
 
 # ====== PNETCDF ======
 PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
@@ -183,10 +207,10 @@ env.Append(CPPDEFINES = ['-DREG_HAS_PNETCDF'])
 FFTW_DIR = checkset_var("FFTW_DIR", "")
 env.Append(CPPPATH = [os.path.join( FFTW_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( FFTW_DIR, "lib")])
-uniqueCheckLib(conf, "fftw3")
 uniqueCheckLib(conf, "fftw3_threads")
-uniqueCheckLib(conf, "fftw3f")
+uniqueCheckLib(conf, "fftw3")
 uniqueCheckLib(conf, "fftw3f_threads")
+uniqueCheckLib(conf, "fftw3f")
 uniqueCheckLib(conf, "fftw3_omp")
 uniqueCheckLib(conf, "fftw3f_omp")
 
@@ -218,21 +242,31 @@ env = conf.Finish() # Used to check libraries
 
 #--------------------------------------------- Define sources and build targets
 
-(sourcesPGLISTR, sourcesSIBIAapp) = SConscript (
+(sourcesPGLISTR, sourcesPGLISTRGPU, sourcesSIBIAapp) = SConscript (
     'SConscript',
     variant_dir = buildpath,
     duplicate = 0
 )
 
-binfwd = env.Program (
+
+if env["gpu"] == True:
+    binfwd = env.Program (
+    target = buildpath + '/forward',
+    source = [sourcesPGLISTRGPU, './app/forward.cpp']
+    )
+    bininv = env.Program (
+    target = buildpath + '/inverse',
+    source = [sourcesPGLISTRGPU, './app/inverse.cpp']
+    )
+else:
+    binfwd = env.Program (
     target = buildpath + '/forward',
     source = [sourcesPGLISTR, './app/forward.cpp']
-)
-
-bininv = env.Program (
-    target = buildpath + '/inverse',
-    source = [sourcesPGLISTR, './app/inverse.cpp']
-)
+    )
+    bininv = env.Program (
+        target = buildpath + '/inverse',
+        source = [sourcesPGLISTR, './app/inverse.cpp']
+    )
 env.Alias("bin", bininv)
 
 # solib = env.SharedLibrary (

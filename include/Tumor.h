@@ -17,7 +17,7 @@ Tumor class
 
 class Tumor {
 	public:
-		Tumor (std::shared_ptr<NMisc> n_misc);
+		Tumor (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 
 		std::shared_ptr<DiffCoef> k_;
 		std::shared_ptr<ReacCoef> rho_;
@@ -27,6 +27,7 @@ class Tumor {
 		std::shared_ptr<MatProp> mat_prop_;
 
 		std::shared_ptr<NMisc> n_misc_;
+		std::shared_ptr<SpectralOperators> spec_ops_;
 
     	// parametrization
 		Vec p_;
@@ -45,16 +46,20 @@ class Tumor {
     	// segmentation based on max voxel-wise prop
     	Vec seg_;
 
+    	// For multiple species
+    	std::map <std::string, Vec> species_;
+
     	// mass effect parameters
     	// velocity
 		std::shared_ptr<VecField> velocity_;
 		std::shared_ptr<VecField> displacement_;
 		std::shared_ptr<VecField> force_;
+		std::shared_ptr<VecField> work_field_;
 
-		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
+		PetscErrorCode initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
 		PetscErrorCode setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged = false);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
-		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, PetscScalar val);
+		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val);
 		PetscErrorCode setTrueP (Vec p);
 		PetscErrorCode computeSegmentation ();
 

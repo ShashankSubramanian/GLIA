@@ -5,11 +5,9 @@
 #include <stdlib.h>
 #include <iomanip>
 #include "petsctao.h"
-#include <accfft.h>
-#include <accfft_operators.h>
+
 #include <math.h>
 #include <memory>
-#include <complex>
 #include <iostream>
 #include <algorithm>
 #include <mpi.h>
@@ -25,9 +23,16 @@
 #include <accfft_utils.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <map>
 #include "EventTimings.hpp"
 #include <pnetcdf.h>
+#include "TypeDefs.h"
 
+#ifdef CUDA
+    #include "UtilsCuda.h"
+#endif
+
+enum {ACCFFT = 0, CUFFT = 1};
 class Phi;
 
 #define throwError(str) throwErrorMsg(str, __LINE__, __FILE__)
@@ -38,15 +43,16 @@ enum {GAUSSNEWTON = 0, QUASINEWTON = 1};
 enum {ARMIJO = 0, MT = 1};
 enum {L1 = 0, L2 = 1, wL2 = 3, L2b = 4};
 enum {INIT = 0, PRE_RD = 1, COSAMP_L1_INIT = 3, COSAMP_L1_THRES_GRAD = 4, COSAMP_L1_SOLVE_SUBSPACE = 5, COSAMP_L1_THRES_SOL = 6, FINAL_L2 = 7, POST_RD = 8, FINALIZE = 9};
+enum {SEQ = 0, MPI = 1};
 
 struct OptimizerSettings {
-    double beta;                 /// @brief regularization parameter
-    double opttolgrad;           /// @brief l2 gradient tolerance for optimization
-    double ftol;                 /// @brief l1 function and solution tolerance
-    double ls_minstep;           /// @brief minimum step length of linesearch
-    double gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
-    double grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
-    double gatol;                /// @brief atol TAO (absolute tolerance for gradient)
+    ScalarType beta;                 /// @brief regularization parameter
+    ScalarType opttolgrad;           /// @brief l2 gradient tolerance for optimization
+    ScalarType ftol;                 /// @brief l1 function and solution tolerance
+    ScalarType ls_minstep;           /// @brief minimum step length of linesearch
+    ScalarType gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
+    ScalarType grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
+    ScalarType gatol;                /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
     int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
@@ -101,10 +107,10 @@ struct OptimizerFeedback {
     int nb_objevals;             /// @brief stores the number of required (accumulated) objective function evaluations per tumor solve
     int nb_gradevals;            /// @brief stores the number of required (accumulated) gradient evaluations per tumor solve
     std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
-    double gradnorm;             /// @brief final gradient norm
-    double gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
-    double j0;                   /// @brief initial objective : needed for L1 convergence tests
-    double jval;                 /// @brief orbjective function value
+    ScalarType gradnorm;             /// @brief final gradient norm
+    ScalarType gradnorm0;            /// @brief norm of initial gradient (with p = intial guess)
+    ScalarType j0;                   /// @brief initial objective : needed for L1 convergence tests
+    ScalarType jval;                 /// @brief orbjective function value
     bool converged;              /// @brief true if solver converged within bounds
 
     OptimizerFeedback ()
@@ -125,29 +131,29 @@ struct OptimizerFeedback {
 
 struct TumorSettings {
     int    tumor_model;
-    double time_step_size;
+    ScalarType time_step_size;
     int    time_steps;
-    double time_horizon;
+    ScalarType time_horizon;
     int    np;
     int    nk;
-    double betap;
+    ScalarType betap;
     bool   writeOutput;
     int    verbosity;
-    double obs_threshold;
-    double diff_coeff_scale;        /// @brief (scalar) diffusion rate
-    double diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
-    double reaction_coeff_scale;    /// @brief (scalar) reaction rate
-    double diffusion_ratio_gm_wm;   /// @brief ratio of diffusion coefficient between wm and gm
-    double diffusion_ratio_glm_wm;  /// @brief ratio of diffusion coefficient between wm and gm
-    double reaction_ratio_gm_wm;    /// @brief ratio of reaction coefficient between wm and gm
-    double reaction_ratio_glm_wm;   /// @brief ratio of reaction coefficient between wm and gm
+    ScalarType obs_threshold;
+    ScalarType diff_coeff_scale;        /// @brief (scalar) diffusion rate
+    ScalarType diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
+    ScalarType reaction_coeff_scale;    /// @brief (scalar) reaction rate
+    ScalarType diffusion_ratio_gm_wm;   /// @brief ratio of diffusion coefficient between wm and gm
+    ScalarType diffusion_ratio_glm_wm;  /// @brief ratio of diffusion coefficient between wm and gm
+    ScalarType reaction_ratio_gm_wm;    /// @brief ratio of reaction coefficient between wm and gm
+    ScalarType reaction_ratio_glm_wm;   /// @brief ratio of reaction coefficient between wm and gm
     int rho_linear;                 /// @brief used linearization
-    std::array<double, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
-    double phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
-    double phi_sigma;               /// @brief standard deviation of Gaussians
-    double phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
-    double gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
-    double target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
+    std::array<ScalarType, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
+    ScalarType phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
+    ScalarType phi_sigma;               /// @brief standard deviation of Gaussians
+    ScalarType phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
+    ScalarType gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
+    ScalarType target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
     int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
     bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
     bool reaction_inversion;        /// @brief if true, we also invert for rho
@@ -252,10 +258,11 @@ public:
 
 class NMisc {
     public:
-        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, accfft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
+        NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
         : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
                                                 // Modified Obj -- 3
                                                 // Mass effect -- 4
+                                                // Multi-species -- 5
         , dt_ (0.5)                             // Time step
         , nt_(1)                                // Total number of time steps
         , np_ (1)                               // Number of gaussians for bounding box
@@ -309,17 +316,18 @@ class NMisc {
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
         , pre_reacdiff_solve_ (0)               // Flag indicating of reaction/diffusion solve is performed prior to L1 inversion in CoSaMp
         , order_ (2)                            // Order of accuracy for PDE solves
-        , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
+        , nu_healthy_ (0.3)                     // Poisson's ratio of wm and gm
         , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
-        , nu_bg_ (0.48)                         // Poisson's ratio of background
+        , nu_bg_ (0.45)                         // Poisson's ratio of background
         , nu_csf_ (0.1)                         // Poisson's ratio of CSF
-        , E_healthy_ (2100)                     // Young's modulus of wm and gm
+        , E_healthy_ (2000)                     // Young's modulus of wm and gm
         , E_bg_ (15000)                         // Young's modulus of background
-        , E_tumor_ (10000)                      // Young's modulus of tumor
-        , E_csf_ (10)                           // Young's modulus of CSF
+        , E_tumor_ (8000)                      // Young's modulus of tumor
+        , E_csf_ (500)                           // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
-        , screen_high_ (1E4)                    // high screening
-        , forcing_factor_ (2.0E5)               // mass effect forcing factor
+        , screen_high_ (1E2)                    // high screening 
+        , forcing_factor_ (1E5)               // mass effect forcing factor
+        , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
         , phi_store_ (false)                    // Flag to store phis
@@ -329,6 +337,14 @@ class NMisc {
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
+        , num_species_ (5)                      // Number of species for the multi-species model - only used if model is 5
+        , ox_inv_ (0.7)                         // invasive oxygen conc
+        , ox_hypoxia_ (0.65)                    // hypoxia threshold
+        , death_rate_ (3)                       // death rate
+        , ox_source_ (55)                       // source of oxygen
+        , ox_consumption_ (8)                    // consumption of oxygen
+        , beta_0_ (0.02)                         // conversion btw inv and proliferative
+        , alpha_0_ (0.15)                       // conversion btw inv and proliferative
                                 {
 
 
@@ -349,14 +365,14 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X
 
                 // tc1 and 2
-                user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                // user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
-                // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
-                // user_cm_[1] = 2 * M_PI / 128 * 92;//64  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                user_cm_[0] = 2 * M_PI / 128 * 70;//72  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 78;//82  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 75;//72  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
@@ -411,14 +427,13 @@ class NMisc {
             writepath_ << "./results/";
         }
 
-        double k_lb_;
-        double k_ub_;
-
-        double ic_max_;
+        ScalarType ic_max_;
         int predict_flag_;
         int pre_reacdiff_solve_;
         int prune_components_;
-
+        int forward_flag_;
+        ScalarType k_lb_;
+        ScalarType k_ub_;
 
         bool phi_store_;
         bool adjoint_store_;
@@ -430,14 +445,14 @@ class NMisc {
         int istart_[3];
         int ostart_[3];
         int c_dims_[2];
-        double h_[3];
-        double lebesgue_measure_;
+        ScalarType h_[3];
+        ScalarType lebesgue_measure_;
 
         int np_;
         int nk_;
         int nr_;
-        double time_horizon_;
-        double dt_;
+        ScalarType time_horizon_;
+        ScalarType dt_;
         int nt_;
 
         int model_;
@@ -446,34 +461,34 @@ class NMisc {
         int writeOutput_;
         int verbosity_;
 
-        double exp_shift_;
-        double penalty_;
+        ScalarType exp_shift_;
+        ScalarType penalty_;
 
-        double k_;
-        double kf_;
-        double k_gm_wm_ratio_;
-        double k_glm_wm_ratio_;
-        double r_gm_wm_ratio_;
-        double r_glm_wm_ratio_;
-        double rho_;
-        std::array<double, 3> user_cm_;
-        double p_scale_;
-        double p_scale_true_;
-        double noise_scale_;
-        double low_freq_noise_scale_;
-        double beta_;
-        double lambda_;
+        ScalarType k_;
+        ScalarType kf_;
+        ScalarType k_gm_wm_ratio_;
+        ScalarType k_glm_wm_ratio_;
+        ScalarType r_gm_wm_ratio_;
+        ScalarType r_glm_wm_ratio_;
+        ScalarType rho_;
+        std::array<ScalarType, 3> user_cm_;
+        ScalarType p_scale_;
+        ScalarType p_scale_true_;
+        ScalarType noise_scale_;
+        ScalarType low_freq_noise_scale_;
+        ScalarType beta_;
+        ScalarType lambda_;
 
         bool beta_changed_;
         bool write_p_checkpoint_;
 
-        double phi_sigma_;
-        double phi_sigma_data_driven_;
-        double phi_spacing_factor_;
-        double data_threshold_;
-        double gaussian_vol_frac_;
+        ScalarType phi_sigma_;
+        ScalarType phi_sigma_data_driven_;
+        ScalarType phi_spacing_factor_;
+        ScalarType data_threshold_;
+        ScalarType gaussian_vol_frac_;
 
-        double obs_threshold_;
+        ScalarType obs_threshold_;
 
         bool nk_fixed_;
         bool diffusivity_inversion_;
@@ -482,7 +497,7 @@ class NMisc {
         bool flag_reaction_inv_;
         bool multilevel_;
 
-        double target_sparsity_;
+        ScalarType target_sparsity_;
 
         int max_p_location_;
 
@@ -497,32 +512,38 @@ class NMisc {
         int64_t n_local_;
         int64_t n_global_;
 
-        accfft_plan *plan_;
+        fft_plan *plan_;
         MPI_Comm c_comm_;
 
         std::stringstream readpath_;
         std::stringstream writepath_;
 
         int newton_solver_, linesearch_, newton_maxit_, gist_maxit_, krylov_maxit_;
-        double opttolgrad_;
+        ScalarType opttolgrad_;
 
         std::vector<int> support_;      // support of cs guess
 
-        std::vector<double> user_cms_;  // stores the cms for synthetic user data
+        std::vector<ScalarType> user_cms_;  // stores the cms for synthetic user data
 
-        double smoothing_factor_;
+        ScalarType smoothing_factor_;
 
-        double E_csf_, E_healthy_, E_tumor_, E_bg_;
-        double nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
+        ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
+        ScalarType nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
 
-        double screen_low_, screen_high_;
-
-        double forcing_factor_;
+        ScalarType screen_low_, screen_high_;
+        ScalarType forcing_factor_;
 
         std::fstream outfile_sol_;
         std::fstream outfile_grad_;
         std::fstream outfile_glob_grad_;
+
+        // multispecies
+        int num_species_;
+        ScalarType ox_source_, ox_consumption_, alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
 };
+
+PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr);
+PetscErrorCode vecRestoreArray (Vec x, ScalarType **x_ptr);
 
 class VecField {
     public:
@@ -530,19 +551,18 @@ class VecField {
         Vec x_;
         Vec y_;
         Vec z_;
-        Vec magnitude_;
         ~VecField () {
             PetscErrorCode ierr = 0;
             ierr = VecDestroy (&x_);
             ierr = VecDestroy (&y_);
             ierr = VecDestroy (&z_);
-            ierr = VecDestroy (&magnitude_);
         }
 
-        PetscErrorCode computeMagnitude ();
+        PetscErrorCode computeMagnitude (Vec);
         PetscErrorCode copy (std::shared_ptr<VecField> field);
-        PetscErrorCode getComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
-        PetscErrorCode restoreComponentArrays (double *&x_ptr, double *&y_ptr, double *&z_ptr);
+        PetscErrorCode set (ScalarType scalar);
+        PetscErrorCode getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
+        PetscErrorCode restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
         PetscErrorCode getIndividualComponents (Vec in);  // uses x,y,z to populate in
 };
@@ -555,8 +575,8 @@ struct LSCtx {
     Vec x_work_1;   //Temporary vector for storing steepest descent guess
     Vec x_work_2; //Work vector
     Vec x_sol;
-    double sigma; //Sufficient decrease parameter
-    double lambda; //Regularization parameter for L1: Linesearch needs
+    ScalarType sigma; //Sufficient decrease parameter
+    ScalarType lambda; //Regularization parameter for L1: Linesearch needs
                    //this application specific info
     PetscReal J_old;
 };
@@ -565,8 +585,6 @@ struct LSCtx {
 PetscErrorCode NCERRQ (int cerr);
 PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file);
 PetscErrorCode myAssert(bool condition, std::string msg);
-
-int weierstrassSmoother (double *Wc, double *c, std::shared_ptr<NMisc> n_misc, double sigma); //TODO: Clean up .cpp file
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
 
@@ -579,21 +597,33 @@ PetscErrorCode geometricCoupling(
 /** @brief computes difference xi = m_data - m_geo
  *  - function assumes that on input, xi = m_geo * (1-c(1))
  */
-PetscErrorCode geometricCouplingAdjoint(PetscScalar *sqrdl2norm,
+PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
 	Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
 	Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg);
 
 /// @brief computes difference diff = x - y
-PetscErrorCode computeDifference(PetscScalar *sqrdl2norm,
+PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
 	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
 	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg);
 
+void read_pnetcdf(const std::string &filename,
+          MPI_Offset         starts[3],
+          MPI_Offset         counts[3],
+          int                gsizes[3],
+          float            *localData);
+
+void write_pnetcdf(const std::string &filename,
+           MPI_Offset         starts[3],
+           MPI_Offset         counts[3],
+           int                gsizes[3],
+           float            *localData);
+
 //Read/Write function prototypes
-PetscErrorCode dataIn (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
-PetscErrorCode dataOut (double *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 /// @reads in binary vector, serial
 PetscErrorCode readBIN(Vec* x, int size2, std::string f);
@@ -602,9 +632,9 @@ PetscErrorCode writeBIN(Vec x, std::string f);
 /// @reads in p_vec vector from txt file
 PetscErrorCode readPVec(Vec* x, int size, int np, std::string f);
 /// @brief reads in Gaussian centers from file
-PetscErrorCode readPhiMesh(std::vector<double> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data = false, std::vector<int> *comps = nullptr, bool overwrite_sigma = true);
+PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data = false, std::vector<int> *comps = nullptr, bool overwrite_sigma = true);
 /// @brief reads connected component data from file
-PetscErrorCode readConCompDat(std::vector<double> &weights, std::vector<double> &centers, std::string f);
+PetscErrorCode readConCompDat(std::vector<ScalarType> &weights, std::vector<ScalarType> &centers, std::string f);
 /// @brief write checkpoint for p-vector and Gaussian centers
 PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path, std::string suffix);
 /// @brief returns only filename
@@ -620,12 +650,8 @@ PetscErrorCode tuMSGstd(std::string msg, int size = 111);
 PetscErrorCode tuMSGwarn(std::string msg, int size = 111);
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
-/* accfft differential operators */
-void accfft_grad (Vec grad_x, Vec grad_y, Vec grad_z, Vec x, accfft_plan *plan, std::bitset<3> *pXYZ, double *timers);
-void accfft_divergence (Vec div, Vec dx, Vec dy, Vec dz, accfft_plan *plan, double *timers);
-
 PetscErrorCode vecSign (Vec x); //signum of petsc vector
-PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsity of vector
+PetscErrorCode vecSparsity (Vec x, ScalarType &sparsity); //Hoyer measure for sparsity of vector
 
 /* definition of tumor assert */
 #ifndef NDEBUG
@@ -637,10 +663,11 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
-PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<double> weights, int &nnz, int num_components);
+ScalarType myDistance (ScalarType *c1, ScalarType *c2);
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<ScalarType> weights, int &nnz, int num_components);
 
-double myDistance (double *c1, double *c2);
 
-PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, double *h, double *cm);
+PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *h, ScalarType *cm);
+PetscErrorCode setupVec (Vec x, int type = MPI);
 
 #endif // end _UTILS_H

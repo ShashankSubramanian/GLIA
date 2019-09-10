@@ -5,7 +5,7 @@ import imageTools as imgtools
 import file_io as fio
 import ntpath
 from netCDF4 import Dataset
-
+import faulthandler; faulthandler.enable()
 
 ###
 ### ------------------------------------------------------------------------ ###

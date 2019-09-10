@@ -41,9 +41,19 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_obj_evals++;
-    double *x_ptr, k1, k2, k3;
+    ScalarType *x_ptr, k1, k2, k3;
 
     int x_sz;
+
+    
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+    #endif
+
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -71,7 +81,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
       pde_operators_->diff_solver_->precFactor();
     }
 
-    double r1, r2, r3;
+    ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
@@ -133,21 +143,35 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     (*J) *= 0.5;
     (*J) += reg;
 
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+    #endif
+
     PetscFunctionReturn(0);
 }
 
 PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    PetscScalar *x_ptr, *p_ptr;
+    ScalarType *x_ptr, *p_ptr;
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     n_misc_->statistics_.nb_grad_evals++;
     Event e ("tumor-eval-grad");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-    double k1, k2, k3;
+    ScalarType k1, k2, k3;
 
     int x_sz;
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+    #endif
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -175,7 +199,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       pde_operators_->diff_solver_->precFactor();
     }
 
-    double r1, r2, r3;
+    ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
@@ -233,12 +257,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       }
     }
 
-    double temp_scalar;
+    ScalarType temp_scalar;
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
-    double integration_weight = 1.0;
+    ScalarType integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
@@ -249,9 +273,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
         // compute x = (grad c)^T grad \alpha
         // compute gradient of state variable c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], &XYZ, t.data());
         // compute gradient of adjoint variable p(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -291,7 +315,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
     /* INVERSION FOR REACTION COEFFICIENT */
     integration_weight = 1.0;
-    if (n_misc_->flag_reaction_inv_) {
+     if (n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
@@ -299,10 +323,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
         if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
         else integration_weight = 1.0;
 
-        ierr = VecCopy(pde_operators_->c_[i], tumor_->work_[0]);                                   CHKERRQ(ierr);   // work is c_t
-        ierr = VecShift(tumor_->work_[0], -1.0);                                                   CHKERRQ(ierr);   // work is c_t - 1
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->c_[i]);        CHKERRQ(ierr);   // work is -c_t * (1 - c_t)
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);        CHKERRQ(ierr); // work is -a_t * c_t * (1 - c_t)
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->c_[i], pde_operators_->c_[i]);  CHKERRQ (ierr); // work is c*c
+        ierr = VecAXPY (tumor_->work_[0], -1.0, pde_operators_->c_[i]);                            CHKERRQ (ierr); // work is c*c - c
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->p_[i], tumor_->work_[0]);       CHKERRQ (ierr); // work is a * (c*c - c)
 
         // numerical time integration using trapezoidal rule
         ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
@@ -337,6 +360,13 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+    #endif
+
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
     PetscFunctionReturn(0);
@@ -352,9 +382,17 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     Event e ("tumor-eval-objandgrad");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-    double *x_ptr, k1, k2, k3;
+    ScalarType *x_ptr, k1, k2, k3;
 
     int x_sz;
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+    #endif
 
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -383,7 +421,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       pde_operators_->diff_solver_->precFactor();
     }
 
-    double r1, r2, r3;
+    ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
       r1 = x_ptr[n_misc_->np_ + n_misc_->nk_];
@@ -487,12 +525,12 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
 
 
-    double temp_scalar;
+    ScalarType temp_scalar;
     /* ------------------------- */
     /* INVERSION FOR DIFFUSIVITY */
     /* ------------------------- */
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
-    double integration_weight = 1.0;
+    ScalarType integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
@@ -503,9 +541,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
         // compute x = (grad c)^T grad \alpha
         // compute gradient of state variable c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], &XYZ, t.data());
         // compute gradient of adjoint variable p(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -553,10 +591,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
         if (i == 0 || i == n_misc_->nt_) integration_weight = 0.5;
         else integration_weight = 1.0;
 
-        ierr = VecCopy(pde_operators_->c_[i], tumor_->work_[0]);                                   CHKERRQ(ierr);   // work is c_t
-        ierr = VecShift(tumor_->work_[0], -1.0);                                                   CHKERRQ(ierr);   // work is c_t - 1
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->c_[i]);        CHKERRQ(ierr);   // work is -c_t * (1 - c_t)
-        ierr = VecPointwiseMult(tumor_->work_[0], tumor_->work_[0], pde_operators_->p_[i]);        CHKERRQ(ierr); // work is -a_t * c_t * (1 - c_t)
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->c_[i], pde_operators_->c_[i]);  CHKERRQ (ierr); // work is c*c
+        ierr = VecAXPY (tumor_->work_[0], -1.0, pde_operators_->c_[i]);                            CHKERRQ (ierr); // work is c*c - c
+        ierr = VecPointwiseMult (tumor_->work_[0], pde_operators_->p_[i], tumor_->work_[0]);       CHKERRQ (ierr); // work is a * (c*c - c)
 
         // numerical time integration using trapezoidal rule
         ierr = VecAXPY (temp_, n_misc_->dt_ * integration_weight, tumor_->work_[0]);     CHKERRQ (ierr);
@@ -591,8 +628,15 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       ierr = VecRestoreArray(dJ, &x_ptr);                                              CHKERRQ (ierr);
     }
 
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+    #endif
+
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
+
 
     PetscFunctionReturn (0);
 
@@ -614,7 +658,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     Event e ("tumor-eval-hessian");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-    double *y_ptr;
+    ScalarType *y_ptr;
 
     if (n_misc_->diffusivity_inversion_) {
       /* HESSIAN WITH DIFFUSIVITY INVERSION
@@ -641,8 +685,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
 
       //  -------------------  -------------------  -------------------  -------------------  -------------------  -------------------
       // --------------- Compute Hkp * p_tilde -- \int \int m_i \grad c . \grad \alpha_tilde -------------------
-      double integration_weight = 1.0;
-      double temp_scalar = 0.;
+      ScalarType integration_weight = 1.0;
+      ScalarType temp_scalar = 0.;
       ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
@@ -652,9 +696,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
 
         // compute x = (grad c)^T grad \alpha_tilde
         // compute gradient of c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], &XYZ, t.data());
         // compute gradient of \alpha_tilde(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha_tilde
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -700,7 +744,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       // the incr fwd solves and hence we cannot re-use the diffusivity vectors
       // TODO: here, it is assumed that the update is isotropic updates- this has
       // to be modified later is anisotropy is included
-      double k1, k2, k3;
+      ScalarType k1, k2, k3;
       ierr = VecGetArray (x, &y_ptr);
       k1 = y_ptr[n_misc_->np_];
       k2 = (n_misc_->nk_ > 1) ? y_ptr[n_misc_->np_ + 1] : 0.;
@@ -735,9 +779,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
 
         // compute x = (grad c)^T grad \alpha_tilde
         // compute gradient of c(t)
-        accfft_grad (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[1], tumor_->work_[2], tumor_->work_[3], pde_operators_->c_[i], &XYZ, t.data());
         // compute gradient of \alpha_tilde(t)
-        accfft_grad (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], n_misc_->plan_, &XYZ, t.data());
+        pde_operators_->spec_ops_->computeGradient (tumor_->work_[4], tumor_->work_[5], tumor_->work_[6], pde_operators_->p_[i], &XYZ, t.data());
         // scalar product (grad c)^T grad \alpha_tilde
         ierr = VecPointwiseMult (tumor_->work_[0], tumor_->work_[1], tumor_->work_[4]);  CHKERRQ (ierr);  // c_x * \alpha_x
         ierr = VecPointwiseMult (tumor_->work_[1], tumor_->work_[2], tumor_->work_[5]);  CHKERRQ (ierr);  // c_y * \alpha_y
@@ -886,7 +930,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
     ierr = pde_operators_->solveAdjoint (1);
 
     ierr = VecCopy (temp_phip_, temp_);                             CHKERRQ (ierr);
-    double *temp_ptr, *p_ptr;
+    ScalarType *temp_ptr, *p_ptr;
     ierr = VecGetArray (temp_, &temp_ptr);                          CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
         temp_ptr[i] = (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
@@ -934,7 +978,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
 
     ierr = tumor_->phi_->apply (temp_phip_, p_current_);            CHKERRQ (ierr);
     ierr = VecCopy (temp_phip_, tumor_->c_0_);                      CHKERRQ (ierr);
-    double *temp_ptr;
+    ScalarType *temp_ptr;
     ierr = VecGetArray (tumor_->c_0_, &temp_ptr);                   CHKERRQ (ierr);
     for (int i = 0; i < n_misc_->n_local_; i++) {
         temp_ptr[i] = (1 / (1 + exp(-temp_ptr[i] + n_misc_->exp_shift_))) *
@@ -955,7 +999,7 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
 
     ierr = pde_operators_->solveAdjoint (2);
 
-    double *phip_ptr, *phiptilde_ptr, *p_ptr;
+    ScalarType *phip_ptr, *phiptilde_ptr, *p_ptr;
     ierr = VecGetArray (temp_phip_, &phip_ptr);                     CHKERRQ (ierr);
     ierr = VecGetArray (temp_phiptilde_, &phiptilde_ptr);           CHKERRQ (ierr);
     ierr = VecGetArray (temp_, &temp_ptr);                          CHKERRQ (ierr);
@@ -1016,7 +1060,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     TU_assert (data != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
-    PetscScalar misfit_tu = 0, misfit_brain = 0;
+    ScalarType misfit_tu = 0, misfit_brain = 0;
     PetscReal reg;
     n_misc_->statistics_.nb_obj_evals++;
 
@@ -1070,11 +1114,11 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
 PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, Vec data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    PetscScalar misfit_brain;
+    ScalarType misfit_brain;
     n_misc_->statistics_.nb_grad_evals++;
 
-    PetscScalar dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
-    PetscScalar norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d =0.;
+    ScalarType dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
+    ScalarType norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d =0.;
     std::stringstream s;
 
     if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (data, NORM_2, &norm_d);          CHKERRQ (ierr);}
@@ -1239,11 +1283,11 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PCOUT << "\n\n----- Gradient check with taylor expansion ----- " << std::endl;
 
-    double norm;
+    ScalarType norm;
     ierr = VecNorm (p, NORM_2, &norm);                          CHKERRQ (ierr);
 
     PCOUT << "Gradient check performed at x with norm: " << norm << std::endl;
-    double *x_ptr, k1, k2, k3;
+    ScalarType *x_ptr, k1, k2, k3;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
       k1 = x_ptr[n_misc_->np_];
@@ -1262,8 +1306,9 @@ PetscErrorCode DerivativeOperators::checkGradient (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[6];
-    double J, J_taylor, J_p, diff;
+
+    ScalarType h[6];
+    ScalarType J, J_taylor, J_p, diff;
 
     Vec dJ;
     Vec p_tilde;
@@ -1311,11 +1356,11 @@ PetscErrorCode DerivativeOperators::checkHessian (Vec p, Vec data) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
     PCOUT << "\n\n----- Hessian check with taylor expansion ----- " << std::endl;
 
-    double norm;
+    ScalarType norm;
     ierr = VecNorm (p, NORM_2, &norm);                          CHKERRQ (ierr);
 
     PCOUT << "Hessian check performed at x with norm: " << norm << std::endl;
-    double *x_ptr, k1, k2, k3;
+    ScalarType *x_ptr, k1, k2, k3;
     if (n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (p, &x_ptr);                             CHKERRQ (ierr);
       k1 = x_ptr[n_misc_->np_];
@@ -1334,8 +1379,8 @@ PetscErrorCode DerivativeOperators::checkHessian (Vec p, Vec data) {
       ierr = VecRestoreArray (p, &x_ptr);                         CHKERRQ (ierr);
     }
 
-    double h[6] = {0, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
-    double J, J_taylor, J_p, diff;
+    ScalarType h[6] = {0, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
+    ScalarType J, J_taylor, J_p, diff;
 
     Vec dJ, Hx, temp;
     Vec p_tilde;
@@ -1357,7 +1402,7 @@ PetscErrorCode DerivativeOperators::checkHessian (Vec p, Vec data) {
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (p_tilde, rctx);                        CHKERRQ (ierr);
     ierr = VecCopy (p_tilde, temp);                             CHKERRQ (ierr);
-    double hess_term = 0.;
+    ScalarType hess_term = 0.;
     for (int i = 0; i < 6; i++) {
         ierr = VecWAXPY (p_new, h[i], p_tilde, p);              CHKERRQ (ierr);
         ierr = evaluateObjective (&J, p_new, data);

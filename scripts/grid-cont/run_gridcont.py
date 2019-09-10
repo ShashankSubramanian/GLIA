@@ -109,6 +109,12 @@ def gridcont(basedir, args):
       procs      = [24,48,96]
     if args.compute_cluster == "frontera":
       nodes      = [1,1,2]
+<<<<<<< HEAD
+=======
+      procs      = [24,48,96]
+    if args.compute_cluster == "hazelhen":
+      nodes      = [1,2,4]
+>>>>>>> dev_cuda
       procs      = [24,48,96]
     if args.compute_cluster == "hazelhen":
       nodes            = [1,2,4]

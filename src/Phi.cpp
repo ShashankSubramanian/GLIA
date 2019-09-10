@@ -1,8 +1,6 @@
 #include "Phi.h"
 
-Phi::Phi (std::shared_ptr<NMisc> n_misc) :
-    n_misc_ (n_misc)
-  , gaussian_labels_()
+Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spec_ops) : n_misc_ (n_misc), spec_ops_ (spec_ops), gaussian_labels_()
   , component_weights_()
   , component_centers_()
   {
@@ -19,7 +17,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) :
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
     for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
@@ -32,10 +30,7 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc) :
     component_weights_.push_back (1.);
 }
 
-
-// ### _____________________________________________________________________ ___
-// ### ///////////////// setGaussians ////////////////////////////////////// ###
-PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, double spacing_factor, int np) {
+PetscErrorCode Phi::setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType sigma, ScalarType spacing_factor, int np) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     int procid, nprocs;
@@ -58,13 +53,13 @@ PetscErrorCode Phi::setGaussians (std::array<double, 3>& user_cm, double sigma, 
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
     for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
-    memcpy (cm_, user_cm.data(), 3 * sizeof(double));
+    memcpy (cm_, user_cm.data(), 3 * sizeof(ScalarType));
     centers_.resize (3 * np_);
     ierr = phiMesh (&centers_[0]);
     PetscFunctionReturn (0);
@@ -87,13 +82,13 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     // set phis only if compute is disabled: the subspace is small and all the phis
     // are filtered and stored in memory
     if (!compute_) {
-        double *phi_ptr;
-        double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+        ScalarType *phi_ptr;
+        ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
         Vec all_phis;
         ierr = VecDuplicate (phi_vec_[0], &all_phis);                               CHKERRQ (ierr);
         ierr = VecSet (all_phis, 0);                                                CHKERRQ (ierr);
 
-        double phi_max = 0, max = 0;
+        ScalarType phi_max = 0, max = 0;
 
         for (int i = 0; i < np_; i++) {
             // set values of Gaussian function
@@ -104,9 +99,8 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
             ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
             // smooth to avoid sharp edges (FFT)
             if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
-                ierr = VecGetArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
-                ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
-                ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                     CHKERRQ (ierr);
+                ierr = spec_ops_->weierstrassSmoother (phi_vec_[i], phi_vec_[i], n_misc_, sigma_smooth);   
+                CHKERRQ (ierr);
             }
             // truncate Gaussians after radius of 5*sigma for compact support
             ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
@@ -138,18 +132,17 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionReturn(0);
 }
 
-
 // ### _____________________________________________________________________ ___
 // ### ///////////////// phiMesh /////////////////////////////////////////// ###
-PetscErrorCode Phi::phiMesh (double *center) {
+PetscErrorCode Phi::phiMesh (ScalarType *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     int nprocs, procid;
-	  MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
+	MPI_Comm_rank(PETSC_COMM_WORLD, &procid);
     MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
     int h = round (std::pow (np_, 1.0 / 3.0));
-    double space[3];
-    double mu[3];
+    ScalarType space[3];
+    ScalarType mu[3];
 
     #ifdef VISUALIZE_PHI
      std::stringstream phivis;
@@ -231,15 +224,15 @@ PetscErrorCode Phi::phiMesh (double *center) {
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// truncate //////////////////////////////////////// ###
-PetscErrorCode Phi::truncate (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
+PetscErrorCode Phi::truncate (ScalarType *out, std::shared_ptr<NMisc> n_misc, ScalarType *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    double twopi = 2.0 * M_PI;
+    ScalarType twopi = 2.0 * M_PI;
     int64_t X, Y, Z;
-    double r;
+    ScalarType r;
     int64_t ptr;
-    double xc = center[0], yc = center[1], zc = center[2];
-    double hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
+    ScalarType xc = center[0], yc = center[1], zc = center[2];
+    ScalarType hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
 
     for (int x = 0; x < n_misc->isize_[0]; x++)
         for (int y = 0; y < n_misc->isize_[1]; y++)
@@ -257,17 +250,19 @@ PetscErrorCode Phi::truncate (double *out, std::shared_ptr<NMisc> n_misc, double
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// initialize //////////////////////////////////////// ###
-PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, double *center) {
+PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, ScalarType *center) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    double twopi = 2.0 * M_PI;
-    double R, c;
+
+    ScalarType twopi = 2.0 * M_PI;
+    ScalarType R, c;
     int64_t X, Y, Z;
-    double r, ratio;
+    ScalarType r, ratio;
     int64_t ptr;
-    double xc = center[0], yc = center[1], zc = center[2];
-    double hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
-    double dx = 0, dy = 0, dz = 0, o = 0;
+
+    ScalarType xc = center[0], yc = center[1], zc = center[2];
+    ScalarType hx = twopi / n_misc->n_[0], hy = twopi / n_misc->n_[1], hz = twopi / n_misc->n_[2];
+    ScalarType dx = 0, dy = 0, dz = 0, o = 0;
 
     // PHI = GAUSSIAN
     R = std::sqrt(2.) * sigma_;
@@ -301,7 +296,8 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
                 out[ptr] = o;
 
             }
-  PetscFunctionReturn(0);
+
+    PetscFunctionReturn(0);
 }
 
 #ifdef SERIAL
@@ -312,7 +308,8 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         std::array<double, 7> t = {0};
         double self_exec_time = -MPI_Wtime ();
 
-        double *pg_ptr;
+
+        ScalarType *pg_ptr;
         ierr = VecSet (out, 0.);                                                                       CHKERRQ (ierr);
         ierr = VecGetArray (p, &pg_ptr);                                                               CHKERRQ (ierr);
 
@@ -323,20 +320,19 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         } else {
             // compute phi and apply on the fly
             // use phi_vec_[0] as proxy for every phi
-
-            double phi_max = 0, max = 0;
-            double *phi_ptr;
-            double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+            ScalarType phi_max = 0, max = 0;
+            ScalarType *phi_ptr;
+            ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
             for (int i = 0; i < np_; i++) {
                 ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
                 initialize (phi_ptr, n_misc_, &centers_[3 * i]);
                 ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
-                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
-                    ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+                    ierr = spec_ops_->weierstrassSmoother (phi_vec_[0], phi_vec_[0], n_misc_, sigma_smooth);   
+                    CHKERRQ (ierr);
                 }
-
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 // truncate Gaussians after radius of 5*sigma for compact support
                 truncate (phi_ptr, n_misc_, &centers_[3 * i]);
                 ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
@@ -369,8 +365,8 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         std::array<double, 7> t = {0};
         double self_exec_time = -MPI_Wtime ();
 
-        PetscScalar values[np_];
-        double *pout_ptr;
+        ScalarType values[np_];
+        ScalarType *pout_ptr;
         ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
 
         if (!compute_) {
@@ -382,19 +378,20 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         } else {
             // compute the phis on the fly
             // use phi_vec_[0] as proxy for every phi
-            double *phi_ptr;
-            double phi_max = 0, max = 0;
-            double sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
+            ScalarType *phi_ptr;
+            ScalarType phi_max = 0, max = 0;
+            ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
             for (int i = 0; i < np_; i++) {
                 ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
                 initialize (phi_ptr, n_misc_, &centers_[3 * i]);
                 ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
-                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                
                 if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
-                    ierr = weierstrassSmoother (phi_ptr, phi_ptr, n_misc_, sigma_smooth);
+                    ierr = spec_ops_->weierstrassSmoother (phi_vec_[0], phi_vec_[0], n_misc_, sigma_smooth);   
+                    CHKERRQ (ierr);
                 }
-
+                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 // truncate Gaussians after radius of 5*sigma for compact support
                 truncate (phi_ptr, n_misc_, &centers_[3 * i]);
                 ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
@@ -428,10 +425,10 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         std::array<double, 7> t = {0};
         double self_exec_time = -MPI_Wtime ();
 
-        double * pg_ptr;
+        ScalarType * pg_ptr;
         Vec pg;
         ierr = VecCreateSeq (PETSC_COMM_SELF, np_, &pg);                            CHKERRQ (ierr);
-        ierr = VecSetFromOptions (pg);                                              CHKERRQ (ierr);
+        ierr = setupVec (pg, SEQ);                                                       CHKERRQ (ierr);
 
         {
             VecScatter scatter; /* scatter context */
@@ -478,9 +475,9 @@ PetscErrorCode Phi::initialize (double *out, std::shared_ptr<NMisc> n_misc, doub
         std::array<double, 7> t = {0};
         double self_exec_time = -MPI_Wtime ();
 
-        PetscScalar values[np_];
+        ScalarType values[np_];
         int low, high;
-        double *pout_ptr;
+        ScalarType *pout_ptr;
         ierr = VecGetArray (pout, &pout_ptr);                                                           CHKERRQ (ierr);
         Vec *v = &phi_vec_[0];
         ierr = VecMTDot (in, np_, v, values);                                                           CHKERRQ (ierr);
@@ -515,11 +512,11 @@ int isInLocalProc (int64_t X, int64_t Y, int64_t Z, std::shared_ptr<NMisc> n_mis
 }
 
 //x, y, z are local coordinates
-void checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int> &local_tumor_marker) {
+void checkTumorExistence (int64_t x, int64_t y, int64_t z, ScalarType radius, ScalarType *data, std::shared_ptr<NMisc> n_misc, std::vector<int> &local_tumor_marker) {
     int flag, num_tumor;
     num_tumor = 0;
-    double distance;
-    double threshold = n_misc->data_threshold_;
+    ScalarType distance;
+    ScalarType threshold = n_misc->data_threshold_;
 
     int64_t ptr;
     for (int i = x - radius; i <= x + radius; i++)
@@ -544,11 +541,11 @@ void checkTumorExistence (int64_t x, int64_t y, int64_t z, double radius, double
 
 // Check tumor presence for boundary points and their neighbours in other procs: x,y,z are global indices
 
-void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, double radius, double *data, std::shared_ptr<NMisc> n_misc, std::vector<int64_t> &center_comm, std::vector<int> &local_tumor_marker, int local_check) {
+void checkTumorExistenceOutOfProc (int64_t x, int64_t y, int64_t z, ScalarType radius, ScalarType *data, std::shared_ptr<NMisc> n_misc, std::vector<int64_t> &center_comm, std::vector<int> &local_tumor_marker, int local_check) {
     int flag, num_tumor;
     num_tumor = 0;
-    double distance;
-    double threshold = n_misc->data_threshold_;
+    ScalarType distance;
+    ScalarType threshold = n_misc->data_threshold_;
 
     int check_local_pos = 0;
 
@@ -609,15 +606,15 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
       ierr = readPhiMesh(centers_, n_misc_, file, true, &gaussian_labels_);     CHKERRQ (ierr);
     }
 
-    double twopi = 2.0 * M_PI;
-    double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
+    ScalarType twopi = 2.0 * M_PI;
+    ScalarType hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
     sigma_ = n_misc_->phi_sigma_data_driven_;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
     spacing_factor_ = 2.0;
     n_misc_->phi_spacing_factor_ = spacing_factor_;
-    double space = spacing_factor_ * sigma_ / hx;
+    ScalarType space = spacing_factor_ * sigma_ / hx;
 
     //Get gaussian volume
-    double dist = 0.0;
+    ScalarType dist = 0.0;
     int gaussian_interior = 0;
     for (int i = -sigma_ / hx; i <= sigma_ / hx; i++)
         for (int j = -sigma_ / hx; j <= sigma_ / hx; j++)
@@ -687,22 +684,22 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     ierr = VecDuplicate (data, &num_tumor_output);                           CHKERRQ (ierr);
     ierr = VecSet (num_tumor_output, 0);                                     CHKERRQ (ierr);
 
-    double twopi = 2.0 * M_PI;
+    ScalarType twopi = 2.0 * M_PI;
     int64_t X, Y, Z;
     int ptr;
     int gaussian_interior = 0;
-    double hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
-    double h_64 = twopi / 64;
-    double h_256 = twopi / 256;
+    ScalarType hx = twopi / n_misc_->n_[0], hy = twopi / n_misc_->n_[1], hz = twopi / n_misc_->n_[2];
+    ScalarType h_64 = twopi / 64;
+    ScalarType h_256 = twopi / 256;
     sigma_ = n_misc_->phi_sigma_data_driven_;   // This spacing corresponds to 1mm sigma -- tumor width of say 4*sigma
 
-    double sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
+    ScalarType sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     spacing_factor_ = 2.0;
     n_misc_->phi_spacing_factor_ = spacing_factor_;
-    double space = spacing_factor_ * sigma_ / hx;
+    ScalarType space = spacing_factor_ * sigma_ / hx;
 
     //Get gaussian volume
-    double dist = 0.0;
+    ScalarType dist = 0.0;
     for (int i = -sigma_ / hx; i <= sigma_ / hx; i++)
         for (int j = -sigma_ / hx; j <= sigma_ / hx; j++)
             for (int k = -sigma_ / hx; k <= sigma_ / hx; k++) {
@@ -713,14 +710,14 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     ss << " ---- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior << " | gvf: " << n_misc_->gaussian_vol_frac_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     int flag = 0;
     np_ = 0;
-    std::vector<double> center;
+    std::vector<ScalarType> center;
     std::vector<int64_t> center_comm;                                       //Vector of global indices of centers to be communicated across procs
                                                                             //because they are either boundary centers or out of proc neighbour centers
     std::vector<int> local_tumor_marker (n_misc_->n_local_, 0);             //Local marker for boundary centers. This is updated everytime the local
                                                                             //proc receives computation results from the neighbors.
 
 
-    double *data_ptr, *num_top_ptr;
+    ScalarType *data_ptr, *num_top_ptr;
     ierr = VecGetArray (data, &data_ptr);                                      CHKERRQ (ierr);
     ierr = VecGetArray (num_tumor_output, &num_top_ptr);                       CHKERRQ (ierr);
 
@@ -901,7 +898,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         }
     }
 
-    double *label_ptr;
+    ScalarType *label_ptr;
     if (labels_ != nullptr) {
         // connected components has updated the labels
         ierr = VecGetArray (labels_, &label_ptr);                                  CHKERRQ (ierr);
@@ -910,7 +907,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
 
     //Add the local boundary centers to the selected centers vector
     for (int i = 0; i < local_tumor_marker.size(); i++) {
-        num_top_ptr[i] = (double) local_tumor_marker[i] / gaussian_interior;                  //For visualization
+        num_top_ptr[i] = (ScalarType) local_tumor_marker[i] / gaussian_interior;                  //For visualization
 
         if (local_tumor_marker[i] > n_misc_->gaussian_vol_frac_ * gaussian_interior) {   // Boundary center with tumors in its vicinity
             X = i / (n_misc_->isize_[1] * n_misc_->isize_[2]);
@@ -936,7 +933,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     int np_global;
     MPI_Allreduce (&np_, &np_global, 1, MPI_INT, MPI_SUM, PETSC_COMM_WORLD);
     std::vector<int> center_size, displs, rcount;
-    std::vector<double> center_global;
+    std::vector<ScalarType> center_global;
     center_size.resize (nprocs);
     displs.resize (nprocs);
     rcount.resize (nprocs);
@@ -950,7 +947,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         displs[i] = displs[i - 1] + center_size[i - 1];
         rcount[i] = center_size[i];
     }
-    MPI_Allgatherv (&center[0], center.size(), MPI_DOUBLE, &center_global[0], &rcount[0], &displs[0], MPI_DOUBLE, PETSC_COMM_WORLD);
+    MPI_Allgatherv (&center[0], center.size(), MPIType, &center_global[0], &rcount[0], &displs[0], MPIType, PETSC_COMM_WORLD);
 
     // gather gaussian labels
     std::vector<int> g_labels;
@@ -1008,7 +1005,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
     phi_vec_.resize (num_phi_store);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
 
     for (int i = 1; i < num_phi_store; i++) {
@@ -1051,7 +1048,6 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
 
 Phi::~Phi () {
     PetscErrorCode ierr = 0;
-    int num_phi_store = (n_misc_->phi_store_) ? np_ : 3 * n_misc_->sparsity_level_;
     for (int i = 0; i < phi_vec_.size(); i++) {
         ierr = VecDestroy (&phi_vec_[i]);
     }

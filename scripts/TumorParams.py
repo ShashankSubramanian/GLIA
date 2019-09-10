@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -54,7 +54,7 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
 
 
-    verbosity = 2
+    verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
     create_synthetic = 1
@@ -66,11 +66,11 @@ def getTumorRunCmd(params):
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
-    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
-    model = 1
+    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect, 5: Multi-species
+    model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data = 0.025
+    rho_data = 16
+    k_data = 0.01
     nt_data = 100
     dt_data = 0.01
 
@@ -98,7 +98,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 0
+    forward_flag = 1
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -412,5 +412,4 @@ def getTumorRunCmd(params):
     " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
-    # -tao_test_hessian -tao_test_hessian_view
     return run_str, error_flag

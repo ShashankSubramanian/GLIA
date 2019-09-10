@@ -9,14 +9,14 @@ class Obs {
 	public:
 		Obs (std::shared_ptr<NMisc> n_misc);
 
-		double threshold_;
+		ScalarType threshold_;
 		Vec filter_;
 		std::shared_ptr<NMisc> n_misc_;
 
 		PetscErrorCode setDefaultFilter (Vec data);
 		PetscErrorCode setCustomFilter (Vec custom_filter);
 		PetscErrorCode apply (Vec y, Vec x);
-		// PetscErrorCode apply_transpose (double *y, double *x);
+		// PetscErrorCode apply_transpose (ScalarType *y, ScalarType *x);
 
 
 		~Obs ();
