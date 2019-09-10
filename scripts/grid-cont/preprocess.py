@@ -83,32 +83,38 @@ def preprocImageFromSegmentation(image_path, output_path, resolution, labels, na
     '''
     @short - read segmented image and split into probability maps (anatomy labels)
     '''
-    print('preprocessing patient segmentation maps, converting to probability maps')
+    print('preprocessing ' + name + ' segmentation maps, converting to probability maps')
     if not os.path.exists(output_path):
         print('preprocessing output path does not exist, creating ', output_path);
         os.mkdir(output_path);
 
     img = nib.load(image_path);
     affine = img.affine;
+    input_resolution = img.header.get_data_shape()
 
     img_img = img.get_fdata();
-    resolution = tuple([float(x) for x in resolution]);
+    output_resolution = tuple([float(x) for x in resolution]);
     label_rev = {v:k for k,v in labels.items()}
-    if 'vt' in label_rev and 'csf' in label_rev:
-        img_img[np.where(img_img == label_rev['vt'])] = label_rev['csf'];
+    # if 'vt' in label_rev and 'csf' in label_rev:
+    #     img_img[np.where(img_img == label_rev['vt'])] = label_rev['csf'];
 
-    # do NN interpolation on the image and store in input/
-    img_resized = imgtools.resizeImage(img_img, resolution, 0);
-    fio.writeNII(img_resized, output_path +'/' + name + '_seg.nii.gz', affine);
-    fio.createNetCDF(output_path + '/' + name +'_seg.nc', np.shape(img_resized), np.swapaxes(img_resized,0,2));
+    # do NN interpolation on the image and store in input/    
+    if input_resolution != output_resolution:
+        img_resized = imgtools.resizeNIIImage(img, output_resolution, interp_order=0)        
+    else:
+        print("image already in the compute resolution, skipping resampling step")
+        img_resized = img
+
+    nib.save(img_resized, output_path + '/' + name +'_seg.nii.gz')    
+    fio.createNetCDF(output_path + '/' + name +'_seg.nc', np.shape(img_resized.get_fdata()), np.swapaxes(img_resized.get_fdata(),0,2));
 
     # create probability maps from segmentation
-    probmaps,labelmaps = imgtools.createProbabilityMaps(img_resized, resolution, labels);
-    probmaps = imgtools.ensurePartitionOfUnity(probmaps);
-
+    probmaps,labelmaps = imgtools.createProbabilityMaps(img_resized.get_fdata(), resolution, labels);
+    # probmaps = imgtools.EnsurePartitionOfUnity(probmaps);
+    
     if not os.path.exists(output_path):
         os.mkdirs(output_path)
-    imgtools.saveProbabilityMaps(probmaps, labelmaps, output_path + '/' + name, affine, labels);
+    imgtools.saveProbabilityMaps(probmaps, labelmaps, output_path + '/' + name, img_resized, labels);
     return affine
 
 ###

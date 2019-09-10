@@ -7,6 +7,7 @@ import numpy as np
 import imageTools as imgtools
 import nibabel as nib
 import file_io as fio
+import claire
 
 
 P_COUNTER = 0;
@@ -95,7 +96,64 @@ def createJobsubFile(cmd, opt, level):
     # submit job
     # subprocess.call(['sbatch',bash_filename]);
 
+def registration(basedir, args):
+    
+    # create output folder
+    output_dir = args.results_directory
+    if not os.path.exists(output_dir):
+        print("results folder doesn't exist, creating one!\n");
+        os.mkdir(output_dir);
+    # python command
+    pythoncmd = "python ";
+    if args.compute_cluster in ["stampede2", "frontera", "local"]:
+        pythoncmd = "python3 ";
+    # create input folder
+    data_dir = os.path.join(output_dir, 'input');
+    if not os.path.exists(data_dir):
+        print("data folder doesn't exist, creating one!\n")
+        os.mkdir(data_dir);
 
+    tumor_output_dir = os.path.join(output_dir, 'tumor_inversion')
+    if not os.path.exists(tumor_output_dir):
+        print("tumor output dir does not exist, creating one!\n")
+        os.mkdir(tumor_output_dir)    
+
+    #   ------------------------------------------------------------------------
+    #   - read atlas segmented image and create probability maps
+    #   - read segmented patient or patient probability maps and resize them
+    preproc_cmd = "#Preprocess images\n";
+    preproc_cmd += pythoncmd + basedir + '/grid-cont/preprocess.py -atlas_image_path ' + args.atlas_image_path  + ' -patient_image_path ' + args.patient_image_path + ' -output_path ' + data_dir + ' -N ' + str(args.resolution) + ' -patient_labels ' + args.patient_segmentation_labels + ' -atlas_labels ' + args.atlas_segmentation_labels;
+    if args.use_atlas_segmentation:
+        preproc_cmd += ' --use_atlas_segmentation'
+    if args.use_patient_segmentation:
+        preproc_cmd += ' --use_patient_segmentation'
+
+    patient_labels = ",".join([x.split('=')[0] for x in args.patient_segmentation_labels.split(',')])
+    reg_param = {}
+    claire.set_parameters(reg_param, output_dir, data_dir, tumor_output_dir)
+    reg_cmd = ''
+    # registration command
+    reg_cmd += claire.createCmdLineReg(reg_param)
+    # transport labels command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$DATA_DIR/patient_seg.nii.gz", output_filename="$OUTPUT_DIR/patient_seg_in_Aspace.nii.gz", labels=patient_labels)
+    # transport c0 command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$TUMOR_DIR/nx256/obs-1.0/c0Recon_256x256x256_aff2jakob.nii.gz", output_filename="$TUMOR_DIR/nx256/obs-1.0/c0Recon_256x256x256_aff2jakob_in_Aspace.nii.gz")
+    # transport c1 command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$TUMOR_DIR/nx256/obs-1.0/cRecon_256x256x256_aff2jakob.nii.gz", output_filename="$TUMOR_DIR/nx256/obs-1.0/cRecon_256x256x256_aff2jakob_in_Aspace.nii.gz")
+    # transport ventricles command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$DATA_DIR/patient_vt.nii.gz", output_filename="$OUTPUT_DIR/patient_vt_in_Aspace.nii.gz")
+    # transport CSF command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$DATA_DIR/patient_csf.nii.gz", output_filename="$OUTPUT_DIR/patient_csf_in_Aspace.nii.gz")
+    # transport gray matter command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$DATA_DIR/patient_gm.nii.gz", output_filename="$OUTPUT_DIR/patient_gm_in_Aspace.nii.gz")
+    # transport white matter command
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$DATA_DIR/patient_wm.nii.gz", output_filename="$OUTPUT_DIR/patient_wm_in_Aspace.nii.gz")
+    # transport edema+white matter command 
+    reg_cmd += claire.createCmdLineTransport(reg_param, input_filename="$DATA_DIR/patient_ed_wm.nii.gz", output_filename="$OUTPUT_DIR/patient_ed_wm_in_Aspace.nii.gz")
+
+    # create Job file
+    cmd = preproc_cmd + "\n\n\n" + reg_cmd
+    claire.createJobsubFile(cmd,reg_param)
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -449,6 +507,7 @@ if __name__=='__main__':
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
     parser.add_argument (                   '--cm_data',                     action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
+    parser.add_argument ('-run_registration','--run_registration',           action='store_true', help = 'run registration')
     args = parser.parse_args();
 
     if args.patient_image_path is None:
@@ -472,7 +531,13 @@ if __name__=='__main__':
             print('processing ', patient)
             args.patient_image_path = os.path.join(os.path.join(base_patient_image_path, patient), patient + '_seg_tu.nii.gz');
             args.results_directory = os.path.join(base_results_dir, patient);
-            gridcont(basedir, args);
+            if args.run_registration:
+                registration(basedir,args)
+            else:                
+                gridcont(basedir, args);
     else:
         print('running for single patient')
-        gridcont(basedir, args);
+        if args.run_registration:
+            registration(basedir,args)
+        else:
+            gridcont(basedir, args);
