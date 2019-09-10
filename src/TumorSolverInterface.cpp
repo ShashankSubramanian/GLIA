@@ -76,7 +76,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     PetscErrorCode ierr = 0;
     TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
 
-    bool npchanged = true, modelchanged = false, ntchanged = false;
+    bool npchanged = true, modelchanged = false, ntchanged = true;
     // ++ re-initialize nmisc ==
     if(tumor_params != nullptr) {
         // if one of these parameters has changed, we need to re-allocate maemory
