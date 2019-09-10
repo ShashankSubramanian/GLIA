@@ -381,6 +381,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     PetscReal d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0., max, min, xdiff;
     PetscReal upper_bound_kappa, lower_bound_kappa, minstep;
     std::string msg;
+    std::stringstream ss;
     int nk, nr, np, x_sz;
     Vec lower_bound, upper_bound, p;
     CtxInv *ctx = itctx_.get();

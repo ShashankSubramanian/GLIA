@@ -473,7 +473,7 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// readPhiMesh /////////////////////////////////////// ###
-PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps) {
+PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps, bool overwrite_sigma) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int nprocs, procid;
