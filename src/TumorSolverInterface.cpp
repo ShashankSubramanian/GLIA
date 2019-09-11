@@ -78,13 +78,23 @@ PetscErrorCode TumorSolverInterface::initializeFFT (
     // initialize accfft, data distribution and comm plan
     accfft_init();
     accfft_create_comm(MPI_COMM_WORLD, ivars.cdims, &ivars.comm);
-    ivars.alloc_max = accfft_local_size_dft_r2c (ivars.n, ivars.isize, ivars.istart, ivars.osize, ivars.ostart, ivars.comm);
-    double *c_0 = (double*) accfft_alloc (ivars.alloc_max);
-    Complex *c_hat = (Complex*) accfft_alloc (ivars.alloc_max);
-    ivars.plan = accfft_plan_dft_3d_r2c (ivars.n, c_0, (double*) c_hat, ivars.comm, ACCFFT_MEASURE);
-    accfft_free (c_0);
-    accfft_free (c_hat);
+    // ivars.alloc_max = accfft_local_size_dft_r2c (ivars.n, ivars.isize, ivars.istart, ivars.osize, ivars.ostart, ivars.comm);
+    // double *c_0 = (double*) accfft_alloc (ivars.alloc_max);
+    // Complex *c_hat = (Complex*) accfft_alloc (ivars.alloc_max);
+    // ivars.plan = accfft_plan_dft_3d_r2c (ivars.n, c_0, (double*) c_hat, ivars.comm, ACCFFT_MEASURE);
+    // accfft_free (c_0);
+    // accfft_free (c_hat);
+    // initializedFFT_ = true;
+    #if defined(CUDA) && !defined(MPICUDA)
+        spec_ops_ = std::make_shared<SpectralOperators> (CUFFT);
+    #else
+        spec_ops_ = std::make_shared<SpectralOperators> (ACCFFT);
+    #endif
+    spec_ops_->setup (ivars.n, ivars.isize, ivars.istart, ivars.osize, ivars.ostart, ivars.comm);
+    ivars.plan = spec_ops_->plan_;
+    ivars.alloc_max = spec_ops_->alloc_max_;
     initializedFFT_ = true;
+
     PetscFunctionReturn(ierr);
 }
 
@@ -116,7 +126,7 @@ PetscErrorCode TumorSolverInterface::initialize (
         ivars.plan, ivars.comm, ivars.cdims, ivars.testcase);
 
     // initialize tumor, initialize dummy phi, initialize mat probs
-    initialize(n_misc_, nullptr, nullptr, nullptr);
+    initialize(n_misc_, spec_ops_, nullptr, nullptr);
     PetscFunctionReturn(ierr);
 }
 
@@ -140,6 +150,7 @@ PetscErrorCode TumorSolverInterface::initialize (
     int nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
 
     ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);                             CHKERRQ (ierr);
+    ierr = setupVec (p, SEQ);                                                       CHKERRQ (ierr);
     ierr = VecSet (p, n_misc->p_scale_);                                            CHKERRQ (ierr);
     ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
 

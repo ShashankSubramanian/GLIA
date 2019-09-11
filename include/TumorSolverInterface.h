@@ -1,3 +1,24 @@
+/**
+ *  SIBIA (Scalable Biophysics-Based Image Analysis)
+ *
+ *  Copyright (C) 2017-2020, The University of Texas at Austin
+ *  This file is part of the SIBIA library.
+ *
+ *  SIBIA is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  SIBIA is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see the LICENSE file.
+ *
+ **/
+
 #ifndef TUMORSOLVERINTERFACE_H_
 #define TUMORSOLVERINTERFACE_H_
 
@@ -6,8 +27,44 @@
 #include "MatProp.h"
 #include "PdeOperators.h"
 #include "DerivativeOperators.h"
-#include "InvSolver.h"
 #include "SpectralOperators.h"
+#include "InvSolver.h"
+
+//namespace pglistr {
+
+    struct DataDistributionParameters {
+        int64_t alloc_max;
+        int nlocal;
+        int nglobal;
+        int n[3];
+        int cdims[2];
+        int istart[3];
+        int isize[3];
+        int ostart[3];
+        int osize[3];
+        int testcase;
+        accfft_plan* plan;
+        MPI_Comm comm;
+        int fft_mode;
+
+        DataDistributionParameters ()
+        :
+          alloc_max(0)
+        , nlocal(0)
+        , nglobal(0)
+        , cdims{0,0}
+        , n{256,256,256}
+        , istart{0,0,0}
+        , isize{0,0,0}
+        , ostart{0,0,0}
+        , osize{0,0,0}
+        , testcase(0)
+        , plan(nullptr)
+        , comm (MPI_COMM_WORLD)
+        , fft_mode(ACCFFT)
+        {}
+    };
+
 
 class TumorSolverInterface {
 
@@ -185,5 +242,7 @@ class TumorSolverInterface {
 
     std::vector<double> out_params_;
 };
+
+//} // namespace pglistr
 
 #endif
