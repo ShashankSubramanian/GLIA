@@ -588,9 +588,23 @@ PetscErrorCode TumorSolverInterface::setDistMeassureDiffImages(
     return derivative_operators_->setDistMeassureDiffImages(wm, gm, csf, nullptr, nullptr);
 }
 
-
 // ### _____________________________________________________________________ ___
 // ### ///////////////// computeTumorContributionRegistration ////////////// ###
+PetscErrorCode TumorSolverInterface::computeTumorContributionRegistration(Vec q1, Vec q2, Vec q4) {
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+    PetscFunctionBegin;
+    if (pde_operators_ != nullptr) {
+      ierr = pde_operators_->computeTumorContributionRegistration(q1, q2, nullptr, q4); CHKERRQ(ierr);
+    } else {
+        ierr = tuMSGwarn ("Error: (in computeTumorContributionRegistration()) PdeOperators not initialized. Exiting .."); CHKERRQ (ierr);
+        PetscFunctionReturn(ierr);
+    }
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setGaussians (Vec data) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
@@ -606,7 +620,7 @@ PetscErrorCode TumorSolverInterface::setGaussians (Vec data) {
 }
 
 // ### _____________________________________________________________________ ___
-// ### ///////////////// computeTumorContributionRegistration ////////////// ###
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setGaussians (double* cm, double sigma, double spacing, int np) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
@@ -626,7 +640,7 @@ PetscErrorCode TumorSolverInterface::setGaussians (double* cm, double sigma, dou
 }
 
 // ### _____________________________________________________________________ ___
-// ### ///////////////// computeTumorContributionRegistration ////////////// ###
+// ### ///////////////// setGaussians ////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
