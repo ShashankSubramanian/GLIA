@@ -285,7 +285,7 @@ PetscErrorCode InvSolver::restrictSubspace (Vec *x_restricted, Vec x_full, std::
 
     itctx->n_misc_->np_ = np;                    // change np to solve the restricted subsystem
     ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, x_restricted);          CHKERRQ (ierr);
-    ierr = setupVec (x_restricted, SEQ);                                        CHKERRQ (ierr);
+    ierr = setupVec (*x_restricted, SEQ);                                       CHKERRQ (ierr);
     ierr = VecSet (*x_restricted, 0);                                           CHKERRQ (ierr);
     ierr = VecGetArray (*x_restricted, &x_restricted_ptr);                      CHKERRQ (ierr);
     ierr = VecGetArray (x_full, &x_full_ptr);                                   CHKERRQ (ierr);

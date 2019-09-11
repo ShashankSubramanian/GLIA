@@ -78,7 +78,7 @@ class TumorSolverInterface {
     */
     TumorSolverInterface (
         std::shared_ptr<NMisc> n_misc = {},
-        std::shared_ptr<SpectralOperators> spec_ops = {}
+        std::shared_ptr<SpectralOperators> spec_ops = {},
         std::shared_ptr<Phi> phi = {},
         std::shared_ptr<MatProp> mat_prop = {});
 
@@ -113,7 +113,7 @@ class TumorSolverInterface {
     */
     PetscErrorCode initialize (
         std::shared_ptr<NMisc> n_misc,
-        std::shared_ptr<SpectralOperators> spec_ops = {}
+        std::shared_ptr<SpectralOperators> spec_ops = {},
         std::shared_ptr<Phi> phi = {},
         std::shared_ptr<MatProp> mat_prop = {});
 
