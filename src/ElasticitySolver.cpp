@@ -94,7 +94,7 @@ PetscErrorCode elasticitySolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnor
     //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
     //   s.str (""); s.clear ();
     // }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -113,7 +113,7 @@ PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right) {
         ierr = VecDuplicate (ctx->disp_, left);                CHKERRQ (ierr);
     }
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -261,7 +261,7 @@ PetscErrorCode operatorConstantCoefficients (PC pc, Vec x, Vec y) {
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 // Defines Lu
@@ -362,7 +362,7 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y) {
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
@@ -426,7 +426,7 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	ctx->lam_avg_ /= n_misc->n_global_;
 	ctx->screen_avg_ /= n_misc->n_global_;
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 
 }
 
@@ -469,7 +469,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     e.addTimings (t);
     e.stop ();
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 

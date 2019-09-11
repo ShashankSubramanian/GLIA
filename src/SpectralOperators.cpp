@@ -142,7 +142,7 @@ PetscErrorCode SpectralOperators::computeGradient (Vec grad_x, Vec grad_y, Vec g
         ierr = VecRestoreArray (grad_z, &grad_z_ptr);
         ierr = VecRestoreArray (x, &x_ptr);
     #endif
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Vec dz, double *timers) {
@@ -225,7 +225,7 @@ PetscErrorCode SpectralOperators::computeDivergence (Vec div, Vec dx, Vec dy, Ve
         ierr = VecRestoreArray (dy, &dy_ptr);
         ierr = VecRestoreArray (dz, &dz_ptr);
     #endif
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 // apply weierstrass smoother
@@ -253,7 +253,7 @@ PetscErrorCode SpectralOperators::weierstrassSmoother (Vec wc, Vec c, std::share
     e.addTimings (t);
     e.stop ();
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 int SpectralOperators::weierstrassSmoother (ScalarType* Wc, ScalarType *c, std::shared_ptr<NMisc> n_misc, ScalarType sigma) {

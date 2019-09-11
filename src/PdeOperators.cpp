@@ -11,7 +11,7 @@ PetscErrorCode PdeOperatorsRD::reset (std::shared_ptr <NMisc> n_misc, std::share
     n_misc_ = n_misc;
     if (tumor != nullptr) tumor_ = tumor;
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMassEffect::reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor) {
@@ -23,7 +23,7 @@ PetscErrorCode PdeOperatorsMassEffect::reset (std::shared_ptr <NMisc> n_misc, st
     n_misc_ = n_misc;
     if (tumor != nullptr) tumor_ = tumor;
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMultiSpecies::reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor) {
@@ -35,7 +35,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::reset (std::shared_ptr <NMisc> n_misc, 
     n_misc_ = n_misc;
     if (tumor != nullptr) tumor_ = tumor;
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -121,7 +121,7 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc)
         }
     }
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
@@ -171,7 +171,7 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsRD::solveIncremental (Vec c_tilde, std::vector<Vec> c_history, ScalarType dt, int iter, int mode) {
@@ -214,7 +214,7 @@ PetscErrorCode PdeOperatorsRD::solveIncremental (Vec c_tilde, std::vector<Vec> c
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
@@ -303,7 +303,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
@@ -356,7 +356,7 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
@@ -400,7 +400,7 @@ PetscErrorCode PdeOperatorsRD::solveAdjoint (int linearized) {
     //accumulateTimers (t, t, self_exec_time);
     t[5] = self_exec_time;
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) {
@@ -470,7 +470,7 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
   //accumulateTimers (t, t, self_exec_time);
   t[5] = self_exec_time;
   e.addTimings (t); e.stop ();
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PdeOperatorsRD::~PdeOperatorsRD () {
@@ -540,8 +540,8 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
@@ -707,7 +707,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {
@@ -720,7 +720,7 @@ PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc) {
         c_ptr[i] = (c_ptr[i] > 1.0) ? 1.0 : c_ptr[i];
     }
     ierr = VecRestoreArray (c, &c_ptr);                          CHKERRQ (ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
@@ -739,7 +739,7 @@ PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
             ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
         #endif
     }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
@@ -776,7 +776,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta) {
@@ -815,7 +815,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder (Vec h) {
@@ -845,7 +845,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder (Vec h) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Vec O, ScalarType dt) {
@@ -931,7 +931,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -1121,6 +1121,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 

@@ -19,7 +19,7 @@ inv_solver_ () {
 PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    if (initialized_) PetscFunctionReturn (0);
+    if (initialized_) PetscFunctionReturn (ierr);
 
     tumor_ = std::make_shared<Tumor> (n_misc, spec_ops);
     n_misc_ = n_misc;
@@ -68,7 +68,7 @@ PetscErrorCode TumorSolverInterface::initialize (std::shared_ptr<NMisc> n_misc, 
     initialized_ = true;
     // cleanup
     ierr = VecDestroy (&p);                                                     CHKERRQ (ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSettings> tumor_params = {}) {
@@ -143,7 +143,7 @@ PetscErrorCode TumorSolverInterface::setParams (Vec p, std::shared_ptr<TumorSett
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
     inv_solver_->setParams(derivative_operators_, pde_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 // TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
@@ -156,7 +156,7 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0) {
     ierr = pde_operators_->solveState (0);                                      CHKERRQ (ierr);
     // get solution
     ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0, std::map<std::string,Vec> *species) {
@@ -169,7 +169,7 @@ PetscErrorCode TumorSolverInterface::solveForward (Vec cT, Vec c0, std::map<std:
     // get solution
     ierr = VecCopy (tumor_->c_t_, cT);                                          CHKERRQ (ierr);
     species = &(tumor_->species_);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 // TODO: add switch, if we want to copy or take the pointer from incoming and outgoing data
@@ -291,7 +291,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
 
     ierr = VecDestroy (&x_L2);                                                  CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -426,7 +426,7 @@ PetscErrorCode TumorSolverInterface::computeGradient (Vec dJ, Vec p, Vec data_gr
     //_tumor->t_history_->Reset();
     // compute gradient for given data 'data_gradeval' and control variable 'p'
     ierr = derivative_operators_->evaluateGradient (dJ, p, data_gradeval);      CHKERRQ(ierr);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset) {
@@ -464,20 +464,20 @@ void TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettin
 PetscErrorCode TumorSolverInterface::resetTaoSolver() {
   PetscErrorCode ierr;
   ierr = inv_solver_->resetTao(n_misc_);                                        CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
   PetscErrorCode ierr;
   TU_assert (p != nullptr,                  "TumorSolverInterface::setInitialGuess(): requires non-null input.");
   ierr = VecCopy (p, tumor_->p_);                                               CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::setInitialGuess (ScalarType d) {
   PetscErrorCode ierr;
   ierr = VecSet (tumor_->p_, d);                                                CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec filter, std::shared_ptr<TumorSettings> tumor_params, bool use_nmisc) {
@@ -536,7 +536,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (Vec wm, Vec gm, Ve
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 

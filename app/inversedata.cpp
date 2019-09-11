@@ -170,7 +170,7 @@ PetscErrorCode readDataAndAtlas (Vec &data, Vec &wm, Vec &gm, Vec &glm, Vec &csf
     dataIn (gm, n_misc, "jakob_gm.nc");
     dataIn (csf, n_misc, "jakob_csf.nc");
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode computeError (ScalarType &error_norm, Vec p_rec, Vec data, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
@@ -220,7 +220,7 @@ PetscErrorCode computeError (ScalarType &error_norm, Vec p_rec, Vec data, std::s
     ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
 
     error_norm /= data_norm;
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
@@ -233,5 +233,5 @@ PetscErrorCode readData (Vec &data, std::shared_ptr<NMisc> n_misc) {
 
     dataIn (data, n_misc, "tuAAAN.nc");
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }

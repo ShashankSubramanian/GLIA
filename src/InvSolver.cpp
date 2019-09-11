@@ -32,7 +32,7 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     if (initialized_)
-        PetscFunctionReturn (0);
+        PetscFunctionReturn (ierr);
     optsettings_ = std::make_shared<OptimizerSettings> ();
     optfeedback_ = std::make_shared<OptimizerFeedback> ();
     itctx_ = std::make_shared<CtxInv> ();
@@ -47,7 +47,7 @@ PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> deriv
     ierr = allocateTaoObjects(); CHKERRQ(ierr);
 
     initialized_ = true;
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
@@ -106,7 +106,7 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
     }
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode InvSolver::resetTao (std::shared_ptr<NMisc> n_misc) {
@@ -118,7 +118,7 @@ PetscErrorCode InvSolver::resetTao (std::shared_ptr<NMisc> n_misc) {
 
     // allocate memory for H, x_rec and TAO
     ierr = allocateTaoObjects (); CHKERRQ(ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged) {
@@ -137,7 +137,7 @@ PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> deriva
       ierr = allocateTaoObjects (false); CHKERRQ(ierr);
     }
     tao_is_reset_ = true;                        // triggers setTaoOptions
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode InvSolver::resetOperators (Vec p) {
@@ -154,7 +154,7 @@ PetscErrorCode InvSolver::resetOperators (Vec p) {
     if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
     ierr = allocateTaoObjects (true); CHKERRQ(ierr);
     tao_is_reset_ = true;                        // triggers setTaoOptions
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
@@ -171,7 +171,7 @@ PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
     ScalarType beta = 0e-3;
     ierr = VecAXPY (y, beta, x);                                                CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
     
 
@@ -196,7 +196,7 @@ PetscErrorCode interpolationKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, 
     ierr = tuMSGstd (s.str());                                                  CHKERRQ(ierr);
     s.str (""); s.clear ();
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode InvSolver::solveInterpolation (Vec data) {
@@ -269,7 +269,7 @@ PetscErrorCode InvSolver::solveInterpolation (Vec data) {
     ierr = MatDestroy (&A);                                                     CHKERRQ (ierr);
     ierr = KSPDestroy (&ksp);                                                   CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -309,7 +309,7 @@ PetscErrorCode InvSolver::restrictSubspace (Vec *x_restricted, Vec x_full, std::
     // the L2 solver (needs to be done in every iteration, since location of basis functions updated)
     ierr = resetOperators (*x_restricted); /* reset phis and other operators */ CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -345,7 +345,7 @@ PetscErrorCode InvSolver::prolongateSubspace (Vec x_full, Vec *x_restricted, std
         ierr = VecDestroy (x_restricted);            CHKERRQ (ierr);
         x_restricted = nullptr;
     }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -704,7 +704,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     if (itctx_->x_old != nullptr) {ierr = VecDestroy (&itctx_->x_old);  CHKERRQ (ierr); itctx_->x_old = nullptr;}
     if (noise != nullptr)         {ierr = VecDestroy (&noise);          CHKERRQ (ierr);         noise = nullptr;}
     // go home
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -883,7 +883,7 @@ PetscErrorCode InvSolver::solve () {
 
     if (itctx_->x_old != nullptr) {ierr = VecDestroy (&itctx_->x_old);  CHKERRQ (ierr); itctx_->x_old = nullptr;}
     if (noise != nullptr)         {ierr = VecDestroy (&noise); CHKERRQ (ierr);                  noise = nullptr;}
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -1266,7 +1266,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
     } else {ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr);}
 
     // go home
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -1548,7 +1548,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     if (x_L1 != nullptr)     { ierr = VecDestroy (&x_L1);     CHKERRQ (ierr); x_L1     = nullptr;}
     if (x_L1_old != nullptr) { ierr = VecDestroy (&x_L1_old); CHKERRQ (ierr); x_L1_old = nullptr;}
     if (temp != nullptr)     { ierr = VecDestroy (&temp);     CHKERRQ (ierr); temp     = nullptr;}
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -1640,7 +1640,7 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 /*
@@ -1673,7 +1673,7 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 /*
@@ -1711,7 +1711,7 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
 
     //ierr = evaluateObjectiveFunction (tao, p, J, ptr);                     CHKERRQ(ierr);
     //ierr = evaluateGradient (tao, p, dJ, ptr);                             CHKERRQ(ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *ptr){
@@ -1747,7 +1747,7 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
   e.addTimings (t);
   e.stop ();
 
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
@@ -1807,7 +1807,7 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   e.stop ();
 
   if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
@@ -1881,7 +1881,7 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
   e.stop ();
 
   if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 
@@ -1917,7 +1917,7 @@ PetscErrorCode hessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
     self_exec_time += MPI_Wtime ();
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 /*
@@ -1944,12 +1944,12 @@ PetscErrorCode constApxHessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
     self_exec_time += MPI_Wtime ();
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 PetscErrorCode matfreeHessian (Tao tao, Vec x, Mat H, Mat precH, void *ptr) {
     PetscFunctionBegin;
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 /*
@@ -1969,7 +1969,7 @@ PetscErrorCode preconditionerMatVec (PC pinv, Vec x, Vec pinvx) {
     ierr = PCShellGetContext (pinv, &ptr);                  CHKERRQ(ierr);
     // apply the hessian
     ierr = applyPreconditioner (ptr, x, pinvx);             CHKERRQ(ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 /*
@@ -1990,13 +1990,13 @@ PetscErrorCode applyPreconditioner (void *ptr, Vec x, Vec pinvx) {
     CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
     ierr = VecCopy (x, pinvx);
     // === PRECONDITIONER CURRENTLY DISABLED ===
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
     // apply hessian preconditioner
     //ierr = itctx->derivative_operators_->evaluateHessian(pinvx, x);
     self_exec_time += MPI_Wtime ();
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 /* ------------------------------------------------------------------- */
@@ -2141,7 +2141,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     // ierr = itctx->derivative_operators_->checkHessian (tao_x, itctx->data);
     //Gradient check end
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
@@ -2269,7 +2269,7 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     //Gradient check begin
     // ierr = itctx->derivative_operators_->checkGradient (itctx->x_old, itctx->data);
     //Gradient check end
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
@@ -2403,7 +2403,7 @@ PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr) {
     //Gradient check begin
     //ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     //Gradient check end
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 /* ------------------------------------------------------------------- */
@@ -2446,7 +2446,7 @@ PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *
     //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
     //   s.str (""); s.clear ();
     // }
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 /* ------------------------------------------------------------------- */
@@ -2478,7 +2478,7 @@ PetscErrorCode constHessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, v
     << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
     ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
     s.str (""); s.clear ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -2533,7 +2533,7 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr) {
     //if (procid == 0){
     //    std::cout << " ksp rel-tol (Eisenstat/Walker): " << reltol << ", grad0norm: " << g0norm<<", gnorm/grad0norm: " << gnorm << std::endl;
     //}
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -2710,7 +2710,7 @@ PetscErrorCode checkConvergenceFun (Tao tao, void *ptr) {
 
     if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
 /*
@@ -2901,7 +2901,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     // if we're here, we're good to go
     ierr = TaoSetConvergedReason (tao, TAO_CONTINUE_ITERATING);                 CHKERRQ(ierr);
     if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 /* ------------------------------------------------------------------- */
@@ -3039,7 +3039,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
                 ss.clear();
                 ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL);             CHKERRQ(ierr);
           if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-                PetscFunctionReturn(0);
+                PetscFunctionReturn (ierr);
         }
       if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
         ss << "step  = " << std::scientific << step << ". ls failed with status " << ls_flag;
@@ -3048,7 +3048,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
               ss.clear();
         ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
         if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-        PetscFunctionReturn(0);
+        PetscFunctionReturn (ierr);
       }
         // |j(x_{k-1}) - j(x_k)| < tolj*abs(1+J)
         if (std::abs(jxold-jx) < tolj*theta) {
@@ -3135,21 +3135,21 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
               ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER);                  CHKERRQ(ierr);
               ctx->optfeedback_->converged = true;
         if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-              PetscFunctionReturn(0);
+              PetscFunctionReturn (ierr);
         } else if (stop[3]) {
               ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                 CHKERRQ(ierr);
               ctx->optfeedback_->converged = true;
         if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-              PetscFunctionReturn(0);
+              PetscFunctionReturn (ierr);
         } else if (stop[4]) {
               ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GTTOL);                 CHKERRQ(ierr);
           ctx->optfeedback_->converged = true;
-              PetscFunctionReturn(0);
+              PetscFunctionReturn (ierr);
         } else if (stop[5]) {
               ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_MAXITS);                 CHKERRQ(ierr);
               ctx->optfeedback_->converged = true;
         if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-            PetscFunctionReturn(0);
+            PetscFunctionReturn (ierr);
         }
     }
     else {
@@ -3159,7 +3159,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
             ierr = tuMSGwarn(ss.str());                                               CHKERRQ(ierr);ss.str(std::string()); ss.clear();
             ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL);                   CHKERRQ(ierr);
       if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-            PetscFunctionReturn(0);
+            PetscFunctionReturn (ierr);
         }
       // store objective function value
       ctx->jvalold = jx;
@@ -3168,7 +3168,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     // if we're here, we're good to go
     ierr = TaoSetConvergedReason(tao, TAO_CONTINUE_ITERATING);                  CHKERRQ(ierr);
     if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -3344,7 +3344,7 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
 
     if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -3422,7 +3422,7 @@ PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &msg) {
           break;
       }
   }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag) {
@@ -3497,7 +3497,7 @@ PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedRe
             break;
         }
     }
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
@@ -3740,5 +3740,5 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
         }
       }
     }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }

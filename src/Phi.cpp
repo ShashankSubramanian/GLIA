@@ -62,7 +62,7 @@ PetscErrorCode Phi::setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType
     memcpy (cm_, user_cm.data(), 3 * sizeof(ScalarType));
     centers_.resize (3 * np_);
     ierr = phiMesh (&centers_[0]);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -129,7 +129,7 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___
@@ -170,7 +170,7 @@ PetscErrorCode Phi::phiMesh (ScalarType *center) {
           ct++;
         }
         #endif
-        PetscFunctionReturn(0);
+        PetscFunctionReturn (ierr);
     }
     if (np_ % 2 == 1) {
         int ptr = 0;
@@ -218,7 +218,7 @@ PetscErrorCode Phi::phiMesh (ScalarType *center) {
     }
     #endif
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -245,7 +245,7 @@ PetscErrorCode Phi::truncate (ScalarType *out, std::shared_ptr<NMisc> n_misc, Sc
                 // truncate to zero after radius 5*sigma
                 out[ptr] = (r/sigma_ <= 5) ? out[ptr] : 0.0;
             }
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___
@@ -297,7 +297,7 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
 
             }
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 #ifdef SERIAL
@@ -355,7 +355,7 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         accumulateTimers (t, t, self_exec_time);
         e.addTimings (t);
         e.stop ();
-        PetscFunctionReturn(0);
+        PetscFunctionReturn (ierr);
     }
 
     PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
@@ -414,7 +414,7 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         accumulateTimers (t, t, self_exec_time);
         e.addTimings (t);
         e.stop ();
-        PetscFunctionReturn (0);
+        PetscFunctionReturn (ierr);
     }
 
 #else
@@ -465,7 +465,7 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         accumulateTimers (t, t, self_exec_time);
         e.addTimings (t);
         e.stop ();
-        PetscFunctionReturn(0);
+        PetscFunctionReturn (ierr);
     }
 
     PetscErrorCode Phi::applyTranspose (Vec pout, Vec in) {
@@ -494,7 +494,7 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
         accumulateTimers (t, t, self_exec_time);
         e.addTimings (t);
         e.stop ();
-        PetscFunctionReturn (0);
+        PetscFunctionReturn (ierr);
     }
 #endif
 
@@ -659,7 +659,7 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
         ierr = VecSet (phi_vec_[i], 0);
     }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -1017,7 +1017,7 @@ PetscErrorCode Phi::setGaussians (Vec data) {
         dataOut (num_tumor_output, n_misc_, "phiNumTumor.nc");
     }
     ierr = VecDestroy (&num_tumor_output);                                       CHKERRQ (ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 void Phi::modifyCenters (std::vector<int> support_idx) {

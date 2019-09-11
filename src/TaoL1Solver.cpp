@@ -21,7 +21,7 @@ PetscErrorCode TaoCreate_ISTA (Tao tao) {
 	ierr = TaoLineSearchSetType (tao->linesearch, "ista_ls"); 								CHKERRQ (ierr);
 	ierr = TaoLineSearchUseTaoRoutines (tao->linesearch, tao); 								CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TaoLineSearchCreate_ISTA (TaoLineSearch ls) {
@@ -43,7 +43,7 @@ PetscErrorCode TaoLineSearchCreate_ISTA (TaoLineSearch ls) {
 	ls->ops->apply = TaoLineSearchApply_ISTA;
 	ls->ops->destroy = TaoLineSearchDestroy_ISTA;
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TaoLineSearchDestroy_ISTA (TaoLineSearch ls) {
@@ -58,7 +58,7 @@ PetscErrorCode TaoLineSearchDestroy_ISTA (TaoLineSearch ls) {
 	ierr = PetscFree (ls->data);			    CHKERRQ (ierr);
 	ls->data = NULL;
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode proximalOperator (Vec y, Vec x, ScalarType lambda, PetscReal step) {
@@ -79,7 +79,7 @@ PetscErrorCode proximalOperator (Vec y, Vec x, ScalarType lambda, PetscReal step
 	ierr = VecRestoreArray (y, &y_ptr);			CHKERRQ (ierr);
 	ierr = VecPointwiseMult (y, y, x);			CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s) {
@@ -97,7 +97,7 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	if (PetscIsInfOrNanReal (*f)) {
 		ierr = PetscInfo (ls, "ISTA linesearch error: function is inf or nan\n");		CHKERRQ (ierr);
 		ls->reason = TAOLINESEARCH_FAILED_BADPARAMETER;
-		PetscFunctionReturn (0);
+		PetscFunctionReturn (ierr);
 	}
 
 	PetscReal f_old = *f;
@@ -108,7 +108,7 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	if (PetscIsInfOrNanReal (norm)) {
 		ierr = PetscInfo (ls, "ISTA linesearch error: gradient is inf or nan\n");		CHKERRQ (ierr);
 		ls->reason = TAOLINESEARCH_FAILED_BADPARAMETER;
-		PetscFunctionReturn (0);
+		PetscFunctionReturn (ierr);
 	}
 
 	ls->reason = TAOLINESEARCH_CONTINUE_ITERATING;
@@ -152,18 +152,18 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 	if (PetscIsInfOrNanReal (*f)) {
 		ierr = PetscInfo (ls, "Function is inf or nan\n");				CHKERRQ (ierr);
 		ls->reason = TAOLINESEARCH_FAILED_INFORNAN;
-		PetscFunctionReturn (0);
+		PetscFunctionReturn (ierr);
 	} else if (ls->step < ls->stepmin) {
 		ierr = PetscInfo (ls, "Step length is below tolerance\n");		CHKERRQ (ierr);
 		ls->reason = TAOLINESEARCH_HALTED_LOWERBOUND;
-		PetscFunctionReturn (0);
+		PetscFunctionReturn (ierr);
 	}
 
 	ierr = VecCopy (x, ctx->x_work_2);									CHKERRQ (ierr);	//copy the old solution to work
 																						//Used in convergence tests
 	ierr = VecCopy (ctx->x_sol, x);										CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 
@@ -175,7 +175,7 @@ PetscErrorCode TaoSetup_ISTA (Tao tao) {
 	ierr = VecDuplicate (tao->solution, &tao->gradient);				CHKERRQ (ierr);
 	ierr = VecDuplicate (tao->solution, &tao->stepdirection);		    CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 
@@ -189,7 +189,7 @@ PetscErrorCode TaoDestroy_ISTA (Tao tao) {
 	TaoCtx *ctx = (TaoCtx*) tao->data;
 	PetscFree (tao->data);
 	tao->data = NULL;
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TaoSolve_ISTA (Tao tao) {
@@ -225,5 +225,5 @@ PetscErrorCode TaoSolve_ISTA (Tao tao) {
 		tao->niter = iter;   //For some reason, TaoMonitor does not do this: manually update
 	}
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }

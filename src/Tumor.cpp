@@ -83,7 +83,7 @@ PetscErrorCode Tumor::initialize (Vec p, std::shared_ptr<NMisc> n_misc, std::sha
     // TODO: for SIBIA this might be needed
     // ierr = phi_->apply(c_0_, p_);
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npchanged) {
@@ -113,7 +113,7 @@ PetscErrorCode Tumor::setParams (Vec p, std::shared_ptr<NMisc> n_misc, bool npch
     // TODO: for sibia this might be needed
     // ierr = phi_->apply(c_0_, p_);
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
@@ -138,7 +138,7 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
 
     // if (n_misc->np_ == 1) {
     //     ierr = VecSet (p_true_, val);                                 CHKERRQ (ierr);
-    //     PetscFunctionReturn (0);
+    //     PetscFunctionReturn (ierr);
     // }
     // // ScalarType val[2] = {.9, .2}; 
 
@@ -147,14 +147,14 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc) {
     // // ierr = VecSetValues(p_true_, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
     // // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
     // // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
-    // // PetscFunctionReturn (0);
+    // // PetscFunctionReturn (ierr);
 
     // PetscInt center = (int) std::floor(n_misc->np_ / 2.);
     // PetscInt idx = center;
     // ierr = VecSetValues(p_true_, 1, &idx, &val, INSERT_VALUES);         CHKERRQ(ierr);
     // ierr = VecAssemblyBegin(p_true_);                                 CHKERRQ(ierr);
     // ierr = VecAssemblyEnd(p_true_);                                   CHKERRQ(ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val) {
@@ -173,7 +173,7 @@ PetscErrorCode Tumor::setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val) {
 
     ierr = VecRestoreArray (p_true_, &p_ptr);                       CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -181,7 +181,7 @@ PetscErrorCode Tumor::setTrueP (Vec p) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ierr = VecCopy (p, p_true_);                                      CHKERRQ (ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Tumor::computeForce (Vec c1) {
@@ -225,7 +225,7 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     e.addTimings (t);
     e.stop ();
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Tumor::computeSegmentation () {
@@ -269,7 +269,7 @@ PetscErrorCode Tumor::computeSegmentation () {
     // ScalarType sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
     // ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 
