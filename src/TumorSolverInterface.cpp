@@ -135,7 +135,7 @@ PetscErrorCode TumorSolverInterface::initialize (
     PetscErrorCode ierr = 0;
     if (initialized_) PetscFunctionReturn (0);
 
-    tumor_ = std::make_shared<Tumor> (n_misc);
+    tumor_ = std::make_shared<Tumor> (n_misc, spec_ops);
     n_misc_ = n_misc;
     // set up vector p (should also add option to pass a p vec, that is used to initialize tumor)
     Vec p;
@@ -696,8 +696,6 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
     		else                   { ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);   CHKERRQ(ierr); }
     		if(csf != nullptr)     { ierr = VecCopy (csf, tumor_->mat_prop_->csf_); CHKERRQ(ierr); }
     		else                   { ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);  CHKERRQ(ierr); }
-    		if(glm != nullptr)     { ierr = VecCopy (gm, tumor_->mat_prop_->glm_);  CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->glm_, 0.0);  CHKERRQ(ierr); }
     		if(filter != nullptr)  { ierr = VecCopy (filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
     		else                   { ierr = VecSet (tumor_->mat_prop_->filter_, 0.0);     CHKERRQ(ierr); }
 
