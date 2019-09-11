@@ -142,10 +142,10 @@ PetscErrorCode TumorSolverInterface::initialize (
     int np = n_misc_->np_;
     int nk = (n_misc_->diffusivity_inversion_) ? n_misc_->nk_ : 0;
 
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);          CHKERRQ (ierr);
-    ierr = setupVec (p, SEQ);                                    CHKERRQ (ierr);
-    ierr = VecSet (p, n_misc->p_scale_);                         CHKERRQ (ierr);
-    ierr = tumor_->initialize (p, n_misc, spec_ops, phi, mat_prop);
+    ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);             CHKERRQ (ierr);
+    ierr = setupVec (p, SEQ);                                       CHKERRQ (ierr);
+    ierr = VecSet (p, n_misc->p_scale_);                            CHKERRQ (ierr);
+    ierr = tumor_->initialize (p, n_misc, spec_ops, phi, mat_prop); CHKERRQ (ierr);
 
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
@@ -216,7 +216,7 @@ PetscErrorCode TumorSolverInterface::setParams (
         n_misc_->phi_sigma_data_driven_ = tumor_params->phi_sigma_data_driven;
         n_misc_->gaussian_vol_frac_     = tumor_params->gaussian_volume_fraction;
         n_misc_->target_sparsity_       = tumor_params->target_sparsity;
-        n_misc_->bounding_box_          = tumor_params->phi_selection_mode_bbox;
+        n_misc_->bounding_box_          = tumor_params->phi_selection_mode == 1;
         n_misc_->diffusivity_inversion_ = tumor_params->diffusivity_inversion;
         n_misc_->reaction_inversion_    = tumor_params->reaction_inversion;
         n_misc_->nk_                    = tumor_params->nk;
@@ -489,6 +489,15 @@ PetscErrorCode TumorSolverInterface::computeGradient (
 }
 
 // ### _____________________________________________________________________ ___
+// ### ///////////////// setOptimizerFeedback ////////////////////////////// ###
+PetscErrorCode TumorSolverInterface::setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+    inv_solver_->setOptFeedback(optfeed);
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
 // ### ///////////////// setOptimizerSettings ////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset) {
     PetscErrorCode ierr = 0;
@@ -585,7 +594,14 @@ PetscErrorCode TumorSolverInterface::setDistMeassureDiffImages(
 PetscErrorCode TumorSolverInterface::setGaussians (Vec data) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
+    // timing
+    Event e("setGaussians()");
+    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
     ierr = tumor_->phi_->setGaussians(data); CHKERRQ(ierr);
+    // timing
+    self_exec_time += MPI_Wtime ();
+    t[5] = self_exec_time;
+    e.addTimings (t); e.stop ();
     PetscFunctionReturn(ierr);
 }
 
@@ -652,23 +668,31 @@ PetscErrorCode TumorSolverInterface::setTumorRegularizationNorm (int type) {
 // ### _____________________________________________________________________ ___
 // ### ///////////////// resetTaoSolver //////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::resetTaoSolver() {
-  PetscErrorCode ierr;
-  ierr = inv_solver_->resetTao(n_misc_);                                        CHKERRQ(ierr);
-  PetscFunctionReturn (ierr);
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  ierr = inv_solver_->resetTao(n_misc_);                            CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
 }
 
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setInitialGuess /////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
-  PetscErrorCode ierr;
-  TU_assert (p != nullptr,                  "TumorSolverInterface::setInitialGuess(): requires non-null input.");
-  ierr = VecCopy (p, tumor_->p_);                                               CHKERRQ(ierr);
-  PetscFunctionReturn (ierr);
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  TU_assert (p != nullptr, "TumorSolverInterface::setInitialGuess(): requires non-null input.");
+  ierr = VecCopy (p, tumor_->p_);                                  CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode TumorSolverInterface::setInitialGuess (ScalarType d) {
-  PetscErrorCode ierr;
-  ierr = VecSet (tumor_->p_, d);                                                CHKERRQ(ierr);
-  PetscFunctionReturn (ierr);
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setInitialGuess /////////////////////////////////// ###
+PetscErrorCode TumorSolverInterface::setInitialGuess (double d) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  ierr = VecSet (tumor_->p_, d);                                   CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
 }
+
 
 // TODO[MEMORY]: switch to not allocate mat probs in tumor code.
 // ### _____________________________________________________________________ ___
@@ -681,7 +705,11 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
 {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-    TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
+    TU_assert(initialized_, "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
+    if (!initialized_)  {ierr = tuMSGwarn("Error: (updateTumorCoefficients) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (wm  == nullptr) {ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector wm is nullptr."); CHKERRQ(ierr); }
+    if (gm  == nullptr) {ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector gm is nullptr."); CHKERRQ(ierr); }
+    if (csf == nullptr) {ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector csf is nullptr."); CHKERRQ(ierr); }
     // timing
     Event e("update-tumor-coefficients");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
@@ -689,14 +717,14 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
 
     if (!use_nmisc) {
         // update matprob, deep copy of probability maps
-    		if(wm != nullptr)      { ierr = VecCopy (wm, tumor_->mat_prop_->wm_);   CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);   CHKERRQ(ierr); }
-    		if(gm != nullptr)      { ierr = VecCopy (gm, tumor_->mat_prop_->gm_);   CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);   CHKERRQ(ierr); }
-    		if(csf != nullptr)     { ierr = VecCopy (csf, tumor_->mat_prop_->csf_); CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);  CHKERRQ(ierr); }
-    		if(filter != nullptr)  { ierr = VecCopy (filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
-    		else                   { ierr = VecSet (tumor_->mat_prop_->filter_, 0.0);     CHKERRQ(ierr); }
+    		if(wm != nullptr)     {ierr = VecCopy (wm, tumor_->mat_prop_->wm_);         CHKERRQ(ierr); }
+    		else                  {ierr = VecSet (tumor_->mat_prop_->wm_, 0.0);         CHKERRQ(ierr); }
+    		if(gm != nullptr)     {ierr = VecCopy (gm, tumor_->mat_prop_->gm_);         CHKERRQ(ierr); }
+    		else                  {ierr = VecSet (tumor_->mat_prop_->gm_, 0.0);         CHKERRQ(ierr); }
+    		if(csf != nullptr)    {ierr = VecCopy (csf, tumor_->mat_prop_->csf_);       CHKERRQ(ierr); }
+    		else                  {ierr = VecSet (tumor_->mat_prop_->csf_, 0.0);        CHKERRQ(ierr); }
+    		if(filter != nullptr) {ierr = VecCopy (filter, tumor_->mat_prop_->filter_); CHKERRQ(ierr); }
+    		else                  {ierr = VecSet (tumor_->mat_prop_->filter_, 0.0);     CHKERRQ(ierr); }
 
         // TODO[SETTINGS]:
         n_misc_->k_ = tumor_params->diff_coeff_scale;
@@ -713,28 +741,28 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
           tumor_params->diffusion_ratio_glm_wm = tumor_->k_->k_glm_wm_ratio_;
           tumor_params->diff_coeff_scale       = tumor_->k_->k_scale_;
         }
-
         // update diffusion coefficient
-        tumor_->k_->setValues (tumor_params->diff_coeff_scale, tumor_params->diffusion_ratio_gm_wm, tumor_params->diffusion_ratio_glm_wm,
-                                tumor_->mat_prop_, n_misc_);                    CHKERRQ (ierr);
+        tumor_->k_->setValues (
+            tumor_params->diff_coeff_scale,
+            tumor_params->diffusion_ratio_gm_wm,
+            tumor_params->diffusion_ratio_glm_wm,
+            tumor_->mat_prop_, n_misc_); CHKERRQ (ierr);
         // update reaction coefficient
-        tumor_->rho_->setValues (tumor_params->reaction_coeff_scale, tumor_params->reaction_ratio_gm_wm, tumor_params->reaction_ratio_glm_wm,
-                                tumor_->mat_prop_, n_misc_);                    CHKERRQ (ierr);
-
+        tumor_->rho_->setValues (
+            tumor_params->reaction_coeff_scale,
+            tumor_params->reaction_ratio_gm_wm,
+            tumor_params->reaction_ratio_glm_wm,
+            tumor_->mat_prop_, n_misc_); CHKERRQ (ierr);
         // update the phi values, i.e., update the filter
         tumor_->phi_->setValues (tumor_->mat_prop_);
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         pde_operators_->diff_solver_->precFactor();
-
-    } else { //Use n_misc to update tumor coefficients. Needed if matprop is changed from tumor solver application
-        // update diffusion coefficient
+    // use n_misc to update tumor coefficients. Needed if matprop is changed from tumor solver application
+    } else {
         ierr = tumor_->k_->setValues (n_misc_->k_, n_misc_->k_gm_wm_ratio_, n_misc_->k_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);
         ierr = tumor_->rho_->setValues (n_misc_->rho_, n_misc_->r_gm_wm_ratio_, n_misc_->r_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);
-
-        // update the phi values, i.e., update the filter
-        tumor_->phi_->setValues (tumor_->mat_prop_);
-        // need to update prefactors for diffusion KSP preconditioner, as k changed
-        pde_operators_->diff_solver_->precFactor();
+        tumor_->phi_->setValues (tumor_->mat_prop_);  // update the phi values, i.e., update the filter
+        pde_operators_->diff_solver_->precFactor();   // need to update prefactors for diffusion KSP preconditioner, as k changed
     }
 
     // timing
