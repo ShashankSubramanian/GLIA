@@ -124,6 +124,8 @@ PetscErrorCode DiffSolver::precFactor () {
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
+    PetscErrorCode ierr = 0;
+
     std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
     ScalarType kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;

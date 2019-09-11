@@ -1949,6 +1949,7 @@ PetscErrorCode constApxHessianMatVec (Mat A, Vec x, Vec y) {    //y = Ax
 /* ------------------------------------------------------------------- */
 PetscErrorCode matfreeHessian (Tao tao, Vec x, Mat H, Mat precH, void *ptr) {
     PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
     PetscFunctionReturn (ierr);
 }
 /* ------------------------------------------------------------------- */
