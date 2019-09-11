@@ -145,7 +145,7 @@ PetscErrorCode TumorSolverInterface::initialize (
     ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p);          CHKERRQ (ierr);
     ierr = setupVec (p, SEQ);                                    CHKERRQ (ierr);
     ierr = VecSet (p, n_misc->p_scale_);                         CHKERRQ (ierr);
-    ierr = tumor_->initialize (p, n_misc, phi, mat_prop);
+    ierr = tumor_->initialize (p, n_misc, spec_ops, phi, mat_prop);
 
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
@@ -681,7 +681,6 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
 {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
     TU_assert(initialized_,      "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.")
     // timing
     Event e("update-tumor-coefficients");
