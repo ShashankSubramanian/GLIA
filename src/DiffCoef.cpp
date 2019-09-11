@@ -42,7 +42,7 @@ PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
   for (int i = 0; i < 8; ++i){
     temp_[i] = workvecs[i];
   }
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::setSecondaryCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
@@ -58,7 +58,7 @@ PetscErrorCode DiffCoef::setSecondaryCoefficients (ScalarType k1, ScalarType k2,
   ierr = VecAXPY (temp_[7], k2, mat_prop->gm_);   CHKERRQ (ierr);
   ierr = VecAXPY (temp_[7], k3, mat_prop->glm_);  CHKERRQ (ierr);  
 
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
@@ -75,7 +75,7 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType 
   k_glm_wm_ratio_ = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ : k3 / k1;   // glm is always zero. TODO:  take it out in new iterations of the solver
   // and set the values
   setValues (k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, n_misc);
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
@@ -178,7 +178,7 @@ PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio
         ierr = this->smooth (n_misc); CHKERRQ (ierr);
     }
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
@@ -195,7 +195,7 @@ PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
     ierr = spec_ops_->weierstrassSmoother (kzz_, kzz_, n_misc, sigma);
 
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
@@ -238,7 +238,7 @@ PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
     e.addTimings (t);
     e.stop ();
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
@@ -262,7 +262,7 @@ PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs (Vec dc, Vec c) {
@@ -291,7 +291,7 @@ PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs (Vec dc, Vec c) {
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -349,7 +349,7 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   //accumulateTimers (t, t, self_exec_time);
   t[5] = self_exec_time;
   e.addTimings (t); e.stop ();
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 DiffCoef::~DiffCoef () {

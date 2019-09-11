@@ -174,7 +174,7 @@ PetscErrorCode TumorSolverInterface::initialize (
     initialized_ = true;
     // cleanup
     ierr = VecDestroy (&p);                                      CHKERRQ (ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___
@@ -254,7 +254,7 @@ PetscErrorCode TumorSolverInterface::setParams (
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
     inv_solver_->setParams(derivative_operators_, pde_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 // TODO[MEMORY]: add switch, if we want to copy or take the pointer from incoming and outgoing data
@@ -276,7 +276,7 @@ PetscErrorCode TumorSolverInterface::solveForward (
     self_exec_time += MPI_Wtime ();
     t[5] = self_exec_time;
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn(0);
+    PetscFunctionReturn(ierr);
 }
 
 // TODO[MEMORY]: add switch, if we want to copy or take the pointer from incoming and outgoing data
@@ -300,7 +300,7 @@ PetscErrorCode TumorSolverInterface::solveForward (
     self_exec_time += MPI_Wtime ();
     t[5] = self_exec_time;
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn(0);
+    PetscFunctionReturn(ierr);
 }
 
 
@@ -399,7 +399,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (
     self_exec_time += MPI_Wtime ();
     t[5] = self_exec_time;
     e.addTimings (t); e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -654,20 +654,20 @@ PetscErrorCode TumorSolverInterface::setTumorRegularizationNorm (int type) {
 PetscErrorCode TumorSolverInterface::resetTaoSolver() {
   PetscErrorCode ierr;
   ierr = inv_solver_->resetTao(n_misc_);                                        CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
   PetscErrorCode ierr;
   TU_assert (p != nullptr,                  "TumorSolverInterface::setInitialGuess(): requires non-null input.");
   ierr = VecCopy (p, tumor_->p_);                                               CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorSolverInterface::setInitialGuess (ScalarType d) {
   PetscErrorCode ierr;
   ierr = VecSet (tumor_->p_, d);                                                CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 // TODO[MEMORY]: switch to not allocate mat probs in tumor code.
@@ -745,5 +745,5 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients (
     t[5] = self_exec_time;
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }

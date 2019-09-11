@@ -23,7 +23,7 @@ PetscErrorCode VecField::copy (std::shared_ptr<VecField> field) {
 	ierr = VecCopy (field->y_, y_);			CHKERRQ (ierr);
 	ierr = VecCopy (field->z_, z_);			CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VecField::set (ScalarType scalar) {
@@ -34,7 +34,7 @@ PetscErrorCode VecField::set (ScalarType scalar) {
 	ierr = VecSet (y_, scalar);				CHKERRQ (ierr);
 	ierr = VecSet (z_, scalar);				CHKERRQ (ierr);
 	
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VecField::getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
@@ -51,7 +51,7 @@ PetscErrorCode VecField::getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_
 	ierr = VecGetArray (z_, &z_ptr);		CHKERRQ (ierr);
 #endif
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr) {
@@ -64,7 +64,7 @@ PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr) {
   ierr = VecGetArray (x, x_ptr);                CHKERRQ (ierr);
 #endif
 
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode vecRestoreArray (Vec x, ScalarType **x_ptr) {
@@ -77,7 +77,7 @@ PetscErrorCode vecRestoreArray (Vec x, ScalarType **x_ptr) {
   ierr = VecRestoreArray (x, x_ptr);                CHKERRQ (ierr);
 #endif
 
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VecField::restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
@@ -94,7 +94,7 @@ PetscErrorCode VecField::restoreComponentArrays (ScalarType *&x_ptr, ScalarType 
 	ierr = VecRestoreArray (z_, &z_ptr);		CHKERRQ (ierr);
 #endif
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VecField::computeMagnitude (Vec magnitude) {
@@ -120,7 +120,7 @@ PetscErrorCode VecField::computeMagnitude (Vec magnitude) {
 
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
@@ -151,7 +151,7 @@ PetscErrorCode VecField::setIndividualComponents (Vec x_in) {
 
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
@@ -181,7 +181,7 @@ PetscErrorCode VecField::getIndividualComponents (Vec x_in) {
 
 	ierr = restoreComponentArrays (x_ptr, y_ptr, z_ptr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode tuMSG(std::string msg, int size) {
@@ -189,21 +189,21 @@ PetscErrorCode tuMSG(std::string msg, int size) {
   PetscErrorCode ierr;
   std::string color = "\x1b[1;34m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode tuMSGstd(std::string msg, int size) {
   PetscErrorCode ierr;
   std::string color = "\x1b[37m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode tuMSGwarn(std::string msg, int size) {
   PetscErrorCode ierr;
   std::string color = "\x1b[1;31m";
   ierr = _tuMSG(msg, color, size); CHKERRQ(ierr);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size) {
@@ -223,7 +223,7 @@ PetscErrorCode _tuMSG(std::string msg, std::string color, int size) {
     ierr = PetscPrintf(PETSC_COMM_WORLD,msg.c_str()); CHKERRQ(ierr);
 
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TumorStatistics::print() {
@@ -238,7 +238,7 @@ PetscErrorCode TumorStatistics::print() {
 	s << std::setw(8) << " acc: " << std::setw(8) << nb_state_solves + nb_state_solves_acc << std::setw(8) << nb_adjoint_solves + nb_adjoint_solves_acc << std::setw(8) << nb_obj_evals + nb_obj_evals_acc  << std::setw(8) << nb_grad_evals + nb_grad_evals_acc << std::setw(8) << nb_hessian_evals + nb_hessian_evals_acc;
 	ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(std::string()); s.clear();
 	ierr = tuMSG ("----                                                                                        ----"); CHKERRQ(ierr);
-	PetscFunctionReturn(0);
+	PetscFunctionReturn (ierr);
 }
 
 /* definition of tumor assert */
@@ -327,7 +327,7 @@ PetscErrorCode dataIn (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
   ncerr = ncmpi_get_vara_all (fileid, varid[0], istart, isize, p_x, n_misc->n_local_, MPIType);
   ierr = NCERRQ (ncerr);                                              CHKERRQ(ierr);                                                                                                                                                                                                                                                   
   ncerr=ncmpi_close(fileid);
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
@@ -336,7 +336,7 @@ PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) 
 	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);  
 	dataIn (a_ptr, n_misc, fname);
 	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);  
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
@@ -411,7 +411,7 @@ PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const ch
     // close file
     ncerr = ncmpi_close(fileid);
     ierr = NCERRQ(ncerr); CHKERRQ(ierr);  
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
@@ -420,7 +420,7 @@ PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname)
 	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);  
 	dataOut (a_ptr, n_misc, fname);
 	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);  
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___
@@ -553,7 +553,7 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
 
   if (strcmp(ext.c_str(),".bin") == 0) {
     ierr = readBIN(&(*x), size, f);                               CHKERRQ(ierr);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
   }
 
   // if not nullptr, clear memory
@@ -594,7 +594,7 @@ PetscErrorCode readPVec(Vec* x, int size, int np, std::string f) {
   if (procid == 0) {
     ierr = VecView (*x, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);
   }
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___
@@ -638,7 +638,7 @@ PetscErrorCode readBIN(Vec* x, int size, std::string f) {
       ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
       viewer=nullptr;
   }
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___
@@ -662,7 +662,7 @@ PetscErrorCode writeBIN(Vec x, std::string f) {
       ierr = PetscViewerDestroy(&viewer);                         CHKERRQ(ierr);
       viewer = nullptr;
   }
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 
@@ -828,7 +828,7 @@ PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	}
 	*sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
 	//PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
-	PetscFunctionReturn(0);
+	PetscFunctionReturn (ierr);
 	}
 
 	/** @brief computes difference xi = m_data - m_geo
@@ -862,7 +862,7 @@ PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm,
 	}
 	*sqrdl2norm  = mis_wm + mis_gm + mis_csf + mis_glm;
 	//PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
-	PetscFunctionReturn(0);
+	PetscFunctionReturn (ierr);
 }
 
 //Hoyer measure for sparsity of a vector
@@ -877,12 +877,12 @@ PetscErrorCode vecSparsity (Vec x, ScalarType &sparsity) {
 
 	if (norm_inf == 0) {
 		sparsity = 1.0;
-		PetscFunctionReturn (0);
+		PetscFunctionReturn (ierr);
 	}
 
 	sparsity = (size - (norm_1 / norm_inf)) / (size - 1);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))
@@ -927,7 +927,7 @@ PetscErrorCode geometricCoupling(
 	if(m1_bg  != nullptr) {ierr = VecRestoreArray(m1_bg,  &ptr_m1_bg); CHKERRQ(ierr);}
 	if(c1     != nullptr) {ierr = VecRestoreArray(c1,     &ptr_tu);    CHKERRQ(ierr);}
   // go home
-	PetscFunctionReturn(0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode vecSign (Vec x) {
@@ -947,7 +947,7 @@ PetscErrorCode vecSign (Vec x) {
 
 	ierr = VecRestoreArray (x, &x_ptr);	CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz) {
@@ -978,7 +978,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 
     ierr = VecRestoreArray (x, &x_ptr);   CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -1044,7 +1044,7 @@ PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int
 
     ierr = VecRestoreArray (x, &x_ptr); 	CHKERRQ (ierr);
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 ScalarType myDistance (ScalarType *c1, ScalarType *c2) {
@@ -1091,7 +1091,7 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *
 
     ierr = VecRestoreArray (x, &data_ptr);                 CHKERRQ (ierr);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode setupVec (Vec x, int type) {
@@ -1107,5 +1107,5 @@ PetscErrorCode setupVec (Vec x, int type) {
 		ierr = VecSetFromOptions (x);						
 	#endif
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }

@@ -20,21 +20,21 @@ PetscErrorCode Obs::setDefaultFilter (Vec data) {
     }
     ierr = VecRestoreArray (filter_, &filter_ptr);                          CHKERRQ (ierr);
     ierr = VecRestoreArray (data, &data_ptr);                               CHKERRQ (ierr);
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Obs::setCustomFilter (Vec custom_filter) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     ierr = VecCopy (custom_filter, filter_);                                CHKERRQ (ierr);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode Obs::apply(Vec y, Vec x) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     ierr = VecPointwiseMult (y, x, filter_);                                CHKERRQ (ierr);
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 Obs::~Obs () {

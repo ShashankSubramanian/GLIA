@@ -68,7 +68,7 @@ PetscErrorCode operatorAdv (Mat A, Vec x, Vec y) {
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) {
@@ -103,7 +103,7 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 
@@ -189,7 +189,7 @@ PetscErrorCode SemiLagrangianSolver::setCoords (std::shared_ptr<VecField> coords
         TU_assert (false, "Not implemented for CPUs.")
     #endif
 
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 // Interpolate scalar fields
@@ -240,7 +240,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
     accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 // Interpolate vector fields
@@ -295,7 +295,7 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
     accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -441,7 +441,7 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories () {
     accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) {
@@ -512,7 +512,7 @@ PetscErrorCode SemiLagrangianSolver::solve (Vec scalar, std::shared_ptr<VecField
     accumulateTimers (ctx_->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 

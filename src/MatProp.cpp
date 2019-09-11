@@ -96,7 +96,7 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 		}
 	}
 
-	PetscFunctionReturn(0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc) {
@@ -146,7 +146,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 	ierr = VecRestoreArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 	ierr = VecRestoreArray (filter_, &filter_ptr);            CHKERRQ (ierr);
 	ierr = VecRestoreArray (bg_, &bg_ptr);					  CHKERRQ (ierr);
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode MatProp::filterTumor (Vec c) {
@@ -168,7 +168,7 @@ PetscErrorCode MatProp::filterTumor (Vec c) {
 	ierr = VecRestoreArray (c, &c_ptr);							  CHKERRQ (ierr);
 
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode MatProp::filterBackgroundAndSmooth (Vec in) {
@@ -184,7 +184,7 @@ PetscErrorCode MatProp::filterBackgroundAndSmooth (Vec in) {
 	ScalarType sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
 	ierr = spec_ops_->weierstrassSmoother (in, in, n_misc_, sigma_smooth);
 
-	PetscFunctionReturn (0);
+	PetscFunctionReturn (ierr);
 }
 
 MatProp::~MatProp() {

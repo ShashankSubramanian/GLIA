@@ -75,7 +75,7 @@ PetscErrorCode diffSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, voi
     //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
     //   s.str (""); s.clear ();
     // }
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
@@ -92,7 +92,7 @@ PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
         ierr = VecDuplicate (ctx->k_->kxx_, left);              CHKERRQ(ierr);
     }
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 
@@ -115,7 +115,7 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn(0);;
+    PetscFunctionReturn (ierr);;
 }
 
 PetscErrorCode DiffSolver::precFactor () {
@@ -123,6 +123,8 @@ PetscErrorCode DiffSolver::precFactor () {
     Event e ("tumor-diffusion-prec-factor");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
+
+    PetscErrorCode ierr = 0;
 
     std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
@@ -184,7 +186,7 @@ PetscErrorCode DiffSolver::precFactor () {
     accumulateTimers (n_misc->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
@@ -219,7 +221,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     accumulateTimers (n_misc->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn (0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
@@ -250,7 +252,7 @@ PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 DiffSolver::~DiffSolver () {

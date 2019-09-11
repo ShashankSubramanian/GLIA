@@ -69,7 +69,7 @@ PetscErrorCode ReacCoef::setValues (ScalarType rho_scale, ScalarType r_gm_wm_rat
         dataOut (rho_vec_, n_misc, "rho.nc");
     }
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode ReacCoef::updateIsotropicCoefficients (ScalarType rho_1, ScalarType rho_2, ScalarType rho_3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
@@ -81,7 +81,7 @@ PetscErrorCode ReacCoef::updateIsotropicCoefficients (ScalarType rho_1, ScalarTy
   r_glm_wm_ratio_   = (n_misc->nr_ == 1) ? n_misc->r_glm_wm_ratio_ : rho_3 / rho_1;
   // and set the values
   setValues (rho_scale_, r_gm_wm_ratio_, r_glm_wm_ratio_, mat_prop, n_misc);
-  PetscFunctionReturn (0);
+  PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
@@ -91,7 +91,7 @@ PetscErrorCode ReacCoef::smooth (std::shared_ptr<NMisc> n_misc) {
 
     ierr = spec_ops_->weierstrassSmoother (rho_vec_, rho_vec_, n_misc, sigma);
 
-    PetscFunctionReturn(0);
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
@@ -117,7 +117,7 @@ PetscErrorCode ReacCoef::applydRdm(Vec x1, Vec x2, Vec x3, Vec x4, Vec input) {
 
   // self_exec_time += MPI_Wtime();
   // accumulateTimers (t, t, self_exec_time); e.addTimings (t); e.stop ();
-  PetscFunctionReturn(0);
+  PetscFunctionReturn (ierr);
 }
 
 ReacCoef::~ReacCoef () {
