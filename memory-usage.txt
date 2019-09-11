@@ -1,0 +1,52 @@
+TUMOR SOLVER MEMORY USAGE:
+
+[1] Mass-effect single-species forward-solve
+PETSC-INIT: 265
+
+SPECTRAL-OPS
+2 cplx alloc-max 198
++1 real alloc-max 
+ACCFFT-INIT 546
+CUFFT-INIT 130
+
+TUMOR: 2818
+kappa:  6 real K
+	1 real alloc_max
+rho:	1 real rho
+obs:	1 real filter
+conc:	2 real states
+	2 real adjoints
+work: 	12 real
+seg:	1 real
+vel:	3 real 
+disp:	3 real
+force 	3 real
+matprop 6 real (gm, wm, csf, glm, bg, filter)
+phi:	1 real (1 gaussian for fwd)
+
+PDE-OPS: 2684
+diff-solver:  	1 real rhs 			   [CAN BE REUSED]
+		1 cplx temp 			   [CAN BE REUSED] [DONE]
+		ksp temps (3 real possibly)
+adv-solver:	2 real temp interpolation
+	   	3 real global coords
+		3 real query points
+		3 real work field
+		1 real texture
+elasti-solver:  3 real (mu, lambda, screen)
+		3 real temps                        [CAN BE REUSED] [DONE]
+		6 cplx alloc_max
+		3 real rhs   		  	    [CAN BE REUSED]
+		ksp temps (9 real possibly)         
+mass-effect:	3 real temps                        [CAN BE REUSED] [DONE]
+
+DERIV-OPS: 67
+temp:	1 real
+
+APP-GEN-SYN-DATA: 134
+conc: 	2 real (c_t, c_0)
+
+SOLVE-STATE: 201
+old-displacement: 3 real  
+
+[TOTAL]  7043;  [ACTUAL-CUDA-DEVICE-USAGE] 7147 

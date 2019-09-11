@@ -2,7 +2,7 @@ CXX=mpicxx
 RM = rm -f
 MKDIRS = mkdir -p
 
-BUILD_GPU = 0
+BUILD_GPU = 1
 WARN = -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror -Wno-unused
 BINDIR = ./bin
 SRCDIR = ./src
@@ -23,23 +23,36 @@ PSC_LIB = -L$(PETSC_DIR)/lib -L$(PETSC_DIR)/$(PETSC_ARCH)/lib  -lpetsc
 PSC_DBG_INC = -I$(PETSC_DBG_DIR)/include -I$(PETSC_DBG_DIR)/$(PETSC_DBG_ARCH)/include 
 PSC_DBG_LIB = -L$(PETSC_DBG_DIR)/lib     -L$(PETSC_DBG_DIR)/$(PETSC_DBG_ARCH)/lib  -lpetsc
 
-CXXFLAGS= -O3 -fopenmp -std=c++11 -DPVFMM_MEMDEBUG -DGAUSS_NEWTON  #-DENFORCE_POSITIVE_C #-DINVERT_RHO   -xhost 
+CXXFLAGS= -O3 -fopenmp -std=c++11 -DPVFMM_MEMDEBUG -DCUDA -DSERIAL  #-DENFORCE_POSITIVE_C #-DINVERT_RHO   -xhost 
 
-N_FLAGS=-c  -O0 -gencode arch=compute_35,code=sm_35  -Xcompiler -fopenmp -DENABLE_GPU -lcudart 
+N_FLAGS=-c  -O0 -gencode arch=compute_35,code=sm_35  -Xcompiler -fopenmp -DENABLE_GPU -lcusparse -lcufft -lcublas -lcudart
 N_INC= -I$(CUDA_DIR)/include -I./ -I./include/
 N_LIB= -L$(CUDA_DIR)/lib64/
 
 LDFLAGS=  -L${FFTW_DIR}/lib  -lfftw3 -lfftw3_threads -lfftw3f -lfftw3f_threads -L${ACCFFT_DIR}/lib
+<<<<<<< HEAD
+LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  
+ifeq ($(BUILD_GPU), 1)
+LDFLAGS+= -laccfft_gpu -laccfft_utils_gpu
+endif
+
+LDFLAGS+= -L${PNETCDF_DIR}/lib -lpnetcdf 
+LDFLAGS+= -L${GLOG_DIR}/lib -lglog
+=======
 LDFLAGS+= -L${ACCFFT_DIR}/lib -laccfft -laccfft_utils -lfftw3 -lfftw3_threads  -L${PNETCDF_DIR}/lib -lpnetcdf 
+>>>>>>> master
 
 ifeq ($(BUILD_GPU), 1)
-LDFLAGS+=-L$(CUDA_DIR)/lib64 -lcudart
+LDFLAGS+=-L$(CUDA_DIR)/lib64 -lcusparse -lcufft -lcublas -lcudart
 endif
 
 TARGET_BIN= $(BINDIR)/forward
 TARGET_BIN+= $(BINDIR)/inverse
 TARGET_BIN+= $(BINDIR)/inversedata
 
+<<<<<<< HEAD
+SOURCES = $(wildcard $(SRCDIR)/*.cpp)\
+=======
 SOURCES = $(wildcard $(SRCDIR)/*.cpp) $(TIMINGSDIR)/EventTimings.cpp
 #SOURCES = $(SRCDIR)/DiffCoef.cpp\
 		  $(SRCDIR)/ReacCoef.cpp \
@@ -54,13 +67,12 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp) $(TIMINGSDIR)/EventTimings.cpp
 		  $(SRCDIR)/BLMVM.cpp \
 		  $(SRCDIR)/TumorSolverInterface.cpp \
 		  $(SRCDIR)/Utils.cpp \
+>>>>>>> master
 		  $(TIMINGSDIR)/EventTimings.cpp \
 
 GPU_SOURCES =		 
 ifeq ($(BUILD_GPU), 1)
-	SOURCES += $(SRCDIR)/gpu_interp3.cpp \
-		  $(SRCDIR)/Interp3_Plan_GPU.cpp
-GPU_SOURCES += $(SRCDIR)/gpu_interp3_kernels.cu
+GPU_SOURCES += $(SRCDIR)/UtilsCuda.cu
 endif
 
 OBJS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))  # .cpp -> .o for all SOURCES
@@ -82,7 +94,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 
 $(GPU_OBJS): $(GPU_SOURCES)
 	-@$(MKDIRS) $(dir $@)
-	nvcc $(NFLAGS) -I$(N_INC) -c $^ -o $@
+	nvcc $(NFLAGS) ${PSC_INC} -I$(INCDIR) -c $^ -o $@
 
 $(OBJDIR)/%.o: $(APPDIR)/%.cpp
 	-@$(MKDIRS) $(dir $@)

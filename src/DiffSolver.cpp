@@ -1,29 +1,35 @@
 #include "DiffSolver.h"
+#include "petsc/private/kspimpl.h"
 
-DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<DiffCoef> k)
+DiffSolver::DiffSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k)
 :
 ctx_() {
     PetscErrorCode ierr = 0;
-
     ksp_itr_ = 0;
     ctx_ = std::make_shared<Ctx> ();
     ctx_->k_ = k;
     ctx_->n_misc_ = n_misc;
     ctx_->dt_ = n_misc->dt_;
     ctx_->plan_ = n_misc->plan_;
+    ctx_->spec_ops_ = spec_ops;
     ctx_->temp_ = k->temp_[0];
     ctx_->precfactor_ = k->temp_accfft_;
+    ctx_->work_cuda_ = k->work_cuda_;
     ierr = precFactor ();
 
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorA);
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
+        ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecs);
+    #endif
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
-    ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 5000);
     ierr = KSPSetType (ksp_, KSPCG);
     // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetFromOptions (ksp_);
+    // ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
     ierr = KSPSetUp (ksp_);
 
     ierr = KSPGetPC (ksp_, &pc_);
@@ -33,12 +39,63 @@ ctx_() {
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
-
     ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
     ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
-    ierr = VecSetFromOptions (rhs_);
+    ierr = setupVec (rhs_);
     ierr = VecSet (rhs_, 0);
 }
+
+PetscErrorCode diffSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec x; int maxit; ScalarType divtol, abstol, reltol;
+    ierr = KSPBuildSolution (ksp,NULL,&x);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
+    Ctx *ctx = reinterpret_cast<Ctx*>(ptr);     // get user context
+
+    std::stringstream s;
+    if (its == 0) {
+      s << std::setw(3)  << " KSP:" << " computing solution of diffusion system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
+    s << std::setw(3)  << " KSP:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+    ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    // int ksp_itr;
+    // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
+    // ScalarType e_max, e_min;
+    // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+    //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+    //   s << "Condition number of matrix is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+    //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    //   s.str (""); s.clear ();
+    // }
+    PetscFunctionReturn (0);
+}
+
+PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Ctx *ctx;
+    ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
+
+    if (right) {
+        ierr = VecDuplicate (ctx->k_->kxx_, right);             CHKERRQ(ierr);
+    }
+    if (left) {
+        ierr = VecDuplicate (ctx->k_->kxx_, left);              CHKERRQ(ierr);
+    }
+
+    PetscFunctionReturn(0);
+}
+
+
 
 PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     PetscFunctionBegin;
@@ -50,8 +107,8 @@ PetscErrorCode operatorA (Mat A, Vec x, Vec y) {    //y = Ax
     ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
 
-    double alph = -1.0 / 2.0 * ctx->dt_;
-    ierr = ctx->k_->applyD (ctx->temp_, y, ctx->plan_);
+    ScalarType alph = -1.0 / 2.0 * ctx->dt_;
+    ierr = ctx->k_->applyD (ctx->temp_, y);
     ierr = VecAXPY (y, alph, ctx->temp_);                       CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
@@ -69,7 +126,7 @@ PetscErrorCode DiffSolver::precFactor () {
 
     std::shared_ptr<NMisc> n_misc = ctx_->n_misc_;
     int64_t X, Y, Z, wx, wy, wz, index;
-    double kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
+    ScalarType kxx_avg, kxy_avg, kxz_avg, kyy_avg, kyz_avg, kzz_avg;
     kxx_avg = ctx_->k_->kxx_avg_;
     kxy_avg = ctx_->k_->kxy_avg_;
     kxz_avg = ctx_->k_->kxz_avg_;
@@ -77,7 +134,12 @@ PetscErrorCode DiffSolver::precFactor () {
     kyz_avg = ctx_->k_->kyz_avg_;
     kzz_avg = ctx_->k_->kzz_avg_;
 
-    double factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
+    ScalarType factor = 1.0 / (n_misc->n_[0] * n_misc->n_[1] * n_misc->n_[2]);
+
+    #ifdef CUDA
+        cudaMemcpy (&ctx_->work_cuda_[0], &ctx_->dt_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+        precFactorDiffusionCuda (ctx_->precfactor_, ctx_->work_cuda_, n_misc->osize_);
+    #else
 
     for (int x = 0; x < n_misc->osize_[0]; x++) {
         for (int y = 0; y < n_misc->osize_[1]; y++) {
@@ -116,6 +178,7 @@ PetscErrorCode DiffSolver::precFactor () {
             }
         }
     }
+    #endif
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc->timers_, t, self_exec_time);
@@ -135,20 +198,23 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     ierr = PCShellGetContext (pc, (void **) &ctx);              CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     ierr = VecCopy (x, y);                                      CHKERRQ (ierr);
-    PetscScalar *y_ptr;
-    ierr = VecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
 
-    Complex *c_hat = (Complex *) accfft_alloc (n_misc->accfft_alloc_max_);
-    accfft_execute_r2c (n_misc->plan_, y_ptr, c_hat, t.data());
-
-    std::complex<double> *c_a = (std::complex<double> *) c_hat;
-    for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
-        c_a[i] *= ctx->precfactor_[i];
-    }
-    accfft_execute_c2r (n_misc->plan_, c_hat, y_ptr, t.data());
-    ierr = VecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
-    accfft_free (c_hat);
-
+    ScalarType *y_ptr;
+    ierr = vecGetArray (y, &y_ptr);                             CHKERRQ (ierr);
+    #ifdef CUDA
+        ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->spec_ops_->x_hat_);
+        hadamardComplexProductCuda ((CudaComplexType*) ctx->spec_ops_->x_hat_, ctx->precfactor_, n_misc->osize_);
+        ctx->spec_ops_->executeFFTC2R (ctx->spec_ops_->x_hat_, y_ptr);
+    #else    
+        ctx->spec_ops_->executeFFTR2C (y_ptr, ctx->spec_ops_->x_hat_);
+        std::complex<ScalarType> *c_a = (std::complex<ScalarType> *) ctx->spec_ops_->x_hat_;
+        for (int i = 0; i < n_misc->osize_[0] * n_misc->osize_[1] * n_misc->osize_[2]; i++) {
+            c_a[i] *= ctx->precfactor_[i];
+        }
+        ctx->spec_ops_->executeFFTC2R (ctx->spec_ops_->x_hat_, y_ptr);
+    #endif
+    ierr = vecRestoreArray (y, &y_ptr);                         CHKERRQ (ierr);
+    
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc->timers_, t, self_exec_time);
     e.addTimings (t);
@@ -156,7 +222,7 @@ PetscErrorCode applyPC (PC pc, Vec x, Vec y) {
     PetscFunctionReturn (0);
 }
 
-PetscErrorCode DiffSolver::solve (Vec c, double dt) {
+PetscErrorCode DiffSolver::solve (Vec c, ScalarType dt) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     Event e ("tumor-diffusion-solve");
@@ -170,9 +236,9 @@ PetscErrorCode DiffSolver::solve (Vec c, double dt) {
         ksp_itr_ = 0;
         return 0;
     }
-    double alph = 1.0 / 2.0 * ctx->dt_;
+    ScalarType alph = 1.0 / 2.0 * ctx->dt_;
     ierr = VecCopy (c, rhs_);                                   CHKERRQ (ierr);
-    ierr = ctx->k_->applyD (ctx->temp_, rhs_, ctx->plan_);
+    ierr = ctx->k_->applyD (ctx->temp_, rhs_);
     ierr = VecAXPY (rhs_, alph, ctx->temp_);                    CHKERRQ (ierr);
 
     //KSP solve
@@ -192,4 +258,5 @@ DiffSolver::~DiffSolver () {
     ierr = MatDestroy (&A_);
     ierr = KSPDestroy (&ksp_);
     ierr = VecDestroy (&rhs_);
+
 }

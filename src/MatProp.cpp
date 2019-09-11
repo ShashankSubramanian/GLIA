@@ -1,10 +1,10 @@
 #include "MatProp.h"
 
-MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
+MatProp::MatProp (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : spec_ops_ (spec_ops) {
 	PetscErrorCode ierr;
 	ierr = VecCreate (PETSC_COMM_WORLD, &gm_);
 	ierr = VecSetSizes (gm_, n_misc->n_local_, n_misc->n_global_);
-	ierr = VecSetFromOptions (gm_);
+	ierr = setupVec (gm_);
 
 	ierr = VecDuplicate (gm_, &wm_);
 	ierr = VecDuplicate (gm_, &csf_);
@@ -25,7 +25,7 @@ MatProp::MatProp (std::shared_ptr<NMisc> n_misc) {
 PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr;
-	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
+	ScalarType *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr;
 	int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
@@ -46,31 +46,32 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 			ss << " ---- brain default data not read: expecting user data ---- "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 		}
 		else {
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/gray_matter.nc";
+			dataIn (gm_, n_misc, str.str().c_str());
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/white_matter.nc";
+			dataIn (wm_, n_misc, str.str().c_str());
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/csf.nc";
+			dataIn (csf_, n_misc, str.str().c_str());
+			str.str(std::string());
+			str << prefix << "/" << n_misc->n_[0] << "/glial_matter.nc";
+			dataIn (glm_, n_misc, str.str().c_str());
+			
+			ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
+
+			ierr = spec_ops_->weierstrassSmoother (gm_, gm_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (wm_, wm_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (glm_, glm_, n_misc, sigma_smooth);
+			ierr = spec_ops_->weierstrassSmoother (csf_, csf_, n_misc, sigma_smooth);
+
 			ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 			ierr = VecGetArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 			ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
 			ierr = VecGetArray (glm_, &glm_ptr);                  CHKERRQ (ierr);
 			ierr = VecGetArray (filter_, &filter_ptr);            CHKERRQ (ierr);
-			str.str(std::string());
-			str << prefix << "/" << n_misc->n_[0] << "/gray_matter.nc";
-			dataIn (gm_ptr, n_misc, str.str().c_str());
-			str.str(std::string());
-			str << prefix << "/" << n_misc->n_[0] << "/white_matter.nc";
-			dataIn (wm_ptr, n_misc, str.str().c_str());
-			str.str(std::string());
-			str << prefix << "/" << n_misc->n_[0] << "/csf.nc";
-			dataIn (csf_ptr, n_misc, str.str().c_str());
-			str.str(std::string());
-			str << prefix << "/" << n_misc->n_[0] << "/glial_matter.nc";
-			dataIn (glm_ptr, n_misc, str.str().c_str());
 
-
-			double sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
-
-			ierr = weierstrassSmoother (gm_ptr, gm_ptr, n_misc, sigma_smooth);
-			ierr = weierstrassSmoother (wm_ptr, wm_ptr, n_misc, sigma_smooth);
-			ierr = weierstrassSmoother (glm_ptr, glm_ptr, n_misc, sigma_smooth);
-			ierr = weierstrassSmoother (csf_ptr, csf_ptr, n_misc, sigma_smooth);
 
 			for (int i = 0; i < n_misc->n_local_; i++) {
 				if ((wm_ptr[i] > 0.1 || gm_ptr[i] > 0.1) && csf_ptr[i] < 0.8)
@@ -115,7 +116,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 	else                   { ierr = VecSet (bg_, 0.0);       CHKERRQ(ierr); }
 	if (!n_misc->nk_fixed_) n_misc->nk_ = nk;
 
-	double *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr, *bg_ptr;
+	ScalarType *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr, *bg_ptr;
 	ierr = VecGetArray (gm_, &gm_ptr);                    CHKERRQ (ierr);
 	ierr = VecGetArray (wm_, &wm_ptr);                    CHKERRQ (ierr);
 	ierr = VecGetArray (csf_, &csf_ptr);                  CHKERRQ (ierr);
@@ -148,21 +149,42 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 	PetscFunctionReturn (0);
 }
 
+PetscErrorCode MatProp::filterTumor (Vec c) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	ScalarType *c_ptr, *wm_ptr, *gm_ptr;
+	ierr = VecGetArray (gm_, &gm_ptr);						  CHKERRQ (ierr);
+	ierr = VecGetArray (wm_, &wm_ptr);						  CHKERRQ (ierr);
+	ierr = VecGetArray (c, &c_ptr);							  CHKERRQ (ierr);
+
+	for (int i = 0; i < n_misc_->n_local_; i++) {
+		wm_ptr[i] *= (1. - c_ptr[i]);
+		gm_ptr[i] *= (1. - c_ptr[i]);		
+	}
+
+	ierr = VecRestoreArray (gm_, &gm_ptr);						  CHKERRQ (ierr);
+	ierr = VecRestoreArray (wm_, &wm_ptr);						  CHKERRQ (ierr);
+	ierr = VecRestoreArray (c, &c_ptr);							  CHKERRQ (ierr);
+
+
+	PetscFunctionReturn (0);
+}
+
 PetscErrorCode MatProp::filterBackgroundAndSmooth (Vec in) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	double *in_ptr, *bg_ptr;
-	ierr = VecGetArray (bg_, &bg_ptr);					CHKERRQ (ierr);
-	ierr = VecGetArray (in, &in_ptr);					CHKERRQ (ierr);
+	ierr = VecShift (bg_, -1.0);						CHKERRQ (ierr); // bg - 1
+	ierr = VecScale (bg_, -1.0);						CHKERRQ (ierr); // 1 - bg
+	ierr = VecPointwiseMult (in, in, bg_); 				CHKERRQ (ierr); // in .* (1 - bg);
+	ierr = VecScale (bg_, -1.0);						CHKERRQ (ierr); // bg - 1
+	ierr = VecShift (bg_, 1.0);							CHKERRQ (ierr); // bg
 
-	for (int i = 0; i < n_misc_->n_local_; i++) {
-		in_ptr[i] *= (1.0 - bg_ptr[i]);
-	}
-	double sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
-	ierr = weierstrassSmoother (in_ptr, in_ptr, n_misc_, sigma_smooth);
-	ierr = VecRestoreArray (in, &in_ptr);				CHKERRQ (ierr);
-	ierr = VecRestoreArray (bg_, &bg_ptr);				CHKERRQ (ierr);
+	ScalarType sigma_smooth = 1. * n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+	ierr = spec_ops_->weierstrassSmoother (in, in, n_misc_, sigma_smooth);
+
+	PetscFunctionReturn (0);
 }
 
 MatProp::~MatProp() {

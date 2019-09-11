@@ -12,22 +12,21 @@ struct CtxAdv {
 	std::shared_ptr<NMisc> n_misc_;
 	std::vector<Vec> temp_;
 	std::shared_ptr<VecField> velocity_;
-	double dt_;
+	std::shared_ptr<SpectralOperators> spec_ops_; 
+	ScalarType dt_;
 };
 
 class AdvectionSolver {
 	public:
-		AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor);   //tumor is needed for its work vectors
-
-		KSP ksp_;
-		Mat A_;
-		Vec rhs_;
+		AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);   //tumor is needed for its work vectors
 
 		std::shared_ptr<CtxAdv> ctx_;
+		std::shared_ptr<SpectralOperators> spec_ops_; 
 
 		int advection_mode_;						  // controls the source term of the advection equation
+		bool trajectoryIsComputed_;
 
-		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt) = 0;
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) = 0;
 
 		virtual ~AdvectionSolver ();
 
@@ -36,30 +35,54 @@ class AdvectionSolver {
 // Solve transport equations using Crank-Nicolson
 class TrapezoidalSolver : public AdvectionSolver {
 	public:
-		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor) : AdvectionSolver (n_misc, tumor) {}
-		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt);
+		KSP ksp_;
+		Mat A_;
+		Vec rhs_;
 
-		virtual ~TrapezoidalSolver () {}
+		TrapezoidalSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);
+
+		virtual ~TrapezoidalSolver ();
 };
 
-//Solve transport equations using semi-Lagrangian
+// Solve transport equations using semi-Lagrangian
+// Some class variables will remain null depending on the interpolation functions used and is controlled by preprocessor dirs CUDA
+// and MPICUDA
 class SemiLagrangianSolver : public AdvectionSolver {
 	public:
-		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor);
+		SemiLagrangianSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);
 
-		int m_dofs_[2];  						  // controls number of interpolation plans: we need two
-		Vec query_points_;						  // query point coordinates
-		int n_ghost_;							  // ghost padding number = order of interpolation
-		std::shared_ptr<InterpPlan> interp_plan_; // plan for interpolation
-		double *scalar_field_ghost_;			  // local scalar field with ghost points
-		double *vector_field_ghost_;			  // local vector field with ghost points
-		std::shared_ptr<VecField> work_field_;	  // work vector field
-		Vec *temp_;								  // temp vectors	
-		
-		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, double dt);	// solve transport equation
+		int isize_g_[3], istart_g_[3];    		  			// local input sizes with ghost layers
+		std::shared_ptr<VecField> work_field_;	  			// work vector field
+		std::shared_ptr<VecField> coords_;		  			// x,y,z coordinates 
+		Vec *temp_;								  			// temp vectors	
+		Vec query_points_;						  			// query point coordinates
+
+		int m_dofs_[2];  						  			// controls number of interpolation plans: we need two
+		int n_ghost_;							  			// ghost padding number = order of interpolation
+		int n_alloc_;							  			// allocation size with ghosts
+
+		ScalarType *scalar_field_ghost_;			  			// local scalar field with ghost points
+		ScalarType *vector_field_ghost_;			  			// local vector field with ghost points
+
+		std::shared_ptr<InterpPlan> interp_plan_vector_;	// plans for interpolation on multi-GPU
+		std::shared_ptr<InterpPlan> interp_plan_scalar_;    // plans for interpolation on multi-GPU
+
+		std::shared_ptr<InterpPlan> interp_plan_; 			// plan for interpolation on the cpu
+
+		float *temp_interpol1_;								// temporary floats for more efficient GPU interpolation
+		float *temp_interpol2_;
+
+
+		#ifdef CUDA
+			cudaTextureObject_t m_texture_;			  			//  cuda texture object for interp - only defined in cuda header files
+		#endif
+
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);	// solve transport equation
 		PetscErrorCode computeTrajectories ();														// Computes RK2 trajectories and query points
 		PetscErrorCode interpolate (Vec out, Vec in);												// Interpolated scalar field
 		PetscErrorCode interpolate (std::shared_ptr<VecField> out, std::shared_ptr<VecField> in);	// Interpolates vector field
+		PetscErrorCode setCoords (std::shared_ptr<VecField> coords);								// sets global coordinates
 
 		virtual ~SemiLagrangianSolver ();
 };

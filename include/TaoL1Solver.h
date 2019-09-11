@@ -29,6 +29,6 @@ PetscErrorCode TaoLineSearchDestroy_ISTA (TaoLineSearch ls);
 PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s);
 
 //Other 
-PetscErrorCode proximalOperator (Vec y, Vec x, double lambda, PetscReal step);
+PetscErrorCode proximalOperator (Vec y, Vec x, ScalarType lambda, PetscReal step);
 
 #endif

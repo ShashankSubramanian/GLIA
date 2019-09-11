@@ -1,7 +1,3 @@
-#include "petsctao.h"
-#include "petsc.h"
-#include "accfft.h"
-
 #include "Utils.h"
 #include "Tumor.h"
 #include "TumorSolverInterface.h"
@@ -56,12 +52,11 @@ int main (int argc, char** argv) {
     int c_dims[2] = { 0 };
     accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
     int isize[3], osize[3], istart[3], ostart[3];
-    int64_t alloc_max = accfft_local_size_dft_r2c (n, isize, istart, osize, ostart, c_comm);
-    double *c_0 = (double*) accfft_alloc (alloc_max);
-    Complex *c_hat = (Complex*) accfft_alloc (alloc_max);
-    accfft_plan *plan = accfft_plan_dft_3d_r2c (n, c_0, (double*) c_hat, c_comm, ACCFFT_MEASURE);
-    accfft_free (c_0);
-    accfft_free (c_hat);
+   
+    std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> ();
+    spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
+    int64_t alloc_max = spec_ops->alloc_max_;
+    fft_plan *plan = spec_ops->plan_;
 
 /* --------------------------------------------------------------------------------------------------------------*/
 
@@ -79,7 +74,7 @@ int main (int argc, char** argv) {
     #ifdef SERIAL
         Vec p;
         ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_, &p);                            CHKERRQ (ierr);
-        PetscScalar val[2] = {.9, .2};
+        ScalarType val[2] = {.9, .2};
         PetscInt center = (int) std::floor(n_misc->np_ / 2.);
         PetscInt idx[2] = {center-1, center};
         ierr = VecSetValues(p, 2, idx, val, INSERT_VALUES );        CHKERRQ(ierr);
@@ -89,7 +84,7 @@ int main (int argc, char** argv) {
 
 	ierr = VecCreate (PETSC_COMM_WORLD, &c_t);                              CHKERRQ (ierr);
     ierr = VecSetSizes (c_t, n_misc->n_local_, n_misc->n_global_);          CHKERRQ (ierr);
-    ierr = VecSetFromOptions (c_t);                                         CHKERRQ (ierr);
+    ierr = setupVec (c_t);                                         CHKERRQ (ierr);
     ierr = VecDuplicate (c_t, &c_0);                                        CHKERRQ (ierr);
 
     ierr = VecSet (c_t, 0);                                                 CHKERRQ (ierr);
@@ -111,7 +106,7 @@ int main (int argc, char** argv) {
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);
     #endif
-    double max, min;
+    ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                      CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
@@ -140,6 +135,5 @@ int main (int argc, char** argv) {
 }
 
 /* --------------------------------------------------------------------------------------------------------------*/
-	accfft_destroy_plan (plan);
 	PetscFinalize ();
 }

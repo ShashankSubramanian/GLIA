@@ -1,24 +1,3 @@
-/**
- *  SIBIA (Scalable Biophysics-Based Image Analysis)
- *
- *  Copyright (C) 2017-2020, The University of Texas at Austin
- *  This file is part of the SIBIA library.
- *
- *  SIBIA is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  SIBIA is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see the LICENSE file.
- *
- **/
-
 #ifndef TUMORSOLVERINTERFACE_H_
 #define TUMORSOLVERINTERFACE_H_
 
@@ -28,40 +7,7 @@
 #include "PdeOperators.h"
 #include "DerivativeOperators.h"
 #include "InvSolver.h"
-
-//namespace pglistr {
-
-    struct DataDistributionParameters {
-        int64_t alloc_max;
-        int nlocal;
-        int nglobal;
-        int n[3];
-        int cdims[2];
-        int istart[3];
-        int isize[3];
-        int ostart[3];
-        int osize[3];
-        int testcase;
-        accfft_plan* plan;
-        MPI_Comm comm;
-
-        DataDistributionParameters ()
-        :
-          alloc_max(0)
-        , nlocal(0)
-        , nglobal(0)
-        , cdims{0,0}
-        , n{256,256,256}
-        , istart{0,0,0}
-        , isize{0,0,0}
-        , ostart{0,0,0}
-        , osize{0,0,0}
-        , testcase(0)
-        , plan(nullptr)
-        , comm (MPI_COMM_WORLD)
-        {}
-    };
-
+#include "SpectralOperators.h"
 
 class TumorSolverInterface {
 
@@ -75,6 +21,7 @@ class TumorSolverInterface {
     */
     TumorSolverInterface (
         std::shared_ptr<NMisc> n_misc = {},
+        std::shared_ptr<SpectralOperators> spec_ops = {}
         std::shared_ptr<Phi> phi = {},
         std::shared_ptr<MatProp> mat_prop = {});
 
@@ -109,6 +56,7 @@ class TumorSolverInterface {
     */
     PetscErrorCode initialize (
         std::shared_ptr<NMisc> n_misc,
+        std::shared_ptr<SpectralOperators> spec_ops = {}
         std::shared_ptr<Phi> phi = {},
         std::shared_ptr<MatProp> mat_prop = {});
 
@@ -127,6 +75,9 @@ class TumorSolverInterface {
     *  @param Vec cT  - target tumor concentration after simulation
     */
     PetscErrorCode solveForward (Vec c1, Vec c0);
+    PetscErrorCode solveForward (
+        Vec cT, Vec c0,
+        std::map<std::string, Vec> *species);
 
     /** @brief: Solves the inverse tumor problem using Tao, given target concentration
      *
@@ -226,6 +177,7 @@ class TumorSolverInterface {
     bool regularization_norm_changed_;
     bool newton_solver_type_changed_;
     std::shared_ptr<NMisc> n_misc_;
+    std::shared_ptr<SpectralOperators> spec_ops_;
     std::shared_ptr<Tumor> tumor_;
     std::shared_ptr<PdeOperators> pde_operators_;
     std::shared_ptr<DerivativeOperators> derivative_operators_;
@@ -233,7 +185,5 @@ class TumorSolverInterface {
 
     std::vector<double> out_params_;
 };
-
-//} // namespace pglistr
 
 #endif

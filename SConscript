@@ -6,7 +6,7 @@ sourcesPGLISTR = [
 ]
 
 sourcesTHIRDPARTY = [
-    Glob('./3rdparty/timings/*.cpp')
+    Glob('./3rdparty/timings/*.cpp'),
 ]
 
 sourcesDrivers = [
@@ -16,7 +16,13 @@ sourcesDrivers = [
 
 sourcesAllNoMain = [
     sourcesPGLISTR,
-    sourcesTHIRDPARTY
+    sourcesTHIRDPARTY,
+]
+
+sourcesAllNoMainGPU = [
+    sourcesPGLISTR,
+    sourcesTHIRDPARTY,
+    Glob('src/*.cu')
 ]
 
 sourcesAll = [
@@ -24,4 +30,4 @@ sourcesAll = [
     sourcesDrivers
 ]
 
-Return ('sourcesAllNoMain', 'sourcesAll')
+Return ('sourcesAllNoMain', 'sourcesAllNoMainGPU', 'sourcesAll')

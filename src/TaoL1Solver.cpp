@@ -61,12 +61,12 @@ PetscErrorCode TaoLineSearchDestroy_ISTA (TaoLineSearch ls) {
 	PetscFunctionReturn (0);
 }
 
-PetscErrorCode proximalOperator (Vec y, Vec x, double lambda, PetscReal step) {
+PetscErrorCode proximalOperator (Vec y, Vec x, ScalarType lambda, PetscReal step) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
 	ierr = vecSign (x); //x = sign (x)
-	double *y_ptr;
+	ScalarType *y_ptr;
 	int size;
 	ierr = VecGetArray (y, &y_ptr);				CHKERRQ (ierr);
 	ierr = VecGetSize (y, &size);				CHKERRQ (ierr);
@@ -102,7 +102,7 @@ PetscErrorCode TaoLineSearchApply_ISTA (TaoLineSearch ls, Vec x, PetscReal *f, V
 
 	PetscReal f_old = *f;
 	ctx->J_old = f_old;
-	double norm = 0;
+	ScalarType norm = 0;
 
 	ierr = VecNorm (g, NORM_2, &norm);									CHKERRQ (ierr);
 	if (PetscIsInfOrNanReal (norm)) {
