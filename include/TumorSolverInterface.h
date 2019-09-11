@@ -215,7 +215,7 @@ class TumorSolverInterface {
     PetscErrorCode setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed);
     PetscErrorCode setOptimizerSettings (std::shared_ptr<OptimizerSettings> optset);
     PetscErrorCode setInitialGuess(Vec p);
-    PetscErrorCode setInitialGuess(double d);
+    PetscErrorCode setInitialGuess(ScalarType d);
     PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec bg);
     PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec bg);
     PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec bg);
