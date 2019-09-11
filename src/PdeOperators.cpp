@@ -148,8 +148,8 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
     if (linearized == 0) {
         for (int i = 0; i < n_misc_->n_local_; i++) {
             factor = std::exp (rho_ptr[i] * dt);
-            alph = (1.0 - c_t_ptr[i]) / c_t_ptr[i];
-            c_t_ptr[i] = factor / (factor + alph);
+            alph = c_t_ptr[i] / (1.0 - c_t_ptr[i]) ;
+            c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
         }
     } else {
         for (int i = 0; i < n_misc_->n_local_; i++) {
