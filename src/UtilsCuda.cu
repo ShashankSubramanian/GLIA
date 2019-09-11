@@ -135,8 +135,9 @@ __global__ void logisticReaction (ScalarType *c_t_ptr, ScalarType *rho_ptr, Scal
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType factor = 0., alph = 0.;
 	    factor = exp (rho_ptr[i] * dt);
-	    alph = c_t_ptr[i] / (1.0 - c_t_ptr[i] + my_eps);
-	    c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
+	    alph = c_t_ptr[i] / (1.0 - c_t_ptr[i]);
+	    if (isinf(alph)) c_t_ptr[i] = 1.0;
+	    else c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
 	}
 }
 
