@@ -1187,7 +1187,7 @@ if __name__=='__main__':
             w2 = "";
             iii = 0
             for i in range(ncomps_data[l]):
-                if i < 3: FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = dist_wcmSOL_cmDATA[l][i];
+                if i < 3: FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = dist_wcmSOL_cmDATA[l][i] * float(l) / (2*math.pi);
                 w  += "{0:1.2e}".format(dist_wcmSOL_cmDATA[l][i])
                 w2 += "{0:1.1f}".format((dist_wcmSOL_cmDATA[l][i] * float(l) / (2*math.pi) ));
                 iii += 1;
@@ -1196,7 +1196,7 @@ if __name__=='__main__':
                     w2 += ', '
             if iii < 3:
                 for iiii in range(iii,3):
-                    FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = -1;
+                    FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(iii)+")"] = -1;
             concomp_file.write("SOL(L): #comp: %d, distances: [%s] = [%s]px \n" % (ncomps_data[l], w, w2));
             concomp_file.write("        x_cm:  ");
             for i in range(ncomps_data[l]):
@@ -1621,9 +1621,7 @@ if __name__=='__main__':
                     pvec_dict[kk] = pvec[l][kk]
                     coord_dict[kk] = np.array([phi[l][kk][0], phi[l][kk][1], phi[l][kk][2]]);
                 p_sorted = sorted(pvec_dict.items(), key=lambda x: x[1], reverse=True);
-                print("phi:", coord_dict)
-                print("p_sorted:", p_sorted)
-                FEATURES[l]["dist[max1(p) - max2(p)]"] = dist(coord_dict[p_sorted[0][0]], coord_dict[p_sorted[1][0]]);
+                FEATURES[l]["dist[max1(p) - max2(p)]"] = dist(coord_dict[p_sorted[0][0]], coord_dict[p_sorted[1][0]]) * float(l) / (2*math.pi);
 
                 # visualize evolution of solution over levels
                 mag = 200;
@@ -1768,7 +1766,7 @@ if __name__=='__main__':
 
             # features from tumor log file
             print("\n (5) extracting features from tumor solver log file\n");
-            parseTumorLog(res_dir, l, FEATURES):
+            parseTumorLog(res_path, l, FEATURES[l]);
 
             # compute l2 error of c(0) in between levels || c(0)_256 - Ic(0)_64 || / ||c(0)_256 ||
             if 64 in levels and 128 in levels:
@@ -1865,12 +1863,12 @@ if __name__=='__main__':
                 if args.analyze_concomps:
                     if 64 in levels and 128 in levels:
                         text += "\nl2ec(1) scaled,TC (l1,l2,l3)          = (" + "{0:1.3e}".format(l2err_TC[64]/l2normref_TC[64]) + "," + "{0:1.3e}".format(l2err_TC[128]/l2normref_TC[128]) + "," + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
-                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l64'] = l2err_TC[64]/l2normref_TC[64];
-                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l128'] = l2err_TC[128]/l2normref_TC[128];
-                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l256'] = l2err_TC[256]/l2normref_TC[256];
+                        FEATURES[64]['l2[c(1)|_TC-TC,scaled]_r_l64'] = l2err_TC[64]/l2normref_TC[64];
+                        FEATURES[128]['l2[c(1)|_TC-TC,scaled]_r_l128'] = l2err_TC[128]/l2normref_TC[128];
+                        FEATURES[256]['l2[c(1)|_TC-TC,scaled]_r_l256'] = l2err_TC[256]/l2normref_TC[256];
                     else:
                         text += "\nl2ec(1) scaled,TC (l3)                = (" + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
-                        FEATURES[l]['l2[c(1)|_TC,scaled]_l256'] = l2err_TC[256]/l2normref_TC[256]
+                        FEATURES[256]['l2[c(1)|_TC,scaled]_l256'] = l2err_TC[256]/l2normref_TC[256]
                     llabels = ["l1", "l2", "l3"] if args.gridcont else ["l3"];
                     for lvl, lll in zip(levels, llabels):
                         t1 = "\nl2ec(1) scaled,relC (" + lll + ";#1,..,#n)     = (";
