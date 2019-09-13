@@ -136,13 +136,27 @@ PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio
         ierr = VecRestoreArray (kzz_, &kzz_ptr);                 CHKERRQ (ierr);
     }
     else {
-        ierr = VecSet  (kxx_, 0.0);                              CHKERRQ (ierr);
-        ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);          CHKERRQ (ierr);
-        ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);          CHKERRQ (ierr);
-        ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);        CHKERRQ (ierr);
+        if (n_misc->model_ < 4) {
+            ierr = VecSet  (kxx_, 0.0);                              CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);          CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);          CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);        CHKERRQ (ierr);
 
-        ierr = VecCopy (kxx_, kyy_);                             CHKERRQ (ierr);
-        ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
+            ierr = VecCopy (kxx_, kyy_);                             CHKERRQ (ierr);
+            ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
+        } else {
+            // fix the mass-effect models : assuming diffusion only in white-matter
+            // k = k_scale * (1. - gm - csf - glm - bg): TODO this is strictly speaking incorrect; need to use segmentation instead 
+            ierr = VecSet (kxx_, 1.0);                           CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, -1.0, mat_prop->gm_);          CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, -1.0, mat_prop->csf_);         CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, -1.0, mat_prop->glm_);         CHKERRQ (ierr);
+            ierr = VecAXPY (kxx_, -1.0, mat_prop->bg_);          CHKERRQ (ierr);
+            ierr = VecScale (kxx_, dk_dm_wm);                    CHKERRQ (ierr);
+
+            ierr = VecCopy (kxx_, kyy_);                             CHKERRQ (ierr);
+            ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
+        }
     }
 
     if (n_misc->writeOutput_) {
