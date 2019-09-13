@@ -976,7 +976,7 @@ def cont(slice, cmap, thresh=0.3, v_max=None, v_min=None, clip01=True):
 
 
 def parseTumorLog(xdir, features):
-
+  pass;
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -1165,7 +1165,9 @@ if __name__=='__main__':
                 if i < ncomps_data[l] - 1:
                     w  += ', '
                     w2 += ', '
-            if iii < 3: for iiii in range(iii,3): FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = -1;
+            if iii < 3: 
+                for iiii in range(iii,3): 
+                    FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = -1;
             concomp_file.write("SOL(L): #comp: %d, distances: [%s] = [%s]px \n" % (ncomps_data[l], w, w2));
             concomp_file.write("        x_cm:  ");
             for i in range(ncomps_data[l]):
@@ -1588,8 +1590,10 @@ if __name__=='__main__':
                 coord_dict  = {}
                 for kk in range(len(pvec[l])):
                     pvec_dict[kk] = pvec[l][kk]
-                    coord_dict = np.array([phi[l][kk][0], phi[l][kk][1], phi[l][kk][2]]);
+                    coord_dict[kk] = np.array([phi[l][kk][0], phi[l][kk][1], phi[l][kk][2]]);
                 p_sorted = sorted(pvec_dict.items(), key=lambda x: x[1], reverse=True);
+                print("phi:", coord_dict)
+                print("p_sorted:", p_sorted)
                 FEATURES[l]["dist[max1(p) - max2(p)]"] = dist(coord_dict[p_sorted[0][0]], coord_dict[p_sorted[1][0]]);
 
                 # visualize evolution of solution over levels
