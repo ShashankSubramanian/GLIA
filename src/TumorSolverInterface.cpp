@@ -256,7 +256,7 @@ PetscErrorCode TumorSolverInterface::setParams (
         model_changed  = n_misc_->model_ != tumor_params->tumor_model;
         nt_changed     = n_misc_->nt_ != tumor_params->time_steps;
         // updating NMisc
-        ierr = _setParams(params); CHKERRQ(ierr);
+        ierr = _setParams(tumor_params); CHKERRQ(ierr);
     }
     if (np_changed)    {ierr = tuMSGstd(" number of basis functions changed, resetting Phi and DerivativeOperators."); CHKERRQ(ierr);}
     if (nt_changed)    {ierr = tuMSGstd(" number of time steps changed, resetting PdeOperators (time history)."); CHKERRQ(ierr);}
