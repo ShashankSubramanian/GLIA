@@ -56,25 +56,10 @@ PetscErrorCode ReacCoef::setValues (ScalarType rho_scale, ScalarType r_gm_wm_rat
         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
     }
     else {
-        if (n_misc->model_ < 4) {
-            ierr = VecSet (rho_vec_, 0.0);                           CHKERRQ (ierr);
-            ierr = VecAXPY (rho_vec_, dr_dm_gm, mat_prop->gm_);      CHKERRQ (ierr);
-            ierr = VecAXPY (rho_vec_, dr_dm_wm, mat_prop->wm_);      CHKERRQ (ierr);
-            ierr = VecAXPY (rho_vec_, dr_dm_glm, mat_prop->glm_);    CHKERRQ (ierr);
-        } else {
-            // fix the mass-effect models : assuming reaction only in white-matter
-            ierr = VecSet (rho_vec_, 0.0);                           CHKERRQ (ierr);
-            ScalarType *wm_ptr, *rho_vec_ptr;
-            ierr = VecGetArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
-            ierr = VecGetArray (mat_prop->wm_, &wm_ptr);             CHKERRQ (ierr);
-            for (int i = 0; i < n_misc->n_local_; i++) {
-                if (wm_ptr[i] > 0.01) {
-                    rho_vec_ptr[i] = dr_dm_wm * wm_ptr[i];
-                }
-            }
-            ierr = VecRestoreArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
-            ierr = VecRestoreArray (mat_prop->wm_, &wm_ptr);             CHKERRQ (ierr);
-        }
+        ierr = VecSet (rho_vec_, 0.0);                           CHKERRQ (ierr);
+        ierr = VecAXPY (rho_vec_, dr_dm_gm, mat_prop->gm_);      CHKERRQ (ierr);
+        ierr = VecAXPY (rho_vec_, dr_dm_wm, mat_prop->wm_);      CHKERRQ (ierr);
+        ierr = VecAXPY (rho_vec_, dr_dm_glm, mat_prop->glm_);    CHKERRQ (ierr);
     }
 
     if (smooth_flag_)

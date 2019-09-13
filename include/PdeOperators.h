@@ -92,6 +92,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 
 		virtual PetscErrorCode solveState (int linearized);
 		PetscErrorCode conserveHealthyTissues ();
+		PetscErrorCode updateReacAndDiffCoefficients (Vec c, std::shared_ptr<Tumor> tumor);
         virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
 
 		virtual ~PdeOperatorsMassEffect () {
