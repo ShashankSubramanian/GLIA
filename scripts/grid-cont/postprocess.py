@@ -68,9 +68,9 @@ def computeDice(patient_img, atlas_img, patient_labels):
     acsf = atlas_img == patient_labels['csf'];
     avt = atlas_img == patient_labels['vt'];
     agm  = atlas_img == patient_labels['gm'];
-    awm  = atlas_img == patient_labels['wm'];    
+    awm  = atlas_img == patient_labels['wm'];
     # bool map patient wm, gm, csf
-    pcsf = patient_img == patient_labels['csf'];    
+    pcsf = patient_img == patient_labels['csf'];
     pvt = patient_img == patient_labels['vt'];
     pgm  = patient_img == patient_labels['gm'];
     pwm  = patient_img == patient_labels['wm'];
@@ -97,7 +97,7 @@ def rescaleImage(img):
     img_min = np.amin(img)
     img_max = np.amax(img)
     if np.any(img<0):
-        img_min = 0    
+        img_min = 0
     img = (img - img_min)/(img_max-img_min)
     return img
 
@@ -112,7 +112,7 @@ def getLargestComponentSlice(f, imgsize):
     """
     pix= []
     wt = []
-    # skip all lines until level 256 solution is reached    
+    # skip all lines until level 256 solution is reached
     for x in f:
         if "level 256" not in x:
             continue
@@ -131,9 +131,9 @@ def getLargestComponentSlice(f, imgsize):
         if "#" not in x:
             continue
         else:
-            
+
             try:
-                # get all the component strings (enclosed within {}) in the current line 
+                # get all the component strings (enclosed within {}) in the current line
                 matches = re.finditer('\{(.*?)\}', x, re.MULTILINE | re.DOTALL)
                 for matchNum,match in enumerate(matches):
                     for groupNum in range(0,len(match.group())):
@@ -143,31 +143,31 @@ def getLargestComponentSlice(f, imgsize):
                         if wt>max_wt:
                             max_wt = wt
                             # get the normalized pixel location from component string
-                            pix = re.search('\((.*?)\)', comp_str).group(1)                            
-                            pix = [float(x) for x in pix.split(",")]                        
+                            pix = re.search('\((.*?)\)', comp_str).group(1)
+                            pix = [float(x) for x in pix.split(",")]
             except AttributeError:
-                print("No matches found")                
+                print("No matches found")
                 sys.exit()
     # convert back pixel to image resolution range which is 256^3
-    slice_num = [ceil(256*x) for x in pix]    
+    slice_num = [ceil(256*x) for x in pix]
     return slice_num
 
 ###
 ### ------------------------------------------------------------------------ ###
 def analyzeRegistration(input_dir, atlas_path, patient_labels):
     """
-    @short: - 
+    @short: -
     """
-    
+
     # default image size
     imgsize = [256, 256, 256]
     # for clipping c0 to compute dice
-    threshold = 0.05 
+    threshold = 0.05
 
     # find out which slice to print
     f = open(os.path.join(input_dir,"components_obs-1.0.txt"),"r")
     slice_num = getLargestComponentSlice(f, imgsize)
-    print(">Printing ", slice_num)  
+    print(">Printing ", slice_num)
     axial_slice = slice_num[-1]
     f.close()
 
@@ -178,11 +178,11 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
     tick_param_kwargs = {"axis":"both", "which":"both", "bottom":False, "left":False, "labelbottom":False, "labelleft":False}
     imshow_kwargs = {"cmap":"gray", "aspect":"equal"}
-    imshow_kwargs_r = {"cmap":"gray_r", "aspect":"equal"}     
-    
+    imshow_kwargs_r = {"cmap":"gray_r", "aspect":"equal"}
+
     fig, ax = plt.subplots(1+2*num_cases, 4, figsize=(4*4,4*(1+2*num_cases)))
     for a,i in zip(ax.flatten(),np.arange(len(ax.flatten()))):
-        a.tick_params(**tick_param_kwargs)        
+        a.tick_params(**tick_param_kwargs)
         a.set_yticklabels([])
         a.set_xticklabels([])
         a.set_frame_on(False)
@@ -194,31 +194,31 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
     # read in atlas t1 and atlas segmentation
     atlas_t1  = nib.load(os.path.join(atlas_path,"jakob_stripped_with_cere_lps_256x256x256.nii.gz")).get_fdata()
-    atlas_seg = nib.load(os.path.join(atlas_path,"jakob_segmented_with_cere_lps_256x256x256.nii.gz")).get_fdata() 
+    atlas_seg = nib.load(os.path.join(atlas_path,"jakob_segmented_with_cere_lps_256x256x256.nii.gz")).get_fdata()
     ax[0,0].imshow(atlas_t1[:,:,axial_slice].T, **imshow_kwargs)
     ax[0,0].set_title('Atlas T1')
     print(">Printing atlas T1")
 
-    acsf   = nib.load(os.path.join(atlas_path,"atlas_csf.nii.gz")).get_fdata() 
-    ave    = nib.load(os.path.join(atlas_path,"atlas_ve.nii.gz")).get_fdata()     
-    agm    = nib.load(os.path.join(atlas_path,"atlas_gm.nii.gz")).get_fdata() 
+    acsf   = nib.load(os.path.join(atlas_path,"atlas_csf.nii.gz")).get_fdata()
+    ave    = nib.load(os.path.join(atlas_path,"atlas_ve.nii.gz")).get_fdata()
+    agm    = nib.load(os.path.join(atlas_path,"atlas_gm.nii.gz")).get_fdata()
     awm    = nib.load(os.path.join(atlas_path,"atlas_wm.nii.gz")).get_fdata()
     C      = np.linalg.norm([np.linalg.norm(acsf), np.linalg.norm(ave), np.linalg.norm(agm), np.linalg.norm(awm)])
     C_ve   = np.linalg.norm(ave)
 
-    # read patient t1    
+    # read patient t1
     patient_t1 = nib.load(os.path.join(reg_case2, 'patient_t1.nii.gz')).get_fdata()
     ax[0,1].imshow(patient_t1[:,:,axial_slice].T, **imshow_kwargs)
     ax[0,1].set_title('Patient T1')
     print(">Printing patient T1")
-    
-    # read patient healthy segmentation (obtained via registration)    
+
+    # read patient healthy segmentation (obtained via registration)
     patient_seg = nib.load(os.path.join(reg_case2, 'patient_seg.nii.gz')).get_fdata()
     clrs = ['black','red', 'green', 'yellow', 'blue', 'cyan', 'orange', 'purple'];
     ax[0,2].imshow(patient_seg[:,:,axial_slice].T, aspect='equal', cmap=colors.ListedColormap(clrs))
     ax[0,2].set_title('Patient labels')
     print(">Printing patient segmentation")
-    
+
     # get initial condition in Patient space
     c0_dir = os.path.join(input_dir, "tumor_inversion/nx256/obs-1.0")
     c0 = rescaleImage(nib.load(os.path.join(c0_dir, "c0Recon_256x256x256_aff2jakob.nii.gz")).get_fdata())
@@ -237,38 +237,38 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
     c0_residual = np.zeros((num_cases+1, num_cases+1))
     c0_residual[0,0] = 0
     c0_dice[0,0] = 1
-    healthy_dice_before = np.zeros((num_cases,4))   
+    healthy_dice_before = np.zeros((num_cases,4))
     healthy_dice_after = np.zeros((num_cases,4))
     res_all = np.zeros((num_cases,2))
-    res_ve = np.zeros_like(res_all)  
-    res_ve[0,:] = 0  
-    
+    res_ve = np.zeros_like(res_all)
+    res_ve[0,:] = 0
+
     nx = c0.shape
     c0_arr = np.zeros((nx[0],nx[1],nx[2],num_cases+1))
     c0_arr[:,:,:,0] = c0
-    
-    reg_cases = sorted(reg_cases, key=lambda x: x.split('_')[0])    
+
+    reg_cases = sorted(reg_cases, key=lambda x: x.split('_')[0])
     for case,case_num,i in zip(reg_cases,np.arange(1,1+2*num_cases,2),np.arange(1,num_cases+1)):
         r0 = 0
-        r1 = 0    
+        r1 = 0
         print(">Processing " + case)
         ax[case_num,0].text(0.5, 0.5, case[0:8], fontsize=25, horizontalalignment='center', verticalalignment='center', transform=ax[case_num,0].transAxes)
-        
+
         reg_case_dir = os.path.join(reg_dir, case)
         for filename in os.listdir(reg_case_dir):
             # get residuals
-            if "t=0" in filename:                
+            if "t=0" in filename:
                 r0 = r0 + nib.load(os.path.join(reg_case_dir,filename)).get_fdata()
-            if "t=1" in filename:                
+            if "t=1" in filename:
                 r1 = r1 + nib.load(os.path.join(reg_case_dir,filename)).get_fdata()
-            
+
         vmin = np.fmin(np.min(r0[:,:,axial_slice]), np.min(r1[:,:,axial_slice]))
         vmax = np.fmax(np.max(r0[:,:,axial_slice]), np.max(r1[:,:,axial_slice]))
-        
+
         print(">Printing total residual before registration")
         ax[case_num,2].imshow(r0[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
         ax[case_num,2].set_ylabel('Residual-t=0')
-        
+
         print(">Printing total residual after registration")
         ax[case_num+1,2].imshow(r1[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
         ax[case_num+1,2].set_ylabel("Residual-t=1")
@@ -279,7 +279,7 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
         jacmax = np.max(jac[:,:,axial_slice])
         ax[case_num,3].imshow(jac[:,:,axial_slice].T, aspect='equal', cmap='jet')
         ax[case_num,3].set_ylabel("Jacobian")
-        
+
         # reset colormaps of all jacobians images
         if i==1:
             jacmin_global = jacmin
@@ -287,74 +287,74 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
         else:
             jacmin_global = np.fmin(jacmin, jacmin_global)
             jacmax_global = np.fmax(jacmax, jacmax_global)
-        
+
         for a in ax[1:-1:2,3].flatten():
             for im in a.get_images():
                 im.set_clim(vmin=jacmin_global, vmax=jacmax_global)
-        
-        print(">Printing c0 in atlas space")        
+
+        print(">Printing c0 in atlas space")
         c0_arr[:,:,:,i] = rescaleImage(nib.load(os.path.join(reg_case_dir,"c0_in_Aspace.nii.gz")).get_fdata())
-        for j in range(i+1):           
+        for j in range(i+1):
             # residual with patient and other methods
             if j==0:
                 c0_residual[j,i] = np.linalg.norm(c0_arr[:,:,:,j]-c0_arr[:,:,:,i])/np.linalg.norm(c0_arr[:,:,:,])
             else:
                 c0_residual[j,i] = np.linalg.norm(c0_arr[:,:,:,j]-c0_arr[:,:,:,i])
             # compute dice with patient
-            c0_dice[j,i] = 1 - distance.dice((c0_arr[:,:,:,j] > threshold).flatten(), (c0_arr[:,:,:,i] > threshold).flatten())            
+            c0_dice[j,i] = 1 - distance.dice((c0_arr[:,:,:,j] > threshold).flatten(), (c0_arr[:,:,:,i] > threshold).flatten())
 
         # plot c0 in atlas space overlaid with c0 in patient space
         ax[case_num+1,3].imshow((c0_arr[x-d:x+d,y-d:y+d,axial_slice,i]>threshold).T, aspect='equal', cmap=colors.ListedColormap(['black','green']))
         ax[case_num+1,3].imshow((c0_arr[x-d:x+d,y-d:y+d,axial_slice,0]>threshold).T, aspect='equal', alpha=0.5, cmap=colors.ListedColormap(['black','red']))
         ax[case_num+1,3].set_ylabel("c0 in Atlas")
-        
+
         # get c0_in_Aspace
-        if "case-2" not in case:                                        
-            # ventricle residuals            
+        if "case-2" not in case:
+            # ventricle residuals
             r0_ve = nib.load(os.path.join(reg_case_dir,"residual-t=0-000.nii.gz")).get_fdata()
             r1_ve = nib.load(os.path.join(reg_case_dir,"residual-t=1-000.nii.gz")).get_fdata()
             vmin = np.fmin(np.min(r0_ve[:,:,axial_slice]), np.min(r1_ve[:,:,axial_slice]))
             vmax = np.fmax(np.max(r0_ve[:,:,axial_slice]), np.max(r1_ve[:,:,axial_slice]))
-            
+
             print(">Printing ventricle residual before registration")
             ax[case_num,1].imshow(r0_ve[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
             ax[case_num,1].set_ylabel('Residual_VE-t=0')
-        
+
             print(">Printing ventricle residual after registration")
             ax[case_num+1,1].imshow(r1_ve[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
             ax[case_num+1,1].set_ylabel('Residual_VE-t=1')
-        
+
 
         # Compute dice of healthy
-        patient_seg_in_Aspace = nib.load(os.path.join(reg_case_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()                
+        patient_seg_in_Aspace = nib.load(os.path.join(reg_case_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()
         healthy_dice_before[i-1,:] = np.asarray(computeDice(patient_seg, atlas_seg, patient_labels))
         healthy_dice_after[i-1,:] = np.asarray(computeDice(patient_seg_in_Aspace, atlas_seg, patient_labels))
 
         # compute relative residuals
         pcsf = nib.load(os.path.join(reg_case_dir,"patient_csf.nii.gz")).get_fdata()
-        pve = nib.load(os.path.join(reg_case_dir,"patient_ve.nii.gz")).get_fdata()        
+        pve = nib.load(os.path.join(reg_case_dir,"patient_ve.nii.gz")).get_fdata()
         pgm = nib.load(os.path.join(reg_case_dir,"patient_gm.nii.gz")).get_fdata()
-        pwm = nib.load(os.path.join(reg_case_dir,"patient_edwm.nii.gz")).get_fdata()        
+        pwm = nib.load(os.path.join(reg_case_dir,"patient_edwm.nii.gz")).get_fdata()
         diff0 = np.linalg.norm([np.linalg.norm(acsf-pcsf), np.linalg.norm(ave-pve), np.linalg.norm(agm-pgm), np.linalg.norm(awm-pwm)])
         diff0_ve = np.linalg.norm(ave-pve)
-                        
+
         pcsfA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_csf_in_Aspace.nii.gz")).get_fdata())
-        pveA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_ve_in_Aspace.nii.gz")).get_fdata())        
+        pveA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_ve_in_Aspace.nii.gz")).get_fdata())
         pgmA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_gm_in_Aspace.nii.gz")).get_fdata())
-        pwmA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_edwm_in_Aspace.nii.gz")).get_fdata())        
+        pwmA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_edwm_in_Aspace.nii.gz")).get_fdata())
         diff1 = np.linalg.norm([np.linalg.norm(acsf-pcsfA), np.linalg.norm(ave-pveA), np.linalg.norm(agm-pgmA), np.linalg.norm(awm-pwmA)])
         diff1_ve = np.linalg.norm(ave-pveA)
         res_all[i-1,0] = diff0/C
         res_all[i-1,1] = diff1/C
         res_ve[i-1,0] = diff0_ve/C_ve
         res_ve[i-1,1] = diff1_ve/C_ve
-        
 
-        
+
+
     print(Fore.BLUE + "\n\nDice(c0)\n", c0_dice)
     print(Fore.RED + "\n\nResidual(c0)\n", c0_residual)
     print(Fore.GREEN + "\n\nHealthy Dice\n", healthy_dice_after)
-    
+
     print(Style.RESET_ALL)
 
     c0_dice = c0_dice + np.triu(c0_dice).T
@@ -362,23 +362,23 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
     c0_residual = c0_residual + np.triu(c0_residual).T
     np.fill_diagonal(c0_residual, 0)
-    
-    columns = ['Patient', 'Method 2', 'Method 3', 'Method 4', 'Method 5', 'Method 6'];        
+
+    columns = ['Patient', 'Method 2', 'Method 3', 'Method 4', 'Method 5', 'Method 6'];
     s = '{0[0]:<15}{0[1]:<15}{0[2]:<15}{0[3]:<15}{0[4]:<15}{0[5]:<15}'.format(columns);
-    
+
     f = open(os.path.join(input_dir,"registration_stats.txt"), "w")
     for i in range(num_cases):
         case_num = i+2
         f.write("Registration Case " + str(case_num) + "\n---------------------------------------------------------------------------------------\n")
         f.write("Healthy dice before (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n".format(healthy_dice_before[i,:]))
         f.write("Healthy dice after  (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n\n".format(healthy_dice_after[i,:]))
-        
+
         f.write("Total residual before = {0:.4f}\n".format(res_all[i,0]))
         f.write("Total residual after  = {0:.4f}\n\n".format(res_all[i,1]))
-        
+
         f.write("Ventricle residual before = {0:.4f}\n".format(res_ve[i,0]))
         f.write("Ventricle residual after  = {0:.4f}\n\n".format(res_ve[i,1]))
-        
+
         f.write("c0_Residual\n")
         f.write(s)
         f.write("\n")
@@ -400,7 +400,7 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
     fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.1);
     fig.savefig(os.path.join(input_dir,"registration_comparison.pdf"), dpi=1200)
 
-    
+
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -974,12 +974,16 @@ def cont(slice, cmap, thresh=0.3, v_max=None, v_min=None, clip01=True):
     # return cmap_, norm
     return slice_normalized, norm
 
+
+def parseTumorLog(xdir, features):
+
+
 ###
 ### ------------------------------------------------------------------------ ###
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Process input images')
     parser.add_argument ('-input_path',           type = str,          help = 'path to the results folder');
-    parser.add_argument ('-atlas_path',           type = str,          help = 'path to atlas folder')    
+    parser.add_argument ('-atlas_path',           type = str,          help = 'path to atlas folder')
     parser.add_argument ('-tu_path',              type = str,          help = 'path to tumor solver results');   # REMOVE
     parser.add_argument ('-rdir',                 type = str,          help = 'path to tumor solver results');
     parser.add_argument ('-tu_dir',               type = str,          help = 'results dir name');
@@ -1017,7 +1021,7 @@ if __name__=='__main__':
         for x in args.patient_labels.split(','):
             patient_labels[int(x.split('=')[0])] = x.split('=')[1];
         patient_label_rev = {v:k for k,v in patient_labels.items()};
-    
+
     if args.analyze_registration:
         if args.patient_labels is None:
             print("Need to provide patient labels, exiting")
@@ -1152,12 +1156,16 @@ if __name__=='__main__':
             ## SOL (LABELED) ##
             w  = "";
             w2 = "";
+            iii = 0
             for i in range(ncomps_data[l]):
+                if i < 3: FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = dist_wcmSOL_cmDATA[l][i];
                 w  += "{0:1.2e}".format(dist_wcmSOL_cmDATA[l][i])
                 w2 += "{0:1.1f}".format((dist_wcmSOL_cmDATA[l][i] * float(l) / (2*math.pi) ));
+                iii += 1;
                 if i < ncomps_data[l] - 1:
                     w  += ', '
                     w2 += ', '
+            if iii < 3: for iiii in range(iii,3): FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = -1;
             concomp_file.write("SOL(L): #comp: %d, distances: [%s] = [%s]px \n" % (ncomps_data[l], w, w2));
             concomp_file.write("        x_cm:  ");
             for i in range(ncomps_data[l]):
@@ -1575,7 +1583,10 @@ if __name__=='__main__':
 
 
                 # visualize evolution of solution over levels
-                p_sum = pvec[l].sum();
+                #p_sum = pvec[l].sum();
+                #p_sorted = pvec[l].copy();
+                #sorted(p_sorted, reverse=True);
+                #FEATURES[l]["dist[max(p_i - cm(TC|_#c)]_(c="+str(i)+")"] = dist_wcmSOL_cmDATA[l][i];
                 mag = 200;
                 sx = template_256.shape[0]/(2*math.pi);
                 sy = template_256.shape[1]/(2*math.pi);
