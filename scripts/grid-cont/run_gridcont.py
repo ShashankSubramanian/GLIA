@@ -102,19 +102,13 @@ def createJobsubFile(cmd, opt, level):
 def gridcont(basedir, args):
 
     # ########### SETTINGS ############
-    patients_per_job   = 2;
+    patients_per_job   = 1;
     levels             = [64,128,256]
     if args.compute_cluster == "stampede2":
       nodes      = [1,1,2]
       procs      = [24,48,96]
     if args.compute_cluster == "frontera":
       nodes      = [1,1,2]
-<<<<<<< HEAD
-=======
-      procs      = [24,48,96]
-    if args.compute_cluster == "hazelhen":
-      nodes      = [1,2,4]
->>>>>>> dev_cuda
       procs      = [24,48,96]
     if args.compute_cluster == "hazelhen":
       nodes            = [1,2,4]

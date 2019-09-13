@@ -142,13 +142,16 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
         ierr = vecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
     }
 
+
 #ifdef CUDA
     logisticReactionCuda (c_t_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
 #else
     if (linearized == 0) {
         for (int i = 0; i < n_misc_->n_local_; i++) {
             factor = std::exp (rho_ptr[i] * dt);
-            alph = c_t_ptr[i] / (1.0 - c_t_ptr[i] + my_eps) ;
+            alph = c_t_ptr[i] / (1.0 - c_t_ptr[i]);
+            //if (std::isinf(alph)) c_t_ptr[i] = 1.0;
+            //else c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
             c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
         }
     } else {
@@ -159,7 +162,6 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
         }
     }
 #endif
-
     ierr = vecRestoreArray (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
     if (linearized != 0) {
