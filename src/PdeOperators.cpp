@@ -562,7 +562,7 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
         if (seg_ptr[i] == 1 || seg_ptr[i] == 2) {
             // 1 is tumor, 2 is wm
             rho_ptr[i] = n_misc_->rho_;
-            k_ptr[i] = n_misc->k_;
+            k_ptr[i] = n_misc_->k_;
         }
     }
 
