@@ -559,7 +559,7 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
     ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (seg_ptr[i] == 1 || seg_ptr[i] == 2) {
+        if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
             // 1 is tumor, 2 is wm
             rho_ptr[i] = n_misc_->rho_;
             k_ptr[i] = n_misc_->k_;
