@@ -502,9 +502,9 @@ int main (int argc, char** argv) {
     }
 
     int fwd_temp;
+    fwd_temp = n_misc->forward_flag_; // keep track of whether solver is in forward or inverse mode
     if (syn_flag == 1) {
         // data is being generated -- time history should not be stored
-        fwd_temp = n_misc->forward_flag_; // keep track of whether solver is in forward or inverse mode
         n_misc->forward_flag_ = 1;
     }
 
