@@ -6,11 +6,6 @@
 #include <cfloat>
 
 using ScalarType = PetscReal;
-#ifdef SINGLE
-    #define my_eps FLT_EPSILON
-#else
-    #define my_eps DBL_EPSILON
-#endif
 
 #ifdef CUDA
     #include "cuda.h"
