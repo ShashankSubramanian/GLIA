@@ -571,8 +571,9 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
     ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     // smooth them now
-    ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, n_misc_, n_misc_->smoothing_factor_);
-    ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, n_misc_->smoothing_factor_);
+    ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+    ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, n_misc_, sigma_smooth);
+    ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
 
     // copy kxx to other directions
     ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
