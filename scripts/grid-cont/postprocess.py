@@ -975,8 +975,37 @@ def cont(slice, cmap, thresh=0.3, v_max=None, v_min=None, clip01=True):
     return slice_normalized, norm
 
 
-def parseTumorLog(xdir, features):
-  pass;
+def parseTumorLog(level_path, level, features):
+  logfile = 'tumor_solver_log_nx' + str(level) + '.txt'
+  if os.path.exists(os.path.join(level_path, logfile)):
+      with open(os.path.join(level_path, logfile), 'r') as f:
+          lines = f.readlines();
+          no = 0;
+          for line in lines:
+              f_empty = False;
+              if "----- np:" in line:
+                  np_ = int(line.split("----- np:")[-1].split("------")[0])
+                  features['np'] = int(np_)
+              if "solve-tumor-inverse-tao" in line:
+                  t_exec_time = float(line.split()[-1])
+              if "### estimated reaction coefficients:" in line:
+                  rho_ = float(lines[no+1].split("r1:")[-1].split(",")[0])
+                  features['rho-inv'] = rho_;                       # rho-inv
+              if "### estimated diffusion coefficients:" in line:
+                  kf_ = float(lines[no+1].split("k1:")[-1].split(",")[0]);
+                  features['k-inv'] = kf_;                            # k-inv
+              if "c reconstructed max and min :" in line:
+                  features['max{c(1)}'] = float(line.split(": ")[-1].split()[0])
+                  features['min{c(1)}'] = float(line.split(": ")[-1].split()[1])
+              if "rel. l2-error at observation points:" in line:
+                  features['l2[Oc(1)-TC]'] = float(line.split(": ")[-1].split()[0])
+              if "l2-error in reconstruction:" in line:
+                  features['l2[c(1)-TC]'] = float(line.split(":")[-1].split()[0])
+              no += 1;
+          if len(lines) == 0:
+              print(bcolors.FAIL + " Error: tumor_solver_log.txt is empty for " + level_path + bcolors.ENDC);
+  else:
+      print(bcolors.FAIL + "  Error: tumor_solver_log.txt does not exist for " + level_path + bcolors.ENDC);
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -1165,8 +1194,8 @@ if __name__=='__main__':
                 if i < ncomps_data[l] - 1:
                     w  += ', '
                     w2 += ', '
-            if iii < 3: 
-                for iiii in range(iii,3): 
+            if iii < 3:
+                for iiii in range(iii,3):
                     FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = -1;
             concomp_file.write("SOL(L): #comp: %d, distances: [%s] = [%s]px \n" % (ncomps_data[l], w, w2));
             concomp_file.write("        x_cm:  ");
@@ -1737,9 +1766,13 @@ if __name__=='__main__':
                     break;
             FEATURES[l]['n_comps'] = k;
 
+            # features from tumor log file
+            print("\n (5) extracting features from tumor solver log file\n");
+            parseTumorLog(res_dir, l, FEATURES):
+
             # compute l2 error of c(0) in between levels || c(0)_256 - Ic(0)_64 || / ||c(0)_256 ||
             if 64 in levels and 128 in levels:
-                print("\n (5) computing c(0) difference across levels (c(0) rescaled to 1)\n");
+                print("\n (6) computing c(0) difference across levels (c(0) rescaled to 1)\n");
                 c0_256 = fio.readNetCDF(os.path.join(path_256,"c0Recon.nc"));
                 c0_256_norm = np.linalg.norm(c0_256.flatten(), 2);
                 for ll in [64,128]:
@@ -1791,7 +1824,7 @@ if __name__=='__main__':
                         #         fig_c0.clf()
 
 
-            print("\n (6) writing parameter file",file_params)
+            print("\n (7) writing parameter file",file_params)
             text = "## level " + str(l) + " ##\n";
             if os.path.exists(os.path.join(res_path,'info.dat')):
                 with open(os.path.join(res_path,'info.dat'), 'r') as f:
@@ -1860,6 +1893,7 @@ if __name__=='__main__':
         infofile.close();
 
         # write featuee dict to file
+        print("\n (8) writing features to .csv")
         (pd.DataFrame.from_dict(data=FEATURES[64], orient='index').to_csv(os.path.join(args.input_path, 'features_64.csv'), header=False, sep=';', float_format='%.16g'));
         (pd.DataFrame.from_dict(data=FEATURES[128], orient='index').to_csv(os.path.join(args.input_path, 'features_128.csv'), header=False, sep=';', float_format='%.16g'));
         (pd.DataFrame.from_dict(data=FEATURES[256], orient='index').to_csv(os.path.join(args.input_path, 'features_256.csv'), header=False, sep=';', float_format='%.16g'));
