@@ -1582,11 +1582,17 @@ if __name__=='__main__':
 
 
 
+                # compute distance between two largest p_i in solution
+                p_sum = pvec[l].sum();
+                pvec_dict = {}
+                coord_dict  = {}
+                for kk in range(len(pvec[l])):
+                    pvec_dict[kk] = pvec[l][kk]
+                    coord_dict = np.array([phi[l][kk][0], phi[l][kk][1], phi[l][kk][2]]);
+                p_sorted = sorted(pvec_dict.items(), key=lambda x: x[1], reverse=True);
+                FEATURES[l]["dist[max1(p) - max2(p)]"] = dist(coord_dict[p_sorted[0][0]], coord_dict[p_sorted[1][0]]);
+
                 # visualize evolution of solution over levels
-                #p_sum = pvec[l].sum();
-                #p_sorted = pvec[l].copy();
-                #sorted(p_sorted, reverse=True);
-                #FEATURES[l]["dist[max(p_i - cm(TC|_#c)]_(c="+str(i)+")"] = dist_wcmSOL_cmDATA[l][i];
                 mag = 200;
                 sx = template_256.shape[0]/(2*math.pi);
                 sy = template_256.shape[1]/(2*math.pi);
