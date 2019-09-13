@@ -105,7 +105,8 @@ PetscErrorCode TumorSolverInterface::initializeFFT (
 // ### _____________________________________________________________________ ___
 // ### ///////////////// initialize //////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::initialize (
-    DataDistributionParameters& ivars)
+    DataDistributionParameters& ivars,
+    std::shared_ptr<TumorSettings> tumor_params = {})
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -117,7 +118,10 @@ PetscErrorCode TumorSolverInterface::initialize (
     n_misc_ =  std::make_shared<NMisc> (
         ivars.n, ivars.isize, ivars.osize, ivars.istart, ivars.ostart,
         ivars.plan, ivars.comm, ivars.cdims, ivars.testcase);
-
+    // set tumor params from outside
+    if (tumor_params != nullptr) {
+        ierr = _setParams(tumor_params); CHKERRQ(ierr);
+    }
     // initialize tumor, initialize dummy phi, initialize mat probs
     initialize(n_misc_, spec_ops_, nullptr, nullptr);
     PetscFunctionReturn(ierr);
@@ -179,21 +183,22 @@ PetscErrorCode TumorSolverInterface::initialize (
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setParams ///////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::setParams (
-    Vec p,
-    std::shared_ptr<TumorSettings> tumor_params = {})
+PetscErrorCode TumorSolverInterface::_setParams (
+    std::shared_ptr<TumorSettings> tumor_params)
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
-    bool npchanged = true, modelchanged = false, ntchanged = true;
+    TU_assert (initialized_,            "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
+    TU_assert (tumor_params != nullptr, "TumorSolverInterface::setParams(): Tumor Parameters must not be NULL.")
+    std::stringstream ss;
+    bool np_changed = false, model_changed = false, nt_changed = false, nx_changed = false;
 
-    // ++ re-initialize nmisc ==
     if(tumor_params != nullptr) {
-        // if one of these parameters has changed, we need to re-allocate maemory
-        npchanged                       = (n_misc_->np_+n_misc_->nk_) != (tumor_params->np+tumor_params->nk);
-        modelchanged                    = n_misc_->model_ != tumor_params->tumor_model;
-        ntchanged                       = n_misc_->nt_ != tumor_params->time_steps;
+        ierr = tuMSGstd(" Overwriting Tumor Parameters."); CHKERRQ(ierr);
+        np_changed                      = (n_misc_->np_+n_misc_->nk_) != (tumor_params->np+tumor_params->nk);
+        nt_changed                      = n_misc_->nt_ != tumor_params->time_steps;
+        model_changed                   = n_misc_->model_ != tumor_params->tumor_model;
+        // nx_changed                      = n_misc_->n_ != tumor_params->n_; // TODO: add n_ to TumorSettings
         n_misc_->model_                 = tumor_params->tumor_model;
         n_misc_->dt_                    = tumor_params->time_step_size;
         n_misc_->nt_                    = tumor_params->time_steps;
@@ -225,12 +230,42 @@ PetscErrorCode TumorSolverInterface::setParams (
         n_misc_->multilevel_            = tumor_params->multilevel;
         n_misc_->prune_components_      = tumor_params->prune_components;
         n_misc_->sparsity_level_        = tumor_params->sparsity_level;
+        ss << " nx_changed: "<<nx_changed<<", np_changed: "<<np_changed<<", nt_changed: "<<nt_changed<<", model_changed: "<<model_changed;
+        ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    } else {
+        {ierr = tuMSGwarn("Error: (setParams) Tumor Parameter must not be NULL. Gracefully exiting .."); CHKERRQ(ierr); PetscFunctionReturn(1); }
     }
+    PetscFunctionReturn(ierr);
+}
+
+// ### _____________________________________________________________________ ___
+// ### ///////////////// setParams ///////////////////////////////////////// ###
+PetscErrorCode TumorSolverInterface::setParams (
+    Vec p,
+    std::shared_ptr<TumorSettings> tumor_params = {})
+{
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    TU_assert (initialized_, "TumorSolverInterface::setParams(): TumorSolverInterface needs to be initialized.")
+    bool np_changed = true, model_changed = false, nt_changed = true; // nt_changed = true for synthetic tests using app/inverse.cpp
+
+    // ++ re-initialize nmisc ==
+    if(tumor_params != nullptr) {
+        // if one of these parameters has changed, we need to re-allocate maemory
+        np_changed     = (n_misc_->np_+n_misc_->nk_) != (tumor_params->np+tumor_params->nk);
+        model_changed  = n_misc_->model_ != tumor_params->tumor_model;
+        nt_changed     = n_misc_->nt_ != tumor_params->time_steps;
+        // updating NMisc
+        ierr = _setParams(params); CHKERRQ(ierr);
+    }
+    if (np_changed)    {ierr = tuMSGstd(" number of basis functions changed, resetting Phi and DerivativeOperators."); CHKERRQ(ierr);}
+    if (nt_changed)    {ierr = tuMSGstd(" number of time steps changed, resetting PdeOperators (time history)."); CHKERRQ(ierr);}
+    if (model_changed) {ierr = tuMSGstd(" tumor model changed, resetting PdeOperators and DerivativeOperators."); CHKERRQ(ierr);}
     // ++ re-initialize Tumor ++
-    ierr = tumor_->setParams (p, n_misc_, npchanged);                           CHKERRQ (ierr);
+    ierr = tumor_->setParams (p, n_misc_, np_changed);                           CHKERRQ (ierr);
     // ++ re-initialize pdeoperators and derivativeoperators ++
     // invcludes re-allocating time history for adjoint,
-    if(modelchanged) {
+    if(model_changed) {
         switch (n_misc_->model_) {
             case 1: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
@@ -248,11 +283,11 @@ PetscErrorCode TumorSolverInterface::setParams (
         }
     } else {
         // re-allocate vectors, same model
-        if (npchanged) derivative_operators_->reset(p, pde_operators_, n_misc_, tumor_);
-        if (ntchanged) pde_operators_->reset(n_misc_, tumor_);
+        if (np_changed) derivative_operators_->reset(p, pde_operators_, n_misc_, tumor_);
+        if (nt_changed) pde_operators_->reset(n_misc_, tumor_);
     }
     // ++ re-initialize InvSolver ++, i.e. H matrix, p_rec vectores etc..
-    inv_solver_->setParams(derivative_operators_, pde_operators_, n_misc_, tumor_, npchanged);  CHKERRQ (ierr);
+    inv_solver_->setParams(derivative_operators_, pde_operators_, n_misc_, tumor_, np_changed);  CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);
 }

@@ -103,7 +103,8 @@ class TumorSolverInterface {
     *  @param[in] DataDistributionParameters ivars - struct with all relevant parameters defining data distribution and communication
     */
     PetscErrorCode initialize (
-        DataDistributionParameters& ivars);
+        DataDistributionParameters& ivars,
+        std::shared_ptr<TumorSettings> tumor_params);
 
     /** @brief: Initializes the TumorSolverInterface. Creates nmisc, phi, pde_operators, mat_prob, tumor.
     *
@@ -124,6 +125,8 @@ class TumorSolverInterface {
     */
     PetscErrorCode setParams (
         Vec p,
+        std::shared_ptr<TumorSettings> tumor_params);
+    PetscErrorCode _setParams (
         std::shared_ptr<TumorSettings> tumor_params);
 
     /** @brief: Solves the forward tumor problem, given initial concentration
