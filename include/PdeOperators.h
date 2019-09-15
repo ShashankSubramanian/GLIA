@@ -123,6 +123,7 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 		PetscErrorCode computeTransition (Vec alpha, Vec beta);
 		PetscErrorCode computeThesholder (Vec h);
 		PetscErrorCode computeSources (Vec p, Vec i, Vec n, Vec O, ScalarType dt);
+		PetscErrorCode updateReacAndDiffCoefficients (Vec c, std::shared_ptr<Tumor> tumor);
 		virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
 
 		virtual ~PdeOperatorsMultiSpecies () {
