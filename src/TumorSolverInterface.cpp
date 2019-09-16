@@ -656,13 +656,13 @@ PetscErrorCode TumorSolverInterface::setGaussians (Vec data) {
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setGaussians ////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::setGaussians (double* cm, double sigma, double spacing, int np) {
+PetscErrorCode TumorSolverInterface::setGaussians (ScalarType* cm, ScalarType sigma, ScalarType spacing, int np) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
     // timing
     Event e("setGaussians()");
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
-    std::array<double, 3> cm_ = {{cm[0], cm[1], cm[2]}};
+    std::array<ScalarType, 3> cm_ = {{cm[0], cm[1], cm[2]}};
     n_misc_->user_cm_             = cm_;
     n_misc_->phi_spacing_factor_  = spacing;
     n_misc_->phi_sigma_           = sigma;
@@ -676,7 +676,7 @@ PetscErrorCode TumorSolverInterface::setGaussians (double* cm, double sigma, dou
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setGaussians ////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np) {
+PetscErrorCode TumorSolverInterface::setGaussians (std::array<ScalarType, 3> cm, ScalarType sigma, ScalarType spacing, int np) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
     // timing
@@ -735,7 +735,7 @@ PetscErrorCode TumorSolverInterface::setInitialGuess(Vec p) {
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setInitialGuess /////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::setInitialGuess (double d) {
+PetscErrorCode TumorSolverInterface::setInitialGuess (ScalarType d) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   ierr = VecSet (tumor_->p_, d);                                   CHKERRQ(ierr);

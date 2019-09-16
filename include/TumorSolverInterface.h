@@ -212,7 +212,7 @@ class TumorSolverInterface {
     std::shared_ptr<OptimizerSettings> getOptSettings() {return inv_solver_->optsettings_;}
     std::shared_ptr<InvSolver> getInvSolver() {return inv_solver_;}
     std::shared_ptr<PdeOperators> getPdeOperators() {return pde_operators_;}
-    std::vector<double> getSolverOutParams()  {return out_params_ = inv_solver_->getInvOutParams (); }
+    std::vector<ScalarType> getSolverOutParams()  {return out_params_ = inv_solver_->getInvOutParams (); }
 
     // ---------- setter functions --------------
     PetscErrorCode setOptimizerFeedback (std::shared_ptr<OptimizerFeedback> optfeed);
@@ -225,8 +225,8 @@ class TumorSolverInterface {
     /// @brief: sets Gaussians adaptively based on data
     PetscErrorCode setGaussians (Vec data);
     /// @brief: sets Gaussians as bbox around center of mass
-    PetscErrorCode setGaussians (double* cm, double sigma, double spacing, int np);
-    PetscErrorCode setGaussians (std::array<double, 3> cm, double sigma, double spacing, int np);
+    PetscErrorCode setGaussians (ScalarType* cm, ScalarType sigma, ScalarType spacing, int np);
+    PetscErrorCode setGaussians (std::array<ScalarType, 3> cm, ScalarType sigma, ScalarType spacing, int np);
     PetscErrorCode setTumorRegularizationNorm (int type);
     PetscErrorCode setTumorSolverType (int type);
 
@@ -243,7 +243,7 @@ class TumorSolverInterface {
     std::shared_ptr<DerivativeOperators> derivative_operators_;
     std::shared_ptr<InvSolver> inv_solver_;
 
-    std::vector<double> out_params_;
+    std::vector<ScalarType> out_params_;
 };
 
 //} // namespace pglistr
