@@ -62,6 +62,7 @@ class Tumor {
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val);
 		PetscErrorCode setTrueP (Vec p);
 		PetscErrorCode computeSegmentation ();
+		PetscErrorCode computeSpeciesNorms ();
 
 		// mass effect functions
 		PetscErrorCode computeForce (Vec c);

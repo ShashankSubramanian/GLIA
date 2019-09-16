@@ -272,6 +272,31 @@ PetscErrorCode Tumor::computeSegmentation () {
     PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode Tumor::computeSpeciesNorms () {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    ScalarType nrm;
+    std::stringstream s;
+
+    if (n_misc_->model_ == 5) {
+        ierr = VecNorm (species_["proliferative"], NORM_2, &nrm);              CHKERRQ (ierr);
+        s << "Proliferative cell concentration norm = " << nrm;
+        ierr = tuMSGstd (s.str());                                             CHKERRQ(ierr);
+        s.str (""); s.clear ();
+        ierr = VecNorm (species_["infiltrative"], NORM_2, &nrm);              CHKERRQ (ierr);
+        s << "Infiltrative cell concentration norm = " << nrm;
+        ierr = tuMSGstd (s.str());                                             CHKERRQ(ierr);
+        s.str (""); s.clear ();
+        ierr = VecNorm (species_["necrotic"], NORM_2, &nrm);              CHKERRQ (ierr);
+        s << "Necrotic cell concentration norm = " << nrm;
+        ierr = tuMSGstd (s.str());                                             CHKERRQ(ierr);
+        s.str (""); s.clear ();
+    }
+
+    PetscFunctionReturn (ierr);
+}
+
 
 Tumor::~Tumor () {
     PetscErrorCode ierr;
