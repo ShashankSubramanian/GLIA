@@ -954,6 +954,8 @@ def connectedComponentsData(dpath, data_file=None, patient_labels=None):
         data = pref_tc > 1E-4;
     print(".. reading target data ", os.path.join(dpath, data_file), " with dimension", dims)
 
+    #if "nii.gz" in data_file:
+    #    fio.writeNII(data.astype(float), os.path.join(dpath, "../concomp_data_aspace.nii.gz"), affine);
     structure = np.ones((3, 3, 3), dtype=np.int);
     comps       = {}
     count       = {}
@@ -995,6 +997,8 @@ def connectedComponentsData(dpath, data_file=None, patient_labels=None):
         temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
         labeled_sorted += temp[i];
 
+    #if "nii.gz" in data_file:
+    #    fio.writeNII(labeled_sorted.astype(float), os.path.join(dpath, "../labeled_aspace.nii.gz"), affine);
     # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
     return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
 
@@ -1826,10 +1830,11 @@ if __name__=='__main__':
 
                 # connected copmponent analysis of patient TC in ATLAS space
                 labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz", patient_label_rev);
+                #fio.createNetCDF(os.path.join(out_path, 'data_comps_aspace_nx'+str(level)+'.nc') , np.shape(labeled_aspace), np.swapaxes(labeled_aspace,0,2));
 
-                print("ncomps(PSPACE):",ncomps_data[l], "\nncomps(ASPACE)", ncomps_data_aspace);
-                print("rel. mass(PSPACE):",relmass[l], "\nrelmass(ASPACE)", relmass_aspace);
-                print("xcm(PSPACE):",xcm_data[l], "\nxcm(ASPACE)", xcm_data_aspace);
+                print("ncomps(PSPACE):",ncomps_data[l], ", ncomps(ASPACE)", ncomps_data_aspace);
+                print("rel. mass(PSPACE):",relmass[l], ", relmass(ASPACE)", relmass_aspace);
+                print("x_cm(PSPACE):",xcm_data[l], "\nx_cm(ASPACE)", xcm_data_aspace);
                 # component mask of connected component analysis of patient TC in ATLAS space
                 component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
                 computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
