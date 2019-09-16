@@ -68,9 +68,9 @@ def computeDice(patient_img, atlas_img, patient_labels):
     acsf = atlas_img == patient_labels['csf'];
     avt = atlas_img == patient_labels['vt'];
     agm  = atlas_img == patient_labels['gm'];
-    awm  = atlas_img == patient_labels['wm'];    
+    awm  = atlas_img == patient_labels['wm'];
     # bool map patient wm, gm, csf
-    pcsf = patient_img == patient_labels['csf'];    
+    pcsf = patient_img == patient_labels['csf'];
     pvt = patient_img == patient_labels['vt'];
     pgm  = patient_img == patient_labels['gm'];
     pwm  = patient_img == patient_labels['wm'];
@@ -97,7 +97,7 @@ def rescaleImage(img):
     img_min = np.amin(img)
     img_max = np.amax(img)
     if np.any(img<0):
-        img_min = 0    
+        img_min = 0
     img = (img - img_min)/(img_max-img_min)
     return img
 
@@ -112,7 +112,7 @@ def getLargestComponentSlice(f, imgsize):
     """
     pix= []
     wt = []
-    # skip all lines until level 256 solution is reached    
+    # skip all lines until level 256 solution is reached
     for x in f:
         if "level 256" not in x:
             continue
@@ -131,9 +131,9 @@ def getLargestComponentSlice(f, imgsize):
         if "#" not in x:
             continue
         else:
-            
+
             try:
-                # get all the component strings (enclosed within {}) in the current line 
+                # get all the component strings (enclosed within {}) in the current line
                 matches = re.finditer('\{(.*?)\}', x, re.MULTILINE | re.DOTALL)
                 for matchNum,match in enumerate(matches):
                     for groupNum in range(0,len(match.group())):
@@ -143,31 +143,31 @@ def getLargestComponentSlice(f, imgsize):
                         if wt>max_wt:
                             max_wt = wt
                             # get the normalized pixel location from component string
-                            pix = re.search('\((.*?)\)', comp_str).group(1)                            
-                            pix = [float(x) for x in pix.split(",")]                        
+                            pix = re.search('\((.*?)\)', comp_str).group(1)
+                            pix = [float(x) for x in pix.split(",")]
             except AttributeError:
-                print("No matches found")                
+                print("No matches found")
                 sys.exit()
     # convert back pixel to image resolution range which is 256^3
-    slice_num = [ceil(256*x) for x in pix]    
+    slice_num = [ceil(256*x) for x in pix]
     return slice_num
 
 ###
 ### ------------------------------------------------------------------------ ###
 def analyzeRegistration(input_dir, atlas_path, patient_labels):
     """
-    @short: - 
+    @short: -
     """
-    
+
     # default image size
     imgsize = [256, 256, 256]
     # for clipping c0 to compute dice
-    threshold = 0.05 
+    threshold = 0.05
 
     # find out which slice to print
     f = open(os.path.join(input_dir,"components_obs-1.0.txt"),"r")
     slice_num = getLargestComponentSlice(f, imgsize)
-    print(">Printing ", slice_num)  
+    print(">Printing ", slice_num)
     axial_slice = slice_num[-1]
     f.close()
 
@@ -178,11 +178,11 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
     tick_param_kwargs = {"axis":"both", "which":"both", "bottom":False, "left":False, "labelbottom":False, "labelleft":False}
     imshow_kwargs = {"cmap":"gray", "aspect":"equal"}
-    imshow_kwargs_r = {"cmap":"gray_r", "aspect":"equal"}     
-    
+    imshow_kwargs_r = {"cmap":"gray_r", "aspect":"equal"}
+
     fig, ax = plt.subplots(1+2*num_cases, 4, figsize=(4*4,4*(1+2*num_cases)))
     for a,i in zip(ax.flatten(),np.arange(len(ax.flatten()))):
-        a.tick_params(**tick_param_kwargs)        
+        a.tick_params(**tick_param_kwargs)
         a.set_yticklabels([])
         a.set_xticklabels([])
         a.set_frame_on(False)
@@ -194,31 +194,31 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
     # read in atlas t1 and atlas segmentation
     atlas_t1  = nib.load(os.path.join(atlas_path,"jakob_stripped_with_cere_lps_256x256x256.nii.gz")).get_fdata()
-    atlas_seg = nib.load(os.path.join(atlas_path,"jakob_segmented_with_cere_lps_256x256x256.nii.gz")).get_fdata() 
+    atlas_seg = nib.load(os.path.join(atlas_path,"jakob_segmented_with_cere_lps_256x256x256.nii.gz")).get_fdata()
     ax[0,0].imshow(atlas_t1[:,:,axial_slice].T, **imshow_kwargs)
     ax[0,0].set_title('Atlas T1')
     print(">Printing atlas T1")
 
-    acsf   = nib.load(os.path.join(atlas_path,"atlas_csf.nii.gz")).get_fdata() 
-    ave    = nib.load(os.path.join(atlas_path,"atlas_ve.nii.gz")).get_fdata()     
-    agm    = nib.load(os.path.join(atlas_path,"atlas_gm.nii.gz")).get_fdata() 
+    acsf   = nib.load(os.path.join(atlas_path,"atlas_csf.nii.gz")).get_fdata()
+    ave    = nib.load(os.path.join(atlas_path,"atlas_ve.nii.gz")).get_fdata()
+    agm    = nib.load(os.path.join(atlas_path,"atlas_gm.nii.gz")).get_fdata()
     awm    = nib.load(os.path.join(atlas_path,"atlas_wm.nii.gz")).get_fdata()
     C      = np.linalg.norm([np.linalg.norm(acsf), np.linalg.norm(ave), np.linalg.norm(agm), np.linalg.norm(awm)])
     C_ve   = np.linalg.norm(ave)
 
-    # read patient t1    
+    # read patient t1
     patient_t1 = nib.load(os.path.join(reg_case2, 'patient_t1.nii.gz')).get_fdata()
     ax[0,1].imshow(patient_t1[:,:,axial_slice].T, **imshow_kwargs)
     ax[0,1].set_title('Patient T1')
     print(">Printing patient T1")
-    
-    # read patient healthy segmentation (obtained via registration)    
+
+    # read patient healthy segmentation (obtained via registration)
     patient_seg = nib.load(os.path.join(reg_case2, 'patient_seg.nii.gz')).get_fdata()
     clrs = ['black','red', 'green', 'yellow', 'blue', 'cyan', 'orange', 'purple'];
     ax[0,2].imshow(patient_seg[:,:,axial_slice].T, aspect='equal', cmap=colors.ListedColormap(clrs))
     ax[0,2].set_title('Patient labels')
     print(">Printing patient segmentation")
-    
+
     # get initial condition in Patient space
     c0_dir = os.path.join(input_dir, "tumor_inversion/nx256/obs-1.0")
     c0 = rescaleImage(nib.load(os.path.join(c0_dir, "c0Recon_256x256x256_aff2jakob.nii.gz")).get_fdata())
@@ -237,38 +237,38 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
     c0_residual = np.zeros((num_cases+1, num_cases+1))
     c0_residual[0,0] = 0
     c0_dice[0,0] = 1
-    healthy_dice_before = np.zeros((num_cases,4))   
+    healthy_dice_before = np.zeros((num_cases,4))
     healthy_dice_after = np.zeros((num_cases,4))
     res_all = np.zeros((num_cases,2))
-    res_ve = np.zeros_like(res_all)  
-    res_ve[0,:] = 0  
-    
+    res_ve = np.zeros_like(res_all)
+    res_ve[0,:] = 0
+
     nx = c0.shape
     c0_arr = np.zeros((nx[0],nx[1],nx[2],num_cases+1))
     c0_arr[:,:,:,0] = c0
-    
-    reg_cases = sorted(reg_cases, key=lambda x: x.split('_')[0])    
+
+    reg_cases = sorted(reg_cases, key=lambda x: x.split('_')[0])
     for case,case_num,i in zip(reg_cases,np.arange(1,1+2*num_cases,2),np.arange(1,num_cases+1)):
         r0 = 0
-        r1 = 0    
+        r1 = 0
         print(">Processing " + case)
         ax[case_num,0].text(0.5, 0.5, case[0:8], fontsize=25, horizontalalignment='center', verticalalignment='center', transform=ax[case_num,0].transAxes)
-        
+
         reg_case_dir = os.path.join(reg_dir, case)
         for filename in os.listdir(reg_case_dir):
             # get residuals
-            if "t=0" in filename:                
+            if "t=0" in filename:
                 r0 = r0 + nib.load(os.path.join(reg_case_dir,filename)).get_fdata()
-            if "t=1" in filename:                
+            if "t=1" in filename:
                 r1 = r1 + nib.load(os.path.join(reg_case_dir,filename)).get_fdata()
-            
+
         vmin = np.fmin(np.min(r0[:,:,axial_slice]), np.min(r1[:,:,axial_slice]))
         vmax = np.fmax(np.max(r0[:,:,axial_slice]), np.max(r1[:,:,axial_slice]))
-        
+
         print(">Printing total residual before registration")
         ax[case_num,2].imshow(r0[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
         ax[case_num,2].set_ylabel('Residual-t=0')
-        
+
         print(">Printing total residual after registration")
         ax[case_num+1,2].imshow(r1[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
         ax[case_num+1,2].set_ylabel("Residual-t=1")
@@ -279,7 +279,7 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
         jacmax = np.max(jac[:,:,axial_slice])
         ax[case_num,3].imshow(jac[:,:,axial_slice].T, aspect='equal', cmap='jet')
         ax[case_num,3].set_ylabel("Jacobian")
-        
+
         # reset colormaps of all jacobians images
         if i==1:
             jacmin_global = jacmin
@@ -287,74 +287,74 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
         else:
             jacmin_global = np.fmin(jacmin, jacmin_global)
             jacmax_global = np.fmax(jacmax, jacmax_global)
-        
+
         for a in ax[1:-1:2,3].flatten():
             for im in a.get_images():
                 im.set_clim(vmin=jacmin_global, vmax=jacmax_global)
-        
-        print(">Printing c0 in atlas space")        
+
+        print(">Printing c0 in atlas space")
         c0_arr[:,:,:,i] = rescaleImage(nib.load(os.path.join(reg_case_dir,"c0_in_Aspace.nii.gz")).get_fdata())
-        for j in range(i+1):           
+        for j in range(i+1):
             # residual with patient and other methods
             if j==0:
                 c0_residual[j,i] = np.linalg.norm(c0_arr[:,:,:,j]-c0_arr[:,:,:,i])/np.linalg.norm(c0_arr[:,:,:,])
             else:
                 c0_residual[j,i] = np.linalg.norm(c0_arr[:,:,:,j]-c0_arr[:,:,:,i])
             # compute dice with patient
-            c0_dice[j,i] = 1 - distance.dice((c0_arr[:,:,:,j] > threshold).flatten(), (c0_arr[:,:,:,i] > threshold).flatten())            
+            c0_dice[j,i] = 1 - distance.dice((c0_arr[:,:,:,j] > threshold).flatten(), (c0_arr[:,:,:,i] > threshold).flatten())
 
         # plot c0 in atlas space overlaid with c0 in patient space
         ax[case_num+1,3].imshow((c0_arr[x-d:x+d,y-d:y+d,axial_slice,i]>threshold).T, aspect='equal', cmap=colors.ListedColormap(['black','green']))
         ax[case_num+1,3].imshow((c0_arr[x-d:x+d,y-d:y+d,axial_slice,0]>threshold).T, aspect='equal', alpha=0.5, cmap=colors.ListedColormap(['black','red']))
         ax[case_num+1,3].set_ylabel("c0 in Atlas")
-        
+
         # get c0_in_Aspace
-        if "case-2" not in case:                                        
-            # ventricle residuals            
+        if "case-2" not in case:
+            # ventricle residuals
             r0_ve = nib.load(os.path.join(reg_case_dir,"residual-t=0-000.nii.gz")).get_fdata()
             r1_ve = nib.load(os.path.join(reg_case_dir,"residual-t=1-000.nii.gz")).get_fdata()
             vmin = np.fmin(np.min(r0_ve[:,:,axial_slice]), np.min(r1_ve[:,:,axial_slice]))
             vmax = np.fmax(np.max(r0_ve[:,:,axial_slice]), np.max(r1_ve[:,:,axial_slice]))
-            
+
             print(">Printing ventricle residual before registration")
             ax[case_num,1].imshow(r0_ve[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
             ax[case_num,1].set_ylabel('Residual_VE-t=0')
-        
+
             print(">Printing ventricle residual after registration")
             ax[case_num+1,1].imshow(r1_ve[:,:,axial_slice].T, vmin=vmin, vmax=vmax, **imshow_kwargs_r)
             ax[case_num+1,1].set_ylabel('Residual_VE-t=1')
-        
+
 
         # Compute dice of healthy
-        patient_seg_in_Aspace = nib.load(os.path.join(reg_case_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()                
+        patient_seg_in_Aspace = nib.load(os.path.join(reg_case_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()
         healthy_dice_before[i-1,:] = np.asarray(computeDice(patient_seg, atlas_seg, patient_labels))
         healthy_dice_after[i-1,:] = np.asarray(computeDice(patient_seg_in_Aspace, atlas_seg, patient_labels))
 
         # compute relative residuals
         pcsf = nib.load(os.path.join(reg_case_dir,"patient_csf.nii.gz")).get_fdata()
-        pve = nib.load(os.path.join(reg_case_dir,"patient_ve.nii.gz")).get_fdata()        
+        pve = nib.load(os.path.join(reg_case_dir,"patient_ve.nii.gz")).get_fdata()
         pgm = nib.load(os.path.join(reg_case_dir,"patient_gm.nii.gz")).get_fdata()
-        pwm = nib.load(os.path.join(reg_case_dir,"patient_edwm.nii.gz")).get_fdata()        
+        pwm = nib.load(os.path.join(reg_case_dir,"patient_edwm.nii.gz")).get_fdata()
         diff0 = np.linalg.norm([np.linalg.norm(acsf-pcsf), np.linalg.norm(ave-pve), np.linalg.norm(agm-pgm), np.linalg.norm(awm-pwm)])
         diff0_ve = np.linalg.norm(ave-pve)
-                        
+
         pcsfA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_csf_in_Aspace.nii.gz")).get_fdata())
-        pveA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_ve_in_Aspace.nii.gz")).get_fdata())        
+        pveA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_ve_in_Aspace.nii.gz")).get_fdata())
         pgmA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_gm_in_Aspace.nii.gz")).get_fdata())
-        pwmA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_edwm_in_Aspace.nii.gz")).get_fdata())        
+        pwmA = rescaleImage(nib.load(os.path.join(reg_case_dir,"patient_edwm_in_Aspace.nii.gz")).get_fdata())
         diff1 = np.linalg.norm([np.linalg.norm(acsf-pcsfA), np.linalg.norm(ave-pveA), np.linalg.norm(agm-pgmA), np.linalg.norm(awm-pwmA)])
         diff1_ve = np.linalg.norm(ave-pveA)
         res_all[i-1,0] = diff0/C
         res_all[i-1,1] = diff1/C
         res_ve[i-1,0] = diff0_ve/C_ve
         res_ve[i-1,1] = diff1_ve/C_ve
-        
 
-        
+
+
     print(Fore.BLUE + "\n\nDice(c0)\n", c0_dice)
     print(Fore.RED + "\n\nResidual(c0)\n", c0_residual)
     print(Fore.GREEN + "\n\nHealthy Dice\n", healthy_dice_after)
-    
+
     print(Style.RESET_ALL)
 
     c0_dice = c0_dice + np.triu(c0_dice).T
@@ -362,23 +362,23 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
     c0_residual = c0_residual + np.triu(c0_residual).T
     np.fill_diagonal(c0_residual, 0)
-    
-    columns = ['Patient', 'Method 2', 'Method 3', 'Method 4', 'Method 5', 'Method 6'];        
+
+    columns = ['Patient', 'Method 2', 'Method 3', 'Method 4', 'Method 5', 'Method 6'];
     s = '{0[0]:<15}{0[1]:<15}{0[2]:<15}{0[3]:<15}{0[4]:<15}{0[5]:<15}'.format(columns);
-    
+
     f = open(os.path.join(input_dir,"registration_stats.txt"), "w")
     for i in range(num_cases):
         case_num = i+2
         f.write("Registration Case " + str(case_num) + "\n---------------------------------------------------------------------------------------\n")
         f.write("Healthy dice before (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n".format(healthy_dice_before[i,:]))
         f.write("Healthy dice after  (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n\n".format(healthy_dice_after[i,:]))
-        
+
         f.write("Total residual before = {0:.4f}\n".format(res_all[i,0]))
         f.write("Total residual after  = {0:.4f}\n\n".format(res_all[i,1]))
-        
+
         f.write("Ventricle residual before = {0:.4f}\n".format(res_ve[i,0]))
         f.write("Ventricle residual after  = {0:.4f}\n\n".format(res_ve[i,1]))
-        
+
         f.write("c0_Residual\n")
         f.write(s)
         f.write("\n")
@@ -400,7 +400,61 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
     fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.1);
     fig.savefig(os.path.join(input_dir,"registration_comparison.pdf"), dpi=1200)
 
-    
+
+###
+### ------------------------------------------------------------------------ ###
+def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, patient_labels):
+    patient_ref = patient_ref_.get_fdata();
+    affine      = patient_ref_.affine;
+    # bool map patient_ref wm, gm, csf, tu
+    pref_csf = patient_ref == patient_labels['csf'];
+    if 'vt' in patient_labels:
+        pref_csf = np.logical_or(pref_csf, patient_ref == patient_labels['vt'])
+    pref_gm  = patient_ref == patient_labels['gm'];
+    pref_wm  = patient_ref == patient_labels['wm'];
+    pref_en  = patient_ref == patient_labels['en'];
+    pref_ed  = patient_ref == patient_labels['ed'];
+    pref_nec = patient_ref == patient_labels['nec'];
+    # combine labels
+    pref_brain = np.logical_or.reduce((pref_wm, pref_gm, pref_csf));
+    pref_wt    = np.logical_or.reduce((pref_ed, pref_nec, pref_en));
+    pref_tc    = np.logical_or.reduce((pref_nec, pref_en));
+
+    # compute center of mass of NEC, TC, c(0) per component, and overall
+    x_cm_tc  = {}
+    x_cm_nec = {}
+    x_cm_c0  = {}
+    nnc = 0
+    if component_mask:
+        for nc in range(min(3,len(component_mask))):
+            tc_in_comp  = np.multiply(pref_tc.astype(int),    component_mask[nc].astype(int));
+            nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(int));
+            c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(int));
+
+            # compute center of mass of necrotic tumor in component #nc
+            x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
+            x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
+            x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(NEC|_#c) (#c='+str(nc)+',apsace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
+            x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+
+            nnc += 1
+        if nnc < 2: # less than 3 components, fill with -1 dummy vals.
+            for i in range (nnc, 3):
+                features['cm(NEC|_#c) (#c='+str(nc)+',aspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(nc)+',aspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']  = "n/a";
+
+    x_cm = scipy.ndimage.measurements.center_of_mass(pref_tc.astype(int));
+    features['cm(TC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],   x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+    x_cm = scipy.ndimage.measurements.center_of_mass(pref_nec.astype(int));
+    features['cm(NEC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],  x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+    x_cm = scipy.ndimage.measurements.center_of_mass(c0_recon.astype(float));
+    features['cm(c(0)) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -521,14 +575,14 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
 
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
-            x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            features['cm(TC|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            #x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(TC|_#c) (#c='+str(nc)+',pspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
             x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
             x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            features['cm(NEC|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
             x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
             x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            features['cm(c(0)|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
 
             features['vol(TC|_#c)_a(#c='+str(nc)+')']  =  np.sum(tc_in_comp.flatten())                       if nc < 3 else -1;
             features['vol(TC|_#c)_r(#c='+str(nc)+')']  =  np.sum(tc_in_comp.flatten())/features['vol(TC)_a'] if nc < 3 else -1;
@@ -545,9 +599,9 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+')']   = "n/a";
-                features['cm(TC|_#c) (#c='+str(nc)+')']    = "n/a";
-                features['cm(c(0)|_#c) (#c='+str(nc)+')']  = "n/a";
+                features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(nc)+',pspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']  = "n/a";
                 features['vol(TC|_#c)_a(#c='+str(nc)+')']  = -1;
                 features['vol(TC|_#c)_r(#c='+str(nc)+')']  = -1;
                 features['vol(ED|_#c)_a(#c='+str(nc)+')']  = -1;
@@ -880,23 +934,22 @@ def weightedCenterPiForDataComponents(pvec, phi, hx, data_components, n_comps):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def connectedComponentsData(path_nc, level, target_nc=None, path_nii=None, target_nii=None, nii=False):
-    if target_nc == None:
-        target_nc = 'patient_seg_tc.nc'
+def connectedComponentsData(dpath, data_file=None):
+    if data_file is None:
+        data_file = 'patient_seg_tc.nc'
 
-    IMG = []
-    data_nc = fio.readNetCDF(os.path.join(path_nc,target_nc));
-    data_nc = np.swapaxes(data_nc,0,2);
-    dims_nc = data_nc.shape;
-    print(".. reading targt data ", os.path.join(path_nc, target_nc), " with dimension", dims_nc)
-    if nii:
-        data_nii = nib.load(os.path.join(path_nii,target_nii));
-        dims_nii = data_nii.shape;
-        data_img = data_nii.get_fdata();
-        affine = data_nii.affine;
-        IMG = [data_img > 1E-1, data_nc > 1E-4];
-    else:
-        IMG = [data_nc > 1E-4];
+    if ".nc" in data_file:
+        data = fio.readNetCDF(os.path.join(dpath, data_file));
+        data = np.swapaxes(data,0,2);
+        dims = data.shape;
+        data = data > 1E-4;
+    if "nii.gz" in data_file:
+        data = nib.load(os.path.join(dpath, data_file));
+        dims = data.shape;
+        affine = data.affine;
+        data = data.get_fdata();
+        data = data > 1E-1;
+    print(".. reading target data ", os.path.join(dpath, data_file), " with dimension", dims)
 
     structure = np.ones((3, 3, 3), dtype=np.int);
     comps       = {}
@@ -910,34 +963,34 @@ def connectedComponentsData(path_nc, level, target_nc=None, path_nii=None, targe
     xcm_data_px_sorted = {}
     xcm_data_sorted    = {}
 
-    for img in IMG:
-        total_mass = 0
-        labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
+    img = data;
+    total_mass = 0
+    labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
 
-        for i in range(ncomponents):
-            comps[i] = (labeled == i+1)
-            a, b = scipy.ndimage.measurements._stats(comps[i])
-            total_mass += b
-        for i in range(ncomponents):
-            count[i], sums[i]  = scipy.ndimage.measurements._stats(comps[i])
-            relmass[i] = sums[i]/float(total_mass);
-            xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
-            xcm_data[i] = tuple([2 * math.pi * xcm_data_px[i][0] / float(level), 2 * math.pi * xcm_data_px[i][1] / float(level), 2 * math.pi * xcm_data_px[i][2] / float(level)]);
+    for i in range(ncomponents):
+        comps[i] = (labeled == i+1)
+        a, b = scipy.ndimage.measurements._stats(comps[i])
+        total_mass += b
+    for i in range(ncomponents):
+        count[i], sums[i]  = scipy.ndimage.measurements._stats(comps[i])
+        relmass[i] = sums[i]/float(total_mass);
+        xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
+        xcm_data[i] = tuple([2 * math.pi * xcm_data_px[i][0] / float(dims[0]), 2 * math.pi * xcm_data_px[i][1] / float(dims[1]), 2 * math.pi * xcm_data_px[i][2] / float(dims[0])]);
 
-        # sort components according to their size
-        sorted_rmass = sorted(relmass.items(), key=lambda x: x[1], reverse=True);
-        perm = {}
-        temp = {}
-        labeled_sorted = np.zeros_like(labeled);
-        for i in range(len(sorted_rmass)):
-            perm[i]               = sorted_rmass[i][0] # get key from sorted list
-            comps_sorted[i]       = comps[perm[i]];
-            relmass_sorted[i]     = relmass[perm[i]];
-            xcm_data_px_sorted[i] = xcm_data_px[perm[i]];
-            xcm_data_sorted[i]    = xcm_data[perm[i]];
+    # sort components according to their size
+    sorted_rmass = sorted(relmass.items(), key=lambda x: x[1], reverse=True);
+    perm = {}
+    temp = {}
+    labeled_sorted = np.zeros_like(labeled);
+    for i in range(len(sorted_rmass)):
+        perm[i]               = sorted_rmass[i][0] # get key from sorted list
+        comps_sorted[i]       = comps[perm[i]];
+        relmass_sorted[i]     = relmass[perm[i]];
+        xcm_data_px_sorted[i] = xcm_data_px[perm[i]];
+        xcm_data_sorted[i]    = xcm_data[perm[i]];
 
-            temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
-            labeled_sorted += temp[i];
+        temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
+        labeled_sorted += temp[i];
 
     # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
     return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
@@ -974,12 +1027,45 @@ def cont(slice, cmap, thresh=0.3, v_max=None, v_min=None, clip01=True):
     # return cmap_, norm
     return slice_normalized, norm
 
+
+def parseTumorLog(level_path, level, features):
+  logfile = 'tumor_solver_log_nx' + str(level) + '.txt'
+  if os.path.exists(os.path.join(level_path, logfile)):
+      with open(os.path.join(level_path, logfile), 'r') as f:
+          lines = f.readlines();
+          no = 0;
+          for line in lines:
+              f_empty = False;
+              if "----- np:" in line:
+                  np_ = int(line.split("----- np:")[-1].split("------")[0])
+                  features['np'] = int(np_)
+              if "solve-tumor-inverse-tao" in line:
+                  t_exec_time = float(line.split()[-1])
+              if "### estimated reaction coefficients:" in line:
+                  rho_ = float(lines[no+1].split("r1:")[-1].split(",")[0])
+                  features['rho-inv'] = rho_;                       # rho-inv
+              if "### estimated diffusion coefficients:" in line:
+                  kf_ = float(lines[no+1].split("k1:")[-1].split(",")[0]);
+                  features['k-inv'] = kf_;                            # k-inv
+              if "c reconstructed max and min :" in line:
+                  features['max{c(1)}'] = float(line.split(": ")[-1].split()[0])
+                  features['min{c(1)}'] = float(line.split(": ")[-1].split()[1])
+              if "rel. l2-error at observation points:" in line:
+                  features['l2[Oc(1)-TC]'] = float(line.split(": ")[-1].split()[0])
+              if "l2-error in reconstruction:" in line:
+                  features['l2[c(1)-TC]'] = float(line.split(":")[-1].split()[0])
+              no += 1;
+          if len(lines) == 0:
+              print(bcolors.FAIL + " Error: tumor_solver_log.txt is empty for " + level_path + bcolors.ENDC);
+  else:
+      print(bcolors.FAIL + "  Error: tumor_solver_log.txt does not exist for " + level_path + bcolors.ENDC);
+
 ###
 ### ------------------------------------------------------------------------ ###
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Process input images')
     parser.add_argument ('-input_path',           type = str,          help = 'path to the results folder');
-    parser.add_argument ('-atlas_path',           type = str,          help = 'path to atlas folder')    
+    parser.add_argument ('-atlas_path',           type = str,          help = 'path to atlas folder')
     parser.add_argument ('-tu_path',              type = str,          help = 'path to tumor solver results');   # REMOVE
     parser.add_argument ('-rdir',                 type = str,          help = 'path to tumor solver results');
     parser.add_argument ('-tu_dir',               type = str,          help = 'results dir name');
@@ -1017,7 +1103,7 @@ if __name__=='__main__':
         for x in args.patient_labels.split(','):
             patient_labels[int(x.split('=')[0])] = x.split('=')[1];
         patient_label_rev = {v:k for k,v in patient_labels.items()};
-    
+
     if args.analyze_registration:
         if args.patient_labels is None:
             print("Need to provide patient labels, exiting")
@@ -1110,7 +1196,7 @@ if __name__=='__main__':
             if level != l:
                 print(color.FAIL + "Error %d != %d " + color.ENDC % (level, l));
             print("\n (1) computing connected components of data\n");
-            labeled[l], comps_data[l], ncomps_data[l], xcm_data_px[l], xcm_data[l], relmass[l] = connectedComponentsData(init_path, level);
+            labeled[l], comps_data[l], ncomps_data[l], xcm_data_px[l], xcm_data[l], relmass[l] = connectedComponentsData(init_path);
             fio.createNetCDF(os.path.join(out_path, 'data_comps_nx'+str(level)+'.nc') , np.shape(labeled[l]), np.swapaxes(labeled[l],0,2));
 
             # ### concomp SOL ###
@@ -1152,12 +1238,18 @@ if __name__=='__main__':
             ## SOL (LABELED) ##
             w  = "";
             w2 = "";
+            iii = 0
             for i in range(ncomps_data[l]):
+                if i < 3: FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(i)+")"] = dist_wcmSOL_cmDATA[l][i] * float(l) / (2*math.pi);
                 w  += "{0:1.2e}".format(dist_wcmSOL_cmDATA[l][i])
                 w2 += "{0:1.1f}".format((dist_wcmSOL_cmDATA[l][i] * float(l) / (2*math.pi) ));
+                iii += 1;
                 if i < ncomps_data[l] - 1:
                     w  += ', '
                     w2 += ', '
+            if iii < 3:
+                for iiii in range(iii,3):
+                    FEATURES[l]["dist[wcm(p|_#c) - cm(TC|_#c)]_(c="+str(iii)+")"] = -1;
             concomp_file.write("SOL(L): #comp: %d, distances: [%s] = [%s]px \n" % (ncomps_data[l], w, w2));
             concomp_file.write("        x_cm:  ");
             for i in range(ncomps_data[l]):
@@ -1574,8 +1666,17 @@ if __name__=='__main__':
 
 
 
-                # visualize evolution of solution over levels
+                # compute distance between two largest p_i in solution
                 p_sum = pvec[l].sum();
+                pvec_dict = {}
+                coord_dict  = {}
+                for kk in range(len(pvec[l])):
+                    pvec_dict[kk] = pvec[l][kk]
+                    coord_dict[kk] = np.array([phi[l][kk][0], phi[l][kk][1], phi[l][kk][2]]);
+                p_sorted = sorted(pvec_dict.items(), key=lambda x: x[1], reverse=True);
+                FEATURES[l]["dist[max1(p) - max2(p)]"] = dist(coord_dict[p_sorted[0][0]], coord_dict[p_sorted[1][0]]) * float(l) / (2*math.pi);
+
+                # visualize evolution of solution over levels
                 mag = 200;
                 sx = template_256.shape[0]/(2*math.pi);
                 sy = template_256.shape[1]/(2*math.pi);
@@ -1704,11 +1805,27 @@ if __name__=='__main__':
                     patient_labels[int(x.split('=')[0])] = x.split('=')[1];
                 patient_label_rev = {v:k for k,v in patient_labels.items()};
 
-
+            print("\n (4) a) computing tumor statistics in PATIENT space\n");
+            # component mask of connected component analysis of patient TC in PATIENT space
             component_mask = comps_data[l] if args.analyze_concomps else None;
-
-            print("\n (4) computing DICE and tumor statistics\n");
             computeTumorStats(FEATURES[l], template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_label_rev, res_path);
+
+            if l == 256:
+                print("\n (4) b) computing tumor statistics in ATLAS space\n");
+                #try:
+                c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz"));
+                c0_in_aspace = c0_in_aspace.get_fdata();
+                patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz"));
+                #except:
+                #    c0_in_aspace = None;
+                #    patient_ref_in_aspace = None;
+                #    print("Error: Can not read images in atlas space"); sys.exit(1);
+
+                # connected copmponent analysis of patient TC in ATLAS space
+                labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz");
+                # component mask of connected component analysis of patient TC in ATLAS space
+                component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
+                computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
 
             FEATURES[l]['n_comps[all]'] = len(xcm_data[l])
             for k in range(len(xcm_data[l])):
@@ -1716,9 +1833,13 @@ if __name__=='__main__':
                     break;
             FEATURES[l]['n_comps'] = k;
 
+            # features from tumor log file
+            print("\n (5) extracting features from tumor solver log file\n");
+            parseTumorLog(res_path, l, FEATURES[l]);
+
             # compute l2 error of c(0) in between levels || c(0)_256 - Ic(0)_64 || / ||c(0)_256 ||
             if 64 in levels and 128 in levels:
-                print("\n (5) computing c(0) difference across levels (c(0) rescaled to 1)\n");
+                print("\n (6) computing c(0) difference across levels (c(0) rescaled to 1)\n");
                 c0_256 = fio.readNetCDF(os.path.join(path_256,"c0Recon.nc"));
                 c0_256_norm = np.linalg.norm(c0_256.flatten(), 2);
                 for ll in [64,128]:
@@ -1770,7 +1891,7 @@ if __name__=='__main__':
                         #         fig_c0.clf()
 
 
-            print("\n (6) writing parameter file",file_params)
+            print("\n (7) writing parameter file",file_params)
             text = "## level " + str(l) + " ##\n";
             if os.path.exists(os.path.join(res_path,'info.dat')):
                 with open(os.path.join(res_path,'info.dat'), 'r') as f:
@@ -1811,12 +1932,12 @@ if __name__=='__main__':
                 if args.analyze_concomps:
                     if 64 in levels and 128 in levels:
                         text += "\nl2ec(1) scaled,TC (l1,l2,l3)          = (" + "{0:1.3e}".format(l2err_TC[64]/l2normref_TC[64]) + "," + "{0:1.3e}".format(l2err_TC[128]/l2normref_TC[128]) + "," + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
-                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l64'] = l2err_TC[64]/l2normref_TC[64];
-                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l128'] = l2err_TC[128]/l2normref_TC[128];
-                        FEATURES[l]['l2[c(1)|_TC-TC,scaled]_r_l256'] = l2err_TC[256]/l2normref_TC[256];
+                        FEATURES[64]['l2[c(1)|_TC-TC,scaled]_r'] = l2err_TC[64]/l2normref_TC[64];
+                        FEATURES[128]['l2[c(1)|_TC-TC,scaled]_r'] = l2err_TC[128]/l2normref_TC[128];
+                        FEATURES[256]['l2[c(1)|_TC-TC,scaled]_r'] = l2err_TC[256]/l2normref_TC[256];
                     else:
                         text += "\nl2ec(1) scaled,TC (l3)                = (" + "{0:1.3e}".format(l2err_TC[256]/l2normref_TC[256])  + ")";
-                        FEATURES[l]['l2[c(1)|_TC,scaled]_l256'] = l2err_TC[256]/l2normref_TC[256]
+                        FEATURES[256]['l2[c(1)|_TC,scaled]_l256'] = l2err_TC[256]/l2normref_TC[256]
                     llabels = ["l1", "l2", "l3"] if args.gridcont else ["l3"];
                     for lvl, lll in zip(levels, llabels):
                         t1 = "\nl2ec(1) scaled,relC (" + lll + ";#1,..,#n)     = (";
@@ -1839,6 +1960,7 @@ if __name__=='__main__':
         infofile.close();
 
         # write featuee dict to file
+        print("\n (8) writing features to .csv")
         (pd.DataFrame.from_dict(data=FEATURES[64], orient='index').to_csv(os.path.join(args.input_path, 'features_64.csv'), header=False, sep=';', float_format='%.16g'));
         (pd.DataFrame.from_dict(data=FEATURES[128], orient='index').to_csv(os.path.join(args.input_path, 'features_128.csv'), header=False, sep=';', float_format='%.16g'));
         (pd.DataFrame.from_dict(data=FEATURES[256], orient='index').to_csv(os.path.join(args.input_path, 'features_256.csv'), header=False, sep=';', float_format='%.16g'));

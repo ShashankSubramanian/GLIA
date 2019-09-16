@@ -47,13 +47,13 @@ enum {INIT = 0, PRE_RD = 1, COSAMP_L1_INIT = 3, COSAMP_L1_THRES_GRAD = 4, COSAMP
 enum {SEQ = 0, MPI = 1};
 
 struct OptimizerSettings {
-    ScalarType beta;                 /// @brief regularization parameter
-    ScalarType opttolgrad;           /// @brief l2 gradient tolerance for optimization
-    ScalarType ftol;                 /// @brief l1 function and solution tolerance
-    ScalarType ls_minstep;           /// @brief minimum step length of linesearch
-    ScalarType gtolbound;            /// @brief minimum reduction of gradient (even if maxiter hit earlier)
-    ScalarType grtol;                /// @brief rtol TAO (relative tolerance for gradient, not used)
-    ScalarType gatol;                /// @brief atol TAO (absolute tolerance for gradient)
+    ScalarType beta;             /// @brief regularization parameter
+    ScalarType opttolgrad;       /// @brief l2 gradient tolerance for optimization
+    ScalarType ftol;             /// @brief l1 function and solution tolerance
+    ScalarType ls_minstep;       /// @brief minimum step length of linesearch
+    ScalarType gtolbound;        /// @brief minimum reduction of gradient (even if maxiter hit earlier)
+    ScalarType grtol;            /// @brief rtol TAO (relative tolerance for gradient, not used)
+    ScalarType gatol;            /// @brief atol TAO (absolute tolerance for gradient)
     int    newton_maxit;         /// @brief maximum number of allowed newton iterations
     int    gist_maxit;           /// @brief maximum number of GIST iterations
     int    krylov_maxit;         /// @brief maximum number of allowed krylov iterations
@@ -69,8 +69,8 @@ struct OptimizerSettings {
     bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
     bool   diffusivity_inversion;/// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
     bool   reaction_inversion;   /// @brief if true, we also invert for rho
-    double k_lb;                 /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
-    double k_ub;                 /// @brief upper bound on kappa
+    ScalarType k_lb;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
+    ScalarType k_ub;             /// @brief upper bound on kappa
     OptimizerSettings ()
     :
       beta (0E-3)
@@ -148,30 +148,30 @@ struct TumorSettings {
     ScalarType diffusion_ratio_glm_wm;  /// @brief ratio of diffusion coefficient between wm and gm
     ScalarType reaction_ratio_gm_wm;    /// @brief ratio of reaction coefficient between wm and gm
     ScalarType reaction_ratio_glm_wm;   /// @brief ratio of reaction coefficient between wm and gm
-    int rho_linear;                 /// @brief used linearization
+    int rho_linear;                     /// @brief used linearization
     std::array<ScalarType, 3> phi_center_of_mass; /// @brief center of mass of the tumor, center of the Gaussian mesh
     ScalarType phi_spacing_factor;      /// @brief defines spacing of Gaussian ansatz functions as multiple of sigma
     ScalarType phi_sigma;               /// @brief standard deviation of Gaussians
     ScalarType phi_sigma_data_driven;   /// @brief standard deviation for data driven selection of gaussians
     ScalarType gaussian_volume_fraction;/// @brief defines the volume frqction of tumor cells within sigma such that gaussian is enabled, when selection mode is adaptive datadriven
     ScalarType target_sparsity;         /// @brief defines the target sparsity of a solution causing the L1 solve to terminate
-    int phi_selection_mode_bbox;    /// @brief flag for phi selectin mode. If set, initialize bounding box
-    bool diffusivity_inversion;     /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
-    bool reaction_inversion;        /// @brief if true, we also invert for rho
-    bool prune_components;          /// @brief prunes L2 solution based on components
-    bool multilevel;                /// @brief scales INT_Omega phi(x) dx = const across levels
-    bool phi_store;                 /// @brief flag to store phis
-    bool adjoint_store;             /// @brief flag to store half-step concentrations for adjoint solve to speed up time to solution
-    int sparsity_level;             /// @brief required sparsity of the solution
+    int phi_selection_mode;             /// @brief flag for phi selectin mode. If set, initialize bounding box
+    bool diffusivity_inversion;         /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+    bool reaction_inversion;            /// @brief if true, we also invert for rho
+    bool prune_components;              /// @brief prunes L2 solution based on components
+    bool multilevel;                    /// @brief scales INT_Omega phi(x) dx = const across levels
+    bool phi_store;                     /// @brief flag to store phis
+    bool adjoint_store;                 /// @brief flag to store half-step concentrations for adjoint solve to speed up time to solution
+    int sparsity_level;                 /// @brief required sparsity of the solution
 
     TumorSettings () :
-     tumor_model(1)
-    , time_step_size(0.01)
-    , time_steps(16)
-    , time_horizon(0.16)
-    , np(27)
-    , nk(2)
-    , betap(1E-3)
+      tumor_model(1)
+    , time_step_size(0.025)
+    , time_steps(40)
+    , time_horizon(1)
+    , np(225)
+    , nk(1)
+    , betap(1E-4)
     , writeOutput(false)
     , verbosity(3)
     , obs_threshold(0.0)
@@ -184,14 +184,14 @@ struct TumorSettings {
     , reaction_ratio_glm_wm(0.0)
     , rho_linear(0)
     , phi_center_of_mass{ {0.5f*2 * PETSC_PI, 0.5*2 * PETSC_PI, 0.5*2 * PETSC_PI} }
-    , phi_spacing_factor (1.5)
+    , phi_spacing_factor (2)
     , phi_sigma (PETSC_PI/10)
     , phi_sigma_data_driven(2*PETSC_PI/256)
     , gaussian_volume_fraction(0)
     , target_sparsity(0.99)
-    , phi_selection_mode_bbox(1)
-    , diffusivity_inversion(false)
-    , reaction_inversion(false)
+    , phi_selection_mode(2)
+    , diffusivity_inversion(true)
+    , reaction_inversion(true)
     , prune_components (true)
     , multilevel (false)
     , phi_store (false)
@@ -323,8 +323,8 @@ class NMisc {
         , nu_csf_ (0.1)                         // Poisson's ratio of CSF
         , E_healthy_ (2000)                     // Young's modulus of wm and gm
         , E_bg_ (15000)                         // Young's modulus of background
-        , E_tumor_ (8000)                      // Young's modulus of tumor
-        , E_csf_ (500)                           // Young's modulus of CSF
+        , E_tumor_ (8000)                       // Young's modulus of tumor
+        , E_csf_ (500)                          // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E2)                    // high screening 
         , forcing_factor_ (6E4)               // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
@@ -333,8 +333,8 @@ class NMisc {
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
         , phi_store_ (false)                    // Flag to store phis
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
-        , k_lb_ (1E-3)                           // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
-        , k_ub_ (1)                              // Upper bound on kappa
+        , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
+        , k_ub_ (1)                             // Upper bound on kappa
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
@@ -343,8 +343,8 @@ class NMisc {
         , ox_hypoxia_ (0.65)                    // hypoxia threshold
         , death_rate_ (3)                       // death rate
         , ox_source_ (55)                       // source of oxygen
-        , ox_consumption_ (8)                    // consumption of oxygen
-        , beta_0_ (0.02)                         // conversion btw inv and proliferative
+        , ox_consumption_ (8)                   // consumption of oxygen
+        , beta_0_ (0.02)                        // conversion btw inv and proliferative
         , alpha_0_ (0.15)                       // conversion btw inv and proliferative
                                 {
 

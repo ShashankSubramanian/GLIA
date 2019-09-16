@@ -116,7 +116,7 @@ TrapezoidalSolver::~TrapezoidalSolver () {
 ImplicitEulerSolver::ImplicitEulerSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {
     PetscErrorCode ierr = 0;
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
-    ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdv);
+    ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdvEuler);
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);

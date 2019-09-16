@@ -259,17 +259,17 @@ int main (int argc, char** argv) {
 
 {
     int isize[3], osize[3], istart[3], ostart[3];
-   
+
     std::shared_ptr<SpectralOperators> spec_ops;
     #if defined(CUDA) && !defined(MPICUDA)
         spec_ops = std::make_shared<SpectralOperators> (CUFFT);
     #else
         spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
-    #endif        
+    #endif
     spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
     int64_t alloc_max = spec_ops->alloc_max_;
     fft_plan *plan = spec_ops->plan_;
-    
+
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
     //Generate synthetic data
@@ -480,7 +480,7 @@ int main (int argc, char** argv) {
             n_misc->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
             ss << n_misc->writepath_.str().c_str() << "g_it.dat";
             n_misc->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-            ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";        
+            ss << n_misc->writepath_.str().c_str() << "glob_g_it.dat";
             n_misc->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
             n_misc->outfile_sol_ << std::setprecision(16)<<std::scientific;
             n_misc->outfile_grad_ << std::setprecision(16)<<std::scientific;
@@ -606,7 +606,7 @@ int main (int argc, char** argv) {
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
           int nnc = 0;
           for (auto w : tumor->phi_->component_weights_) if (w >= 1E-3) nnc++;
-          ss << " set sparsity level to "<< n_misc->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << n_misc->sparsity_level_ << " x " << nnc << 
+          ss << " set sparsity level to "<< n_misc->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << n_misc->sparsity_level_ << " x " << nnc <<
           " + " << (tumor->phi_->component_weights_.size() - nnc) << " = " <<  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
           n_misc->sparsity_level_ =  n_misc->sparsity_level_ * nnc + (tumor->phi_->component_weights_.size() - nnc) ;
         }
@@ -898,7 +898,7 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    solver_interface->setDistMeassureSimulationGeoImages (h_maps->wm, h_maps->gm, h_maps->csf, nullptr, h_maps->bg);
+    solver_interface->setDistMeassureSimulationGeoImages (h_maps->wm, h_maps->gm, h_maps->csf, h_maps->bg);
 
     Vec temp;
     ierr = VecDuplicate (data, &temp);                   CHKERRQ (ierr);
@@ -914,8 +914,8 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
     ierr = VecPointwiseMult (h_maps->csf_data, h_maps->csf_data, temp);     CHKERRQ (ierr);
     ierr = VecPointwiseMult (h_maps->bg_data, h_maps->bg_data, temp);       CHKERRQ (ierr);
 
-    solver_interface->setDistMeassureTargetDataImages (h_maps->wm_data, h_maps->gm_data, h_maps->csf_data, nullptr, h_maps->bg_data);
-    solver_interface->setDistMeassureDiffImages (h_maps->xi_wm, h_maps->xi_gm, h_maps->xi_csf, nullptr, h_maps->xi_bg);
+    solver_interface->setDistMeassureTargetDataImages (h_maps->wm_data, h_maps->gm_data, h_maps->csf_data, h_maps->bg);
+    solver_interface->setDistMeassureDiffImages (h_maps->xi_wm, h_maps->xi_gm, h_maps->xi_csf, h_maps->xi_bg);
 
     if (temp != nullptr) {ierr = VecDestroy (&temp);       CHKERRQ (ierr); temp = nullptr;}
 
@@ -1119,7 +1119,7 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec
 
     // Smooth the data
     ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
-    
+
     ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
     ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
 
@@ -1174,7 +1174,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     ierr = VecAXPY (bg, 1., csf);                       CHKERRQ (ierr);
     ierr = VecShift (bg, -1.0);                         CHKERRQ (ierr);
     ierr = VecScale (bg, -1.0);                         CHKERRQ (ierr);
-    
+
 
     PetscFunctionReturn (ierr);
 }
@@ -1509,7 +1509,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     std::stringstream ss_out;
     ss_out << n_misc->writepath_ .str().c_str() << "info.dat";
     std::ofstream opfile;
-    
+
     if (procid == 0) {
         opfile.open (ss_out.str().c_str());
         opfile << "rho k c1_rel c0_rel c0_dist \n";

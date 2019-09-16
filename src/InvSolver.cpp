@@ -173,7 +173,7 @@ PetscErrorCode phiMult (Mat A, Vec x, Vec y) {
 
     PetscFunctionReturn (ierr);
 }
-    
+
 
 PetscErrorCode interpolationKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
     PetscFunctionBegin;
@@ -213,6 +213,7 @@ PetscErrorCode InvSolver::solveInterpolation (Vec data) {
     ctx->tumor_ = tumor;
     int sz = n_misc->np_;
     ierr = VecCreateSeq (PETSC_COMM_SELF, sz, &p_out);                          CHKERRQ (ierr);
+    ierr = setupVec (p_out, SEQ);                                               CHKERRQ (ierr);
 
     std::stringstream ss;
     ss << " ------- Interpolating within subspace of size = " << sz << " -------";
@@ -284,6 +285,7 @@ PetscErrorCode InvSolver::restrictSubspace (Vec *x_restricted, Vec x_full, std::
 
     itctx->n_misc_->np_ = np;                    // change np to solve the restricted subsystem
     ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, x_restricted);          CHKERRQ (ierr);
+    ierr = setupVec (*x_restricted, SEQ);                                       CHKERRQ (ierr);
     ierr = VecSet (*x_restricted, 0);                                           CHKERRQ (ierr);
     ierr = VecGetArray (*x_restricted, &x_restricted_ptr);                      CHKERRQ (ierr);
     ierr = VecGetArray (x_full, &x_full_ptr);                                   CHKERRQ (ierr);
@@ -439,6 +441,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     /* === Add Noise === */
     Vec noise; ScalarType *noise_ptr;
     ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                  CHKERRQ(ierr);
+    ierr = setupVec (noise);                                                      CHKERRQ (ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_); CHKERRQ(ierr);
     ierr = VecSetFromOptions(noise);                                              CHKERRQ(ierr);
     ierr = VecSetRandom(noise, NULL);                                             CHKERRQ(ierr);
@@ -478,7 +481,8 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = TaoCreate    (PETSC_COMM_SELF, &tao_);                                 CHKERRQ (ierr);
     ierr = TaoSetType   (tao_, "blmvm");                                          CHKERRQ (ierr);
     ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &xrec_rd_); /* inv rho and k */   CHKERRQ (ierr);
-    ierr = VecSet        (xrec_rd_, 0.);                                          CHKERRQ (ierr);
+    ierr = setupVec     (xrec_rd_, SEQ);                                          CHKERRQ (ierr);
+    ierr = VecSet       (xrec_rd_, 0.);                                           CHKERRQ (ierr);
     ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
 
     // initial guess kappa
@@ -744,6 +748,7 @@ PetscErrorCode InvSolver::solve () {
 
     /* === Add Noise === */
     ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                CHKERRQ(ierr);
+    ierr = setupVec  (noise);                                                   CHKERRQ (ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);CHKERRQ(ierr);
     ierr = VecSetFromOptions(noise);                                            CHKERRQ(ierr);
     ierr = VecSetRandom(noise, NULL);                                           CHKERRQ(ierr);
@@ -3590,7 +3595,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     ierr = VecSet (upper_bound, PETSC_INFINITY);                                    CHKERRQ (ierr);
 
     ScalarType *ub_ptr, *lb_ptr;
-    ScalarType upper_bound_kappa = itctx_->n_misc_->k_ub_, lower_bound_kappa = 0.;
+    ScalarType upper_bound_kappa = itctx_->n_misc_->k_ub_, lower_bound_kappa = itctx_->n_misc_->k_lb_;
     if (itctx_->n_misc_->diffusivity_inversion_) {
       ierr = VecGetArray (upper_bound, &ub_ptr);                                    CHKERRQ (ierr);
       ub_ptr[itctx_->n_misc_->np_] = upper_bound_kappa;

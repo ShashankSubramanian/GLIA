@@ -61,12 +61,12 @@ def getTumorRunCmd(params):
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
-    nt_inv = 20
-    dt_inv = 0.05
+    nt_inv = 40
+    dt_inv = 0.025
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
-    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect, 5: Multi-species
+    ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 14
@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
     lam_cont = 1
     ### Tumor L2 regularization
-    beta = 0
+    beta = 1e-4
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)
@@ -148,7 +148,7 @@ def getTumorRunCmd(params):
     ## lower bound on kappa
     lower_bound_kappa = 1E-3
     ## upper bound on kappa
-    upper_bound_kappa = 5E-1
+    upper_bound_kappa = 5E-2
 
     ### TUMOR PARAMETERS SET END
 
@@ -358,7 +358,7 @@ def getTumorRunCmd(params):
         if params['mpi_pernode'] < 24:
             ppn = params['mpi_pernode'];
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
-    elif params['compute_sys'] in ['stampede2', 'frontera', 'maverick2']:
+    elif params['compute_sys'] in ['stampede2', 'frontera']:
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
@@ -412,4 +412,5 @@ def getTumorRunCmd(params):
     " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
+    # -tao_test_hessian -tao_test_hessian_view
     return run_str, error_flag

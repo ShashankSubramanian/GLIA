@@ -258,6 +258,7 @@ if env["gpu"] == True:
     target = buildpath + '/inverse',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
+    env.Alias("bin", bininv)
 else:
     binfwd = env.Program (
     target = buildpath + '/forward',
@@ -266,14 +267,14 @@ else:
     bininv = env.Program (
         target = buildpath + '/inverse',
         source = [sourcesPGLISTR, './app/inverse.cpp']
-    )
-env.Alias("bin", bininv)
+    ) 
+    env.Alias("bin", bininv)
+    # solib = env.SharedLibrary (
+    # target = buildpath + '/pglistr',
+    #     source = [sourcesPGLISTR],
+    # )
+    # env.Alias("solib", solib)
 
-# solib = env.SharedLibrary (
-#      target = buildpath + '/libtumor',
-#      source = [sourcesPGLISTR],
-# )
-# env.Alias("solib", solib)
 
 # Creates a symlink that always points to the latest build
 symlink = env.Command(
@@ -283,6 +284,7 @@ symlink = env.Command(
 )
 
 #Default(staticlib, solib, bin, symlink)
+#Default(bininv, solib, symlink)
 Default(bininv, symlink)
 AlwaysBuild(symlink)
 
