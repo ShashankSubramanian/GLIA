@@ -1117,6 +1117,12 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             ss << "o_t[" << i << "].nc";
             dataOut (tumor_->species_["oxygen"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ss << "c_t[" << i << "].nc";
+            dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "rho_t[" << i << "].nc";
+            dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
         }
         // ------------------------------------------------ advection  ------------------------------------------------
 
