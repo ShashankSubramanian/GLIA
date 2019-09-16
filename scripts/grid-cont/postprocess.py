@@ -403,7 +403,7 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
 ###
 ### ------------------------------------------------------------------------ ###
-computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, patient_labels);
+def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, patient_labels):
     patient_ref = patient_ref_.get_fdata();
     affine      = patient_ref_.affine;
     # bool map patient_ref wm, gm, csf, tu
@@ -434,27 +434,27 @@ computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, pati
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
             x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+            features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
             x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
             x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+            features['cm(NEC|_#c) (#c='+str(nc)+',apsace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
             x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
             x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+            features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
 
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+',aspace)']   = np.ndarray([-1,-1,-1]);
-                features['cm(TC|_#c) (#c='+str(nc)+',aspace)']    = np.ndarray([-1,-1,-1]);
-                features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']  = np.ndarray([-1,-1,-1]);
+                features['cm(NEC|_#c) (#c='+str(nc)+',aspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(nc)+',aspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']  = "n/a";
 
     x_cm = scipy.ndimage.measurements.center_of_mass(pref_tc.astype(int));
-    features['cm(TC) (aspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
-    x_cm = scipy.ndimage.measurements.center_of_mass(pref_nec.astype(int));
-    features['cm(NEC) (aspace)']  =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+    features['cm(TC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],   x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+    x_cm = scipy.ndimage.measurements.center_of_mass(pref_nec.astype(int)); 
+    features['cm(NEC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],  x_cm[1], x_cm[2]) if nc < 3 else "n/a";
     x_cm = scipy.ndimage.measurements.center_of_mass(c0_recon.astype(float));
-    features['cm(c(0)) (aspace)'] =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+    features['cm(c(0)) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -575,17 +575,14 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
 
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
-            x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            # features['cm(TC|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-            features['cm(TC|_#c) (#c='+str(nc)+',pspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+            #x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
+            features['cm(TC|_#c) (#c='+str(nc)+',pspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
             x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
             x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            # features['cm(NEC|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-            features['cm(TC|_#c) (#c='+str(nc)+',pspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+            features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
             x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
             x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
-            # features['cm(c(0)|_#c) (#c='+str(nc)+')']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-            features['cm(TC|_#c) (#c='+str(nc)+',pspace)']   =  np.ndarray([x_cm[0], x_cm[1], x_cm[2]]) if nc < 3 else np.ndarray([-1,-1,-1]);
+            features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
 
             features['vol(TC|_#c)_a(#c='+str(nc)+')']  =  np.sum(tc_in_comp.flatten())                       if nc < 3 else -1;
             features['vol(TC|_#c)_r(#c='+str(nc)+')']  =  np.sum(tc_in_comp.flatten())/features['vol(TC)_a'] if nc < 3 else -1;
@@ -602,9 +599,9 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   = np.ndarray([-1,-1,-1]);
-                features['cm(TC|_#c) (#c='+str(nc)+',pspace)']    = np.ndarray([-1,-1,-1]);
-                features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']  = np.ndarray([-1,-1,-1]);
+                features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(nc)+',pspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']  = "n/a";
                 features['vol(TC|_#c)_a(#c='+str(nc)+')']  = -1;
                 features['vol(TC|_#c)_r(#c='+str(nc)+')']  = -1;
                 features['vol(ED|_#c)_a(#c='+str(nc)+')']  = -1;
@@ -945,7 +942,7 @@ def connectedComponentsData(dpath, data_file=None):
         data = fio.readNetCDF(os.path.join(dpath, data_file));
         data = np.swapaxes(data,0,2);
         dims = data.shape;
-        data = data_nc > 1E-4;
+        data = data > 1E-4;
     if "nii.gz" in data_file:
         data = nib.load(os.path.join(dpath, data_file));
         dims = data.shape;
@@ -966,10 +963,10 @@ def connectedComponentsData(dpath, data_file=None):
     xcm_data_px_sorted = {}
     xcm_data_sorted    = {}
 
+    img = data;
     total_mass = 0
     labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
 
-    img = data;
     for i in range(ncomponents):
         comps[i] = (labeled == i+1)
         a, b = scipy.ndimage.measurements._stats(comps[i])
@@ -1818,7 +1815,7 @@ if __name__=='__main__':
             print("\n (4) a) computing tumor statistics in PATIENT space\n");
             # component mask of connected component analysis of patient TC in PATIENT space
             component_mask = comps_data[l] if args.analyze_concomps else None;
-            computeTumorStats(FEATURES[l], template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_label_rev, res_path, c0_in_aspace, patient_ref_in_aspace;
+            computeTumorStats(FEATURES[l], template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_label_rev, res_path);
 
             print("\n (4) b) computing tumor statistics in ATLAS space\n");
             # connected copmponent analysis of patient TC in ATLAS space
