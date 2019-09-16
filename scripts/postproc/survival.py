@@ -148,7 +148,7 @@ def read_data(dir, level, file):
                 patient_data['age']              = -1;
                 patient_data['survival_class']   = -1; #np.array([-1,-1,-1]);
                 patient_data['survival(days)']   = -1;
-                patient_data['resection_status'] = 'N/A'
+                patient_data['resection_status'] = 'NA'
             if brats_data.empty:
                 brats_data = patient_data;
             else:
@@ -224,47 +224,61 @@ def clean_data(brats_data, max_l2c1error = 0.8):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def get_feature_subset(brats_data, type):
+def get_feature_subset(brats_data, type, purpose):
 
     cols = []
-    if type == 'image_based':
-        cols.append('vol(TC)_r');   # ib.01 TC rel. volume
-        cols.append('area(TC)_r');  # ib.02 TC rel. surface (rel. to sphere with volume of TC)
-        cols.append('vol(ED)_r');   # ib.03 ED rel. volume
-        cols.append('area(ED)_r');  # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        cols.append('vol(NE)_r');   # ib.05 NE rel. volume
-        cols.append('area(NE)_r');  # ib.06 NE rel. surface (rel. to sphere with volume of NE)
-        cols.append('age');         # ib.07 patient age
-        cols.append()
-    if type == 'physics_based':
-        pass;
-
-    cols_bio   = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio0  = ['rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio1  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio2  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio3  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'l2Oc1', 'l2c1(TC,s)', 'I_EDc1', 'I_TCc1', 'I_B\WTc1']
-    cols_bio4  = ['#comp', 'age', 'srgy', '#wt/#b', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'I_EDc1', 'I_TCc1', 'I_B\WTc1', 'Ic0/Ic1']
-    cols_bio5  = ['#comp', 'age', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'Ic0/Ic1']
-    cols_bio6  = ['#comp', 'age', '#ed/#b', '#tc/#b', 'rho-inv', 'k-inv', 'rho-over-k']
-    cols_bio7  = ['#comp', 'age', '#ed/#b', '#tc/#b',            'k-inv', 'rho-over-k']
-    # cols_stat  = ['#comp', 'age', '#wt/#b', '#ed/#b', '#tc/#b']
-    cols_stat  = ['#comp', 'age', '#ed/#b', '#tc/#b']
+    # features used for brain clustering
+    if purpose == 'clustering':
+        cols.append('vol(TC)_r');                # ib.01 TC rel. volume
+        cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
+        cols.append('vol(ED)_r');                # ib.03 ED rel. volume
+        cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
+        cols.append('vol(NE)_r');                # ib.05 NE rel. volume
+        cols.append('area(NE)_r');               # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        cols.append('age');                      # ib.07 patient age
+        cols.append('survival(days)');
+        cols.append('n_comps');                  # number of components with rel. mass larger 1E-3
+    # image based features used for survival prediciton
+    if type == 'image_based' and purpose == 'prediction':
+        cols.append('vol(TC)_r');                # ib.01 TC rel. volume
+        cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
+        cols.append('vol(ED)_r');                # ib.03 ED rel. volume
+        cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
+        cols.append('vol(NE)_r');                # ib.05 NE rel. volume
+        cols.append('area(NE)_r');               # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        cols.append('age');                      # ib.07 patient age
+        # cols.append('resection_status');         # ib.08 resection status TODO
+        cols.append('cm(NEC|_#c) (#c=0,aspace)') # ib.09 center of mass of NE of largest TC component, in a-space
+        cols.append('vol(TC|_#c)_r(#c=0)')       # ib.10 vol(TC) in comp #0 rel. to toatal vol(TC)
+        cols.append('vol(TC|_#c)_r(#c=1)')       # ib.10 vol(TC) in comp #1 rel. to toatal vol(TC)
+        cols.append('vol(TC|_#c)_r(#c=2)')       # ib.10 vol(TC) in comp #2 rel. to toatal vol(TC)
+        cols.append('vol(NE|_#c)_r(#c=0)')       # ib.10 vol(NE) in comp #0 rel. to toatal vol(NE)
+        cols.append('vol(NE|_#c)_r(#c=1)')       # ib.10 vol(NE) in comp #1 rel. to toatal vol(NE)
+        cols.append('vol(NE|_#c)_r(#c=2)')       # ib.10 vol(NE) in comp #2 rel. to toatal vol(NE)
+        cols.append('n_comps');                  # number of components with rel. mass larger 1E-3
+    # physics based features used for survival prediciton
+    if type == 'physics_based' and purpose == 'prediction':
+        cols.append('l2[c(0)|_#c]_r(#c=0)');     # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
+        cols.append('l2[c(0)|_#c]_r(#c=1)');     # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
+        cols.append('l2[c(0)|_#c]_r(#c=2)');     # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
+        cols.append('cm(c(0)_#c)_(#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
+        cols.append('cm(c(0)_#c)_(#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
+        cols.append('cm(c(0)_#c)_(#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
+        cols.append('rho-inv');                  # ph.03 inversion variables prolifaration, migration
+        cols.append('k-inv');                    # ph.03 inversion variables prolifaration, migration
+        cols.append('rho-over-k');               # ph.03 inversion variables prolifaration, migration
+        cols.append('l2[c(1)|_TC-TC,scaled]_r')  # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
 
     brats_data['is_na'] = brats_data[cols_bio].isnull().apply(lambda x: any(x), axis=1)
     brats_data          = brats_data.loc[brats_data['is_na'] == False]
     dat_out             = brats_data.loc[brats_data['is_na'] == True]
     dat_out["filter-reason"] = "nan values"
-    dat_out             = pd.concat([dat_filtered_out, dat_out], axis=0)
+    if len(dat_out) >=1:
+        print("\n\n### BraTS simulation data [discarded] ### ")
+        print(tabulate(dat_out[["BID", "filter-reason"]], headers='keys', tablefmt='psql'))
 
-
-
-    # select features
-    df_stat = brats_data[cols_stat]
-    df_bio  = brats_data[cols_bio5]
     X = brats_data[cols].values
-    Y = np.ravel(brats_data[['srvl[]']].values).astype('int')
-
+    Y = np.ravel(brats_data[['survival_class']].values).astype('int')
     return X, Y
 
 
