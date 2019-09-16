@@ -14,6 +14,7 @@ struct CtxAdv {
 	std::shared_ptr<VecField> velocity_;
 	std::shared_ptr<SpectralOperators> spec_ops_; 
 	ScalarType dt_;
+	int advection_mode_;
 };
 
 class AdvectionSolver {
@@ -43,6 +44,19 @@ class TrapezoidalSolver : public AdvectionSolver {
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);
 
 		virtual ~TrapezoidalSolver ();
+};
+
+// Solve transport equations using Crank-Nicolson
+class ImplicitEulerSolver : public AdvectionSolver {
+	public:
+		KSP ksp_;
+		Mat A_;
+		Vec rhs_;
+
+		ImplicitEulerSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops);
+		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);
+
+		virtual ~ImplicitEulerSolver ();
 };
 
 // Solve transport equations using semi-Lagrangian
@@ -89,5 +103,7 @@ class SemiLagrangianSolver : public AdvectionSolver {
 
 //Helper functions for KSP solve
 PetscErrorCode operatorAdv (Mat A, Vec x, Vec y);
+PetscErrorCode operatorAdvEuler (Mat A, Vec x, Vec y);
+PetscErrorCode advSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr);
 
 #endif

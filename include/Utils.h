@@ -327,7 +327,7 @@ class NMisc {
         , E_csf_ (500)                           // Young's modulus of CSF
         , screen_low_ (0)                       // low screening coefficient
         , screen_high_ (1E2)                    // high screening 
-        , forcing_factor_ (1E5)               // mass effect forcing factor
+        , forcing_factor_ (6E4)               // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
@@ -371,9 +371,14 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
-                user_cm_[0] = 2 * M_PI / 128 * 70;//72  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 78;//82  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 75;//72  //X
+                // user_cm_[0] = 2 * M_PI / 128 * 70;//72  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 78;//82  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 75;//72  //X
+
+                // SRI-atlas
+                user_cm_[0] = 2 * M_PI / 128 * 62;//72  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 42;//82  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 56;//72  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z

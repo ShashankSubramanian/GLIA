@@ -14,10 +14,9 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
     	ctx_->temp_[i] = tumor->work_[11 - i]; 	// Choose some tumor work vector
 
     ctx_->velocity_ = tumor->velocity_;
-
     advection_mode_ = 1;    // 1 -- mass conservation
                             // 2 -- pure advection (csf uses this to allow for leakage etc)
-
+    ctx_->advection_mode_ = advection_mode_;
     trajectoryIsComputed_ = false;
 }
 
@@ -106,15 +105,155 @@ PetscErrorCode TrapezoidalSolver::solve (Vec scalar, std::shared_ptr<VecField> v
 	PetscFunctionReturn (ierr);
 }
 
-
-AdvectionSolver::~AdvectionSolver () {
-}
-
 TrapezoidalSolver::~TrapezoidalSolver () {
     PetscErrorCode ierr = 0;
     ierr = MatDestroy (&A_);
     ierr = KSPDestroy (&ksp_);
     ierr = VecDestroy (&rhs_);
+}
+
+
+ImplicitEulerSolver::ImplicitEulerSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {
+    PetscErrorCode ierr = 0;
+    ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
+    ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdv);
+
+    ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
+    ierr = KSPSetOperators (ksp_, A_, A_);
+    ierr = KSPSetTolerances (ksp_, 1e-3, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    ierr = KSPSetType (ksp_, KSPGMRES);
+    // ierr = KSPMonitorSet(ksp_, advSolverKSPMonitor, ctx_.get(), 0);    
+    ierr = KSPSetFromOptions (ksp_);
+    ierr = KSPSetUp (ksp_);
+
+    ierr = VecCreate (PETSC_COMM_WORLD, &rhs_);
+    ierr = VecSetSizes (rhs_, n_misc->n_local_, n_misc->n_global_);
+    ierr = setupVec (rhs_);
+    ierr = VecSet (rhs_, 0);
+}
+
+PetscErrorCode advSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Vec x; int maxit; ScalarType divtol, abstol, reltol;
+    ierr = KSPBuildSolution (ksp,NULL,&x);
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit);             CHKERRQ(ierr);                                                             CHKERRQ(ierr);
+    CtxAdv *ctx = reinterpret_cast<CtxAdv*>(ptr);     // get user context
+
+    std::stringstream s;
+    if (its == 0) {
+      s << std::setw(3)  << " KSP: computing solution of advection system (tol="
+        << std::scientific << std::setprecision(5) << reltol << ")";
+      ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+      s.str (""); s.clear ();
+    }
+    s << std::setw(3)  << " KSP:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+    << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+    ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    // int ksp_itr;
+    // ierr = KSPGetIterationNumber (ksp, &ksp_itr);                                 CHKERRQ (ierr);
+    // ScalarType e_max, e_min;
+    // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+    //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min);       CHKERRQ (ierr);
+    //   s << "Condition number of matrix is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+    //   ierr = tuMSGstd (s.str());                                                    CHKERRQ(ierr);
+    //   s.str (""); s.clear ();
+    // }
+    PetscFunctionReturn (ierr);
+}
+
+
+// y = Ax = (x + dt div (xv)) or (x + dt delx . v)
+PetscErrorCode operatorAdvEuler (Mat A, Vec x, Vec y) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Event e ("tumor-adv-ksp-matvec");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+    CtxAdv *ctx;
+    ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
+
+    ScalarType alph = ctx->dt_;
+    std::bitset<3> XYZ;
+    XYZ[0] = 1;
+    XYZ[1] = 1;
+    XYZ[2] = 1;
+    if (ctx->advection_mode_ == 1) {
+        // compute (x + dt div(xv))
+        ierr = VecPointwiseMult (ctx->temp_[0], ctx->velocity_->x_, x);         CHKERRQ (ierr);
+        ierr = VecPointwiseMult (ctx->temp_[1], ctx->velocity_->y_, x);         CHKERRQ (ierr);
+        ierr = VecPointwiseMult (ctx->temp_[2], ctx->velocity_->z_, x);         CHKERRQ (ierr);
+        ierr = ctx->spec_ops_->computeDivergence (y, ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], t.data());    CHKERRQ (ierr);
+        ierr = VecScale (y, alph);                                  CHKERRQ (ierr);
+        ierr = VecAXPY (y, 1.0, x);                                 CHKERRQ (ierr);
+    } else { //pure advection
+        // compute (x + dt * gradx .v)
+        ierr = ctx->spec_ops_->computeGradient (ctx->temp_[0], ctx->temp_[1], ctx->temp_[2], x, &XYZ, t.data()); CHKERRQ (ierr);
+        ierr = VecPointwiseMult (y, ctx->temp_[0], ctx->velocity_->x_);                             CHKERRQ (ierr);
+        ierr = VecPointwiseMult (ctx->temp_[0], ctx->temp_[1], ctx->velocity_->y_);                 CHKERRQ (ierr);
+        ierr = VecAXPY (y, 1.0, ctx->temp_[0]);                                                     CHKERRQ (ierr);
+        ierr = VecPointwiseMult (ctx->temp_[0], ctx->temp_[2], ctx->velocity_->z_);                 CHKERRQ (ierr);
+        ierr = VecAXPY (y, 1.0, ctx->temp_[0]);                                                     CHKERRQ (ierr);
+        ierr = VecScale (y, alph);                                  CHKERRQ (ierr);
+        ierr = VecAXPY (y, 1.0, x);                                 CHKERRQ (ierr);                
+    }   
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (ierr);
+}
+
+PetscErrorCode ImplicitEulerSolver::solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    Event e ("tumor-adv-solve");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    CtxAdv *ctx;
+    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
+    ctx->dt_ = dt;
+    ctx->velocity_->x_ = velocity->x_;
+    ctx->velocity_->y_ = velocity->y_;
+    ctx->velocity_->z_ = velocity->z_;
+
+    ierr = VecCopy (scalar, rhs_);                              CHKERRQ (ierr);
+    // RHS is simply c^n
+    //KSP solve
+    ierr = KSPSolve (ksp_, rhs_, scalar);                       CHKERRQ (ierr);
+
+    int itr;
+    ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
+    ScalarType res_norm;
+    ierr = KSPGetResidualNorm (ksp_, &res_norm);                CHKERRQ (ierr);
+
+    std::stringstream s;
+    s << "[Advection solver] GMRES convergence - iterations: " << itr << "    residual: " << res_norm;
+    ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+    s.str (""); s.clear ();
+
+    self_exec_time += MPI_Wtime();
+    accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
+    e.addTimings (t);
+    e.stop ();
+    PetscFunctionReturn (ierr);
+}
+
+ImplicitEulerSolver::~ImplicitEulerSolver () {
+    PetscErrorCode ierr = 0;
+    ierr = MatDestroy (&A_);
+    ierr = KSPDestroy (&ksp_);
+    ierr = VecDestroy (&rhs_);
+}
+
+AdvectionSolver::~AdvectionSolver () {
 }
 
 

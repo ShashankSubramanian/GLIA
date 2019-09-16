@@ -9,19 +9,17 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/cleanup-hang-1/'
-params['compute_sys'] = 'frontera'
+params['results_path'] = tumor_dir + '/results/sri-mass-effect-/'
+params['compute_sys'] = 'maverick2'
 
 
 
 # ### Real data
 # params['data_path'] = tumor_dir + '/results/tc2_128/data.nc'
-# params['data_path'] = '/workspace/shashank/label_maps/tcia_09_141/data.nc'
-# params['data_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_tc.nc'
 # # # ## Atlas
-# params['gm_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_gm.nc'
-# params['wm_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_wm_wt.nc'
-# params['csf_path'] = '/workspace/shashank/tumor_tools/axo/input/patient_seg_csf.nc'
+# params['gm_path'] = '/work/05027/shas1693/maverick2/pglistr_tumor/brain_data/sri_atlas/sri_gm_256x256x256_aff2jakob.nc'
+# params['wm_path'] = '/work/05027/shas1693/maverick2/pglistr_tumor/brain_data/sri_atlas/sri_wm_256x256x256_aff2jakob.nc'
+# params['csf_path'] = '/work/05027/shas1693/maverick2/pglistr_tumor/brain_data/sri_atlas/sri_csf_256x256x256_aff2jakob.nc'
 # params['gm_path'] = '/workspace/shashank/label_maps/tcia_09_141/gm.nc'
 # params['wm_path'] = '/workspace/shashank/label_maps/tcia_09_141/wm.nc'
 # params['csf_path'] = '/workspace/shashank/label_maps/tcia_09_141/csf.nc'
