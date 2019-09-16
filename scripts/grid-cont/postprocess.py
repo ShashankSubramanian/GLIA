@@ -451,7 +451,7 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
 
     x_cm = scipy.ndimage.measurements.center_of_mass(pref_tc.astype(int));
     features['cm(TC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],   x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-    x_cm = scipy.ndimage.measurements.center_of_mass(pref_nec.astype(int)); 
+    x_cm = scipy.ndimage.measurements.center_of_mass(pref_nec.astype(int));
     features['cm(NEC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],  x_cm[1], x_cm[2]) if nc < 3 else "n/a";
     x_cm = scipy.ndimage.measurements.center_of_mass(c0_recon.astype(float));
     features['cm(c(0)) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
@@ -946,8 +946,8 @@ def connectedComponentsData(dpath, data_file=None):
     if "nii.gz" in data_file:
         data = nib.load(os.path.join(dpath, data_file));
         dims = data.shape;
-        data = data.get_fdata();
         affine = data.affine;
+        data = data.get_fdata();
         data = data > 1E-1;
     print(".. reading target data ", os.path.join(dpath, data_file), " with dimension", dims)
 
