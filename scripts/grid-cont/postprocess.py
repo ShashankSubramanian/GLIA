@@ -1791,13 +1791,14 @@ if __name__=='__main__':
             c0_recon  = c0_recon.get_fdata();
             c1_recon  = nib.load(os.path.join(res_path, "cRecon.nii.gz"));
             c1_recon  = c1_recon.get_fdata();
-            try:
-                c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz"));
-                c0_in_aspace = c1_recon.get_fdata();
-                patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz"));
-            except:
-                c0_in_aspace = None;
-                patient_ref_in_aspace = None;
+            #try:
+            c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz"));
+            c0_in_aspace = c1_recon.get_fdata();
+            patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz"));
+            #except:
+            #    c0_in_aspace = None;
+            #    patient_ref_in_aspace = None;
+            #    print("Error: Can not read images in atlas space"); sys.exit(1);
             c1_pred12 = None;
             c1_pred15 = None;
             if args.prediction:
@@ -1817,12 +1818,13 @@ if __name__=='__main__':
             component_mask = comps_data[l] if args.analyze_concomps else None;
             computeTumorStats(FEATURES[l], template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_label_rev, res_path);
 
-            print("\n (4) b) computing tumor statistics in ATLAS space\n");
-            # connected copmponent analysis of patient TC in ATLAS space
-            labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz");
-            # component mask of connected component analysis of patient TC in ATLAS space
-            component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
-            computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
+            if l == 256:
+                print("\n (4) b) computing tumor statistics in ATLAS space\n");
+                # connected copmponent analysis of patient TC in ATLAS space
+                labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz");
+                # component mask of connected component analysis of patient TC in ATLAS space
+                component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
+                computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
 
             FEATURES[l]['n_comps[all]'] = len(xcm_data[l])
             for k in range(len(xcm_data[l])):
