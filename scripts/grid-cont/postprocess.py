@@ -948,7 +948,7 @@ def connectedComponentsData(dpath, data_file=None):
         dims = data.shape;
         affine = data.affine;
         data = data.get_fdata();
-        data = data > 1E-1;
+        data = data > 1E-4;
     print(".. reading target data ", os.path.join(dpath, data_file), " with dimension", dims)
 
     structure = np.ones((3, 3, 3), dtype=np.int);
@@ -1823,6 +1823,10 @@ if __name__=='__main__':
 
                 # connected copmponent analysis of patient TC in ATLAS space
                 labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz");
+
+                print("ncomps(PSPACE):",ncomps_data[l], "\nncomps(ASPACE)", ncomps_data_aspace);
+                print("rel. mass(PSPACE):",relmass[l], "\nrelmass(ASPACE)", relmass_aspace);
+                print("xcm(PSPACE):",xcm_data[l], "\nxcmASPACE)", xcm_data_aspace);
                 # component mask of connected component analysis of patient TC in ATLAS space
                 component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
                 computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
