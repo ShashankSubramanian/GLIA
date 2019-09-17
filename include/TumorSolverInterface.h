@@ -43,7 +43,7 @@
         int ostart[3];
         int osize[3];
         int testcase;
-        accfft_plan* plan;
+        fft_plan* plan;
         MPI_Comm comm;
         int fft_mode;
 
