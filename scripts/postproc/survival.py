@@ -10,11 +10,13 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import Normalize
+from matplotlib.ticker import NullFormatter
 import scipy
 from os import listdir
 import numpy as np
 import os
 from tabulate import tabulate
+from time import time
 
 from sklearn import svm, datasets
 from sklearn.model_selection import train_test_split
@@ -26,6 +28,9 @@ from sklearn.model_selection import GridSearchCV,cross_validate
 from sklearn import preprocessing
 from sklearn.metrics import classification_report
 from sklearn.decomposition import PCA
+from sklearn import metrics
+from sklearn.cluster import KMeans
+from sklearn import manifold
 
 
 class bcolors:
@@ -42,11 +47,11 @@ class bcolors:
 def getSurvivalClass(x):
     m = x/30.
     if m < 10:
-        return 1;# np.array([1,0,0])
+        return 0;# np.array([1,0,0])
     elif m < 15:
-        return 2;# np.array([0,1,0])
+        return 1;# np.array([0,1,0])
     else:
-        return 3;# np.array([0,0,1])
+        return 2;# np.array([0,0,1])
 
 
 ###
@@ -200,7 +205,6 @@ def clean_data(brats_data, max_l2c1error = 0.8):
     dat_filtered_out = dat_out;
     # dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
 
-    brats_clustering = brats_data.copy();
     brats_survival = brats_data.copy();
 
     # 3. filter survival data
@@ -209,6 +213,8 @@ def clean_data(brats_data, max_l2c1error = 0.8):
     brats_survival = brats_survival.loc[brats_survival['age'] >  0]
     dat_out["filter-reason"] = "no survival data"
     # dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
+
+    brats_clustering = brats_survival.copy();
 
     # 4. filter GTR resection status
     dat_out = brats_survival.loc[brats_survival['resection_status'] != 'GTR']
@@ -284,37 +290,55 @@ def get_feature_subset(brats_data, type, purpose):
         print(tabulate(dat_out[["BID", "filter-reason"]], headers='keys', tablefmt='psql'))
 
     X = brats_data[cols].values
-    # Y = np.ravel(brats_data[['survival_class']].values).astype('int')
-    Y = np.ravel(brats_data[['survival(days)']].values).astype('float')
-    Y = Y / float(365);
+    Y = np.ravel(brats_data[['survival_class']].values).astype('int')
+    # Y = np.ravel(brats_data[['survival(days)']].values).astype('float')
+    # Y = Y / 365.;
     return X, Y
 
 
 ###
 ### ------------------------------------------------------------------------ ###
-def preprocess_features(X_train, X_test):
-    # === normalization/scaling ===
-    # scaler    = preprocessing.StandardScaler().fit(X)
-    scaler     = preprocessing.MinMaxScaler()
+def preprocess_features(X_train, X_test=None, normalize=True, reduce_dims=None):
+    scaler     = preprocessing.StandardScaler()
+    # scaler     = preprocessing.MinMaxScaler()
+    # scaler     = preprocessing.RobustScaler()
     normalizer = preprocessing.Normalizer()
-    scaler.fit_transform(X_train)
-    normalizer.fit(X_train)
 
-    scaler.transform(X_test)
-    normalizer.transform(X_train)
-    normalizer.transform(X_test)
+    # Normalization
+    if normalize:
+        X_train = scaler.fit_transform(X_train)
+        # normalizer.fit(X_train)
+        # X_train = normalizer.transform(X_train)
+        pass
+        if X_test is not None:
+            X_test = scaler.transform(X_test)
+            # X_test = normalizer.transform(X_test)
+            pass
 
+    X_train_pca = X_train.copy();
+    X_test_pca = X_test.copy() if X_test is not None else None;
+    pca = None;
     # PCA dimensionality reduction
-    pca = PCA(n_components=3, svd_solver='randomized', whiten=True).fit(X_train)
-    # projecting data
-    X_train_pca = pca.transform(X_train)
-    X_test_pca = pca.transform(X_test)
-    # X_train_pca = X_train
-    # X_test_pca  = X_test
+    if reduce_dims is not None:
+        pca = PCA(n_components=reduce_dims, svd_solver='randomized', whiten=True).fit(X_train)
+        # projecting data
+        X_train_pca = pca.transform(X_train_pca)
+        if X_test is not None:
+            X_test_pca = pca.transform(X_test_pca)
 
-    print("dim(X_train) before PCA: {} and after {} ".format(X_train.shape, X_train_pca.shape))
-    return X_train_pca, X_test_pca
+        print("dim(X_train) before PCA: {}, and after PCA: {} ".format(X_train.shape, X_train_pca.shape))
+    return X_train_pca, X_test_pca, pca
 
+
+###
+### ------------------------------------------------------------------------ ###
+def bench_k_means(estimator, name, data):
+    t0 = time()
+    estimator.fit(data)
+    print('%-9s\t%.2fs\t%i\t%.3f'
+          % (name, (time() - t0), estimator.inertia_,
+             metrics.silhouette_score(data, estimator.labels_, metric='euclidean', sample_size=300)))
+    return estimator;
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -333,6 +357,72 @@ if __name__=='__main__':
 
     # a) cluster brains
     X_ib, Y_ib = get_feature_subset(brats_clustering, type="image_based", purpose='clustering');
+    X_ib, d, d = preprocess_features(X_ib, normalize=True);
+
+    COLORS = {}
+    X_ib_cluster = X_ib.copy();
+    range_n_clusters = [2, 3, 4, 10] # last entry not used, dummy
+    for j, n_clusters in zip(range(len(range_n_clusters)), range_n_clusters):
+        COLORS[j] = {}
+        if j < len(range_n_clusters)-1:
+            X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib_cluster, normalize=False, reduce_dims=n_clusters);
+            print()
+            print("n_clusters: {}".format(n_clusters))
+            print('init\t\ttime\tinertia\tsilhouette')
+            kmeans = bench_k_means(KMeans(init='k-means++', n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib_pca_reduced)
+            # kmeans = bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib_cluster)
+            labels = kmeans.labels_;
+        else:
+            labels = Y_ib;
+        for c in range(np.max(labels)+1):
+            COLORS[j][c] = labels==c;
+
+    # k-means clustering
+    # range_n_clusters = [3]#, 3, 4, 5, 6, 7]
+    # for n_clusters in range_n_clusters:
+    #     X_cluster = X_ib.copy();
+    #     X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib, normalize=False, reduce_dims=3);
+    #     print()
+    #     print("n_clusters: {}".format(n_clusters))
+    #     print('init\t\ttime\tinertia\tsilhouette')
+    #     kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib)
+    #     bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (d)",    data=X_ib)
+    #     bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib)
+    #     bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (rd)", data=X_ib_pca_reduced)
+    #     bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (rd)",    data=X_ib_pca_reduced)
+
+
+
+    # T-SNE visualization
+    Y = {}
+    k = 0
+    for reduced_dims in [None]:
+        X_ib_vis = X_ib.copy();
+        X_ib_vis, dummy, pca = preprocess_features(X_ib_vis, normalize=False, reduce_dims=reduced_dims);
+        fig, axx = plt.subplots(4, 6, figsize=(15, 10), squeeze=False);
+        for i, perplexity in enumerate([5,10,30,40,50,100]):
+            t0 = time()
+            tsne = manifold.TSNE(n_components=2, init='random',
+                                 random_state=0,
+                                 early_exaggeration=12, n_iter_without_progress=1000,
+                                 n_iter=10000, learning_rate=100,
+                                 perplexity=perplexity)
+            Y[k] = tsne.fit_transform(X_ib_vis)
+            t1 = time()
+            print("perplexity=%d in %.2g sec" % (perplexity, t1 - t0))
+
+            # coloring from k-means
+            for j in range(len(COLORS)):
+                ax = axx[j][i]
+                pal = sns.color_palette("tab10", n_colors=6);
+                for c in range(len(COLORS[j])):
+                    ax.scatter(Y[k][COLORS[j][c],0], Y[k][COLORS[j][c],1], color=pal[c]);
+                ax.set_title("Perplexity=%d" % perplexity)
+                ax.xaxis.set_major_formatter(NullFormatter())
+                ax.yaxis.set_major_formatter(NullFormatter())
+                ax.axis('tight')
+        k += 1;
+    plt.show()
 
 
     # X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
