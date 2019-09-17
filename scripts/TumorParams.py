@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 256
+    N = 128
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -67,10 +67,10 @@ def getTumorRunCmd(params):
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
-    model = 4
+    model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 14
-    k_data = 0.01
+    rho_data = 8
+    k_data = 0.025
     nt_data = 100
     dt_data = 0.01
 
@@ -98,7 +98,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 1
+    forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
     lam_cont = 1
     ### Tumor L2 regularization
-    beta = 1e-4
+    beta = 0
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)
