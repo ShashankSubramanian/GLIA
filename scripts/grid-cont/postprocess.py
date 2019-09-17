@@ -430,10 +430,7 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
             tc_in_comp  = np.multiply(pref_tc.astype(int),    component_mask[nc].astype(float));
             nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(float));
             c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(float));
-            #fio.writeNII(c0_recon.astype(float),os.path.join(".", "c0_recon.nii.gz"), affine);
-            #fio.writeNII(component_mask[nc].astype(float),os.path.join(".", "mask.nii.gz"), affine);
-            #fio.writeNII(c0_in_comp,os.path.join(".", "c0masked.nii.gz"), affine);
-            
+
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
             x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
@@ -579,11 +576,6 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
             nec_in_comp = np.multiply(pref_nec.astype(int),   mask.astype(float));
             en_in_comp  = np.multiply(pref_en.astype(int),    mask.astype(float));
             c0_in_comp  = np.multiply(c0_recon.astype(float), mask.astype(float));
-            #if nc == 0:
-            #    fio.writeNII(c0_recon.astype(float),os.path.join(".", "c0_recon_pspace.nii.gz"), affine);
-            #    fio.writeNII(mask.astype(float),os.path.join(".", "mask_pspace.nii.gz"), affine);
-            #    fio.writeNII(c0_in_comp,os.path.join(".", "c0masked_pspace.nii.gz"), affine);
-            
 
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
@@ -966,8 +958,6 @@ def connectedComponentsData(dpath, data_file=None, patient_labels=None):
         data = pref_tc > 1E-4;
     print(".. reading target data ", os.path.join(dpath, data_file), " with dimension", dims)
 
-    #if "nii.gz" in data_file:
-    #    fio.writeNII(data.astype(float), os.path.join(dpath, "../concomp_data_aspace.nii.gz"), affine);
     structure = np.ones((3, 3, 3), dtype=np.int);
     comps       = {}
     count       = {}
@@ -1009,9 +999,6 @@ def connectedComponentsData(dpath, data_file=None, patient_labels=None):
         temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
         labeled_sorted += temp[i];
 
-    #if "nii.gz" in data_file:
-    #    fio.writeNII(labeled_sorted.astype(float), os.path.join(dpath, "../labeled_aspace.nii.gz"), affine);
-    # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
     return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
 
 

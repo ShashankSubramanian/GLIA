@@ -107,6 +107,7 @@ def plot_confusion_matrix(y_true, y_pred, classes,
 
 def read_data(dir, level, file):
     FILTER = ['Brats18_CBICA_AUR_1', 'Brats18_CBICA_ANI_1']
+    FAILED_TO_ADD = []
     max_l2c1error=0.8  # filter out 'failed cases'
 
     brats_data = pd.DataFrame();
@@ -136,7 +137,11 @@ def read_data(dir, level, file):
             patient_path = os.path.join(dir, P);
 
             # read features
-            patient_data = pd.read_csv(os.path.join(patient_path,"features_"+str(level)+".csv"), index_col=0, header = None, error_bad_lines=True, sep=';', skipinitialspace=True).transpose();
+            try:
+                patient_data = pd.read_csv(os.path.join(patient_path,"features_"+str(level)+".csv"), index_col=0, header = None, error_bad_lines=True, sep=';', skipinitialspace=True).transpose();
+            except:
+                print("failed to add {}".format(BID))
+                FAILED_TO_ADD.append(BID)
             patient_data['BID'] = BID;
             survival_row = survival_data.loc[survival_data['BraTS18ID'] == BID]
             if not survival_row.empty:
@@ -154,6 +159,7 @@ def read_data(dir, level, file):
             else:
                 brats_data = brats_data.append(patient_data, ignore_index=True, sort=True);
         brats_data.to_csv(os.path.join(dir, "features_"+str(level)+".csv"))
+        print("\nCould not add the following brains:\n", FAILED_TO_ADD);
 
     # read brats data
     if dir is None and file is not None:
@@ -228,13 +234,13 @@ def get_feature_subset(brats_data, type, purpose):
 
     cols = []
     # features used for brain clustering
-    if purpose == 'clustering':
+    if type == 'image_based' and purpose == 'clustering':
         cols.append('vol(TC)_r');                # ib.01 TC rel. volume
         cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
         cols.append('vol(ED)_r');                # ib.03 ED rel. volume
         cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        cols.append('vol(NE)_r');                # ib.05 NE rel. volume
-        cols.append('area(NE)_r');               # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        cols.append('vol(NEC)_r');               # ib.05 NE rel. volume
+        cols.append('area(NEC)_r');              # ib.06 NE rel. surface (rel. to sphere with volume of NE)
         cols.append('age');                      # ib.07 patient age
         cols.append('survival(days)');
         cols.append('n_comps');                  # number of components with rel. mass larger 1E-3
@@ -244,8 +250,8 @@ def get_feature_subset(brats_data, type, purpose):
         cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
         cols.append('vol(ED)_r');                # ib.03 ED rel. volume
         cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        cols.append('vol(NE)_r');                # ib.05 NE rel. volume
-        cols.append('area(NE)_r');               # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        cols.append('vol(NEC)_r');               # ib.05 NE rel. volume
+        cols.append('area(NEC)_r');              # ib.06 NE rel. surface (rel. to sphere with volume of NE)
         cols.append('age');                      # ib.07 patient age
         # cols.append('resection_status');         # ib.08 resection status TODO
         cols.append('cm(NEC|_#c) (#c=0,aspace)') # ib.09 center of mass of NE of largest TC component, in a-space
@@ -269,7 +275,7 @@ def get_feature_subset(brats_data, type, purpose):
         cols.append('rho-over-k');               # ph.03 inversion variables prolifaration, migration
         cols.append('l2[c(1)|_TC-TC,scaled]_r')  # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
 
-    brats_data['is_na'] = brats_data[cols_bio].isnull().apply(lambda x: any(x), axis=1)
+    brats_data['is_na'] = brats_data[cols].isnull().apply(lambda x: any(x), axis=1)
     brats_data          = brats_data.loc[brats_data['is_na'] == False]
     dat_out             = brats_data.loc[brats_data['is_na'] == True]
     dat_out["filter-reason"] = "nan values"
@@ -278,7 +284,9 @@ def get_feature_subset(brats_data, type, purpose):
         print(tabulate(dat_out[["BID", "filter-reason"]], headers='keys', tablefmt='psql'))
 
     X = brats_data[cols].values
-    Y = np.ravel(brats_data[['survival_class']].values).astype('int')
+    # Y = np.ravel(brats_data[['survival_class']].values).astype('int')
+    Y = np.ravel(brats_data[['survival(days)']].values).astype('float')
+    Y = Y / float(365);
     return X, Y
 
 
@@ -324,7 +332,7 @@ if __name__=='__main__':
     brats_clustering, brats_survival = clean_data(brats_data);
 
     # a) cluster brains
-    X_ib, Y_ib = get_feature_subset(brats_clustering, type="image_based");
+    X_ib, Y_ib = get_feature_subset(brats_clustering, type="image_based", purpose='clustering');
 
 
     # X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
