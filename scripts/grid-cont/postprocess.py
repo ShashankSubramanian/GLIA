@@ -427,27 +427,34 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
     nnc = 0
     if component_mask:
         for nc in range(min(3,len(component_mask))):
-            tc_in_comp  = np.multiply(pref_tc.astype(int),    component_mask[nc].astype(int));
-            nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(int));
-            c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(int));
-
+            tc_in_comp  = np.multiply(pref_tc.astype(int),    component_mask[nc].astype(float));
+            nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(float));
+            c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(float));
+            #fio.writeNII(c0_recon.astype(float),os.path.join(".", "c0_recon.nii.gz"), affine);
+            #fio.writeNII(component_mask[nc].astype(float),os.path.join(".", "mask.nii.gz"), affine);
+            #fio.writeNII(c0_in_comp,os.path.join(".", "c0masked.nii.gz"), affine);
+            
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
             x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
             x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
             x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(NEC|_#c) (#c='+str(nc)+',apsace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
             x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
             x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
 
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+',aspace)']   = "n/a";
-                features['cm(TC|_#c) (#c='+str(nc)+',aspace)']    = "n/a";
-                features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']  = "n/a";
+                print("component {} too small, fill with n/a".format(i));
+                features['cm(NEC|_#c) (#c='+str(i)+',aspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(i)+',aspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(i)+',aspace)']  = "n/a";
 
     x_cm = scipy.ndimage.measurements.center_of_mass(pref_tc.astype(int));
     features['cm(TC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],   x_cm[1], x_cm[2]) if nc < 3 else "n/a";
@@ -566,12 +573,17 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
     if component_mask:
         for nc in range(min(3,len(component_mask))):
             # convert to brats dimensions
-            mask = imgtools.resizeImage(component_mask[nc], tuple(patient_ref.shape), 0);
-            tc_in_comp  = np.multiply(pref_tc.astype(int),    mask.astype(int));
-            ed_in_comp  = np.multiply(pref_ed.astype(int),    mask.astype(int));
-            nec_in_comp = np.multiply(pref_nec.astype(int),   mask.astype(int));
-            en_in_comp  = np.multiply(pref_en.astype(int),    mask.astype(int));
-            c0_in_comp  = np.multiply(c0_recon.astype(float), mask.astype(int));
+            mask = imgtools.resizeImage(component_mask[nc].astype(int), tuple(patient_ref.shape), 0);
+            tc_in_comp  = np.multiply(pref_tc.astype(int),    mask.astype(float));
+            ed_in_comp  = np.multiply(pref_ed.astype(int),    mask.astype(float));
+            nec_in_comp = np.multiply(pref_nec.astype(int),   mask.astype(float));
+            en_in_comp  = np.multiply(pref_en.astype(int),    mask.astype(float));
+            c0_in_comp  = np.multiply(c0_recon.astype(float), mask.astype(float));
+            #if nc == 0:
+            #    fio.writeNII(c0_recon.astype(float),os.path.join(".", "c0_recon_pspace.nii.gz"), affine);
+            #    fio.writeNII(mask.astype(float),os.path.join(".", "mask_pspace.nii.gz"), affine);
+            #    fio.writeNII(c0_in_comp,os.path.join(".", "c0masked_pspace.nii.gz"), affine);
+            
 
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
@@ -599,19 +611,19 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   = "n/a";
-                features['cm(TC|_#c) (#c='+str(nc)+',pspace)']    = "n/a";
-                features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']  = "n/a";
-                features['vol(TC|_#c)_a(#c='+str(nc)+')']  = -1;
-                features['vol(TC|_#c)_r(#c='+str(nc)+')']  = -1;
-                features['vol(ED|_#c)_a(#c='+str(nc)+')']  = -1;
-                features['vol(ED|_#c)_r(#c='+str(nc)+')']  = -1;
-                features['vol(EN|_#c)_a(#c='+str(nc)+')']  = -1;
-                features['vol(EN|_#c)_r(#c='+str(nc)+')']  = -1;
-                features['vol(NEC|_#c)_a(#c='+str(nc)+')'] = -1;
-                features['vol(NEC|_#c)_r(#c='+str(nc)+')'] = -1;
-                features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] = -1;
-                features['l2[c(0)|_#c]_r(#c='+str(nc)+')'] = -1;
+                features['cm(NEC|_#c) (#c='+str(i)+',pspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(i)+',pspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(i)+',pspace)']  = "n/a";
+                features['vol(TC|_#c)_a(#c='+str(i)+')']  = -1;
+                features['vol(TC|_#c)_r(#c='+str(i)+')']  = -1;
+                features['vol(ED|_#c)_a(#c='+str(i)+')']  = -1;
+                features['vol(ED|_#c)_r(#c='+str(i)+')']  = -1;
+                features['vol(EN|_#c)_a(#c='+str(i)+')']  = -1;
+                features['vol(EN|_#c)_r(#c='+str(i)+')']  = -1;
+                features['vol(NEC|_#c)_a(#c='+str(i)+')'] = -1;
+                features['vol(NEC|_#c)_r(#c='+str(i)+')'] = -1;
+                features['l2[c(0)|_#c]_a(#c='+str(i)+')'] = -1;
+                features['l2[c(0)|_#c]_r(#c='+str(i)+')'] = -1;
 
 
     # -- d) rel. surface --
