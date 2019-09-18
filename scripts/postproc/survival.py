@@ -18,6 +18,7 @@ import os
 from tabulate import tabulate
 from time import time
 
+import sklearn
 from sklearn import svm, datasets
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -242,11 +243,11 @@ def get_feature_subset(brats_data, type, purpose):
     # features used for brain clustering
     if type == 'image_based' and purpose == 'clustering':
         cols.append('vol(TC)_r');                # ib.01 TC rel. volume
-        cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
+        # cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
         cols.append('vol(ED)_r');                # ib.03 ED rel. volume
-        cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
+        # cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
         cols.append('vol(NEC)_r');               # ib.05 NE rel. volume
-        cols.append('area(NEC)_r');              # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        # cols.append('area(NEC)_r');              # ib.06 NE rel. surface (rel. to sphere with volume of NE)
         cols.append('age');                      # ib.07 patient age
         cols.append('survival(days)');
         cols.append('n_comps');                  # number of components with rel. mass larger 1E-3
@@ -293,14 +294,14 @@ def get_feature_subset(brats_data, type, purpose):
     Y = np.ravel(brats_data[['survival_class']].values).astype('int')
     # Y = np.ravel(brats_data[['survival(days)']].values).astype('float')
     # Y = Y / 365.;
-    return X, Y
+    return X, Y, cols
 
 
 ###
 ### ------------------------------------------------------------------------ ###
 def preprocess_features(X_train, X_test=None, normalize=True, reduce_dims=None):
-    scaler     = preprocessing.StandardScaler()
-    # scaler     = preprocessing.MinMaxScaler()
+    # scaler     = preprocessing.StandardScaler()
+    scaler     = preprocessing.MinMaxScaler()
     # scaler     = preprocessing.RobustScaler()
     normalizer = preprocessing.Normalizer()
 
@@ -325,7 +326,7 @@ def preprocess_features(X_train, X_test=None, normalize=True, reduce_dims=None):
         X_train_pca = pca.transform(X_train_pca)
         if X_test is not None:
             X_test_pca = pca.transform(X_test_pca)
-
+        print()
         print("dim(X_train) before PCA: {}, and after PCA: {} ".format(X_train.shape, X_train_pca.shape))
     return X_train_pca, X_test_pca, pca
 
@@ -356,48 +357,39 @@ if __name__=='__main__':
     brats_clustering, brats_survival = clean_data(brats_data);
 
     # a) cluster brains
-    X_ib, Y_ib = get_feature_subset(brats_clustering, type="image_based", purpose='clustering');
-    X_ib, d, d = preprocess_features(X_ib, normalize=True);
+    X_ib, Y_ib, cols = get_feature_subset(brats_clustering, type="image_based", purpose='clustering');
+    X_ib_n , d, d    = preprocess_features(X_ib, normalize=True);
 
+    # k-means clustering
     COLORS = {}
-    X_ib_cluster = X_ib.copy();
+    X_ib_cluster = X_ib_n.copy();
     range_n_clusters = [2, 3, 4, 10] # last entry not used, dummy
     for j, n_clusters in zip(range(len(range_n_clusters)), range_n_clusters):
         COLORS[j] = {}
         if j < len(range_n_clusters)-1:
-            X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib_cluster, normalize=False, reduce_dims=n_clusters);
-            print()
+            X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib_cluster, normalize=False, reduce_dims=None);
             print("n_clusters: {}".format(n_clusters))
             print('init\t\ttime\tinertia\tsilhouette')
             kmeans = bench_k_means(KMeans(init='k-means++', n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib_pca_reduced)
-            # kmeans = bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib_cluster)
+            # kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib)
+            # kmeans = bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (d)",    data=X_ib)
+            # kmeans = bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib)
+            # kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (rd)", data=X_ib_pca_reduced)
+            # kmeans = bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (rd)",    data=X_ib_pca_reduced)
+            print("normalized mutual information (survival class): {}".format(sklearn.metrics.cluster.normalized_mutual_info_score(kmeans.labels_, Y_ib)));
+            print("confusion matrix:\n", sklearn.metrics.confusion_matrix(Y_ib, kmeans.labels_))
             labels = kmeans.labels_;
         else:
             labels = Y_ib;
         for c in range(np.max(labels)+1):
             COLORS[j][c] = labels==c;
 
-    # k-means clustering
-    # range_n_clusters = [3]#, 3, 4, 5, 6, 7]
-    # for n_clusters in range_n_clusters:
-    #     X_cluster = X_ib.copy();
-    #     X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib, normalize=False, reduce_dims=3);
-    #     print()
-    #     print("n_clusters: {}".format(n_clusters))
-    #     print('init\t\ttime\tinertia\tsilhouette')
-    #     kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib)
-    #     bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (d)",    data=X_ib)
-    #     bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib)
-    #     bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (rd)", data=X_ib_pca_reduced)
-    #     bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (rd)",    data=X_ib_pca_reduced)
-
-
-
     # T-SNE visualization
     Y = {}
     k = 0
-    for reduced_dims in [None]:
-        X_ib_vis = X_ib.copy();
+    X_ib_n , d, d    = preprocess_features(X_ib, normalize=False);
+    for reduced_dims in [None, 4, 2]:
+        X_ib_vis = X_ib_n.copy();
         X_ib_vis, dummy, pca = preprocess_features(X_ib_vis, normalize=False, reduce_dims=reduced_dims);
         fig, axx = plt.subplots(4, 6, figsize=(15, 10), squeeze=False);
         for i, perplexity in enumerate([5,10,30,40,50,100]):
@@ -423,6 +415,12 @@ if __name__=='__main__':
                 ax.axis('tight')
         k += 1;
     plt.show()
+
+
+    # b) survival (image based)
+    X_ib, Y_ib, cols = get_feature_subset(brats_survival, type="image_based", purpose='survival');
+    X_ib_n , d, d    = preprocess_features(X_ib, normalize=True);
+
 
 
     # X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
