@@ -427,27 +427,31 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
     nnc = 0
     if component_mask:
         for nc in range(min(3,len(component_mask))):
-            tc_in_comp  = np.multiply(pref_tc.astype(int),    component_mask[nc].astype(int));
-            nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(int));
-            c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(int));
+            tc_in_comp  = np.multiply(pref_tc.astype(int),    component_mask[nc].astype(float));
+            nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(float));
+            c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(float));
 
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
             x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
             x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
             x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(NEC|_#c) (#c='+str(nc)+',apsace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
             x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
             x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
+            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
 
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+',aspace)']   = "n/a";
-                features['cm(TC|_#c) (#c='+str(nc)+',aspace)']    = "n/a";
-                features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']  = "n/a";
+                print("component {} too small, fill with n/a".format(i));
+                features['cm(NEC|_#c) (#c='+str(i)+',aspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(i)+',aspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(i)+',aspace)']  = "n/a";
 
     x_cm = scipy.ndimage.measurements.center_of_mass(pref_tc.astype(int));
     features['cm(TC) (aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0],   x_cm[1], x_cm[2]) if nc < 3 else "n/a";
@@ -566,12 +570,12 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
     if component_mask:
         for nc in range(min(3,len(component_mask))):
             # convert to brats dimensions
-            mask = imgtools.resizeImage(component_mask[nc], tuple(patient_ref.shape), 0);
-            tc_in_comp  = np.multiply(pref_tc.astype(int),    mask.astype(int));
-            ed_in_comp  = np.multiply(pref_ed.astype(int),    mask.astype(int));
-            nec_in_comp = np.multiply(pref_nec.astype(int),   mask.astype(int));
-            en_in_comp  = np.multiply(pref_en.astype(int),    mask.astype(int));
-            c0_in_comp  = np.multiply(c0_recon.astype(float), mask.astype(int));
+            mask = imgtools.resizeImage(component_mask[nc].astype(int), tuple(patient_ref.shape), 0);
+            tc_in_comp  = np.multiply(pref_tc.astype(int),    mask.astype(float));
+            ed_in_comp  = np.multiply(pref_ed.astype(int),    mask.astype(float));
+            nec_in_comp = np.multiply(pref_nec.astype(int),   mask.astype(float));
+            en_in_comp  = np.multiply(pref_en.astype(int),    mask.astype(float));
+            c0_in_comp  = np.multiply(c0_recon.astype(float), mask.astype(float));
 
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
@@ -599,19 +603,19 @@ def computeTumorStats(features, patient_ref_, t1_recon_seg, t0_recon_seg, c1_rec
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
             for i in range (nnc, 3):
-                features['cm(NEC|_#c) (#c='+str(nc)+',pspace)']   = "n/a";
-                features['cm(TC|_#c) (#c='+str(nc)+',pspace)']    = "n/a";
-                features['cm(c(0)|_#c) (#c='+str(nc)+',pspace)']  = "n/a";
-                features['vol(TC|_#c)_a(#c='+str(nc)+')']  = -1;
-                features['vol(TC|_#c)_r(#c='+str(nc)+')']  = -1;
-                features['vol(ED|_#c)_a(#c='+str(nc)+')']  = -1;
-                features['vol(ED|_#c)_r(#c='+str(nc)+')']  = -1;
-                features['vol(EN|_#c)_a(#c='+str(nc)+')']  = -1;
-                features['vol(EN|_#c)_r(#c='+str(nc)+')']  = -1;
-                features['vol(NEC|_#c)_a(#c='+str(nc)+')'] = -1;
-                features['vol(NEC|_#c)_r(#c='+str(nc)+')'] = -1;
-                features['l2[c(0)|_#c]_a(#c='+str(nc)+')'] = -1;
-                features['l2[c(0)|_#c]_r(#c='+str(nc)+')'] = -1;
+                features['cm(NEC|_#c) (#c='+str(i)+',pspace)']   = "n/a";
+                features['cm(TC|_#c) (#c='+str(i)+',pspace)']    = "n/a";
+                features['cm(c(0)|_#c) (#c='+str(i)+',pspace)']  = "n/a";
+                features['vol(TC|_#c)_a(#c='+str(i)+')']  = -1;
+                features['vol(TC|_#c)_r(#c='+str(i)+')']  = -1;
+                features['vol(ED|_#c)_a(#c='+str(i)+')']  = -1;
+                features['vol(ED|_#c)_r(#c='+str(i)+')']  = -1;
+                features['vol(EN|_#c)_a(#c='+str(i)+')']  = -1;
+                features['vol(EN|_#c)_r(#c='+str(i)+')']  = -1;
+                features['vol(NEC|_#c)_a(#c='+str(i)+')'] = -1;
+                features['vol(NEC|_#c)_r(#c='+str(i)+')'] = -1;
+                features['l2[c(0)|_#c]_a(#c='+str(i)+')'] = -1;
+                features['l2[c(0)|_#c]_r(#c='+str(i)+')'] = -1;
 
 
     # -- d) rel. surface --
@@ -934,7 +938,7 @@ def weightedCenterPiForDataComponents(pvec, phi, hx, data_components, n_comps):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def connectedComponentsData(dpath, data_file=None):
+def connectedComponentsData(dpath, data_file=None, patient_labels=None):
     if data_file is None:
         data_file = 'patient_seg_tc.nc'
 
@@ -948,7 +952,10 @@ def connectedComponentsData(dpath, data_file=None):
         dims = data.shape;
         affine = data.affine;
         data = data.get_fdata();
-        data = data > 1E-1;
+        pref_en  = data == patient_labels['en'];
+        pref_nec = data == patient_labels['nec'];
+        pref_tc  = np.logical_or.reduce((pref_nec, pref_en));
+        data = pref_tc > 1E-4;
     print(".. reading target data ", os.path.join(dpath, data_file), " with dimension", dims)
 
     structure = np.ones((3, 3, 3), dtype=np.int);
@@ -992,7 +999,6 @@ def connectedComponentsData(dpath, data_file=None):
         temp[i] = (labeled == perm[i]+1).astype(int)*(i+1);
         labeled_sorted += temp[i];
 
-    # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
     return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
 
 
@@ -1822,7 +1828,12 @@ if __name__=='__main__':
                 #    print("Error: Can not read images in atlas space"); sys.exit(1);
 
                 # connected copmponent analysis of patient TC in ATLAS space
-                labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz");
+                labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz", patient_label_rev);
+                #fio.createNetCDF(os.path.join(out_path, 'data_comps_aspace_nx'+str(level)+'.nc') , np.shape(labeled_aspace), np.swapaxes(labeled_aspace,0,2));
+
+                print("ncomps(PSPACE):",ncomps_data[l], ", ncomps(ASPACE)", ncomps_data_aspace);
+                print("rel. mass(PSPACE):",relmass[l], ", relmass(ASPACE)", relmass_aspace);
+                print("x_cm(PSPACE):",xcm_data[l], "\nx_cm(ASPACE)", xcm_data_aspace);
                 # component mask of connected component analysis of patient TC in ATLAS space
                 component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
                 computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
