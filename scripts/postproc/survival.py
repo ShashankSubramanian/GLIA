@@ -224,7 +224,6 @@ def clean_data(brats_data, max_l2c1error = 0.8):
     dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
 
 
-
     print("\n\n### BraTS simulation data [cleaned] ### ")
     print(tabulate(brats_survival[["BID", "survival(days)", "age", "resection_status"]], headers='keys', tablefmt='psql'))
     print("\n\n### BraTS simulation data [discarded] ### ")
