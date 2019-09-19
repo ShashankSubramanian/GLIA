@@ -82,7 +82,7 @@ if __name__=='__main__':
             patient_path = os.path.join(os.path.join(dir, P), "tumor_inversion/nx256/obs-1.0/");
             # load patient c(0) nii image
             c0_in_aspace = nib.load(os.path.join(patient_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz")).get_fdata();
-            c1_in_aspace = nib.load(os.path.join(patient_path, "c1Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz")).get_fdata();
+            c1_in_aspace = nib.load(os.path.join(patient_path, "cRecon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz")).get_fdata();
 
             # superimpose in atlas
             glioma_c0_atlas += c0_in_aspace;
@@ -126,15 +126,15 @@ if __name__=='__main__':
         glioma_c1_atlas_long  /= max_c1_atlas_l;
         glioma_c1_atlas_na    /= max_c1_atlas_n;
         glioma_c0_atlas        = np.abs(glioma_c0_atlas);
-        glioma_c0_atlas_short  = np.abs(glioma_c0_atlas);
-        glioma_c0_atlas_mid    = np.abs(glioma_c0_atlas);
-        glioma_c0_atlas_long   = np.abs(glioma_c0_atlas);
-        glioma_c0_atlas_na     = np.abs(glioma_c0_atlas);
+        glioma_c0_atlas_short  = np.abs(glioma_c0_atlas_short);
+        glioma_c0_atlas_mid    = np.abs(glioma_c0_atlas_mid);
+        glioma_c0_atlas_long   = np.abs(glioma_c0_atlas_long);
+        glioma_c0_atlas_na     = np.abs(glioma_c0_atlas_na);
         glioma_c1_atlas        = np.abs(glioma_c1_atlas);
-        glioma_c1_atlas_short  = np.abs(glioma_c1_atlas);
-        glioma_c1_atlas_mid    = np.abs(glioma_c1_atlas);
-        glioma_c1_atlas_long   = np.abs(glioma_c1_atlas);
-        glioma_c1_atlas_na     = np.abs(glioma_c1_atlas);
+        glioma_c1_atlas_short  = np.abs(glioma_c1_atlas_short);
+        glioma_c1_atlas_mid    = np.abs(glioma_c1_atlas_mid);
+        glioma_c1_atlas_long   = np.abs(glioma_c1_atlas_long);
+        glioma_c1_atlas_na     = np.abs(glioma_c1_atlas_na);
         print("max value of glioma c(0) atlas after rescaling: {}".format(np.amax(glioma_c0_atlas.flatten())));
         print("max value of glioma c(1) atlas after rescaling: {}".format(np.amax(glioma_c1_atlas.flatten())));
         # write out
