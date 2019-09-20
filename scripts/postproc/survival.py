@@ -278,6 +278,7 @@ def get_feature_subset(brats_data, type, purpose):
         # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
         # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
         # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
+        # add distance c(0) to VE as feature
         cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
         cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
         cols.append('rho-over-k');                  # ph.03 inversion variables prolifaration, migration
