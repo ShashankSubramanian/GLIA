@@ -274,12 +274,12 @@ def get_feature_subset(brats_data, type, purpose):
         cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
     # physics based features used for survival prediciton
     if  'physics_based' in type and purpose == 'prediction':
-        cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
-        cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
-        cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
-        cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
-        cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
-        cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
+        # cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
+        # cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
+        # cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
+        # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
+        # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
+        # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
         # add distance c(0) to VE as feature
         cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
         cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
@@ -571,22 +571,8 @@ if __name__=='__main__':
         # X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based"], purpose='prediction');
         X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based", "physics_based"], purpose='prediction');
 
-
         print()
         print("basic data statistics:\n")
-        # brats_survival['vol(TC+ED)_r'] = brats_survival['vol(TC)_r'] + brats_survival['vol(ED)_r']
-        # brats_survival['vol(TC+0.5*ED)_r'] = brats_survival['vol(TC)_r'] + 0.5 * brats_survival['vol(ED)_r']
-        # print("max vol(TC)_r: {}, min vol(TC)_r: {}".format(np.amax(brats_survival['vol(TC)_r'].values), np.amin(brats_survival['vol(TC)_r'].values)))
-        # print("max vol(ED)_r: {}, min vol(ED)_r: {}".format(np.amax(brats_survival['vol(ED)_r'].values), np.amin(brats_survival['vol(ED)_r'].values)))
-        # print("max vol(TC+ED)_r: {}, min vol(TC+ED)_r: {}".format(np.amax(brats_survival['vol(TC+ED)_r'].values), np.amin(brats_survival['vol(TC+ED)_r'].values)))
-        # print("max vol(TC+0.5*ED)_r: {}, min vol(TC+0.5*ED)_r: {}".format(np.amax(brats_survival['vol(TC+0.5*ED)_r'].values), np.amin(brats_survival['vol(TC+0.5*ED)_r'].values)))
-        # brats_survival.hist(['vol(TC)_r']);
-        # brats_survival.hist(['vol(ED)_r']);
-        # brats_survival.hist(['vol(TC+ED)_r']);
-        # brats_survival.hist(['vol(TC+0.5*ED)_r']);
-        # brats_data.hist(['vol(TC)_r']);
-        # brats_data.hist(['vol(ED)_r']);
-        plt.show()
         brats_survival[cols].describe()
         print()
         print(bcolors.OKBLUE, "predicting survival using {} samples and {} features".format(*X_ib.shape),bcolors.ENDC)
