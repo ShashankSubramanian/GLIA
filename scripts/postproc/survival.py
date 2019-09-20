@@ -17,6 +17,7 @@ import numpy as np
 import os
 from tabulate import tabulate
 from time import time
+from pprint import pprint
 
 import sklearn
 from sklearn import svm, datasets
@@ -173,9 +174,9 @@ def read_data(dir, level, file):
         brats_data = pd.read_csv(os.path.join(basedir,file), header = 0, error_bad_lines=True, skipinitialspace=True)
         print("read brats simulation data of length %d" % len(brats_data))
 
-    nbshort = len(brats_data.loc[brats_data['survival_class'] ==  1])
-    nbmid   = len(brats_data.loc[brats_data['survival_class'] ==  2])
-    nblong  = len(brats_data.loc[brats_data['survival_class'] ==  3])
+    nbshort = len(brats_data.loc[brats_data['survival_class'] ==  0])
+    nbmid   = len(brats_data.loc[brats_data['survival_class'] ==  1])
+    nblong  = len(brats_data.loc[brats_data['survival_class'] ==  2])
     sum     = nbshort + nbmid + nblong
     weights = {}
     # weights[1] = 1. / nbshort;
@@ -189,7 +190,7 @@ def read_data(dir, level, file):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def clean_data(brats_data, max_l2c1error = 0.8):
+def clean_data(brats_data, max_l2c1error = 0.8, filter_GTR=True):
     # 1. add rho-over-k
     brats_data['rho-inv'] = brats_data['rho-inv'].astype('float')
     brats_data['k-inv']   = brats_data['k-inv'].astype('float')
@@ -219,10 +220,11 @@ def clean_data(brats_data, max_l2c1error = 0.8):
     brats_clustering = brats_survival.copy();
 
     # 4. filter GTR resection status
-    dat_out = brats_survival.loc[brats_survival['resection_status'] != 'GTR']
-    brats_survival = brats_survival.loc[brats_survival['resection_status'] ==  'GTR']
-    dat_out["filter-reason"] = "no GTR"
-    dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
+    if filter_GTR:
+        dat_out = brats_survival.loc[brats_survival['resection_status'] != 'GTR']
+        brats_survival = brats_survival.loc[brats_survival['resection_status'] ==  'GTR']
+        dat_out["filter-reason"] = "no GTR"
+        dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
 
 
     print("\n\n### BraTS simulation data [cleaned] ### ")
@@ -272,12 +274,12 @@ def get_feature_subset(brats_data, type, purpose):
         cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
     # physics based features used for survival prediciton
     if  'physics_based' in type and purpose == 'prediction':
-        # cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
-        # cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
-        # cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
-        # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
-        # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
-        # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
+        cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
+        cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
+        cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
+        cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
+        cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
+        cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
         # add distance c(0) to VE as feature
         cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
         cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
@@ -303,11 +305,25 @@ def get_feature_subset(brats_data, type, purpose):
         print("\n\n### BraTS simulation data [discarded] ### ")
         print(tabulate(dat_out[["BID", "filter-reason"]], headers='keys', tablefmt='psql'))
 
+    # pair plot
+    # v_cols = cols.copy();
+    # v_cols.append('survival_class');
+    # v_data = brats_data[v_cols];
+    # sns.set(style="ticks", color_codes=True);
+    # sns.pairplot(data=v_data,
+    #     hue = 'survival_class', diag_kind = 'bar',
+    #     palette=sns.xkcd_palette(['dark blue', 'dark green', 'gold', 'orange']),
+    #     plot_kws=dict(alpha = 0.7),
+    #     diag_kws=dict(shade=True))
+    # plt.show()
+
     X = brats_data[cols].values
     Y = np.ravel(brats_data[['survival_class']].values).astype('int')
     # Y = np.ravel(brats_data[['survival(days)']].values).astype('float')
     return X, Y, cols
 
+def feature_selection(clf, feature_list):
+    pass;
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -353,7 +369,122 @@ def bench_k_means(estimator, name, data):
              metrics.silhouette_score(data, estimator.labels_, metric='euclidean', sample_size=300)))
     return estimator;
 
+
 ###
+### ------------------------------------------------------------------------ ###
+def model_selection_RFC(X_train, y_train, type='random_search'):
+    # randomized search
+    if type == 'random_search':
+        from sklearn.model_selection import RandomizedSearchCV
+        # number of trees in random forest
+        n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+        # number of features to consider at every split
+        max_features = ['auto', 'sqrt']
+        # maximum number of levels in tree
+        max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+        max_depth.append(None)
+        # minimum number of samples required to split a node
+        min_samples_split = [2, 5, 10]
+        # minimum number of samples required at each leaf node
+        min_samples_leaf = [1, 2, 4]
+        # method of selecting samples for training each tree
+        bootstrap = [True, False]
+        # create the random grid
+        random_grid = {'n_estimators': n_estimators,
+                       'max_features': max_features,
+                       'max_depth': max_depth,
+                       'min_samples_split': min_samples_split,
+                       'min_samples_leaf': min_samples_leaf,
+                       'bootstrap': bootstrap}
+        pprint(random_grid)
+
+        # random forrest
+        # rf = RandomForestRegressor();
+        rf = RandomForestClassifier();
+        # random search of parameters, using 3 fold cross validation,
+        # search across 100 different combinations, and use all available cores
+        rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, n_iter = 200, cv = 3, verbose=2, random_state=42, n_jobs = -1)
+        # fit the random search model
+        rf_random.fit(X_train, y_train)
+
+        print("best parameters:")
+        pprint(rf_random.best_params_);
+        return rf_random.best_params_, rf_random.best_estimator_;
+
+    # grid-search
+    elif type == 'grid_search':
+        from sklearn.model_selection import GridSearchCV
+        # create the parameter grid based on the results of random search
+        # params from random grid search:
+        # {'bootstrap': False,
+        #  'max_depth': 30,
+        #  'max_features': 'auto',
+        #  'min_samples_leaf': 4,
+        #  'min_samples_split': 2,
+        #  'n_estimators': 2000}
+        param_grid = {
+            'bootstrap': [False],
+            'max_depth': [20, 30, 40, 50, 100],
+            'max_features': [2, 3, 'auto'],
+            'min_samples_leaf': [3, 4, 5],
+            'min_samples_split': [2, 3, 4],
+            'n_estimators': [1000, 1125, 1250, 1500 ]
+        }
+        # create a based model
+        # rf = RandomForestRegressor();
+        rf = RandomForestClassifier();
+        grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, n_jobs = -1, verbose = 2)
+        grid_search.fit(X_train, y_train)
+
+        return grid_search.best_params_, grid_search.best_estimator_;
+
+
+###
+### ------------------------------------------------------------------------ ###
+def evaluate(clf, X_test, y_test, feature_list):
+    # print list of feature importance
+    importances = list(clf.feature_importances_)
+    feature_importances = [(feature, round(importance, 2)) for feature, importance in zip(feature_list, importances)]
+    feature_importances = sorted(feature_importances, key = lambda x: x[1], reverse = True)
+    [print('feature: {:30} importance: {}'.format(*pair)) for pair in feature_importances]
+    # plot feature importance
+    x_values = list(range(len(importances)))
+    fig  = plt.figure();
+    ax = fig.add_subplot(1,2,1);
+    ax.bar(x_values, importances, orientation = 'vertical', color = 'r', edgecolor = 'k', linewidth = 1.2)
+    plt.xticks(x_values, feature_list, rotation='vertical')
+    plt.ylabel('Importance'); plt.xlabel('Feature'); plt.title('Feature Importances');
+    # plot accumulative importance
+    sorted_importances = [importance[1] for importance in feature_importances]
+    sorted_features = [importance[0] for importance in feature_importances]
+    cumulative_importances = np.cumsum(sorted_importances)
+    ax = fig.add_subplot(1,2,2);
+    ax.plot(x_values, cumulative_importances, 'g-')
+    ax.hlines(y = 0.95, xmin=0, xmax=len(sorted_importances), color = 'r', linestyles = 'dashed')
+    plt.xticks(x_values, sorted_features, rotation = 'vertical')
+    plt.xlabel('Variable'); plt.ylabel('Cumulative Importance'); plt.title('Cumulative Importances');
+    plt.tight_layout();
+    # plt.show();
+
+    print();
+    print("Detailed classification report:");
+    print();
+    y_true, y_pred = y_test, clf.predict(X_test);
+    print(classification_report(y_true, y_pred))
+    print()
+    print("y_true: ", y_true)
+    print("y_pred: ", y_pred)
+    # print("y_true: ", [getSurvivalClass(x) for x in y_true])
+    # print("y_pred: ", [getSurvivalClass(x) for x in y_pred])
+    accuracy = clf.score(X_test, y_test)
+    print("accuracy:", accuracy)
+    print("confusion matrix:\n", sklearn.metrics.confusion_matrix(y_true, y_pred))
+    # print("confusion matrix:\n", sklearn.metrics.confusion_matrix([getSurvivalClass(x) for x in y_true], [getSurvivalClass(x) for x in y_pred]))
+
+
+###
+### ------------------------------------------------------------------------ ###
+### ------------------------------------------------------------------------ ###
 ### ------------------------------------------------------------------------ ###
 if __name__=='__main__':
     pd.options.display.float_format = '{1.2e}%'.format
@@ -366,11 +497,12 @@ if __name__=='__main__':
     args = parser.parse_args();
 
     brats_data = read_data(args.dir, args.level, args.f);
-    brats_clustering, brats_survival = clean_data(brats_data);
+    brats_clustering, brats_survival = clean_data(brats_data, filter_GTR=False);
 
     CLUSTER_BRAINS = False;
     PREDICT_SURVIVAL = True;
 
+    ### ------------------------------------------------------------------ ###
     # a) cluster brains
     if CLUSTER_BRAINS:
         X_ib, Y_ib, cols = get_feature_subset(brats_clustering, type=["image_based"], purpose='clustering');
@@ -432,30 +564,59 @@ if __name__=='__main__':
             k += 1;
         plt.show()
 
+
+    ### ------------------------------------------------------------------------ ###
     # b) survival (image based)
     if PREDICT_SURVIVAL:
-        X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based"], purpose='prediction');
-        # X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based", "physics_based"], purpose='prediction');
-        print(X_ib.shape)
-        X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0)
+        # X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based"], purpose='prediction');
+        X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based", "physics_based"], purpose='prediction');
 
+
+        print()
+        print("basic data statistics:\n")
+        # brats_survival['vol(TC+ED)_r'] = brats_survival['vol(TC)_r'] + brats_survival['vol(ED)_r']
+        # brats_survival['vol(TC+0.5*ED)_r'] = brats_survival['vol(TC)_r'] + 0.5 * brats_survival['vol(ED)_r']
+        # print("max vol(TC)_r: {}, min vol(TC)_r: {}".format(np.amax(brats_survival['vol(TC)_r'].values), np.amin(brats_survival['vol(TC)_r'].values)))
+        # print("max vol(ED)_r: {}, min vol(ED)_r: {}".format(np.amax(brats_survival['vol(ED)_r'].values), np.amin(brats_survival['vol(ED)_r'].values)))
+        # print("max vol(TC+ED)_r: {}, min vol(TC+ED)_r: {}".format(np.amax(brats_survival['vol(TC+ED)_r'].values), np.amin(brats_survival['vol(TC+ED)_r'].values)))
+        # print("max vol(TC+0.5*ED)_r: {}, min vol(TC+0.5*ED)_r: {}".format(np.amax(brats_survival['vol(TC+0.5*ED)_r'].values), np.amin(brats_survival['vol(TC+0.5*ED)_r'].values)))
+        # brats_survival.hist(['vol(TC)_r']);
+        # brats_survival.hist(['vol(ED)_r']);
+        # brats_survival.hist(['vol(TC+ED)_r']);
+        # brats_survival.hist(['vol(TC+0.5*ED)_r']);
+        # brats_data.hist(['vol(TC)_r']);
+        # brats_data.hist(['vol(ED)_r']);
+        plt.show()
+        brats_survival[cols].describe()
+        print()
+        print(bcolors.OKBLUE, "predicting survival using {} samples and {} features".format(*X_ib.shape),bcolors.ENDC)
+
+        X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0)
         X_ib_n , X_ib_n_test, d = preprocess_features(X_train, X_test, normalize=False);
 
-        clf = RandomForestClassifier(n_estimators=1000, random_state=42);
-        clf.fit(X_ib_n, y_train);
-        print();
-        print("feature importance:\n", clf.feature_importances_)
-        print();
-        print("Detailed classification report:");
-        print();
-        y_true, y_pred = y_test, clf.predict(X_ib_n_test);
-        print(classification_report(y_true, y_pred))
+        # randomized grid search with cross-validation for hyper parameter tuning
+        hyper_dict, rf_best_rs = model_selection_RFC(X_ib_n, y_train, type='random_search');
+        rf_best_rs.fit(X_ib_n, y_train);
+        #
+        # # grid search in narrowed down param space with cross-validation for hyper parameter tuning
+        # hyper_dict, rf_best_gs = model_selection_RFC(X_ib_n, y_train, type='grid_search');
+        # rf_best_gs.fit(X_ib_n, y_train);
+
+        # base model
+        rf_base = RandomForestClassifier(n_estimators=1000, random_state=42);
+        rf_base.fit(X_ib_n, y_train);
+        # feature_selection(rf_base, cols)
+
+
         print()
-        print("y_true: ", y_true)
-        print("y_pred: ", y_pred)
-        # print("y_true: ", [getSurvivalClass(x) for x in y_true])
-        # print("y_pred: ", [getSurvivalClass(x) for x in y_pred])
-        accuracy = clf.score(X_ib_n_test, y_test)
-        print("accuracy:", accuracy)
-        print("confusion matrix:\n", sklearn.metrics.confusion_matrix(y_true, y_pred))
-        # print("confusion matrix:\n", sklearn.metrics.confusion_matrix([getSurvivalClass(x) for x in y_true], [getSurvivalClass(x) for x in y_pred]))
+        print("evaluate base model:")
+        pprint(rf_base.get_params())
+        evaluate(rf_base, X_ib_n_test, y_test, cols);
+        print()
+        print("evaluate best random search model:")
+        pprint(rf_best_rs.get_params())
+        evaluate(rf_best_rs, X_ib_n_test, y_test, cols);
+        # print()
+        # print("evaluate best grid search model:")
+        # pprint(rf_best_gs.get_params())
+        # evaluate(rf_best_gs, X_ib_n_test, y_test, cols);
