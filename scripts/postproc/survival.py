@@ -31,6 +31,7 @@ from sklearn.metrics import classification_report
 from sklearn.decomposition import PCA
 from sklearn import metrics
 from sklearn.cluster import KMeans
+from sklearn.ensemble import RandomForestClassifier
 from sklearn import manifold
 
 
@@ -190,13 +191,13 @@ def read_data(dir, level, file):
 ### ------------------------------------------------------------------------ ###
 def clean_data(brats_data, max_l2c1error = 0.8):
     # 1. add rho-over-k
-    # brats_data['rho-inv'] = brats_data['rho-inv'].astype('float')
-    # brats_data['k-inv']   = brats_data['k-inv'].astype('float')
-    # dat_out  = brats_data.loc[brats_data['k-inv'] <= 0]
-    # brats_data  = brats_data.loc[brats_data['k-inv'] >  0]
-    # dat_out["filter-reason"] = "k zero"
-    # dat_filtered_out = dat_out;
-    # brats_data["rho-over-k"] = brats_data["rho-inv"]/brats_data["k-inv"]
+    brats_data['rho-inv'] = brats_data['rho-inv'].astype('float')
+    brats_data['k-inv']   = brats_data['k-inv'].astype('float')
+    dat_out  = brats_data.loc[brats_data['k-inv'] <= 0]
+    brats_data  = brats_data.loc[brats_data['k-inv'] >  0]
+    dat_out["filter-reason"] = "k zero"
+    dat_filtered_out = dat_out;
+    brats_data["rho-over-k"] = brats_data["rho-inv"]/brats_data["k-inv"]
 
     # 2. filter data with too large misfit
     brats_data['l2[Oc(1)-TC]'] = brats_data['l2[Oc(1)-TC]'].astype('float')
@@ -239,47 +240,59 @@ def clean_data(brats_data, max_l2c1error = 0.8):
 def get_feature_subset(brats_data, type, purpose):
 
     cols = []
+    cols_p = []
     # features used for brain clustering
-    if type == 'image_based' and purpose == 'clustering':
-        cols.append('vol(TC)_r');                # ib.01 TC rel. volume
+    if 'image_based' in type and purpose == 'clustering':
+        cols.append('vol(TC)_r');                  # ib.01 TC rel. volume
         # cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
-        cols.append('vol(ED)_r');                # ib.03 ED rel. volume
+        cols.append('vol(ED)_r');                  # ib.03 ED rel. volume
         # cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        cols.append('vol(NEC)_r');               # ib.05 NE rel. volume
+        cols.append('vol(NEC)_r');                 # ib.05 NE rel. volume
         # cols.append('area(NEC)_r');              # ib.06 NE rel. surface (rel. to sphere with volume of NE)
-        cols.append('age');                      # ib.07 patient age
+        cols.append('age');                        # ib.07 patient age
         cols.append('survival(days)');
-        cols.append('n_comps');                  # number of components with rel. mass larger 1E-3
+        cols.append('n_comps');                    # number of components with rel. mass larger 1E-3
     # image based features used for survival prediciton
-    if type == 'image_based' and purpose == 'prediction':
-        cols.append('vol(TC)_r');                # ib.01 TC rel. volume
-        cols.append('area(TC)_r');               # ib.02 TC rel. surface (rel. to sphere with volume of TC)
-        cols.append('vol(ED)_r');                # ib.03 ED rel. volume
-        cols.append('area(ED)_r');               # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        cols.append('vol(NEC)_r');               # ib.05 NE rel. volume
-        cols.append('area(NEC)_r');              # ib.06 NE rel. surface (rel. to sphere with volume of NE)
-        cols.append('age');                      # ib.07 patient age
-        # cols.append('resection_status');         # ib.08 resection status TODO
-        cols.append('cm(NEC|_#c) (#c=0,aspace)') # ib.09 center of mass of NE of largest TC component, in a-space
-        cols.append('vol(TC|_#c)_r(#c=0)')       # ib.10 vol(TC) in comp #0 rel. to toatal vol(TC)
-        cols.append('vol(TC|_#c)_r(#c=1)')       # ib.10 vol(TC) in comp #1 rel. to toatal vol(TC)
-        cols.append('vol(TC|_#c)_r(#c=2)')       # ib.10 vol(TC) in comp #2 rel. to toatal vol(TC)
-        cols.append('vol(NE|_#c)_r(#c=0)')       # ib.10 vol(NE) in comp #0 rel. to toatal vol(NE)
-        cols.append('vol(NE|_#c)_r(#c=1)')       # ib.10 vol(NE) in comp #1 rel. to toatal vol(NE)
-        cols.append('vol(NE|_#c)_r(#c=2)')       # ib.10 vol(NE) in comp #2 rel. to toatal vol(NE)
-        cols.append('n_comps');                  # number of components with rel. mass larger 1E-3
+    if  'image_based' in type and purpose == 'prediction':
+        cols.append('vol(TC)_r');                   # ib.01 TC rel. volume
+        cols.append('area(TC)_r');                  # ib.02 TC rel. surface (rel. to sphere with volume of TC)
+        cols.append('vol(ED)_r');                   # ib.03 ED rel. volume
+        cols.append('area(ED)_r');                  # ib.04 ED rel. surface (rel. to sphere with volume of ED)
+        cols.append('vol(NEC)_r');                  # ib.05 NE rel. volume
+        cols.append('area(NEC)_r');                 # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        cols.append('age');                         # ib.07 patient age
+        # cols.append('resection_status');          # ib.08 resection status TODO
+        cols_p.append('cm(NEC|_#c) (#c=0,apsace)')  # ib.09 center of mass of NE of largest TC component, in a-space
+        cols.append('vol(TC|_#c)_r(#c=0)')          # ib.10 vol(TC) in comp #0 rel. to toatal vol(TC)
+        cols.append('vol(TC|_#c)_r(#c=1)')          # ib.10 vol(TC) in comp #1 rel. to toatal vol(TC)
+        cols.append('vol(TC|_#c)_r(#c=2)')          # ib.10 vol(TC) in comp #2 rel. to toatal vol(TC)
+        cols.append('vol(NEC|_#c)_r(#c=0)')         # ib.10 vol(NE) in comp #0 rel. to toatal vol(NE)
+        cols.append('vol(NEC|_#c)_r(#c=1)')         # ib.10 vol(NE) in comp #1 rel. to toatal vol(NE)
+        cols.append('vol(NEC|_#c)_r(#c=2)')         # ib.10 vol(NE) in comp #2 rel. to toatal vol(NE)
+        cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
     # physics based features used for survival prediciton
-    if type == 'physics_based' and purpose == 'prediction':
-        cols.append('l2[c(0)|_#c]_r(#c=0)');     # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
-        cols.append('l2[c(0)|_#c]_r(#c=1)');     # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
-        cols.append('l2[c(0)|_#c]_r(#c=2)');     # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
-        cols.append('cm(c(0)_#c)_(#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
-        cols.append('cm(c(0)_#c)_(#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
-        cols.append('cm(c(0)_#c)_(#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
-        cols.append('rho-inv');                  # ph.03 inversion variables prolifaration, migration
-        cols.append('k-inv');                    # ph.03 inversion variables prolifaration, migration
-        cols.append('rho-over-k');               # ph.03 inversion variables prolifaration, migration
-        cols.append('l2[c(1)|_TC-TC,scaled]_r')  # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
+    if  'physics_based' in type and purpose == 'prediction':
+        # cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
+        # cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
+        # cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
+        # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
+        # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
+        # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
+        cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
+        cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
+        cols.append('rho-over-k');                  # ph.03 inversion variables prolifaration, migration
+        cols.append('l2[c(1)|_TC-TC,scaled]_r')     # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
+
+    # process columns that cannot be interprete directly
+    if len(cols_p) > 0:
+        for col in cols_p:
+            print("preprocessing column", col)
+            brats_data[col+'[0]'] = brats_data[col].apply(lambda x: -1 if pd.isna(x) else float(x.split('(')[-1].split(',')[0]));
+            brats_data[col+'[1]'] = brats_data[col].apply(lambda x: -1 if pd.isna(x) else float(x.split(',')[1]));
+            brats_data[col+'[2]'] = brats_data[col].apply(lambda x: -1 if pd.isna(x) else float(x.split(',')[2].split(')')[0]));
+            cols.extend([col+'[0]',col+'[1]',col+'[2]'])
+    print()
+    print("active features:\n", cols)
 
     brats_data['is_na'] = brats_data[cols].isnull().apply(lambda x: any(x), axis=1)
     brats_data          = brats_data.loc[brats_data['is_na'] == False]
@@ -292,7 +305,6 @@ def get_feature_subset(brats_data, type, purpose):
     X = brats_data[cols].values
     Y = np.ravel(brats_data[['survival_class']].values).astype('int')
     # Y = np.ravel(brats_data[['survival(days)']].values).astype('float')
-    # Y = Y / 365.;
     return X, Y, cols
 
 
@@ -355,88 +367,94 @@ if __name__=='__main__':
     brats_data = read_data(args.dir, args.level, args.f);
     brats_clustering, brats_survival = clean_data(brats_data);
 
+    CLUSTER_BRAINS = False;
+    PREDICT_SURVIVAL = True;
+
     # a) cluster brains
-    X_ib, Y_ib, cols = get_feature_subset(brats_clustering, type="image_based", purpose='clustering');
-    X_ib_n , d, d    = preprocess_features(X_ib, normalize=True);
+    if CLUSTER_BRAINS:
+        X_ib, Y_ib, cols = get_feature_subset(brats_clustering, type=["image_based"], purpose='clustering');
+        X_ib_n , d, d    = preprocess_features(X_ib, normalize=True);
 
-    # k-means clustering
-    COLORS = {}
-    X_ib_cluster = X_ib_n.copy();
-    range_n_clusters = [2, 3, 4, 10] # last entry not used, dummy
-    for j, n_clusters in zip(range(len(range_n_clusters)), range_n_clusters):
-        COLORS[j] = {}
-        if j < len(range_n_clusters)-1:
-            X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib_cluster, normalize=False, reduce_dims=None);
-            print("n_clusters: {}".format(n_clusters))
-            print('init\t\ttime\tinertia\tsilhouette')
-            kmeans = bench_k_means(KMeans(init='k-means++', n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib_pca_reduced)
-            # kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib)
-            # kmeans = bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (d)",    data=X_ib)
-            # kmeans = bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib)
-            # kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (rd)", data=X_ib_pca_reduced)
-            # kmeans = bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (rd)",    data=X_ib_pca_reduced)
-            print("normalized mutual information (survival class): {}".format(sklearn.metrics.cluster.normalized_mutual_info_score(kmeans.labels_, Y_ib)));
-            print("confusion matrix:\n", sklearn.metrics.confusion_matrix(Y_ib, kmeans.labels_))
-            labels = kmeans.labels_;
-        else:
-            labels = Y_ib;
-        for c in range(np.max(labels)+1):
-            COLORS[j][c] = labels==c;
+        # k-means clustering
+        COLORS = {}
+        X_ib_cluster = X_ib_n.copy();
+        range_n_clusters = [2, 3, 4, 10] # last entry not used, dummy
+        for j, n_clusters in zip(range(len(range_n_clusters)), range_n_clusters):
+            COLORS[j] = {}
+            if j < len(range_n_clusters)-1:
+                X_ib_pca_reduced, dummy, pca = preprocess_features(X_ib_cluster, normalize=False, reduce_dims=None);
+                print("n_clusters: {}".format(n_clusters))
+                print('init\t\ttime\tinertia\tsilhouette')
+                kmeans = bench_k_means(KMeans(init='k-means++', n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib_pca_reduced)
+                # kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (d)", data=X_ib)
+                # kmeans = bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (d)",    data=X_ib)
+                # kmeans = bench_k_means(KMeans(init=pca.components_, n_clusters=n_clusters, n_init=1),  name="PCA-based (d)", data=X_ib)
+                # kmeans = bench_k_means(KMeans(init='k-means++',     n_clusters=n_clusters, n_init=100), name="k-means++ (rd)", data=X_ib_pca_reduced)
+                # kmeans = bench_k_means(KMeans(init='random',        n_clusters=n_clusters, n_init=100), name="random (rd)",    data=X_ib_pca_reduced)
+                print("normalized mutual information (survival class): {}".format(sklearn.metrics.cluster.normalized_mutual_info_score(kmeans.labels_, Y_ib)));
+                print("confusion matrix:\n", sklearn.metrics.confusion_matrix(Y_ib, kmeans.labels_))
+                labels = kmeans.labels_;
+            else:
+                labels = Y_ib;
+            for c in range(np.max(labels)+1):
+                COLORS[j][c] = labels==c;
 
-    # T-SNE visualization
-    Y = {}
-    k = 0
-    X_ib_n , d, d    = preprocess_features(X_ib, normalize=False);
-    for reduced_dims in [None, 4, 2]:
-        X_ib_vis = X_ib_n.copy();
-        X_ib_vis, dummy, pca = preprocess_features(X_ib_vis, normalize=False, reduce_dims=reduced_dims);
-        fig, axx = plt.subplots(4, 6, figsize=(15, 10), squeeze=False);
-        for i, perplexity in enumerate([5,10,30,40,50,100]):
-            t0 = time()
-            tsne = manifold.TSNE(n_components=2, init='random',
-                                 random_state=0,
-                                 early_exaggeration=12, n_iter_without_progress=1000,
-                                 n_iter=10000, learning_rate=100,
-                                 perplexity=perplexity)
-            Y[k] = tsne.fit_transform(X_ib_vis)
-            t1 = time()
-            print("perplexity=%d in %.2g sec" % (perplexity, t1 - t0))
+        # T-SNE visualization
+        Y = {}
+        k = 0
+        X_ib_n , d, d    = preprocess_features(X_ib, normalize=False);
+        for reduced_dims in [None, 4, 2]:
+            X_ib_vis = X_ib_n.copy();
+            X_ib_vis, dummy, pca = preprocess_features(X_ib_vis, normalize=False, reduce_dims=reduced_dims);
+            fig, axx = plt.subplots(4, 6, figsize=(15, 10), squeeze=False);
+            for i, perplexity in enumerate([5,10,30,40,50,100]):
+                t0 = time()
+                tsne = manifold.TSNE(n_components=2, init='random',
+                                     random_state=0,
+                                     early_exaggeration=12, n_iter_without_progress=1000,
+                                     n_iter=10000, learning_rate=100,
+                                     perplexity=perplexity)
+                Y[k] = tsne.fit_transform(X_ib_vis)
+                t1 = time()
+                print("perplexity=%d in %.2g sec" % (perplexity, t1 - t0))
 
-            # coloring from k-means
-            for j in range(len(COLORS)):
-                ax = axx[j][i]
-                pal = sns.color_palette("tab10", n_colors=6);
-                for c in range(len(COLORS[j])):
-                    ax.scatter(Y[k][COLORS[j][c],0], Y[k][COLORS[j][c],1], color=pal[c]);
-                ax.set_title("Perplexity=%d" % perplexity)
-                ax.xaxis.set_major_formatter(NullFormatter())
-                ax.yaxis.set_major_formatter(NullFormatter())
-                ax.axis('tight')
-        k += 1;
-    plt.show()
-
+                # coloring from k-means
+                for j in range(len(COLORS)):
+                    ax = axx[j][i]
+                    pal = sns.color_palette("tab10", n_colors=6);
+                    for c in range(len(COLORS[j])):
+                        ax.scatter(Y[k][COLORS[j][c],0], Y[k][COLORS[j][c],1], color=pal[c]);
+                    ax.set_title("Perplexity=%d" % perplexity)
+                    ax.xaxis.set_major_formatter(NullFormatter())
+                    ax.yaxis.set_major_formatter(NullFormatter())
+                    ax.axis('tight')
+            k += 1;
+        plt.show()
 
     # b) survival (image based)
-    X_ib, Y_ib, cols = get_feature_subset(brats_survival, type="image_based", purpose='survival');
-    X_ib_n , d, d    = preprocess_features(X_ib, normalize=True);
+    if PREDICT_SURVIVAL:
+        X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based"], purpose='prediction');
+        # X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based", "physics_based"], purpose='prediction');
+        print(X_ib.shape)
+        X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0)
 
+        X_ib_n , X_ib_n_test, d = preprocess_features(X_train, X_test, normalize=False);
 
-
-    # X_train, X_test, y_train, y_test = train_test_split(X, Y, random_state = 0)
-    # preprocess_features(features);
-
-
-
-    # print("Detailed classification report:")
-    # print()
-    # print("The model is trained on the full development set.")
-    # print("The scores are computed on the full evaluation set.")
-    # print()
-    # y_true, y_pred = y_test, clf.predict(X_test_pca)
-    # # print(classification_report(y_true, y_pred))
-    # print()
-    # print("y_true: ", y_true)
-    # print("y_pred: ", y_pred)
-    #
-    # print(classification_report(y_test, y_pred))
-    # accuracy = clf.score(X_test_pca, y_test)
+        clf = RandomForestClassifier(n_estimators=1000, random_state=42);
+        clf.fit(X_ib_n, y_train);
+        print();
+        print("feature importance:\n", clf.feature_importances_)
+        print();
+        print("Detailed classification report:");
+        print();
+        y_true, y_pred = y_test, clf.predict(X_ib_n_test);
+        print(classification_report(y_true, y_pred))
+        print()
+        print("y_true: ", y_true)
+        print("y_pred: ", y_pred)
+        # print("y_true: ", [getSurvivalClass(x) for x in y_true])
+        # print("y_pred: ", [getSurvivalClass(x) for x in y_pred])
+        accuracy = clf.score(X_ib_n_test, y_test)
+        print("accuracy:", accuracy)
+        print("confusion matrix:\n", sklearn.metrics.confusion_matrix(y_true, y_pred))
+        # print("confusion matrix:\n", sklearn.metrics.confusion_matrix([getSurvivalClass(x) for x in y_true], [getSurvivalClass(x) for x in y_pred]))
