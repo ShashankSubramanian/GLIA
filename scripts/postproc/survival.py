@@ -584,9 +584,9 @@ if __name__=='__main__':
         hyper_dict, rf_best_rs = model_selection_RFC(X_ib_n, y_train, type='random_search');
         rf_best_rs.fit(X_ib_n, y_train);
         #
-        # # grid search in narrowed down param space with cross-validation for hyper parameter tuning
-        # hyper_dict, rf_best_gs = model_selection_RFC(X_ib_n, y_train, type='grid_search');
-        # rf_best_gs.fit(X_ib_n, y_train);
+        # grid search in narrowed down param space with cross-validation for hyper parameter tuning
+        hyper_dict, rf_best_gs = model_selection_RFC(X_ib_n, y_train, type='grid_search');
+        rf_best_gs.fit(X_ib_n, y_train);
 
         # base model
         rf_base = RandomForestClassifier(n_estimators=1000, random_state=42);
@@ -602,7 +602,7 @@ if __name__=='__main__':
         print("evaluate best random search model:")
         pprint(rf_best_rs.get_params())
         evaluate(rf_best_rs, X_ib_n_test, y_test, cols);
-        # print()
-        # print("evaluate best grid search model:")
-        # pprint(rf_best_gs.get_params())
-        # evaluate(rf_best_gs, X_ib_n_test, y_test, cols);
+        print()
+        print("evaluate best grid search model:")
+        pprint(rf_best_gs.get_params())
+        evaluate(rf_best_gs, X_ib_n_test, y_test, cols);
