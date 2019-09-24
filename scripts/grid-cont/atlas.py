@@ -13,6 +13,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.axes_grid.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import Normalize
 import file_io as fio
 from pprint import pprint
@@ -122,6 +124,7 @@ if __name__=='__main__':
 
     brats_data = None;
     brats_survival = None;
+    # ### ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ### #
     if file is not None:
         brats_data = pd.read_csv(os.path.join(basedir,file), header = 0, error_bad_lines=True, skipinitialspace=True)
         print("read brats simulation data of length %d" % len(brats_data))
@@ -159,6 +162,7 @@ if __name__=='__main__':
     atlas_func = nib.load(os.path.join(dir,"lpba40_combined_LR_256x256x256_aff2jakob_in_jakob_space_240x240x155.nii.gz")).get_fdata();
 
     # genrate glioma atlas
+    # ### ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ### #
     if gen_atlas:
         glioma_c0_atlas        = np.zeros_like(atlas);
         glioma_c0_atlas_short  = np.zeros_like(atlas);
@@ -277,8 +281,9 @@ if __name__=='__main__':
 
 
 
-    print("Bad brains outside:", BAD_BRAINS_OUT)
-    print("Bad brains in CSF:", BAD_BRAINS_CSF)
+    # print("Bad brains outside:", BAD_BRAINS_OUT)
+    # print("Bad brains in CSF:", BAD_BRAINS_CSF)
+    # ### ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ### #
     if read_atlas:
         print("reading glioma atlasses");
         glioma_c0_atlas           = nib.load(os.path.join(dir, "brats_c0_atlas_plain.nii.gz")).get_fdata();
@@ -390,41 +395,117 @@ if __name__=='__main__':
 
         atlas_freq_c0 = np.zeros_like(atlas_func);
         atlas_freq_c1 = np.zeros_like(atlas_func);
+        atlas_freq_c0_short = np.zeros_like(atlas_func);
+        atlas_freq_c0_mid   = np.zeros_like(atlas_func);
+        atlas_freq_c0_long  = np.zeros_like(atlas_func);
+        atlas_freq_c1_short = np.zeros_like(atlas_func);
+        atlas_freq_c1_mid   = np.zeros_like(atlas_func);
+        atlas_freq_c1_long  = np.zeros_like(atlas_func);
         percentage_c0_frequency_label
-        freq_c0_sorted = sorted(percentage_c0_frequency_label.items(), key=lambda x: x[1], reverse=True);
-        freq_c1_sorted = sorted(percentage_c1_frequency_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c0_sorted       = sorted(percentage_c0_frequency_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c1_sorted       = sorted(percentage_c1_frequency_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c0_short_sorted = sorted(percentage_c0_short_in_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c0_mid_sorted   = sorted(percentage_c0_mid_in_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c0_long_sorted  = sorted(percentage_c0_long_in_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c1_short_sorted = sorted(percentage_c1_short_in_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c1_mid_sorted   = sorted(percentage_c1_mid_in_label.items(), key=lambda x: x[1], reverse=True);
+        freq_c1_long_sorted  = sorted(percentage_c1_long_in_label.items(), key=lambda x: x[1], reverse=True);
+
         print()
-        print("c(0) label frequencies")
-        i = 0;
-        perm = {}
+        print("max c(0) label frequencies (s+m+l)")
         for i in range(len(freq_c0_sorted)):
-            perm[i] = label = freq_c0_sorted[i][0]
-            freq = percentage_c0_frequency_label[perm[i]]
+            label = freq_c0_sorted[i][0]
+            freq = percentage_c0_frequency_label[label]
             mask = (atlas_func == label).astype(int)
-            print("label: {:30}, freq: {}".format(LABELS_ATLAS[label], freq))
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
             atlas_freq_c0 += mask * freq;
-            i += 1;
             if i >= 8:
                  break;
         print()
-        print("c(1) label frequencies")
-        i = 0;
-        perm = {}
+        print("max c(0) label frequencies (short)")
+        for i in range(len(freq_c0_short_sorted)):
+            label = freq_c0_short_sorted[i][0]
+            freq = percentage_c0_short_in_label[label]
+            mask = (atlas_func == label).astype(int)
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
+            atlas_freq_c0_short += mask * freq;
+            if i >= 6:
+                 break;
+        print()
+        print("max c(0) label frequencies (mid)")
+        for i in range(len(freq_c0_mid_sorted)):
+            label = freq_c0_mid_sorted[i][0]
+            freq = percentage_c0_mid_in_label[label]
+            mask = (atlas_func == label).astype(int)
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
+            atlas_freq_c0_mid += mask * freq;
+            if i >= 6:
+                 break;
+        print()
+        print("max c(0) label frequencies (long)")
+        for i in range(len(freq_c0_long_sorted)):
+            label = freq_c0_long_sorted[i][0]
+            freq = percentage_c0_long_in_label[label]
+            mask = (atlas_func == label).astype(int)
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
+            atlas_freq_c0_long += mask * freq;
+            if i >= 6:
+                 break;
+        print()
+        print("c(1) label frequencies (s+m+l)")
         for i in range(len(freq_c1_sorted)):
-            perm[i] = label = freq_c1_sorted[i][0]
-            freq = percentage_c1_frequency_label[perm[i]]
+            label = freq_c1_sorted[i][0]
+            freq = percentage_c1_frequency_label[label]
             mask = (atlas_func == label).astype(int)
             atlas_freq_c1 += mask * freq;
-            print("label: {:30}, freq: {}".format(LABELS_ATLAS[label], freq))
-            i += 1;
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
             if i >= 8:
+                 break;
+        print()
+        print("max c(1) label frequencies (short)")
+        for i in range(len(freq_c1_short_sorted)):
+            label = freq_c1_short_sorted[i][0]
+            freq = percentage_c1_short_in_label[label]
+            mask = (atlas_func == label).astype(int)
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
+            atlas_freq_c1_short += mask * freq;
+            if i >= 6:
+                 break;
+        print()
+        print("max c(1) label frequencies (mid)")
+        for i in range(len(freq_c1_mid_sorted)):
+            label = freq_c1_mid_sorted[i][0]
+            freq = percentage_c0_mid_in_label[label]
+            mask = (atlas_func == label).astype(int)
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
+            atlas_freq_c1_mid += mask * freq;
+            if i >= 6:
+                 break;
+        print()
+        print("max c(1) label frequencies (long)")
+        for i in range(len(freq_c1_long_sorted)):
+            label = freq_c1_long_sorted[i][0]
+            freq = percentage_c1_long_in_label[label]
+            mask = (atlas_func == label).astype(int)
+            print("label: {:30} freq: {}".format(LABELS_ATLAS[label], freq))
+            atlas_freq_c1_long += mask * freq;
+            if i >= 6:
                  break;
 
         atlas_freq_c0 = atlas_freq_c0 / np.amax(atlas_freq_c0.flatten());
         atlas_freq_c1 = atlas_freq_c1 / np.amax(atlas_freq_c1.flatten());
 
-    if gen_images:
+        atlas_freq_c0_short = atlas_freq_c0_short / np.amax(atlas_freq_c0_short.flatten());
+        atlas_freq_c0_mid   = atlas_freq_c0_mid   / np.amax(atlas_freq_c0_mid.flatten());
+        atlas_freq_c0_long  = atlas_freq_c0_long  / np.amax(atlas_freq_c0_long.flatten());
+        atlas_freq_c1_short = atlas_freq_c1_short / np.amax(atlas_freq_c1_short.flatten());
+        atlas_freq_c1_mid   = atlas_freq_c1_mid   / np.amax(atlas_freq_c1_mid.flatten());
+        atlas_freq_c1_long  = atlas_freq_c1_long  / np.amax(atlas_freq_c1_long.flatten());
 
+
+
+    # ### ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ### #
+    if gen_images:
         print("creating slices")
         clrs = ['black','red', 'green', 'yellow', 'blue', 'cyan', 'orange', 'purple'];
         tick_param_kwargs = {"axis":"both", "which":"both", "bottom":False, "left":False, "labelbottom":False, "labelleft":False}
@@ -505,6 +586,12 @@ if __name__=='__main__':
                 a.set_yticklabels([])
                 a.set_xticklabels([])
                 a.set_frame_on(False)
+            fig_freq_srvl, axis_freq_c0_srvl = plt.subplots(nrows*4, ncols, figsize=(14,34));
+            for a,i in zip(axis_freq_c0_srvl.flatten(),np.arange(len(axis_freq_c0_srvl.flatten()))):
+                a.tick_params(**tick_param_kwargs)
+                a.set_yticklabels([])
+                a.set_xticklabels([])
+                a.set_frame_on(False)
 
         j = 0;
         i = 0;
@@ -544,10 +631,10 @@ if __name__=='__main__':
                 axis_c1[m+2,j].imshow(thresh(glioma_c1_atlas_long[:,:,ax_slice].T,  cmap=cmap_c1_l, threshold=t_c1, v_max=1, v_min=0), interpolation='none', aspect='equal', alpha=0.8);
                 axis_c1[m+3,j].imshow(vals, interpolation='none', aspect='equal', alpha=0.8);
                 axis_c1[m+0,j].set_title("axial slice %d" %  ax_slice , size='5', y=1.0)
-                axis_c1[m+0,j].set_ylabel("short survivor", size='5')
-                axis_c1[m+1,j].set_ylabel("mid survivor", size='5')
-                axis_c1[m+2,j].set_ylabel("long survivor", size='5')
-                axis_c1[m+3,j].set_ylabel("combined (r=short,g=mid,b=long)", size='5')
+                axis_c1[m+0,0].set_ylabel("short survivor", size='5')
+                axis_c1[m+1,0].set_ylabel("mid survivor",   size='5')
+                axis_c1[m+2,0].set_ylabel("long survivor",  size='5')
+                axis_c1[m+3,0].set_ylabel("combined (r=short,g=mid,b=long)", size='5')
 
             # -------- color by size ------- #
             if COLOR_BY_SIZE:
@@ -579,26 +666,70 @@ if __name__=='__main__':
                 axis_c1_size[m+2,j].imshow(thresh(glioma_c1_atlas_large[:,:,ax_slice].T,  cmap=cmap_c1_l, threshold=t_c1, v_max=1, v_min=0), interpolation='none', aspect='equal', alpha=0.8);
                 axis_c1_size[m+3,j].imshow(vals, interpolation='none', aspect='equal', alpha=0.8);
                 axis_c1_size[m+0,j].set_title("axial slice %d" %  ax_slice , size='5', y=1.0)
-                axis_c1_size[m+0,j].set_ylabel("small (TC+0.5*ED)", size='5')
-                axis_c1_size[m+1,j].set_ylabel("medium (TC+0.5*ED)", size='5')
-                axis_c1_size[m+2,j].set_ylabel("large (TC+0.5*ED)", size='5')
-                axis_c1_size[m+3,j].set_ylabel("blend (r=small,g=medium,b=large)", size='5')
+                axis_c1_size[m+0,0].set_ylabel("small (TC+0.5*ED)",  size='5')
+                axis_c1_size[m+1,0].set_ylabel("medium (TC+0.5*ED)", size='5')
+                axis_c1_size[m+2,0].set_ylabel("large (TC+0.5*ED)",  size='5')
+                axis_c1_size[m+3,0].set_ylabel("blend (r=small,g=medium,b=large)", size='5')
 
             # -------- functional atlas ------- #
-            # # -- c(0) -- #
             if COLOR_BY_FREQUENCY:
                 axis_freq[m2+0,j].imshow(atlas[:,:,ax_slice].T, **imshow_kwargs_template);
-                axis_freq[m2+0,j].imshow(thresh(atlas_freq_c0[:,:,ax_slice].T, cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), interpolation='none', aspect='equal', alpha=0.8);
                 axis_freq[m2+1,j].imshow(atlas[:,:,ax_slice].T, **imshow_kwargs_template);
-                axis_freq[m2+1,j].imshow(thresh(atlas_freq_c0[:,:,ax_slice].T, cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), interpolation='none', aspect='equal', alpha=0.8);
-                axis_freq[m2+0,j].set_ylabel("func. atlas by c(0) freq.", size='5')
-                axis_freq[m2+1,j].set_ylabel("func. atlas by c(1) freq.", size='5')
+                im1 = axis_freq[m2+0,j].imshow(thresh(atlas_freq_c0[:,:,ax_slice].T, cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), cmap=plt.cm.jet, interpolation='none', aspect='equal', alpha=0.8);
+                im2 = axis_freq[m2+1,j].imshow(thresh(atlas_freq_c1[:,:,ax_slice].T, cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), cmap=plt.cm.jet, interpolation='none', aspect='equal', alpha=0.8);
+                axis_freq[m2+0,0].set_ylabel("func. atlas by c(0) freq.", size='5')
+                axis_freq[m2+1,0].set_ylabel("func. atlas by c(1) freq.", size='5')
+                divider = make_axes_locatable(axis_freq[m2+0,0])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                cbar = fig_freq.colorbar(im1, cax=cax, orientation='vertical')
+                cbar.ax.tick_params(labelsize=4);
+                divider = make_axes_locatable(axis_freq[m2+1,0])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                cbar = fig_freq.colorbar(im2, cax=cax, orientation='vertical')
+                cbar.ax.tick_params(labelsize=4);
                 axis_freq[m2+0,j].set_title("axial slice %d" %  ax_slice , size='5', y=1.0)
 
-            i  = i + 1 if k % ncols == 0 and k > 0 else i
-            j  = j + 1 if k % ncols != 0 else 0
-            m  = m + 4 if k % ncols == 0 and k > 0 else m
+                vals = np.ones((ashape[0], ashape[1], 4))
+                # max_max = max(max(np.amax(atlas_freq_c0_short.flatten()), np.amax(atlas_freq_c0_mid.flatten())), np.amax(atlas_freq_c0_long.flatten()));
+                vals[..., 0] = atlas_freq_c0_short[:,:,ax_slice].T # / max_max # red
+                vals[..., 1] = atlas_freq_c0_mid[:,:,ax_slice].T   #/ max_max # green
+                vals[..., 2] = atlas_freq_c0_long[:,:,ax_slice].T  #/ max_max # blue
+                vals[..., 3] = Normalize(0, 0.01, clip=True)(atlas_freq_c0[:,:,ax_slice].T) # alpha
+                cmap_c1_combined = vals;
+                # # -- c(1) -- #
+                axis_freq_c0_srvl[m+0,j].imshow(atlas[:,:,ax_slice].T, **imshow_kwargs_template);
+                axis_freq_c0_srvl[m+1,j].imshow(atlas[:,:,ax_slice].T, **imshow_kwargs_template);
+                axis_freq_c0_srvl[m+2,j].imshow(atlas[:,:,ax_slice].T, **imshow_kwargs_template);
+                axis_freq_c0_srvl[m+3,j].imshow(atlas[:,:,ax_slice].T, **imshow_kwargs_template);
+                im1 = axis_freq_c0_srvl[m+0,j].imshow(thresh(atlas_freq_c0_short[:,:,ax_slice].T,  cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), cmap=plt.cm.jet, interpolation='none', aspect='equal', alpha=0.8);
+                im2 = axis_freq_c0_srvl[m+1,j].imshow(thresh(atlas_freq_c0_mid[:,:,ax_slice].T,    cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), cmap=plt.cm.jet, interpolation='none', aspect='equal', alpha=0.8);
+                im3 = axis_freq_c0_srvl[m+2,j].imshow(thresh(atlas_freq_c0_long[:,:,ax_slice].T,   cmap=plt.cm.jet, threshold=0.01, v_max=1, v_min=0), cmap=plt.cm.jet, interpolation='none', aspect='equal', alpha=0.8);
+                im4 = axis_freq_c0_srvl[m+3,j].imshow(vals, interpolation='none', aspect='equal', alpha=0.8);
+                divider = make_axes_locatable(axis_freq_c0_srvl[m+0,j])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                cbar = fig_freq_srvl.colorbar(im1, cax=cax, orientation='vertical')
+                cbar.ax.tick_params(labelsize=4);
+                divider = make_axes_locatable(axis_freq_c0_srvl[m+1,j])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                cbar = fig_freq_srvl.colorbar(im2, cax=cax, orientation='vertical')
+                cbar.ax.tick_params(labelsize=4);
+                divider = make_axes_locatable(axis_freq_c0_srvl[m+2,j])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                cbar = fig_freq_srvl.colorbar(im3, cax=cax, orientation='vertical')
+                cbar.ax.tick_params(labelsize=4);
+                axis_freq_c0_srvl[m+0,j].set_title("axial slice %d" %  ax_slice , size='5', y=1.0)
+                axis_freq_c0_srvl[m+0,0].set_ylabel("short survivor", size='5')
+                axis_freq_c0_srvl[m+1,0].set_ylabel("mid survivor",   size='5')
+                axis_freq_c0_srvl[m+2,0].set_ylabel("long survivor",  size='5')
+                axis_freq_c0_srvl[m+3,0].set_ylabel("combined (r=short,g=mid,b=long)", size='5')
+
+            i  = i  + 1 if k % ncols == 0 and k > 0 else i
+            j  = j  + 1 if k % ncols != 0 else 0
+            m  = m  + 4 if k % ncols == 0 and k > 0 else m
             m2 = m2 + 2 if k % ncols == 0 and k > 0 else m2
+        # colorbar
+        # if COLOR_BY_FREQUENCY:
+        #   fig_freq.colorbar(im1, cax=axis_freq[m2+1,j]  orientation="horizontal")
         vpath    = os.path.join(dir,'vis-atlas/');
         vpath_c0 = os.path.join(dir,'vis-atlas/glioma-atlas-c0');
         vpath_c1 = os.path.join(dir,'vis-atlas/glioma-atlas-c1');
@@ -622,9 +753,13 @@ if __name__=='__main__':
                 fig.savefig(os.path.join(vp, fn), format='pdf', dpi=1200);
 
         if COLOR_BY_FREQUENCY:
-            fig_freq.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.4);
+            fig_freq.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.4, hspace=0.4);
             fig_freq.tight_layout();
             fig_freq.savefig(os.path.join(vpath, "functional_atlas_freq.pdf"), format='pdf', dpi=1200);
+
+            fig_freq_srvl.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.4, hspace=0.4);
+            fig_freq_srvl.tight_layout();
+            fig_freq_srvl.savefig(os.path.join(vpath, "functional_atlas_c0_freq.pdf"), format='pdf', dpi=1200);
 
 
 
