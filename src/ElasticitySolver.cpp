@@ -443,11 +443,15 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::stringstream s;
 
+    bool flag_smooth_force_disp = false;
     // smooth the force
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
-    ierr = ctx->spec_ops_->weierstrassSmoother (rhs->x_, rhs->x_, n_misc, sigma_smooth);     CHKERRQ (ierr);
-    ierr = ctx->spec_ops_->weierstrassSmoother (rhs->y_, rhs->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
-    ierr = ctx->spec_ops_->weierstrassSmoother (rhs->z_, rhs->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+
+    if (flag_smooth_force_disp) {
+        ierr = ctx->spec_ops_->weierstrassSmoother (rhs->x_, rhs->x_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+        ierr = ctx->spec_ops_->weierstrassSmoother (rhs->y_, rhs->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+        ierr = ctx->spec_ops_->weierstrassSmoother (rhs->z_, rhs->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+    }
 
     ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
     ierr = VecSet (ctx->disp_, 0.);									CHKERRQ (ierr);
@@ -469,10 +473,12 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     s.str (""); s.clear ();
 
     // smooth the displacement
-    ierr = ctx->spec_ops_->weierstrassSmoother (displacement->x_, displacement->x_, n_misc, sigma_smooth);     CHKERRQ (ierr);
-    ierr = ctx->spec_ops_->weierstrassSmoother (displacement->y_, displacement->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
-    ierr = ctx->spec_ops_->weierstrassSmoother (displacement->z_, displacement->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
-
+    if (flag_smooth_force_disp) {
+        ierr = ctx->spec_ops_->weierstrassSmoother (displacement->x_, displacement->x_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+        ierr = ctx->spec_ops_->weierstrassSmoother (displacement->y_, displacement->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+        ierr = ctx->spec_ops_->weierstrassSmoother (displacement->z_, displacement->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+    }
+    
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);

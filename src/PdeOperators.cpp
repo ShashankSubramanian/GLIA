@@ -625,6 +625,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     ierr = tumor_->velocity_->computeMagnitude (magnitude_);
 
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
+    bool flag_smooth_velocity = false;
 
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;
@@ -707,9 +708,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
 
         // smooth the velocity
-        ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->x_, tumor_->velocity_->x_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
-        ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->y_, tumor_->velocity_->y_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
-        ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->z_, tumor_->velocity_->z_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+        if (flag_smooth_velocity) {
+            ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->x_, tumor_->velocity_->x_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+            ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->y_, tumor_->velocity_->y_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+            ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->z_, tumor_->velocity_->z_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+        }
 
         ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
