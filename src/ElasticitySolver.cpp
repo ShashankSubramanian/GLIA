@@ -51,7 +51,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetType (ksp_, KSPCG);
     // ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
-    ierr = KSPSetOptionsPrefix (ksp_, "tumor_elasticity");
+    ierr = KSPSetOptionsPrefix (ksp_, "tumor_elasticity_");
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
