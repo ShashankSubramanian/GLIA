@@ -665,6 +665,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "wm_t[" << i << "].nc";
             dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ss << "gm_t[" << i << "].nc";
+            dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
             ss << "seg_t[" << i << "].nc";
             dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
