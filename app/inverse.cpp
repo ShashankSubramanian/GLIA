@@ -32,7 +32,7 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
     }
 };
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *data_path, char* support_data_path, char* data_comp_path);
@@ -82,6 +82,7 @@ int main (int argc, char** argv) {
     char obs_mask_path[400];
     char data_comp_path[400];
     char data_comp_dat_path[400];
+    char init_tumor_path[400];
     char p_vec_path[400];
     char gaussian_cm_path[400];
     int np_user = 0;
@@ -205,6 +206,7 @@ int main (int argc, char** argv) {
     // PetscOptionsGetRealArray(NULL,NULL, "-data_comp_weights", data_comp_weights, &ncomp, &flag);
     PetscOptionsString ("-data_comp_path", "Path to label img of data components", "", data_comp_path, data_comp_path, 400, NULL);
     PetscOptionsString ("-data_comp_dat_path", "Path to .dat file of data components", "", data_comp_dat_path, data_comp_dat_path, 400, NULL);
+    PetscOptionsString ("-init_tumor_path", "Path to nc file containing tumor initial condition", "", init_tumor_path, init_tumor_path, 400, NULL);
 
     PetscOptionsReal ("-kappa_lb", "Lower bound for diffusivity", "", klb, &klb, NULL);
     PetscOptionsReal ("-kappa_ub", "Upper bound for diffusivity", "", kub, &kub, NULL);
@@ -544,7 +546,7 @@ int main (int argc, char** argv) {
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
         } else {
-            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc);
+            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, init_tumor_path);
         }
         read_support_data_nc = false;
         support_data = data;
@@ -1527,7 +1529,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, char *init_tumor_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -1558,13 +1560,18 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecSet (c_0, 0);                                                 CHKERRQ (ierr);
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
-    ierr = tumor->setTrueP (n_misc);
-    ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    if (procid == 0) {
-        ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+
+    if ((init_tumor_path != NULL) && (init_tumor_path[0] == '\0')) {
+        ierr = dataIn (c_0, n_misc, init_tumor_path);                       CHKERRQ (ierr);
+    } else {
+        ierr = tumor->setTrueP (n_misc);
+        ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (procid == 0) {
+            ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
+        }
+        ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ierr = tumor->phi_->apply (c_0, tumor->p_true_);
     }
-    ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    ierr = tumor->phi_->apply (c_0, tumor->p_true_);
 
     ScalarType *c0_ptr;
 
@@ -1579,10 +1586,6 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);
     ierr = VecMin (c_0, NULL, &min);                                       CHKERRQ (ierr);
-
-
-    // Artificially scale the IC -- Keep off.
-    // ierr = VecScale (c_0, 1.0 / max);                                      CHKERRQ (ierr);
 
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_0, n_misc);

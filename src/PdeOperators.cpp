@@ -718,7 +718,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
-        if (cfl > 0.8) {
+        if (cfl > 2) {
             // // TODO: resize time history
             // dt *= 0.5;
             // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;

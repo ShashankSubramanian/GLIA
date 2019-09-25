@@ -52,6 +52,8 @@ def getTumorRunCmd(params):
     data_comp_path = ""
     ### Path to .dat file for connected components of target data
     data_comp_dat_path = ""
+    ### Path the initial tumor concentration file
+    init_tumor_path = ""
 
 
     verbosity = 1
@@ -396,6 +398,7 @@ def getTumorRunCmd(params):
     " -pvec_path " + pvec_path + \
     " -data_comp_path " + data_comp_path + \
     " -data_comp_dat_path " + data_comp_dat_path + \
+    " -init_tumor_path " + init_tumor_path + \
     " -model " + str(model) + \
     " -smooth " + str(smooth_f) + \
     " -observation_threshold " + str(obs_thres) + \
