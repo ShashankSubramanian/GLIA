@@ -51,6 +51,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetType (ksp_, KSPCG);
     // ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
+    ierr = KSPSetOptionsPrefix (ksp_, "tumor_elasticity");
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
 
@@ -478,7 +479,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
         ierr = ctx->spec_ops_->weierstrassSmoother (displacement->y_, displacement->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
         ierr = ctx->spec_ops_->weierstrassSmoother (displacement->z_, displacement->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
     }
-    
+
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
