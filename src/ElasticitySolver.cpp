@@ -440,8 +440,14 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 
     CtxElasticity *ctx;
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
-
+    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
     std::stringstream s;
+
+    // smooth the force
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
+    ierr = ctx->spec_ops_->weierstrassSmoother (rhs->x_, rhs->x_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+    ierr = ctx->spec_ops_->weierstrassSmoother (rhs->y_, rhs->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+    ierr = ctx->spec_ops_->weierstrassSmoother (rhs->z_, rhs->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
 
     ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
     ierr = VecSet (ctx->disp_, 0.);									CHKERRQ (ierr);
@@ -458,11 +464,14 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
     ScalarType res_norm;
     ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
-
-
     s << "[Elasticity solver] Conjugate gradients convergence - iterations: " << itr << "    residual: " << res_norm;
     ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
     s.str (""); s.clear ();
+
+    // smooth the displacement
+    ierr = ctx->spec_ops_->weierstrassSmoother (displacement->x_, displacement->x_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+    ierr = ctx->spec_ops_->weierstrassSmoother (displacement->y_, displacement->y_, n_misc, sigma_smooth);     CHKERRQ (ierr);
+    ierr = ctx->spec_ops_->weierstrassSmoother (displacement->z_, displacement->z_, n_misc, sigma_smooth);     CHKERRQ (ierr);
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (ctx->n_misc_->timers_, t, self_exec_time);
