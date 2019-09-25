@@ -1561,7 +1561,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
-    if ((init_tumor_path != NULL) && (init_tumor_path[0] == '\0')) {
+    if ((init_tumor_path != NULL) && (init_tumor_path[0] != '\0')) {
         ierr = dataIn (c_0, n_misc, init_tumor_path);                       CHKERRQ (ierr);
     } else {
         ierr = tumor->setTrueP (n_misc);
