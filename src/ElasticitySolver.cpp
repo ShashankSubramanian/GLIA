@@ -50,7 +50,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
     ierr = KSPSetType (ksp_, KSPCG);
     // ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
-    // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
+    ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetOptionsPrefix (ksp_, "tumor_elasticity_");
     ierr = KSPSetFromOptions (ksp_);
     ierr = KSPSetUp (ksp_);
@@ -455,8 +455,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     }
 
     ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
-    ierr = VecSet (ctx->disp_, 0.);									CHKERRQ (ierr);
-    // ierr = displacement->getIndividualComponents (ctx->disp_);   // get the three disp components in disp to use as IC
+    ierr = displacement->getIndividualComponents (ctx->disp_);   // get the three disp components in disp to use as IC
 
     ierr = computeMaterialProperties ();
 

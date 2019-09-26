@@ -624,8 +624,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     std::stringstream s;
     ierr = tumor_->velocity_->computeMagnitude (magnitude_);
 
-    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
-    bool flag_smooth_velocity = false;
+    ScalarType sigma_smooth = 2.0 * 2.0 * M_PI / n_misc_->n_[0];
+    bool flag_smooth_velocity = true;
 
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;
@@ -732,7 +732,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
-        if (cfl > 2) {
+        if (cfl > 5) {
             // // TODO: resize time history
             // dt *= 0.5;
             // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
