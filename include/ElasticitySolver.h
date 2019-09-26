@@ -86,6 +86,7 @@ class VariableLinearElasticitySolver : public ElasticitySolver {
 	public:
 		VariableLinearElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : ElasticitySolver (n_misc, tumor, spec_ops) {}
 		PetscErrorCode computeMaterialProperties ();
+		PetscErrorCode smoothMaterialProperties ();
 		virtual PetscErrorCode solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs);
 		virtual ~VariableLinearElasticitySolver () {}
 };

@@ -473,6 +473,15 @@ __global__ void computeScreening (ScalarType *screen_ptr, ScalarType *c_ptr, Sca
 	}
 }
 
+__global__ void clipMaterialProperties (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *screen_ptr) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		mu_ptr[i] = (mu_ptr[i] < 0.) ? 0. : mu_ptr[i];
+        lam_ptr[i] = (lam_ptr[i] < 0.) ? 0. : lam_ptr[i];
+        screen_ptr[i] = (screen_ptr[i] < 0.) ? 0. : screen_ptr[i];
+	}
+}
 
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz) {
 	int n_th_x = N_THREADS_X;
@@ -710,6 +719,15 @@ void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType
 	int n_th = N_THREADS;
 
 	computeScreening <<< (sz + n_th - 1) / n_th, n_th >>> (screen_ptr, c_ptr, screen_low, screen_high);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
+void clipMaterialPropertiesCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *screen_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	clipMaterialProperties <<< (sz + n_th - 1) / n_th, n_th >>> (mu_ptr, lam_ptr, screen_ptr);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

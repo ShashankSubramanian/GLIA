@@ -408,12 +408,12 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	ScalarType *screen_ptr, *c_ptr;
 	ierr = vecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
 	ierr = vecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
-#ifdef CUDA
-    computeScreeningCuda (screen_ptr, c_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
-#else
-	for (int i = 0; i < n_misc->n_local_; i++) 
-		screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
-#endif
+    #ifdef CUDA
+        computeScreeningCuda (screen_ptr, c_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
+    #else
+	   for (int i = 0; i < n_misc->n_local_; i++) 
+		  screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
+    #endif
 	ierr = vecRestoreArray (tumor->c_t_, &c_ptr);					CHKERRQ (ierr);
 	ierr = vecRestoreArray (ctx->screen_, &screen_ptr);				CHKERRQ (ierr);
 	ierr = VecAXPY (ctx->screen_, 1E6, tumor->mat_prop_->bg_);		CHKERRQ (ierr); // ensures minimal bg displacement
@@ -431,6 +431,41 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 
 }
 
+PetscErrorCode VariableLinearElasticitySolver::smoothMaterialProperties () {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    CtxElasticity *ctx;
+    ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
+    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+
+    ScalarType *mu_ptr, *lam_ptr, *screen_ptr;
+    ierr = vecGetArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
+    ierr = vecGetArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
+    ierr = vecGetArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
+
+    #ifdef CUDA
+        clipMaterialPropertiesCuda (mu_ptr, lam_ptr, screen_ptr, n_misc->n_local_);
+    #else
+        for (int i = 0; i < n_misc->n_local_; i++) {
+            mu_ptr[i] = (mu_ptr[i] < 0.) ? 0. : mu_ptr[i];
+            lam_ptr[i] = (lam_ptr[i] < 0.) ? 0. : lam_ptr[i];
+            screen_ptr[i] = (screen_ptr[i] < 0.) ? 0. : screen_ptr[i];
+        }
+    #endif
+
+    ierr = vecRestoreArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
+    ierr = vecRestoreArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
+    ierr = vecRestoreArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
+
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
+    ierr = ctx->spec_ops_->weierstrassSmoother (ctx->mu_, ctx->mu_, n_misc, sigma_smooth);              CHKERRQ (ierr);
+    ierr = ctx->spec_ops_->weierstrassSmoother (ctx->lam_, ctx->lam_, n_misc, sigma_smooth);            CHKERRQ (ierr);
+    ierr = ctx->spec_ops_->weierstrassSmoother (ctx->screen_, ctx->screen_, n_misc, sigma_smooth);      CHKERRQ (ierr);
+
+    PetscFunctionReturn (ierr);
+}
+
 PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> displacement, std::shared_ptr<VecField> rhs) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -445,6 +480,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     std::stringstream s;
 
     bool flag_smooth_force_disp = false;
+    bool flag_smooth_mat_props = false;
     // smooth the force
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
 
@@ -457,7 +493,11 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     ierr = rhs->getIndividualComponents (rhs_);                 CHKERRQ (ierr);// get the three rhs components in rhs_
     ierr = displacement->getIndividualComponents (ctx->disp_);   // get the three disp components in disp to use as IC
 
-    ierr = computeMaterialProperties ();
+    ierr = computeMaterialProperties ();                        CHKERRQ (ierr);
+    if (flag_smooth_mat_props) {
+        // clip and smooth material properties
+        ierr = smoothMaterialProperties ();                     CHKERRQ (ierr);
+    }
 
     //KSP solve
     ierr = KSPSolve (ksp_, rhs_, ctx->disp_);                         CHKERRQ (ierr);

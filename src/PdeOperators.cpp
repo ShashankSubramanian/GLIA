@@ -680,6 +680,15 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "kxx_t[" << i << "].nc";
             dataOut (tumor_->k_->kxx_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
+            ss << "lam_t[" << i << "].nc";
+            dataOut (elasticity_solver_->ctx_->lam_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "mu_t[" << i << "].nc";
+            dataOut (elasticity_solver_->ctx_->mu_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+            ss << "scr_t[" << i << "].nc";
+            dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
         }
         // Advection of tumor and healthy tissue
         // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
