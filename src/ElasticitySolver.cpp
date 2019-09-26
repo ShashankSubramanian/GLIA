@@ -405,18 +405,21 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 
 	// Compute screening vector
 	ScalarType c_threshold = 0.005;
-	ScalarType *screen_ptr, *c_ptr;
+	ScalarType *screen_ptr, *c_ptr, *bg_ptr;
 	ierr = vecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
 	ierr = vecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
+    ierr = vecGetArray (tumor->mat_prop_->bg_, &bg_ptr);            CHKERRQ (ierr);
     #ifdef CUDA
-        computeScreeningCuda (screen_ptr, c_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
+        computeScreeningCuda (screen_ptr, c_ptr, bg_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
     #else
-	   for (int i = 0; i < n_misc->n_local_; i++) 
-		  screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
+        for (int i = 0; i < n_misc->n_local_; i++) {
+            screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
+            if (bg_ptr[i] > 0.95) screen_ptr[i] = 1E6; // screen out the background completely to ensure no movement
+        }
     #endif
 	ierr = vecRestoreArray (tumor->c_t_, &c_ptr);					CHKERRQ (ierr);
 	ierr = vecRestoreArray (ctx->screen_, &screen_ptr);				CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->screen_, 1E6, tumor->mat_prop_->bg_);		CHKERRQ (ierr); // ensures minimal bg displacement
+    ierr = vecRestoreArray (tumor->mat_prop_->bg_, &bg_ptr);            CHKERRQ (ierr);
 
 	// average the material properties for use in preconditioner
 	ierr = VecSum (ctx->mu_, &ctx->mu_avg_);						CHKERRQ (ierr);

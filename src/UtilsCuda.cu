@@ -464,12 +464,13 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 	}
 }
 
-__global__ void computeScreening (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType screen_low, ScalarType screen_high) {
+__global__ void computeScreening (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType c_threshold = 0.005;
 		screen_ptr[i] = (c_ptr[i] >= c_threshold) ? screen_low : screen_high;
+		if (bg_ptr[i] > 0.95) screen_ptr[i] = 1E6; // screen out the background completely to ensure no movement
 	}
 }
 
@@ -715,10 +716,10 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 	cudaCheckKernelError ();
 }
 
-void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz) {
+void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeScreening <<< (sz + n_th - 1) / n_th, n_th >>> (screen_ptr, c_ptr, screen_low, screen_high);
+	computeScreening <<< (sz + n_th - 1) / n_th, n_th >>> (screen_ptr, c_ptr, bg_ptr, screen_low, screen_high);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
