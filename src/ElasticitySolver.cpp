@@ -445,7 +445,6 @@ PetscErrorCode VariableLinearElasticitySolver::smoothMaterialProperties () {
     ScalarType *mu_ptr, *lam_ptr, *screen_ptr;
     ierr = vecGetArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
     ierr = vecGetArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
-    ierr = vecGetArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
 
     #ifdef CUDA
         clipMaterialPropertiesCuda (mu_ptr, lam_ptr, screen_ptr, n_misc->n_local_);
@@ -453,18 +452,15 @@ PetscErrorCode VariableLinearElasticitySolver::smoothMaterialProperties () {
         for (int i = 0; i < n_misc->n_local_; i++) {
             mu_ptr[i] = (mu_ptr[i] < 0.) ? 0. : mu_ptr[i];
             lam_ptr[i] = (lam_ptr[i] < 0.) ? 0. : lam_ptr[i];
-            screen_ptr[i] = (screen_ptr[i] < 0.) ? 0. : screen_ptr[i];
         }
     #endif
 
     ierr = vecRestoreArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
     ierr = vecRestoreArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
-    ierr = vecRestoreArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
 
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
     ierr = ctx->spec_ops_->weierstrassSmoother (ctx->mu_, ctx->mu_, n_misc, sigma_smooth);              CHKERRQ (ierr);
     ierr = ctx->spec_ops_->weierstrassSmoother (ctx->lam_, ctx->lam_, n_misc, sigma_smooth);            CHKERRQ (ierr);
-    ierr = ctx->spec_ops_->weierstrassSmoother (ctx->screen_, ctx->screen_, n_misc, sigma_smooth);      CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);
 }

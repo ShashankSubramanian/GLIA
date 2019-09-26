@@ -480,7 +480,6 @@ __global__ void clipMaterialProperties (ScalarType *mu_ptr, ScalarType *lam_ptr,
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		mu_ptr[i] = (mu_ptr[i] < 0.) ? 0. : mu_ptr[i];
         lam_ptr[i] = (lam_ptr[i] < 0.) ? 0. : lam_ptr[i];
-        screen_ptr[i] = (screen_ptr[i] < 0.) ? 0. : screen_ptr[i];
 	}
 }
 
