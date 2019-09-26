@@ -325,7 +325,7 @@ class NMisc {
         , E_bg_ (15000)                         // Young's modulus of background
         , E_tumor_ (8000)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
-        , screen_low_ (0)                       // low screening coefficient
+        , screen_low_ (1E-2)                       // low screening coefficient
         , screen_high_ (1E2)                    // high screening 
         , forcing_factor_ (8E4)               // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
@@ -366,9 +366,9 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 76;//52  //X
 
                 // tc1 and 2
-                user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
-                user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
-                user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
+                // user_cm_[0] = 2 * M_PI / 128 * 56;//82  //Z
+                // user_cm_[1] = 2 * M_PI / 128 * 68;//64  //Y
+                // user_cm_[2] = 2 * M_PI / 128 * 72;//52  //X
 
                 // casebrats for mass effect
                 // user_cm_[0] = 2 * M_PI / 128 * 70;//72  //Z
@@ -376,9 +376,9 @@ class NMisc {
                 // user_cm_[2] = 2 * M_PI / 128 * 75;//72  //X
 
                 // SRI-atlas
-                // user_cm_[0] = 2 * M_PI / 128 * 62;//72  //Z
-                // user_cm_[1] = 2 * M_PI / 128 * 35;//82  //Y
-                // user_cm_[2] = 2 * M_PI / 128 * 56;//72  //X
+                user_cm_[0] = 2 * M_PI / 128 * 62;//72  //Z
+                user_cm_[1] = 2 * M_PI / 128 * 35;//82  //Y
+                user_cm_[2] = 2 * M_PI / 128 * 56;//72  //X
 
                 // tc2
                 // user_cm_[0] = 2 * M_PI / 128 * 72;//82  //Z
