@@ -751,6 +751,12 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
             ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
             s.str (""); s.clear ();
+            if (nt >= 400) {
+                s << "Number of time-steps too large, consider using smaller forcing factor; exiting solver...";
+                ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+                s.str (""); s.clear ();
+                break;
+            }
         }
 
         // copy displacement to old vector
