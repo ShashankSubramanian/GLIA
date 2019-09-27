@@ -197,11 +197,10 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     XYZ[2] = 1;
 
     ScalarType *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
-    ScalarType sigma_smooth = 4.0 * 2.0 * M_PI / n_misc_->n_[0];
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0]; // smooth because c might be too sharp at csf boundaries
 
-    // snafu: smooth
     ierr = VecCopy (c1, work_[0]);            CHKERRQ (ierr);
-  //  ierr = spec_ops_->weierstrassSmoother (work_[0], work_[0], n_misc_, sigma_smooth);
+    ierr = spec_ops_->weierstrassSmoother (work_[0], work_[0], n_misc_, sigma_smooth);
     spec_ops_->computeGradient (force_->x_, force_->y_, force_->z_, work_[0], &XYZ, t.data());
 
     ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);

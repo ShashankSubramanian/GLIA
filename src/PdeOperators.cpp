@@ -556,28 +556,28 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
 
     ierr = VecGetArray (seg, &seg_ptr);                         CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
+    // ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
         if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
             // 1 is tumor, 2 is wm
             rho_ptr[i] = n_misc_->rho_;
-            k_ptr[i] = n_misc_->k_;
+            // k_ptr[i] = n_misc_->k_;
         }
     }
 
     ierr = VecRestoreArray (seg, &seg_ptr);                         CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
+    // ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     // smooth them now
     ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
     ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, n_misc_, sigma_smooth);
-    ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
+    // ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
 
     // copy kxx to other directions
-    ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
-    ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
+    // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
+    // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
 
     // ignore the avg for now since it won't change much and the preconditioner does not have much effect on
     // the diffusion solver
@@ -635,7 +635,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // Update diffusivity and reaction coefficient
         ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
         ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);              CHKERRQ (ierr);
-        // ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
         // ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
 
         // // model fix to no-mass-effect model
@@ -674,21 +674,23 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "c_t[" << i << "].nc";
             dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            ss << "rho_t[" << i << "].nc";
-            dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "kxx_t[" << i << "].nc";
-            dataOut (tumor_->k_->kxx_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "lam_t[" << i << "].nc";
-            dataOut (elasticity_solver_->ctx_->lam_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "mu_t[" << i << "].nc";
-            dataOut (elasticity_solver_->ctx_->mu_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "scr_t[" << i << "].nc";
-            dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
+            if (n_misc_->verbosity_ >= 2) {
+                ss << "rho_t[" << i << "].nc";
+                dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "kxx_t[" << i << "].nc";
+                dataOut (tumor_->k_->kxx_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "lam_t[" << i << "].nc";
+                dataOut (elasticity_solver_->ctx_->lam_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "mu_t[" << i << "].nc";
+                dataOut (elasticity_solver_->ctx_->mu_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "scr_t[" << i << "].nc";
+                dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+            }
         }
         // Advection of tumor and healthy tissue
         // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
@@ -741,18 +743,14 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
-        if (cfl > 5) {
-            // // TODO: resize time history
-            // dt *= 0.5;
-            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
-            // n_misc_->dt_ = dt;
-            // n_misc_->nt_ = nt;
-
-            // PCOUT << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            s << "CFL too large: exiting..."; 
+        if (cfl >= 0.97) {
+            dt *= 0.5;
+            nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            n_misc_->dt_ = dt;
+            n_misc_->nt_ = nt;
+            s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
             ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
             s.str (""); s.clear ();
-            break;
         }
 
         // copy displacement to old vector
