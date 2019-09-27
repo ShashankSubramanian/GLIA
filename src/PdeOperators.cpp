@@ -743,7 +743,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
-        if (cfl >= 0.97) {
+        if (cfl >= 1) {
             dt *= 0.5;
             nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
             n_misc_->dt_ = dt;
@@ -751,7 +751,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
             ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
             s.str (""); s.clear ();
-            if (nt >= 400) {
+            if (nt >= 200) {
                 s << "Number of time-steps too large, consider using smaller forcing factor; exiting solver...";
                 ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
                 s.str (""); s.clear ();
