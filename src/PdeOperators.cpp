@@ -621,7 +621,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     std::stringstream s;
     ierr = tumor_->velocity_->computeMagnitude (magnitude_);
 
-    ScalarType sigma_smooth = 2.0 * 2.0 * M_PI / n_misc_->n_[0];
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
     bool flag_smooth_velocity = true;
 
     for (int i = 0; i < nt + 1; i++) {
