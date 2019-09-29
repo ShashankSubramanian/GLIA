@@ -478,8 +478,18 @@ __global__ void clipMaterialProperties (ScalarType *mu_ptr, ScalarType *lam_ptr,
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		mu_ptr[i] = (mu_ptr[i] < 0.) ? 0. : mu_ptr[i];
-        lam_ptr[i] = (lam_ptr[i] < 0.) ? 0. : lam_ptr[i];
+		mu_ptr[i] = (mu_ptr[i] <= 0.) ? 0. : mu_ptr[i];
+        lam_ptr[i] = (lam_ptr[i] <= 0.) ? 0. : lam_ptr[i];
+	}
+}
+
+__global__ void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		gm_ptr[i] = (gm_ptr[i] <= 0.) ? 0. : gm_ptr[i];
+        wm_ptr[i] = (wm_ptr[i] <= 0.) ? 0. : wm_ptr[i];
+        csf_ptr[i] = (csf_ptr[i] <= 0.) ? 0. : csf_ptr[i];
 	}
 }
 
@@ -731,4 +741,13 @@ void clipMaterialPropertiesCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, Scalar
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
+}
+
+void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	clipHealthyTissues <<< (sz + n_th - 1) / n_th, n_th >>> (gm_ptr, wm_ptr, csf_ptr);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();	
 }

@@ -479,8 +479,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     std::stringstream s;
 
     bool flag_smooth_force_disp = false;
-    bool flag_smooth_mat_props = true; // keep this true as mat props may become negative due to small aliasing which causes
-                                       // cg to diverge
+    bool flag_smooth_mat_props = true; // keep this true to make sure that matrix is positive-def -- negative values will cause cg to diverge
     // smooth the force
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
 

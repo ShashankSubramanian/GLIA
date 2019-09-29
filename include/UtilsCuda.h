@@ -132,4 +132,5 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
             ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption, int64_t sz);
 void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz);
 void clipMaterialPropertiesCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *screen_ptr, int64_t sz);
+void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, int64_t sz);
 #endif

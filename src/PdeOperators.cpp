@@ -545,7 +545,6 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     PetscFunctionReturn (ierr);
 }
 
-
 PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, std::shared_ptr<Tumor> tumor) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -595,9 +594,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     ScalarType dt = n_misc_->dt_;
     int nt = n_misc_->nt_;
-
     n_misc_->statistics_.nb_state_solves++;
-
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
@@ -629,15 +626,18 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;
-        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        ierr = tuMSGstd (s.str());                                                CHKERRQ (ierr);
         s.str (""); s.clear ();
+
+        // clip healthy tissues
+        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
     
         // Update diffusivity and reaction coefficient
         ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
         ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);              CHKERRQ (ierr);
         ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
-        // ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
 
+        // ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
         // // model fix to no-mass-effect model
         // ierr = VecAXPY (tumor_->k_->kxx_, n_misc_->k_, tumor_->c_t_);                               CHKERRQ (ierr);
         // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);                                        CHKERRQ (ierr);
@@ -647,7 +647,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
 
-        if (n_misc_->writeOutput_ && i % 10 == 0) {
+        if (n_misc_->writeOutput_ && i % 5 == 0) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
@@ -743,20 +743,31 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // Adaptively time step if CFL is too large
-        if (cfl >= 1) {
-            dt *= 0.5;
-            nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
-            n_misc_->dt_ = dt;
-            n_misc_->nt_ = nt;
-            s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        if (cfl >= 3) {
+            // TODO: is adaptive time-stepping necessary? Because if cfl is already 3; then numerical oscillations
+            // have already propogated and dt keeps dropping to very small values -- very bad accuracy from semi-Lagrangian
+            // instead suggest to the user to have a smaller forcing factor. Large forcing factor also stretches the tumor
+            // concentration too much which calls for higher E_tumor which can be very unrealistic. If mass-effect still does 
+            // not match, then rho/kappa might be highly inaccurate.
+
+            // keep re-size of time history commented for now
+            // dt *= 0.5;
+            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            // n_misc_->dt_ = dt;
+            // n_misc_->nt_ = nt;
+            // s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
+            // ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            // s.str (""); s.clear ();
+            // if (nt >= 200) {
+            //     s << "Number of time-steps too large, consider using smaller forcing factor; exiting solver...";
+            //     ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            //     s.str (""); s.clear ();
+            //     break;
+            // }
+            s << "CFL is too large (>=3); consider using smaller forcing factor; exiting solver...";
+            ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
             s.str (""); s.clear ();
-            if (nt >= 200) {
-                s << "Number of time-steps too large, consider using smaller forcing factor; exiting solver...";
-                ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-                s.str (""); s.clear ();
-                break;
-            }
+            break;
         }
 
         // copy displacement to old vector
@@ -811,6 +822,7 @@ PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc) {
     }
     PetscFunctionReturn (ierr);
 }
+
 
 PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
     PetscFunctionBegin;
