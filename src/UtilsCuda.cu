@@ -483,7 +483,7 @@ __global__ void clipMaterialProperties (ScalarType *mu_ptr, ScalarType *lam_ptr,
 	}
 }
 
-__global__ void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr) {
+__global__ void clipHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
