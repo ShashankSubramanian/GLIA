@@ -33,17 +33,17 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
     patient_seg = nii.get_fdata()
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 7] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/patient_csf.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_csf.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 5] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/patient_gm.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_gm.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 6] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/patient_wm.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_wm.nii.gz")
     patient_mat_img = 0 * patient_seg + 1
     patient_mat_img[patient_seg == 4] = 0 #enhancing tumor mask
     patient_mat_img = gaussian_filter(patient_mat_img, sigma=2) # claire requires smoothing of masks
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
 
     bash_filename = results_path + "/coupling_job_submission.sh"
     print("creating job file in ", results_path)
@@ -78,7 +78,7 @@ def transportMaps(claire_bin_path, results_path, tu_results_path, bash_filename)
     # convert c0Recon nc to nifti
     c0_nc = tu_results_path + "/c0Recon.nc"
     file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
-    c0 = file.variables['data'][:,:,:]
+    c0 = file.variables['data'][::-1,::-1,:]
 
     nii = nib.load(results_path + "/patient_mask.nii.gz")
     nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
