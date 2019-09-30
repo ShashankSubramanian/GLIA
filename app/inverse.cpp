@@ -123,6 +123,7 @@ int main (int argc, char** argv) {
     int flag_cosamp = 0;
 
     ScalarType sm = -1;
+    ScalarType forcing_factor = -1;
 
     ScalarType opttolgrad = -1.0;
 
@@ -172,6 +173,7 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-r_gm_wm", "WM to GM ratio for reaction", "", r_gm_wm, &r_gm_wm, NULL);
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
     PetscOptionsReal ("-low_freq_noise", "Noise level for low frequency noise addition", "", low_freq_noise_scale, &low_freq_noise_scale, NULL);
+    PetscOptionsReal ("-forcing_factor", "Forcing factor for mass-effect forward model", "", forcing_factor, &forcing_factor, NULL);
     PetscStrcpy (newton_solver, "QN");
     PetscStrcpy (line_search, "mt");
     PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
@@ -452,6 +454,10 @@ int main (int argc, char** argv) {
 
     if (order_of_accuracy != -1) {
         n_misc->order_ = order_of_accuracy;
+    }
+
+    if (forcing_factor != -1) {
+        n_misc->forcing_factor_ = forcing_factor;
     }
 
     n_misc->forward_flag_ = fwd_flag;

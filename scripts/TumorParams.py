@@ -75,6 +75,8 @@ def getTumorRunCmd(params):
     k_data = 0.025
     nt_data = 100
     dt_data = 0.01
+    ### Mass effect parameters -- only used if model is {4,5}
+    forcing_factor = 1E5
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -409,6 +411,7 @@ def getTumorRunCmd(params):
     " -forward " + str(forward_flag) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
+    " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
     " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
