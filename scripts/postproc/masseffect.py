@@ -78,7 +78,7 @@ def transportMaps(claire_bin_path, results_path, tu_results_path, bash_filename)
     # convert c0Recon nc to nifti
     c0_nc = tu_results_path + "/c0Recon.nc"
     file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
-    c0 = file.variables['data'][::-1,::-1,:]
+    c0 = np.transpose(file.variables['data'])
 
     nii = nib.load(results_path + "/patient_mask.nii.gz")
     nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
@@ -140,7 +140,6 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     t_params['wm_path'] = wm_path_nc
     t_params['csf_path'] = csf_path_nc
     t_params['init_tumor_path'] = c0_path_nc
-    t_params['results_path'] = results_path
     t_params['compute_sys'] = 'frontera'
 
     gamma = [1E4, 4E4, 8E4, 12E4]
@@ -148,6 +147,7 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     ### run four forward models
     for g in gamma:
         t_params['forcing_factor'] = g
+        t_params['results_path'] = results_path + "/tumor-forward-gamma-" + g
         cmdline_tumor, err = TumorParams.getTumorRunCmd(t_params)
         bash_file.write(cmdline_tumor)
         bash_file.write("\n\n")
