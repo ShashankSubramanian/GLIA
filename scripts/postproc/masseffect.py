@@ -16,6 +16,7 @@ from netCDF4 import Dataset
 def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path):
     # create atlas vector labels
     atlas_name = atlas_image_path.split("/")[-1]
+    atlas_name = atlas_name.split(".")[0]
     nii = nib.load(atlas_image_path)
     altas_seg = nii.get_fdata()
     altas_mat_img = 0 * altas_seg
@@ -94,6 +95,7 @@ def createNetCDFFile(filename, dimensions, variable):
 def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename):
     bash_file = open(bash_filename, 'a')
     atlas_name = atlas_image_path.split("/")[-1]
+    atlas_name = atlas_name.split(".")[0]
     t_params = dict()
     t_params['code_path'] = tu_code_path
     t_params['rho_data'] = inv_params['rho_inv']
@@ -105,6 +107,7 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     t_params['N'] = 256
     t_params['smooth_f'] = 1
     t_params['fac'] = 1
+    t_params['model'] = 4
 
     nii = nib.load(results_path + "/" + atlas_name + "_gm.nii.gz")
     gm = nii.get_fdata()

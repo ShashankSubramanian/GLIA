@@ -170,6 +170,11 @@ def getTumorRunCmd(params):
     else:
         print ('Default N = {} used'.format(N))
     # ---
+    if 'model' in params:
+        model = params['model']
+    else:
+        print ('Default model = {} used'.format(model))
+    # ---
     if 'grad_tol' in params:
         grad_tol = params['grad_tol']
     else:
