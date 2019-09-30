@@ -147,7 +147,7 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     ### run four forward models
     for g in gamma:
         t_params['forcing_factor'] = g
-        t_params['results_path'] = results_path + "/tumor-forward-gamma-" + g
+        t_params['results_path'] = results_path + "/tumor-forward-gamma-" + str(g)
         cmdline_tumor, err = TumorParams.getTumorRunCmd(t_params)
         bash_file.write(cmdline_tumor)
         bash_file.write("\n\n")
