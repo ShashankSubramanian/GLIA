@@ -215,6 +215,37 @@ def getTumorRunCmd(params):
     else:
         print ('Default k = {} used'.format(k_inv))
     # ---
+    if 'create_synthetic' in params:
+        create_synthetic = params['create_synthetic'];
+    # ---
+    if 'rho_data' in params:
+        rho_data = params['rho_data']
+    elif create_synthetic == 1:
+        print ('Default rho_data = {} used'.format(rho_data))
+    # ---
+    if 'k_data' in params:
+        k_data = params['k_data']
+    elif create_synthetic == 1:
+        print ('Default k_data = {} used'.format(k_data))
+    # ---
+    if 'nt_data' in params:
+        nt_data = params['nt_data']
+    elif create_synthetic == 1:
+        print ('Default nt_data = {} used'.format(nt_data))
+    # ---
+    if 'dt_data' in params:
+        dt_data = params['dt_data']
+    elif create_synthetic == 1:
+        print ('Default dt_data = {} used'.format(dt_data))
+    # ---
+    if 'forcing_factor' in params:
+        forcing_factor = params['forcing_factor']
+    elif create_synthetic == 1:
+        print ('Default forcing_factor = {} used'.format(forcing_factor))
+    # ---
+    if 'forward_flag' in params:
+        forward_flag = params['forward_flag']
+    # ---
     if 'beta' in params:
         beta = params['beta']
     else:
@@ -241,6 +272,16 @@ def getTumorRunCmd(params):
         dd_fac = params['dd_fac']
     else:
         print ('Default dd_fac = {} used'.format(dd_fac))
+    # ---
+    if 'fac' in params:
+        fac = params['fac']
+    elif create_synthetic == 1:
+        print ('Default synthetic fac = {} used'.format(fac))
+    # ---
+    if 'smooth_f' in params:
+        smooth_f = params['smooth_f']
+    else:
+        print ('Default smoothing = {} used'.format(smooth_f))
     # ---
     if 'upper_bound_kappa' in params:
         upper_bound_kappa = params['upper_bound_kappa']
@@ -347,6 +388,12 @@ def getTumorRunCmd(params):
         print('path to file with target data comp  = {}'.format(data_comp_dat_path))
     else:
         print('No .dat file for components of target data given.')
+    # ---
+    if 'init_tumor_path' in params:
+        init_tumor_path = params['init_tumor_path']
+        print('path to file with initial tumor condition  = {}'.format(init_tumor_path))
+    elif create_synthetic == 1:
+        print('No path for initial tumor condition; using defaults from solver.')
     # ---
     if "solve_rho_k" in params:
         solve_rho_k = params['solve_rho_k']
