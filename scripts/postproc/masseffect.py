@@ -63,6 +63,7 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
                     + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
 
     bash_file.write(cmd)
+    bash_file.write("\n\n")
     bash_file.close()
 
     # #submit the job
