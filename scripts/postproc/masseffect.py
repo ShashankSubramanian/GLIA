@@ -75,8 +75,16 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
 def transportMaps(claire_bin_path, results_path, tu_results_path, bash_filename):
     bash_file = open(bash_filename, 'a')
 
+    # convert c0Recon nc to nifti
+    c0_nc = tu_results_path + "/c0Recon.nc"
+    file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
+    c0 = file.variables['data'][:,:,:]
+
+    nii = nib.load(results_path + "/patient_mask.nii.gz")
+    nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
+
     cmd = "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile "\
-                   + tu_results_path + "/c0Recon.nii.gz -xfile " + results_path + "/c0Recon_transported.nii.gz -deformimage" 
+                   + results_path + "/c0Recon.nii.gz -xfile " + results_path + "/c0Recon_transported.nii.gz -deformimage" 
 
     bash_file.write(cmd)
     bash_file.write("\n\n")
