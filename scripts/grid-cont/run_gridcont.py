@@ -182,16 +182,16 @@ def gridcont(basedir, args):
     #   ------------------------------------------------------------------------
     #   - read atlas segmented image and create probability maps
     #   - read segmented patient or patient probability maps and resize them
-    cmd_preproc = pythoncmd + basedir + '/scripts/preprocess.py -atlas_image_path ' + args.atlas_image_path  + ' -patient_image_path ' + args.patient_image_path + ' -output_path ' + input_folder + ' -N ' + str(args.resolution) + ' -patient_labels ' + args.patient_segmentation_labels + ' -atlas_labels ' + args.atlas_segmentation_labels;
+    cmd_preproc = pythoncmd + basedir + '/scripts/grid-cont/preprocess.py -atlas_image_path ' + args.atlas_image_path  + ' -patient_image_path ' + args.patient_image_path + ' -output_path ' + input_folder + ' -N ' + str(args.resolution) + ' -patient_labels ' + args.patient_segmentation_labels + ' -atlas_labels ' + args.atlas_segmentation_labels;
     if args.use_atlas_segmentation:
         cmd_preproc += ' --use_atlas_segmentation'
     if args.use_patient_segmentation:
         cmd_preproc += ' --use_patient_segmentation'
 
     # compute observation operartor mask (lambda)
-    cmd_obs =  "\n\n# observation mask\n" + pythoncmd + basedir + '/scripts/utils.py -compute_observation_mask --obs_lambda ' + str(args.obs_lambda) + ' -output_path ' + input_folder
-    cmd_obs_resample64  = "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'obs_mask.nc'          + ' --name_new ' + 'obs_mask_nx64.nc'          + ' --N_old 256 --N_new 64 &';
-    cmd_obs_resample128 = "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'obs_mask.nc'          + ' --name_new ' + 'obs_mask_nx128.nc'         + ' --N_old 256 --N_new 128 &';
+    cmd_obs =  "\n\n# observation mask\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -compute_observation_mask --obs_lambda ' + str(args.obs_lambda) + ' -output_path ' + input_folder
+    cmd_obs_resample64  = "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'obs_mask.nc'          + ' --name_new ' + 'obs_mask_nx64.nc'          + ' --N_old 256 --N_new 64 &';
+    cmd_obs_resample128 = "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'obs_mask.nc'          + ' --name_new ' + 'obs_mask_nx128.nc'         + ' --N_old 256 --N_new 128 &';
     cmd_obs_rename    = "mv " + os.path.join(input_folder, 'obs_mask.nc')          + " " + os.path.join(input_folder, 'obs_mask_nx' + str(256) + '.nc') + " \n"
     # compute observation operator mask (lambda \in {1, 0.8, 0.6, 0.4, 0.2, 0.1})
     if args.vary_obs_lambda:
@@ -201,9 +201,9 @@ def gridcont(basedir, args):
         for lambda_o in [1]: #[1, 0.8, 0.6, 0.4, 0.2, 0.1]:
             name = "obs_mask" + '_lbd-'+str(lambda_o);
             obs_masks.append(name);
-            cmd_obs             += "\n" + pythoncmd + basedir + '/scripts/utils.py -compute_observation_mask --obs_lambda ' + str(lambda_o) + ' -output_path ' + input_folder + ' --suffix ' + '_lbd-'+str(lambda_o)
-            cmd_obs_resample64  += "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + name + '.nc'          + ' --name_new ' + name + '_nx64.nc'          + ' --N_old 256 --N_new 64 &';
-            cmd_obs_resample128 += "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + name + '.nc'          + ' --name_new ' + name + '_nx128.nc'         + ' --N_old 256 --N_new 128 &';
+            cmd_obs             += "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -compute_observation_mask --obs_lambda ' + str(lambda_o) + ' -output_path ' + input_folder + ' --suffix ' + '_lbd-'+str(lambda_o)
+            cmd_obs_resample64  += "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + name + '.nc'          + ' --name_new ' + name + '_nx64.nc'          + ' --N_old 256 --N_new 64 &';
+            cmd_obs_resample128 += "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + name + '.nc'          + ' --name_new ' + name + '_nx128.nc'         + ' --N_old 256 --N_new 128 &';
             cmd_obs_rename      += "mv " + os.path.join(input_folder, name + '.nc')          + " " + os.path.join(input_folder, name + '_nx' + str(256) + '.nc') + " \n"
 
 
@@ -211,16 +211,16 @@ def gridcont(basedir, args):
 
     #   - resample 256 --> 64
     cmd_preproc +=  "\n\n# resample\n";
-    cmd_preproc +=           pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_csf.nc'   + ' --name_new ' + 'patient_nx64_seg_csf.nc'   + ' --N_old 256 --N_new 64 &';
-    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_gm.nc'    + ' --name_new ' + 'patient_nx64_seg_gm.nc'    + ' --N_old 256 --N_new 64 &';
-    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_wm_wt.nc' + ' --name_new ' + 'patient_nx64_seg_wm_wt.nc' + ' --N_old 256 --N_new 64 &';
-    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_tc.nc'    + ' --name_new ' + 'patient_nx64_seg_tc.nc'    + ' --N_old 256 --N_new 64 &';
+    cmd_preproc +=           pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_csf.nc'   + ' --name_new ' + 'patient_nx64_seg_csf.nc'   + ' --N_old 256 --N_new 64 &';
+    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_gm.nc'    + ' --name_new ' + 'patient_nx64_seg_gm.nc'    + ' --N_old 256 --N_new 64 &';
+    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_wm_wt.nc' + ' --name_new ' + 'patient_nx64_seg_wm_wt.nc' + ' --N_old 256 --N_new 64 &';
+    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_tc.nc'    + ' --name_new ' + 'patient_nx64_seg_tc.nc'    + ' --N_old 256 --N_new 64 &';
     cmd_preproc += cmd_obs_resample64;
     #   - resample 256 --> 128
-    cmd_preproc +=  "\n\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_csf.nc'   + ' --name_new ' + 'patient_nx128_seg_csf.nc'   + ' --N_old 256 --N_new 128 &';
-    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_gm.nc'    + ' --name_new ' + 'patient_nx128_seg_gm.nc'    + ' --N_old 256 --N_new 128 &';
-    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_wm_wt.nc' + ' --name_new ' + 'patient_nx128_seg_wm_wt.nc' + ' --N_old 256 --N_new 128 &';
-    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_tc.nc'    + ' --name_new ' + 'patient_nx128_seg_tc.nc'    + ' --N_old 256 --N_new 128 &';
+    cmd_preproc +=  "\n\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_csf.nc'   + ' --name_new ' + 'patient_nx128_seg_csf.nc'   + ' --N_old 256 --N_new 128 &';
+    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_gm.nc'    + ' --name_new ' + 'patient_nx128_seg_gm.nc'    + ' --N_old 256 --N_new 128 &';
+    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_wm_wt.nc' + ' --name_new ' + 'patient_nx128_seg_wm_wt.nc' + ' --N_old 256 --N_new 128 &';
+    cmd_preproc +=    "\n" + pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + input_folder + ' --name_old ' + 'patient_seg_tc.nc'    + ' --name_new ' + 'patient_nx128_seg_tc.nc'    + ' --N_old 256 --N_new 128 &';
     cmd_preproc += cmd_obs_resample128;
     #   - rename 256
     cmd_rename  = "mv " + os.path.join(input_folder, 'patient_seg_csf.nc')   + " " + os.path.join(input_folder, 'patient_nx'  + str(256) + '_seg_csf.nc') + " \n"
@@ -279,15 +279,15 @@ def gridcont(basedir, args):
                 cmd_symlink +=  "ln -sf " + "../../../input/patient_nx" + str(level) + "_seg_tc.nc"     " support_data.nc \n";
             else:
                 level_prev = int(level/2);
-                cmd_symlink += pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'c0Recon.nc'           + ' --name_new ' + 'c0Recon_nx'+ str(level)         + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
+                cmd_symlink += pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'c0Recon.nc'           + ' --name_new ' + 'c0Recon_nx'+ str(level)         + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
                 cmd_symlink +=  "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0Recon_nx"+str(level)+".nc"   " support_data.nc \n";
-                cmd_symlink += pythoncmd + basedir + '/scripts/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'phiSupportFinal.nc'   + ' --name_new ' + 'phiSupportFinal_nx'+ str(level) + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
+                cmd_symlink += pythoncmd + basedir + '/scripts/grid-cont/utils.py -resample -output_path ' + os.path.join(tumor_out_path, 'nx' + str(level_prev) + "/" + obs_dir) + ' --name_old ' + 'phiSupportFinal.nc'   + ' --name_new ' + 'phiSupportFinal_nx'+ str(level) + '.nc' + ' --N_old ' + str(level_prev) + ' --N_new ' + str(level) + ' \n';
                 cmd_symlink +=  "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/phiSupportFinal_nx"+str(level)+".nc"   " support_data_phi.nc \n";
         cmd_symlink  +=  "cd ${PWDO} \n"
 
         # compute connecte components of target data
         rdir = "obs" if not args.cm_data else "cm-data";
-        cmd_concomp  = pythoncmd + basedir + '/scripts/utils.py -concomp_data  -input_path ' +  os.path.join(tumor_out_path, 'nx' + str(level)) + ' -output_path ' +  input_folder + ' --obs_lambda ' + str(args.obs_lambda);
+        cmd_concomp  = pythoncmd + basedir + '/scripts/grid-cont/utils.py -concomp_data  -input_path ' +  os.path.join(tumor_out_path, 'nx' + str(level)) + ' -output_path ' +  input_folder + ' --obs_lambda ' + str(args.obs_lambda);
         cmd_concomp += " -rdir " + rdir  + "  --sigma " + str(sigma_fac[ii]) + " ";
         cmd_concomp +=  " -select_gaussians  \n" if (gaussian_selection_mode == 'C0_RANKED' and level > 64) else " \n";
         cmd_concomp +=  "PWDO=${PWD} \n"
@@ -299,7 +299,7 @@ def gridcont(basedir, args):
         #   - extract reconstructed rho and k
         if level > 64:
             cmd_extractrhok =  "\n\n# extract reconstructed rho, k\n";
-            cmd_extractrhok +=  pythoncmd + basedir + '/scripts/utils.py -extract -output_path ' + res_dir_prev + ' --rho_fac 1' + " \n"
+            cmd_extractrhok +=  pythoncmd + basedir + '/scripts/grid-cont/utils.py -extract -output_path ' + res_dir_prev + ' --rho_fac 1' + " \n"
             cmd_extractrhok += "source " + os.path.join(res_dir_prev, 'env_rhok.sh') + "\n"
 
         # tumor settings for current level
@@ -377,7 +377,7 @@ def gridcont(basedir, args):
 
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
-        cmd_postproc  = pythoncmd + basedir + '/scripts/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
+        cmd_postproc  = pythoncmd + basedir + '/scripts/grid-cont/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
         cmd_postproc += " -rdir " + rdir + " ";
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
