@@ -313,6 +313,7 @@ def gridcont(basedir, args):
         t_params['grad_tol']              = opttol;
         t_params['sparsity_lvl']          = sparsity_lvl_per_component;
         t_params['multilevel']            = 1;
+        t_params['model']                 = 1;
         t_params['solve_rho_k']           = 1 if args.cm_data else 0;
         t_params['inject_solution']       = 1 if (inject_coarse_sol  and level > 64) else 0;
         t_params['pre_reacdiff_solve']    = 1 if (pre_reacdiff_solve and level > 64) else 0;
