@@ -1639,7 +1639,7 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
-  itctx->optfeedback_->nb_objevals++;
+    itctx->optfeedback_->nb_objevals++;
     ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
     self_exec_time += MPI_Wtime ();
     accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -1727,6 +1727,14 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+  #endif
+
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
@@ -1745,6 +1753,12 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
   ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
   ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+  #endif
+
   ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
 
   self_exec_time += MPI_Wtime ();
@@ -1762,6 +1776,14 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      ierr = VecLockPop (x);                CHKERRQ (ierr);
+    }
+  #endif
 
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
@@ -1783,6 +1805,12 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
 
   Vec dJ_full;
   ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
+
+  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      ierr = VecLockPush (x);     CHKERRQ (ierr);
+    }
+  #endif
 
   ierr = itctx->derivative_operators_->evaluateGradient (dJ_full, itctx->x_old, itctx->data_gradeval);
 
