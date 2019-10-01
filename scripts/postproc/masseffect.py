@@ -13,10 +13,18 @@ from netCDF4 import Dataset
 ### Register atlas+tumor to patient and report deformation and final mismatches
 ### Report best gamma according to mismatch (of ventricles?)
 
-def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path):
+def createNetCDFFile(filename, dimensions, variable):
+    file = Dataset(filename, mode='w', format="NETCDF3_CLASSIC");
+    x = file.createDimension("x", dimensions[0]);
+    y = file.createDimension("y", dimensions[1]);
+    z = file.createDimension("z", dimensions[2]);
+    data = file.createVariable("data", "f8", ("x","y","z",));
+    data[:,:,:] = variable[:,:,:];
+    file.close();
+
+def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, mask=True):
     # create atlas vector labels
-    atlas_name = atlas_image_path.split("/")[-1]
-    atlas_name = atlas_name.split(".")[0]
+    atlas_name = "atlas"
     nii = nib.load(atlas_image_path)
     altas_seg = nii.get_fdata()
     altas_mat_img = 0 * altas_seg
@@ -28,6 +36,11 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 6] = 1
     nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_wm.nii.gz")
+    if not mask:
+        # atlas has a tumor too; save it
+        altas_mat_img = 0 * altas_seg
+        altas_mat_img[altas_seg == 4] = 1
+        nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_tu.nii.gz")
 
     nii = nib.load(patient_image_path)
     patient_seg = nii.get_fdata()
@@ -40,10 +53,16 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 6] = 1
     nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_wm.nii.gz")
-    patient_mat_img = 0 * patient_seg + 1
-    patient_mat_img[patient_seg == 4] = 0 #enhancing tumor mask
-    patient_mat_img = gaussian_filter(patient_mat_img, sigma=2) # claire requires smoothing of masks
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
+    patient_mat_img = 0 * patient_seg
+    patient_mat_img[patient_seg == 4] = 1
+    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_tu.nii.gz")
+
+    if mask:
+        #create tumor masking file
+        patient_mat_img = 0 * patient_seg + 1
+        patient_mat_img[patient_seg == 4] = 0 #enhancing tumor mask
+        patient_mat_img = gaussian_filter(patient_mat_img, sigma=2) # claire requires smoothing of masks
+        nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
 
     bash_filename = results_path + "/coupling_job_submission.sh"
     print("creating job file in ", results_path)
@@ -52,39 +71,40 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
     bash_file.write("#SBATCH -J mass-effect-cpl\n");
     bash_file.write("#SBATCH -o " + results_path + "/claire_solver_log.txt\n")
     bash_file.write("#SBATCH -p normal\n")
-    bash_file.write("#SBATCH -N 3\n")
-    bash_file.write("#SBATCH -n 64\n")                                                                                                                                                                                                                                                                          
-    bash_file.write("#SBATCH -t 05:00:00\n\n")
+    bash_file.write("#SBATCH -N 4\n")
+    bash_file.write("#SBATCH -n 128\n")                                                                                                                                                                                                                                                                          
+    bash_file.write("#SBATCH -t 03:00:00\n\n")
     bash_file.write("source ~/.bashrc\n")
 
-    cmd = "ibrun " + claire_bin_path + "/claire -mtc 3 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " \
-                    + "-mrc 3 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz -mask " + results_path + "/patient_mask.nii.gz \
-                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -defmap -x " + results_path \
+    if mask:
+        cmd = "ibrun " + claire_bin_path + "/claire -mtc 3 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + \
+                    atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " \
+                    + "-mrc 3 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + \
+                    "/patient_wm.nii.gz -mask " + results_path + "/patient_mask.nii.gz \
+                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -defmap -x " \
+                    + results_path + "/"\
+                    + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
+    else:
+        cmd = "ibrun " + claire_bin_path + "/claire -mtc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name \
+                    + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " + results_path + "/" + atlas_name + "_tu.nii.gz "\
+                    + "-mrc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
+                    + results_path + "/patient_tu.nii.gz \
+                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -defmap -x "\
+                    + results_path + "/"\
                     + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
 
     bash_file.write(cmd)
     bash_file.write("\n\n")
     bash_file.close()
 
-    # #submit the job
-    # subprocess.call(['sbatch',bash_filename]);
-
     return bash_filename
 
 # transport
-def transportMaps(claire_bin_path, results_path, tu_results_path, bash_filename):
+def transportMaps(claire_bin_path, results_path, bash_filename, transport_file_name):
     bash_file = open(bash_filename, 'a')
 
-    # convert c0Recon nc to nifti
-    c0_nc = tu_results_path + "/c0Recon.nc"
-    file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
-    c0 = np.transpose(file.variables['data'])
-
-    nii = nib.load(results_path + "/patient_mask.nii.gz")
-    nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
-
     cmd = "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile "\
-                   + results_path + "/c0Recon.nii.gz -xfile " + results_path + "/c0Recon_transported.nii.gz -deformimage" 
+                   + results_path + "/" + transport_file_name + ".nii.gz -xfile " + results_path + "/" + transport_file_name + "_transported.nii.gz -deformimage" 
 
     bash_file.write(cmd)
     bash_file.write("\n\n")
@@ -92,17 +112,12 @@ def transportMaps(claire_bin_path, results_path, tu_results_path, bash_filename)
 
     return bash_filename
 
-def createNetCDFFile(filename, dimensions, variable):
-    file = Dataset(filename, mode='w', format="NETCDF3_CLASSIC");
-    x = file.createDimension("x", dimensions[0]);
-    y = file.createDimension("y", dimensions[1]);
-    z = file.createDimension("z", dimensions[2]);
-    data = file.createVariable("data", "f8", ("x","y","z",));
-    data[:,:,:] = variable[:,:,:];
-    file.close();
-
 def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename):
     bash_file = open(bash_filename, 'a')
+
+    # modify petsc
+    bash_file.write("module load petsc/3.11-single")
+
     atlas_name = atlas_image_path.split("/")[-1]
     atlas_name = atlas_name.split(".")[0]
     t_params = dict()
@@ -152,7 +167,19 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
         bash_file.write(cmdline_tumor)
         bash_file.write("\n\n")
 
-    return bash_filename
+    # modify petsc
+    bash_file.write("module unload petsc/3.11-single")
+
+    return bash_filename, gamma
+
+def convertTuToBratsSeg(tu_seg):
+    brats_seg = 0 * tu_seg
+    brats_seg[tu_seg == 4] = 7
+    brats_seg[tu_seg == 3] = 5
+    brats_seg[tu_seg == 2] = 6
+    brats_seg[tu_seg == 1] = 4
+
+    return brats_seg
 
 if __name__=='__main__':
     basedir = os.path.dirname(os.path.abspath(__file__))
@@ -164,6 +191,7 @@ if __name__=='__main__':
     r_args.add_argument ('-x',   '--results_path', type = str, help = 'path to results directory', required=True)
     r_args.add_argument ('-cl-path',   '--claire_bin_path', type = str, help = 'path to claire bin directory', required=True)
     r_args.add_argument ('-tu-path',   '--tu_code_path', type = str, help = 'path to tumor solver code directory', required=True)
+    parser.add_argument ('-m',   '--mode', type = int, default = 1, help = 'mode 1: register P-A; transport; run tumor models; mode 2: register AP-P; transport csf')
     args = parser.parse_args();
 
     if args.patient_image_path is None:
@@ -209,9 +237,56 @@ if __name__=='__main__':
         print("  WARNING: no output file info.dat for tumor inversion of patient " + level_path );
 
 
-    bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path)
-    bash_filename = transportMaps(claire_bin_path, results_path, tu_results_path, bash_filename)
-    bash_filename = runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename)
+    if mode == 1:
+        # register patient to atlas
+        bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path)
+        
+        # convert c0Recon nc to nifti 
+        c0_nc = tu_results_path + "/c0Recon.nc"
+        file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
+        c0 = np.transpose(file.variables['data'])
 
+        nii = nib.load(results_path + "/patient_mask.nii.gz")
+        nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
 
+        # transport c0Recon to atlas
+        bash_filename = transportMaps(claire_bin_path, results_path, bash_filename, "c0Recon")
+        # run tumor solver with c0recon, rho, kappa and a few gamme values
+        bash_filename, gamma = runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename)
+        # #submit the job
+        # subprocess.call(['sbatch',bash_filename]);
+    elif mode == 2:
+        # registration the other way: register atlas_tumor to patient
+        # create many batch scripts as these registrations can run in parallel
+        for g in gamma:
+            results_path_reverse = results_path + "/reg-gamma-" + str(g)
+
+            if not os.path.exists(results_path_reverse):
+                os.makedirs(results_path_reverse)
+
+            tu_path = results_path + "/tumor-forward-gamma-" + str(g)
+            max_time = 0
+            for f in os.listdir(tu_path):
+                f_split = f.split("_")
+                if f_split[0] == "seg":
+                    f_split_2 = f.split[1].split("[")[1]
+                    f_split_2 = f_split_2.split("]")[0]
+                    time_step = int(f_split_2)
+                    if time_step >= max_time:
+                        max_time = time_step
+
+            tu_img = tu_path + "seg_t[" + max_time + "].nc"
+            # make it nifti for registration
+            file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
+            tu_seg = np.transpose(file.variables['data'])
+            brats_seg = convertTuToBratsSeg(tu_seg)
+            nii = nib.load(results_path + "/patient_csf.nii.gz")
+            new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
+            nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
+            bash_filename = performRegistration(patient_image_path, new_seg_path, claire_bin_path, results_path_reverse, mask=False)
+            bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
+            # #submit the job
+            # subprocess.call(['sbatch',bash_filename]);
+    else:
+        print("run-mode not valid; use either 1 or 2")
 
