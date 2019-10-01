@@ -414,7 +414,7 @@ def getTumorRunCmd(params):
         if params['mpi_pernode'] < 24:
             ppn = params['mpi_pernode'];
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
-    elif params['compute_sys'] in ['stampede2', 'frontera']:
+    elif params['compute_sys'] in ['stampede2', 'frontera', 'maverick2']:
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
