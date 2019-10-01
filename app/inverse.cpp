@@ -514,6 +514,10 @@ int main (int argc, char** argv) {
     if (syn_flag == 1) {
         // data is being generated -- time history should not be stored
         n_misc->forward_flag_ = 1;
+    } else {
+        // no synthetic data generation -- this means we are solving the inverse problem so set the correct nt, dt
+        n_misc->dt_ = dt_inv;
+        n_misc->nt_ = nt_inv;
     }
 
     std::shared_ptr<TumorSolverInterface> solver_interface = std::make_shared<TumorSolverInterface> (n_misc, spec_ops, nullptr, nullptr);
