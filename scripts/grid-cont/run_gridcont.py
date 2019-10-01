@@ -63,6 +63,10 @@ def createJobsubFile(cmd, opt, level):
             bash_file.write('#SBATCH -p rebels\n');
             opt['num_nodes'] = 1;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
+        elif opt['compute_sys'] == 'maverick2':
+            bash_file.write('#SBATCH -p p100\n');
+            opt['num_nodes'] = 1;
+            bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         else:
             bash_file.write("#SBATCH -p normal\n");
             opt['num_nodes'] = 1;
@@ -113,6 +117,9 @@ def gridcont(basedir, args):
     if args.compute_cluster == "hazelhen":
       nodes            = [1,2,4]
       procs            = [24,48,96]
+    if args.compute_cluster == "maverick2":
+      nodes            = [1,1,1]
+      procs            = [1,1,1]
     wtime_h            = [x * patients_per_job for x in [0,2,12]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
     sigma_fac          = [1,1,1]                    # on every level, sigma = fac * hx

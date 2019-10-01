@@ -6,6 +6,7 @@ import scipy as sc
 from scipy.ndimage import gaussian_filter
 import TumorParams
 from netCDF4 import Dataset
+from numpy import linalg as la
 
 ### Invert in patient-space to get (rho, kappa, c0)
 ### Register patient to some atlas and transport c0 to this atlas
@@ -22,7 +23,7 @@ def createNetCDFFile(filename, dimensions, variable):
     data[:,:,:] = variable[:,:,:];
     file.close();
 
-def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, mask=True):
+def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys='frontera', mask=True):
     # create atlas vector labels
     atlas_name = "atlas"
     nii = nib.load(atlas_image_path)
@@ -66,13 +67,31 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
 
     bash_filename = results_path + "/coupling_job_submission.sh"
     print("creating job file in ", results_path)
+
+    if compute_sys == 'frontera':
+        queue = "normal"
+        num_nodes = str(4)
+        num_cores = str(128)
+    elif compute_sys == 'maverick2':
+        queue = "p100"
+        num_nodes = str(1)
+        num_cores = str(1)
+    elif compute_sys == 'stampede2':
+        queue = "skx-normal"
+        num_nodes = str(6)
+        num_cores = str(128)
+    else:
+        queue = "normal"
+        num_nodes = str(1)
+        num_cores = str(1)
+
     bash_file = open(bash_filename, 'w')
     bash_file.write("#!/bin/bash\n\n");
     bash_file.write("#SBATCH -J mass-effect-cpl\n");
     bash_file.write("#SBATCH -o " + results_path + "/claire_solver_log.txt\n")
-    bash_file.write("#SBATCH -p normal\n")
-    bash_file.write("#SBATCH -N 4\n")
-    bash_file.write("#SBATCH -n 128\n")                                                                                                                                                                                                                                                                          
+    bash_file.write("#SBATCH -p " + queue + "\n")
+    bash_file.write("#SBATCH -N " + num_nodes + "\n")
+    bash_file.write("#SBATCH -n " + num_cores + "\n")
     bash_file.write("#SBATCH -t 03:00:00\n\n")
     bash_file.write("source ~/.bashrc\n")
 
@@ -112,14 +131,15 @@ def transportMaps(claire_bin_path, results_path, bash_filename, transport_file_n
 
     return bash_filename
 
-def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename):
+def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename, compute_sys='frontera'):
     bash_file = open(bash_filename, 'a')
 
     # modify petsc
-    bash_file.write("module load petsc/3.11-single")
+    if compute_sys == 'frontera':
+        bash_file.write("module load petsc/3.11-single")
+        bash_file.write("\n\n")
 
-    atlas_name = atlas_image_path.split("/")[-1]
-    atlas_name = atlas_name.split(".")[0]
+    atlas_name = "atlas"
     t_params = dict()
     t_params['code_path'] = tu_code_path
     t_params['rho_data'] = inv_params['rho_inv']
@@ -155,7 +175,7 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     t_params['wm_path'] = wm_path_nc
     t_params['csf_path'] = csf_path_nc
     t_params['init_tumor_path'] = c0_path_nc
-    t_params['compute_sys'] = 'frontera'
+    t_params['compute_sys'] = compute_sys
 
     gamma = [1E4, 4E4, 8E4, 12E4]
 
@@ -168,7 +188,9 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
         bash_file.write("\n\n")
 
     # modify petsc
-    bash_file.write("module unload petsc/3.11-single")
+    if compute_sys == 'frontera':
+        bash_file.write("module unload petsc/3.11-single")
+        bash_file.write("\n\n")
 
     return bash_filename, gamma
 
@@ -181,6 +203,16 @@ def convertTuToBratsSeg(tu_seg):
 
     return brats_seg
 
+def computeMismatch(c1, c2):
+    c1 = c1.flatten()
+    c2 = c2.flatten()
+
+    num = la.norm(c1 - c2)
+    den = la.norm(c1)
+
+    return num/den
+
+
 if __name__=='__main__':
     basedir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(description='Process images',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -191,8 +223,11 @@ if __name__=='__main__':
     r_args.add_argument ('-x',   '--results_path', type = str, help = 'path to results directory', required=True)
     r_args.add_argument ('-cl-path',   '--claire_bin_path', type = str, help = 'path to claire bin directory', required=True)
     r_args.add_argument ('-tu-path',   '--tu_code_path', type = str, help = 'path to tumor solver code directory', required=True)
-    parser.add_argument ('-m',   '--mode', type = int, default = 1, help = 'mode 1: register P-A; transport; run tumor models; mode 2: register AP-P; transport csf')
+    parser.add_argument ('-m',   '--mode', type = int, default = 1, help = 'mode 1: register P-A; transport; run tumor models; mode 2: register AP-P; transport csf; mode 3: compute metrics')
+    parser.add_argument ('-comp',   '--my_compute_sys', type = str, default = 'frontera', help = 'compute system')
     args = parser.parse_args();
+
+    my_compute_sys = args.my_compute_sys
 
     if args.patient_image_path is None:
         parser.error("patient image path needs to be set")
@@ -236,10 +271,11 @@ if __name__=='__main__':
     else:
         print("  WARNING: no output file info.dat for tumor inversion of patient " + level_path );
 
-
+    mode = args.mode
+    gamma = []
     if mode == 1:
         # register patient to atlas
-        bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path)
+        bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys=my_compute_sys)
         
         # convert c0Recon nc to nifti 
         c0_nc = tu_results_path + "/c0Recon.nc"
@@ -252,41 +288,60 @@ if __name__=='__main__':
         # transport c0Recon to atlas
         bash_filename = transportMaps(claire_bin_path, results_path, bash_filename, "c0Recon")
         # run tumor solver with c0recon, rho, kappa and a few gamme values
-        bash_filename, gamma = runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename)
+        bash_filename, gamma = runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename, compute_sys=my_compute_sys)
         # #submit the job
         # subprocess.call(['sbatch',bash_filename]);
     elif mode == 2:
         # registration the other way: register atlas_tumor to patient
         # create many batch scripts as these registrations can run in parallel
-        for g in gamma:
-            results_path_reverse = results_path + "/reg-gamma-" + str(g)
+        if len(gamma) == 0:
+            print("tumor forward models have not been run")
+        else:
+            for g in gamma:
+                results_path_reverse = results_path + "/reg-gamma-" + str(g)
 
-            if not os.path.exists(results_path_reverse):
-                os.makedirs(results_path_reverse)
+                if not os.path.exists(results_path_reverse):
+                    os.makedirs(results_path_reverse)
 
-            tu_path = results_path + "/tumor-forward-gamma-" + str(g)
-            max_time = 0
-            for f in os.listdir(tu_path):
-                f_split = f.split("_")
-                if f_split[0] == "seg":
-                    f_split_2 = f.split[1].split("[")[1]
-                    f_split_2 = f_split_2.split("]")[0]
-                    time_step = int(f_split_2)
-                    if time_step >= max_time:
-                        max_time = time_step
+                tu_path = results_path + "/tumor-forward-gamma-" + str(g)
+                max_time = 0
+                for f in os.listdir(tu_path):
+                    f_split = f.split("_")
+                    if f_split[0] == "seg":
+                        f_split_2 = f.split[1].split("[")[1]
+                        f_split_2 = f_split_2.split("]")[0]
+                        time_step = int(f_split_2)
+                        if time_step >= max_time:
+                            max_time = time_step
 
-            tu_img = tu_path + "seg_t[" + max_time + "].nc"
-            # make it nifti for registration
-            file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
-            tu_seg = np.transpose(file.variables['data'])
-            brats_seg = convertTuToBratsSeg(tu_seg)
-            nii = nib.load(results_path + "/patient_csf.nii.gz")
-            new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
-            nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
-            bash_filename = performRegistration(patient_image_path, new_seg_path, claire_bin_path, results_path_reverse, mask=False)
-            bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
-            # #submit the job
-            # subprocess.call(['sbatch',bash_filename]);
+                tu_img = tu_path + "seg_t[" + max_time + "].nc"
+                # make it nifti for registration
+                file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
+                tu_seg = np.transpose(file.variables['data'])
+                brats_seg = convertTuToBratsSeg(tu_seg)
+                nii = nib.load(results_path + "/patient_csf.nii.gz")
+                new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
+                nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
+                bash_filename = performRegistration(patient_image_path, new_seg_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False)
+                bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
+                # #submit the job
+                # subprocess.call(['sbatch',bash_filename]);
+    elif mode == 3:
+        # compute metrics
+        if len(gamma) == 0:
+            print("tumor forward models have not been run")
+        else:
+            for g in gamma:
+                pat_csf_path = results_path + "/patient_csf.nii.gz"
+                nii = nib.load(pat_csf_path)
+                pat_csf = nii.get_fdata()
+
+                sim_csf_path = results_path_reverse + "/patient_csf_transported.nii.gz"
+                nii = nib.load(sim_csf_path)
+                sim_csf = nii.get_fdata()
+
+                rel_err = computeMismatch(pat_csf, sim_csf)
+                print("Relative error in csf for gamma = {} is {}".format(g, rel_err))
     else:
         print("run-mode not valid; use either 1 or 2")
 
