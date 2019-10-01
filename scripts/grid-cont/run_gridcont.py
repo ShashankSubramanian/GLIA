@@ -234,7 +234,10 @@ def gridcont(basedir, args):
     t_params = {};
     tumor_out_path = os.path.join(output_path, 'tumor_inversion/');
     t_params['compute_sys']  = args.compute_cluster;
-    t_params['code_path']    = os.path.join(basedir, '3rdparty/pglistr_tumor');
+    if args.code_dir is not None:
+        t_params['code_path'] = args.code_dir
+    else:
+        t_params['code_path']    = os.path.join(basedir, '3rdparty/pglistr_tumor');
 
     cmd_lvl = "\n\n# generate maps, resample\n" + cmd_preproc + "\nwait\n\n# rename\n" + cmd_rename + "\n\n";
     # cmd     += cmd_lvl;
@@ -456,6 +459,7 @@ if __name__=='__main__':
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
     parser.add_argument (                   '--cm_data',                     action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
+    parser.add_argument (                   '--code_dir',                    type = str, help = 'path to tumor solver code directory')
     args = parser.parse_args();
 
     if args.patient_image_path is None:
