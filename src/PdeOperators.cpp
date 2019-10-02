@@ -619,35 +619,53 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     ScalarType vel_max;
     ScalarType cfl;
     std::stringstream s;
-    ierr = tumor_->velocity_->computeMagnitude (magnitude_);
-
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
     bool flag_smooth_velocity = true;
+    bool write_output_and_break = false;
+
+    ScalarType max_cfl = 5;
 
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;
         ierr = tuMSGstd (s.str());                                                CHKERRQ (ierr);
         s.str (""); s.clear ();
 
-        // clip healthy tissues
-        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
-    
-        // Update diffusivity and reaction coefficient
-        ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
-        ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);              CHKERRQ (ierr);
-        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+        // compute CFL
+        ierr = tumor_->velocity_->computeMagnitude (magnitude_);
+        ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
+        cfl = dt * vel_max / n_misc_->h_[0];
+        s << "CFL = " << cfl;
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
+        // Adaptively time step if CFL is too large
+        if (cfl >= max_cfl) {
+            // TODO: is adaptive time-stepping necessary? Because if cfl is already this number; then numerical oscillations
+            // have already propogated and dt keeps dropping to very small values -- very bad accuracy from semi-Lagrangian.
+            // instead suggest to the user to have a smaller forcing factor. Large forcing factor also stretches the tumor
+            // concentration too much which calls for higher E_tumor which can be very unrealistic. If mass-effect still does 
+            // not match, then rho/kappa might be highly inaccurate.
 
-        // ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
-        // // model fix to no-mass-effect model
-        // ierr = VecAXPY (tumor_->k_->kxx_, n_misc_->k_, tumor_->c_t_);                               CHKERRQ (ierr);
-        // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);                                        CHKERRQ (ierr);
-        // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);                                        CHKERRQ (ierr);
-        // ierr = VecAXPY (tumor_->rho_->rho_vec_, n_misc_->rho_, tumor_->c_t_);                       CHKERRQ (ierr);
+            // keep re-size of time history commented for now
+            // dt *= 0.5;
+            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
+            // n_misc_->dt_ = dt;
+            // n_misc_->nt_ = nt;
+            // s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
+            // ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            // s.str (""); s.clear ();
+            // if (nt >= 200) {
+            //     s << "Number of time-steps too large, consider using smaller forcing factor; exiting solver...";
+            //     ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            //     s.str (""); s.clear ();
+            //     break;
+            // }
+            s << "CFL is too large (>=" << max_cfl << "); consider using smaller forcing factor; exiting solver...";
+            ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
+            s.str (""); s.clear ();
+            write_output_and_break = true;
+        }
 
-        // need to update prefactors for diffusion KSP preconditioner, as k changed
-        ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
-
-        if (n_misc_->writeOutput_ && i % 5 == 0) {
+        if ((n_misc_->writeOutput_ && i % 5 == 0) || write_output_and_break) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
@@ -692,6 +710,27 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
                 ss.str(std::string()); ss.clear();
             }
         }
+
+        if (write_output_and_break) break;
+
+        // clip healthy tissues
+        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
+    
+        // Update diffusivity and reaction coefficient
+        ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
+        ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);              CHKERRQ (ierr);
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+
+        // ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);  CHKERRQ(ierr);
+        // // model fix to no-mass-effect model
+        // ierr = VecAXPY (tumor_->k_->kxx_, n_misc_->k_, tumor_->c_t_);                               CHKERRQ (ierr);
+        // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);                                        CHKERRQ (ierr);
+        // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);                                        CHKERRQ (ierr);
+        // ierr = VecAXPY (tumor_->rho_->rho_vec_, n_misc_->rho_, tumor_->c_t_);                       CHKERRQ (ierr);
+
+        // need to update prefactors for diffusion KSP preconditioner, as k changed
+        ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
+
         // Advection of tumor and healthy tissue
         // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
         adv_solver_->trajectoryIsComputed_ = false;
@@ -735,40 +774,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
-        // compute CFL
-        ierr = tumor_->velocity_->computeMagnitude (magnitude_);
-        ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
-        cfl = dt * vel_max / n_misc_->h_[0];
-        s << "CFL = " << cfl;
-        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-        s.str (""); s.clear ();
-        // Adaptively time step if CFL is too large
-        if (cfl >= 3) {
-            // TODO: is adaptive time-stepping necessary? Because if cfl is already 3; then numerical oscillations
-            // have already propogated and dt keeps dropping to very small values -- very bad accuracy from semi-Lagrangian
-            // instead suggest to the user to have a smaller forcing factor. Large forcing factor also stretches the tumor
-            // concentration too much which calls for higher E_tumor which can be very unrealistic. If mass-effect still does 
-            // not match, then rho/kappa might be highly inaccurate.
-
-            // keep re-size of time history commented for now
-            // dt *= 0.5;
-            // nt = i + 2. * (n_misc_->nt_ - i - 1) + 1;
-            // n_misc_->dt_ = dt;
-            // n_misc_->nt_ = nt;
-            // s << "CFL too large -- Changing dt to " << dt << " and nt to " << nt << "\n";
-            // ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-            // s.str (""); s.clear ();
-            // if (nt >= 200) {
-            //     s << "Number of time-steps too large, consider using smaller forcing factor; exiting solver...";
-            //     ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-            //     s.str (""); s.clear ();
-            //     break;
-            // }
-            s << "CFL is too large (>=3); consider using smaller forcing factor; exiting solver...";
-            ierr = tuMSGwarn (s.str());                                                CHKERRQ(ierr);
-            s.str (""); s.clear ();
-            break;
-        }
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);
