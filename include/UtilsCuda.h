@@ -17,6 +17,7 @@
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
 #include <thrust/complex.h>
+#include <thrust/extrema.h>
 
 #include <cuda_runtime.h>
 
@@ -107,6 +108,8 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
   return 0;
 }
 
+void vecMaxCuda (ScalarType *x, int *loc, ScalarType *val, int sz);
+
 void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz);
 void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz);
 void hadamardComplexProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz);
@@ -133,4 +136,6 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz);
 void clipMaterialPropertiesCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *screen_ptr, int64_t sz);
 void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, int64_t sz);
+void initializeGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
+void truncateGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
 #endif

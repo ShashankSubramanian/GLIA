@@ -42,8 +42,7 @@ class Phi {
 		PetscErrorCode apply (Vec out, Vec p);
 		PetscErrorCode applyTranspose (Vec pout, Vec in);
 		void modifyCenters (std::vector<int> support_idx);    	// Picks only the basis needed in the restricted subspace
-		void resetCenters () {centers_.clear(); centers_ = centers_temp_; np_ = n_misc_->np_; 
-							  if (!n_misc_->phi_store_) compute_ = true;};			// Resets centers to the older ones
+		void resetCenters ();									// Resets centers to the older ones
 
 		~Phi ();
 };

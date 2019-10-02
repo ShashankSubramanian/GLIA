@@ -25,7 +25,6 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spe
     }
 
     labels_ = nullptr;
-
     // by default one component
     component_weights_.push_back (1.);
 }
@@ -62,6 +61,7 @@ PetscErrorCode Phi::setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType
     memcpy (cm_, user_cm.data(), 3 * sizeof(ScalarType));
     centers_.resize (3 * np_);
     ierr = phiMesh (&centers_[0]);
+    
     PetscFunctionReturn (ierr);
 }
 
@@ -92,9 +92,13 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
 
         for (int i = 0; i < np_; i++) {
             // set values of Gaussian function
-            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-            initialize (phi_ptr, n_misc_, &centers_[3 * i]);
-            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            ierr = vecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+            #ifdef CUDA
+                initializeGaussianCuda (phi_ptr, sigma_, centers_[3 * i], centers_[3 * i + 1], centers_[3 * i + 2], n_misc_->isize_);
+            #else
+                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+            #endif
+            ierr = vecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
             // filter with brain geometry
             ierr = VecPointwiseMult (phi_vec_[i], mat_prop->filter_, phi_vec_[i]);  CHKERRQ (ierr);
             // smooth to avoid sharp edges (FFT)
@@ -103,11 +107,15 @@ PetscErrorCode Phi::setValues (std::shared_ptr<MatProp> mat_prop) {
                 CHKERRQ (ierr);
             }
             // truncate Gaussians after radius of 5*sigma for compact support
-            ierr = VecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
-            truncate (phi_ptr, n_misc_, &centers_[3 * i]);
-            ierr = VecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
+            ierr = vecGetArray (phi_vec_[i], &phi_ptr);                             CHKERRQ (ierr);
+            #ifdef CUDA
+                truncateGaussianCuda (phi_ptr, sigma_, centers_[3 * i], centers_[3 * i + 1], centers_[3 * i + 2], n_misc_->isize_);
+            #else
+                truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+            #endif
+            ierr = vecRestoreArray (phi_vec_[i], &phi_ptr);                         CHKERRQ (ierr);
             // find the max
-            ierr = VecMax (phi_vec_[i], NULL, &max);                                CHKERRQ (ierr);
+            ierr = vecMax (phi_vec_[i], NULL, &max);                                CHKERRQ (ierr);
             if (max > phi_max) {
               phi_max = max;
             }
@@ -324,20 +332,28 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
             ScalarType *phi_ptr;
             ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
             for (int i = 0; i < np_; i++) {
-                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
-                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
-                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                ierr = vecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
+                #ifdef CUDA
+                    initializeGaussianCuda (phi_ptr, sigma_, centers_[3 * i], centers_[3 * i + 1], centers_[3 * i + 2], n_misc_->isize_);
+                #else
+                    initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+                #endif
+                ierr = vecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
                 if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
                     ierr = spec_ops_->weierstrassSmoother (phi_vec_[0], phi_vec_[0], n_misc_, sigma_smooth);   
                     CHKERRQ (ierr);
                 }
-                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 // truncate Gaussians after radius of 5*sigma for compact support
-                truncate (phi_ptr, n_misc_, &centers_[3 * i]);
-                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
+                ierr = vecGetArray (phi_vec_[0], &phi_ptr);                             CHKERRQ (ierr);
+                #ifdef CUDA
+                    truncateGaussianCuda (phi_ptr, sigma_, centers_[3 * i], centers_[3 * i + 1], centers_[3 * i + 2], n_misc_->isize_);
+                #else
+                    truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+                #endif
+                ierr = vecRestoreArray (phi_vec_[0], &phi_ptr);                         CHKERRQ (ierr);
                 // find the max
-                ierr = VecMax (phi_vec_[0], NULL, &max);                                               CHKERRQ (ierr);
+                ierr = vecMax (phi_vec_[0], NULL, &max);                                               CHKERRQ (ierr);
                 if (max > phi_max) {
                   phi_max = max;
                 }
@@ -382,21 +398,29 @@ PetscErrorCode Phi::initialize (ScalarType *out, std::shared_ptr<NMisc> n_misc, 
             ScalarType phi_max = 0, max = 0;
             ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2.0 * M_PI / n_misc_->n_[0];
             for (int i = 0; i < np_; i++) {
-                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
-                initialize (phi_ptr, n_misc_, &centers_[3 * i]);
-                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
+                ierr = vecGetArray (phi_vec_[0], &phi_ptr);                                                CHKERRQ (ierr);
+                #ifdef CUDA
+                    initializeGaussianCuda (phi_ptr, sigma_, centers_[3 * i], centers_[3 * i + 1], centers_[3 * i + 2], n_misc_->isize_);
+                #else
+                    initialize (phi_ptr, n_misc_, &centers_[3 * i]);
+                #endif
+                ierr = vecRestoreArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 ierr = VecPointwiseMult (phi_vec_[0], mat_prop_->filter_, phi_vec_[0]);  CHKERRQ (ierr);
                 
                 if (n_misc_->testcase_ == BRAIN || n_misc_->testcase_ == BRAINNEARMF || n_misc_->testcase_ == BRAINFARMF) {  //BRAIN
                     ierr = spec_ops_->weierstrassSmoother (phi_vec_[0], phi_vec_[0], n_misc_, sigma_smooth);   
                     CHKERRQ (ierr);
                 }
-                ierr = VecGetArray (phi_vec_[0], &phi_ptr);                                            CHKERRQ (ierr);
                 // truncate Gaussians after radius of 5*sigma for compact support
-                truncate (phi_ptr, n_misc_, &centers_[3 * i]);
-                ierr = VecRestoreArray (phi_vec_[0], &phi_ptr);                                        CHKERRQ (ierr);
+                ierr = vecGetArray (phi_vec_[0], &phi_ptr);                             CHKERRQ (ierr);
+                #ifdef CUDA
+                    truncateGaussianCuda (phi_ptr, sigma_, centers_[3 * i], centers_[3 * i + 1], centers_[3 * i + 2], n_misc_->isize_);
+                #else
+                    truncate (phi_ptr, n_misc_, &centers_[3 * i]);
+                #endif
+                ierr = vecRestoreArray (phi_vec_[0], &phi_ptr);                         CHKERRQ (ierr);
                 // find the max
-                ierr = VecMax (phi_vec_[0], NULL, &max);                                               CHKERRQ (ierr);
+                ierr = vecMax (phi_vec_[0], NULL, &max);                                               CHKERRQ (ierr);
                 if (max > phi_max) {
                   phi_max = max;
                 }
@@ -644,6 +668,7 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
             ct++;
         }
     #endif
+
 
     //Destroy and clear any previously set phis
     for (int i = 0; i < phi_vec_.size (); i++) {
@@ -1043,7 +1068,11 @@ void Phi::modifyCenters (std::vector<int> support_idx) {
     np_ = support_idx.size();
     if (!n_misc_->phi_store_) compute_ = false;
     ss << " size of restricted subspace: " << np_; tuMSGstd(ss.str()); ss.str(""); ss.clear();
+}
 
+void Phi::resetCenters () {
+    centers_.clear(); centers_ = centers_temp_; np_ = n_misc_->np_; 
+    if (!n_misc_->phi_store_) compute_ = true;
 }
 
 Phi::~Phi () {

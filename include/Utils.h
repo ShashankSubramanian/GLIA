@@ -656,6 +656,7 @@ PetscErrorCode tuMSGstd(std::string msg, int size = 111);
 PetscErrorCode tuMSGwarn(std::string msg, int size = 111);
 PetscErrorCode _tuMSG(std::string msg, std::string color, int size);
 
+PetscErrorCode vecMax (Vec x, PetscInt *p, PetscReal *val);
 PetscErrorCode vecSign (Vec x); //signum of petsc vector
 PetscErrorCode vecSparsity (Vec x, ScalarType &sparsity); //Hoyer measure for sparsity of vector
 
