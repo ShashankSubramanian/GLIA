@@ -1584,7 +1584,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
             for (int i = 0; i < n_misc->n_local_; i++)
                 c0_ptr[i] = (c0_ptr[i] <= 0.) ? 0. : c0_ptr[i];
         #endif
-        ierr = vecRestoreArray (c0_ptr, &c0_ptr);                           CHKERRQ (ierr);
+        ierr = vecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
     } else {
         ierr = tumor->setTrueP (n_misc);
         ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
