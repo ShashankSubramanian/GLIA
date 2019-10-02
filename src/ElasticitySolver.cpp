@@ -448,11 +448,12 @@ PetscErrorCode VariableLinearElasticitySolver::smoothMaterialProperties () {
     ierr = vecGetArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
 
     #ifdef CUDA
-        clipMaterialPropertiesCuda (mu_ptr, lam_ptr, screen_ptr, n_misc->n_local_);
+        clipVectorCuda (mu_ptr, n_misc->n_local_);
+        clipVectorCuda (lam_ptr, n_misc->n_local_);
     #else
         for (int i = 0; i < n_misc->n_local_; i++) {
-            mu_ptr[i] = (mu_ptr[i] < 0.) ? 0. : mu_ptr[i];
-            lam_ptr[i] = (lam_ptr[i] < 0.) ? 0. : lam_ptr[i];
+            mu_ptr[i] = (mu_ptr[i] <= 0.) ? 0. : mu_ptr[i];
+            lam_ptr[i] = (lam_ptr[i] <= 0.) ? 0. : lam_ptr[i];
         }
     #endif
 

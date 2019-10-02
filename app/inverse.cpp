@@ -1574,8 +1574,17 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
+    ScalarType *c0_ptr;
     if ((init_tumor_path != NULL) && (init_tumor_path[0] != '\0')) {
         ierr = dataIn (c_0, n_misc, init_tumor_path);                       CHKERRQ (ierr);
+        ierr = vecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
+        #ifdef CUDA
+            clipVectorCuda (c0_ptr, n_misc->n_local_);
+        #else
+            for (int i = 0; i < n_misc->n_local_; i++)
+                c0_ptr[i] = (c0_ptr[i] <= 0.) ? 0. : c0_ptr[i];
+        #endif
+        ierr = vecRestoreArray (c0_ptr, &c0_ptr);                           CHKERRQ (ierr);
     } else {
         ierr = tumor->setTrueP (n_misc);
         ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -1585,8 +1594,6 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         ierr = tumor->phi_->apply (c_0, tumor->p_true_);
     }
-
-    ScalarType *c0_ptr;
 
     if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);

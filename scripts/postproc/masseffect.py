@@ -95,12 +95,13 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
     bash_file.write("#SBATCH -t 03:00:00\n\n")
     bash_file.write("source ~/.bashrc\n")
 
+    ## -defmap for deformation map: not implemented yet in claire
     if mask:
         cmd = "ibrun " + claire_bin_path + "/claire -mtc 3 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + \
                     atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " \
                     + "-mrc 3 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + \
                     "/patient_wm.nii.gz -mask " + results_path + "/patient_mask.nii.gz \
-                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -defmap -x " \
+                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x " \
                     + results_path + "/"\
                     + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
     else:
@@ -108,7 +109,7 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
                     + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " + results_path + "/" + atlas_name + "_tu.nii.gz "\
                     + "-mrc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
                     + results_path + "/patient_tu.nii.gz \
-                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -defmap -x "\
+                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
                     + results_path + "/"\
                     + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
 
