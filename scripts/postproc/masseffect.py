@@ -182,7 +182,7 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     ### run four forward models
     for g in gamma:
         t_params['forcing_factor'] = g
-        t_params['results_path'] = results_path + "/tumor-forward-gamma-" + str(g)
+        t_params['results_path'] = results_path + "/tumor-forward-gamma-" + str(g) + "/"
         cmdline_tumor, err = TumorParams.getTumorRunCmd(t_params)
         bash_file.write(cmdline_tumor)
         bash_file.write("\n\n")
@@ -298,17 +298,17 @@ if __name__=='__main__':
             print("tumor forward models have not been run")
         else:
             for g in gamma:
-                results_path_reverse = results_path + "/reg-gamma-" + str(g)
+                results_path_reverse = results_path + "/reg-gamma-" + str(g) + "/"
 
                 if not os.path.exists(results_path_reverse):
                     os.makedirs(results_path_reverse)
 
-                tu_path = results_path + "/tumor-forward-gamma-" + str(g)
+                tu_path = results_path + "/tumor-forward-gamma-" + str(g) + "/"
                 max_time = 0
                 for f in os.listdir(tu_path):
                     f_split = f.split("_")
                     if f_split[0] == "seg":
-                        f_split_2 = f.split[1].split("[")[1]
+                        f_split_2 = f_split[1].split("[")[1]
                         f_split_2 = f_split_2.split("]")[0]
                         time_step = int(f_split_2)
                         if time_step >= max_time:
