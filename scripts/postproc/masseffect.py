@@ -160,19 +160,19 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     gm = nii.get_fdata()
     gm_path_nc = results_path + "/" + atlas_name + "_gm.nc"
     dimensions = 256 * np.ones(3)
-    createNetCDFFile(gm_path_nc, dimensions, gm)
+    createNetCDFFile(gm_path_nc, dimensions, np.transpose(gm))
     nii = nib.load(results_path + "/" + atlas_name + "_wm.nii.gz")
     wm = nii.get_fdata()
     wm_path_nc = results_path + "/" + atlas_name + "_wm.nc"
-    createNetCDFFile(wm_path_nc, dimensions, wm)
+    createNetCDFFile(wm_path_nc, dimensions, np.transpose(wm))
     nii = nib.load(results_path + "/" + atlas_name + "_csf.nii.gz")
     csf = nii.get_fdata()
     csf_path_nc = results_path + "/" + atlas_name + "_csf.nc"
-    createNetCDFFile(csf_path_nc, dimensions, csf)
+    createNetCDFFile(csf_path_nc, dimensions, np.transpose(csf))
     nii = nib.load(results_path + "/c0Recon_transported.nii.gz")
     c0 = nii.get_fdata()
     c0_path_nc = results_path + "/c0Recon_transported.nc"
-    createNetCDFFile(c0_path_nc, dimensions, c0)
+    createNetCDFFile(c0_path_nc, dimensions, np.transpose(c0))
 
     t_params['gm_path'] = gm_path_nc
     t_params['wm_path'] = wm_path_nc
