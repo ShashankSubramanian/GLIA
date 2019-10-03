@@ -103,7 +103,7 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
                     "/patient_wm.nii.gz -mask " + results_path + "/patient_mask.nii.gz \
                     -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x " \
                     + results_path + "/"\
-                    + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
+                    + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2"
     else:
         cmd = "ibrun " + claire_bin_path + "/claire -mtc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name \
                     + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " + results_path + "/" + atlas_name + "_tu.nii.gz "\
@@ -111,7 +111,7 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
                     + results_path + "/patient_tu.nii.gz \
                     -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
                     + results_path + "/"\
-                    + " -monitordefgrad -verbosity 2 -disablerescaling -format nifti -sigma 2"
+                    + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2"
 
     bash_file.write(cmd)
     bash_file.write("\n\n")
@@ -154,6 +154,8 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     t_params['fac'] = 1
     t_params['model'] = 4
 
+    gamma = inv_params['gamma']
+
     nii = nib.load(results_path + "/" + atlas_name + "_gm.nii.gz")
     gm = nii.get_fdata()
     gm_path_nc = results_path + "/" + atlas_name + "_gm.nc"
@@ -177,8 +179,6 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     t_params['csf_path'] = csf_path_nc
     t_params['init_tumor_path'] = c0_path_nc
     t_params['compute_sys'] = compute_sys
-
-    gamma = [1E4, 4E4, 8E4, 12E4]
 
     ### run four forward models
     for g in gamma:
@@ -273,7 +273,8 @@ if __name__=='__main__':
         print("  WARNING: no output file info.dat for tumor inversion of patient " + level_path );
 
     mode = args.mode
-    gamma = []
+    gamma = [1E4, 4E4, 8E4, 12E4]
+    inv_params['gamma'] = gamma
     if mode == 1:
         # register patient to atlas
         bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys=my_compute_sys)
@@ -295,54 +296,49 @@ if __name__=='__main__':
     elif mode == 2:
         # registration the other way: register atlas_tumor to patient
         # create many batch scripts as these registrations can run in parallel
-        if len(gamma) == 0:
-            print("tumor forward models have not been run")
-        else:
-            for g in gamma:
-                results_path_reverse = results_path + "/reg-gamma-" + str(g) + "/"
+        for g in gamma:
+            results_path_reverse = results_path + "/reg-gamma-" + str(g) + "/"
 
-                if not os.path.exists(results_path_reverse):
-                    os.makedirs(results_path_reverse)
+            if not os.path.exists(results_path_reverse):
+                os.makedirs(results_path_reverse)
 
-                tu_path = results_path + "/tumor-forward-gamma-" + str(g) + "/"
-                max_time = 0
-                for f in os.listdir(tu_path):
-                    f_split = f.split("_")
-                    if f_split[0] == "seg":
-                        f_split_2 = f_split[1].split("[")[1]
-                        f_split_2 = f_split_2.split("]")[0]
-                        time_step = int(f_split_2)
-                        if time_step >= max_time:
-                            max_time = time_step
+            tu_path = results_path + "/tumor-forward-gamma-" + str(g) + "/"
+            max_time = 0
+            for f in os.listdir(tu_path):
+                f_split = f.split("_")
+                if f_split[0] == "seg":
+                    f_split_2 = f_split[1].split("[")[1]
+                    f_split_2 = f_split_2.split("]")[0]
+                    time_step = int(f_split_2)
+                    if time_step >= max_time:
+                        max_time = time_step
 
-                tu_img = tu_path + "seg_t[" + max_time + "].nc"
-                # make it nifti for registration
-                file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
-                tu_seg = np.transpose(file.variables['data'])
-                brats_seg = convertTuToBratsSeg(tu_seg)
-                nii = nib.load(results_path + "/patient_csf.nii.gz")
-                new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
-                nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
-                bash_filename = performRegistration(patient_image_path, new_seg_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False)
-                bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
-                # #submit the job
-                # subprocess.call(['sbatch',bash_filename]);
+            tu_img = tu_path + "seg_t[" + str(max_time) + "].nc"
+            # make it nifti for registration
+            file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
+            tu_seg = np.transpose(file.variables['data'])
+            brats_seg = convertTuToBratsSeg(tu_seg)
+            nii = nib.load(results_path + "/patient_csf.nii.gz")
+            new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
+            nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
+            bash_filename = performRegistration(patient_image_path, new_seg_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False)
+            bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
+            # #submit the job
+            # subprocess.call(['sbatch',bash_filename]);
     elif mode == 3:
         # compute metrics
-        if len(gamma) == 0:
-            print("tumor forward models have not been run")
-        else:
-            for g in gamma:
-                pat_csf_path = results_path + "/patient_csf.nii.gz"
-                nii = nib.load(pat_csf_path)
-                pat_csf = nii.get_fdata()
+        for g in gamma:
+            results_path_reverse = results_path + "/reg-gamma-" + str(g) + "/"
+            pat_csf_path = results_path + "/patient_csf.nii.gz"
+            nii = nib.load(pat_csf_path)
+            pat_csf = nii.get_fdata()
 
-                sim_csf_path = results_path_reverse + "/patient_csf_transported.nii.gz"
-                nii = nib.load(sim_csf_path)
-                sim_csf = nii.get_fdata()
+            sim_csf_path = results_path_reverse + "/patient_csf_transported.nii.gz"
+            nii = nib.load(sim_csf_path)
+            sim_csf = nii.get_fdata()
 
-                rel_err = computeMismatch(pat_csf, sim_csf)
-                print("Relative error in csf for gamma = {} is {}".format(g, rel_err))
+            rel_err = computeMismatch(pat_csf, sim_csf)
+            print("Relative error in csf for gamma = {} is {}".format(g, rel_err))
     else:
         print("run-mode not valid; use either 1 or 2")
 
