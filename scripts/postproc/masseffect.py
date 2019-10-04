@@ -11,7 +11,7 @@ from numpy import linalg as la
 ### Invert in patient-space to get (rho, kappa, c0)
 ### Register patient to some atlas and transport c0 to this atlas
 ### Grow some tumors with (rho, kappa, c0-transported) and some gamma
-### Register atlas+tumor to patient and report deformation and final mismatches
+### Register atlas+tumor amd patient and report deformation and final mismatches
 ### Report best gamma according to mismatch (of ventricles?)
 
 def createNetCDFFile(filename, dimensions, variable):
@@ -114,9 +114,9 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
                     + results_path + "/"\
                     + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " &> " + results_path + "/registration_log.txt";
     else:
-        cmd = "ibrun " + claire_bin_path + "/claire -mrc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name \
+        cmd = "ibrun " + claire_bin_path + "/claire -mtc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name \
                     + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " + results_path + "/" + atlas_name + "_tu.nii.gz "\
-                    + "-mtc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
+                    + "-mrc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
                     + results_path + "/patient_tu.nii.gz \
                     -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 20 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
                     + results_path + "/"\
@@ -297,7 +297,7 @@ if __name__=='__main__':
         # #submit the job
         # subprocess.call(['sbatch',bash_filename]);
     elif mode == 3:
-        # registration the other way: register atlas_tumor to patient
+        # registration the other way: register patient to each atlas
         # create many batch scripts as these registrations can run in parallel
         for g in gamma:
             results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
