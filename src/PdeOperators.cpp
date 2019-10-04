@@ -610,6 +610,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
     // filter matprop
     ierr = tumor_->mat_prop_->filterTumor (tumor_->c_t_);                                                                           CHKERRQ (ierr);
+    ierr = tumor_->computeSegmentation ();                                                                                          CHKERRQ (ierr);
     // force compute
     ierr = tumor_->computeForce (tumor_->c_t_);
     // displacement compute through elasticity solve
