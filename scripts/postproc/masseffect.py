@@ -330,18 +330,23 @@ if __name__=='__main__':
             # subprocess.call(['sbatch',bash_filename]);
     elif mode == 4:
         # compute metrics
+        min_jacobian_norm = 1E10
+        min_gamma = 0
         for g in gamma:
             results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
-            pat_csf_path = results_path + "/patient_csf.nii.gz"
-            nii = nib.load(pat_csf_path)
-            pat_csf = nii.get_fdata()
-
-            sim_csf_path = results_path_reverse + "/patient_csf_transported.nii.gz"
-            nii = nib.load(sim_csf_path)
-            sim_csf = nii.get_fdata()
-
-            rel_err = computeMismatch(pat_csf, sim_csf)
-            print("Relative error in csf for gamma = {} is {}".format(g, rel_err))
+            jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
+            nii = nib.load(jacobian_path)
+            jacobian = nii.get_fdata()
+            nrm = la.norm(jacobian)
+            print("jacobian norm for gamma = {} is {}".format(g, nrm))
+            if nrm < min_jacobian_norm:
+                min_jacobian_norm = nrm
+                min_gamma = g 
+        print("Mass-effect parameter is {}".format(min_gamma))
+        if min_gamma >= 8E4:
+            print("Mass-effect is moderate-high")
+        else:
+            print("Mass-effect is low-moderate")
     else:
         print("run-mode not valid; use either 1 or 2")
 
