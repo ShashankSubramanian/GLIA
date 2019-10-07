@@ -336,6 +336,9 @@ def gridcont(basedir, args):
         t_params['gm_path']               = os.path.join(inp_dir, 'patient_seg_gm.nc');
         t_params['wm_path']               = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
         t_params['data_path']             = os.path.join(inp_dir, 'patient_seg_tc.nc');
+        t_params['forward_flag']          = 0
+        t_params['smooth_f']              = 1.5
+        t_params['model']                 = 1
         if gaussian_selection_mode in ["C0", "D"] or level == 64:
             t_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
             t_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
