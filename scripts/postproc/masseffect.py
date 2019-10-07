@@ -337,6 +337,10 @@ if __name__=='__main__':
             jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
             nii = nib.load(jacobian_path)
             jacobian = nii.get_fdata()
+            nii = nib.load(results_path_reverse + "/patient_csf.nii.gz")
+            p_csf = nii.get_fdata()
+            mask = sc.ndimage.morphology.binary_dilation(p_csf, iterations=2)
+            jacobian = np.multiply(jacobian, mask)
             nrm = la.norm(jacobian)
             print("jacobian norm for gamma = {} is {}".format(g, nrm))
             if nrm < min_jacobian_norm:
