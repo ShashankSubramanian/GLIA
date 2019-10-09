@@ -59,7 +59,7 @@ def createBashFileHeader(results_path, compute_sys='frontera'):
 
     return bash_filename
 
-def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys='frontera', mask=True):
+def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys='frontera', mask=True, create=True):
     # create atlas vector labels
     atlas_name = "atlas"
     nii = nib.load(atlas_image_path)
@@ -101,7 +101,9 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
         patient_mat_img = gaussian_filter(patient_mat_img, sigma=2) # claire requires smoothing of masks
         nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
 
-    bash_filename = createBashFileHeader(results_path, compute_sys)
+    if create:
+        # create the header for the bash file
+        bash_filename = createBashFileHeader(results_path, compute_sys)
     bash_file = open(bash_filename, 'a')
 
     ## -defmap for deformation map: not implemented yet in claire
@@ -143,9 +145,11 @@ def transportMaps(claire_bin_path, results_path, bash_filename, transport_file_n
 
     return bash_filename
 
-def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, compute_sys='frontera'):
-    bash_filename = createBashFileHeader(results_path, compute_sys)
+def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename, compute_sys='frontera'):
     bash_file = open(bash_filename, 'a')
+
+    # call postprocs utils to create tumor input netcdf files :)
+    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 1 -x " + results_path "\n\n")
 
     atlas_name = "atlas"
     t_params = dict()
@@ -163,23 +167,10 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
 
     gamma = inv_params['gamma']
 
-    nii = nib.load(results_path + "/" + atlas_name + "_gm.nii.gz")
-    gm = nii.get_fdata()
     gm_path_nc = results_path + "/" + atlas_name + "_gm.nc"
-    dimensions = 256 * np.ones(3)
-    createNetCDFFile(gm_path_nc, dimensions, np.transpose(gm))
-    nii = nib.load(results_path + "/" + atlas_name + "_wm.nii.gz")
-    wm = nii.get_fdata()
     wm_path_nc = results_path + "/" + atlas_name + "_wm.nc"
-    createNetCDFFile(wm_path_nc, dimensions, np.transpose(wm))
-    nii = nib.load(results_path + "/" + atlas_name + "_csf.nii.gz")
-    csf = nii.get_fdata()
     csf_path_nc = results_path + "/" + atlas_name + "_csf.nc"
-    createNetCDFFile(csf_path_nc, dimensions, np.transpose(csf))
-    nii = nib.load(results_path + "/c0Recon_transported.nii.gz")
-    c0 = nii.get_fdata()
     c0_path_nc = results_path + "/c0Recon_transported.nc"
-    createNetCDFFile(c0_path_nc, dimensions, np.transpose(c0))
 
     t_params['gm_path'] = gm_path_nc
     t_params['wm_path'] = wm_path_nc
@@ -227,7 +218,6 @@ if __name__=='__main__':
     r_args.add_argument ('-x',   '--results_path', type = str, help = 'path to results directory', required=True)
     r_args.add_argument ('-cl-path',   '--claire_bin_path', type = str, help = 'path to claire bin directory', required=True)
     r_args.add_argument ('-tu-path',   '--tu_code_path', type = str, help = 'path to tumor solver code directory', required=True)
-    parser.add_argument ('-m',   '--mode', type = int, default = 1, help = 'mode 1: register P-A; transport; mode 2: run tumor models; mode 3: register AP-P; transport csf; mode 4: compute metrics')
     parser.add_argument ('-comp',   '--my_compute_sys', type = str, default = 'frontera', help = 'compute system')
     args = parser.parse_args();
 
@@ -276,81 +266,55 @@ if __name__=='__main__':
         print("  WARNING: no output file info.dat for tumor inversion of patient " + level_path );
 
     mode = args.mode
-    gamma = [1E4, 4E4, 8E4, 12E4]
+    gamma = [3E4, 9E4, 15E4]
     inv_params['gamma'] = gamma
-    if mode == 1:
-        # register patient to atlas
-        bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys=my_compute_sys)
-        # convert c0Recon nc to nifti 
-        c0_nc = tu_results_path + "/c0Recon.nc"
-        file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
-        c0 = np.transpose(file.variables['data'])
-        nii = nib.load(results_path + "/patient_mask.nii.gz")
-        nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
-        # transport c0Recon to atlas
-        bash_filename = transportMaps(claire_bin_path, results_path, bash_filename, "c0Recon")
+    # register patient to atlas
+    bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, compute_sys=my_compute_sys)
+    # convert c0Recon nc to nifti 
+    c0_nc = tu_results_path + "/c0Recon.nc"
+    file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
+    c0 = np.transpose(file.variables['data'])
+    nii = nib.load(results_path + "/patient_mask.nii.gz")
+    nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
+    # transport c0Recon to atlas
+    bash_filename = transportMaps(claire_bin_path, results_path, bash_filename, "c0Recon")
+
+    # run tumor solver with c0recon, rho, kappa and a few gamme values
+    bash_filename = runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, bash_filename, compute_sys=my_compute_sys)
+
+    # registration the other way: register patient to each atlas
+    # create many batch scripts as these registrations can run in parallel
+    for g in gamma:
+        results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
+
+        if not os.path.exists(results_path_reverse):
+            os.makedirs(results_path_reverse)
+
+        tu_path = results_path + "/tumor-forward-gamma-" + str(int(g)) + "/"
+        max_time = 0
+        for f in os.listdir(tu_path):
+            f_split = f.split("_")
+            if f_split[0] == "seg":
+                f_split_2 = f_split[1].split("[")[1]
+                f_split_2 = f_split_2.split("]")[0]
+                time_step = int(f_split_2)
+                if time_step >= max_time:
+                    max_time = time_step
+
+        tu_img = tu_path + "seg_t[" + str(max_time) + "].nc"
+        # make it nifti for registration
+        file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
+        tu_seg = np.transpose(file.variables['data'])
+        brats_seg = convertTuToBratsSeg(tu_seg)
+        nii = nib.load(results_path + "/patient_csf.nii.gz")
+        new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
+        nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
+        bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False, create=False)
+        bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
+
+        # find the mass-effect parameter
+        bash_file = open(bash_filename, 'a')
+        bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 2 -x " + results_path "\n\n")
+
         # #submit the job
         # subprocess.call(['sbatch',bash_filename]);
-    elif mode == 2:
-        # run tumor solver with c0recon, rho, kappa and a few gamme values
-        bash_filename = runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_params, compute_sys=my_compute_sys)
-        # #submit the job
-        # subprocess.call(['sbatch',bash_filename]);
-    elif mode == 3:
-        # registration the other way: register patient to each atlas
-        # create many batch scripts as these registrations can run in parallel
-        for g in gamma:
-            results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
-
-            if not os.path.exists(results_path_reverse):
-                os.makedirs(results_path_reverse)
-
-            tu_path = results_path + "/tumor-forward-gamma-" + str(int(g)) + "/"
-            max_time = 0
-            for f in os.listdir(tu_path):
-                f_split = f.split("_")
-                if f_split[0] == "seg":
-                    f_split_2 = f_split[1].split("[")[1]
-                    f_split_2 = f_split_2.split("]")[0]
-                    time_step = int(f_split_2)
-                    if time_step >= max_time:
-                        max_time = time_step
-
-            tu_img = tu_path + "seg_t[" + str(max_time) + "].nc"
-            # make it nifti for registration
-            file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
-            tu_seg = np.transpose(file.variables['data'])
-            brats_seg = convertTuToBratsSeg(tu_seg)
-            nii = nib.load(results_path + "/patient_csf.nii.gz")
-            new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
-            nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
-            bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False)
-            bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
-            # #submit the job
-            # subprocess.call(['sbatch',bash_filename]);
-    elif mode == 4:
-        # compute metrics
-        min_jacobian_norm = 1E10
-        min_gamma = 0
-        for g in gamma:
-            results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
-            jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
-            nii = nib.load(jacobian_path)
-            jacobian = nii.get_fdata()
-            nii = nib.load(results_path_reverse + "/patient_csf.nii.gz")
-            p_csf = nii.get_fdata()
-            mask = sc.ndimage.morphology.binary_dilation(p_csf, iterations=2)
-            jacobian = np.multiply(jacobian, mask)
-            nrm = la.norm(jacobian)
-            print("jacobian norm for gamma = {} is {}".format(g, nrm))
-            if nrm < min_jacobian_norm:
-                min_jacobian_norm = nrm
-                min_gamma = g 
-        print("Mass-effect parameter is {}".format(min_gamma))
-        if min_gamma >= 8E4:
-            print("Mass-effect is moderate-high")
-        else:
-            print("Mass-effect is low-moderate")
-    else:
-        print("run-mode not valid; use either 1 or 2")
-
