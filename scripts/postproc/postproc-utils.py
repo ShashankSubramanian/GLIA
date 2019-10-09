@@ -88,7 +88,7 @@ def createTumorInputs(results_path):
     createNetCDFFile(c0_path_nc, dimensions, np.transpose(c0))
 
 if __name__=='__main__':
-    arser = argparse.ArgumentParser(description='Process images',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description='Process images',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     r_args = parser.add_argument_group('required arguments')
     r_args.add_argument ('-x',   '--results_path', type = str, help = 'path to results directory', required=True)
     r_args.add_argument ('-p',   '--patient_image_path', type = str, help = 'path to patient segmentation')
