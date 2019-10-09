@@ -228,7 +228,7 @@ if __name__=='__main__':
     inv_params['gamma'] = gamma
 
     # create the bash file
-    bash_filename = createBashFileHeader(results_path, compute_sys)
+    bash_filename = createBashFileHeader(results_path, my_compute_sys)
 
     # register patient to atlas
     bash_filename = performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, bash_filename, compute_sys=my_compute_sys)
