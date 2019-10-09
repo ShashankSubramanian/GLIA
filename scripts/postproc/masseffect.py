@@ -60,6 +60,7 @@ def createBashFileHeader(results_path, compute_sys='frontera'):
     return bash_filename
 
 def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, results_path, bash_filename, compute_sys='frontera', mask=True):
+    atlas_name = "atlas"
     bash_file = open(bash_filename, 'a')
 
     ## create registration inputs: mode 1
@@ -252,7 +253,7 @@ if __name__=='__main__':
         bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 3 -x " + results_path + "\n\n")
         bash_file.close()
         new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
-        bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False, create=False, bf_name=bash_filename)
+        bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, bash_filename, compute_sys=my_compute_sys, mask=False)
         bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
 
     # find the mass-effect parameter
