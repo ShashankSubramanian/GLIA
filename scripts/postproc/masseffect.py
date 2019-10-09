@@ -237,7 +237,7 @@ if __name__=='__main__':
     c0_nc = tu_results_path + "/c0Recon.nc"
     file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
     c0 = np.transpose(file.variables['data'])
-    nii = nib.load(results_path + "/patient_mask.nii.gz")
+    nii = nib.load(patient_image_path)
     nib.save(nib.Nifti1Image(c0, nii.affine), results_path + "/c0Recon.nii.gz")
     # transport c0Recon to atlas
     bash_filename = transportMaps(claire_bin_path, results_path, bash_filename, "c0Recon")
