@@ -28,7 +28,7 @@ def convertTuToBratsSeg(tu_seg):
 
 
 def createRegistrationInputs(atlas_image_path, patient_image_path, results_path):
-	atlas_name = "atlas"
+    atlas_name = "atlas"
     nii = nib.load(atlas_image_path)
     altas_seg = nii.get_fdata()
     altas_mat_img = 0 * altas_seg
@@ -69,7 +69,7 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
 
 
 def createTumorInputs(results_path):
-	nii = nib.load(results_path + "/" + atlas_name + "_gm.nii.gz")
+    nii = nib.load(results_path + "/" + atlas_name + "_gm.nii.gz")
     gm = nii.get_fdata()
     gm_path_nc = results_path + "/" + atlas_name + "_gm.nc"
     dimensions = 256 * np.ones(3)
@@ -88,7 +88,7 @@ def createTumorInputs(results_path):
     createNetCDFFile(c0_path_nc, dimensions, np.transpose(c0))
 
 if __name__=='__main__':
-	arser = argparse.ArgumentParser(description='Process images',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    arser = argparse.ArgumentParser(description='Process images',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     r_args = parser.add_argument_group('required arguments')
     r_args.add_argument ('-x',   '--results_path', type = str, help = 'path to results directory', required=True)
     r_args.add_argument ('-p',   '--patient_image_path', type = str, help = 'path to patient segmentation')
@@ -98,37 +98,37 @@ if __name__=='__main__':
 
     gamma = [3E4, 9E4, 15E4]
     if args.mode == 1:
-    	createRegistrationInputs(args.atlas_image_path, args.patient_image_path, args.results_path)
+        createRegistrationInputs(args.atlas_image_path, args.patient_image_path, args.results_path)
     elif args.mode == 2:
-    	createTumorInputs(arg.results_path)    	
+        createTumorInputs(arg.results_path)     
     elif args.mode == 3:
-    	for g in gamma:
-	        results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
+        for g in gamma:
+            results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
 
-	        if not os.path.exists(results_path_reverse):
-	            os.makedirs(results_path_reverse)
+            if not os.path.exists(results_path_reverse):
+                os.makedirs(results_path_reverse)
 
-	        tu_path = results_path + "/tumor-forward-gamma-" + str(int(g)) + "/"
-	        max_time = 0
-	        for f in os.listdir(tu_path):
-	            f_split = f.split("_")
-	            if f_split[0] == "seg":
-	                f_split_2 = f_split[1].split("[")[1]
-	                f_split_2 = f_split_2.split("]")[0]
-	                time_step = int(f_split_2)
-	                if time_step >= max_time:
-	                    max_time = time_step
+            tu_path = results_path + "/tumor-forward-gamma-" + str(int(g)) + "/"
+            max_time = 0
+            for f in os.listdir(tu_path):
+                f_split = f.split("_")
+                if f_split[0] == "seg":
+                    f_split_2 = f_split[1].split("[")[1]
+                    f_split_2 = f_split_2.split("]")[0]
+                    time_step = int(f_split_2)
+                    if time_step >= max_time:
+                        max_time = time_step
 
-	        tu_img = tu_path + "seg_t[" + str(max_time) + "].nc"
-	        # make it nifti for registration
-	        file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
-	        tu_seg = np.transpose(file.variables['data'])
-	        brats_seg = convertTuToBratsSeg(tu_seg)
-	        nii = nib.load(results_path + "/patient_csf.nii.gz")
-	        new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
-	        nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
+            tu_img = tu_path + "seg_t[" + str(max_time) + "].nc"
+            # make it nifti for registration
+            file = Dataset(tu_img, mode='r', format="NETCDF3_CLASSIC")
+            tu_seg = np.transpose(file.variables['data'])
+            brats_seg = convertTuToBratsSeg(tu_seg)
+            nii = nib.load(results_path + "/patient_csf.nii.gz")
+            new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
+            nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
     elif args.mode == 4:
-    	# compute metrics
+        # compute metrics
         min_jacobian_norm = 1E10
         min_gamma = 0
         for g in gamma:
@@ -153,4 +153,4 @@ if __name__=='__main__':
         else:
             print("Mass-effect is low")
     else:
-    	print("utils mode incorrect. exiting...")
+        print("utils mode incorrect. exiting...")
