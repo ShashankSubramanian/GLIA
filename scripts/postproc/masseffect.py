@@ -312,9 +312,9 @@ if __name__=='__main__':
         bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, compute_sys=my_compute_sys, mask=False, create=False)
         bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
 
-        # find the mass-effect parameter
-        bash_file = open(bash_filename, 'a')
-        bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 2 -x " + results_path "\n\n")
+    # find the mass-effect parameter
+    bash_file = open(bash_filename, 'a')
+    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 2 -x " + results_path "\n\n")
 
-        # #submit the job
-        # subprocess.call(['sbatch',bash_filename]);
+    # #submit the job
+    # subprocess.call(['sbatch',bash_filename]);
