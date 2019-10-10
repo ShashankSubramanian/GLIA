@@ -674,26 +674,13 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "displacement_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            ierr = tumor_->force_->computeMagnitude(magnitude_);
-            ss << "force_t[" << i << "].nc";
-            dataOut (magnitude_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "csf_t[" << i << "].nc";
-            dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "wm_t[" << i << "].nc";
-            dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "gm_t[" << i << "].nc";
-            dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
             ss << "seg_t[" << i << "].nc";
             dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
             ss << "c_t[" << i << "].nc";
             dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            if (n_misc_->verbosity_ >= 2) {
+            if (n_misc_->verbosity_ > 2) {
                 ss << "rho_t[" << i << "].nc";
                 dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
@@ -708,6 +695,19 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
                 ss.str(std::string()); ss.clear();
                 ss << "scr_t[" << i << "].nc";
                 dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ierr = tumor_->force_->computeMagnitude(magnitude_);
+                ss << "force_t[" << i << "].nc";
+                dataOut (magnitude_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "csf_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "wm_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "gm_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
             }
         }
