@@ -69,6 +69,7 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
 
 
 def createTumorInputs(results_path):
+    atlas_name = "atlas"
     nii = nib.load(results_path + "/" + atlas_name + "_gm.nii.gz")
     gm = nii.get_fdata()
     gm_path_nc = results_path + "/" + atlas_name + "_gm.nc"
