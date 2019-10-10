@@ -96,11 +96,13 @@ if __name__=='__main__':
     parser.add_argument ('-m',   '--mode', type = int, default = 1, help = '1: createTumorInputs', required=True)
     args = parser.parse_args();
 
+
+    results_path = args.results_path
     gamma = [3E4, 9E4, 15E4]
     if args.mode == 1:
         createRegistrationInputs(args.atlas_image_path, args.patient_image_path, args.results_path)
     elif args.mode == 2:
-        createTumorInputs(arg.results_path)     
+        createTumorInputs(results_path)     
     elif args.mode == 3:
         for g in gamma:
             results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
