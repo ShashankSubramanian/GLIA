@@ -624,7 +624,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     bool flag_smooth_velocity = true;
     bool write_output_and_break = false;
 
-    ScalarType max_cfl = 5;
+    ScalarType max_cfl = 8;
 
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;

@@ -103,7 +103,7 @@ if __name__=='__main__':
 
 
     results_path = args.results_path
-    gamma = [3E4, 9E4, 15E4]
+    gamma = [3E4, 6E4, 9E4, 12E4]
     if args.mode == 1:
         createRegistrationInputs(args.atlas_image_path, args.patient_image_path, args.results_path)
     elif args.mode == 2:
