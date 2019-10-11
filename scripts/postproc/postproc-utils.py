@@ -26,6 +26,10 @@ def convertTuToBratsSeg(tu_seg):
 
     return brats_seg
 
+def computeDisplacement(d1, d2, d3):
+    d = d1**2 + d2**2 + d3**2
+    return np.sqrt(d)
+
 
 def createRegistrationInputs(atlas_image_path, patient_image_path, results_path):
     atlas_name = "atlas"
@@ -136,15 +140,27 @@ if __name__=='__main__':
         min_gamma = 0
         for g in gamma:
             results_path_reverse = args.results_path + "/reg-gamma-" + str(int(g)) + "/"
-            jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
-            nii = nib.load(jacobian_path)
-            jacobian = nii.get_fdata()
+            nii = nib.load(results_path_reverse + "/displacement-field-x1.nii.gz")
+            d1 = nii.get_fdata()
+            nii = nib.load(results_path_reverse + "/displacement-field-x2.nii.gz")
+            d2 = nii.get_fdata()
+            nii = nib.load(results_path_reverse + "/displacement-field-x2.nii.gz")
+            d3 = nii.get_fdata()
+
+            d = computeDisplacement(d1, d2, d3)
+
+            # jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
+            # nii = nib.load(jacobian_path)
+            # jacobian = nii.get_fdata()
+
             nii = nib.load(results_path_reverse + "/patient_csf.nii.gz")
             p_csf = nii.get_fdata()
-            mask = sc.ndimage.morphology.binary_dilation(p_csf, iterations=2)
-            jacobian = np.multiply(jacobian, mask)
-            nrm = la.norm(jacobian)
-            print("jacobian norm for gamma = {} is {}".format(g, nrm))
+            mask = p_csf
+            # mask = sc.ndimage.morphology.binary_dilation(p_csf, iterations=2)
+            d = np.multiply(d, mask)
+            d = d.flatten()
+            nrm = la.norm(d, ord=1)
+            print("Displacement 1-norm for gamma = {} is {}".format(g, nrm))
             if nrm < min_jacobian_norm:
                 min_jacobian_norm = nrm
                 min_gamma = g 
