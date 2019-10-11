@@ -751,7 +751,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // clip the tumor
         ierr = tumor_->clipTumor();                                               CHKERRQ (ierr);
         // clip healthy tissues
-        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
+        ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);                                                 CHKERRQ(ierr);
