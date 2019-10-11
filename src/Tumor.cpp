@@ -341,6 +341,8 @@ PetscErrorCode Tumor::clipTumor () {
         }
     #endif
 
+    ierr = vecRestoreArray (c_t_, &c_ptr);                      CHKERRQ (ierr);
+
     PetscFunctionReturn (ierr);
 }
 
