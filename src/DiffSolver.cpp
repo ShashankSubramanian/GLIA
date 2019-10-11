@@ -27,9 +27,9 @@ ctx_() {
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 5000);
     ierr = KSPSetType (ksp_, KSPCG);
-    // ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
+    ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetFromOptions (ksp_);
-    // ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
+    if (n_misc->forward_flag_) ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
     ierr = KSPSetUp (ksp_);
 
     ierr = KSPGetPC (ksp_, &pc_);
