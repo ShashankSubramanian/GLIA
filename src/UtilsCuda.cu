@@ -482,6 +482,14 @@ __global__ void clipVector (ScalarType *x_ptr) {
 	}
 }
 
+__global__ void clipVectorAbove (ScalarType *x_ptr) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		x_ptr[i] = (x_ptr[i] > 1.) ? 1. : x_ptr[i];
+	}
+}
+
 
 __global__ void clipHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
@@ -820,6 +828,15 @@ void clipVectorCuda (ScalarType *x_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
 	clipVector <<< (sz + n_th - 1) / n_th, n_th >>> (x_ptr);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();	
+}
+
+void clipVectorAboveCuda (ScalarType *x_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	clipVectorAbove <<< (sz + n_th - 1) / n_th, n_th >>> (x_ptr);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();	

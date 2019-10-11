@@ -138,4 +138,5 @@ void clipVectorCuda (ScalarType *x_ptr, int64_t sz);
 void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, int64_t sz);
 void initializeGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
 void truncateGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
+void clipVectorAboveCuda (ScalarType *x_ptr, int64_t sz);
 #endif

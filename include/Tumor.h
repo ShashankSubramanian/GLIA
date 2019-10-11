@@ -64,6 +64,7 @@ class Tumor {
 		PetscErrorCode computeSegmentation ();
 		PetscErrorCode computeSpeciesNorms ();
 		PetscErrorCode clipHealthyTissues ();
+		PetscErrorCode clipTumor ();
 
 		// mass effect functions
 		PetscErrorCode computeForce (Vec c);
