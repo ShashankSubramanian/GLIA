@@ -631,6 +631,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ (ierr);
         s.str (""); s.clear ();
 
+        // clip the tumor
+        ierr = clipTumor();                                                       CHKERRQ (ierr);
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude (magnitude_);
         ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
