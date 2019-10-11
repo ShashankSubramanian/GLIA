@@ -346,9 +346,6 @@ PetscErrorCode Tumor::clipTumor () {
     PetscFunctionReturn (ierr);
 }
 
-
-
-
 Tumor::~Tumor () {
     PetscErrorCode ierr;
     ierr = VecDestroy (&c_t_);

@@ -632,7 +632,10 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         s.str (""); s.clear ();
 
         // clip the tumor
-        ierr = tumor_->clipTumor();                                                       CHKERRQ (ierr);
+        // ierr = tumor_->clipTumor();                                               CHKERRQ (ierr);
+        // clip healthy tissues
+        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
+
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude (magnitude_);
         ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
@@ -716,8 +719,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         if (write_output_and_break) break;
 
-        // clip healthy tissues
-        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
     
         // Update diffusivity and reaction coefficient
         ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
