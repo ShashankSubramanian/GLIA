@@ -29,7 +29,7 @@ ctx_() {
     ierr = KSPSetType (ksp_, KSPCG);
     ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetFromOptions (ksp_);
-    if (n_misc->forward_flag_) ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
+    // if (n_misc->forward_flag_) ierr = KSPMonitorSet(ksp_, diffSolverKSPMonitor, ctx_.get(), 0);                   
     ierr = KSPSetUp (ksp_);
 
     ierr = KSPGetPC (ksp_, &pc_);
