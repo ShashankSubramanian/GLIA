@@ -148,6 +148,7 @@ if __name__=='__main__':
             d3 = nii.get_fdata()
 
             d = computeDisplacement(d1, d2, d3)
+            nib.save(nib.Nifti1Image(d, nii.affine), results_path_reverse + "/displacement.nii.gz")
 
             # jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
             # nii = nib.load(jacobian_path)
