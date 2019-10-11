@@ -1184,12 +1184,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     ierr = spec_ops->weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
     ierr = spec_ops->weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
 
-    // Set bg prob as 1 - sum
-    ierr = VecWAXPY (bg, 1., gm, wm);                   CHKERRQ (ierr);
-    ierr = VecAXPY (bg, 1., csf);                       CHKERRQ (ierr);
-    ierr = VecShift (bg, -1.0);                         CHKERRQ (ierr);
-    ierr = VecScale (bg, -1.0);                         CHKERRQ (ierr);
-
+    bg = nullptr;
 
     PetscFunctionReturn (ierr);
 }

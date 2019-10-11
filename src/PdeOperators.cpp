@@ -631,11 +631,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ (ierr);
         s.str (""); s.clear ();
 
-        // clip the tumor
-        // ierr = tumor_->clipTumor();                                               CHKERRQ (ierr);
-        // clip healthy tissues
-        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
-
         // compute CFL
         ierr = tumor_->velocity_->computeMagnitude (magnitude_);
         ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
@@ -751,6 +746,12 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = reaction (linearized, i);                                                            CHKERRQ(ierr);
         // Mass conservation of healthy: modified gm and wm to account for cell death   
         ierr = conserveHealthyTissues ();                                                           CHKERRQ(ierr);
+
+        // All solves complete except elasticity: clip values to ensure positivity
+        // clip the tumor
+        ierr = tumor_->clipTumor();                                               CHKERRQ (ierr);
+        // clip healthy tissues
+        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);                                                 CHKERRQ(ierr);
