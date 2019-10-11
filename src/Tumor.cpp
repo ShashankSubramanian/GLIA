@@ -332,8 +332,8 @@ PetscErrorCode Tumor::clipTumor () {
     ierr = vecGetArray (c_t_, &c_ptr);                          CHKERRQ (ierr);
 
     #ifdef CUDA
-        clipVector (c_ptr, n_misc_->n_local_);
-        clipVectorAbove (c_ptr, n_misc_->n_local_);
+        clipVectorCuda (c_ptr, n_misc_->n_local_);
+        clipVectorAboveCuda (c_ptr, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
             c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];
