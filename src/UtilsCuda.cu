@@ -827,7 +827,7 @@ void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType
 void computeTumorLameCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *c_ptr, ScalarType mu_tumor, ScalarType lam_tumor, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeTumorLame <<< (sz + n_th - 1) / n_th, n_th >>> (mu_ptr, lam_ptr, c_ptr, mu_tumor, lam_tumor, sz);
+	computeTumorLame <<< (sz + n_th - 1) / n_th, n_th >>> (mu_ptr, lam_ptr, c_ptr, mu_tumor, lam_tumor);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

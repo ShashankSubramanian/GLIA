@@ -412,7 +412,7 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 
 
     #ifdef CUDA
-        computeTumorLameCuda (mu_ptr, lam_ptr, c_ptr, mu_tumor, lam_tumor, n_misc_->n_local_);
+        computeTumorLameCuda (mu_ptr, lam_ptr, c_ptr, mu_tumor, lam_tumor, n_misc->n_local_);
         computeScreeningCuda (screen_ptr, c_ptr, bg_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
