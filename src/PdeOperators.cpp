@@ -739,6 +739,10 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr); adv_solver_->advection_mode_ = 1;  // reset to mass conservation
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr);
 
+        // All solves complete except elasticity: clip values to ensure positivity
+        // clip healthy tissues
+        ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
+
         // Diffusion of tumor
         ierr = diff_solver_->solve (tumor_->c_t_, dt);
 
@@ -746,10 +750,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = reaction (linearized, i);                                                            CHKERRQ(ierr);
         // Mass conservation of healthy: modified gm and wm to account for cell death   
         ierr = conserveHealthyTissues ();                                                           CHKERRQ(ierr);
-
-        // All solves complete except elasticity: clip values to ensure positivity
-        // clip healthy tissues
-        ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);                                                 CHKERRQ(ierr);
