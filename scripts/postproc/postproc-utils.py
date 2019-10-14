@@ -136,7 +136,7 @@ if __name__=='__main__':
             nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
     elif args.mode == 4:
         # compute metrics
-        min_jacobian_norm = 1E10
+        min_jacobian_norm = 1E12
         min_gamma = 0
         for g in gamma:
             results_path_reverse = args.results_path + "/reg-gamma-" + str(int(g)) + "/"
@@ -150,9 +150,9 @@ if __name__=='__main__':
             d = computeDisplacement(d1, d2, d3)
             nib.save(nib.Nifti1Image(d, nii.affine), results_path_reverse + "/displacement.nii.gz")
 
-            # jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
-            # nii = nib.load(jacobian_path)
-            # jacobian = nii.get_fdata()
+            jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
+            nii = nib.load(jacobian_path)
+            jacobian = nii.get_fdata()
 
             nii = nib.load(results_path_reverse + "/patient_csf.nii.gz")
             p_csf = nii.get_fdata()
@@ -162,6 +162,16 @@ if __name__=='__main__':
             d = d.flatten()
             nrm = la.norm(d, ord=1)
             print("Displacement 1-norm for gamma = {} is {}".format(g, nrm))
+
+            jacobian = np.multiply(jacobian, mask)
+            jacobian = jacobian.flatten()
+            one_vec = np.ones(jacobian.shape)
+            one_vec = np.multiply(one_vec, mask)
+            one_vec = one_vec.flatten()
+            jacobian = np.abs(jacobian - one_vec)
+            nrm = la.norm(jacobian, ord=1)
+            print("Jacobian-diff 1-norm for gamma = {} is {}".format(g, nrm))
+
             if nrm < min_jacobian_norm:
                 min_jacobian_norm = nrm
                 min_gamma = g 
