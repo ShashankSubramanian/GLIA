@@ -160,20 +160,20 @@ if __name__=='__main__':
             # mask = sc.ndimage.morphology.binary_dilation(p_csf, iterations=2)
             d = np.multiply(d, mask)
             d = d.flatten()
-            nrm = la.norm(d, ord=1)
-            print("Displacement 1-norm for gamma = {} is {}".format(g, nrm))
+            nrm_d = la.norm(d, ord=1)
+            print("Displacement 1-norm for gamma = {} is {}".format(g, nrm_d))
 
             jacobian = np.multiply(jacobian, mask)
-            jacobian = jacobian.flatten()
             one_vec = np.ones(jacobian.shape)
             one_vec = np.multiply(one_vec, mask)
             one_vec = one_vec.flatten()
+            jacobian = jacobian.flatten()
             jacobian = np.abs(jacobian - one_vec)
             nrm = la.norm(jacobian, ord=1)
             print("Jacobian-diff 1-norm for gamma = {} is {}".format(g, nrm))
 
-            if nrm < min_jacobian_norm:
-                min_jacobian_norm = nrm
+            if nrm_d < min_jacobian_norm:
+                min_jacobian_norm = nrm_d
                 min_gamma = g 
         print("Mass-effect parameter is {}".format(min_gamma))
         if min_gamma > 9E4:
