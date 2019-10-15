@@ -49,7 +49,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
     ierr = KSPSetOperators (ksp_, A_, A_);
     ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 100);
     ierr = KSPSetType (ksp_, KSPCG);
-    // ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
+    // if (n_misc->forward_flag_) ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);
     ierr = KSPSetOptionsPrefix (ksp_, "tumor_elasticity_");
     ierr = KSPSetFromOptions (ksp_);
@@ -388,38 +388,48 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
 	lam_tumor = ctx_->computeLam (n_misc->E_tumor_, n_misc->nu_tumor_);
 	lam_csf = ctx_->computeLam (n_misc->E_csf_, n_misc->nu_csf_);
 
-	// Compute material properties vectors
-	ierr = VecSet (ctx->mu_, 0.);									CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->mu_, mu_bg, tumor->mat_prop_->bg_);		CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->mu_, mu_healthy, tumor->mat_prop_->wm_);	CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->mu_, mu_healthy, tumor->mat_prop_->gm_);	CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->mu_, mu_csf, tumor->mat_prop_->csf_);		CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->mu_, mu_tumor, tumor->c_t_);				CHKERRQ (ierr);
+    ScalarType c_threshold = 0.005;
+    // Compute material properties vectors
+    ierr = VecSet (ctx->mu_, 0.);                                   CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->mu_, mu_bg, tumor->mat_prop_->bg_);        CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->mu_, mu_healthy, tumor->mat_prop_->wm_);   CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->mu_, mu_healthy, tumor->mat_prop_->gm_);   CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->mu_, mu_csf, tumor->mat_prop_->csf_);      CHKERRQ (ierr);
 
-	ierr = VecSet (ctx->lam_, 0.);									CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->lam_, lam_bg, tumor->mat_prop_->bg_);		CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->lam_, lam_healthy, tumor->mat_prop_->wm_);	CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->lam_, lam_healthy, tumor->mat_prop_->gm_);	CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->lam_, lam_csf, tumor->mat_prop_->csf_);	CHKERRQ (ierr);
-	ierr = VecAXPY (ctx->lam_, lam_tumor, tumor->c_t_);				CHKERRQ (ierr);
+    ierr = VecSet (ctx->lam_, 0.);                                  CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->lam_, lam_bg, tumor->mat_prop_->bg_);      CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->lam_, lam_healthy, tumor->mat_prop_->wm_); CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->lam_, lam_healthy, tumor->mat_prop_->gm_); CHKERRQ (ierr);
+    ierr = VecAXPY (ctx->lam_, lam_csf, tumor->mat_prop_->csf_);    CHKERRQ (ierr);
 
-	// Compute screening vector
-	ScalarType c_threshold = 0.005;
-	ScalarType *screen_ptr, *c_ptr, *bg_ptr;
-	ierr = vecGetArray (ctx->screen_, &screen_ptr);					CHKERRQ (ierr);
-	ierr = vecGetArray (tumor->c_t_, &c_ptr);						CHKERRQ (ierr);
+    // set the tumor
+    ScalarType *bg_ptr, *wm_ptr, *gm_ptr, *csf_ptr, *c_ptr, *mu_ptr, *screen_ptr, *lam_ptr;
+    ierr = vecGetArray (ctx->screen_, &screen_ptr);                 CHKERRQ (ierr);
+    ierr = vecGetArray (ctx->mu_, &mu_ptr);                         CHKERRQ (ierr);
+    ierr = vecGetArray (ctx->lam_, &lam_ptr);                       CHKERRQ (ierr);
+    ierr = vecGetArray (tumor->c_t_, &c_ptr);                       CHKERRQ (ierr);
     ierr = vecGetArray (tumor->mat_prop_->bg_, &bg_ptr);            CHKERRQ (ierr);
+
+
     #ifdef CUDA
+        computeTumorLameCuda (mu_ptr, lam_ptr, c_ptr, mu_tumor, lam_tumor, n_misc->n_local_);
         computeScreeningCuda (screen_ptr, c_ptr, bg_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
     #else
         for (int i = 0; i < n_misc->n_local_; i++) {
+            mu_ptr[i] += (c_ptr[i] > 0) ? (mu_tumor * c_ptr[i]) : 0;
+            lam_ptr[i] += (c_ptr[i] > 0) ? (lam_tumor * c_ptr[i]) : 0;
+
             screen_ptr[i] = (c_ptr[i] >= c_threshold) ? n_misc->screen_low_ : n_misc->screen_high_;
             if (bg_ptr[i] > 0.95) screen_ptr[i] = 1E6; // screen out the background completely to ensure no movement
         }
     #endif
-	ierr = vecRestoreArray (tumor->c_t_, &c_ptr);					CHKERRQ (ierr);
-	ierr = vecRestoreArray (ctx->screen_, &screen_ptr);				CHKERRQ (ierr);
+
+    ierr = vecRestoreArray (ctx->screen_, &screen_ptr);                 CHKERRQ (ierr);
+    ierr = vecRestoreArray (ctx->mu_, &mu_ptr);                         CHKERRQ (ierr);
+    ierr = vecRestoreArray (ctx->lam_, &lam_ptr);                       CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor->c_t_, &c_ptr);                       CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor->mat_prop_->bg_, &bg_ptr);            CHKERRQ (ierr);
+
 
 	// average the material properties for use in preconditioner
 	ierr = VecSum (ctx->mu_, &ctx->mu_avg_);						CHKERRQ (ierr);
@@ -442,24 +452,24 @@ PetscErrorCode VariableLinearElasticitySolver::smoothMaterialProperties () {
     ierr = MatShellGetContext (A_, &ctx);                       CHKERRQ (ierr);
     std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
 
-    ScalarType *mu_ptr, *lam_ptr, *screen_ptr;
-    ierr = vecGetArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
-    ierr = vecGetArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
-    ierr = vecGetArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
+    // ScalarType *mu_ptr, *lam_ptr, *screen_ptr;
+    // ierr = vecGetArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
+    // ierr = vecGetArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
+    // ierr = vecGetArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
 
-    #ifdef CUDA
-        clipVectorCuda (mu_ptr, n_misc->n_local_);
-        clipVectorCuda (lam_ptr, n_misc->n_local_);
-    #else
-        for (int i = 0; i < n_misc->n_local_; i++) {
-            mu_ptr[i] = (mu_ptr[i] <= 0.) ? 0. : mu_ptr[i];
-            lam_ptr[i] = (lam_ptr[i] <= 0.) ? 0. : lam_ptr[i];
-        }
-    #endif
+    // #ifdef CUDA
+    //     clipVectorCuda (mu_ptr, n_misc->n_local_);
+    //     clipVectorCuda (lam_ptr, n_misc->n_local_);
+    // #else
+    //     for (int i = 0; i < n_misc->n_local_; i++) {
+    //         mu_ptr[i] = (mu_ptr[i] <= 0.) ? 0. : mu_ptr[i];
+    //         lam_ptr[i] = (lam_ptr[i] <= 0.) ? 0. : lam_ptr[i];
+    //     }
+    // #endif
 
-    ierr = vecRestoreArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
-    ierr = vecRestoreArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
-    ierr = vecRestoreArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
+    // ierr = vecRestoreArray (ctx->mu_, &mu_ptr);                     CHKERRQ (ierr);
+    // ierr = vecRestoreArray (ctx->lam_, &lam_ptr);                   CHKERRQ (ierr);
+    // ierr = vecRestoreArray (ctx->screen_, &screen_ptr);             CHKERRQ (ierr);
 
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
     ierr = ctx->spec_ops_->weierstrassSmoother (ctx->mu_, ctx->mu_, n_misc, sigma_smooth);              CHKERRQ (ierr);
@@ -482,7 +492,7 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
     std::stringstream s;
 
     bool flag_smooth_force_disp = false;
-    bool flag_smooth_mat_props = true; // keep this true to make sure that matrix is positive-def -- negative values will cause cg to diverge
+    bool flag_smooth_mat_props = false;
     // smooth the force
     ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc->n_[0];
 

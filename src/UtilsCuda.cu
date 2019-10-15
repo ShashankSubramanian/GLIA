@@ -474,11 +474,28 @@ __global__ void computeScreening (ScalarType *screen_ptr, ScalarType *c_ptr, Sca
 	}
 }
 
+__global__ void computeTumorLame (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *c_ptr, ScalarType mu_tumor, ScalarType lam_tumor) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		mu_ptr[i] += (c_ptr[i] > 0) ? (mu_tumor * c_ptr[i]) : 0;
+        lam_ptr[i] += (c_ptr[i] > 0) ? (lam_tumor * c_ptr[i]) : 0;
+	}
+}
+
 __global__ void clipVector (ScalarType *x_ptr) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		x_ptr[i] = (x_ptr[i] <= 0.) ? 0. : x_ptr[i];
+	}
+}
+
+__global__ void clipVectorAbove (ScalarType *x_ptr) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		x_ptr[i] = (x_ptr[i] > 1.) ? 1. : x_ptr[i];
 	}
 }
 
@@ -807,6 +824,15 @@ void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType
 	cudaCheckKernelError ();
 }
 
+void computeTumorLameCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *c_ptr, ScalarType mu_tumor, ScalarType lam_tumor, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeTumorLame <<< (sz + n_th - 1) / n_th, n_th >>> (mu_ptr, lam_ptr, c_ptr, mu_tumor, lam_tumor);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+
 void clipHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
@@ -820,6 +846,15 @@ void clipVectorCuda (ScalarType *x_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
 	clipVector <<< (sz + n_th - 1) / n_th, n_th >>> (x_ptr);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();	
+}
+
+void clipVectorAboveCuda (ScalarType *x_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	clipVectorAbove <<< (sz + n_th - 1) / n_th, n_th >>> (x_ptr);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();	

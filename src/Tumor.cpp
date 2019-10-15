@@ -296,35 +296,28 @@ PetscErrorCode Tumor::computeSpeciesNorms () {
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode Tumor::clipHealthyTissues () {
+
+PetscErrorCode Tumor::clipTumor () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    ScalarType *gm_ptr, *wm_ptr, *csf_ptr;
-    ierr = vecGetArray (mat_prop_->gm_, &gm_ptr);                CHKERRQ (ierr);
-    ierr = vecGetArray (mat_prop_->wm_, &wm_ptr);                CHKERRQ (ierr);
-    ierr = vecGetArray (mat_prop_->csf_, &csf_ptr);              CHKERRQ (ierr);
+    ScalarType *c_ptr;
+    ierr = vecGetArray (c_t_, &c_ptr);                          CHKERRQ (ierr);
 
     #ifdef CUDA
-        clipHealthyTissuesCuda (gm_ptr, wm_ptr, csf_ptr, n_misc_->n_local_);
+        clipVectorCuda (c_ptr, n_misc_->n_local_);
+        clipVectorAboveCuda (c_ptr, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            gm_ptr[i] = (gm_ptr[i] <= 0.) ? 0. : gm_ptr[i];
-            wm_ptr[i] = (wm_ptr[i] <= 0.) ? 0. : wm_ptr[i];
-            csf_ptr[i] = (csf_ptr[i] <= 0.) ? 0. : csf_ptr[i];
+            c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];
+            c_ptr[i] = (c_ptr[i] > 1.) ? 1. : c_ptr[i];
         }
     #endif
 
-
-    ierr = vecRestoreArray (mat_prop_->gm_, &gm_ptr);                CHKERRQ (ierr);
-    ierr = vecRestoreArray (mat_prop_->wm_, &wm_ptr);                CHKERRQ (ierr);
-    ierr = vecRestoreArray (mat_prop_->csf_, &csf_ptr);              CHKERRQ (ierr);
-
+    ierr = vecRestoreArray (c_t_, &c_ptr);                      CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);
 }
-
-
 
 Tumor::~Tumor () {
     PetscErrorCode ierr;

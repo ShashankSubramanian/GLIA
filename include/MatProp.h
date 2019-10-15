@@ -23,7 +23,7 @@ class MatProp {
 
 		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc);
-
+		PetscErrorCode clipHealthyTissues ();
 		PetscErrorCode filterBackgroundAndSmooth (Vec in);
 		PetscErrorCode filterTumor (Vec c);
 

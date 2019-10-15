@@ -624,7 +624,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     bool flag_smooth_velocity = true;
     bool write_output_and_break = false;
 
-    ScalarType max_cfl = 5;
+    ScalarType max_cfl = 8;
 
     for (int i = 0; i < nt + 1; i++) {
         s << "Time step = " << i;
@@ -674,26 +674,13 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "displacement_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            ierr = tumor_->force_->computeMagnitude(magnitude_);
-            ss << "force_t[" << i << "].nc";
-            dataOut (magnitude_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "csf_t[" << i << "].nc";
-            dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "wm_t[" << i << "].nc";
-            dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
-            ss << "gm_t[" << i << "].nc";
-            dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
-            ss.str(std::string()); ss.clear();
             ss << "seg_t[" << i << "].nc";
             dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
             ss << "c_t[" << i << "].nc";
             dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            if (n_misc_->verbosity_ >= 2) {
+            if (n_misc_->verbosity_ > 2) {
                 ss << "rho_t[" << i << "].nc";
                 dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
@@ -709,13 +696,24 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
                 ss << "scr_t[" << i << "].nc";
                 dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
+                ierr = tumor_->force_->computeMagnitude(magnitude_);
+                ss << "force_t[" << i << "].nc";
+                dataOut (magnitude_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "csf_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "wm_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "gm_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
             }
         }
 
         if (write_output_and_break) break;
 
-        // clip healthy tissues
-        ierr = tumor_->clipHealthyTissues ();                                     CHKERRQ (ierr);
     
         // Update diffusivity and reaction coefficient
         ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
@@ -740,6 +738,10 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         adv_solver_->advection_mode_ = 2;  // pure advection for csf
         ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr); adv_solver_->advection_mode_ = 1;  // reset to mass conservation
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr);
+
+        // All solves complete except elasticity: clip values to ensure positivity
+        // clip healthy tissues
+        ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
 
         // Diffusion of tumor
         ierr = diff_solver_->solve (tumor_->c_t_, dt);
