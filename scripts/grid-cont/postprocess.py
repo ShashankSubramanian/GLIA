@@ -403,6 +403,106 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 
 ###
 ### ------------------------------------------------------------------------ ###
+def postprocess_registration(base_dir, patient_labels):
+    """
+    @short: - 
+    """
+    
+    # default image size
+    imgsize = [256, 256, 256]
+    # for clipping c0 to compute dice
+    threshold = 0.05 
+    
+    reg_dir = os.path.join(base_dir, "registration")
+    data_dir = os.path.join(base_dir, "input")
+
+    # read in atlas t1 and atlas segmentation
+    atlas_seg = nib.load(os.path.join(data_dir,'atlas_seg.nii.gz')).get_fdata() 
+    # read patient healthy segmentation (obtained via registration)    
+    patient_seg = nib.load(os.path.join(data_dir,'patient_seg.nii.gz')).get_fdata()
+
+
+    # get initial condition in Patient space
+    c0_dir = os.path.join(base_dir, "tumor_inversion/nx256/obs-1.0")
+    c0 = rescaleImage(nib.load(os.path.join(c0_dir, "c0Recon.nii.gz")).get_fdata())
+    c = rescaleImage(nib.load(os.path.join(c0_dir, "cRecon.nii.gz")).get_fdata())
+    c0_thres = c0 > threshold
+    c_thres = c > threshold
+    
+    # get initial condition in atlas space
+    c0_A = rescaleImage(nib.load(os.path.join(c0_dir,"c0Recon_in_Aspace.nii.gz")).get_fdata())
+    c_A = rescaleImage(nib.load(os.path.join(c0_dir,"cRecon_in_Aspace.nii.gz")).get_fdata())
+    c0_A_thres = c0_A > threshold
+    c_A_thres = c_A > threshold
+    
+    # compute dice of c0_thres and c0_A_thres
+    c0_dice = 1 - distance.dice(c0_thres.flatten(), c0_A_thres.flatten())
+    c_dice  = 1 - distance.dice(c_thres.flatten() , c_A_thres.flatten())
+    c0_res = np.linalg.norm(c0-c0_A)/np.linalg.norm(c0)
+    c_res = np.linalg.norm(c-c_A)/np.linalg.norm(c)
+    
+    # min,mean,max jacobian
+    jac = nib.load(os.path.join(reg_dir,"det-deformation-grad.nii.gz")).get_fdata()
+    jacmin = np.min(jac)
+    jacmax = np.max(jac)
+    jacmean = np.mean(jac)
+        
+    # Compute dice of healthy
+    patient_seg_in_Aspace = nib.load(os.path.join(reg_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()                
+    healthy_dice_before = np.asarray(computeDice(patient_seg, atlas_seg, patient_labels))
+    healthy_dice_after = np.asarray(computeDice(patient_seg_in_Aspace, atlas_seg, patient_labels))
+    
+    # load atlas probability maps
+    acsf   = nib.load(os.path.join(data_dir,"atlas_csf_no_vt.nii.gz")).get_fdata() 
+    ave    = nib.load(os.path.join(data_dir,"atlas_vt.nii.gz")).get_fdata()     
+    agm    = nib.load(os.path.join(data_dir,"atlas_gm.nii.gz")).get_fdata() 
+    awm    = nib.load(os.path.join(data_dir,"atlas_wm.nii.gz")).get_fdata()
+    C_ve   = np.linalg.norm(ave)
+    C      = np.linalg.norm([np.linalg.norm(acsf), C_ve, np.linalg.norm(agm), np.linalg.norm(awm)])
+    
+    # compute relative residuals
+    pcsf = nib.load(os.path.join(data_dir,"patient_csf_no_vt.nii.gz")).get_fdata()
+    pve = nib.load(os.path.join(data_dir,"patient_vt.nii.gz")).get_fdata()        
+    pgm = nib.load(os.path.join(data_dir,"patient_gm.nii.gz")).get_fdata()
+    pwm = nib.load(os.path.join(data_dir,"patient_ed_wm.nii.gz")).get_fdata()        
+    diff0_ve = np.linalg.norm(ave-pve)
+    diff0 = np.linalg.norm([np.linalg.norm(acsf-pcsf), diff0_ve, np.linalg.norm(agm-pgm), np.linalg.norm(awm-pwm)])
+
+    pcsfA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_csf_no_vt_in_Aspace.nii.gz")).get_fdata())
+    pveA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_vt_in_Aspace.nii.gz")).get_fdata())        
+    pgmA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_gm_in_Aspace.nii.gz")).get_fdata())
+    pwmA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_ed_wm_in_Aspace.nii.gz")).get_fdata())        
+    diff1_ve = np.linalg.norm(ave-pveA)
+    diff1 = np.linalg.norm([np.linalg.norm(acsf-pcsfA), diff1_ve, np.linalg.norm(agm-pgmA), np.linalg.norm(awm-pwmA)])
+    res0 = diff0/C
+    res1 = diff1/C
+    res_ve0 = diff0_ve/C_ve
+    res_ve1 = diff1_ve/C_ve
+    
+    # Write to file
+    f = open(os.path.join(base_dir,"registration_stats.txt"), "w")
+    f.write("Healthy dice before (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n".format(healthy_dice_before))
+    f.write("Healthy dice after  (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n\n".format(healthy_dice_after))
+    
+    f.write("Jacobian(min,mean,max) = ({0:.4f},{1:.4f},{2:.4f})\n\n".format(jacmin,jacmean,jacmax))
+    
+    f.write("Total residual before = {0:.4f}\n".format(res0))
+    f.write("Total residual after  = {0:.4f}\n\n".format(res1))
+    
+    f.write("Ventricle residual before = {0:.4f}\n".format(res_ve0))
+    f.write("Ventricle residual after  = {0:.4f}\n\n".format(res_ve1))
+    
+    f.write("c0_dice = {0:.4f}\n".format(c0_dice))
+    f.write("c_dice = {0:.4f}\n\n".format(c_dice))
+
+    f.write("c0 residual = {0:.4f}\n".format(c0_res))
+    f.write("c residual = {0:.4f}\n".format(c_res))
+
+    f.close()
+
+
+###
+### ------------------------------------------------------------------------ ###
 def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, patient_labels):
     patient_ref = patient_ref_.get_fdata();
     affine      = patient_ref_.affine;
@@ -714,39 +814,53 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
         nib.save(resampled_template_64, os.path.join(tumor_output_path,"template_nx64.nii.gz"));
 
 
-    # get list of nc and nii files in claire output
-    niifiles_claire = imgtools.getNIIImageList(reg_output_path);
-    ncfiles_claire = imgtools.getNetCDFImageList(reg_output_path);
-    # get list of nc and nii files in tumor inversion output
-    niifiles_tumor = imgtools.getNIIImageList(tumor_output_path);
-    ncfiles_tumor  = imgtools.getNetCDFImageList(tumor_output_path);
+    # get list of nii files in claire output
+    exclude_string = "".join([str(x) for x in list(output_size)])
+    niifiles_claire = imgtools.getNIIImageList(reg_output_path)
+    # get list of nii files in tumor inversion output
+    niifiles_tumor = imgtools.getNIIImageList(os.path.join(input_path, "tumor_inversion/nx256/obs-1.0"))
     levels = [64,128,256] if gridcont else [256];
     # levels = [256];
 
     # gather files
     niifiles = niifiles_claire + niifiles_tumor;
-    ncfiles  = ncfiles_claire + ncfiles_tumor;
     # out path
     new_output_path = input_path
     if not os.path.exists(new_output_path):
         os.mkdir(new_output_path)
+    
+    print('postprocessing nifti files')
+    for f in niifiles:
+        img = nib.load(f).get_fdata()
+        if 'seg' in f:
+            newimg = imgtools.resizeImage(img, tuple(output_size), 0)
+        else:
+            newimg = imgtools.resizeImage(img, tuple(output_size), 1)
+          
+        filename = ntpath.basename(f);
+        dirname = os.path.dirname(f);
+        filename = filename.split(".")[0]
+        newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz'; 
+        print("creating {}".format(newfilename))
+        fio.writeNII(newimg, os.path.join(dirname, newfilename), ref_image=ref_img);
+
 
     # loops over netcdf files to resample them and save as nii
-    print('post processing claire-netcdf files')
-    for f in ncfiles_claire:
-        if '128_velocity' not in f:
-            print('processing '+f)
-            data = fio.readNetCDF(f);
-            data = np.swapaxes(data,0,2);
-            if 'seg' in f:
-                print('segmentation file found, using NN interpolation')
-                newdata = imgtools.resizeImage(data, tuple(output_size), 0);
-            else:
-                newdata = imgtools.resizeImage(data, tuple(output_size), 1);
-            filename = ntpath.basename(f);
-            filename, fileext = os.path.splitext(filename);
-            newfilename = filename + '.nii.gz';
-            fio.writeNII(newdata, os.path.join(reg_output_path, newfilename), affine);
+    #print('post processing claire-netcdf files')
+    #for f in ncfiles_claire:
+    #    if '128_velocity' not in f:
+    #        print('processing '+f)
+    #        data = fio.readNetCDF(f);
+    #        data = np.swapaxes(data,0,2);
+    #        if 'seg' in f:
+    #            print('segmentation file found, using NN interpolation')
+    #            newdata = imgtools.resizeImage(data, tuple(output_size), 0);
+    #        else:
+    #            newdata = imgtools.resizeImage(data, tuple(output_size), 1);
+    #        filename = ntpath.basename(f);
+    #        filename, fileext = os.path.splitext(filename);
+    #        newfilename = filename + '.nii.gz';
+    #        fio.writeNII(newdata, os.path.join(reg_output_path, newfilename), affine);
 
     print('post processing tumor-netcdf files')
     # if not gridcont:
@@ -788,9 +902,10 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
                 else:
                     newdata = imgtools.resizeImage(data, tuple(template.shape), 1);
 
+                output_size = tuple(template.shape)
                 filename = ntpath.basename(f);
-                filename, fileext = os.path.splitext(filename);
-                newfilename = filename + '.nii.gz';
+                filename = filename.split(".")[0]
+                newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz'; 
                 fio.writeNII(newdata, os.path.join(os.path.join(tu_out_path, dir), newfilename), template.affine);
 
 
@@ -1082,7 +1197,7 @@ if __name__=='__main__':
     parser.add_argument ('-compute_dice_healthy', action='store_true', help = 'compute dice scores');
     parser.add_argument ('-compute_tumor_stats',  action='store_true', help = 'compute dice scores of tumor tissue and other statistics');
     parser.add_argument ('-analyze_concomps',     action='store_true', help = 'analyze connected components');
-    parser.add_argument ('-analyze_registration', action='store_true', help = 'analyze registration results');
+    parser.add_argument ('-postprocess_registration', action='store_true', help = 'postprocess registration results');
     parser.add_argument ('--obs_lambda',          type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument ('-generate_slices',      action='store_true', help = 'generates charts of slices');
     parser.add_argument ('--prediction',          action='store_true', help = 'indicates if to postprocess prediction files');
@@ -1110,12 +1225,11 @@ if __name__=='__main__':
             patient_labels[int(x.split('=')[0])] = x.split('=')[1];
         patient_label_rev = {v:k for k,v in patient_labels.items()};
 
-    if args.analyze_registration:
+    if args.postprocess_registration:
         if args.patient_labels is None:
             print("Need to provide patient labels, exiting")
             sys.exit()
-        analyzeRegistration(args.input_path, args.atlas_path, patient_label_rev)
-        sys.exit()
+        postprocess_registration(args.input_path, patient_label_rev)
 
     # get bratsID
     for x in args.reference_image_path.split('/'):
@@ -1819,16 +1933,16 @@ if __name__=='__main__':
             if l == 256:
                 print("\n (4) b) computing tumor statistics in ATLAS space\n");
                 #try:
-                c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz"));
+                c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_in_Aspace.nii.gz"));
                 c0_in_aspace = c0_in_aspace.get_fdata();
-                patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz"));
+                patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace.nii.gz"));
                 #except:
                 #    c0_in_aspace = None;
                 #    patient_ref_in_aspace = None;
                 #    print("Error: Can not read images in atlas space"); sys.exit(1);
 
                 # connected copmponent analysis of patient TC in ATLAS space
-                labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz", patient_label_rev);
+                labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace.nii.gz", patient_label_rev);
                 #fio.createNetCDF(os.path.join(out_path, 'data_comps_aspace_nx'+str(level)+'.nc') , np.shape(labeled_aspace), np.swapaxes(labeled_aspace,0,2));
 
                 print("ncomps(PSPACE):",ncomps_data[l], ", ncomps(ASPACE)", ncomps_data_aspace);

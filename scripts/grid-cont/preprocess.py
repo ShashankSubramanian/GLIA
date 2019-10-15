@@ -94,8 +94,8 @@ def preprocImageFromSegmentation(image_path, output_path, resolution, labels, na
     img_img = img.get_fdata();
     resolution = tuple([float(x) for x in resolution]);
     label_rev = {v:k for k,v in labels.items()}
-    if 'vt' in label_rev and 'csf' in label_rev:
-        img_img[np.where(img_img == label_rev['vt'])] = label_rev['csf'];
+    #if 'vt' in label_rev and 'csf' in label_rev:
+    #    img_img[np.where(img_img == label_rev['vt'])] = label_rev['csf'];
 
     # do NN interpolation on the image and store in input/
     img_resized = imgtools.resizeImage(img_img, resolution, 0);
@@ -103,12 +103,12 @@ def preprocImageFromSegmentation(image_path, output_path, resolution, labels, na
     fio.createNetCDF(output_path + '/' + name +'_seg.nc', np.shape(img_resized), np.swapaxes(img_resized,0,2));
 
     # create probability maps from segmentation
-    probmaps,labelmaps = imgtools.createProbabilityMaps(img_resized, resolution, labels);
-    probmaps = imgtools.ensurePartitionOfUnity(probmaps);
+    probmaps,labelmaps,new_label_dict = imgtools.createProbabilityMaps(img_resized, resolution, labels);
+    #probmaps = imgtools.ensurePartitionOfUnity(probmaps);
 
     if not os.path.exists(output_path):
         os.mkdirs(output_path)
-    imgtools.saveProbabilityMaps(probmaps, labelmaps, output_path + '/' + name, affine, labels);
+    imgtools.saveProbabilityMaps(probmaps, labelmaps, output_path + '/' + name, affine, new_label_dict);
     return affine
 
 ###
@@ -216,7 +216,7 @@ if __name__=='__main__':
             patient_labels[int(x.split('=')[0])] = x.split('=')[1];
         patient_label_rev = {v:k for k,v in patient_labels.items()};
         # add mask label if tumor present
-        if 'en' in patient_label_rev and 'nec' in patient_label_rev:
+        if 'en' in patient_label_rev or 'nec' in patient_label_rev:
             labelnums = list(patient_labels.keys());
             maxlabelnum = max(labelnums)
             patient_labels[maxlabelnum + 1] = 'mask';

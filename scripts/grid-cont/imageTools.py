@@ -25,7 +25,7 @@ def smoothBinaryMap(img):
     '''
     smoothes an image img with a gaussian kernel with uniform sigma=1
     '''
-    return ndimage.filters.gaussian_filter(img, sigma=(1, 1, 1), order=0);
+    return ndimage.filters.gaussian_filter(img, sigma=(2,2,2), order=0);
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -71,19 +71,33 @@ def resizeNIIImage(img, new_size, interp_order, new_filename):
 def extractImageLabels(img, label_dict):
     '''
     extracts image labels from the segmented image img
-    label_dict is a dict storing what label is what tissue
+    label_dict is a dict storing what label is what tissue e.g. {0:'bg', 1:'nec', ...}
     '''
     print(label_dict)
-    labelnums = list(label_dict.keys());
-    numlabels = max(labelnums) - min(labelnums) + 1; # includes missing labels if any in the input
-    newsize = (numlabels,) + np.shape(img);
-    newimg = np.zeros(newsize);
-
-    for label in labelnums:
-        binimg = img==label
-        newimg[label,:,:,:] = binimg.astype(float);
-
+    
+    # reverse the label dictionary {0:'bg', 1:'nec', ...} ==> {'bg':0, 'nec':1, ...}
     label_dict_rev = {v:k for k,v in label_dict.items()}
+    # create a list of label numbers
+    labels = list(label_dict.keys());
+    # number of labels
+    num_labels = len(labels)
+    # create a new long array for each label image
+    newsize = (num_labels,) + np.shape(img);
+    newimg = np.zeros(newsize);
+    
+    print(np.unique(img))
+    # new label dict
+    new_label_dict = {}
+    # loop over labels, extract them and store in newimg
+    for label,i in zip(labels,np.arange(num_labels)):
+        binimg = img==label
+        newimg[i,:,:,:] = binimg.astype(float);
+        print('index = {}, label = {}, label_id = {}, min = {}, max = {}'.format(i,label_dict[label], label, np.amin(newimg[i,:,:,:]), np.amax(newimg[i,:,:,:])))
+        # assign new label numbers in label dict
+        new_label_dict[i] = label_dict[label]
+    
+    print(new_label_dict)
+    # if mask is a label, then create it
     if 'mask' in label_dict_rev:
         # for mask label
         en = label_dict_rev['en'];
@@ -93,7 +107,7 @@ def extractImageLabels(img, label_dict):
         mask = 1.0 - tc;
         newimg[-1,:,:,:] = mask;
 
-    return newimg, labelnums, numlabels
+    return newimg, new_label_dict
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -102,32 +116,42 @@ def createProbabilityMaps(img, default_size, label_dict):
     creates probability maps given a segmented image img and saves them
     '''
     #create a stacked array of different labels
-    label_img,labelnums,numlabels = extractImageLabels(img, label_dict);
-    #print('labelnums', labelnums)
-    smoothed_label_img = np.zeros((numlabels,) + tuple([int(x) for x in default_size]));
+    label_img, new_label_dict = extractImageLabels(img, label_dict);
+    # number of labels = length of the new_label_dict
+    num_labels = len(new_label_dict)
+    # new array of smoothed label images aka probability maps
+    smoothed_label_img = np.zeros_like(label_img)
     #smooth the label images and resize them
-    for i in labelnums:
+    for i in np.arange(num_labels):
         # smooth label maps
         smoothed_label_img[i,:,:,:] = smoothBinaryMap(label_img[i,:,:,:]);
     #ensure parition of unity
-    return smoothed_label_img, label_img
+    return smoothed_label_img, label_img, new_label_dict
 
 ###
 ### ------------------------------------------------------------------------ ###
 def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
     '''
     saves probability maps and individual label maps as nifti and netcdf images
-    BRATS {0:'bg', 1:'nec', 2:'ed', 3:'en', 4:'gm', 5:'wm', 6:'vt', 7:'csf'}
-    wt = wt
+    BRATS {0:'bg', 1:'nec', 2:'ed', 4:'en', 5:'gm', 6:'wm', 7:'vt', 8:'csf'}
     '''
 
     # reverse key-value in label_dict
     label_dict_rev = {v:k for k,v in label_dict.items()}
+    print(label_dict_rev)
 
     # handle special cases
+    if 'vt' in label_dict_rev:
+        vtlabel = label_dict_rev['vt']
+        print('creating ', filename_prefix+'_vt');
+        fio.writeNII(img[vtlabel,:,:,:], filename_prefix +'_vt.nii.gz', affine);
+    
     # combine csf and vt
     if 'csf' in label_dict_rev and 'vt' in label_dict_rev:
         csflabel = label_dict_rev['csf'];
+        print('creating ', filename_prefix+'_csf_no_vt');
+        fio.writeNII(img[csflabel,:,:,:], filename_prefix +'_csf_no_vt.nii.gz', affine);
+
         vtlabel = label_dict_rev['vt'];
         img[csflabel,:,:,:] += img[vtlabel,:,:,:];
         labelimg[csflabel,:,:,:] += labelimg[vtlabel,:,:,:];
@@ -177,34 +201,35 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
 
 
     nosave_labels = ['vt', 'en', 'nec', 'bg'];
-    for i in list(label_dict.keys()):
+    for label in list(label_dict_rev.keys()):
         # write both nifti and netcdf files
         # save probability maps for use in registration
-        if label_dict[i] not in nosave_labels:
-            print('creating ', filename_prefix+'_'+label_dict[i]);
-            fio.writeNII(img[i,:,:,:],  filename_prefix+'_'+label_dict[i]+'.nii.gz', affine)
-            fio.createNetCDF(filename_prefix+'_'+label_dict[i]+'.nc', np.shape(img[i,:,:,:]), np.swapaxes(img[i,:,:,:],0,2));
+        if label not in nosave_labels:
+            print('creating ', filename_prefix+'_'+label);
+            i = label_dict_rev[label]
+            fio.writeNII(img[i,:,:,:],  filename_prefix+'_'+label+'.nii.gz', affine)
+            fio.createNetCDF(filename_prefix+'_'+label+'.nc', np.shape(img[i,:,:,:]), np.swapaxes(img[i,:,:,:],0,2));
             # save individual label images for use in tumor inversion
-            if label_dict[i] != 'mask':
-                fio.writeNII(labelimg[i,:,:,:],  filename_prefix+'_seg_'+label_dict[i]+'.nii.gz', affine)
-                fio.createNetCDF(filename_prefix+'_seg_'+label_dict[i]+'.nc', np.shape(labelimg[i,:,:,:]), np.swapaxes(labelimg[i,:,:,:],0,2));
+            if label != 'mask':
+                fio.writeNII(labelimg[i,:,:,:],  filename_prefix+'_seg_'+label+'.nii.gz', affine)
+                fio.createNetCDF(filename_prefix+'_seg_'+label+'.nc', np.shape(labelimg[i,:,:,:]), np.swapaxes(labelimg[i,:,:,:],0,2));
 
 ###
 ### ------------------------------------------------------------------------ ###
-def getNIIImageList(path):
+def getNIIImageList(path, exclude=None):
     file_list = [];
     for dirpath,_,filenames in os.walk(path):
         for f in filenames:
-            if f[-7:]=='.nii.gz' or f[-4:]=='.nii':
+            if f.split(".").count('nii') == 1:
                 file_list.append(os.path.abspath(os.path.join(dirpath,f)))
     return file_list
 
 ###
 ### ------------------------------------------------------------------------ ###
-def getNetCDFImageList(path):
+def getNetCDFImageList(path, exclude=None):
     file_list = [];
     for dirpath,_,filenames in os.walk(path):
         for f in filenames:
-            if f[-3:]=='.nc':
+            if f.split(".").count('nc') == 1:
                 file_list.append(os.path.abspath(os.path.join(dirpath,f)))
     return file_list
