@@ -162,6 +162,11 @@ def connectedComponentsData(path_nc, level, target_nc=None, path_nii=None, targe
     # return labeled, comps, ncomponents, xcm_data_px, xcm_data, relmass;
     return labeled_sorted, comps_sorted, ncomponents, xcm_data_px_sorted, xcm_data_sorted, relmass_sorted;
 
+def convert_netcdf_to_nii(input_filename, output_filename, affine=None, ref_image=None):
+    ref_image = nib.load(ref_image)
+    img = fio.readNetCDF(input_filename)
+    img = np.swapaxes(img,0,2);
+    fio.writeNII(img, output_filename, affine=affine, ref_image=ref_image);
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -175,6 +180,8 @@ if __name__=='__main__':
     parser.add_argument ('--obs_lambda',          type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument ('--suffix',              type=str, help = 'ob name suffix');
     parser.add_argument ('-resample',             action='store_true', help = 'resamples images');
+    parser.add_argument ('-convert_netcdf_to_nii',action='store_true', help = 'convert netcdf images to nifti images');
+    parser.add_argument ('--reference_image',      type=str, help = 'reference nifti image')
     parser.add_argument ('--N_old',               type=int, help = 'old resolution');
     parser.add_argument ('--N_new',               type=int, help = 'new resolution');
     parser.add_argument ('--name_old',            type=str, help = 'resample, old name');
@@ -205,6 +212,10 @@ if __name__=='__main__':
     if args.resample:
         print("resampling", args.name_old, "from", args.N_old, "to", args.N_new);
         resample(args.output_path, args.name_old, args.name_new, args.N_old, args.N_new);
+
+    if args.convert_netcdf_to_nii:
+        print("converting ", args.name_old, "to", args.name_new);
+        convert_netcdf_to_nii(args.name_old, args.name_new, affine=None, ref_image=args.reference_image)
 
     if args.extract:
         print("extracting rho and k from ", args.output_path);
