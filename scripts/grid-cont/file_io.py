@@ -33,7 +33,7 @@ def createNetCDF(filename,dimensions,variable):
 ### ------------------------------------------------------------------------ ###
 def writeNII(img, filename, affine=None):
     '''
-    function to wrote a nifti image, creates a new nifti object
+    function to write a nifti image, creates a new nifti object
     '''
     if affine is None:
         data = nib.Nifti1Image(img, np.eye(4));
