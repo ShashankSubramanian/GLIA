@@ -22,10 +22,13 @@ from matplotlib.colors import ListedColormap
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 
+
 anthrazit = (0.2431, 0.2666, 0.2980)
 mittelblau = (0., 0.31764, 0.61960)
 hellblau = (0., 0.7529411, 1.)
 signalred = (1., 0., 0.12549)
+hellblauT = (0., 0.7529411, 1., 0.1)
+signalredT = (1., 0., 0.12549, 0.1)
 
 class bcolors:
     HEADER = '\033[95m'
@@ -48,6 +51,29 @@ def getSurvivalClass(x):
 
 def getSurvivalSigma(x, std, mean):
     return (x - mean) / std;
+
+
+# function for setting the colors of the box plots pairs
+def setBoxColors(bp):
+    setp(bp['boxes'][0], color=hellblau)
+    bp['boxes'][0].set(facecolor=hellblauT)
+    setp(bp['caps'][0], color='black')
+    setp(bp['caps'][1], color='black')
+    setp(bp['whiskers'][0], color='black')
+    setp(bp['whiskers'][1], color='black')
+    setp(bp['fliers'][0], color='green')
+    setp(bp['fliers'][1], color='green')
+    setp(bp['medians'][0], color='black')
+
+    setp(bp['boxes'][1], color=signalred)
+    bp['boxes'][1].set(facecolor=signalredT)
+    setp(bp['caps'][2], color='black')
+    # setp(bp['caps'][3], color=signalred)
+    setp(bp['whiskers'][2], color='black')
+    # setp(bp['whiskers'][3], color=signalred)
+    # setp(bp['fliers'][2], color=signalred)
+    # setp(bp['fliers'][3], color=signalred)
+    setp(bp['medians'][1], color='black')
 
 
 

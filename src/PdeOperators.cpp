@@ -142,25 +142,24 @@ PetscErrorCode PdeOperatorsRD::reaction (int linearized, int iter) {
         ierr = vecGetArray (c_[iter], &c_ptr);                       CHKERRQ (ierr);
     }
 
-
-#ifdef CUDA
-    logisticReactionCuda (c_t_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
-#else
-    if (linearized == 0) {
-        for (int i = 0; i < n_misc_->n_local_; i++) {
-            factor = std::exp (rho_ptr[i] * dt);
-            alph = c_t_ptr[i] / (1.0 - c_t_ptr[i]);
-            if (std::isinf(alph)) c_t_ptr[i] = 1.0;
-            else c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
+    #ifdef CUDA
+        logisticReactionCuda (c_t_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
+    #else
+        if (linearized == 0) {
+            for (int i = 0; i < n_misc_->n_local_; i++) {
+                factor = std::exp (rho_ptr[i] * dt);
+                alph = c_t_ptr[i] / (1.0 - c_t_ptr[i]);
+                if (std::isinf(alph)) c_t_ptr[i] = 1.0;
+                else c_t_ptr[i] = alph * factor / (alph * factor + 1.0);
+            }
+        } else {
+            for (int i = 0; i < n_misc_->n_local_; i++) {
+                factor = std::exp (rho_ptr[i] * dt);
+                alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
+                c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
+            }
         }
-    } else {
-        for (int i = 0; i < n_misc_->n_local_; i++) {
-            factor = std::exp (rho_ptr[i] * dt);
-            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
-            c_t_ptr[i] = c_t_ptr[i] * factor / (alph * alph);
-        }
-    }
-#endif
+    #endif
     ierr = vecRestoreArray (tumor_->c_t_, &c_t_ptr);                 CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
     if (linearized != 0) {
@@ -338,15 +337,15 @@ PetscErrorCode PdeOperatorsRD::reactionAdjoint (int linearized, int iter) {
     ierr = vecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);       CHKERRQ (ierr);
     ierr = vecGetArray (temp, &c_ptr);                           CHKERRQ (ierr);
 
-#ifdef CUDA
-    logisticReactionCuda (p_0_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
-#else
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        factor = std::exp (rho_ptr[i] * dt);
-        alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
-        p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
-    }
-#endif
+    #ifdef CUDA
+        logisticReactionCuda (p_0_ptr, rho_ptr, c_ptr, dt, n_misc_->n_local_, linearized);
+    #else
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            factor = std::exp (rho_ptr[i] * dt);
+            alph = (c_ptr[i] * factor + 1.0 - c_ptr[i]);
+            p_0_ptr[i] = p_0_ptr[i] * factor / (alph * alph);
+        }
+    #endif
 
     ierr = vecRestoreArray (tumor_->p_0_, &p_0_ptr);             CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);   CHKERRQ (ierr);
@@ -509,25 +508,25 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     ierr = vecGetArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
     ierr = vecGetArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
 
-#ifdef CUDA
-    conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
-#else
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        scale_gm_ptr[i] = 0.0;
-        scale_wm_ptr[i] = 0.0;
+    #ifdef CUDA
+        conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
+    #else
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            scale_gm_ptr[i] = 0.0;
+            scale_wm_ptr[i] = 0.0;
 
-        if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
-            scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-            scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
+                scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+                scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            }
+
+            scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
+            scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+
+            gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
+            wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
         }
-
-        scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
-        scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
-
-        gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
-        wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
-    }
-#endif
+    #endif
 
     ierr = vecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->mat_prop_->wm_, &wm_ptr);           CHKERRQ (ierr);
@@ -700,8 +699,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
                 ss << "force_t[" << i << "].nc";
                 dataOut (magnitude_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
-                ss << "csf_t[" << i << "].nc";
+                ss << "vt_t[" << i << "].nc";
                 dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "csf_t[" << i << "].nc";
+                dataOut (tumor_->mat_prop_->glm_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
                 ss << "wm_t[" << i << "].nc";
                 dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
@@ -736,7 +738,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
         ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
         adv_solver_->advection_mode_ = 2;  // pure advection for csf
-        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr); adv_solver_->advection_mode_ = 1;  // reset to mass conservation
+        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->glm_, tumor_->velocity_, dt);                 CHKERRQ(ierr); 
+        adv_solver_->advection_mode_ = 1;  // reset to mass conservation
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr);
 
         // All solves complete except elasticity: clip values to ensure positivity
@@ -844,17 +848,17 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
     ierr = vecGetArray (m, &m_ptr);                                 CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-#ifdef CUDA
-    computeReactionRateCuda (m_ptr, ox_ptr, rho_ptr, n_misc_->ox_inv_, ox_mit, n_misc_->n_local_);
-#else
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (ox_ptr[i] > n_misc_->ox_inv_) m_ptr[i] = rho_ptr[i];
-        else if (ox_ptr[i] <= n_misc_->ox_inv_ && ox_ptr[i] >= ox_mit) 
-            m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (n_misc_->ox_inv_ - ox_mit);
-        else
-            m_ptr[i] = 0.;
-    }
-#endif
+    #ifdef CUDA
+        computeReactionRateCuda (m_ptr, ox_ptr, rho_ptr, n_misc_->ox_inv_, ox_mit, n_misc_->n_local_);
+    #else
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            if (ox_ptr[i] > n_misc_->ox_inv_) m_ptr[i] = rho_ptr[i];
+            else if (ox_ptr[i] <= n_misc_->ox_inv_ && ox_ptr[i] >= ox_mit) 
+                m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (n_misc_->ox_inv_ - ox_mit);
+            else
+                m_ptr[i] = 0.;
+        }
+    #endif
 
     ierr = vecRestoreArray (m, &m_ptr);                                 CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
@@ -884,14 +888,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
     ierr = vecGetArray (tumor_->species_["proliferative"], &p_ptr);       CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->species_["infiltrative"], &i_ptr);        CHKERRQ (ierr);
 
-#ifdef CUDA
-    computeTransitionCuda (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, n_misc_->alpha_0_, n_misc_->beta_0_, n_misc_->ox_inv_, thres, n_misc_->n_local_);
-#else
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        alpha_ptr[i] = n_misc_->alpha_0_ * 0.5 * (1 + std::tanh (500 * (n_misc_->ox_inv_ - ox_ptr[i])));
-        beta_ptr[i] = n_misc_->beta_0_ * 0.5 * (1 + std::tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
-    }
-#endif
+    #ifdef CUDA
+        computeTransitionCuda (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, n_misc_->alpha_0_, n_misc_->beta_0_, n_misc_->ox_inv_, thres, n_misc_->n_local_);
+    #else
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            alpha_ptr[i] = n_misc_->alpha_0_ * 0.5 * (1 + std::tanh (500 * (n_misc_->ox_inv_ - ox_ptr[i])));
+            beta_ptr[i] = n_misc_->beta_0_ * 0.5 * (1 + std::tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
+        }
+    #endif
 
     ierr = vecRestoreArray (alpha, &alpha_ptr);                         CHKERRQ (ierr);
     ierr = vecRestoreArray (beta, &beta_ptr);                           CHKERRQ (ierr);
@@ -919,12 +923,12 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder (Vec h) {
     ierr = vecGetArray (h, &h_ptr);                                 CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
 
-#ifdef CUDA
-    computeThesholderCuda (h_ptr, ox_ptr, n_misc_->ox_hypoxia_, n_misc_->n_local_);
-#else
-    for (int i = 0; i < n_misc_->n_local_; i++) 
-        h_ptr[i] = 0.5 * (1 + std::tanh (500 * (n_misc_->ox_hypoxia_ - ox_ptr[i])));
-#endif
+    #ifdef CUDA
+        computeThesholderCuda (h_ptr, ox_ptr, n_misc_->ox_hypoxia_, n_misc_->n_local_);
+    #else
+        for (int i = 0; i < n_misc_->n_local_; i++) 
+            h_ptr[i] = 0.5 * (1 + std::tanh (500 * (n_misc_->ox_hypoxia_ - ox_ptr[i])));
+    #endif
 
     ierr = vecRestoreArray (h, &h_ptr);                                 CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
@@ -968,38 +972,38 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
     ierr = vecGetArray (O, &ox_ptr);                                                  CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->work_[11], &di_ptr);                                  CHKERRQ (ierr);
 
-#ifdef CUDA
-    computeSourcesCuda (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, 
-        n_misc_->death_rate_, n_misc_->ox_source_, n_misc_->ox_consumption_, n_misc_->n_local_);
-#else
-    ScalarType p_temp, i_temp, frac_1, frac_2;
-    ScalarType ox_heal = 1.;
-    ScalarType reac_ratio = 0.1;
-    ScalarType death_ratio = 0.3;
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        p_temp = p_ptr[i]; i_temp = i_ptr[i];
-        p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
-                            n_misc_->death_rate_ * h_ptr[i] * p_ptr[i]);
-        i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
-                            death_ratio * n_misc_->death_rate_ * h_ptr[i] * i_ptr[i]);
-        n_ptr[i] += dt * (h_ptr[i] * n_misc_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
-        ox_ptr[i] += dt * (-n_misc_->ox_consumption_ * p_temp + n_misc_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-        // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
+    #ifdef CUDA
+        computeSourcesCuda (p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, 
+            n_misc_->death_rate_, n_misc_->ox_source_, n_misc_->ox_consumption_, n_misc_->n_local_);
+    #else
+        ScalarType p_temp, i_temp, frac_1, frac_2;
+        ScalarType ox_heal = 1.;
+        ScalarType reac_ratio = 0.1;
+        ScalarType death_ratio = 0.3;
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            p_temp = p_ptr[i]; i_temp = i_ptr[i];
+            p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
+                                n_misc_->death_rate_ * h_ptr[i] * p_ptr[i]);
+            i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
+                                death_ratio * n_misc_->death_rate_ * h_ptr[i] * i_ptr[i]);
+            n_ptr[i] += dt * (h_ptr[i] * n_misc_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
+            ox_ptr[i] += dt * (-n_misc_->ox_consumption_ * p_temp + n_misc_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
+            // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
-        // conserve healthy cells
-        if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
-            frac_1 = gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]); frac_2 = wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-        } else {
-            frac_1 = 0.; frac_2 = 0.;
+            // conserve healthy cells
+            if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
+                frac_1 = gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]); frac_2 = wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            } else {
+                frac_1 = 0.; frac_2 = 0.;
+            }
+            frac_1 = (std::isnan(frac_1)) ? 0. : frac_1;
+            frac_2 = (std::isnan(frac_2)) ? 0. : frac_2;
+            gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
+                             + h_ptr[i] * n_misc_->death_rate_ * gm_ptr[i]); 
+            wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
+                             + h_ptr[i] * n_misc_->death_rate_ * wm_ptr[i]); 
         }
-        frac_1 = (std::isnan(frac_1)) ? 0. : frac_1;
-        frac_2 = (std::isnan(frac_2)) ? 0. : frac_2;
-        gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
-                         + h_ptr[i] * n_misc_->death_rate_ * gm_ptr[i]); 
-        wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
-                         + h_ptr[i] * n_misc_->death_rate_ * wm_ptr[i]); 
-    }
-#endif
+    #endif
 
     ierr = vecRestoreArray (p, &p_ptr);                                                   CHKERRQ (ierr);
     ierr = vecRestoreArray (i, &i_ptr);                                                   CHKERRQ (ierr);
