@@ -6,6 +6,7 @@
 #include "PdeOperators.h"
 #include "Utils.h"
 #include "TaoL1Solver.h"
+#include <petsc/private/vecimpl.h>
 
 
 InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor)
@@ -1731,7 +1732,7 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
     if (lock_state != 0) {
-      ierr = VecLockPop (x);                CHKERRQ (ierr);
+      x->lock = 0;
     }
   #endif
 
@@ -1755,7 +1756,7 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
 
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
-      ierr = VecLockPush (x);     CHKERRQ (ierr);
+      x->lock = lock_state;
     }
   #endif
 
@@ -1781,7 +1782,7 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
     if (lock_state != 0) {
-      ierr = VecLockPop (x);                CHKERRQ (ierr);
+      x->lock = 0;
     }
   #endif
 
@@ -1808,7 +1809,7 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
 
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
-      ierr = VecLockPush (x);     CHKERRQ (ierr);
+      x->lock = lock_state;
     }
   #endif
 
@@ -1855,7 +1856,7 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
     if (lock_state != 0) {
-      ierr = VecLockPop (x);                CHKERRQ (ierr);
+      x->lock = 0;
     }
   #endif
 
@@ -1882,7 +1883,7 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
 
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
-      ierr = VecLockPush (x);     CHKERRQ (ierr);
+      x->lock = lock_state;
     }
   #endif
 
