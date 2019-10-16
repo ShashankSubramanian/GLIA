@@ -46,6 +46,78 @@ cl1 = '#FF4C4C'
 cl2 = '#34BF49'
 cl3 = '#0099E5'
 
+
+
+
+###
+### ------------------------------------------------------------------------ ###
+def _find_border(data):
+        from scipy.ndimage.morphology import binary_erosion
+        eroded = binary_erosion(data)
+        border = np.logical_and(data, np.logical_not(eroded))
+        return border
+###
+### ------------------------------------------------------------------------ ###
+def _get_coordinates(data, affine):
+    if len(data.shape) == 4:
+        data = data[:, :, :, 0]
+    indices = np.vstack(np.nonzero(data))
+    indices = np.vstack((indices, np.ones(indices.shape[1])))
+    coordinates = np.dot(affine, indices)
+    return coordinates[:3, :]
+
+###
+### ------------------------------------------------------------------------ ###
+def _eucl_min(vol1, affine1, vol2, affine2):
+    from scipy.spatial.distance import cdist, euclidean
+
+    border1 = _find_border(vol1)
+    border2 = _find_border(vol2)
+
+    set1_coordinates = _get_coordinates(border1, affine1)
+    set2_coordinates = _get_coordinates(border2, affine2)
+
+    from scipy.spatial import cKDTree
+    min_dists, min_dist_idxs = cKDTree(set1_coordinates.T).query(set2_coordinates.T, 1)
+    min_dist_idx_set2 = np.argmin(min_dists);
+    min_dist = min_dists[min_dist_idx_set2];
+    min_dist_idx_set1 = min_dist_idxs[min_dist_idx_set2];
+
+    point1 = set1_coordinates.T[min_dist_idx_set1, :]
+    point2 = set2_coordinates.T[min_dist_idx_set2, :]
+
+    # print("min dist: ", min_dist)
+    # print("min_dist_idx: ", min_dist_idx_set2)
+    # print("euclidean: ", euclidean(set1_coordinates.T[min_dist_idx_set1, :], set2_coordinates.T[min_dist_idx_set2, :]))
+    # print("point 1:", point1)
+    # print("point 2:", point2)
+
+    return min_dist, point1, point2;
+
+    # dist_matrix = cdist(set1_coordinates.T, set2_coordinates.T)
+    # (point1, point2) = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
+    # return (euclidean(set1_coordinates.T[point1, :],
+                      # set2_coordinates.T[point2, :]),
+                      # set1_coordinates.T[point1, :],
+                      # set2_coordinates.T[point2, :])
+
+###
+### ------------------------------------------------------------------------ ###
+def computeDistance(nii1, nii2):
+    vol1 = nii1.get_fdata().astype(np.bool)
+    vol2 = nii2.get_fdata().astype(np.bool)
+    distance, p1, p2 = _eucl_min(vol1, vol1.affine, vol2, vol2.affine);
+    return distance, p1, p2;
+
+###
+### ------------------------------------------------------------------------ ###
+def computeDistance(data1, affine1, data2, affine2):
+    data1 = data1.astype(np.bool)
+    data2 = data2.astype(np.bool)
+    distance, p1, p2 = _eucl_min(data1, affine1, data2, affine2);
+    return distance, p1, p2;
+
+
 ###
 ### ------------------------------------------------------------------------ ###
 def showSlices(slices):
@@ -405,20 +477,20 @@ def analyzeRegistration(input_dir, atlas_path, patient_labels):
 ### ------------------------------------------------------------------------ ###
 def postprocess_registration(base_dir, patient_labels):
     """
-    @short: - 
+    @short: -
     """
-    
+
     # default image size
     imgsize = [256, 256, 256]
     # for clipping c0 to compute dice
-    threshold = 0.05 
-    
+    threshold = 0.05
+
     reg_dir = os.path.join(base_dir, "registration")
     data_dir = os.path.join(base_dir, "input")
 
     # read in atlas t1 and atlas segmentation
-    atlas_seg = nib.load(os.path.join(data_dir,'atlas_seg.nii.gz')).get_fdata() 
-    # read patient healthy segmentation (obtained via registration)    
+    atlas_seg = nib.load(os.path.join(data_dir,'atlas_seg.nii.gz')).get_fdata()
+    # read patient healthy segmentation (obtained via registration)
     patient_seg = nib.load(os.path.join(data_dir,'patient_seg.nii.gz')).get_fdata()
 
 
@@ -428,70 +500,70 @@ def postprocess_registration(base_dir, patient_labels):
     c = rescaleImage(nib.load(os.path.join(c0_dir, "cRecon.nii.gz")).get_fdata())
     c0_thres = c0 > threshold
     c_thres = c > threshold
-    
+
     # get initial condition in atlas space
     c0_A = rescaleImage(nib.load(os.path.join(c0_dir,"c0Recon_in_Aspace.nii.gz")).get_fdata())
     c_A = rescaleImage(nib.load(os.path.join(c0_dir,"cRecon_in_Aspace.nii.gz")).get_fdata())
     c0_A_thres = c0_A > threshold
     c_A_thres = c_A > threshold
-    
+
     # compute dice of c0_thres and c0_A_thres
     c0_dice = 1 - distance.dice(c0_thres.flatten(), c0_A_thres.flatten())
     c_dice  = 1 - distance.dice(c_thres.flatten() , c_A_thres.flatten())
     c0_res = np.linalg.norm(c0-c0_A)/np.linalg.norm(c0)
     c_res = np.linalg.norm(c-c_A)/np.linalg.norm(c)
-    
+
     # min,mean,max jacobian
     jac = nib.load(os.path.join(reg_dir,"det-deformation-grad.nii.gz")).get_fdata()
     jacmin = np.min(jac)
     jacmax = np.max(jac)
     jacmean = np.mean(jac)
-        
+
     # Compute dice of healthy
-    patient_seg_in_Aspace = nib.load(os.path.join(reg_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()                
+    patient_seg_in_Aspace = nib.load(os.path.join(reg_dir,"patient_seg_in_Aspace.nii.gz")).get_fdata()
     healthy_dice_before = np.asarray(computeDice(patient_seg, atlas_seg, patient_labels))
     healthy_dice_after = np.asarray(computeDice(patient_seg_in_Aspace, atlas_seg, patient_labels))
-    
+
     # load atlas probability maps
-    acsf   = nib.load(os.path.join(data_dir,"atlas_csf_no_vt.nii.gz")).get_fdata() 
-    ave    = nib.load(os.path.join(data_dir,"atlas_vt.nii.gz")).get_fdata()     
-    agm    = nib.load(os.path.join(data_dir,"atlas_gm.nii.gz")).get_fdata() 
+    acsf   = nib.load(os.path.join(data_dir,"atlas_csf_no_vt.nii.gz")).get_fdata()
+    ave    = nib.load(os.path.join(data_dir,"atlas_vt.nii.gz")).get_fdata()
+    agm    = nib.load(os.path.join(data_dir,"atlas_gm.nii.gz")).get_fdata()
     awm    = nib.load(os.path.join(data_dir,"atlas_wm.nii.gz")).get_fdata()
     C_ve   = np.linalg.norm(ave)
     C      = np.linalg.norm([np.linalg.norm(acsf), C_ve, np.linalg.norm(agm), np.linalg.norm(awm)])
-    
+
     # compute relative residuals
     pcsf = nib.load(os.path.join(data_dir,"patient_csf_no_vt.nii.gz")).get_fdata()
-    pve = nib.load(os.path.join(data_dir,"patient_vt.nii.gz")).get_fdata()        
+    pve = nib.load(os.path.join(data_dir,"patient_vt.nii.gz")).get_fdata()
     pgm = nib.load(os.path.join(data_dir,"patient_gm.nii.gz")).get_fdata()
-    pwm = nib.load(os.path.join(data_dir,"patient_ed_wm.nii.gz")).get_fdata()        
+    pwm = nib.load(os.path.join(data_dir,"patient_ed_wm.nii.gz")).get_fdata()
     diff0_ve = np.linalg.norm(ave-pve)
     diff0 = np.linalg.norm([np.linalg.norm(acsf-pcsf), diff0_ve, np.linalg.norm(agm-pgm), np.linalg.norm(awm-pwm)])
 
     pcsfA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_csf_no_vt_in_Aspace.nii.gz")).get_fdata())
-    pveA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_vt_in_Aspace.nii.gz")).get_fdata())        
+    pveA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_vt_in_Aspace.nii.gz")).get_fdata())
     pgmA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_gm_in_Aspace.nii.gz")).get_fdata())
-    pwmA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_ed_wm_in_Aspace.nii.gz")).get_fdata())        
+    pwmA = rescaleImage(nib.load(os.path.join(reg_dir,"patient_ed_wm_in_Aspace.nii.gz")).get_fdata())
     diff1_ve = np.linalg.norm(ave-pveA)
     diff1 = np.linalg.norm([np.linalg.norm(acsf-pcsfA), diff1_ve, np.linalg.norm(agm-pgmA), np.linalg.norm(awm-pwmA)])
     res0 = diff0/C
     res1 = diff1/C
     res_ve0 = diff0_ve/C_ve
     res_ve1 = diff1_ve/C_ve
-    
+
     # Write to file
     f = open(os.path.join(base_dir,"registration_stats.txt"), "w")
     f.write("Healthy dice before (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n".format(healthy_dice_before))
     f.write("Healthy dice after  (CSF,VE,GM,WM) = ({0[0]:.2f},{0[1]:.2f},{0[2]:.2f},{0[3]:.2f})\n\n".format(healthy_dice_after))
-    
+
     f.write("Jacobian(min,mean,max) = ({0:.4f},{1:.4f},{2:.4f})\n\n".format(jacmin,jacmean,jacmax))
-    
+
     f.write("Total residual before = {0:.4f}\n".format(res0))
     f.write("Total residual after  = {0:.4f}\n\n".format(res1))
-    
+
     f.write("Ventricle residual before = {0:.4f}\n".format(res_ve0))
     f.write("Ventricle residual after  = {0:.4f}\n\n".format(res_ve1))
-    
+
     f.write("c0_dice = {0:.4f}\n".format(c0_dice))
     f.write("c_dice = {0:.4f}\n\n".format(c_dice))
 
@@ -508,8 +580,10 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
     affine      = patient_ref_.affine;
     # bool map patient_ref wm, gm, csf, tu
     pref_csf = patient_ref == patient_labels['csf'];
+    pref_ve = patient_ref == patient_labels['vt'];
+    pref_bg = patient_ref == patient_labels['bg'];
     if 'vt' in patient_labels:
-        pref_csf = np.logical_or(pref_csf, patient_ref == patient_labels['vt'])
+        pref_csf = np.logical_or(pref_csf, pref_ve);
     pref_gm  = patient_ref == patient_labels['gm'];
     pref_wm  = patient_ref == patient_labels['wm'];
     pref_en  = patient_ref == patient_labels['en'];
@@ -519,6 +593,13 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
     pref_brain = np.logical_or.reduce((pref_wm, pref_gm, pref_csf));
     pref_wt    = np.logical_or.reduce((pref_ed, pref_nec, pref_en));
     pref_tc    = np.logical_or.reduce((pref_nec, pref_en));
+
+
+    # compute shortest distance between c(0) and VE and distance between c(0) and skull
+    features['dist[c(0), VE] (aspace)'], p1, p2 = computeDistance(c0_recon > 0.1, affine, pref_ve, affine);
+    print("dist c(0)--VE is {}, connecting points p1={} and p2={}".format(features['dist[c(0), VE] (aspace)'], p1, p2));
+    features['dist[c(0), BG] (aspace)'], p1, p2 = computeDistance(c0_recon > 0.1, affine, pref_bg, affine);
+    print("dist c(0)--BG is {}, connecting points p1={} and p2={}".format(features['dist[c(0), BG] (aspace)'], p1, p2));
 
     # compute center of mass of NEC, TC, c(0) per component, and overall
     x_cm_tc  = {}
@@ -531,19 +612,26 @@ def computeTumorStatsInASpace(features, patient_ref_, c0_recon, component_mask, 
             nec_in_comp = np.multiply(pref_nec.astype(int),   component_mask[nc].astype(float));
             c0_in_comp  = np.multiply(c0_recon.astype(float), component_mask[nc].astype(float));
 
+
+            # compute shortest distance between c(0) (in current component) and VE and distance between c(0) and skull
+            # features['dist[c(0)|_#c, VE] (#c='+str(nc)+',apsace)'], p1, p2 = computeDistance(c0_in_comp > 0.1, affine, pref_ve, affine);
+            # print("dist c(0)--VE in comp {} is {}, connecting points p1={} and p2={}".format(nc, features['dist[c(0)|_#c, VE] (#c='+str(nc)+',apsace)'], p1, p2));
+            # features['dist[c(0)|_#c, BG] (#c='+str(nc)+',apsace)'], p1, p2 = computeDistance(c0_in_comp > 0.1, affine, pref_bg, affine);
+            # print("dist c(0)--BG in comp {} is {}, connecting points p1={} and p2={}".format(nc, features['dist[c(0)|_#c, BG] (#c='+str(nc)+',apsace)'], p1, p2));
+
             # compute center of mass of necrotic tumor in component #nc
             x_cm = scipy.ndimage.measurements.center_of_mass(tc_in_comp)
             x_cm_tc[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(TC|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
+            print("component {} with cm of TC:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
             x_cm = scipy.ndimage.measurements.center_of_mass(nec_in_comp)
             x_cm_nec[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(NEC|_#c) (#c='+str(nc)+',apsace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
+            print("component {} with cm of NEC:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
             x_cm = scipy.ndimage.measurements.center_of_mass(c0_in_comp)
             x_cm_c0[nc] = tuple([2 * math.pi * x_cm[0] / patient_ref.shape[0], 2 * math.pi * x_cm[1] / patient_ref.shape[1], 2 * math.pi * x_cm[2] / patient_ref.shape[2]]);
             features['cm(c(0)|_#c) (#c='+str(nc)+',aspace)']   =  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) if nc < 3 else "n/a";
-            print("component {} with cm:".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
+            print("component {} with cm of c(0):".format(nc), " ",  "(%1.1f, %1.1f, %1.1f)px" % (x_cm[0], x_cm[1], x_cm[2]) );
 
             nnc += 1
         if nnc < 2: # less than 3 components, fill with -1 dummy vals.
@@ -828,7 +916,7 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
     new_output_path = input_path
     if not os.path.exists(new_output_path):
         os.mkdir(new_output_path)
-    
+
     print('postprocessing nifti files')
     for f in niifiles:
         img = nib.load(f).get_fdata()
@@ -836,11 +924,11 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
             newimg = imgtools.resizeImage(img, tuple(output_size), 0)
         else:
             newimg = imgtools.resizeImage(img, tuple(output_size), 1)
-          
+
         filename = ntpath.basename(f);
         dirname = os.path.dirname(f);
         filename = filename.split(".")[0]
-        newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz'; 
+        newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz';
         print("creating {}".format(newfilename))
         fio.writeNII(newimg, os.path.join(dirname, newfilename), ref_image=ref_img);
 
@@ -905,7 +993,7 @@ def convertImagesToOriginalSize(input_path, tumor_output_path, reference_image_p
                 output_size = tuple(template.shape)
                 filename = ntpath.basename(f);
                 filename = filename.split(".")[0]
-                newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz'; 
+                newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz';
                 fio.writeNII(newdata, os.path.join(os.path.join(tu_out_path, dir), newfilename), template.affine);
 
 
@@ -1132,6 +1220,20 @@ def thresh(slice, cmap, thresh=0.3, v_max=None, v_min=None):
     cmap_[..., -1] = alphas
     return cmap_;
 
+###
+### ------------------------------------------------------------------------ ###
+def thresh_data(slice, cmap, thresh=0.3, v_max=None, v_min=None):
+    slice = np.clip(slice, 0, 1);
+    alpha_mask = Normalize(0, thresh, clip=True)(slice);
+    alpha_mask[slice > 0.9] = 0.0;
+    alpha_mask[slice < 0.7] = 0.0;
+    max = np.amax(slice) if v_max == None else v_max;
+    min = np.amin(slice) if v_min == None else v_min;
+    slice_normalized = Normalize(min, max)(slice);
+    cmap_ = cmap(slice_normalized)
+    cmap_[..., -1] = alpha_mask;
+    return cmap_;
+
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -1237,6 +1339,7 @@ if __name__=='__main__':
             bratsID = x;
             break;
     bratsID = bratsID.split("_")[0] + "_" +  bratsID.split("_")[1] + "_" +  bratsID.split("_")[2] + '_1';
+    brats_data_path = args.reference_image_path.split('/Brats')[0]
 
     # convert all images to original dimension
     if args.convert_images:
@@ -1310,6 +1413,12 @@ if __name__=='__main__':
             template_256 = nib.load(os.path.join(path_256, bratsID + '_seg_tu.nii.gz'));
             affine_256   = template_256.affine
             template_256 = template_256.get_fdata();
+
+            if l == 256:
+                temp_t1    = nib.load(os.path.join(os.path.join(brats_data_path, bratsID), bratsID + "_t1.nii.gz")).get_fdata();
+                temp_t1ce  = nib.load(os.path.join(os.path.join(brats_data_path, bratsID), bratsID + "_t1ce.nii.gz")).get_fdata();
+                temp_t2    = nib.load(os.path.join(os.path.join(brats_data_path, bratsID), bratsID + "_t2.nii.gz")).get_fdata();
+                temp_flair = nib.load(os.path.join(os.path.join(brats_data_path, bratsID), bratsID + "_flair.nii.gz")).get_fdata();
 
             # ### concomp DATA ###
             level = int(res_path.split("nx")[-1].split("/")[0].split("-")[0]);
@@ -1522,7 +1631,8 @@ if __name__=='__main__':
                     cmap_c0 = plt.cm.Reds;
                     cmap_c1 = plt.cm.cool;
                     cmap_d  = plt.cm.winter;
-                    levels_contour_c0  = [0.01, 0.1, 0.5, 0.7, 0.9];
+                    # levels_contour_c0  = [0.1, 0.5, 0.7, 0.9];
+                    levels_contour_c0  = [0.1, 0.5, 0.7, 0.9];
                     levels_contour_c1  = [0.05, 0.1, 0.5, 0.7, 0.9, 1.0];
                     levels_contourf_c1 = [0.05, 0.1, 0.5, 0.7,];
                     cmap_cont = plt.cm.rainbow
@@ -1697,8 +1807,16 @@ if __name__=='__main__':
                         cmap_d = plt.cm.YlOrBr_r
                         # cmap_c1 = plt.cm.winter;
                         cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c1)-1);
-                        # cmap_c0c = cmap=mpl.cm.get_cmap(plt.cm.rainbow, len(levels_contour_c0)-1);
-                        cmap_c0c = mpl.cm.winter_r
+
+                        from matplotlib.colors import LinearSegmentedColormap
+                        # colors = plt.cm.YlOrRd;
+                        colors = plt.cm.spring;
+                        colors = colors(np.linspace(0.0, 0.4, colors.N // 2))
+                        cmap_c0c = LinearSegmentedColormap.from_list('c0_cmap', colors)
+                        # cmap_c0c = mpl.cm.winter_r
+                        # cmap_c0c = mpl.cm.Reds
+
+
                         # linewidths for contour
                         lwidths = [0.1, 0.1, 0.1, 0.1, 0.5, 0.1]
 
@@ -1713,62 +1831,70 @@ if __name__=='__main__':
                             fig_cor = plt.figure(5);
                             fig_sag = plt.figure(6);
 
-                            # axial
-                            bb = bratsID.split("_")[0] + "_" +  bratsID.split("_")[1] + "_" +  bratsID.split("_")[2] + '_1';
-                            idx = tuple([k,0]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 0
-                            for aax, s, t in zip([axis3[idx], fig_ax.add_subplot(1, 1, 1)], [fsize, '14'], [bb+' $x_{cm}$ comp #'+str(k+1), bb]):
-                                aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
-                                aax.imshow(template[:,:,z].T, cmap='gray', interpolation='none', origin='upper');
-                                aax.imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=1);
-                                slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                                aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
-                                # slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=True);
-                                aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
-                                # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
-                                slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
-                                aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
-                                aax.set_ylabel(t, fontsize=s)
-                                aax.set_title("axial slice %d" %  z, size=s, y=tpos)
+                            if l == 256:
+                               TMPS = [template, temp_t1, temp_t1ce, temp_t2, temp_flair]
+                               SFFX = ['_seg', '_t1', '_t1ce', '_t2', '_flair']
+                            else:
+                               TMPS = [template]
+                               SFFX = ['_seg']
 
-                            # sagittal
-                            idx = tuple([k,1]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 1
-                            for aax, s, t in zip([axis3[idx], fig_cor.add_subplot(1, 1, 1)], [fsize, '14'], ['', bb]):
-                                aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
-                                aax.imshow(template[x,:,:].T, cmap='gray', interpolation='none', origin='lower');
-                                aax.imshow(thresh(data[x,:,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
-                                slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                                aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
-                                # slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=True);
-                                aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
-                                # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
-                                slice, norm = cont(c0recon[x,:,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
-                                aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
-                                aax.set_ylabel(t, fontsize=s)
-                                aax.set_title("coronal slice %d" %  x, size=s, y=tpos)
+                            for TEMPLATE, suffix in zip(TMPS, SFFX):
+                                # axial
+                                bb = bratsID.split("_")[0] + "_" +  bratsID.split("_")[1] + "_" +  bratsID.split("_")[2] + '_1';
+                                idx = tuple([k,0]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 0
+                                for aax, s, t in zip([axis3[idx], fig_ax.add_subplot(1, 1, 1)], [fsize, '14'], [bb+' $x_{cm}$ comp #'+str(k+1), bb]):
+                                    aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
+                                    aax.imshow(TEMPLATE[:,:,z].T, cmap='gray', interpolation='none', origin='upper');
+                                    aax.imshow(thresh(data[:,:,z].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=1);
+                                    slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                                    aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                                    # slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=True);
+                                    aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
+                                    # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
+                                    slice, norm = cont(c0recon[:,:,z].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                                    aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
+                                    # aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                                    aax.set_ylabel(t, fontsize=s)
+                                    aax.set_title("axial slice %d" %  z, size=s, y=tpos)
 
-                            # coronal
-                            idx = tuple([k,2]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 2
-                            for aax, s, t in zip([axis3[idx], fig_sag.add_subplot(1, 1, 1)], [fsize, '14'], ['', bb]):
-                                aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
-                                aax.imshow(template[:,y,:].T, cmap='gray', interpolation='none', origin='lower');
-                                aax.imshow(thresh(data[:,y,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
-                                slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
-                                aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
-                                # slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=True);
-                                aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
-                                # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
-                                slice, norm = cont(c0recon[:,y,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
-                                aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'], norm=norm, alpha=0.8);
-                                aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
-                                aax.set_ylabel(t, fontsize=s)
-                                aax.set_title("sagittal slice %d" %  y, size=s, y=tpos)
+                                # sagittal
+                                idx = tuple([k,1]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 1
+                                for aax, s, t in zip([axis3[idx], fig_cor.add_subplot(1, 1, 1)], [fsize, '14'], ['', bb]):
+                                    aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
+                                    aax.imshow(TEMPLATE[x,:,:].T, cmap='gray', interpolation='none', origin='lower');
+                                    aax.imshow(thresh(data[x,:,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
+                                    slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                                    aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.6);
+                                    # slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=True);
+                                    aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
+                                    # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
+                                    slice, norm = cont(c0recon[x,:,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                                    aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] , norm=norm, alpha=0.8);
+                                    # aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                                    aax.set_ylabel(t, fontsize=s)
+                                    aax.set_title("coronal slice %d" %  x, size=s, y=tpos)
 
-                            for ff,fn in zip([fig_ax,fig_cor,fig_sag], [bratsID+'_lvl-'+str(l)+'_cmp-'+str(k+1)+'_ax-'+str(z),bratsID+'_lvl-'+str(l)+'_cmp-'+str(k+1)+'_cor-'+str(x),bratsID+'_lvl-'+str(l)+'_cmp-'+str(k+1)+'_sag-'+str(y)]):
-                                ff.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
-                                ff.savefig(os.path.join(vis_path_slices, fn + '.pdf'), format='pdf', dpi=1200);
-                                ff.clf()
+                                # coronal
+                                idx = tuple([k,2]) if isinstance(axis3[0], (np.ndarray, np.generic)) else 2
+                                for aax, s, t in zip([axis3[idx], fig_sag.add_subplot(1, 1, 1)], [fsize, '14'], ['', bb]):
+                                    aax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False);
+                                    aax.imshow(TEMPLATE[:,y,:].T, cmap='gray', interpolation='none', origin='lower');
+                                    aax.imshow(thresh(data[:,y,:].T, cmap_d, d_thresh, v_max=hi, v_min=lo), interpolation='none', origin='lower', alpha=1);
+                                    slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                                    aax.contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'], norm=norm, alpha=0.6);
+                                    # slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1, clip01=True);
+                                    aax.contour(slice,  levels=levels_contour_c1,  cmap=cmap_c1, linestyles=['-'] ,linewidths=lwidths, norm=norm, alpha=0.9);
+                                    # aax.imshow(thresh(c1recon[:,:,z].T, cmap_c1, thresh=c1_thresh, v_max=hi_c1, v_min=lo_c1), interpolation='none', alpha=0.5);
+                                    slice, norm = cont(c0recon[:,y,:].T, cmap_c0, v_max=hi_c0, v_min=lo_c0);
+                                    aax.contourf(slice, levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'], norm=norm, alpha=0.8);
+                                    # aax.contour(slice,  levels=levels_contour_c0, cmap=cmap_c0c, linestyles=['-'] ,linewidths=[0.2], norm=norm, alpha=1);
+                                    aax.set_ylabel(t, fontsize=s)
+                                    aax.set_title("sagittal slice %d" %  y, size=s, y=tpos)
+
+                                for ff,fn in zip([fig_ax,fig_cor,fig_sag], [bratsID+'_lvl-'+str(l)+'_cmp-'+str(k+1)+'_ax-'+str(z),bratsID+'_lvl-'+str(l)+'_cmp-'+str(k+1)+'_cor-'+str(x),bratsID+'_lvl-'+str(l)+'_cmp-'+str(k+1)+'_sag-'+str(y)]):
+                                    ff.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
+                                    ff.savefig(os.path.join(vis_path_slices, fn + suffix + '.pdf'), format='pdf', dpi=1200);
+                                    ff.clf()
 
                     # save fig to file
                     if CHART_A:
@@ -1824,12 +1950,13 @@ if __name__=='__main__':
                             ss = 30 if relmass[l][k] > 1E-3 else 10
                             ccc = 'k' if relmass[l][k] > 1E-3 else 'k'
                             label = '$(l= %d)' % (math.log(level,2)-5);
-                            ax_l2d[0].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][1]*sy), c=ccc, marker=mm, s=ss);
-                            ax_l2d[1].scatter(round(xcm_data[l][k][1]*sy), round(xcm_data[l][k][2]*sz), c=ccc, marker=mm, s=ss);
-                            ax_l2d[2].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][2]*sz), c=ccc, marker=mm, s=ss);
-                            ax_l2d[0].scatter(round(wcm_labeled_dcomp[l][k+1][0]*sx), round(wcm_labeled_dcomp[l][k+1][1]*sy), c='navy', marker='1', s=20);
-                            ax_l2d[1].scatter(round(wcm_labeled_dcomp[l][k+1][1]*sy), round(wcm_labeled_dcomp[l][k+1][2]*sz), c='navy', marker='1', s=20);
-                            ax_l2d[2].scatter(round(wcm_labeled_dcomp[l][k+1][0]*sx), round(wcm_labeled_dcomp[l][k+1][2]*sz), c='navy', marker='1', s=20);
+                            if relmass[l][k] > 1E-3:
+                                ax_l2d[0].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][1]*sy), c=ccc, marker=mm, s=ss);
+                                ax_l2d[1].scatter(round(xcm_data[l][k][1]*sy), round(xcm_data[l][k][2]*sz), c=ccc, marker=mm, s=ss);
+                                ax_l2d[2].scatter(round(xcm_data[l][k][0]*sx), round(xcm_data[l][k][2]*sz), c=ccc, marker=mm, s=ss);
+                            ax_l2d[0].scatter(round(wcm_labeled_dcomp[l][k+1][0]*sx), round(wcm_labeled_dcomp[l][k+1][1]*sy), c='royalblue', marker='1', s=20);
+                            ax_l2d[1].scatter(round(wcm_labeled_dcomp[l][k+1][1]*sy), round(wcm_labeled_dcomp[l][k+1][2]*sz), c='royalblue', marker='1', s=20);
+                            ax_l2d[2].scatter(round(wcm_labeled_dcomp[l][k+1][0]*sx), round(wcm_labeled_dcomp[l][k+1][2]*sz), c='royalblue', marker='1', s=20);
                             Xx.append(round(xcm_data[l][k][0]*sx));
                             Yy.append(round(xcm_data[l][k][1]*sy));
                             Zz.append(round(xcm_data[l][k][2]*sz));
@@ -1846,23 +1973,52 @@ if __name__=='__main__':
             mid_x = (np.amax(Xx)+np.amin(Xx)) * 0.5
             mid_y = (np.amax(Yy)+np.amin(Yy)) * 0.5
             mid_z = (np.amax(Zz)+np.amin(Zz)) * 0.5
-            # axial
-            z = int(round(xcm_data[256][0][2]/(2*math.pi)*template_256.shape[2]))
-            # cmap='Spectral_r'
-            ax_l2d[0].imshow(template_256[:,:,z].T, cmap='gray', interpolation='none', alpha=0.4, origin='upper');
-            # 0=bg,1=nec,4=en,2=ed,8=csf,7=vt,5=gm,6=wm
-            # countours_ax = ax_l2d[0].contour(template_256[:,:,z].T, [0,1,2,4,5,6,7,8], cmap='jet', alpha=0.2, origin='lower', linewidth=0.05);
-            # ax_l2d[0].clabel(countours_ax, [1,2,4,5,6,7,8],  inline=True, fontsize=5)
-            ax_l2d[0].set_title("axial slice " + str(z), size='10');
-            # sagittal
-            x = int(round(xcm_data[256][0][0]/(2*math.pi)*template_256.shape[0]))
-            ax_l2d[1].imshow(template_256[x,:,:].T, cmap='gray', interpolation='none', alpha=0.4, origin='upper');
-            ax_l2d[1].set_title("sagittal slice " + str(x), size='10');
-            # coronal
-            y = int(round(xcm_data[256][0][1]/(2*math.pi)*template_256.shape[1]))
-            ax_l2d[2].imshow(template_256[:,y,:].T, cmap='gray', interpolation='none', alpha=0.4, origin='lower');
-            ax_l2d[2].set_title("coronal slice " + str(y), size='10');
 
+
+            TEMPLATE_AX  = temp_flair # [temp_t2, temp_flair]
+            TEMPLATE_COR = temp_flair # [temp_t2, temp_flair]
+            TEMPLATE_SAG = temp_flair # [temp_t2, temp_flair]
+            augmented = False;
+            suffix   = '_flair_flair_flair'   # ['_t2', '_flair']
+            a  = 0.8
+            a2 = 0.8
+
+            cmap_dd = cmap_d;#plt.cm.spring_r
+            levels_contour_c1_here  = [0.5, 0.7, 0.9];
+
+            # axial
+            # -------------------------------------------------------------------
+            z = int(round(xcm_data[256][0][2]/(2*math.pi)*template_256.shape[2]))
+            ax_l2d[0].imshow(TEMPLATE_AX[:,:,z].T, cmap='gray', interpolation='none', alpha=a, origin='upper');
+
+            if augmented:
+                slice, norm = cont(c1recon[:,:,z].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                ax_l2d[0].contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.3);
+                ax_l2d[0].contour(slice,  levels=levels_contour_c1_here,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[ 1.0, 1.0, 1.0], norm=norm, alpha=0.9);
+                ax_l2d[0].imshow(thresh_data(data[:,:,z].T, cmap_dd, 0.85, v_max=1, v_min=0), interpolation='none', origin='upper', alpha=0.9);
+            ax_l2d[0].set_title("axial slice " + str(z), size='10');
+
+            # sagittal
+            # -------------------------------------------------------------------
+            x = int(round(xcm_data[256][0][0]/(2*math.pi)*template_256.shape[0]))
+            ax_l2d[1].imshow(TEMPLATE_COR[x,:,:].T, cmap='gray', interpolation='none', alpha=a2, origin='upper');
+            if augmented:
+                slice, norm = cont(c1recon[x,:,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                ax_l2d[1].contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.3);
+                ax_l2d[1].contour(slice,  levels=levels_contour_c1_here,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[ 1.0, 1.0, 1.0], norm=norm, alpha=0.9);
+                ax_l2d[1].imshow(thresh_data(data[x,:,:].T, cmap_dd, 0.85, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=0.9);
+            ax_l2d[1].set_title("sagittal slice " + str(x), size='10');
+
+            # coronal
+            # -------------------------------------------------------------------
+            y = int(round(xcm_data[256][0][1]/(2*math.pi)*template_256.shape[1]))
+            ax_l2d[2].imshow(TEMPLATE_SAG[:,y,:].T, cmap='gray', interpolation='none', alpha=a2, origin='lower');
+            if augmented:
+                slice, norm = cont(c1recon[:,y,:].T, cmap_c1, v_max=hi_c1, v_min=lo_c1);
+                ax_l2d[2].contourf(slice, levels=levels_contourf_c1,  cmap=cmap_c1, linestyles=['-'] , norm=norm, alpha=0.3);
+                ax_l2d[2].contour(slice,  levels=levels_contour_c1_here,  cmap=cmap_c1, linestyles=['-'] ,linewidths=[ 1.0, 1.0, 1.0], norm=norm, alpha=0.9);
+                ax_l2d[2].imshow(thresh_data(data[:,y,:].T, cmap_dd, 0.85, v_max=hi, v_min=lo), interpolation='none', origin='upper', alpha=0.9);
+            ax_l2d[2].set_title("coronal slice " + str(y), size='10');
             ax_l2d[0].set_aspect('equal', adjustable='box')
             ax_l2d[1].set_aspect('equal', adjustable='box')
             ax_l2d[2].set_aspect('equal', adjustable='box')
@@ -1877,7 +2033,7 @@ if __name__=='__main__':
             ax_l2d[0].set_ylim(ax_l2d[0].get_ylim()[::-1])        # invert the axis
             sns.despine(offset=0, trim=True)
             fig_l2d.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.95, wspace=0.2, hspace=0.5);
-            fig_l2d.savefig(os.path.join(vis_path, fname + '_zoom.pdf'), format='pdf', dpi=1200);
+            fig_l2d.savefig(os.path.join(vis_path, fname + suffix + '_zoom.pdf'), format='pdf', dpi=1200);
 
             ax_l2d[0].set_xlim([0,template_256.shape[0]])
             ax_l2d[0].set_ylim([0,template_256.shape[1]])
@@ -1888,7 +2044,7 @@ if __name__=='__main__':
             ax_l2d[0].set_ylim(ax_l2d[0].get_ylim()[::-1])        # invert the axis
             sns.despine(offset=0, trim=True)
             fig_l2d.subplots_adjust(left=0.05, right=0.95, bottom=0.1, top=0.95, wspace=0.2, hspace=0.5);
-            fig_l2d.savefig(os.path.join(vis_path, fname + '.pdf'), format='pdf', dpi=1200);
+            fig_l2d.savefig(os.path.join(vis_path, fname + suffix + '.pdf'), format='pdf', dpi=1200);
 
     if args.compute_tumor_stats:
         file_params = 'tumor_parameters-' + args.rdir + '.txt'
@@ -1931,15 +2087,11 @@ if __name__=='__main__':
             computeTumorStats(FEATURES[l], template_img, t1_recon_seg, t0_recon_seg, c1_recon, c0_recon, c1_pred12, c1_pred15, data, component_mask,  patient_label_rev, res_path);
 
             if l == 256:
+                # try:
                 print("\n (4) b) computing tumor statistics in ATLAS space\n");
-                #try:
-                c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_in_Aspace.nii.gz"));
+                c0_in_aspace = nib.load(os.path.join(res_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz"));
                 c0_in_aspace = c0_in_aspace.get_fdata();
-                patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace.nii.gz"));
-                #except:
-                #    c0_in_aspace = None;
-                #    patient_ref_in_aspace = None;
-                #    print("Error: Can not read images in atlas space"); sys.exit(1);
+                patient_ref_in_aspace = nib.load(os.path.join(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace_240x240x155.nii.gz"));
 
                 # connected copmponent analysis of patient TC in ATLAS space
                 labeled_aspace, comps_data_aspace, ncomps_data_aspace, xcm_data_px_aspace, xcm_data_aspace, relmass_aspace = connectedComponentsData(os.path.join(args.input_path, "registration"), "patient_seg_in_Aspace.nii.gz", patient_label_rev);
@@ -1951,10 +2103,14 @@ if __name__=='__main__':
                 # component mask of connected component analysis of patient TC in ATLAS space
                 component_mask_aspace = comps_data_aspace if args.analyze_concomps else None;
                 computeTumorStatsInASpace(FEATURES[l], patient_ref_in_aspace, c0_in_aspace, component_mask_aspace, patient_label_rev);
+                # except:
+                #    c0_in_aspace = None;
+                #    patient_ref_in_aspace = None;
+                #    print("Read Error: Can not read images in atlas space. Continuing ....");
 
             FEATURES[l]['n_comps[all]'] = len(xcm_data[l])
-            for k in range(len(xcm_data[l])):
-                if relmass[l][k] <= 1E-3:
+            for k in range(1,len(xcm_data[l])+1):
+                if relmass[l][k-1] <= 1E-3:
                     break;
             FEATURES[l]['n_comps'] = k;
 

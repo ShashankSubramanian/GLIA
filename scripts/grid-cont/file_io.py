@@ -35,7 +35,7 @@ def createNetCDF(filename,dimensions,variable):
 ### ------------------------------------------------------------------------ ###
 def writeNII(img, filename, affine=None, ref_image=None):
     '''
-    function to wrote a nifti image, creates a new nifti object
+    function to write a nifti image, creates a new nifti object
     '''
     if ref_image is not None:
         data = nib.Nifti1Image(img, affine=ref_image.affine, header=ref_image.header);
