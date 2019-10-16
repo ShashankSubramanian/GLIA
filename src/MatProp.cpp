@@ -87,6 +87,7 @@ PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec b
 	// Set bg prob as 1 - sum
     ierr = VecWAXPY (bg_, 1., gm_, wm_);                   CHKERRQ (ierr);
     ierr = VecAXPY (bg_, 1., csf_);                        CHKERRQ (ierr);
+    ierr = VecAXPY (bg_, 1., glm_);                        CHKERRQ (ierr);
     ierr = VecShift (bg_, -1.0);                           CHKERRQ (ierr);
     ierr = VecScale (bg_, -1.0);                           CHKERRQ (ierr);
 
