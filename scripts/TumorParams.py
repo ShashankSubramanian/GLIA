@@ -360,6 +360,15 @@ def getTumorRunCmd(params):
         else:
             print ('Default atlas csf path = {} used'.format(csf_path))
     # ---
+    if 'glm_path' in params:
+        glm_path = params['glm_path']
+        print('GLM path = {}'.format(glm_path))
+    else:
+        if not os.path.exists(glm_path):
+            print('Default atlas glm path does not exist and no input path provided!\n')
+        else:
+            print ('Default atlas glm path = {} used'.format(glm_path))
+    # ---
     if 'obs_mask_path' in params:
         obs_mask_path = params['obs_mask_path']
         print('OBS mask path = {}'.format(obs_mask_path))
