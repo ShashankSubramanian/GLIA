@@ -465,7 +465,8 @@ def gridcont(basedir, args):
         cmd_postproc += " -rdir " + rdir + " ";
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
-        cmd_postproc += " -postprocess_registration "; 
+        if args.run_registration:
+            cmd_postproc += " -postprocess_registration "; 
         cmd_postproc += " -analyze_concomps ";
         cmd_postproc += " -generate_slices " + "\n";
 
@@ -473,9 +474,10 @@ def gridcont(basedir, args):
 
         #### TODO  REGISTRATION HERE ####
         if level == 256:
-            cmdline_reg = registration(args, basedir)
-            cmd += cmdline_reg + "\n\n";
-            cmd += "\n# postproc, compute dice\n" + cmd_postproc + "\n\n";
+            if args.run_registration:
+                cmdline_reg = registration(args, basedir)
+                cmd += cmdline_reg + "\n\n";
+            cmd += "\n\n# postproc, compute dice\n" + cmd_postproc + "\n\n";
 
         ONEJOB  += cmd;
         MULTJOB += cmd;
@@ -546,6 +548,7 @@ if __name__=='__main__':
     parser.add_argument (                   '--vary_obs_lambda',             action='store_true', help = 'indicate wether or not to perform a series of experiment with different obervation operators OBS(lambda)');
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
+    parser.add_argument (                   '--run_registration',           action='store_true', help = 'run registration');
     parser.add_argument (                   '--cm_data',                     action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
     parser.add_argument (                   '--tumor_code_dir',                    type = str, help = 'path to tumor solver code directory')
     parser.add_argument (                   '--reg_code_dir',                      type = str, help = 'path to registration solver code directory')
