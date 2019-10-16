@@ -9,21 +9,18 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/jakob-low/'
-params['compute_sys'] = 'maverick2'
+params['results_path'] = tumor_dir + '/results/jakob-high-/'
+params['compute_sys'] = 'rebels'
 
 
 
 # ### Real data
 # params['data_path'] = tumor_dir + '/results/tc2_128/data.nc'
 # # # ## Atlas
-#params['gm_path'] = '/work/05027/shas1693/maverick2/pglistr_tumor/brain_data/sri_atlas/sri_gm_256x256x256_aff2jakob.nc'
-#params['wm_path'] = '/work/05027/shas1693/maverick2/pglistr_tumor/brain_data/sri_atlas/sri_wm_256x256x256_aff2jakob.nc'
-#params['csf_path'] = '/work/05027/shas1693/maverick2/pglistr_tumor/brain_data/sri_atlas/sri_csf_256x256x256_aff2jakob.nc'
-
-params['gm_path'] = tumor_dir + "/brain_data/jakob/jakob_gm.nc" 
-params['wm_path'] = tumor_dir + "/brain_data/jakob/jakob_wm.nc" 
-params['csf_path'] = tumor_dir + "/brain_data/jakob/jakob_csf.nc" 
+# params['gm_path'] = tumor_dir + "/brain_data/jakob/jakob_gm.nc" 
+# params['wm_path'] = tumor_dir + "/brain_data/jakob/jakob_wm.nc" 
+# params['glm_path'] = tumor_dir + "/brain_data/jakob/jakob_csf.nc" 
+# params['csf_path'] = tumor_dir + "/brain_data/jakob/jakob_vt.nc"
 
 
 if params['compute_sys'] == 'rebels':

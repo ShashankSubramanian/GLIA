@@ -40,6 +40,8 @@ def getTumorRunCmd(params):
     csf_path = tumor_dir + '/brain_data/' + str(N) +'/csf.nc'
     ### Path to wm
     wm_path = tumor_dir + '/brain_data/' + str(N) +'/white_matter.nc'
+    ### Path to glm/cortical-csf
+    glm_path = tumor_dir + '/brain_data/' + str(N) +'/glial_matter.nc'
     ### Path to custom obs mask, default: none
     obs_mask_path = ""
     ### Path to data for support, default: none, (target data for inversion is used)
@@ -446,6 +448,7 @@ def getTumorRunCmd(params):
     " -gm_path " + gm_path + \
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
+    " -glm_path " + glm_path + \
     " -obs_mask_path " + obs_mask_path + \
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \

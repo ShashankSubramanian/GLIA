@@ -196,7 +196,7 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
     PetscOptionsString ("-wm_path", "Path to WM", "", wm_path, wm_path, 400, NULL);
     PetscOptionsString ("-csf_path", "Path to CSF", "", csf_path, csf_path, 400, NULL);
-    PetscOptionsString ("-glm_path", "Path to GLM", "", glm_path, glm_path, 400, NULL);
+    PetscOptionsString ("-glm_path", "Path to GLM/Cortical CSF", "", glm_path, glm_path, 400, NULL);
     PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
     PetscOptionsString ("-pvec_path", "Path to initial guess p vector", "", p_vec_path, p_vec_path, 400, NULL);
     PetscOptionsString ("-gaussian_cm_path", "Path to file with Gaussian centers", "", gaussian_cm_path, gaussian_cm_path, 400, NULL);
@@ -536,7 +536,7 @@ int main (int argc, char** argv) {
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, spec_ops, gm_path, wm_path, csf_path, glm_path);
-        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
+        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
 
@@ -1171,12 +1171,17 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     ierr = VecDuplicate (gm, &wm);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
-    ierr = VecDuplicate (gm, &bg);                                        CHKERRQ (ierr);
-    ierr = VecSet (bg, 0.);                                               CHKERRQ (ierr);
+    ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
+    ierr = VecSet (glm, 0.);                                              CHKERRQ (ierr);
 
     dataIn (wm, n_misc, wm_path);
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
+
+    if (n_misc->model_ >= 4) {
+        // mass-effect included
+        dataIn (glm, n_misc, glm_path); 
+    }
 
     ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
