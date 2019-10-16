@@ -232,15 +232,15 @@ PetscErrorCode Tumor::computeSegmentation () {
     PetscErrorCode ierr = 0;
 
     ierr = VecSet (seg_, 0);                                                  CHKERRQ(ierr);
-
     // compute seg_ of gm, wm, csf, bg, tumor
     std::vector<ScalarType> v;
     std::vector<ScalarType>::iterator seg_component;
-    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *seg_ptr;
+    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *glm_ptr, *seg_ptr;
     ierr = VecGetArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
+    ierr = VecGetArray (mat_prop_->glm_, &glm_ptr);                   CHKERRQ(ierr);
     ierr = VecGetArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecGetArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
@@ -251,6 +251,7 @@ PetscErrorCode Tumor::computeSegmentation () {
         v.push_back (wm_ptr[i]);
         v.push_back (gm_ptr[i]);
         v.push_back (csf_ptr[i]);
+        v.push_back (glm_ptr[i]);
 
         seg_component = std::max_element (v.begin(), v.end());
         seg_ptr[i] = std::distance (v.begin(), seg_component);
@@ -262,11 +263,9 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
+    ierr = VecRestoreArray (mat_prop_->glm_, &glm_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
-
-    // ScalarType sigma_smooth = 2.0 * M_PI / n_misc_->n_[0];
-    // ierr = spec_ops_->weierstrassSmoother (seg_, seg_, n_misc_, sigma_smooth);
 
     PetscFunctionReturn (ierr);
 }
@@ -296,35 +295,28 @@ PetscErrorCode Tumor::computeSpeciesNorms () {
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode Tumor::clipHealthyTissues () {
+
+PetscErrorCode Tumor::clipTumor () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    ScalarType *gm_ptr, *wm_ptr, *csf_ptr;
-    ierr = vecGetArray (mat_prop_->gm_, &gm_ptr);                CHKERRQ (ierr);
-    ierr = vecGetArray (mat_prop_->wm_, &wm_ptr);                CHKERRQ (ierr);
-    ierr = vecGetArray (mat_prop_->csf_, &csf_ptr);              CHKERRQ (ierr);
+    ScalarType *c_ptr;
+    ierr = vecGetArray (c_t_, &c_ptr);                          CHKERRQ (ierr);
 
     #ifdef CUDA
-        clipHealthyTissuesCuda (gm_ptr, wm_ptr, csf_ptr, n_misc_->n_local_);
+        clipVectorCuda (c_ptr, n_misc_->n_local_);
+        clipVectorAboveCuda (c_ptr, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            gm_ptr[i] = (gm_ptr[i] <= 0.) ? 0. : gm_ptr[i];
-            wm_ptr[i] = (wm_ptr[i] <= 0.) ? 0. : wm_ptr[i];
-            csf_ptr[i] = (csf_ptr[i] <= 0.) ? 0. : csf_ptr[i];
+            c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];
+            c_ptr[i] = (c_ptr[i] > 1.) ? 1. : c_ptr[i];
         }
     #endif
 
-
-    ierr = vecRestoreArray (mat_prop_->gm_, &gm_ptr);                CHKERRQ (ierr);
-    ierr = vecRestoreArray (mat_prop_->wm_, &wm_ptr);                CHKERRQ (ierr);
-    ierr = vecRestoreArray (mat_prop_->csf_, &csf_ptr);              CHKERRQ (ierr);
-
+    ierr = vecRestoreArray (c_t_, &c_ptr);                      CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);
 }
-
-
 
 Tumor::~Tumor () {
     PetscErrorCode ierr;

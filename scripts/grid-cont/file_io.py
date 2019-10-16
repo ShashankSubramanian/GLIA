@@ -1,4 +1,6 @@
 import os
+from sys import exit
+import os.path as op
 import numpy as np
 from netCDF4 import Dataset
 import nibabel as nib
@@ -31,12 +33,18 @@ def createNetCDF(filename,dimensions,variable):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def writeNII(img, filename, affine=None):
+def writeNII(img, filename, affine=None, ref_image=None):
     '''
     function to write a nifti image, creates a new nifti object
     '''
-    if affine is None:
-        data = nib.Nifti1Image(img, np.eye(4));
+    if ref_image is not None:
+        data = nib.Nifti1Image(img, affine=ref_image.affine, header=ref_image.header);
+        data.header['datatype'] = 64
+        data.header['glmax'] = np.max(img)
+        data.header['glmin'] = np.min(img)
+    elif affine is not None:
+        data = nib.Nifti1Image(img, affine=affine);
     else:
-        data = nib.Nifti1Image(img, affine);
+        data = nib.Nifti1Image(img, np.eye(4))
+
     nib.save(data, filename);

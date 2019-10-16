@@ -32,7 +32,7 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
     }
 };
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, char*);
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *data_path, char* support_data_path, char* data_comp_path);
@@ -196,7 +196,7 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
     PetscOptionsString ("-wm_path", "Path to WM", "", wm_path, wm_path, 400, NULL);
     PetscOptionsString ("-csf_path", "Path to CSF", "", csf_path, csf_path, 400, NULL);
-    PetscOptionsString ("-glm_path", "Path to GLM", "", glm_path, glm_path, 400, NULL);
+    PetscOptionsString ("-glm_path", "Path to GLM/Cortical CSF", "", glm_path, glm_path, 400, NULL);
     PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
     PetscOptionsString ("-pvec_path", "Path to initial guess p vector", "", p_vec_path, p_vec_path, 400, NULL);
     PetscOptionsString ("-gaussian_cm_path", "Path to file with Gaussian centers", "", gaussian_cm_path, gaussian_cm_path, 400, NULL);
@@ -536,7 +536,7 @@ int main (int argc, char** argv) {
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, spec_ops, gm_path, wm_path, csf_path, glm_path);
-        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, nullptr, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
+        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
         ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
     }
 
@@ -556,7 +556,7 @@ int main (int argc, char** argv) {
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
         } else {
-            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, init_tumor_path);
+            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, spec_ops,init_tumor_path);
         }
         read_support_data_nc = false;
         support_data = data;
@@ -593,6 +593,9 @@ int main (int argc, char** argv) {
             if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
         }
         ss << " data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (n_misc->model_ >= 4) {
+            ss << " mass-effect forcing factor used = " << n_misc->forcing_factor_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        }
     } else {
         ss << " data read"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
@@ -1168,12 +1171,17 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     ierr = VecDuplicate (gm, &wm);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);
-    ierr = VecDuplicate (gm, &bg);                                        CHKERRQ (ierr);
-    ierr = VecSet (bg, 0.);                                               CHKERRQ (ierr);
+    ierr = VecDuplicate (gm, &glm);                                       CHKERRQ (ierr);
+    ierr = VecSet (glm, 0.);                                              CHKERRQ (ierr);
 
     dataIn (wm, n_misc, wm_path);
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
+
+    if (n_misc->model_ >= 4) {
+        // mass-effect included
+        dataIn (glm, n_misc, glm_path); 
+    }
 
     ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
@@ -1181,12 +1189,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     ierr = spec_ops->weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
     ierr = spec_ops->weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
 
-    // Set bg prob as 1 - sum
-    ierr = VecWAXPY (bg, 1., gm, wm);                   CHKERRQ (ierr);
-    ierr = VecAXPY (bg, 1., csf);                       CHKERRQ (ierr);
-    ierr = VecShift (bg, -1.0);                         CHKERRQ (ierr);
-    ierr = VecScale (bg, -1.0);                         CHKERRQ (ierr);
-
+    bg = nullptr;
 
     PetscFunctionReturn (ierr);
 }
@@ -1539,7 +1542,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, char *init_tumor_path) {
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *init_tumor_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -1551,6 +1554,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     //Create p_rec
     int np = n_misc->np_;
     int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+    ScalarType sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
 
     #ifdef SERIAL
         ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec);                 CHKERRQ (ierr);
@@ -1571,8 +1575,25 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
 
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
+    ScalarType *c0_ptr;
+    ScalarType c0_min;
     if ((init_tumor_path != NULL) && (init_tumor_path[0] != '\0')) {
         ierr = dataIn (c_0, n_misc, init_tumor_path);                       CHKERRQ (ierr);
+        ierr = VecMin (c_0, NULL, &c0_min);                                 CHKERRQ (ierr);
+        if (c0_min < 0) {
+            ss << " tumor init is aliased with min " << c0_min << "; clipping and smoothing...";
+            ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = vecGetArray (c_0, &c0_ptr);                                              CHKERRQ (ierr);
+            #ifdef CUDA
+                clipVectorCuda (c0_ptr, n_misc->n_local_);
+            #else
+                for (int i = 0; i < n_misc->n_local_; i++)
+                    c0_ptr[i] = (c0_ptr[i] <= 0.) ? 0. : c0_ptr[i];
+            #endif
+            ierr = vecRestoreArray (c_0, &c0_ptr);                                          CHKERRQ (ierr);
+            // smooth a little bit because sometimes registration outputs have too much aliasing
+            ierr = spec_ops->weierstrassSmoother (c_0, c_0, n_misc, sigma_smooth);          CHKERRQ (ierr);
+        }
     } else {
         ierr = tumor->setTrueP (n_misc);
         ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -1582,8 +1603,6 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         ierr = tumor->phi_->apply (c_0, tumor->p_true_);
     }
-
-    ScalarType *c0_ptr;
 
     if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);

@@ -7,6 +7,7 @@ import numpy as np
 import imageTools as imgtools
 import nibabel as nib
 import file_io as fio
+import claire
 
 
 P_COUNTER = 0;
@@ -73,8 +74,8 @@ def createJobsubFile(cmd, opt, level):
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
 
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
-        bash_file.write("#SBATCH --mail-user=kscheufele@austin.utexas.edu\n");
-        bash_file.write("#SBATCH --mail-type=fail\n");
+        #bash_file.write("#SBATCH --mail-user=nutexas.edu\n");
+        #bash_file.write("#SBATCH --mail-type=fail\n");
         if opt['compute_sys'] == 'frontera':
           bash_file.write("#SBATCH -A FTA-Biros\n");
         else:
@@ -99,6 +100,84 @@ def createJobsubFile(cmd, opt, level):
     # submit job
     # subprocess.call(['sbatch',bash_filename]);
 
+###
+### ------------------------------------------------------------------------ ###
+def registration(args, basedir):
+    '''
+    Function to run registration
+    '''
+
+    # create output folder
+    base_output_dir = args.results_directory
+    if not os.path.exists(base_output_dir):
+        os.mkdir(base_output_dir);
+    # create input folder
+    data_dir = os.path.join(base_output_dir, 'input');
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir);
+
+    tumor_dir = os.path.join(base_output_dir, 'tumor_inversion/nx256/obs-1.0');
+    if not os.path.exists(tumor_dir):
+        os.mkdir(tumor_dir)
+
+    reg_dir = os.path.join(base_output_dir, 'registration');
+    if not os.path.exists(reg_dir):
+        os.mkdir(reg_dir)
+
+    patient_labels = ",".join([x.split('=')[0] for x in args.patient_segmentation_labels.split(',')])
+    reg_param = {}
+    reg_param['reg_code_dir'] = args.reg_code_dir
+    claire.set_parameters(reg_param, base_output_dir, tumor_dir)
+    reg_cmd = "#### define paths\n"
+    reg_cmd += "CLAIRE_BDIR=" + reg_param["reg_code_dir"] + "/bin\n"
+    reg_cmd += "DATA_DIR=" + reg_param['data_dir'] + "\n"
+    reg_cmd += "OUTPUT_DIR=" + reg_param['output_dir'] + "\n"
+    reg_cmd += "TUMOR_DIR=" + reg_param['tumor_output_dir'] + "\n"
+    
+    # registration command
+    reg_cmd += claire.createCmdLineReg(reg_param)
+    # transport labels command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='tlabelmap', labels=patient_labels, input_filename="$DATA_DIR/patient_seg.nii.gz", output_filename="$OUTPUT_DIR/patient_seg_in_Aspace.nii.gz", )
+    reg_cmd += "\n#convert netcdf to nifti\npython3 " + basedir + "/grid-cont/utils.py -convert_netcdf_to_nii --name_old $TUMOR_DIR/c0Recon.nc --name_new $TUMOR_DIR/c0Recon.nii.gz --reference_image $DATA_DIR/patient_wm.nii.gz\n\n"
+    reg_cmd += "#convert netcdf to nifti\npython3 " + basedir + "/grid-cont/utils.py -convert_netcdf_to_nii --name_old $TUMOR_DIR/cRecon.nc --name_new $TUMOR_DIR/cRecon.nii.gz --reference_image $DATA_DIR/patient_wm.nii.gz\n\n\n"
+
+    # transport c0 command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$TUMOR_DIR/c0Recon.nii.gz", output_filename="$TUMOR_DIR/c0Recon_in_Aspace.nii.gz")
+    # transport c1 command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$TUMOR_DIR/cRecon.nii.gz", output_filename="$TUMOR_DIR/cRecon_in_Aspace.nii.gz")
+    # transport ventricles command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_vt.nii.gz", output_filename="$OUTPUT_DIR/patient_vt_in_Aspace.nii.gz")
+    # transport CSF command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_csf_no_vt.nii.gz", output_filename="$OUTPUT_DIR/patient_csf_no_vt_in_Aspace.nii.gz")
+    # transport gray matter command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_gm.nii.gz", output_filename="$OUTPUT_DIR/patient_gm_in_Aspace.nii.gz")
+    # transport white matter command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_wm.nii.gz", output_filename="$OUTPUT_DIR/patient_wm_in_Aspace.nii.gz")
+    # transport edema+white matter command 
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_ed_wm.nii.gz", output_filename="$OUTPUT_DIR/patient_ed_wm_in_Aspace.nii.gz")
+    
+    return reg_cmd
+    #local_cmd = preproc_cmd + "\n\n\n" + reg_cmd + "\n\n\n" + postproc_cmd
+    #
+    #bash_filename = claire.create_cmd_file(local_cmd,reg_param)
+    #
+    ## create Job file
+    #if num_patients is not None:
+    #    if num_patients == 0:
+    #        global_cmd = ""
+    #    global_cmd += "\n" +  bash_filename
+    #    num_patients += 1
+    #    
+    #    if num_patients == patients_per_job:
+    #        claire.createJobsubFile(global_cmd,reg_param,submit=True)
+    #        global_cmd = ""
+    #        num_patients = 0
+    #else:
+    #    global_cmd = bash_filename
+    #    claire.createJobsubFile(global_cmd,reg_param,submit=True)
+    #    global_cmd = ""
+    #
+    #return global_cmd,num_patients
 
 
 ###
@@ -234,8 +313,8 @@ def gridcont(basedir, args):
     t_params = {};
     tumor_out_path = os.path.join(output_path, 'tumor_inversion/');
     t_params['compute_sys']  = args.compute_cluster;
-    if args.code_dir is not None:
-        t_params['code_path'] = args.code_dir
+    if args.tumor_code_dir is not None:
+        t_params['code_path'] = args.tumor_code_dir
     else:
         t_params['code_path']    = os.path.join(basedir, '3rdparty/pglistr_tumor');
 
@@ -336,6 +415,9 @@ def gridcont(basedir, args):
         t_params['gm_path']               = os.path.join(inp_dir, 'patient_seg_gm.nc');
         t_params['wm_path']               = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
         t_params['data_path']             = os.path.join(inp_dir, 'patient_seg_tc.nc');
+        t_params['forward_flag']          = 0
+        t_params['smooth_f']              = 1.5
+        t_params['model']                 = 1
         if gaussian_selection_mode in ["C0", "D"] or level == 64:
             t_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
             t_params['data_comp_path']     = os.path.join(inp_dir, 'data_comps.nc');
@@ -375,6 +457,7 @@ def gridcont(basedir, args):
         # cmd += "export DIR_SUFFIX='obs-1.0'\n";
         # cmd += "mkdir -p ${DIR_SUFFIX}\n"
         cmd += cmdline_tumor + "\n\n";
+        
 
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
@@ -382,12 +465,16 @@ def gridcont(basedir, args):
         cmd_postproc += " -rdir " + rdir + " ";
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
+        cmd_postproc += " -postprocess_registration "; 
         cmd_postproc += " -analyze_concomps ";
         cmd_postproc += " -generate_slices " + "\n";
 
         # cmd_postproc += " -compute_dice_healthy " + "\n";
 
+        #### TODO  REGISTRATION HERE ####
         if level == 256:
+            cmdline_reg = registration(args, basedir)
+            cmd += cmdline_reg + "\n\n";
             cmd += "\n# postproc, compute dice\n" + cmd_postproc + "\n\n";
 
         ONEJOB  += cmd;
@@ -460,7 +547,8 @@ if __name__=='__main__':
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
     parser.add_argument (                   '--cm_data',                     action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
-    parser.add_argument (                   '--code_dir',                    type = str, help = 'path to tumor solver code directory')
+    parser.add_argument (                   '--tumor_code_dir',                    type = str, help = 'path to tumor solver code directory')
+    parser.add_argument (                   '--reg_code_dir',                      type = str, help = 'path to registration solver code directory')
     args = parser.parse_args();
 
     if args.patient_image_path is None:

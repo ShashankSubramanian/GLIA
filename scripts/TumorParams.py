@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -40,6 +40,8 @@ def getTumorRunCmd(params):
     csf_path = tumor_dir + '/brain_data/' + str(N) +'/csf.nc'
     ### Path to wm
     wm_path = tumor_dir + '/brain_data/' + str(N) +'/white_matter.nc'
+    ### Path to glm/cortical-csf
+    glm_path = tumor_dir + '/brain_data/' + str(N) +'/glial_matter.nc'
     ### Path to custom obs mask, default: none
     obs_mask_path = ""
     ### Path to data for support, default: none, (target data for inversion is used)
@@ -69,14 +71,14 @@ def getTumorRunCmd(params):
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
-    model = 1
+    model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data = 0.025
-    nt_data = 100
-    dt_data = 0.01
+    rho_data = 12
+    k_data = 0.01
+    nt_data = 50
+    dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 1E5
+    forcing_factor = 1.5E5
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -94,7 +96,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1.5
+    smooth_f = 1
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -102,7 +104,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 0
+    forward_flag = 1
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -116,7 +118,7 @@ def getTumorRunCmd(params):
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)
-    fac = 2
+    fac = 1
     ### Spacing factor between radial basis functions (Keep as 2 to have a well-conditioned matrix for the radial basis functions)
     space = 2
     ### Gaussian volume fraction -- Fraction of Gaussian that has to be tumorous to switch on the basis function at any grid point
@@ -446,6 +448,7 @@ def getTumorRunCmd(params):
     " -gm_path " + gm_path + \
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
+    " -glm_path " + glm_path + \
     " -obs_mask_path " + obs_mask_path + \
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \

@@ -1,5 +1,6 @@
 #include "DerivativeOperators.h"
 #include "Utils.h"
+#include <petsc/private/vecimpl.h>
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========         RESET (CHANGE SIZE OF WORK VECTORS)       ======== #### */
@@ -50,7 +51,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
     if (lock_state != 0) {
-      ierr = VecLockPop (x);                CHKERRQ (ierr);
+      x->lock = 0;
     }
     #endif
 
@@ -145,7 +146,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, Ve
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
-      ierr = VecLockPush (x);     CHKERRQ (ierr);
+      x->lock = lock_state;
     }
     #endif
 
@@ -169,7 +170,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
     if (lock_state != 0) {
-      ierr = VecLockPop (x);                CHKERRQ (ierr);
+      x->lock = 0;
     }
     #endif
 
@@ -363,7 +364,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, Vec data)
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
-      ierr = VecLockPush (x);     CHKERRQ (ierr);
+      x->lock = lock_state;
     }
     #endif
 
@@ -390,7 +391,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
     if (lock_state != 0) {
-      ierr = VecLockPop (x);                CHKERRQ (ierr);
+      x->lock = 0;
     }
     #endif
 
@@ -630,7 +631,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
-      ierr = VecLockPush (x);     CHKERRQ (ierr);
+      x->lock = lock_state;
     }
     #endif
 
