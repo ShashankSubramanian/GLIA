@@ -68,26 +68,28 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
 
     ## -defmap for deformation map: not implemented yet in claire
     if mask:
-        cmd = "ibrun " + claire_bin_path + "/claire -mrc 3 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + \
+        cmd = "ibrun " + claire_bin_path + "/claire -mrc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + \
+                    results_path + "/" + atlas_name + "_vt.nii.gz " + results_path + "/" + \
                     atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " \
-                    + "-mtc 3 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + \
+                    + "-mtc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_vt.nii.gz " + \
+                    results_path + "/patient_gm.nii.gz " + results_path + \
                     "/patient_wm.nii.gz -mask " + results_path + "/patient_mask.nii.gz \
                     -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 30 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x " \
                     + results_path + "/"\
                     + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " &> " + results_path + "/registration_log.txt";
     else:
-        cmd = "ibrun " + claire_bin_path + "/claire -mrc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name \
-                    + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " + results_path + "/" + atlas_name + "_tu.nii.gz "\
-                    + "-mtc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
-                    + results_path + "/patient_tu.nii.gz -objwts 0.5,0.2,0.2,0.1 \
-                    -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 30 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
-                    + results_path + "/"\
-                    + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " &> " + results_path + "/registration_log.txt";
-        # cmd = "ibrun " + claire_bin_path + "/claire -mrc 1 " + results_path + "/" + atlas_name + "_csf.nii.gz " \
-        #             + "-mtc 1 " + results_path + "/patient_csf.nii.gz " + \
-        #             "-nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 50 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
+        # cmd = "ibrun " + claire_bin_path + "/claire -mrc 4 " + results_path + "/" + atlas_name + "_csf.nii.gz " + results_path + "/" + atlas_name \
+        #             + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz " + results_path + "/" + atlas_name + "_tu.nii.gz "\
+        #             + "-mtc 4 " + results_path + "/patient_csf.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
+        #             + results_path + "/patient_tu.nii.gz -objwts 0.5,0.2,0.2,0.1 \
+        #             -nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 30 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
         #             + results_path + "/"\
         #             + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " &> " + results_path + "/registration_log.txt";
+        cmd = "ibrun " + claire_bin_path + "/claire -mrc 1 " + results_path + "/" + atlas_name + "_vt.nii.gz " \
+                    + "-mtc 1 " + results_path + "/patient_vt.nii.gz " + \
+                    "-nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 1e-2 -maxit 30 -krylovmaxit 50 -velocity -detdefgrad -deffield -residual -x "\
+                    + results_path + "/"\
+                    + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " &> " + results_path + "/registration_log.txt";
 
     bash_file.write(cmd)
     bash_file.write("\n\n")
@@ -135,11 +137,13 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     gm_path_nc = results_path + "/" + atlas_name + "_gm.nc"
     wm_path_nc = results_path + "/" + atlas_name + "_wm.nc"
     csf_path_nc = results_path + "/" + atlas_name + "_csf.nc"
+    vt_path_nc = results_path + "/" + atlas_name + "_vt.nc"
     c0_path_nc = results_path + "/c0Recon_transported.nc"
 
     t_params['gm_path'] = gm_path_nc
     t_params['wm_path'] = wm_path_nc
-    t_params['csf_path'] = csf_path_nc
+    t_params['csf_path'] = vt_path_nc
+    t_params['glm_path'] = csf_path_nc
     t_params['init_tumor_path'] = c0_path_nc
     t_params['compute_sys'] = compute_sys
 
@@ -259,7 +263,7 @@ if __name__=='__main__':
         bash_file.close()
         new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
         bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, bash_filename, compute_sys=my_compute_sys, mask=False)
-        bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_csf")
+        bash_filename = transportMaps(claire_bin_path, results_path_reverse, bash_filename, "patient_vt")
 
     # find the mass-effect parameter
     bash_file = open(bash_filename, 'a')

@@ -19,6 +19,7 @@ def createNetCDFFile(filename, dimensions, variable):
 
 def convertTuToBratsSeg(tu_seg):
     brats_seg = 0 * tu_seg
+    brats_seg[tu_seg == 5] = 8
     brats_seg[tu_seg == 4] = 7
     brats_seg[tu_seg == 3] = 5
     brats_seg[tu_seg == 2] = 6
@@ -36,7 +37,10 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
     nii = nib.load(atlas_image_path)
     altas_seg = nii.get_fdata()
     altas_mat_img = 0 * altas_seg
-    altas_mat_img[np.logical_or(altas_seg == 7, altas_seg == 8)] = 1
+    altas_mat_img[altas_seg == 7] = 1
+    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_vt.nii.gz")
+    altas_mat_img = 0 * altas_seg
+    altas_mat_img[altas_seg == 8] = 1
     nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_csf.nii.gz")
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 5] = 1
@@ -54,6 +58,9 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
     patient_seg = nii.get_fdata()
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 7] = 1
+    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_vt.nii.gz")
+    patient_mat_img = 0 * patient_seg
+    patient_mat_img[patient_seg == 8] = 1
     nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_csf.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 5] = 1
@@ -87,6 +94,10 @@ def createTumorInputs(results_path):
     csf = nii.get_fdata()
     csf_path_nc = results_path + "/" + atlas_name + "_csf.nc"
     createNetCDFFile(csf_path_nc, dimensions, np.transpose(csf))
+    nii = nib.load(results_path + "/" + atlas_name + "_vt.nii.gz")
+    vt = nii.get_fdata()
+    vt_path_nc = results_path + "/" + atlas_name + "_vt.nc"
+    createNetCDFFile(vt_path_nc, dimensions, np.transpose(vt))
     nii = nib.load(results_path + "/c0Recon_transported.nii.gz")
     c0 = nii.get_fdata()
     c0_path_nc = results_path + "/c0Recon_transported.nc"
@@ -150,11 +161,11 @@ if __name__=='__main__':
             d = computeDisplacement(d1, d2, d3)
             nib.save(nib.Nifti1Image(d, nii.affine), results_path_reverse + "/displacement.nii.gz")
 
-            jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
-            nii = nib.load(jacobian_path)
-            jacobian = nii.get_fdata()
+            # jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
+            # nii = nib.load(jacobian_path)
+            # jacobian = nii.get_fdata()
 
-            nii = nib.load(results_path_reverse + "/patient_csf.nii.gz")
+            nii = nib.load(results_path_reverse + "/patient_vt.nii.gz")
             p_csf = nii.get_fdata()
             mask = p_csf
             # mask = sc.ndimage.morphology.binary_dilation(p_csf, iterations=2)
@@ -163,14 +174,14 @@ if __name__=='__main__':
             nrm_d = la.norm(d, ord=1)
             print("Displacement 1-norm for gamma = {} is {}".format(g, nrm_d))
 
-            jacobian = np.multiply(jacobian, mask)
-            one_vec = np.ones(jacobian.shape)
-            one_vec = np.multiply(one_vec, mask)
-            one_vec = one_vec.flatten()
-            jacobian = jacobian.flatten()
-            jacobian = np.abs(jacobian - one_vec)
-            nrm = la.norm(jacobian, ord=1)
-            print("Jacobian-diff 1-norm for gamma = {} is {}".format(g, nrm))
+            # jacobian = np.multiply(jacobian, mask)
+            # one_vec = np.ones(jacobian.shape)
+            # one_vec = np.multiply(one_vec, mask)
+            # one_vec = one_vec.flatten()
+            # jacobian = jacobian.flatten()
+            # jacobian = np.abs(jacobian - one_vec)
+            # nrm = la.norm(jacobian, ord=1)
+            # print("Jacobian-diff 1-norm for gamma = {} is {}".format(g, nrm))
 
             if nrm_d < min_jacobian_norm:
                 min_jacobian_norm = nrm_d
