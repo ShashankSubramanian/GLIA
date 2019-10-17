@@ -114,7 +114,7 @@ if __name__=='__main__':
 
 
     results_path = args.results_path
-    gamma = [1E4, 4E4, 7E4, 1E5]
+    gamma = [3E4, 6E4, 9E4, 12E4]
     if args.mode == 1:
         createRegistrationInputs(args.atlas_image_path, args.patient_image_path, args.results_path)
     elif args.mode == 2:
@@ -187,9 +187,9 @@ if __name__=='__main__':
                 min_jacobian_norm = nrm_d
                 min_gamma = g 
         print("Mass-effect parameter is {}".format(min_gamma))
-        if min_gamma > 7E4:
+        if min_gamma > 9E4:
             print("Mass-effect is high")
-        elif min_gamma > 1E4:
+        elif min_gamma > 3E4:
             print("Mass-effect is moderate")
         else:
             print("Mass-effect is low")

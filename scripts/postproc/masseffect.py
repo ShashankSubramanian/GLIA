@@ -234,7 +234,7 @@ if __name__=='__main__':
     else:
         print("  WARNING: no output file info.dat for tumor inversion of patient " + level_path );
 
-    gamma = [1E4, 4E4, 7E4, 1E5]
+    gamma = [3E4, 6E4, 9E4, 12E4]
     inv_params['gamma'] = gamma
 
     # create the bash file
