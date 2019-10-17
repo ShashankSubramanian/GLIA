@@ -259,6 +259,11 @@ if env["gpu"] == True:
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
     env.Alias("bin", bininv)
+    staticlib = env.StaticLibrary (
+        target = buildpath + '/pglistr',
+        source = [sourcesPGLISTRGPU],
+    )
+    env.Alias("staticlib", staticlib)
 else:
     binfwd = env.Program (
     target = buildpath + '/forward',
