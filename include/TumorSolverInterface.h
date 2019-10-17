@@ -104,7 +104,7 @@ class TumorSolverInterface {
     */
     PetscErrorCode initialize (
         DataDistributionParameters& ivars,
-        std::shared_ptr<TumorSettings> tumor_params);
+        std::shared_ptr<TumorSettings> tumor_params = {});
 
     /** @brief: Initializes the TumorSolverInterface. Creates nmisc, phi, pde_operators, mat_prob, tumor.
     *

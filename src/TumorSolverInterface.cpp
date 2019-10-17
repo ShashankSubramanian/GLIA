@@ -106,7 +106,7 @@ PetscErrorCode TumorSolverInterface::initializeFFT (
 // ### ///////////////// initialize //////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::initialize (
     DataDistributionParameters& ivars,
-    std::shared_ptr<TumorSettings> tumor_params = {})
+    std::shared_ptr<TumorSettings> tumor_params)
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;

@@ -274,6 +274,11 @@ else:
     #     source = [sourcesPGLISTR],
     # )
     # env.Alias("solib", solib)
+    staticlib = env.StaticLibrary (
+        target = buildpath + '/pglistr',
+        source = [sourcesPGLISTR],
+    )
+    env.Alias("staticlib", staticlib)
 
 
 # Creates a symlink that always points to the latest build
@@ -283,9 +288,10 @@ symlink = env.Command(
     action = "ln -fns {0} {1}".format(os.path.split(buildpath)[-1], os.path.join(os.path.split(buildpath)[0], "last"))
 )
 
-#Default(staticlib, solib, bin, symlink)
+# Default(staticlib, bin, symlink)
 #Default(bininv, solib, symlink)
-Default(bininv, symlink)
+Default(bininv, staticlib, symlink)
+# Default(bininv, symlink)
 AlwaysBuild(symlink)
 
 print ("Targets:   " + ", ".join([str(i) for i in BUILD_TARGETS]))
