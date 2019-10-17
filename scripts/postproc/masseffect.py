@@ -232,7 +232,7 @@ if __name__=='__main__':
             else:
                 print( "  WARNING: output file info.dat is empty for tumor inversion of patient " + tu_results_path);
     else:
-        print("  WARNING: no output file info.dat for tumor inversion of patient " + level_path );
+        print("  WARNING: no output file info.dat for tumor inversion of patient " + tu_results_path );
 
     gamma = [3E4, 6E4, 9E4, 12E4]
     inv_params['gamma'] = gamma
