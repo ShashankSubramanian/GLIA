@@ -1576,7 +1576,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
 
     ScalarType *c0_ptr;
-    ScalarType c0_min;
+    ScalarType c0_min, c0_max;
     if ((init_tumor_path != NULL) && (init_tumor_path[0] != '\0')) {
         ierr = dataIn (c_0, n_misc, init_tumor_path);                       CHKERRQ (ierr);
         ierr = VecMin (c_0, NULL, &c0_min);                                 CHKERRQ (ierr);
@@ -1593,6 +1593,8 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
             ierr = vecRestoreArray (c_0, &c0_ptr);                                          CHKERRQ (ierr);
             // smooth a little bit because sometimes registration outputs have too much aliasing
             ierr = spec_ops->weierstrassSmoother (c_0, c_0, n_misc, sigma_smooth);          CHKERRQ (ierr);
+            ierr = VecMax (c_0, NULL, &c0_max);                                             CHKERRQ (ierr);
+            ierr = VecScale (c_0, (1.0/c0_max));                                            CHKERRQ (ierr);
         }
     } else {
         ierr = tumor->setTrueP (n_misc);
