@@ -51,7 +51,7 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
 
     # atlas has a tumor too; save it
     altas_mat_img = 0 * altas_seg
-    altas_mat_img[altas_seg == 4] = 1
+    altas_mat_img[np.logical_or(altas_seg == 4, altas_seg == 1)] = 1
     nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_tu.nii.gz")
 
     nii = nib.load(patient_image_path)
@@ -69,12 +69,12 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
     patient_mat_img[patient_seg == 6] = 1
     nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_wm.nii.gz")
     patient_mat_img = 0 * patient_seg
-    patient_mat_img[patient_seg == 4] = 1
+    patient_mat_img[np.logical_or(patient_seg == 4, patient_seg == 1)] = 1
     nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_tu.nii.gz")
 
     #create tumor masking file
     patient_mat_img = 0 * patient_seg + 1
-    patient_mat_img[patient_seg == 4] = 0 #enhancing tumor mask
+    patient_mat_img[np.logical_or(patient_seg == 4, patient_seg == 1)] = 0 #enhancing tumor mask
     patient_mat_img = gaussian_filter(patient_mat_img, sigma=2) # claire requires smoothing of masks
     nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
 
