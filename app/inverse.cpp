@@ -327,9 +327,9 @@ int main (int argc, char** argv) {
     int n_gist = 0, n_newton;
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
-    n_misc->user_cm_[0] = z_cm;
-    n_misc->user_cm_[1] = y_cm;
-    n_misc->user_cm_[2] = x_cm;
+    n_misc->user_cm_[0] = 2 * M_PI / 256 * z_cm;
+    n_misc->user_cm_[1] = 2 * M_PI / 256 * y_cm;
+    n_misc->user_cm_[2] = 2 * M_PI / 256 * x_cm;
 
     // Read input parameters (controlled from run script)
     if (beta_user >= 0) {    //user has provided tumor reg
