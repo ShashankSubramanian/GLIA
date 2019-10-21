@@ -8,20 +8,13 @@ import TumorParams
 from netCDF4 import Dataset
 from numpy import linalg as la
 
+from postproc-utils import writeNII, createNetCDFFile
+
 ### Invert in patient-space to get (rho, kappa, c0)
 ### Register patient to some atlas and transport c0 to this atlas
 ### Grow some tumors with (rho, kappa, c0-transported) and some gamma
 ### Register atlas+tumor amd patient and report deformation and final mismatches
 ### Report best gamma according to mismatch (of ventricles?)
-
-def createNetCDFFile(filename, dimensions, variable):
-    file = Dataset(filename, mode='w', format="NETCDF3_CLASSIC");
-    x = file.createDimension("x", dimensions[0]);
-    y = file.createDimension("y", dimensions[1]);
-    z = file.createDimension("z", dimensions[2]);
-    data = file.createVariable("data", "f8", ("x","y","z",));
-    data[:,:,:] = variable[:,:,:];
-    file.close();
 
 def createBashFileHeader(results_path, compute_sys='frontera'):
     bash_filename = results_path + "/coupling_job_submission.sh"
@@ -247,7 +240,7 @@ if __name__=='__main__':
     file = Dataset(c0_nc, mode='r', format="NETCDF3_CLASSIC")
     c0 = np.transpose(file.variables['data'])
     nii = nib.load(patient_image_path)
-    nib.save(nib.Nifti1Image(c0, affine=nii.affine, header=nii.header), results_path + "/c0Recon.nii.gz")
+    writeNII(c0, results_path + "/c0Recon.nii.gz", ref_image=nii)
     # transport c0Recon to atlas
     bash_filename = transportMaps(claire_bin_path, results_path, bash_filename, "c0Recon")
 
