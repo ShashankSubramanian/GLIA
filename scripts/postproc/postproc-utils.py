@@ -38,45 +38,45 @@ def createRegistrationInputs(atlas_image_path, patient_image_path, results_path)
     altas_seg = nii.get_fdata()
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 7] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_vt.nii.gz")
+    nib.save(nib.Nifti1Image(altas_mat_img, affine=nii.affine, header=nii.header), results_path + "/" + atlas_name + "_vt.nii.gz")
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 8] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_csf.nii.gz")
+    nib.save(nib.Nifti1Image(altas_mat_img, affine = nii.affine, header = nii.header), results_path + "/" + atlas_name + "_csf.nii.gz")
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 5] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_gm.nii.gz")
+    nib.save(nib.Nifti1Image(altas_mat_img, affine = nii.affine, header = nii.header), results_path + "/" + atlas_name + "_gm.nii.gz")
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 6] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_wm.nii.gz")
+    nib.save(nib.Nifti1Image(altas_mat_img, affine = nii.affine, header = nii.header), results_path + "/" + atlas_name + "_wm.nii.gz")
 
     # atlas has a tumor too; save it
     altas_mat_img = 0 * altas_seg
     altas_mat_img[np.logical_or(altas_seg == 4, altas_seg == 1)] = 1
-    nib.save(nib.Nifti1Image(altas_mat_img, nii.affine), results_path + "/" + atlas_name + "_tu.nii.gz")
+    nib.save(nib.Nifti1Image(altas_mat_img, affine = nii.affine, header = nii.header), results_path + "/" + atlas_name + "_tu.nii.gz")
 
     nii = nib.load(patient_image_path)
     patient_seg = nii.get_fdata()
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 7] = 1
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_vt.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, affine = nii.affine, header = nii.header), results_path + "/patient_vt.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 8] = 1
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_csf.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, affine = nii.affine, header = nii.header), results_path + "/patient_csf.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 5] = 1
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_gm.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, affine = nii.affine, header = nii.header), results_path + "/patient_gm.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 6] = 1
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_wm.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, affine = nii.affine, header = nii.header), results_path + "/patient_wm.nii.gz")
     patient_mat_img = 0 * patient_seg
     patient_mat_img[np.logical_or(patient_seg == 4, patient_seg == 1)] = 1
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_tu.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, affine = nii.affine, header = nii.header), results_path + "/patient_tu.nii.gz")
 
     #create tumor masking file
     patient_mat_img = 0 * patient_seg + 1
     patient_mat_img[np.logical_or(patient_seg == 4, patient_seg == 1)] = 0 #enhancing tumor mask
     patient_mat_img = gaussian_filter(patient_mat_img, sigma=2) # claire requires smoothing of masks
-    nib.save(nib.Nifti1Image(patient_mat_img, nii.affine), results_path + "/patient_mask.nii.gz")
+    nib.save(nib.Nifti1Image(patient_mat_img, affine = nii.affine, header = nii.header), results_path + "/patient_mask.nii.gz")
 
 
 def createTumorInputs(results_path):
@@ -144,7 +144,7 @@ if __name__=='__main__':
             brats_seg = convertTuToBratsSeg(tu_seg)
             nii = nib.load(results_path + "/patient_csf.nii.gz")
             new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
-            nib.save(nib.Nifti1Image(brats_seg, nii.affine), new_seg_path)
+            nib.save(nib.Nifti1Image(brats_seg, affine = nii.affine, header = nii.header), new_seg_path)
     elif args.mode == 4:
         # compute metrics
         min_jacobian_norm = 1E12
@@ -159,7 +159,7 @@ if __name__=='__main__':
             d3 = nii.get_fdata()
 
             d = computeDisplacement(d1, d2, d3)
-            nib.save(nib.Nifti1Image(d, nii.affine), results_path_reverse + "/displacement.nii.gz")
+            nib.save(nib.Nifti1Image(d, affine = nii.affine, header = nii.header), results_path_reverse + "/displacement.nii.gz")
 
             # jacobian_path = results_path_reverse + "/det-deformation-grad.nii.gz"
             # nii = nib.load(jacobian_path)
