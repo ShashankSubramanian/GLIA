@@ -8,7 +8,7 @@ import TumorParams
 from netCDF4 import Dataset
 from numpy import linalg as la
 
-from postproc-utils import writeNII, createNetCDFFile
+from postproc_utils import writeNII, createNetCDFFile
 
 ### Invert in patient-space to get (rho, kappa, c0)
 ### Register patient to some atlas and transport c0 to this atlas
@@ -57,7 +57,7 @@ def performRegistration(atlas_image_path, patient_image_path, claire_bin_path, r
     bash_file = open(bash_filename, 'a')
 
     ## create registration inputs: mode 1
-    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 1 -x " + results_path + " -p " + patient_image_path + " -a " + atlas_image_path + "\n\n")
+    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc_utils.py -m 1 -x " + results_path + " -p " + patient_image_path + " -a " + atlas_image_path + "\n\n")
 
     ## -defmap for deformation map: not implemented yet in claire
     if mask:
@@ -109,7 +109,7 @@ def runTumorForwardModel(tu_code_path, atlas_image_path, results_path, inv_param
     bash_file = open(bash_filename, 'a')
 
     # call postprocs utils to create tumor input netcdf files :)
-    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 2 -x " + results_path + "\n\n")
+    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc_utils.py -m 2 -x " + results_path + "\n\n")
 
     atlas_name = "atlas"
     t_params = dict()
@@ -252,7 +252,7 @@ if __name__=='__main__':
     for g in gamma:
         results_path_reverse = results_path + "/reg-gamma-" + str(int(g)) + "/"
         bash_file = open(bash_filename, 'a')
-        bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 3 -x " + results_path + "\n\n")
+        bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc_utils.py -m 3 -x " + results_path + "\n\n")
         bash_file.close()
         new_seg_path = results_path_reverse + "/tu-seg.nii.gz"
         bash_filename = performRegistration(new_seg_path, patient_image_path, claire_bin_path, results_path_reverse, bash_filename, compute_sys=my_compute_sys, mask=False)
@@ -260,7 +260,7 @@ if __name__=='__main__':
 
     # find the mass-effect parameter
     bash_file = open(bash_filename, 'a')
-    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc-utils.py -m 4 -x " + results_path + "\n\n")
+    bash_file.write("python " + tu_code_path + "/scripts/postproc/postproc_utils.py -m 4 -x " + results_path + "\n\n")
     bash_file.close()
 
     # #submit the job
