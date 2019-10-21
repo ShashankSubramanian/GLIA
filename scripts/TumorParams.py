@@ -79,6 +79,10 @@ def getTumorRunCmd(params):
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.5E5
+    ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
+    z_cm = 128
+    y_cm = 76
+    x_cm = 112
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -458,6 +462,9 @@ def getTumorRunCmd(params):
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -glm_path " + glm_path + \
+    " -z_cm " + z_cm + \
+    " -y_cm " + y_cm + \
+    " -x_cm " + x_cm + \
     " -obs_mask_path " + obs_mask_path + \
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \

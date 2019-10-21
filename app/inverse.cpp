@@ -136,6 +136,8 @@ int main (int argc, char** argv) {
     int pre_reacdiff_solve = 0;
     int order_of_accuracy = -1;
 
+    ScalarType z_cm, y_cm, x_cm;
+
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -174,6 +176,12 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
     PetscOptionsReal ("-low_freq_noise", "Noise level for low frequency noise addition", "", low_freq_noise_scale, &low_freq_noise_scale, NULL);
     PetscOptionsReal ("-forcing_factor", "Forcing factor for mass-effect forward model", "", forcing_factor, &forcing_factor, NULL);
+
+
+    PetscOptionsReal ("-z_cm", "Z coordinate of tumor loc", "", z_cm, &z_cm, NULL);
+    PetscOptionsReal ("-y_cm", "Y coordinate of tumor loc", "", y_cm, &y_cm, NULL);
+    PetscOptionsReal ("-x_cm", "X coordinate of tumor loc", "", x_cm, &x_cm, NULL);
+
     PetscStrcpy (newton_solver, "QN");
     PetscStrcpy (line_search, "mt");
     PetscOptionsString ("-newton_solver", "Newton solver type", "", newton_solver, newton_solver, 10, NULL);
@@ -319,6 +327,9 @@ int main (int argc, char** argv) {
     int n_gist = 0, n_newton;
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
+    n_misc->user_cm_[0] = z_cm;
+    n_misc->user_cm_[1] = y_cm;
+    n_misc->user_cm_[2] = x_cm;
 
     // Read input parameters (controlled from run script)
     if (beta_user >= 0) {    //user has provided tumor reg
