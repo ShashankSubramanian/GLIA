@@ -32,7 +32,6 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
         d1_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
         wx_hat_ = (ComplexType*) accfft_alloc (alloc_max_);
-
         plan_ = fft_plan_dft_3d_r2c (n, d1_ptr_, (ScalarType*) x_hat_, c_comm, ACCFFT_MEASURE);        
     #endif
 }

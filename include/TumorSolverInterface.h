@@ -126,7 +126,7 @@ class TumorSolverInterface {
     PetscErrorCode setParams (
         Vec p,
         std::shared_ptr<TumorSettings> tumor_params);
-    PetscErrorCode _setParams (
+    PetscErrorCode setParams (
         std::shared_ptr<TumorSettings> tumor_params);
 
     /** @brief: Solves the forward tumor problem, given initial concentration

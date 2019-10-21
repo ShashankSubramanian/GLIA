@@ -86,6 +86,8 @@ PetscErrorCode TumorSolverInterface::initializeFFT (
     spec_ops_->setup (ivars.n, ivars.isize, ivars.istart, ivars.osize, ivars.ostart, ivars.comm);
     ivars.plan = spec_ops_->plan_;
     ivars.alloc_max = spec_ops_->alloc_max_;
+    ivars.nlocal = ivars.isize[0] * ivars.isize[1] * ivars.isize[2];
+    ivars.nglobal = ivars.n[0] * ivars.n[1] * ivars.n[2];
     initializedFFT_ = true;
 
     PetscFunctionReturn(ierr);
@@ -120,7 +122,7 @@ PetscErrorCode TumorSolverInterface::initialize (
         ivars.plan, ivars.comm, ivars.cdims, ivars.testcase);
     // set tumor params from outside
     if (tumor_params != nullptr) {
-        ierr = _setParams(tumor_params); CHKERRQ(ierr);
+        ierr = setParams(tumor_params); CHKERRQ(ierr);
     }
     // initialize tumor, initialize dummy phi, initialize mat probs
     initialize(n_misc_, spec_ops_, nullptr, nullptr);
@@ -183,7 +185,7 @@ PetscErrorCode TumorSolverInterface::initialize (
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setParams ///////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::_setParams (
+PetscErrorCode TumorSolverInterface::setParams (
     std::shared_ptr<TumorSettings> tumor_params)
 {
     PetscFunctionBegin;
@@ -256,7 +258,7 @@ PetscErrorCode TumorSolverInterface::setParams (
         model_changed  = n_misc_->model_ != tumor_params->tumor_model;
         nt_changed     = n_misc_->nt_ != tumor_params->time_steps;
         // updating NMisc
-        ierr = _setParams(tumor_params); CHKERRQ(ierr);
+        ierr = setParams(tumor_params); CHKERRQ(ierr);
     }
     if (np_changed)    {ierr = tuMSGstd(" number of basis functions changed, resetting Phi and DerivativeOperators."); CHKERRQ(ierr);}
     if (nt_changed)    {ierr = tuMSGstd(" number of time steps changed, resetting PdeOperators (time history)."); CHKERRQ(ierr);}
