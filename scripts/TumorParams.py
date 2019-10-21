@@ -462,9 +462,9 @@ def getTumorRunCmd(params):
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -glm_path " + glm_path + \
-    " -z_cm " + z_cm + \
-    " -y_cm " + y_cm + \
-    " -x_cm " + x_cm + \
+    " -z_cm " + str(z_cm) + \
+    " -y_cm " + str(y_cm) + \
+    " -x_cm " + str(x_cm) + \
     " -obs_mask_path " + obs_mask_path + \
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \
