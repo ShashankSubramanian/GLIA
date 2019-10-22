@@ -547,8 +547,7 @@ int main (int argc, char** argv) {
     bool read_atlas = true;   // Set from run script outside
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, spec_ops, gm_path, wm_path, csf_path, glm_path);
-        ierr = tumor->mat_prop_->setValuesCustom (gm, wm, glm, csf, bg, n_misc);    //Overwrite Matprop with custom atlas
-        ierr = solver_interface->updateTumorCoefficients (nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true);
+        ierr = solver_interface->updateTumorCoefficients (wm, gm, glm, csf, bg);
     }
 
     std::shared_ptr<HealthyProbMaps> h_maps = nullptr;

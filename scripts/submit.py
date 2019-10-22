@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/jakob-high-/'
+params['results_path'] = tumor_dir + '/results/check/'
 params['compute_sys'] = 'rebels'
 
 
@@ -26,7 +26,7 @@ params['compute_sys'] = 'rebels'
 if params['compute_sys'] == 'rebels':
     queue = 'rebels'
     N = 1
-    n = 20
+    n = 1
 elif params['compute_sys'] == 'stampede2':
     queue = 'skx-normal'
     N = 3

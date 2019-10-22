@@ -163,6 +163,9 @@ struct TumorSettings {
     bool phi_store;                     /// @brief flag to store phis
     bool adjoint_store;                 /// @brief flag to store half-step concentrations for adjoint solve to speed up time to solution
     int sparsity_level;                 /// @brief required sparsity of the solution
+    std::string results_path;           /// @brief path to results folder
+    ScalarType smooth;                  /// @brief smoothing factor
+    int forward_flag;                   /// @brief flag for forward run only
 
     TumorSettings () :
       tumor_model(1)
@@ -197,6 +200,9 @@ struct TumorSettings {
     , phi_store (false)
     , adjoint_store (true)
     , sparsity_level(5)
+    , smooth(1.5)
+    , results_path("")
+    , forward_flag(0)
     {}
 };
 
