@@ -17,16 +17,16 @@ params['compute_sys'] = 'rebels'
 # ### Real data
 # params['data_path'] = tumor_dir + '/results/tc2_128/data.nc'
 # # # ## Atlas
-# params['gm_path'] = tumor_dir + "/brain_data/jakob/jakob_gm.nc" 
-# params['wm_path'] = tumor_dir + "/brain_data/jakob/jakob_wm.nc" 
-# params['glm_path'] = tumor_dir + "/brain_data/jakob/jakob_csf.nc" 
-# params['csf_path'] = tumor_dir + "/brain_data/jakob/jakob_vt.nc"
+params['gm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_gm.nc" 
+params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc" 
+params['glm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_csf.nc" 
+params['csf_path'] = tumor_dir + "/brain_data/jakob/256/jakob_vt.nc"
 
 
 if params['compute_sys'] == 'rebels':
     queue = 'rebels'
     N = 1
-    n = 1
+    n = 20
 elif params['compute_sys'] == 'stampede2':
     queue = 'skx-normal'
     N = 3

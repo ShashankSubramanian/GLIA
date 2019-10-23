@@ -259,6 +259,11 @@ PetscErrorCode TumorSolverInterface::setParams (
         n_misc_->sparsity_level_        = tumor_params->sparsity_level;
         n_misc_->smoothing_factor_      = tumor_params->smooth;
         n_misc_->forward_flag_          = tumor_params->forward_flag;
+
+        // mass-effect
+        n_misc_->forcing_factor_        = tumor_params->forcing_factor;
+        n_misc_->screen_high_           = tumor_params->screening;
+
         n_misc_->writepath_.str (std::string ());                                       //clear the writepath stringstream
         n_misc_->writepath_ << tumor_params->results_path;
         ss << "np_changed: "<<np_changed<<", nt_changed: "<<nt_changed<<", model_changed: "<<model_changed;
