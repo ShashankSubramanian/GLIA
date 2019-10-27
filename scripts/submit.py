@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/jakob-high-/'
+params['results_path'] = tumor_dir + '/results/check/'
 params['compute_sys'] = 'rebels'
 
 
@@ -17,10 +17,10 @@ params['compute_sys'] = 'rebels'
 # ### Real data
 # params['data_path'] = tumor_dir + '/results/tc2_128/data.nc'
 # # # ## Atlas
-# params['gm_path'] = tumor_dir + "/brain_data/jakob/jakob_gm.nc" 
-# params['wm_path'] = tumor_dir + "/brain_data/jakob/jakob_wm.nc" 
-# params['glm_path'] = tumor_dir + "/brain_data/jakob/jakob_csf.nc" 
-# params['csf_path'] = tumor_dir + "/brain_data/jakob/jakob_vt.nc"
+params['gm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_gm.nc" 
+params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc" 
+params['glm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_csf.nc" 
+params['csf_path'] = tumor_dir + "/brain_data/jakob/256/jakob_vt.nc"
 
 
 if params['compute_sys'] == 'rebels':

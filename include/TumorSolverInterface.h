@@ -182,16 +182,9 @@ class TumorSolverInterface {
     PetscErrorCode resetTaoSolver();
 
     /** @brief: updates the reaction and diffusion coefficients depending on
-     *         the probability maps for GRAY MATTER, WHITE MATTER and CSF.
-     *         A additional filter, that filters the admissable area for tumor
-     *         growth has to be passed (updates the \Phi filter)
+     *         the probability maps for healthy tissue
      */
-    PetscErrorCode updateTumorCoefficients (
-        Vec wm, Vec gm, Vec csf, Vec bg,
-        Vec filter,
-        std::shared_ptr<TumorSettings> tumor_params,
-        bool use_nmisc = false);
-
+    PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec bg);
     /// @brief: evaluates gradient for given control variable p and data
     PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
 
@@ -229,6 +222,16 @@ class TumorSolverInterface {
     PetscErrorCode setGaussians (std::array<ScalarType, 3> cm, ScalarType sigma, ScalarType spacing, int np);
     PetscErrorCode setTumorRegularizationNorm (int type);
     PetscErrorCode setTumorSolverType (int type);
+    PetscErrorCode applyPhi (Vec phi_p, Vec p);
+
+    // timers
+    PetscErrorCode initializeEvent();
+    PetscErrorCode finalizeEvent();
+
+    // helpers for cython
+    PetscErrorCode readNetCDF (Vec A, std::string filename);
+    PetscErrorCode writeNetCDF (Vec A, std::string filename);
+    PetscErrorCode smooth (Vec x, ScalarType num_voxels);
 
     private :
     bool initializedFFT_;

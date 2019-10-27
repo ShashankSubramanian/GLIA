@@ -45,6 +45,11 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("\n\n");
         bash_file.write("source /zhome/academic/HLRS/ipv/ipvscheu/env_intel.sh\n");
 
+    elif opt['compute_sys'] == 'cbica':
+        bash_file.write("#$ -S /bin/bash\n")
+        bash_file.write("#$ -cwd\n")
+        bash_file.write("#$ -pe openmpi " + str(opt['mpi_pernode']*opt['num_nodes']) + "\n");
+
     else:
         bash_file.write("#SBATCH -J tumor-inv-grid-cont\n");
         bash_file.write("#SBATCH -n " + str(opt['mpi_pernode']) + "\n");
@@ -73,16 +78,22 @@ def createJobsubFile(cmd, opt, level):
             opt['num_nodes'] = 1;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
 
+    if opt['compute_sys'] == 'cbica':
+        bash_file.write("#$ -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out") + "\n");
+
+    else:
+        bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
         #bash_file.write("#SBATCH --mail-user=nutexas.edu\n");
         #bash_file.write("#SBATCH --mail-type=fail\n");
         if opt['compute_sys'] == 'frontera':
-          bash_file.write("#SBATCH -A FTA-Biros\n");
+            bash_file.write("#SBATCH -A FTA-Biros\n");
         else:
-          bash_file.write("#SBATCH -A PADAS\n");
-        bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
-        bash_file.write("\n\n");
-        bash_file.write("source ~/.bashrc\n");
+            bash_file.write("#SBATCH -A PADAS\n");
+        
+        
+    bash_file.write("\n\n");
+    bash_file.write("source ~/.bashrc\n");
     # bash_file.write("#### define paths\n");
     # bash_file.write("DATA_DIR=" + opt['input_dir'] + "\n");
     # bash_file.write("OUTPUT_DIR=" + opt['output_dir'] + "\n");
@@ -127,6 +138,7 @@ def registration(args, basedir):
     patient_labels = ",".join([x.split('=')[0] for x in args.patient_segmentation_labels.split(',')])
     reg_param = {}
     reg_param['reg_code_dir'] = args.reg_code_dir
+    reg_param['compute_sys'] = args.compute_cluster
     claire.set_parameters(reg_param, base_output_dir, tumor_dir)
     reg_cmd = "#### define paths\n"
     reg_cmd += "CLAIRE_BDIR=" + reg_param["reg_code_dir"] + "/bin\n"
@@ -199,6 +211,9 @@ def gridcont(basedir, args):
     if args.compute_cluster == "maverick2":
       nodes            = [1,1,1]
       procs            = [1,1,1]
+    if args.compute_cluster == "cbica":
+      nodes            = [1,1,1]
+      procs            = [20,20,20]
     wtime_h            = [x * patients_per_job for x in [0,2,12]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
     sigma_fac          = [1,1,1]                    # on every level, sigma = fac * hx
@@ -494,14 +509,16 @@ def gridcont(basedir, args):
             job_file = createJobsubFile(MULTJOB, opt, level);
             if submit:
                 if level == 64:
-                    if args.compute_cluster == 'hazelhen':
-                      process = subprocess.check_output(['qsub',job_file]).strip();
+                    if args.compute_cluster in ['hazelhen','cbica']:
+                      process = subprocess.check_output(['qsub',job_file]).strip();                    
                     else:
                       process = subprocess.check_output(['sbatch',job_file]).strip();
                     print(process)
                 else:
                     if args.compute_cluster == 'hazelhen':
                       process = subprocess.check_output(['qsub', '-W depend=afterok:'+str(pid_prev), job_file]).strip();
+                    elif args.compute_cluster == 'cbica':
+                        process = subprocess.check_output(['qsub', '-hold_jid '+str(pid_prev), job_file]).strip();
                     else:
                       process = subprocess.check_output(['sbatch', '--dependency=afterok:'+str(pid_prev), job_file]).strip();
                     print(process)
@@ -516,7 +533,7 @@ def gridcont(basedir, args):
     if not separatejobs and batch_end:
         job_file = createJobsubFile(ONEJOB, opt, 256);
         if submit:
-            if args.compute_cluster == 'hazelhen':
+            if args.compute_cluster in ['hazelhen','cbica']:
               process = subprocess.check_output(['qsub',job_file]).strip();
             else:
               process = subprocess.check_output(['sbatch',job_file]).strip();
@@ -549,7 +566,7 @@ if __name__=='__main__':
     parser.add_argument (                   '--obs_lambda',                  type = float, default = 1,   help = 'parameter to control observation operator OBS = TC + lambda (1-WT)');
     parser.add_argument (                   '--multiple_patients',           action='store_true', help = 'process multiple patients, -patient_path should be the base directory containing patient folders which contain patient image(s).');
     parser.add_argument (                   '--run_registration',           action='store_true', help = 'run registration');
-    parser.add_argument (                   '--cm_data',                     action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
+    parser.add_argument (                   '--cm_data',                    action='store_true', help = 'if true, L1 phase is skipped and CM of data is used, performing one L2 solve followed by rho and kappa inversion.');
     parser.add_argument (                   '--tumor_code_dir',                    type = str, help = 'path to tumor solver code directory')
     parser.add_argument (                   '--reg_code_dir',                      type = str, help = 'path to registration solver code directory')
     args = parser.parse_args();

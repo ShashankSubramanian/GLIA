@@ -46,21 +46,20 @@ def createCmdLineReg(param):
         # add executable env based on which cluster you are running
         claire_bin = '$CLAIRE_BDIR/claire';
         if param['compute_sys'] == 'lonestar':
-                cmd += 'ibrun ' + claire_bin;
+            cmd += 'ibrun ' + claire_bin;
         if param['compute_sys'] == 'stampede2':
-                cmd += 'ibrun ' + claire_bin;
+            cmd += 'ibrun ' + claire_bin;
         if param['compute_sys'] == 'frontera':
-                cmd += 'ibrun ' + claire_bin;
-                param.setdefault('reg_code_dir', '/home1/04716/naveen15/claire-fork')
+            cmd += 'ibrun ' + claire_bin;
         elif param['compute_sys'] == 'maverick':
-                cmd += 'ibrun ' + claire_bin;
+            cmd += 'ibrun ' + claire_bin;
         elif param['compute_sys'] == 'hazelhen':
-                cmd += "aprun -n " + str(param['mpi_pernode']) + " -N 12 " + claire_bin;
+            cmd += "aprun -n " + str(param['mpi_pernode']) + " -N 12 " + claire_bin;
         elif param['compute_sys'] == 'cbica':
             cmd += "mpirun --prefix $OPENMPI -np $NSLOTS $MACHINES --mca plm_base_verbose 1 --mca orte_forward_job_control 1 " + claire_bin;
         else:
-                cmd += 'mpirun ' + '-np ' + str(param['mpi_pernode']);
-                cmd += ' ' + claire_bin;
+            cmd += 'mpirun ' + '-np ' + str(param['mpi_pernode']);
+            cmd += ' ' + claire_bin;
         
         # output directory
         if param['output_prefix'] is not None:
@@ -118,18 +117,20 @@ def createCmdLineTransport(param, task, labels=None, input_filename=None, output
 
 
         if param['compute_sys'] == 'lonestar':
-                cmd += 'ibrun ' + clairetools_bin;
+            cmd += 'ibrun ' + clairetools_bin;
         elif param['compute_sys'] == 'maverick':
-                cmd += 'ibrun ' + clairetools_bin;
+            cmd += 'ibrun ' + clairetools_bin;
         elif param['compute_sys'] == 'hazelhen':
-                cmd += "aprun 1 " + clairetools_bin;
+            cmd += "aprun 1 " + clairetools_bin;
         elif param['compute_sys'] == 'stampede2':
             cmd += 'ibrun ' + clairetools_bin; 
         elif param['compute_sys'] == 'frontera':
-            cmd += 'ibrun ' + clairetools_bin; 
+            cmd += 'ibrun ' + clairetools_bin;
+        elif param['compute_sys'] == 'cbica':
+            cmd += "mpirun --prefix $OPENMPI -np $NSLOTS $MACHINES --mca plm_base_verbose 1 --mca orte_forward_job_control 1 " + clairetools_bin;
         else:
-                cmd += 'mpirun ' + '-np ' +  str(param['mpi_pernode']);
-                cmd += ' ' + clairetools_bin;
+            cmd += 'mpirun ' + '-np ' +  str(param['mpi_pernode']);
+            cmd += ' ' + clairetools_bin;
 
         cmd += ' -' + task
         
