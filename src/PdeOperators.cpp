@@ -1213,6 +1213,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
                 ss.str(std::string()); ss.clear();
             }
         }
+
+        if (write_output_and_break) break;
         // ------------------------------------------------ advection  ------------------------------------------------
 
         // Update diffusivity and reaction coefficient
