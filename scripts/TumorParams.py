@@ -431,6 +431,8 @@ def getTumorRunCmd(params):
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
     elif params['compute_sys'] in ['stampede2', 'frontera', 'maverick2']:
         cmd = cmd + "ibrun " + ibman;
+    elif params['compute_sys'] == 'cbica':
+        cmd = cmd + "mpirun --prefix $OPENMPI -np $NSLOTS $MACHINES --mca plm_base_verbose 1 --mca orte_forward_job_control 1 ";
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \

@@ -21,11 +21,14 @@ def EnsurePartitionOfUnity(img):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def smoothBinaryMap(img):
+def smoothBinaryMap(img,s=None):
     '''
     smoothes an image img with a gaussian kernel with uniform sigma=1
     '''
-    return ndimage.filters.gaussian_filter(img, sigma=(2,2,2), order=0);
+    if s is None:
+        return ndimage.filters.gaussian_filter(img, sigma=(2,2,2), order=0);
+    else:
+        return ndimage.filters.gaussian_filter(img, sigma=(s,s,s), order=0);
 
 ###
 ### ------------------------------------------------------------------------ ###
