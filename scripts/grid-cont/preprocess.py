@@ -91,15 +91,21 @@ def preprocImageFromSegmentation(image_path, output_path, resolution, labels, na
     img = nib.load(image_path);
     affine = img.affine;
 
-    img_img = img.get_fdata();
     resolution = tuple([float(x) for x in resolution]);
     label_rev = {v:k for k,v in labels.items()}
-    #if 'vt' in label_rev and 'csf' in label_rev:
-    #    img_img[np.where(img_img == label_rev['vt'])] = label_rev['csf'];
 
     # do NN interpolation on the image and store in input/
-    img_resized = imgtools.resizeImage(img_img, resolution, 0);
-    fio.writeNII(img_resized, output_path +'/' + name + '_seg.nii.gz', affine);
+    if not resolution == img.shape:
+        #img_resized = imgtools.resizeImage(img.get_fdata(), resolution, 0);
+        img_resized = imgtools.resizeNIIImage(img, resolution, interp_order=0)
+    else:
+        img_resized = img
+    
+    # new refernce image
+    ref_image = img_resized
+    img_resized = img_resized.get_fdata()
+    
+    fio.writeNII(img_resized, output_path +'/' + name + '_seg.nii.gz', ref_image=ref_image)
     fio.createNetCDF(output_path + '/' + name +'_seg.nc', np.shape(img_resized), np.swapaxes(img_resized,0,2));
 
     # create probability maps from segmentation
@@ -108,8 +114,8 @@ def preprocImageFromSegmentation(image_path, output_path, resolution, labels, na
 
     if not os.path.exists(output_path):
         os.mkdirs(output_path)
-    imgtools.saveProbabilityMaps(probmaps, labelmaps, output_path + '/' + name, affine, new_label_dict);
-    return affine
+    imgtools.saveProbabilityMaps(probmaps, labelmaps, output_path + '/' + name, ref_image, new_label_dict);
+    return ref_image
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -244,12 +250,12 @@ if __name__=='__main__':
 
         # preprocess atlas
         if args.use_atlas_segmentation:
-            affine = preprocAtlasFromSegmentation(args.atlas_image_path, args.output_path, resolution, atlas_labels);
+            ref_image = preprocAtlasFromSegmentation(args.atlas_image_path, args.output_path, resolution, atlas_labels);
         else:
-            affine = preprocAtlasFromProbmaps(args.atlas_image_path, args.output_path, resolution, atlas_labels);
+            ref_image = preprocAtlasFromProbmaps(args.atlas_image_path, args.output_path, resolution, atlas_labels);
 
         # preprocess patient
         if args.use_patient_segmentation:
-            affine = preprocPatientFromSegmentation(args.patient_image_path, args.output_path, resolution, patient_labels);
+            ref_image = preprocPatientFromSegmentation(args.patient_image_path, args.output_path, resolution, patient_labels);
         else:
-            affine = preprocPatientFromProbmaps(args.patient_image_path, args.output_path, resolution);
+            ref_image = preprocPatientFromProbmaps(args.patient_image_path, args.output_path, resolution);
