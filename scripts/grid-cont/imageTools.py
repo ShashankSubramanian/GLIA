@@ -57,12 +57,11 @@ def resizeImage(img, new_size, interp_order):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def resizeNIIImage(img, new_size, interp_order, new_filename):
+def resizeNIIImage(img, new_size, interp_order):
     '''
     uses nifti img object to resize it to new_size
     '''
     # load the image
-    img = nib.load(filename);
     old_voxel_size = img.header['pixdim'][1:4];
     old_size = img.header['dim'][1:4];
     new_size = np.asarray(new_size);
@@ -127,13 +126,16 @@ def createProbabilityMaps(img, default_size, label_dict):
     #smooth the label images and resize them
     for i in np.arange(num_labels):
         # smooth label maps
-        smoothed_label_img[i,:,:,:] = smoothBinaryMap(label_img[i,:,:,:]);
+        if i==num_labels-1:
+            smoothed_label_img[i,:,:,:] = smoothBinaryMap(label_img[i,:,:,:],s=1);
+        else:
+            smoothed_label_img[i,:,:,:] = smoothBinaryMap(label_img[i,:,:,:]);
     #ensure parition of unity
     return smoothed_label_img, label_img, new_label_dict
 
 ###
 ### ------------------------------------------------------------------------ ###
-def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
+def saveProbabilityMaps(img, labelimg, filename_prefix, ref_image, label_dict):
     '''
     saves probability maps and individual label maps as nifti and netcdf images
     BRATS {0:'bg', 1:'nec', 2:'ed', 4:'en', 5:'gm', 6:'wm', 7:'vt', 8:'csf'}
@@ -147,26 +149,38 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
     if 'vt' in label_dict_rev:
         vtlabel = label_dict_rev['vt']
         print('creating ', filename_prefix+'_vt');
-        fio.writeNII(img[vtlabel,:,:,:], filename_prefix +'_vt.nii.gz', affine);
+        fio.writeNII(img[vtlabel,:,:,:], filename_prefix +'_vt.nii.gz', ref_image=ref_image);
     
     # combine csf and vt
     if 'csf' in label_dict_rev and 'vt' in label_dict_rev:
         csflabel = label_dict_rev['csf'];
         print('creating ', filename_prefix+'_csf_no_vt');
-        fio.writeNII(img[csflabel,:,:,:], filename_prefix +'_csf_no_vt.nii.gz', affine);
+        fio.writeNII(img[csflabel,:,:,:], filename_prefix +'_csf_no_vt.nii.gz', ref_image=ref_image);
 
         vtlabel = label_dict_rev['vt'];
         img[csflabel,:,:,:] += img[vtlabel,:,:,:];
         labelimg[csflabel,:,:,:] += labelimg[vtlabel,:,:,:];
+
 
     if 'wm' in label_dict_rev and 'ed' in label_dict_rev:
         wmlabel = label_dict_rev['wm'];
         edlabel = label_dict_rev['ed'];
         wmed = img[wmlabel,:,:,:] + img[edlabel,:,:,:];
         print('creating ', filename_prefix+'_ed_wm');
-        fio.writeNII(wmed, filename_prefix +'_ed_wm.nii.gz', affine);
+        fio.writeNII(wmed, filename_prefix +'_ed_wm.nii.gz', ref_image=ref_image);
         fio.createNetCDF(filename_prefix+'_ed_wm.nc', np.shape(wmed), np.swapaxes(wmed,0,2));
-
+    
+    if 'wm' in label_dict_rev and 'csf' in label_dict_rev:
+        wmlabel = label_dict_rev['wm']
+        csflabel = label_dict_rev['csf']
+        wmcsf = img[wmlabel,:,:,:] + img[csflabel,:,:,:]
+        print('creating ', filename_prefix+'_wm_csf');
+        fio.writeNII(wmcsf, filename_prefix +'_wm_csf.nii.gz', ref_image=ref_image);
+        if 'ed' in label_dict_rev:
+            edlabel = label_dict_rev['ed']
+            edwmcsf = img[edlabel,:,:,:] + wmcsf
+            print('creating ', filename_prefix+'_ed_wm_csf');
+            fio.writeNII(edwmcsf, filename_prefix +'_ed_wm_csf.nii.gz', ref_image=ref_image);
 
     if 'en' in label_dict_rev and 'nec' in label_dict_rev:
         enlabel = label_dict_rev['en'];
@@ -175,8 +189,8 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
         tcl = labelimg[neclabel,:,:,:] + labelimg[enlabel,:,:,:];
 
         print('creating ', filename_prefix+'_tc');
-        fio.writeNII(tc, filename_prefix +'_tc.nii.gz', affine);
-        fio.writeNII(tcl, filename_prefix +'_seg_tc.nii.gz', affine);
+        fio.writeNII(tc, filename_prefix +'_tc.nii.gz', ref_image=ref_image);
+        fio.writeNII(tcl, filename_prefix +'_seg_tc.nii.gz', ref_image=ref_image);
         fio.createNetCDF(filename_prefix+'_tc.nc', np.shape(tc), np.swapaxes(tc,0,2));
         fio.createNetCDF(filename_prefix+'_seg_tc.nc', np.shape(tcl), np.swapaxes(tcl,0,2));
 
@@ -188,8 +202,8 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
             wtl = wtl + labelimg[edlabel,:,:,:];
             wt = wt + img[edlabel,:,:,:];
 
-        #fio.writeNII(wt, filename_prefix +'_wt.nii.gz', affine);
-        fio.writeNII(wtl, filename_prefix +'_seg_wt.nii.gz', affine);
+        #fio.writeNII(wt, filename_prefix +'_wt.nii.gz', ref_image=ref_image);
+        fio.writeNII(wtl, filename_prefix +'_seg_wt.nii.gz', ref_image=ref_image);
         #fio.createNetCDF(filename_prefix+'_wt.nc', np.shape(wt), np.swapaxes(wt,0,2));
         fio.createNetCDF(filename_prefix+'_seg_wt.nc', np.shape(wtl), np.swapaxes(wtl,0,2));
 
@@ -197,8 +211,8 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
             wmlabel = label_dict_rev['wm'];
             wmwtl = labelimg[wmlabel,:,:,:] + wtl;
             wmwt = img[wmlabel,:,:,:] + wt;
-            #fio.writeNII(wmwt, filename_prefix +'_wm_wt.nii.gz', affine);
-            fio.writeNII(wmwtl, filename_prefix +'_seg_wm_wt.nii.gz', affine);
+            #fio.writeNII(wmwt, filename_prefix +'_wm_wt.nii.gz', ref_image=ref_image);
+            fio.writeNII(wmwtl, filename_prefix +'_seg_wm_wt.nii.gz', ref_image=ref_image);
             #fio.createNetCDF(filename_prefix+'_wm_wt.nc', np.shape(wmwt), np.swapaxes(wmwt,0,2));
             fio.createNetCDF(filename_prefix+'_seg_wm_wt.nc', np.shape(wmwtl), np.swapaxes(wmwtl,0,2));
 
@@ -210,11 +224,11 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, affine, label_dict):
         if label not in nosave_labels:
             print('creating ', filename_prefix+'_'+label);
             i = label_dict_rev[label]
-            fio.writeNII(img[i,:,:,:],  filename_prefix+'_'+label+'.nii.gz', affine)
+            fio.writeNII(img[i,:,:,:],  filename_prefix+'_'+label+'.nii.gz', ref_image=ref_image)
             fio.createNetCDF(filename_prefix+'_'+label+'.nc', np.shape(img[i,:,:,:]), np.swapaxes(img[i,:,:,:],0,2));
             # save individual label images for use in tumor inversion
             if label != 'mask':
-                fio.writeNII(labelimg[i,:,:,:],  filename_prefix+'_seg_'+label+'.nii.gz', affine)
+                fio.writeNII(labelimg[i,:,:,:],  filename_prefix+'_seg_'+label+'.nii.gz', ref_image=ref_image)
                 fio.createNetCDF(filename_prefix+'_seg_'+label+'.nc', np.shape(labelimg[i,:,:,:]), np.swapaxes(labelimg[i,:,:,:],0,2));
 
 ###
