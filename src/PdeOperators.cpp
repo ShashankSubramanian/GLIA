@@ -970,7 +970,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
     #else
         ScalarType p_temp, i_temp, frac_1, frac_2;
         ScalarType ox_heal = 1.;
-        ScalarType reac_ratio = 0.1;
+        ScalarType reac_ratio = 0.4;
         ScalarType death_ratio = 0.3;
         for (int i = 0; i < n_misc_->n_local_; i++) {
             p_temp = p_ptr[i]; i_temp = i_ptr[i];
@@ -980,7 +980,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
                                 death_ratio * n_misc_->death_rate_ * h_ptr[i] * i_ptr[i]);
             n_ptr[i] += dt * (h_ptr[i] * n_misc_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
             ox_ptr[i] += dt * (-n_misc_->ox_consumption_ * p_temp + n_misc_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-            // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
+            ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
             // conserve healthy cells
             if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
@@ -1030,28 +1030,28 @@ PetscErrorCode PdeOperatorsMultiSpecies::updateReacAndDiffCoefficients (Vec seg,
 
     ierr = VecGetArray (seg, &seg_ptr);                         CHKERRQ (ierr);
     ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
+    // ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
         if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
             // 1 is tumor, 2 is wm
             rho_ptr[i] = n_misc_->rho_;
-            k_ptr[i] = n_misc_->k_;
+            // k_ptr[i] = n_misc_->k_;
         }
     }
 
     ierr = VecRestoreArray (seg, &seg_ptr);                         CHKERRQ (ierr);
     ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
+    // ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     // smooth them now
     ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
     ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, n_misc_, sigma_smooth);
-    ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
+    // ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
 
     // copy kxx to other directions
-    ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
-    ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
+    // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
+    // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
 
     // ignore the avg for now since it won't change much and the preconditioner does not have much effect on
     // the diffusion solver
@@ -1080,6 +1080,11 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
     ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
     ierr = VecSet (tumor_->species_["oxygen"], 1.);                                       CHKERRQ (ierr);
+
+    // smooth i_t to keep aliasing to a minimum
+    // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], n_misc_, (4.0 * 2.0 * M_PI / n_misc_->n_[0]));     CHKERRQ (ierr);
+
+    ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
 
     // no healthy cells where tumor is maximum
     ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["infiltrative"]);                        CHKERRQ (ierr);
@@ -1218,20 +1223,23 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // ------------------------------------------------ advection  ------------------------------------------------
 
         // Update diffusivity and reaction coefficient
-        ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);              CHKERRQ (ierr);
-        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+        ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);                                CHKERRQ (ierr);
+        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ (ierr);
 
         // need to update prefactors for diffusion KSP preconditioner, as k changed
-        ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
+        ierr = diff_solver_->precFactor();                                                          CHKERRQ (ierr);
+
+        // clip tumor : single-precision advection seems to have issues if this is not clipped.
+        ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
 
         // Advection of tumor and healthy tissue
         // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
         adv_solver_->trajectoryIsComputed_ = false;
-        ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
-        ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
         adv_solver_->advection_mode_ = 2;  // pure advection for csf
-        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr);
-        ierr = adv_solver_->solve (tumor_->mat_prop_->glm_, tumor_->velocity_, dt);                 CHKERRQ(ierr); 
+        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ (ierr);
+        ierr = adv_solver_->solve (tumor_->mat_prop_->glm_, tumor_->velocity_, dt);                 CHKERRQ (ierr); 
         adv_solver_->advection_mode_ = 1;  // reset to mass conservation
         ierr = adv_solver_->solve (tumor_->species_["proliferative"], tumor_->velocity_, dt);       CHKERRQ (ierr);
         ierr = adv_solver_->solve (tumor_->species_["infiltrative"], tumor_->velocity_, dt);        CHKERRQ (ierr);

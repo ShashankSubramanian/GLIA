@@ -303,15 +303,39 @@ PetscErrorCode Tumor::clipTumor () {
     ScalarType *c_ptr;
     ierr = vecGetArray (c_t_, &c_ptr);                          CHKERRQ (ierr);
 
-    #ifdef CUDA
-        clipVectorCuda (c_ptr, n_misc_->n_local_);
-        clipVectorAboveCuda (c_ptr, n_misc_->n_local_);
-    #else
-        for (int i = 0; i < n_misc_->n_local_; i++) {
-            c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];
-            c_ptr[i] = (c_ptr[i] > 1.) ? 1. : c_ptr[i];
-        }
-    #endif
+    if (n_misc_->model_ == 5) {
+        ScalarType *p_ptr, *i_ptr, *n_ptr;
+        ierr = vecGetArray (species_["proliferative"], &p_ptr); CHKERRQ (ierr);
+        ierr = vecGetArray (species_["infiltrative"], &i_ptr);  CHKERRQ (ierr);
+        ierr = vecGetArray (species_["necrotic"], &n_ptr);      CHKERRQ (ierr);
+
+        #ifdef CUDA
+            clipVectorCuda (p_ptr, n_misc_->n_local_);
+            clipVectorCuda (i_ptr, n_misc_->n_local_);
+            clipVectorCuda (n_ptr, n_misc_->n_local_);
+        #else
+            for (int i = 0; i < n_misc_->n_local_; i++) {
+                p_ptr[i] = (p_ptr[i] <= 0.) ? 0. : p_ptr[i];
+                i_ptr[i] = (i_ptr[i] <= 0.) ? 0. : i_ptr[i];
+                n_ptr[i] = (n_ptr[i] <= 0.) ? 0. : n_ptr[i];
+            }
+        #endif
+
+        ierr = vecRestoreArray (species_["proliferative"], &p_ptr); CHKERRQ (ierr);
+        ierr = vecRestoreArray (species_["infiltrative"], &i_ptr);  CHKERRQ (ierr);
+        ierr = vecRestoreArray (species_["necrotic"], &n_ptr);      CHKERRQ (ierr);
+
+    } else {
+        #ifdef CUDA
+            clipVectorCuda (c_ptr, n_misc_->n_local_);
+            clipVectorAboveCuda (c_ptr, n_misc_->n_local_);
+        #else
+            for (int i = 0; i < n_misc_->n_local_; i++) {
+                c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];
+                c_ptr[i] = (c_ptr[i] > 1.) ? 1. : c_ptr[i];
+            }
+        #endif
+    }
 
     ierr = vecRestoreArray (c_t_, &c_ptr);                      CHKERRQ (ierr);
 

@@ -437,7 +437,7 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType p_temp, i_temp, frac_1, frac_2;
 	    ScalarType ox_heal = 1.;
-	    ScalarType reac_ratio = 0.1;
+	    ScalarType reac_ratio = 0.4;
 	    ScalarType death_ratio = 0.3;		
 
 	    p_temp = p_ptr[i]; i_temp = i_ptr[i];
@@ -447,7 +447,7 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
                             death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
         n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
         ox_ptr[i] += dt * (-ox_consumption * p_temp + ox_source * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-        // ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
+        ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
         // conserve healthy cells
         if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
