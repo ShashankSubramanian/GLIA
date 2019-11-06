@@ -1232,9 +1232,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         ierr = diff_solver_->precFactor();                                                          CHKERRQ (ierr);
 
-        // clip tumor : single-precision advection seems to have issues if this is not clipped.
-        ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
-
         if (n_misc_->forcing_factor_ > 0) {
             // Advection of tumor and healthy tissue
             // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
@@ -1253,6 +1250,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // All solves complete except elasticity: clip values to ensure positivity
         // clip healthy tissues
         ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
+        // clip tumor : single-precision advection seems to have issues if this is not clipped.
+        ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
           
         // compute Di to be used for healthy cell evolution equations: make sure work[11] is not used till sources are computed
         ierr = VecCopy (tumor_->species_["infiltrative"], tumor_->work_[11]);      CHKERRQ (ierr);
