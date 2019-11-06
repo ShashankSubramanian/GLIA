@@ -264,6 +264,14 @@ PetscErrorCode TumorSolverInterface::setParams (
         n_misc_->forcing_factor_        = tumor_params->forcing_factor;
         n_misc_->screen_high_           = tumor_params->screening;
 
+        // multi-species
+        n_misc_->ox_source_             = tumor_params->oxygen_source;
+        n_misc_->ox_consumption_        = tumor_params->oxygen_consumption;
+        n_misc_->death_rate_            = tumor_params->death_rate;
+        n_misc_->beta_0_                = tumor_params->i_to_p;
+        n_misc_->alpha_0_               = tumor_params->p_to_i;
+        n_misc_->ox_hypoxia_            = tumor_params->hypoxia_threshold;
+
         n_misc_->writepath_.str (std::string ());                                       //clear the writepath stringstream
         n_misc_->writepath_ << tumor_params->results_path;
         ss << "np_changed: "<<np_changed<<", nt_changed: "<<nt_changed<<", model_changed: "<<model_changed;

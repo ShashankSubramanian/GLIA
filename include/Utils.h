@@ -167,7 +167,13 @@ struct TumorSettings {
     ScalarType smooth;                  /// @brief smoothing factor
     int forward_flag;                   /// @brief flag for forward run only
     ScalarType forcing_factor;          /// @brief mass-effect forcing factor
-    ScalarType screening;           /// @brief screening factor for non-tumor regions in mass-effect
+    ScalarType screening;               /// @brief screening factor for non-tumor regions in mass-effect
+    ScalarType oxygen_source;           /// @brief oxygen source
+    ScalarType oxygen_consumption;      /// @brief oxygen consumption
+    ScalarType death_rate;              /// @brief death rate of cells
+    ScalarType i_to_p;                  /// @brief conv rate from invasive to proliferative
+    ScalarType p_to_i;                  /// @brief conv rate from proliferative to invasive
+    ScalarType hypoxia_threshold;       /// @brief hypoxia threshold
 
 
     TumorSettings () :
