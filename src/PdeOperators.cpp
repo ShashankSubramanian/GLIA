@@ -1099,11 +1099,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
     // force compute
     ierr = VecCopy (tumor_->species_["proliferative"], tumor_->c_t_);                        CHKERRQ (ierr);
-    ierr = tumor_->computeForce (tumor_->c_t_);
-    // displacement compute through elasticity solve
-    ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
-    // copy displacement to old vector
-    ierr = displacement_old->copy (tumor_->displacement_);
+
+    if (n_misc_->forcing_factor_ > 0) {
+        ierr = tumor_->computeForce (tumor_->c_t_);
+        // displacement compute through elasticity solve
+        ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
+        // copy displacement to old vector
+        ierr = displacement_old->copy (tumor_->displacement_);
+    }
 
     diff_ksp_itr_state_ = 0;
     ScalarType vel_max;
@@ -1232,18 +1235,20 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // clip tumor : single-precision advection seems to have issues if this is not clipped.
         ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
 
-        // Advection of tumor and healthy tissue
-        // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
-        adv_solver_->trajectoryIsComputed_ = false;
-        ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
-        ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
-        adv_solver_->advection_mode_ = 2;  // pure advection for csf
-        ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ (ierr);
-        ierr = adv_solver_->solve (tumor_->mat_prop_->glm_, tumor_->velocity_, dt);                 CHKERRQ (ierr); 
-        adv_solver_->advection_mode_ = 1;  // reset to mass conservation
-        ierr = adv_solver_->solve (tumor_->species_["proliferative"], tumor_->velocity_, dt);       CHKERRQ (ierr);
-        ierr = adv_solver_->solve (tumor_->species_["infiltrative"], tumor_->velocity_, dt);        CHKERRQ (ierr);
-        ierr = adv_solver_->solve (tumor_->species_["necrotic"], tumor_->velocity_, dt);            CHKERRQ (ierr);  
+        if (n_misc_->forcing_factor_ > 0) {
+            // Advection of tumor and healthy tissue
+            // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
+            adv_solver_->trajectoryIsComputed_ = false;
+            ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
+            ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ (ierr);
+            adv_solver_->advection_mode_ = 2;  // pure advection for csf
+            ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ (ierr);
+            ierr = adv_solver_->solve (tumor_->mat_prop_->glm_, tumor_->velocity_, dt);                 CHKERRQ (ierr); 
+            adv_solver_->advection_mode_ = 1;  // reset to mass conservation
+            ierr = adv_solver_->solve (tumor_->species_["proliferative"], tumor_->velocity_, dt);       CHKERRQ (ierr);
+            ierr = adv_solver_->solve (tumor_->species_["infiltrative"], tumor_->velocity_, dt);        CHKERRQ (ierr);
+            ierr = adv_solver_->solve (tumor_->species_["necrotic"], tumor_->velocity_, dt);            CHKERRQ (ierr);  
+        }
 
         // All solves complete except elasticity: clip values to ensure positivity
         // clip healthy tissues
@@ -1264,35 +1269,37 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // set tumor core as c_t_
         ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["necrotic"]);                        CHKERRQ (ierr);
 
-        // ------------------------------------------------ elasticity update ------------------------------------------------ 
-        // force compute
-        ierr = tumor_->computeForce (tumor_->c_t_);
-        // displacement compute through elasticity solve: Linv(force_) = displacement_
-        ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
-        // compute velocity
-        ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
-        ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
-        ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
-        ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
-        ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
-        ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
+        if (n_misc_->forcing_factor_ > 0) {
+            // ------------------------------------------------ elasticity update ------------------------------------------------ 
+            // force compute
+            ierr = tumor_->computeForce (tumor_->c_t_);
+            // displacement compute through elasticity solve: Linv(force_) = displacement_
+            ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
+            // compute velocity
+            ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
+            ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
+            ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
+            ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
+            ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
+            ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
 
-        // smooth the velocity
-        if (flag_smooth_velocity) {
-            ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->x_, tumor_->velocity_->x_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
-            ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->y_, tumor_->velocity_->y_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
-            ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->z_, tumor_->velocity_->z_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+            // smooth the velocity
+            if (flag_smooth_velocity) {
+                ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->x_, tumor_->velocity_->x_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+                ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->y_, tumor_->velocity_->y_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+                ierr = spec_ops_->weierstrassSmoother (tumor_->velocity_->z_, tumor_->velocity_->z_, n_misc_, sigma_smooth);     CHKERRQ (ierr);
+            }
+
+            ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
+            ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
+            ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
+            s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
+            ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            s.str (""); s.clear ();
+
+            // copy displacement to old vector
+            ierr = displacement_old->copy (tumor_->displacement_);
         }
-
-        ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
-        ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
-        ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
-        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-        s.str (""); s.clear ();
-
-        // copy displacement to old vector
-        ierr = displacement_old->copy (tumor_->displacement_);
     }
 
     if (n_misc_->verbosity_ >= 3) {
