@@ -420,8 +420,8 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		// alpha_ptr[i] = alpha_0 * 0.5 * (1 + tanh (500 * (ox_inv - ox_ptr[i])));
   //       beta_ptr[i] = beta_0 * 0.5 * (1 + tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
-		alpha_ptr[i] = alpha_0_ * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
-        beta_ptr[i] = beta_0_ * ox_ptr[i];
+		alpha_ptr[i] = alpha_0 * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
+        beta_ptr[i] = beta_0 * ox_ptr[i];
 	}
 }
 
@@ -775,7 +775,7 @@ void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarT
 void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeReactionRate <<< (sz + n_th - 1) / n_th, n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_inv, ox_mit);
+	computeReactionRate <<< (sz + n_th - 1) / n_th, n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_hypoxia);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
