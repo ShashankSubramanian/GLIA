@@ -964,7 +964,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
         ScalarType p_temp, i_temp, frac_1, frac_2;
         ScalarType ox_heal = 1.;
         ScalarType reac_ratio = 0.4;
-        ScalarType death_ratio = 0.3;
+        ScalarType death_ratio = 1;
         for (int i = 0; i < n_misc_->n_local_; i++) {
             p_temp = p_ptr[i]; i_temp = i_ptr[i];
             p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
