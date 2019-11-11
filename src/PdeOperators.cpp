@@ -836,26 +836,19 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate (Vec m) {
     double self_exec_time = -MPI_Wtime ();
 
     ScalarType *ox_ptr, *m_ptr, *rho_ptr;
-    ScalarType ox_mit = 0.5 * (n_misc_->ox_inv_ + n_misc_->ox_hypoxia_);
     ierr = vecGetArray (m, &m_ptr);                                 CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
     ierr = vecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
     #ifdef CUDA
-        computeReactionRateCuda (m_ptr, ox_ptr, rho_ptr, n_misc_->ox_inv_, ox_mit, n_misc_->n_local_);
+        computeReactionRateCuda (m_ptr, ox_ptr, rho_ptr, n_misc_->ox_hypoxia_, n_misc_->n_local_);
     #else
-        for (int i = 0; i < n_misc_->n_local_; i++) {
-            if (ox_ptr[i] > n_misc_->ox_inv_) m_ptr[i] = rho_ptr[i];
-            else if (ox_ptr[i] <= n_misc_->ox_inv_ && ox_ptr[i] >= ox_mit) 
-                m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (n_misc_->ox_inv_ - ox_mit);
-            else
-                m_ptr[i] = 0.;
-        }
+        for (int i = 0; i < n_misc_->n_local_; i++) 
+            m_ptr[i] = rho_ptr[i] * (1 / (1 + std::exp(-100 * (ox_ptr[i] - n_misc_->ox_hypoxia_))));
     #endif
 
     ierr = vecRestoreArray (m, &m_ptr);                                 CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->species_["oxygen"], &ox_ptr);       CHKERRQ (ierr);
     ierr = vecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-
 
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
@@ -884,8 +877,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition (Vec alpha, Vec beta)
         computeTransitionCuda (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, n_misc_->alpha_0_, n_misc_->beta_0_, n_misc_->ox_inv_, thres, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            alpha_ptr[i] = n_misc_->alpha_0_ * 0.5 * (1 + std::tanh (500 * (n_misc_->ox_inv_ - ox_ptr[i])));
-            beta_ptr[i] = n_misc_->beta_0_ * 0.5 * (1 + std::tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
+            alpha_ptr[i] = n_misc_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - n_misc_->ox_inv_))));
+            beta_ptr[i] = n_misc_->beta_0_ * ox_ptr[i];
         }
     #endif
 
@@ -919,7 +912,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder (Vec h) {
         computeThesholderCuda (h_ptr, ox_ptr, n_misc_->ox_hypoxia_, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) 
-            h_ptr[i] = 0.5 * (1 + std::tanh (500 * (n_misc_->ox_hypoxia_ - ox_ptr[i])));
+            h_ptr[i] = (1 / (1 + std::exp(100 * (ox_ptr[i] - n_misc_->ox_hypoxia_))));
     #endif
 
     ierr = vecRestoreArray (h, &h_ptr);                                 CHKERRQ (ierr);

@@ -401,15 +401,16 @@ __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, 
 }
 
 
-__global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_inv, ScalarType ox_mit) {
+__global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		if (ox_ptr[i] > ox_inv) m_ptr[i] = rho_ptr[i];
-        else if (ox_ptr[i] <= ox_inv && ox_ptr[i] >= ox_mit) 
-            m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (ox_inv - ox_mit);
-        else
-            m_ptr[i] = 0.;
+		// if (ox_ptr[i] > ox_inv) m_ptr[i] = rho_ptr[i];
+  //       else if (ox_ptr[i] <= ox_inv && ox_ptr[i] >= ox_mit) 
+  //           m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (ox_inv - ox_mit);
+  //       else
+  //           m_ptr[i] = 0.;
+		m_ptr[i] = rho_ptr[i] * (1 / (1 + exp(-100 * (ox_ptr[i] - ox_hypoxia))));
 	}
 }
 
@@ -417,8 +418,10 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		alpha_ptr[i] = alpha_0 * 0.5 * (1 + tanh (500 * (ox_inv - ox_ptr[i])));
-        beta_ptr[i] = beta_0 * 0.5 * (1 + tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
+		// alpha_ptr[i] = alpha_0 * 0.5 * (1 + tanh (500 * (ox_inv - ox_ptr[i])));
+  //       beta_ptr[i] = beta_0 * 0.5 * (1 + tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
+		alpha_ptr[i] = alpha_0_ * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
+        beta_ptr[i] = beta_0_ * ox_ptr[i];
 	}
 }
 
@@ -426,7 +429,8 @@ __global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, Scalar
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		h_ptr[i] = 0.5 * (1 + tanh (500 * (ox_hypoxia - ox_ptr[i])));
+		// h_ptr[i] = 0.5 * (1 + tanh (500 * (ox_hypoxia - ox_ptr[i])));
+		h_ptr[i] = (1 / (1 + exp(100 * (ox_ptr[i] - ox_hypoxia))));
 	}
 }
 
@@ -768,7 +772,7 @@ void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarT
 	cudaCheckKernelError ();
 }
 
-void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_inv, ScalarType ox_mit, int64_t sz) {
+void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz) {
 	int n_th = N_THREADS;
 
 	computeReactionRate <<< (sz + n_th - 1) / n_th, n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_inv, ox_mit);
