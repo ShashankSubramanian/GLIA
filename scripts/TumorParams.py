@@ -56,6 +56,14 @@ def getTumorRunCmd(params):
     data_comp_dat_path = ""
     ### Path the initial tumor concentration file
     init_tumor_path = ""
+    ### Path to patient gm
+    p_gm_path = ""
+    ### Path to patient wm
+    p_wm_path = ""
+    ### Path to patient csf
+    p_csf_path = ""
+    ### Path to patient glm
+    p_glm_path = ""
 
 
     verbosity = 1
@@ -462,6 +470,10 @@ def getTumorRunCmd(params):
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -glm_path " + glm_path + \
+    " -p_gm_path " + p_gm_path + \
+    " -p_wm_path " + p_wm_path + \
+    " -p_csf_path " + p_csf_path + \
+    " -p_glm_path " + p_glm_path + \
     " -z_cm " + str(z_cm) + \
     " -y_cm " + str(y_cm) + \
     " -x_cm " + str(x_cm) + \

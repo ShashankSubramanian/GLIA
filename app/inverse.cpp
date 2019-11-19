@@ -51,11 +51,11 @@ struct MData {
         dataIn(csf_, n_misc_, csf_path);
         dataIn(glm_, n_misc_, glm_path);
 
-        ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
-        ierr = spec_ops_->weierstrassSmoother (gm_, gm_, n_misc_, sigma_smooth);
-        ierr = spec_ops_->weierstrassSmoother (wm_, wm_, n_misc_, sigma_smooth);
-        ierr = spec_ops_->weierstrassSmoother (csf_, csf_, n_misc_, sigma_smooth);
-        ierr = spec_ops_->weierstrassSmoother (glm_, glm_, n_misc_, sigma_smooth);
+        // ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+        // ierr = spec_ops_->weierstrassSmoother (gm_, gm_, n_misc_, sigma_smooth);
+        // ierr = spec_ops_->weierstrassSmoother (wm_, wm_, n_misc_, sigma_smooth);
+        // ierr = spec_ops_->weierstrassSmoother (csf_, csf_, n_misc_, sigma_smooth);
+        // ierr = spec_ops_->weierstrassSmoother (glm_, glm_, n_misc_, sigma_smooth);
 
         PetscFunctionReturn(ierr);
     }
@@ -124,6 +124,10 @@ int main (int argc, char** argv) {
     char wm_path[400];
     char glm_path[400];
     char csf_path[400];
+    char p_gm_path[400];
+    char p_wm_path[400];
+    char p_glm_path[400];
+    char p_csf_path[400];
     char obs_mask_path[400];
     char data_comp_path[400];
     char data_comp_dat_path[400];
@@ -250,6 +254,10 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-wm_path", "Path to WM", "", wm_path, wm_path, 400, NULL);
     PetscOptionsString ("-csf_path", "Path to CSF", "", csf_path, csf_path, 400, NULL);
     PetscOptionsString ("-glm_path", "Path to GLM/Cortical CSF", "", glm_path, glm_path, 400, NULL);
+    PetscOptionsString ("-p_gm_path", "Path to GM", "", p_gm_path, p_gm_path, 400, NULL);
+    PetscOptionsString ("-p_wm_path", "Path to WM", "", p_wm_path, p_wm_path, 400, NULL);
+    PetscOptionsString ("-p_csf_path", "Path to CSF", "", p_csf_path, p_csf_path, 400, NULL);
+    PetscOptionsString ("-p_glm_path", "Path to GLM/Cortical CSF", "", p_glm_path, p_glm_path, 400, NULL);
     PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
     PetscOptionsString ("-pvec_path", "Path to initial guess p vector", "", p_vec_path, p_vec_path, 400, NULL);
     PetscOptionsString ("-gaussian_cm_path", "Path to file with Gaussian centers", "", gaussian_cm_path, gaussian_cm_path, 400, NULL);
@@ -667,7 +675,8 @@ int main (int argc, char** argv) {
         if (n_misc->model_ == 4) {
             n_misc->invert_mass_effect_ = 1;
             std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
-            m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
+            // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
+            m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_glm_path);         // reads patient data
             ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data 
             ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed 
         }
@@ -1203,9 +1212,9 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec
     }
 
     // Smooth the data
-    ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
+    // ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
-    ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
+    // ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
     ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);

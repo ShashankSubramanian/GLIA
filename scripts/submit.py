@@ -27,7 +27,6 @@ params['gaussian_cm_path'] = tumor_dir + "/results/check/phi-mesh-forward.txt"
 params['pvec_path'] = tumor_dir + "/results/check/p-rec-forward.txt"
 
 
-
 if params['compute_sys'] == 'rebels':
     queue = 'rebels'
     N = 1
