@@ -635,9 +635,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = tumor_->velocity_->computeMagnitude (magnitude_);
         ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
         cfl = dt * vel_max / n_misc_->h_[0];
-        s << "CFL = " << cfl;
-        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-        s.str (""); s.clear ();
+        if (n_misc_->verbosity_ > 1) {
+            s << "CFL = " << cfl;
+            ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            s.str (""); s.clear ();
+        }
         // Adaptively time step if CFL is too large
         if (cfl >= max_cfl) {
             // TODO: is adaptive time-stepping necessary? Because if cfl is already this number; then numerical oscillations

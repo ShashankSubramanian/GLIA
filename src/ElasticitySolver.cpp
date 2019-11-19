@@ -498,13 +498,15 @@ PetscErrorCode VariableLinearElasticitySolver::solve (std::shared_ptr<VecField> 
 
     ierr = displacement->setIndividualComponents (ctx->disp_);        CHKERRQ (ierr);
 
-    int itr;
-    ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
-    ScalarType res_norm;
-    ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
-    s << "[Elasticity solver] Conjugate gradients convergence - iterations: " << itr << "    residual: " << res_norm;
-    ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-    s.str (""); s.clear ();
+    int itr = 0;
+    if (n_misc->verbosity_ > 1) {
+        ierr = KSPGetIterationNumber (ksp_, &itr);                  CHKERRQ (ierr);
+        ScalarType res_norm;
+        ierr = KSPGetResidualNorm (ksp_, &res_norm);				CHKERRQ (ierr);
+        s << "[Elasticity solver] Conjugate gradients convergence - iterations: " << itr << "    residual: " << res_norm;
+        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+        s.str (""); s.clear ();
+    }
 
     // smooth the displacement
     if (flag_smooth_force_disp) {
