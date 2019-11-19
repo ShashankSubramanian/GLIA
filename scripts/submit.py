@@ -22,6 +22,11 @@ params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc"
 params['glm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_csf.nc" 
 params['csf_path'] = tumor_dir + "/brain_data/jakob/256/jakob_vt.nc"
 
+### input p and phi-cm (needed for mass-effect inversion)
+params['gaussian_cm_path'] = tumor_dir + "/results/check/phi-mesh-forward.txt"
+params['pvec_path'] = tumor_dir + "/results/check/p-rec-forward.txt"
+
+
 
 if params['compute_sys'] == 'rebels':
     queue = 'rebels'

@@ -31,6 +31,7 @@ class DerivativeOperators {
         virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
         virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
 		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
+		virtual PetscErrorCode setMaterialProperties (Vec gm, Vec wm, Vec csf, Vec glm) {PetscFunctionReturn(0);}
         PetscErrorCode checkGradient (Vec p, Vec data);
         PetscErrorCode checkHessian (Vec p, Vec data);
         // reset vector sizes
@@ -86,6 +87,34 @@ class DerivativeOperatorsPos : public DerivativeOperators {
             if (temp_phip_ != nullptr)      {VecDestroy (&temp_phip_);      temp_phip_      = nullptr;}
             if (temp_phiptilde_ != nullptr) {VecDestroy (&temp_phiptilde_); temp_phiptilde_ = nullptr;}
         }
+};
+
+class DerivativeOperatorsMassEffect : public DerivativeOperators {
+	public:
+		DerivativeOperatorsMassEffect (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor) 
+									: DerivativeOperators (pde_operators, n_misc, tumor) {
+					tuMSGstd (" ----- Setting RD derivative operators with mass-effect objective --------");
+					VecCreateSeq (PETSC_COMM_SELF, 1, &delta_);           
+    				setupVec (delta_, SEQ);                                  
+    				VecSet (delta_, 0.);									
+		}
+
+		Vec delta_;
+
+		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data);
+		PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data);
+		PetscErrorCode evaluateHessian (Vec y, Vec x);
+
+		PetscErrorCode computeMisfitBrain (PetscReal *J);
+		PetscErrorCode setMaterialProperties (Vec gm, Vec wm, Vec csf, Vec glm) {
+			gm_ = gm; wm_ = wm; csf_ = csf; glm_ = glm;
+		}
+
+		~DerivativeOperatorsMassEffect () {VecDestroy(&delta_);}
+
+	private:
+		Vec gm_, wm_, csf_, glm_;
 };
 
 class DerivativeOperatorsRDObj : public DerivativeOperators {

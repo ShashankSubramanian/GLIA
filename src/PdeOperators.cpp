@@ -626,9 +626,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     ScalarType max_cfl = 8;
 
     for (int i = 0; i < nt + 1; i++) {
-        s << "Time step = " << i;
-        ierr = tuMSGstd (s.str());                                                CHKERRQ (ierr);
-        s.str (""); s.clear ();
+        if (n_misc_->verbosity_ > 1) {
+            s << "Time step = " << i; ierr = tuMSGstd (s.str()); CHKERRQ (ierr); s.str (""); s.clear ();
+        }
 
         // compute CFL
         ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
@@ -666,7 +666,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             write_output_and_break = true;
         }
 
-        if ((n_misc_->writeOutput_ && i % 5 == 0) || write_output_and_break) {
+        if ((n_misc_->writeOutput_ && n_misc_->verbosity_ > 1 && i % 5 == 0) || write_output_and_break) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
@@ -770,9 +770,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = VecNorm (tumor_->velocity_->x_, NORM_2, &vel_x_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->y_, NORM_2, &vel_y_norm);        CHKERRQ (ierr);
         ierr = VecNorm (tumor_->velocity_->z_, NORM_2, &vel_z_norm);        CHKERRQ (ierr);
-        s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
-        ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
-        s.str (""); s.clear ();
+        if (n_misc_->verbosity_ > 1) {
+            s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
+            ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
+            s.str (""); s.clear ();
+        }
 
         // copy displacement to old vector
         ierr = displacement_old->copy (tumor_->displacement_);
@@ -784,7 +786,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     }
 
     #ifdef CUDA
-        cudaPrintDeviceMemory ();
+        if (n_misc_->verbosity_ > 1) cudaPrintDeviceMemory ();
     #endif
 
     self_exec_time += MPI_Wtime();

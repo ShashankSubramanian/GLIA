@@ -32,6 +32,51 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
     }
 };
 
+struct MData {
+    Vec gm_, wm_, csf_, glm_;
+    std::shared_ptr<NMisc> n_misc_;
+    std::shared_ptr<SpectralOperators> spec_ops_;
+
+    MData(Vec data, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : n_misc_ (n_misc), spec_ops_ (spec_ops) {
+        VecDuplicate(data, &gm_);
+        VecDuplicate(data, &wm_);
+        VecDuplicate(data, &csf_);
+        VecDuplicate(data, &glm_);
+    }
+
+    PetscErrorCode readData(char *gm_path, char *wm_path, char *csf_path, char *glm_path) {
+        PetscErrorCode ierr = 0;
+        dataIn(gm_, n_misc_, gm_path);
+        dataIn(wm_, n_misc_, wm_path);
+        dataIn(csf_, n_misc_, csf_path);
+        dataIn(glm_, n_misc_, glm_path);
+
+        ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+        ierr = spec_ops_->weierstrassSmoother (gm_, gm_, n_misc_, sigma_smooth);
+        ierr = spec_ops_->weierstrassSmoother (wm_, wm_, n_misc_, sigma_smooth);
+        ierr = spec_ops_->weierstrassSmoother (csf_, csf_, n_misc_, sigma_smooth);
+        ierr = spec_ops_->weierstrassSmoother (glm_, glm_, n_misc_, sigma_smooth);
+
+        PetscFunctionReturn(ierr);
+    }
+
+    PetscErrorCode readData(Vec gm, Vec wm, Vec csf, Vec glm) {
+        PetscErrorCode ierr = 0;
+        ierr = VecCopy(gm, gm_);    CHKERRQ (ierr);
+        ierr = VecCopy(wm, wm_);    CHKERRQ (ierr);
+        ierr = VecCopy(csf, csf_);  CHKERRQ (ierr);
+        ierr = VecCopy(glm, glm_);  CHKERRQ (ierr);
+        PetscFunctionReturn(ierr);        
+    }
+
+    ~MData() {
+        VecDestroy(&glm_);
+        VecDestroy(&gm_);
+        VecDestroy(&csf_);
+        VecDestroy(&glm_);
+    }
+};
+
 PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
@@ -605,6 +650,9 @@ int main (int argc, char** argv) {
         ss << " data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         if (n_misc->model_ >= 4) {
             ss << " mass-effect forcing factor used = " << n_misc->forcing_factor_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            // write out p and phi so that they can be used if needed
+            writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), "forward");
+            ss << " ground truth phi and p written to file "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         }
     } else {
         ss << " data read"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -616,7 +664,13 @@ int main (int argc, char** argv) {
         ss << "forward solve completed: exiting..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
         ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-
+        if (n_misc->model_ == 4) {
+            n_misc->invert_mass_effect_ = 1;
+            std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
+            m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
+            ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data 
+            ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed 
+        }
         n_misc->rho_ = rho_inv;
         // n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->k_ = k_inv; // (n_misc->diffusivity_inversion_) ? 0 : k_inv;
@@ -760,7 +814,13 @@ int main (int argc, char** argv) {
               flag_diff = true;
             }
 
-            if (solve_rho_k_only_flag) {
+            ScalarType gamma;
+
+            if (n_misc->invert_mass_effect_) {
+                // apply phi to get tumor c0: rho, kappa already set before; inv-solver setParams will allocate the correct vector sizes
+                ierr = tumor->phi_->apply(tumor->c_0_, p_rec);  
+                ierr = solver_interface->solveInverseMassEffect (&gamma, data, nullptr); // solve tumor inversion for only mass-effect gamma = forcing factor
+            } else if (solve_rho_k_only_flag) {
                 if (!warmstart_p) {ss << " Error: c(0) needs to be set, read in p and Gaussians. exiting solver..."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear(); exit(1);}
                 ierr = solver_interface->solveInverseReacDiff (p_rec, data, nullptr);     // solve tumor inversion only for rho and k, read in c(0)
             } else if (flag_cosamp) {
@@ -1177,7 +1237,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     ierr = VecCreate (PETSC_COMM_WORLD, &gm);                             CHKERRQ (ierr);
     ierr = VecSetSizes (gm, n_misc->n_local_, n_misc->n_global_);         CHKERRQ (ierr);
-    ierr = setupVec (gm);                                        CHKERRQ (ierr);
+    ierr = setupVec (gm);                                                 CHKERRQ (ierr);
 
     ierr = VecDuplicate (gm, &wm);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (gm, &csf);                                       CHKERRQ (ierr);

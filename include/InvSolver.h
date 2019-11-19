@@ -192,11 +192,13 @@ class InvSolver {
     public :
         InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <PdeOperators> pde_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
         PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
+        PetscErrorCode allocateTaoObjectsMassEffect (bool initialize_tao = true);
         PetscErrorCode allocateTaoObjects (bool initialize_tao = true);
         PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
         PetscErrorCode resetOperators (Vec p);
         PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
         PetscErrorCode solve ();
+        PetscErrorCode solveForMassEffect ();
         PetscErrorCode solveInverseCoSaMp();
         PetscErrorCode solveInverseCoSaMpRS(bool rs_mode_active);
         PetscErrorCode printStatistics (int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);
@@ -205,6 +207,7 @@ class InvSolver {
         PetscErrorCode prolongateSubspace (Vec x_full, Vec *x_restricted, std::shared_ptr<CtxInv> itctx, int np_full, bool reset_operators);
 
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
+        PetscErrorCode setTaoOptionsMassEffect (Tao tao, CtxInv* ctx);
         // setter functions
         void setData (Vec d) {data_ = d;}
         void setDataGradient (Vec d) {data_gradeval_ = d;}
@@ -278,6 +281,7 @@ PetscErrorCode constApxHessianMatVec (Mat, Vec, Vec);
 PetscErrorCode matfreeHessian (Tao, Vec, Mat, Mat, void*);
 PetscErrorCode preconditionerMatVec (PC, Vec, Vec);
 PetscErrorCode applyPreconditioner (void*, Vec, Vec);
+PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr);
 PetscErrorCode optimizationMonitor (Tao tao, void *ptr);
 PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr);
 PetscErrorCode optimizationMonitorL1 (Tao tao, void *ptr);
@@ -287,6 +291,7 @@ PetscErrorCode preKrylovSolve (KSP ksp, Vec b, Vec x, void *ptr);
 PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
+PetscErrorCode checkConvergenceGradObjMassEffect (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);
 

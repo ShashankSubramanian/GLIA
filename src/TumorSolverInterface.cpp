@@ -191,7 +191,7 @@ PetscErrorCode TumorSolverInterface::initialize (
     }
     if (n_misc->model_ == 4) {
         pde_operators_ = std::make_shared<PdeOperatorsMassEffect> (tumor_, n_misc, spec_ops);
-        derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsMassEffect> (pde_operators_, n_misc, tumor_);
     }
     if (n_misc_->model_ == 5) {
         pde_operators_ = std::make_shared<PdeOperatorsMultiSpecies> (tumor_, n_misc, spec_ops);
@@ -435,6 +435,50 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode TumorSolverInterface::solveInverseMassEffect (ScalarType *xrec, Vec data, Vec data_gradeval) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    std::stringstream ss;
+ 
+    // timing
+    Event e("solveInverseMassEffect()");
+    std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
+
+    if (!initialized_)  {ierr = tuMSGwarn("Error: (solveInverseMassEffect) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (data == nullptr){ierr = tuMSGwarn("Error: (solveInverseMassEffect) Variable data cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (!optimizer_settings_changed_) {ierr = tuMSGwarn (" Tumor inverse solver running with default settings."); CHKERRQ (ierr);}
+
+    // set target data for inversion (just sets the vector, no deep copy)
+    inv_solver_->setData (data); if (data_gradeval == nullptr) data_gradeval = data;
+    inv_solver_->setDataGradient (data_gradeval);
+
+    // count the number of observed voxels
+    if (n_misc_->verbosity_ > 2) {
+      int sum = 0, global_sum = 0;
+      ScalarType *pixel_ptr;
+      ierr = VecGetArray (data, &pixel_ptr);                                        CHKERRQ (ierr);
+      for (int i = 0; i < n_misc_->n_local_; i++)
+          if (pixel_ptr[i] > n_misc_->obs_threshold_) sum++;
+      ierr = VecRestoreArray (data, &pixel_ptr);                                    CHKERRQ (ierr);
+      MPI_Reduce (&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
+      ss << " number of observed voxels: " << global_sum;
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    }
+
+    inv_solver_->solveForMassEffect();
+
+    ScalarType *x_ptr;
+    ierr = VecGetArray (inv_solver_->getPrec(), &x_ptr);                            CHKERRQ (ierr);
+    *xrec = x_ptr[0];
+    ierr = VecRestoreArray (inv_solver_->getPrec(), &x_ptr);                        CHKERRQ (ierr);
+
+    // timing
+    self_exec_time += MPI_Wtime ();
+    t[5] = self_exec_time;
+    e.addTimings (t); e.stop ();
+    PetscFunctionReturn(ierr);
+}
+
 // TODO[MEMORY]: add switch, if we want to copy or take the pointer from incoming and outgoing data
 // ### _____________________________________________________________________ ___
 // ### ///////////////// solveInverse ////////////////////////////////////// ###
@@ -610,6 +654,21 @@ PetscErrorCode TumorSolverInterface::setOptimizerSettings (std::shared_ptr<Optim
     optimizer_settings_changed_ = true;
     PetscFunctionReturn(ierr);
 }
+
+PetscErrorCode TumorSolverInterface::setMassEffectData(
+    Vec gm, Vec wm, Vec csf, Vec glm)
+{
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+    if (!initialized_)  {ierr = tuMSGwarn("Error: (setMassEffectData) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (wm  == nullptr) {ierr = tuMSGwarn("Warning: (setMassEffectData) Vector wm is nullptr."); CHKERRQ(ierr); }
+    if (gm  == nullptr) {ierr = tuMSGwarn("Warning: (setMassEffectData) Vector gm is nullptr."); CHKERRQ(ierr); }
+    if (csf == nullptr) {ierr = tuMSGwarn("Warning: (setMassEffectData) Vector csf is nullptr."); CHKERRQ(ierr); }
+    if (glm == nullptr) {ierr = tuMSGwarn("Warning: (setMassEffectData) Vector glm is nullptr."); CHKERRQ(ierr); }
+
+    return derivative_operators_->setMaterialProperties(gm, wm, csf, glm);
+}
+
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// setDistMeassureSimulationGeoImages //////////////// ###

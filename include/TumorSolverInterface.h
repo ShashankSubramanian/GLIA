@@ -139,6 +139,8 @@ class TumorSolverInterface {
         Vec c1, Vec c0,
         std::map<std::string, Vec> *species);
 
+    PetscErrorCode solveInverseMassEffect (ScalarType *xrec, Vec data, Vec data_gradeval = {});
+
     /** @brief: Solves the inverse tumor problem using Tao, given target concentration
      *
      *  @param Vec d1     - tumor inverse target data
@@ -194,6 +196,7 @@ class TumorSolverInterface {
     /** @brief: computes effect of varying/moving material properties, i.e.,
      *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
      */
+    PetscErrorCode setMassEffectData(Vec gm, Vec wm, Vec csf, Vec glm);
     PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3);
 
     //  ---------  getter functions -------------

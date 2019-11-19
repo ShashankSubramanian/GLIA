@@ -63,10 +63,10 @@ def getTumorRunCmd(params):
     ### Flag to create synthetic data
     create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-    rho_inv = 15
-    k_inv = 0.0
-    nt_inv = 40
-    dt_inv = 0.025
+    rho_inv = 12
+    k_inv = 0.01
+    nt_inv = 50
+    dt_inv = 0.02
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
@@ -78,7 +78,7 @@ def getTumorRunCmd(params):
     nt_data = 50
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 1.5E5
+    forcing_factor = 1.2E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 128
     y_cm = 76
@@ -108,11 +108,11 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 1
+    forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-    diffusivity_flag = 1
+    diffusivity_flag = 0
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
-    reaction_flag = 1
+    reaction_flag = 0
     ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
     basis_type = 1
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -431,8 +431,6 @@ def getTumorRunCmd(params):
         cmd = cmd + "aprun -n " + str(params['mpi_pernode']) + " -N " + str(ppn) + " ";
     elif params['compute_sys'] in ['stampede2', 'frontera', 'maverick2']:
         cmd = cmd + "ibrun " + ibman;
-    elif params['compute_sys'] == 'cbica':
-        cmd = cmd + "mpirun --prefix $OPENMPI -np $NSLOTS $MACHINES --mca plm_base_verbose 1 --mca orte_forward_job_control 1 ";
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + tumor_dir + "/build/last/inverse -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
