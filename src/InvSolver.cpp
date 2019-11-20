@@ -4027,7 +4027,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     ierr = VecSet (lower_bound, 0.);                                                CHKERRQ (ierr);
     Vec upper_bound;
     ierr = VecDuplicate (xrec_, &upper_bound);                            CHKERRQ (ierr);
-    ierr = VecSet (upper_bound, 1.5E5);                                             CHKERRQ (ierr);
+    ierr = VecSet (upper_bound, 2.);                                             CHKERRQ (ierr);
 
     ierr = TaoSetVariableBounds(tao, lower_bound, upper_bound);                     CHKERRQ (ierr);
     if (lower_bound != nullptr) {ierr = VecDestroy(&lower_bound); CHKERRQ(ierr); lower_bound = nullptr;}

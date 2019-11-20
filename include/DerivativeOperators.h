@@ -96,7 +96,8 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 					tuMSGstd (" ----- Setting RD derivative operators with mass-effect objective --------");
 					VecCreateSeq (PETSC_COMM_SELF, 1, &delta_);           
     				setupVec (delta_, SEQ);                                  
-    				VecSet (delta_, 0.);									
+    				VecSet (delta_, 0.);			
+    				disable_verbose_ = false;						
 		}
 
 		Vec delta_;
@@ -116,6 +117,7 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 
 	private:
 		Vec gm_, wm_, csf_, glm_;
+		bool disable_verbose_;
 };
 
 class DerivativeOperatorsRDObj : public DerivativeOperators {

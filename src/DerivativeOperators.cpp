@@ -1322,10 +1322,11 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
 
     std::stringstream s;
     ierr = VecGetArray (x, &x_ptr);                                 CHKERRQ (ierr);
-    n_misc_->forcing_factor_ = 1E4 * x_ptr[0]; // re-scaling parameter scales
+    n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
-    s << " Forcing factor at current guess = " << n_misc_->forcing_factor_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    if (!disable_verbose_) {
+    s << " Forcing factor at current guess = " << n_misc_->forcing_factor_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();}
 
     // Reset mat-props and diffusion and reaction operators, tumor IC does not change
     ierr = tumor_->mat_prop_->resetValues ();                       CHKERRQ (ierr);
@@ -1340,7 +1341,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     PetscReal misfit_brain = 0.;
     ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
     misfit_brain *= 0.5 * n_misc_->lebesgue_measure_;
-    s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    if (!disable_verbose_) {
+    s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;}
     ierr = tuMSGstd(s.str());                                       CHKERRQ (ierr);
     s.str(""); s.clear();
     (*J) += misfit_brain;
@@ -1358,7 +1360,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_grad_evals++;
-    
+
+    disable_verbose_ = true;    
     // Finite difference gradient -- forward for now
     ScalarType h;
     // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
@@ -1380,6 +1383,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     // g = (J_f - J_b) / (2 * h);
     g = (J_f - J_b) / h;
     ierr = VecSet(dJ, g);                                          CHKERRQ (ierr);
+
+    disable_verbose_ = false;
 
     PetscFunctionReturn (ierr);
 }
