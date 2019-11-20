@@ -69,7 +69,7 @@ PetscErrorCode MatProp::setAtlas (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
 
-	gm_0_ = gm; wm_0_ = wm; csf_0_ = csf; glm_0_ = glm; bg_0_ = bg;
+	gm_0_ = gm; wm_0_ = wm; csf_0_ = csf; glm_0_ = glm;
 
 	PetscFunctionReturn(ierr);
 }
@@ -82,7 +82,13 @@ PetscErrorCode MatProp::resetValues () {
 	ierr = VecCopy (wm_0_, wm_);		CHKERRQ (ierr);
 	ierr = VecCopy (csf_0_, csf_);		CHKERRQ (ierr);
 	ierr = VecCopy (glm_0_, glm_);		CHKERRQ (ierr);
-	ierr = VecCopy (bg_0_, bg_);		CHKERRQ (ierr);
+
+	// Set bg prob as 1 - sum
+    ierr = VecWAXPY (bg_, 1., gm_, wm_);                   CHKERRQ (ierr);
+    ierr = VecAXPY (bg_, 1., csf_);                        CHKERRQ (ierr);
+    ierr = VecAXPY (bg_, 1., glm_);                        CHKERRQ (ierr);
+    ierr = VecShift (bg_, -1.0);                           CHKERRQ (ierr);
+    ierr = VecScale (bg_, -1.0);                           CHKERRQ (ierr);
 
 	PetscFunctionReturn(ierr);
 }
