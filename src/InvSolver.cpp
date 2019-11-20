@@ -2249,7 +2249,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     // update/set reference gradient 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
-        itctx->gradnorm0 = gnorm;
+        itctx->optfeedback_->gradnorm0 = gnorm;
         itctx->update_reference_gradient = false;
         std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << itctx->optfeedback_->gradnorm0;
         ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
@@ -2890,7 +2890,7 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     // update/set reference gradient 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
-        ctx->gradnorm0 = gnorm;
+        ctx->optfeedback_->gradnorm0 = gnorm;
         ctx->update_reference_gradient = false;
         std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->optfeedback_->gradnorm0;
         ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
