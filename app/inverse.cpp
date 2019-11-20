@@ -70,7 +70,7 @@ struct MData {
     }
 
     ~MData() {
-        VecDestroy(&glm_);
+        VecDestroy(&wm_);
         VecDestroy(&gm_);
         VecDestroy(&csf_);
         VecDestroy(&glm_);
@@ -672,9 +672,9 @@ int main (int argc, char** argv) {
         ss << "forward solve completed: exiting..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
         ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
         if (n_misc->model_ == 4) {
             n_misc->invert_mass_effect_ = 1;
-            std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
             // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
             m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_glm_path);         // reads patient data
             ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data 

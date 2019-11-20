@@ -109,6 +109,7 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 		PetscErrorCode computeMisfitBrain (PetscReal *J);
 		PetscErrorCode setMaterialProperties (Vec gm, Vec wm, Vec csf, Vec glm) {
 			gm_ = gm; wm_ = wm; csf_ = csf; glm_ = glm;
+			PetscFunctionReturn(0);
 		}
 
 		~DerivativeOperatorsMassEffect () {VecDestroy(&delta_);}

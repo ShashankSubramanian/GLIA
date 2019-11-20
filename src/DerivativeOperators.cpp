@@ -1336,10 +1336,10 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
     (*J) += misfit_brain;
 
+    (*J) *= n_misc_->lebesgue_measure_;
     PetscReal reg = 0.;
     s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J) + reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
-    (*J) *= n_misc_->lebesgue_measure_;
     (*J) *= 0.5;
     (*J) += reg;
 
