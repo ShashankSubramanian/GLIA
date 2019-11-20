@@ -1408,7 +1408,9 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
     ierr = VecShift (delta_, h);                                   CHKERRQ (ierr);
 
+    disable_verbose_ = true;    
     ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+    disable_verbose_ = false;    
 
     PetscReal g = 0;
     g = (J_f - (*J)) / h;
