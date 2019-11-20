@@ -65,6 +65,28 @@ PetscErrorCode MatProp::clipHealthyTissues () {
     PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode MatProp::setAtlas (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	gm_0_ = gm; wm_0_ = wm; csf_0_ = csf; glm_0_ = glm; bg_0_ = bg;
+
+	PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode MatProp::resetValues () {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	ierr = VecCopy (gm_0_, gm_);		CHKERRQ (ierr);
+	ierr = VecCopy (wm_0_, wm_);		CHKERRQ (ierr);
+	ierr = VecCopy (csf_0_, csf_);		CHKERRQ (ierr);
+	ierr = VecCopy (glm_0_, glm_);		CHKERRQ (ierr);
+	ierr = VecCopy (bg_0_, bg_);		CHKERRQ (ierr);
+
+	PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode MatProp::setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
@@ -170,4 +192,5 @@ MatProp::~MatProp() {
 	ierr = VecDestroy (&glm_);
 	ierr = VecDestroy (&bg_);
 	ierr = VecDestroy (&filter_);
+
 }

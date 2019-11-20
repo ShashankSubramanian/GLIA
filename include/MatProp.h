@@ -21,11 +21,20 @@ class MatProp {
 		std::shared_ptr<NMisc> n_misc_;
 		std::shared_ptr<SpectralOperators> spec_ops_;
 
+		// undeformed -- this is never changed; so use as pointers
+		Vec gm_0_;
+		Vec wm_0_;
+		Vec csf_0_;
+		Vec glm_0_;
+		Vec bg_0_;
+
 		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode clipHealthyTissues ();
 		PetscErrorCode filterBackgroundAndSmooth (Vec in);
 		PetscErrorCode filterTumor (Vec c);
+		PetscErrorCode setAtlas (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg);
+		PetscErrorCode resetValues ();
 
 		~MatProp ();
 };

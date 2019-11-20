@@ -672,6 +672,7 @@ int main (int argc, char** argv) {
         ss << "forward solve completed: exiting..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
         ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
         std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
         if (n_misc->model_ == 4) {
             n_misc->invert_mass_effect_ = 1;
