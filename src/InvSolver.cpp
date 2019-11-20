@@ -63,7 +63,7 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     // allocate memory for xrec_
     ierr = VecCreateSeq (PETSC_COMM_SELF, 1, &xrec_);              CHKERRQ (ierr);
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
-    ierr = VecSet (xrec_, 1E4);                                    CHKERRQ (ierr);
+    ierr = VecSet (xrec_, 0.1);                                    CHKERRQ (ierr);
     // set up routine to compute the hessian matrix vector product
     if (H_ == nullptr) {
       ierr = MatCreateShell (PETSC_COMM_SELF, 1, 1, 1, 1, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
