@@ -1336,17 +1336,14 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
     ierr = VecAXPY (temp_, -1.0, data);                             CHKERRQ (ierr);
     ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
-
+    (*J) *= 0.5 * n_misc_->lebesgue_measure_;
     PetscReal misfit_brain = 0.;
     ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
+    misfit_brain *= 0.5 * n_misc_->lebesgue_measure_;
+    s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    ierr = tuMSGstd(s.str());                                       CHKERRQ (ierr);
+    s.str(""); s.clear();
     (*J) += misfit_brain;
-
-    (*J) *= n_misc_->lebesgue_measure_;
-    PetscReal reg = 0.;
-    s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J) + reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-
-    (*J) *= 0.5;
-    (*J) += reg;
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
