@@ -2246,6 +2246,16 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
+    // update/set reference gradient 
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
+    if (ctx->update_reference_gradient) {
+        ctx->gradnorm0 = gnorm;
+        ctx->update_reference_gradient = false;
+        std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->optfeedback_->gradnorm0;
+        ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
+    }
+    #endif
+
     itctx->optfeedback_->nb_newton_it++;
 
     ScalarType *tao_x_ptr;
@@ -2876,6 +2886,16 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
     ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
+
+    // update/set reference gradient 
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
+    if (ctx->update_reference_gradient) {
+        ctx->gradnorm0 = gnorm;
+        ctx->update_reference_gradient = false;
+        std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->optfeedback_->gradnorm0;
+        ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
+    }
+    #endif
     
     // get initial gradient
     g0norm = ctx->optfeedback_->gradnorm0;
