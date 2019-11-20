@@ -1325,7 +1325,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     n_misc_->forcing_factor_ = x_ptr[0];
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
-    s << " Forcing factor at current guess = " << n_misc_->forcing_factor_; s.str(""); s.clear();
+    s << " Forcing factor at current guess = " << n_misc_->forcing_factor_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
     // Reset mat-props and diffusion and reaction operators, tumor IC does not change
     ierr = tumor_->mat_prop_->resetValues ();                       CHKERRQ (ierr);
