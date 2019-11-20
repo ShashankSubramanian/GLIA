@@ -830,6 +830,10 @@ int main (int argc, char** argv) {
                 // apply phi to get tumor c0: rho, kappa already set before; inv-solver setParams will allocate the correct vector sizes
                 ierr = tumor->phi_->apply(tumor->c_0_, p_rec);  
                 ierr = solver_interface->solveInverseMassEffect (&gamma, data, nullptr); // solve tumor inversion for only mass-effect gamma = forcing factor
+                // Reset mat-props and diffusion and reaction operators, tumor IC does not change
+                ierr = tumor->mat_prop_->resetValues ();                       CHKERRQ (ierr);
+                ierr = tumor->rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);
+                ierr = tumor->k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, tumor->mat_prop_, n_misc);
             } else if (solve_rho_k_only_flag) {
                 if (!warmstart_p) {ss << " Error: c(0) needs to be set, read in p and Gaussians. exiting solver..."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear(); exit(1);}
                 ierr = solver_interface->solveInverseReacDiff (p_rec, data, nullptr);     // solve tumor inversion only for rho and k, read in c(0)
