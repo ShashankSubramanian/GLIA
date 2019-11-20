@@ -1322,7 +1322,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
 
     std::stringstream s;
     ierr = VecGetArray (x, &x_ptr);                                 CHKERRQ (ierr);
-    n_misc_->forcing_factor_ = x_ptr[0];
+    n_misc_->forcing_factor_ = x_ptr[0]; // re-scaling parameter scales
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
     s << " Forcing factor at current guess = " << n_misc_->forcing_factor_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
@@ -1362,7 +1362,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     // Finite difference gradient -- forward for now
     ScalarType h;
     // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
-    h = PETSC_SQRT_MACHINE_EPSILON;
+    ScalarType characteristic_scale = 1E4;
+    h = PETSC_SQRT_MACHINE_EPSILON * characteristic_scale;
     PetscReal J_f, J_b;
 
     ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
