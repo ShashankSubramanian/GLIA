@@ -1357,9 +1357,10 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_grad_evals++;
     
-    // Finite difference gradient
+    // Finite difference gradient -- forward for now
     ScalarType h;
-    h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
+    // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
+    h = PETSC_SQRT_MACHINE_EPSILON;
     PetscReal J_f, J_b;
 
     ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
@@ -1368,12 +1369,13 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
 
     ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
-    ierr = VecShift (delta_, -h);                                  CHKERRQ (ierr);
+    // ierr = VecShift (delta_, -h);                                  CHKERRQ (ierr);
 
     ierr = evaluateObjective (&J_b, delta_, data);                 CHKERRQ (ierr);
 
     PetscReal g = 0;
-    g = (J_f - J_b) / (2 * h);
+    // g = (J_f - J_b) / (2 * h);
+    g = (J_f - J_b) / h;
     ierr = VecSet(dJ, g);                                          CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);
@@ -1390,8 +1392,20 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     double self_exec_time = -MPI_Wtime ();
 
     ierr = evaluateObjective (J, x, data);                        CHKERRQ(ierr);
-    ierr = evaluateGradient (dJ, x, data);                        CHKERRQ(ierr);
+    // Finite difference gradient -- forward for now
+    ScalarType h;
+    // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
+    h = PETSC_SQRT_MACHINE_EPSILON;
+    PetscReal J_f = 0.;
+    ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
+    ierr = VecShift (delta_, h);                                   CHKERRQ (ierr);
 
+    ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+
+    PetscReal g = 0;
+    g = (J_f - (*J)) / h;
+    ierr = VecSet (dJ, g);                                         CHKERRQ (ierr);
+    
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
     PetscFunctionReturn (ierr);
