@@ -2247,7 +2247,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
     // update/set reference gradient 
-    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (ctx->update_reference_gradient) {
         ctx->gradnorm0 = gnorm;
         ctx->update_reference_gradient = false;
