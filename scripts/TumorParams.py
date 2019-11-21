@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 256
+    N = 128
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -65,24 +65,24 @@ def getTumorRunCmd(params):
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
-    nt_inv = 40
-    dt_inv = 0.025
+    nt_inv = 20
+    dt_inv = 0.05
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
-    model = 4
+    model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 12
-    k_data = 0.01
-    nt_data = 50
-    dt_data = 0.02
+    rho_data = 8
+    k_data = 0.025
+    nt_data = 100
+    dt_data = 0.01
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.5E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
-    z_cm = 128
-    y_cm = 76
-    x_cm = 112
+    z_cm = 112
+    y_cm = 136
+    x_cm = 144
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -100,7 +100,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1
+    smooth_f = 1.5
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -108,7 +108,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 1
+    forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -122,7 +122,7 @@ def getTumorRunCmd(params):
     ### No of radial basis functions (Only used if basis_type is grid-based)
     np = 64
     ### Factor (integer only) which controls the variance of the basis function for synthetic data (\sigma  =  fac * 2 * pi / meshsize)
-    fac = 1
+    fac = 2
     ### Spacing factor between radial basis functions (Keep as 2 to have a well-conditioned matrix for the radial basis functions)
     space = 2
     ### Gaussian volume fraction -- Fraction of Gaussian that has to be tumorous to switch on the basis function at any grid point
@@ -130,7 +130,7 @@ def getTumorRunCmd(params):
     ### Threshold of data tumor concentration above which Gaussians are switched on
     data_thres = 0.1
     ### Observation detection threshold
-    obs_thres = 1E-5
+    obs_thres = -100
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -158,7 +158,7 @@ def getTumorRunCmd(params):
     ## lower bound on kappa
     lower_bound_kappa = 1E-3
     ## upper bound on kappa
-    upper_bound_kappa = 5E-2
+    upper_bound_kappa = 1E-1
 
     ### TUMOR PARAMETERS SET END
 
@@ -487,8 +487,9 @@ def getTumorRunCmd(params):
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
-    " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tao_lmm_vectors 10 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+    " -tao_bqnls_mat_lmvm_num_vecs 10 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tao_blmvm_mat_lmvm_num_vecs 10 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view
