@@ -57,19 +57,19 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
     ### Path to patient gm
-    p_gm_path = ""
+    p_gm_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/gm_t[50].nc"
     ### Path to patient wm
-    p_wm_path = ""
+    p_wm_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/wm_t[50].nc"
     ### Path to patient csf
-    p_csf_path = ""
+    p_csf_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/vt_t[50].nc"
     ### Path to patient glm
-    p_glm_path = ""
+    p_glm_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/csf_t[50].nc"
 
 
     verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 1
+    create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 12
     k_inv = 0.01
@@ -158,7 +158,7 @@ def getTumorRunCmd(params):
     ### Krylov max iterations
     max_krylov_iter = 1
     ### Relative gradient tolerance
-    grad_tol = 1E-5
+    grad_tol = 1E-3
     ### Forward solver time order of accuracy
     accuracy_order = 2
     ### number of line-search attempts
@@ -497,8 +497,9 @@ def getTumorRunCmd(params):
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
-    " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tao_lmm_vectors 10 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+    " -tao_bqnls_mat_lmvm_num_vecs 10 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tao_blmvm_mat_lmvm_num_vecs 10 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view
