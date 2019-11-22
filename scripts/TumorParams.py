@@ -89,7 +89,7 @@ def getTumorRunCmd(params):
     ###              2: No-brain sinusoidal coefficients
     ###              3: brain multifocal synthetic tumor with nearby ground truths
     ##               4: brain multifocal synthetic tumor with far away ground truths
-    tumor_testcase = 0
+    tumor_testcase = 4
 
     multilevel         = 0;
     inject_solution    = 0;
@@ -487,10 +487,11 @@ def getTumorRunCmd(params):
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_lmm_vectors 10 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
-    " -tao_bqnls_mat_lmvm_num_vecs 10 -tao_bqnls_mat_lmvm_scale_type diagonal -tao_bnk_as_type none -tao_bqnk_as_type none" + \
-    " -tao_blmvm_mat_lmvm_num_vecs 10 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
+    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view
+#    " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal -tao_bnk_as_type none -tao_bqnk_as_type none" + \
+#    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+#    " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
     return run_str, error_flag
