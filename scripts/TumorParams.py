@@ -156,7 +156,7 @@ def getTumorRunCmd(params):
     ### number of line-search attempts
     ls_max_func_evals = 10
     ## lower bound on kappa
-    lower_bound_kappa = 1E-3
+    lower_bound_kappa = 0E-3
     ## upper bound on kappa
     upper_bound_kappa = 1E-1
 
@@ -488,7 +488,7 @@ def getTumorRunCmd(params):
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
     " -tao_lmm_vectors 10 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
-    " -tao_bqnls_mat_lmvm_num_vecs 10 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
+    " -tao_bqnls_mat_lmvm_num_vecs 10 -tao_bqnls_mat_lmvm_scale_type diagonal -tao_bnk_as_type none -tao_bqnk_as_type none" + \
     " -tao_blmvm_mat_lmvm_num_vecs 10 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
