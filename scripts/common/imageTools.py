@@ -64,7 +64,6 @@ def resizeNIIImage(img, new_size, interp_order):
     # load the image
     old_voxel_size = img.header['pixdim'][1:4];
     old_size = img.header['dim'][1:4];
-    old_size = [ float(f) for f in old_size]
     new_size = np.asarray(new_size);
     new_voxel_size = np.multiply(old_voxel_size, np.divide(old_size, new_size));
     return nib.processing.resample_to_output(img, new_voxel_size, order=0, mode='wrap');
@@ -77,7 +76,7 @@ def extractImageLabels(img, label_dict):
     label_dict is a dict storing what label is what tissue e.g. {0:'bg', 1:'nec', ...}
     '''
     print(label_dict)
-    
+
     # reverse the label dictionary {0:'bg', 1:'nec', ...} ==> {'bg':0, 'nec':1, ...}
     label_dict_rev = {v:k for k,v in label_dict.items()}
     # create a list of label numbers
@@ -87,7 +86,7 @@ def extractImageLabels(img, label_dict):
     # create a new long array for each label image
     newsize = (num_labels,) + np.shape(img);
     newimg = np.zeros(newsize);
-    
+
     print(np.unique(img))
     # new label dict
     new_label_dict = {}
@@ -98,7 +97,7 @@ def extractImageLabels(img, label_dict):
         print('index = {}, label = {}, label_id = {}, min = {}, max = {}'.format(i,label_dict[label], label, np.amin(newimg[i,:,:,:]), np.amax(newimg[i,:,:,:])))
         # assign new label numbers in label dict
         new_label_dict[i] = label_dict[label]
-    
+
     print(new_label_dict)
     # if mask is a label, then create it
     if 'mask' in label_dict_rev:
@@ -151,12 +150,13 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, ref_image, label_dict):
         vtlabel = label_dict_rev['vt']
         print('creating ', filename_prefix+'_vt');
         fio.writeNII(img[vtlabel,:,:,:], filename_prefix +'_vt.nii.gz', ref_image=ref_image);
-    
+
     # combine csf and vt
     if 'csf' in label_dict_rev and 'vt' in label_dict_rev:
         csflabel = label_dict_rev['csf'];
         print('creating ', filename_prefix+'_csf_no_vt');
-        fio.writeNII(img[csflabel,:,:,:], filename_prefix +'_csf_no_vt.nii.gz', ref_image=ref_image);
+        #fio.writeNII(img[csflabel,:,:,:], filename_prefix +'_csf_no_vt.nii.gz', ref_image=ref_image);
+        # fio.createNetCDF(filename_prefix+'_csf_no_vt.nc', np.shape(img[csflabel,:,:,:]), np.swapaxes(img[csflabel,:,:,:],0,2));
 
         vtlabel = label_dict_rev['vt'];
         img[csflabel,:,:,:] += img[vtlabel,:,:,:];
@@ -170,7 +170,9 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, ref_image, label_dict):
         print('creating ', filename_prefix+'_ed_wm');
         fio.writeNII(wmed, filename_prefix +'_ed_wm.nii.gz', ref_image=ref_image);
         fio.createNetCDF(filename_prefix+'_ed_wm.nc', np.shape(wmed), np.swapaxes(wmed,0,2));
-    
+        #print('creating ', filename_prefix+'_wm_no_ed');
+        fio.writeNII(img[wmlabel,:,:,:], filename_prefix +'_wm_no_ed.nii.gz', ref_image=ref_image);
+
     if 'wm' in label_dict_rev and 'csf' in label_dict_rev:
         wmlabel = label_dict_rev['wm']
         csflabel = label_dict_rev['csf']
@@ -192,8 +194,8 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, ref_image, label_dict):
         print('creating ', filename_prefix+'_tc');
         fio.writeNII(tc, filename_prefix +'_tc.nii.gz', ref_image=ref_image);
         fio.writeNII(tcl, filename_prefix +'_seg_tc.nii.gz', ref_image=ref_image);
-        fio.createNetCDF(filename_prefix+'_tc.nc', np.shape(tc), np.swapaxes(tc,0,2));
-        fio.createNetCDF(filename_prefix+'_seg_tc.nc', np.shape(tcl), np.swapaxes(tcl,0,2));
+        #fio.createNetCDF(filename_prefix+'_tc.nc', np.shape(tc), np.swapaxes(tc,0,2));
+        #fio.createNetCDF(filename_prefix+'_seg_tc.nc', np.shape(tcl), np.swapaxes(tcl,0,2));
 
         wtl = tcl;
         wt = tc;
@@ -203,9 +205,9 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, ref_image, label_dict):
             wtl = wtl + labelimg[edlabel,:,:,:];
             wt = wt + img[edlabel,:,:,:];
 
-        #fio.writeNII(wt, filename_prefix +'_wt.nii.gz', ref_image=ref_image);
+        fio.writeNII(wt, filename_prefix +'_wt.nii.gz', ref_image=ref_image);
         fio.writeNII(wtl, filename_prefix +'_seg_wt.nii.gz', ref_image=ref_image);
-        #fio.createNetCDF(filename_prefix+'_wt.nc', np.shape(wt), np.swapaxes(wt,0,2));
+        fio.createNetCDF(filename_prefix+'_wt.nc', np.shape(wt), np.swapaxes(wt,0,2));
         fio.createNetCDF(filename_prefix+'_seg_wt.nc', np.shape(wtl), np.swapaxes(wtl,0,2));
 
         if 'wm' in label_dict_rev:
@@ -215,7 +217,7 @@ def saveProbabilityMaps(img, labelimg, filename_prefix, ref_image, label_dict):
             #fio.writeNII(wmwt, filename_prefix +'_wm_wt.nii.gz', ref_image=ref_image);
             fio.writeNII(wmwtl, filename_prefix +'_seg_wm_wt.nii.gz', ref_image=ref_image);
             #fio.createNetCDF(filename_prefix+'_wm_wt.nc', np.shape(wmwt), np.swapaxes(wmwt,0,2));
-            fio.createNetCDF(filename_prefix+'_seg_wm_wt.nc', np.shape(wmwtl), np.swapaxes(wmwtl,0,2));
+            #fio.createNetCDF(filename_prefix+'_seg_wm_wt.nc', np.shape(wmwtl), np.swapaxes(wmwtl,0,2));
 
 
     nosave_labels = ['vt', 'en', 'nec', 'bg'];

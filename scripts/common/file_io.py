@@ -40,8 +40,8 @@ def writeNII(img, filename, affine=None, ref_image=None):
     if ref_image is not None:
         data = nib.Nifti1Image(img, affine=ref_image.affine, header=ref_image.header);
         data.header['datatype'] = 64
-        #data.header['glmax'] = np.amax(img.get_fdata().flatten())
-        #data.header['glmin'] = np.amin(img.get_fdata().flatten())
+        data.header['glmax'] = np.max(img)
+        data.header['glmin'] = np.min(img)
     elif affine is not None:
         data = nib.Nifti1Image(img, affine=affine);
     else:
