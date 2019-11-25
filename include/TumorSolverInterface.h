@@ -208,6 +208,7 @@ class TumorSolverInterface {
     std::shared_ptr<OptimizerSettings> getOptSettings() {return inv_solver_->optsettings_;}
     std::shared_ptr<InvSolver> getInvSolver() {return inv_solver_;}
     std::shared_ptr<PdeOperators> getPdeOperators() {return pde_operators_;}
+    std::shared_ptr<DerivativeOperators> getDerivativeOperators() {return derivative_operators_;}
     std::vector<ScalarType> getSolverOutParams()  {return out_params_ = inv_solver_->getInvOutParams (); }
 
     // ---------- setter functions --------------

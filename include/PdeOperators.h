@@ -77,6 +77,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
 			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor, spec_ops);
 			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor, spec_ops);
+			displacement_old_ = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);
 			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
 			temp_ = new Vec[3];
 			for (int i = 0; i <3; i++) {
@@ -86,6 +87,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
 
 		std::shared_ptr<AdvectionSolver> adv_solver_;
 		std::shared_ptr<ElasticitySolver> elasticity_solver_;
+		std::shared_ptr<VecField> displacement_old_;
 
 		Vec *temp_;
 		Vec magnitude_;
@@ -109,12 +111,13 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 			adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
 			// adv_solver_ = std::make_shared<TrapezoidalSolver> (n_misc, tumor);
 			elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver> (n_misc, tumor, spec_ops);
-
+			displacement_old_ = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);
 			ierr = VecDuplicate (tumor->work_[0], &magnitude_);
 		}
 
 		std::shared_ptr<AdvectionSolver> adv_solver_;
 		std::shared_ptr<ElasticitySolver> elasticity_solver_;
+		std::shared_ptr<VecField> displacement_old_;
 
 		Vec magnitude_;
 

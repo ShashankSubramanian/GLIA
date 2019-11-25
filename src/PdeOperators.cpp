@@ -607,13 +607,13 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     r1 = n_misc_->rho_;
     r2 = n_misc_->r_gm_wm_ratio_ * n_misc_->rho_; r3 = 0;
 
-    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
+      
     // filter matprop
     ierr = tumor_->mat_prop_->filterTumor (tumor_->c_t_);                                                                           CHKERRQ (ierr);
     // force compute
     ierr = tumor_->computeForce (tumor_->c_t_);
     // displacement compute through elasticity solve
-    ierr = elasticity_solver_->solve (displacement_old, tumor_->force_);
+    ierr = elasticity_solver_->solve (displacement_old_, tumor_->force_);
 
     std::stringstream ss;    
     ScalarType vel_max;
@@ -672,7 +672,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            ierr = displacement_old->computeMagnitude(magnitude_);
+            ierr = displacement_old_->computeMagnitude(magnitude_);
             ss << "displacement_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
@@ -754,9 +754,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // displacement compute through elasticity solve: Linv(force_) = displacement_
         ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);                   CHKERRQ(ierr);
         // compute velocity
-        ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
-        ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
-        ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old_->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old_->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
+        ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old_->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
         ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
         ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
         ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
@@ -779,7 +779,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         }
 
         // copy displacement to old vector
-        ierr = displacement_old->copy (tumor_->displacement_);
+        ierr = displacement_old_->copy (tumor_->displacement_);
     }
 
     if (n_misc_->verbosity_ >= 3) {
@@ -1093,7 +1093,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     r1 = n_misc_->rho_;
     r2 = n_misc_->r_gm_wm_ratio_ * n_misc_->rho_; r3 = 0;
 
-    std::shared_ptr<VecField> displacement_old = std::make_shared<VecField> (n_misc_->n_local_, n_misc_->n_global_);  
     // force compute
     ierr = VecCopy (tumor_->species_["proliferative"], tumor_->c_t_);                        CHKERRQ (ierr);
 
@@ -1102,7 +1101,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // displacement compute through elasticity solve
         ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
         // copy displacement to old vector
-        ierr = displacement_old->copy (tumor_->displacement_);
+        ierr = displacement_old_->copy (tumor_->displacement_);
     }
 
     diff_ksp_itr_state_ = 0;
@@ -1162,7 +1161,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
-            ierr = displacement_old->computeMagnitude(magnitude_);
+            ierr = displacement_old_->computeMagnitude(magnitude_);
             ss << "displacement_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
@@ -1272,9 +1271,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             // displacement compute through elasticity solve: Linv(force_) = displacement_
             ierr = elasticity_solver_->solve (tumor_->displacement_, tumor_->force_);
             // compute velocity
-            ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
-            ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
-            ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
+            ierr = VecWAXPY (tumor_->velocity_->x_, -1.0, displacement_old_->x_, tumor_->displacement_->x_);     CHKERRQ (ierr);
+            ierr = VecWAXPY (tumor_->velocity_->y_, -1.0, displacement_old_->y_, tumor_->displacement_->y_);     CHKERRQ (ierr);
+            ierr = VecWAXPY (tumor_->velocity_->z_, -1.0, displacement_old_->z_, tumor_->displacement_->z_);     CHKERRQ (ierr);
             ierr = VecScale (tumor_->velocity_->x_, (1.0 / dt));                                                CHKERRQ (ierr);
             ierr = VecScale (tumor_->velocity_->y_, (1.0 / dt));                                                CHKERRQ (ierr);
             ierr = VecScale (tumor_->velocity_->z_, (1.0 / dt));                                                CHKERRQ (ierr);
@@ -1294,7 +1293,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             s.str (""); s.clear ();
 
             // copy displacement to old vector
-            ierr = displacement_old->copy (tumor_->displacement_);
+            ierr = displacement_old_->copy (tumor_->displacement_);
         }
     }
 
