@@ -791,6 +791,27 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         if (n_misc_->verbosity_ > 1) cudaPrintDeviceMemory ();
     #endif
 
+
+    if ((n_misc_->writeOutput_ && n_misc_->verbosity_ > 1 && !write_output_and_break)) {
+        // for mass-effect inversion, write the very last one too. TODO: change loc of print statements instead.
+        ss.str(std::string()); ss.clear();
+        ss << "c_final.nc";
+        dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "vt_final.nc";
+        dataOut (tumor_->mat_prop_->csf_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "csf_final.nc";
+        dataOut (tumor_->mat_prop_->glm_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "wm_final.nc";
+        dataOut (tumor_->mat_prop_->wm_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ss << "gm_final.nc";
+        dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+    }
+
     self_exec_time += MPI_Wtime();
     //accumulateTimers (t, t, self_exec_time);
     t[5] = self_exec_time;
