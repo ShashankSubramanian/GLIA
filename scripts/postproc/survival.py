@@ -199,17 +199,29 @@ def read_data(dir, level, file):
 ### ------------------------------------------------------------------------ ###
 def clean_data(brats_data, max_l2c1error = 0.8, filter_GTR=True):
 
-    # add vol(EN)/vol(TC)
-    brats_data['vol(EN)/vol(TC)'] = brats_data['vol(EN)_a'].astype('float') / brats_data['vol(TC)_a'].astype('float');
-
-    # 1. add rho-over-k
+    # filter out kappa = 0
     brats_data['rho-inv'] = brats_data['rho-inv'].astype('float')
     brats_data['k-inv']   = brats_data['k-inv'].astype('float')
     dat_out  = brats_data.loc[brats_data['k-inv'] <= 0]
     brats_data  = brats_data.loc[brats_data['k-inv'] >  0]
     dat_out["filter-reason"] = "k zero"
     dat_filtered_out = dat_out;
-    brats_data["rho-over-k"] = brats_data["rho-inv"]/brats_data["k-inv"]
+
+    # 1. add ratio statistics
+    brats_data['vol(EN)/vol(TC)']         = brats_data['vol(EN)_a'].astype('float') / brats_data['vol(TC)_a'].astype('float');
+    brats_data['vol(TC)/rho']             = brats_data['vol(TC)_a'].astype('float') / brats_data['rho-inv'].astype('float');
+    brats_data['vol(ED)/k']               = brats_data['vol(ED)_a'].astype('float') / brats_data['k-inv'].astype('float');
+    brats_data["rho/k"]                   = brats_data["rho-inv"] / brats_data["k-inv"]
+    brats_data["k/rho[shape]"]            = brats_data["k-inv"]   / brats_data["rho-inv"]                  # shape of travelling wave (asymptotic solution to FT eqs.)
+    brats_data["2sqrt(rho*k)[velocity]"]  = 2 * np.sqrt(brats_data["k-inv"] * brats_data["rho-inv"])       # velocity of travelling wave (asymptotic solution to FT eqs.)
+
+    brats_data["int{c(1)|_TC}_r"]         = brats_data["int{c(1)|_TC}"]   / brats_data["int{c(1)}"];
+    brats_data["int{c(1)|_ED}_r"]         = brats_data["int{c(1)|_ED}"]   / brats_data["int{c(1)}"];
+    brats_data["int{c(1)|_B-WT}_r"]       = brats_data["int{c(1)|_B-WT}"] / brats_data["int{c(1)}"];
+    brats_data['dist[VE/BG]']             = brats_data["dist[c(0), VE] (aspace)"] / brats_data["dist[c(0), BG] (aspace)"]
+    brats_data['vol(ED)/k']               = 1. /brats_data["k-inv"]   * brats_data["vol(ED)_a"]
+    brats_data['vol(TC)/k']               = 1. /brats_data["k-inv"]   * brats_data["vol(TC)_a"]
+    brats_data['vol(TC)/rho']             = 1. /brats_data["rho-inv"] * brats_data["vol(TC)_a"]
 
     # 2. filter data with too large misfit
     brats_data['l2[Oc(1)-TC]'] = brats_data['l2[Oc(1)-TC]'].astype('float')
@@ -218,6 +230,8 @@ def clean_data(brats_data, max_l2c1error = 0.8, filter_GTR=True):
     dat_out["filter-reason"] = "l2(Oc1-d)err > "+str(max_l2c1error)
     dat_filtered_out = dat_out;
     # dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
+
+    brats_data.to_csv("features_brats18.csv")
 
     brats_survival = brats_data.copy();
 
@@ -322,7 +336,7 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
         # cols.append('area(TC)_r');                  # ib.02 TC rel. surface (rel. to sphere with volume of TC)
         cols.append('vol(ED)_r');                   # ib.03 ED rel. volume
         # cols.append('area(ED)_r');                  # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        cols.append('vol(NEC)_r');                  # ib.05 NE rel. volume
+        # cols.append('vol(NEC)_r');                  # ib.05 NE rel. volume
         # cols.append('area(NEC)_r');                 # ib.06 NE rel. surface (rel. to sphere with volume of NE)
         cols.append('age');                         # ib.07 patient age
         # cols.append('int{c(0)}/int{c(1)}');
@@ -337,19 +351,23 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
         # cols.append('vol(NEC|_#c)_r(#c=0)')         # ib.10 vol(NE) in comp #0 rel. to toatal vol(NE)
         # cols.append('vol(NEC|_#c)_r(#c=1)')         # ib.10 vol(NE) in comp #1 rel. to toatal vol(NE)
         # cols.append('vol(NEC|_#c)_r(#c=2)')         # ib.10 vol(NE) in comp #2 rel. to toatal vol(NE)
-        cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
+        # cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
     # physics based features used for survival prediciton
     if  'physics_based' in type and purpose == 'prediction':
         # cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
         # cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
         # cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
-        cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
+        # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
         # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
         # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
         # add distance c(0) to VE as feature
         # cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
-        cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
-        cols.append('rho-over-k');                  # ph.03 inversion variables prolifaration, migration
+        # cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
+        cols.append('rho/k');                   # ph.03 inversion variables prolifaration, migration
+        cols.append('vol(TC)/rho');
+        cols.append('vol(ED)/k')
+        # cols.append('dist[c(0), VE] (aspace)');
+        # cols.append('dist[c(0), BG] (aspace)');
         # cols.append('l2[c(1)|_TC-TC,scaled]_r')     # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
         pass;
 
@@ -370,9 +388,9 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
             cols.extend([col+'[0]',col+'[1]',col+'[2]'])
 
     if  'physics_based' in type and purpose == 'prediction':
-        brats_data['cm(c(0)|_#c) (#c=0,aspace)[0]'] = brats_data['cm(c(0)|_#c) (#c=0,aspace)[0]'].apply(lambda x: -1 if pd.isna(x) else x);
-        brats_data['cm(c(0)|_#c) (#c=0,aspace)[1]'] = brats_data['cm(c(0)|_#c) (#c=0,aspace)[1]'].apply(lambda x: -1 if pd.isna(x) else x);
-        brats_data['cm(c(0)|_#c) (#c=0,aspace)[2]'] = brats_data['cm(c(0)|_#c) (#c=0,aspace)[2]'].apply(lambda x: -1 if pd.isna(x) else x);
+        # brats_data['cm(c(0)|_#c) (#c=0,aspace)[0]'] = brats_data['cm(c(0)|_#c) (#c=0,aspace)[0]'].apply(lambda x: -1 if pd.isna(x) else x);
+        # brats_data['cm(c(0)|_#c) (#c=0,aspace)[1]'] = brats_data['cm(c(0)|_#c) (#c=0,aspace)[1]'].apply(lambda x: -1 if pd.isna(x) else x);
+        # brats_data['cm(c(0)|_#c) (#c=0,aspace)[2]'] = brats_data['cm(c(0)|_#c) (#c=0,aspace)[2]'].apply(lambda x: -1 if pd.isna(x) else x);
         # brats_data['cm(c(0)|_#c) (#c=1,aspace)[0]'] = brats_data['cm(c(0)|_#c) (#c=1,aspace)[0]'].apply(lambda x: -1 if pd.isna(x) else x);
         # brats_data['cm(c(0)|_#c) (#c=1,aspace)[1]'] = brats_data['cm(c(0)|_#c) (#c=1,aspace)[1]'].apply(lambda x: -1 if pd.isna(x) else x);
         # brats_data['cm(c(0)|_#c) (#c=1,aspace)[2]'] = brats_data['cm(c(0)|_#c) (#c=1,aspace)[2]'].apply(lambda x: -1 if pd.isna(x) else x);
@@ -750,7 +768,19 @@ if __name__=='__main__':
 
         # --------------------
 
-        rf_xgboost = XGBClassifier(silent = 0, learning_rate = 0.01, n_estimators = 1000, max_depth = 5, min_child_weight = 1, gamma = 0, subsample = 0.8, colsample_bytree = 0.8, objective= 'multi:softmax', nthread = 4, scale_pos_weight = 1, seed = 27, num_class=3, verbosity=1)
+        rf_xgboost = XGBClassifier(learning_rate = 0.01, n_estimators = 100, max_depth = 5, min_child_weight = 1, gamma = 0, subsample = 0.8, colsample_bytree = 0.8, objective= 'multi:softmax', nthread = 4, scale_pos_weight = 1, seed = 27, num_class=3, verbosity=1)
+        rf_xgboost.fit(X_ib_n, y_train)
+        print()
+        print("++++++++++++++++++++++++++++++++++++")
+        evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
+        scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
+        print(" ############## ")
+        print("CV Scores: ", scores)
+        print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+        print(" ############## ")
+        print("++++++++++++++++++++++++++++++++++++")
+
+
         modelfit(rf_xgboost, X_ib_n, y_train, useTrainCV=True)
 
         opt_nb_rounds = rf_xgboost.get_params()['n_estimators']
@@ -933,7 +963,7 @@ if __name__=='__main__':
 #  'silent': None,
 #  'subsample': 0.8,
 #  'verbosity': 1}
-# feature: rho-over-k                     importance: 0.14000000059604645
+# feature: rho/k                     importance: 0.14000000059604645
 # feature: area(TC)_r                     importance: 0.10000000149011612
 # feature: age                            importance: 0.10000000149011612
 # feature: vol(TC)_r                      importance: 0.09000000357627869

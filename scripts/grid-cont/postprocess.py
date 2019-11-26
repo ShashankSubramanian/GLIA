@@ -86,20 +86,7 @@ def _eucl_min(vol1, affine1, vol2, affine2):
     point1 = set1_coordinates.T[min_dist_idx_set1, :]
     point2 = set2_coordinates.T[min_dist_idx_set2, :]
 
-    # print("min dist: ", min_dist)
-    # print("min_dist_idx: ", min_dist_idx_set2)
-    # print("euclidean: ", euclidean(set1_coordinates.T[min_dist_idx_set1, :], set2_coordinates.T[min_dist_idx_set2, :]))
-    # print("point 1:", point1)
-    # print("point 2:", point2)
-
     return min_dist, point1, point2;
-
-    # dist_matrix = cdist(set1_coordinates.T, set2_coordinates.T)
-    # (point1, point2) = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
-    # return (euclidean(set1_coordinates.T[point1, :],
-                      # set2_coordinates.T[point2, :]),
-                      # set1_coordinates.T[point1, :],
-                      # set2_coordinates.T[point2, :])
 
 ###
 ### ------------------------------------------------------------------------ ###
