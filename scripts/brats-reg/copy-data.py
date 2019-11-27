@@ -26,7 +26,11 @@ if __name__=='__main__':
     r_args.add_argument ('-atlas_path',     '--atlas_image_path',            type = str, help = 'path to a segmented atlas image (affinely registered to given patient)', required=True)
     parser.add_argument ('-atlas_t1_image', '--atlas_t1_image',              type = str, help = 'path to t1 atlas image (affinely registered to given patient)')
     parser.add_argument ('-x', '--results_directory',                        type = str, help = 'path to destination')
+    parser.add_argument ('-patient', type = str, help = 'patient ID')
+    parser.add_argument ('-atlas',   type = str, help = 'patient ID')
     args = parser.parse_args();
+
+    gen_list_only = True;
 
     col_names = ["abnormal_seg", "abnormal_t1", "normal_seg", "normal_t1", "normal_c0"]
     fname_df       = pd.DataFrame(columns=col_names)
@@ -64,62 +68,80 @@ if __name__=='__main__':
 
             run_ok = True;
             p_dict = {}
-            p_dict['norma_seg'] = os.path.join(grade, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")
-            p_dict['normal_t1'] = os.path.join(grade, "normal_"+str(atlas)+"_t1_256x256x124.nii.gz")
-            p_dict['normal_c0'] = os.path.join(grade, "normal_"+str(atlas)+"_with_c0_256x256x124.nii.gz")
-            p_dict["abnormal_seg"] = os.path.join(grade, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz")
-            p_dict["abnormal_t1"] = os.path.join(grade, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x124.nii.gz")
+            p_dict['normal_seg']    = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")
+            p_dict['normal_t1']    = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_t1_256x256x124.nii.gz")
+            p_dict['normal_c0']    = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_with_c0_256x256x124.nii.gz")
+            p_dict["abnormal_seg"] = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz")
+            p_dict["abnormal_t1"]  = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x124.nii.gz")
 
-            try:
-                 shutil.copy2(atlas_image_path, os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x256.nii.gz"))
-                 shutil.copy2(atlas_t1_image, os.path.join(out_dir, "normal_"+str(atlas)+"_t1_256x256x256.nii.gz"))
-                 shutil.copy2(patient_image_path, os.path.join(out_dir, str(patient)+"_seg_aff2_"+str(atlas)+"_256x256x256.nii.gz"))
-                 shutil.copy2(os.path.join(reg_out_dir, "atlas_with_warped_tumor_in_Pspace.nii.gz"), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg_"+"_256x256x256.nii.gz"))
-                 shutil.copy2(os.path.join(reg_out_dir, "atlas_t1_in_Pspace.nii.gz"), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x256.nii.gz"))
-                 shutil.copy2(os.path.join(reg_out_dir, "patient_seg_in_Aspace.nii.gz"), os.path.join(out_dir, str(patient)+"_seg_in_Aspace_"+"_256x256x256.nii.gz"))
-            except:
-                 print("Error processing [{} / {}] combination: FILES NOT AVAILABLE (maybe registration has not been run)".format(patient,atlas))
-                 run_ok = False;
-            if run_ok:
-                 a_ref = nib.load(atlas_ref_path);
-                 # resize atlas
-                 a_img = nib.load(atlas_image_path);
-                 rz_img = imgtools.resizeNIIImage(a_img, tuple([256,256,124]), interp_order=0)
-                 print(" .. resmapling altas"); 
-                 fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz"), ref_image=a_ref)
+            if gen_list_only and  os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
+                #if not os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
+                #    continue;
+                if random.random() < 0.75:
+                    print("skipping....")
+                    continue;
+                rnd = random.random()
+                fname_df.loc[len(fname_df)] = p_dict;
+                if rnd >= 0 and rnd < 0.7:
+                    fname_df_train.loc[len(fname_df_train)] = p_dict;
+                    print("Sucessfully added [{} / {}] combination to TRAIN".format(patient,atlas))
+                elif rnd >= 0.7 and rnd < 0.85:
+                    fname_df_val.loc[len(fname_df_val)] = p_dict;
+                    print("Sucessfully added [{} / {}] combination to VAL".format(patient,atlas))
+                elif rnd >= 0.85 and rnd < 1:
+                    fname_df_test.loc[len(fname_df_test)] = p_dict;
+                    print("Sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
+            else:
+                try:
+                     shutil.copy2(atlas_image_path, os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x256.nii.gz"))
+                     shutil.copy2(atlas_t1_image, os.path.join(out_dir, "normal_"+str(atlas)+"_t1_256x256x256.nii.gz"))
+                     shutil.copy2(patient_image_path, os.path.join(out_dir, str(patient)+"_seg_aff2_"+str(atlas)+"_256x256x256.nii.gz"))
+                     shutil.copy2(os.path.join(reg_out_dir, "atlas_with_warped_tumor_in_Pspace.nii.gz"), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg_"+"_256x256x256.nii.gz"))
+                     shutil.copy2(os.path.join(reg_out_dir, "atlas_t1_in_Pspace.nii.gz"), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x256.nii.gz"))
+                     shutil.copy2(os.path.join(reg_out_dir, "patient_seg_in_Aspace.nii.gz"), os.path.join(out_dir, str(patient)+"_seg_in_Aspace_"+"_256x256x256.nii.gz"))
+                except:
+                     print("Error processing [{} / {}] combination: FILES NOT AVAILABLE (maybe registration has not been run)".format(patient,atlas))
+                     run_ok = False;
+                if run_ok:
+                     a_ref = nib.load(atlas_ref_path);
+                     # resize atlas
+                     a_img = nib.load(atlas_image_path);
+                     rz_img = imgtools.resizeNIIImage(a_img, tuple([256,256,124]), interp_order=0)
+                     print(" .. resmapling altas"); 
+                     fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz"), ref_image=a_ref)
 
-                 # resize patient
-                 p_img = nib.load(os.path.join(reg_out_dir, "atlas_with_warped_tumor_in_Pspace.nii.gz"))
-                 rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
-                 print(" .. resmapling altas w/ tumor in p-space"); 
-                 fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg_"+"_256x256x124.nii.gz"), ref_image=a_ref);
-                 im = rz_img.get_fdata()
-                 wt = np.logical_or(np.logical_or(im == 4, im == 1), im == 2)
-                 im[wt] = 3;
-                 fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz"), ref_image=a_ref);
-                 p_img = nib.load(os.path.join(reg_out_dir, "patient_seg_in_Aspace.nii.gz"))
-                 rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
-                 print(" .. resmapling patient in a-space"); 
-                 fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_in_Aspace_"+"_256x256x124.nii.gz"), ref_image=a_ref);
-                 p_img = nib.load(patient_image_path);
-                 rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
-                 print(" .. resmapling patient"); 
-                 fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_aff2_"+str(atlas)+"_256x256x124.nii.gz"), ref_image=a_ref);
+                     # resize patient
+                     p_img = nib.load(os.path.join(reg_out_dir, "atlas_with_warped_tumor_in_Pspace.nii.gz"))
+                     rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
+                     print(" .. resmapling altas w/ tumor in p-space"); 
+                     fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg_"+"_256x256x124.nii.gz"), ref_image=a_ref);
+                     im = rz_img.get_fdata()
+                     wt = np.logical_or(np.logical_or(im == 4, im == 1), im == 2)
+                     im[wt] = 3;
+                     fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz"), ref_image=a_ref);
+                     p_img = nib.load(os.path.join(reg_out_dir, "patient_seg_in_Aspace.nii.gz"))
+                     rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
+                     print(" .. resmapling patient in a-space"); 
+                     fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_in_Aspace_"+"_256x256x124.nii.gz"), ref_image=a_ref);
+                     p_img = nib.load(patient_image_path);
+                     rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
+                     print(" .. resmapling patient"); 
+                     fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_aff2_"+str(atlas)+"_256x256x124.nii.gz"), ref_image=a_ref);
 
-                 rnd = random.random()
-                 fname_df.loc[len(fname_df)] = p_dict;
-                 if rnd >= 0 and rnd < 0.7:
-                     fname_df_train.loc[len(fname_df_train)] = p_dict;
-                     print("Sucessfully added [{} / {}] combination to TRAIN".format(patient,atlas))
-                 elif rnd >= 0.7 and rnd < 0.85:
-                     fname_df_val.loc[len(fname_df_val)] = p_dict;
-                     print("Sucessfully added [{} / {}] combination to VAL".format(patient,atlas))
-                 elif rnd >= 0.85 and rnd < 1:
-                     fname_df_test.loc[len(fname_df_test)] = p_dict;
-                     print("Sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
-            #except:
-            #     print("Error processing [{} / {}] combination".format(patient,atlas))
-    fname_df.to_csv(os.path.join(out_dir, "dataset_fnames.csv"));
-    fname_df_train.to_csv(os.path.join(out_dir, "dataset_fnames_train.csv"));
-    fname_df_val.to_csv(os.path.join(out_dir, "dataset_fnames_val.csv"));
-    fname_df_test.to_csv(os.path.join(out_dir, "dataset_fnames_test.csv"));
+                     rnd = random.random()
+                     fname_df.loc[len(fname_df)] = p_dict;
+                     if rnd >= 0 and rnd < 0.7:
+                         fname_df_train.loc[len(fname_df_train)] = p_dict;
+                         print("Sucessfully added [{} / {}] combination to TRAIN".format(patient,atlas))
+                     elif rnd >= 0.7 and rnd < 0.85:
+                         fname_df_val.loc[len(fname_df_val)] = p_dict;
+                         print("Sucessfully added [{} / {}] combination to VAL".format(patient,atlas))
+                     elif rnd >= 0.85 and rnd < 1:
+                         fname_df_test.loc[len(fname_df_test)] = p_dict;
+                         print("Sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
+                #except:
+                #     print("Error processing [{} / {}] combination".format(patient,atlas))
+    fname_df.to_csv(os.path.join(base_results_dir, "dataset_fnames_tiny.csv"), index=False);
+    fname_df_train.to_csv(os.path.join(base_results_dir, "dataset_fnames_train_tiny.csv"), index=False);
+    fname_df_val.to_csv(os.path.join(base_results_dir, "dataset_fnames_val_tiny.csv"), index=False);
+    fname_df_test.to_csv(os.path.join(base_results_dir, "dataset_fnames_test_tiny.csv"), index=False);
