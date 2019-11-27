@@ -90,8 +90,8 @@ def createJobsubFile(cmd, opt, level):
             bash_file.write("#SBATCH -A FTA-Biros\n");
         else:
             bash_file.write("#SBATCH -A PADAS\n");
-        
-        
+
+
     bash_file.write("\n\n");
     bash_file.write("source ~/.bashrc\n");
     # bash_file.write("#### define paths\n");
@@ -145,7 +145,7 @@ def registration(args, basedir):
     reg_cmd += "DATA_DIR=" + reg_param['data_dir'] + "\n"
     reg_cmd += "OUTPUT_DIR=" + reg_param['output_dir'] + "\n"
     reg_cmd += "TUMOR_DIR=" + reg_param['tumor_output_dir'] + "\n"
-    
+
     # registration command
     reg_cmd += claire.createCmdLineReg(reg_param)
     # transport labels command
@@ -165,9 +165,11 @@ def registration(args, basedir):
     reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_gm.nii.gz", output_filename="$OUTPUT_DIR/patient_gm_in_Aspace.nii.gz")
     # transport white matter command
     reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_wm.nii.gz", output_filename="$OUTPUT_DIR/patient_wm_in_Aspace.nii.gz")
-    # transport edema+white matter command 
+    # transport tumor command
+    reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_tu.nii.gz", output_filename="$OUTPUT_DIR/patient_tu_in_Aspace.nii.gz")
+    # transport edema+white matter command
     reg_cmd += claire.createCmdLineTransport(reg_param, task='deformimage', input_filename="$DATA_DIR/patient_ed_wm.nii.gz", output_filename="$OUTPUT_DIR/patient_ed_wm_in_Aspace.nii.gz")
-    
+
     return reg_cmd
     #local_cmd = preproc_cmd + "\n\n\n" + reg_cmd + "\n\n\n" + postproc_cmd
     #
@@ -179,7 +181,7 @@ def registration(args, basedir):
     #        global_cmd = ""
     #    global_cmd += "\n" +  bash_filename
     #    num_patients += 1
-    #    
+    #
     #    if num_patients == patients_per_job:
     #        claire.createJobsubFile(global_cmd,reg_param,submit=True)
     #        global_cmd = ""
@@ -472,7 +474,7 @@ def gridcont(basedir, args):
         # cmd += "export DIR_SUFFIX='obs-1.0'\n";
         # cmd += "mkdir -p ${DIR_SUFFIX}\n"
         cmd += cmdline_tumor + "\n\n";
-        
+
 
         #   ------------------------------------------------------------------------
         #   - resize all images back to input resolution and save as nifti
@@ -481,7 +483,7 @@ def gridcont(basedir, args):
         cmd_postproc += " -convert_images -gridcont ";
         cmd_postproc += " -compute_tumor_stats ";
         if args.run_registration:
-            cmd_postproc += " -postprocess_registration "; 
+            cmd_postproc += " -postprocess_registration ";
         cmd_postproc += " -analyze_concomps ";
         cmd_postproc += " -generate_slices " + "\n";
 
@@ -510,7 +512,7 @@ def gridcont(basedir, args):
             if submit:
                 if level == 64:
                     if args.compute_cluster in ['hazelhen','cbica']:
-                      process = subprocess.check_output(['qsub',job_file]).strip();                    
+                      process = subprocess.check_output(['qsub',job_file]).strip();
                     else:
                       process = subprocess.check_output(['sbatch',job_file]).strip();
                     print(process)
