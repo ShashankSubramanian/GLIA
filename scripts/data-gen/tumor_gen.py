@@ -6,10 +6,22 @@ import numpy as np
 import os, math, sys, argparse
 
 TARGET_DIMS = (256, 256, 256)
-LABEL_DICT = [("csf", 10), ("vt", 50), ("gm", 150), ("wm", 250)]
+#LABEL_DICT = [("csf", 10), ("vt", 50), ("gm", 150), ("wm", 250)]
+LABEL_DICT = {"csf":10, "vt":50, "gm":150, "wm":250}
 SIGMA = 2*math.pi/256
 
-
+def moveCenter(source, target, offset):
+    new_source = np.copy(source)
+    direction = (target - source).astype(float)
+    # normalize direction vector
+    direction = direction/np.linalg.norm(direction)
+    # quantize direction vector
+    direction = np.where(direction > 0, np.ceil(direction), direction);
+    direction = np.where(direction < 0, np.floor(direction), direction);
+    # check for new source locations by using a scalar offset in direction of "direction"
+    new_source = target + direction*offset
+    return new_source, direction
+    
 def randomOffset(point, magnitude):
     new_point = np.zeros_like(point)
     for i in range(point.shape[0]):
@@ -169,7 +181,8 @@ def getConnectedComponents(white_matter, thresh=0):
 def writeTissueSegToFiles(label, label_dict, path, scale=True, affine=np.eye(3)):
     # Write out gm, wm, etc as its own file
     print("Writing NetCDF files for each tissue type...")
-    for tissue, index in label_dict:
+    for tissue in label_dict:
+        index = label_dict[tissue]
         data = np.where(label == index, 1, 0)
         new_path_nii = os.path.join(path, "atlas_" + tissue + ".nii")
         new_path_nc = os.path.join(path, "atlas_" + tissue + ".nc")
@@ -224,9 +237,25 @@ if __name__ == '__main__':
     writeTissueSegToFiles(atlas, LABEL_DICT, output_path, scale=True, affine=atlas_nib.affine)
     # Read centers and activations from file
     centers, activations = getCentersAndActivations(centers_path, activations_path)
+    
+##### Write c0 file before modification for debugging purpose ######
+    c0 = np.zeros(TARGET_DIMS)
 
+    for center, act in zip(centers, activations):
+        gaussian = getGaussian(center, SIGMA, TARGET_DIMS)
+        c0 += gaussian * act
+
+    # Check c0 values are in correct range, min should be ~= 0 and max
+    # should be near 1
+    assert abs(np.max(c0) - 1) <= 1e-6, "c0 max not close to 1"
+    assert abs(np.min(c0)) < 1e-6, "c0 min = {}".format(np.min(c0))
+
+    new_path_nii = os.path.join(output_path, "c0_atlas_affine_before.nii")
+    writeNII(c0, new_path_nii, atlas_nib.affine)
+
+####################################################################
     # Get white matter mask
-    wm_index = [x[1] for x in LABEL_DICT if x[0] == 'wm'][0]
+    wm_index = LABEL_DICT["wm"]
     wm_mask = np.where(atlas == wm_index, 1, 0)
     labeled, ncomponents = getConnectedComponents(wm_mask, thresh=1e-3)
 
@@ -235,23 +264,30 @@ if __name__ == '__main__':
     verified_centers = []
     for center, act in zip(centers, activations):
         center = [int(x / SIGMA) for x in center]
+        # keep a copy of the original center
+        new_center = center.copy()
+        # starting offset for moving centers from target location in WM
+        offset = 2
         while True:
-            comp_index = labeled[int(center[0]), int(center[1]), int(center[2])]
+            comp_index = labeled[int(new_center[0]), int(new_center[1]), int(new_center[2])]
             # if center already in white matter, add it to list of centers, else
             # get loc of nearest white matter and move it there
             if comp_index > 0:
-                verified_centers.append([x * SIGMA for x in center])
+                verified_centers.append([x * SIGMA for x in new_center])
                 break
             else:
                 center_3d = np.zeros_like(labeled)
+                # use old center to compute distances
                 center_3d[int(center[0]), int(center[1]), int(center[2])] = 1
                 distance, current, target = computeDistance(center_3d, np.eye(4), labeled > 0, np.eye(4))
-                center = target
+                #center = target
                 # Randomly move the target location 2 voxels away to prevent being on edge
                 # This needs to be change, maybe use vector from current to target position
                 # to determine how to move away from edge?
-                #center = randomOffset(target, 2)
-                #print("target = {}, trying new center = {}".format(target, center))
+                new_center,direction = moveCenter(center, target, offset)
+                print("old center {}\n target {}\n Trying new center at {}\n (in direction {}\n with offset {})".format(center, target, new_center, direction, offset))
+                # new offset if old one didnt work
+                offset += 1
 
 
     print("Transported centers = {}".format(verified_centers))
