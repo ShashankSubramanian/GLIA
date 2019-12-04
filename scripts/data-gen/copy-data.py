@@ -45,11 +45,31 @@ if __name__=='__main__':
     base_results_dir = args.results_directory;
     base_patient_image_path = args.patient_image_path
     base_atlas_image_path = args.atlas_image_path
+
     for patient in patient_list:
+        TRAIN = False;
+        TEST  = False;
+        VAL   = False;         
         if "BraTS" not in patient:
             continue;
-        for atlas in atlas_list:
-            print('processing patient/atlas pair [{} / {}]'.format(patient, atlas))
+        rand_p = random.random()
+        if rand_p >= 0.0 and rand_p < 0.7:
+            TRAIN = True;
+            print("[] BID {} has been selected for TRAIN".format(patient));
+        elif rand_p >= 0.7 and rand_p <= 0.85:
+            VAL = True;
+        elif rand_p >= 0.85 and rand_p <= 1.0: 
+            TEST = True;
+        rand_a = random.random()
+        for atlas, aid in zip(atlas_list,range(len(atlas_list))):
+            if VAL or TEST:
+                if int(rand_a/len(atlas_list)) != aid:
+                    continue;
+            if VAL:
+                print("[] BID {} has been selected for VAL; patient/atlas pair [{} / {}] chosen".format(patient, patient, atlas));
+            if TEST:
+                print("[] BID {} has been selected for TEST; patient/atlas pair [{} / {}] chosen".format(patient, patient, atlas));
+            print('   - processing patient/atlas pair [{} / {}]'.format(patient, atlas))
             patient_image_path = os.path.join(os.path.join(os.path.join(os.path.join(base_patient_image_path, patient), "data"), "affreg2-"+str(atlas)), patient + '_seg_dl_tu_256x256x256_aff2'+str(atlas)+'.nii.gz');
             if atlas == 'jacob':
                 atlas_image_path = os.path.join(os.path.join(base_atlas_image_path, atlas), 'jakob_segmented_with_cere_lps_256x256x256.nii.gz');
@@ -74,23 +94,26 @@ if __name__=='__main__':
             p_dict["abnormal_seg"] = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz")
             p_dict["abnormal_t1"]  = os.path.join(os.path.join(os.path.join(grade, str(patient)), "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x124.nii.gz")
 
-            if gen_list_only and  os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
-                #if not os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
-                #    continue;
-                if random.random() < 0.75:
-                    print("skipping....")
+            if gen_list_only: #and  os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
+                if not os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
                     continue;
+                #if random.random() < 0.75:
+                #    print("skipping....")
+                #    continue;
                 rnd = random.random()
                 fname_df.loc[len(fname_df)] = p_dict;
-                if rnd >= 0 and rnd < 0.7:
+                #if rnd >= 0 and rnd < 0.7:
+                if TRAIN:
                     fname_df_train.loc[len(fname_df_train)] = p_dict;
-                    print("Sucessfully added [{} / {}] combination to TRAIN".format(patient,atlas))
-                elif rnd >= 0.7 and rnd < 0.85:
+                    print("    .. sucessfully added [{} / {}] combination to TRAIN".format(patient,atlas))
+                #elif rnd >= 0.7 and rnd < 0.85:
+                elif VAL:
                     fname_df_val.loc[len(fname_df_val)] = p_dict;
-                    print("Sucessfully added [{} / {}] combination to VAL".format(patient,atlas))
-                elif rnd >= 0.85 and rnd < 1:
+                    print("    .. sucessfully added [{} / {}] combination to VAL".format(patient,atlas))
+                #elif rnd >= 0.85 and rnd < 1:
+                elif TEST:
                     fname_df_test.loc[len(fname_df_test)] = p_dict;
-                    print("Sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
+                    print("    .. sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
             else:
                 try:
                      shutil.copy2(atlas_image_path, os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x256.nii.gz"))
@@ -141,7 +164,7 @@ if __name__=='__main__':
                          print("Sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
                 #except:
                 #     print("Error processing [{} / {}] combination".format(patient,atlas))
-    fname_df.to_csv(os.path.join(base_results_dir, "dataset_fnames_tiny.csv"), index=False);
-    fname_df_train.to_csv(os.path.join(base_results_dir, "dataset_fnames_train_tiny.csv"), index=False);
-    fname_df_val.to_csv(os.path.join(base_results_dir, "dataset_fnames_val_tiny.csv"), index=False);
-    fname_df_test.to_csv(os.path.join(base_results_dir, "dataset_fnames_test_tiny.csv"), index=False);
+    fname_df.to_csv(os.path.join(base_results_dir, "dataset_fnames.csv"), index=False);
+    fname_df_train.to_csv(os.path.join(base_results_dir, "dataset_fnames_train.csv"), index=False);
+    fname_df_val.to_csv(os.path.join(base_results_dir, "dataset_fnames_val.csv"), index=False);
+    fname_df_test.to_csv(os.path.join(base_results_dir, "dataset_fnames_test.csv"), index=False);
