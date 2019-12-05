@@ -135,6 +135,7 @@ if __name__=='__main__':
             fname_df_test.loc[len(fname_df_test)] = p_dict;
             print("  .. sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
 
+
     fname_df.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames.csv"), index=False);
     fname_df_train.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_train.csv"), index=False);
     fname_df_val.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_val.csv"), index=False);

@@ -337,7 +337,8 @@ if __name__=='__main__':
         atlas = row['aid']
         p_path = row['patient_path']
         split = row['set']
-        if row['reg'] == True:
+        #if row['reg'] == True:
+        if "HGG" in  p_path:
              print('..skipping patient/atlas pair [{} / {}]: already registered'.format(patient, atlas))
              continue;
         if counter >= MAX_JOBS*10:
