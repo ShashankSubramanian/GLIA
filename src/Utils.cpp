@@ -37,6 +37,17 @@ PetscErrorCode VecField::set (ScalarType scalar) {
 	PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode VecField::scale (ScalarType scalar) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ierr = VecScale (x_, scalar);       CHKERRQ (ierr);
+  ierr = VecScale (y_, scalar);       CHKERRQ (ierr);
+  ierr = VecScale (z_, scalar);       CHKERRQ (ierr);
+  
+  PetscFunctionReturn (ierr);
+}
+
 PetscErrorCode VecField::getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;

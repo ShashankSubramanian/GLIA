@@ -344,7 +344,7 @@ class NMisc {
         , E_tumor_ (8000)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (1E-2)                    // low screening coefficient
-        , screen_high_ (1E3)                    // high screening 
+        , screen_high_ (1E2)                    // high screening 
         , forcing_factor_ (12E4)                 // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
@@ -364,6 +364,8 @@ class NMisc {
         , ox_consumption_ (8)                   // consumption of oxygen
         , beta_0_ (0.02)                        // conversion btw inv and proliferative
         , alpha_0_ (0.15)                       // conversion btw inv and proliferative
+        , invasive_threshold_ (0.003)           // invasive threshold for edema
+        , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
                                 {
 
 
@@ -459,6 +461,10 @@ class NMisc {
         int forward_flag_;
         ScalarType k_lb_;
         ScalarType k_ub_;
+
+        ScalarType invasive_threshold_;
+
+        bool use_tanh_scaling_;
 
         bool phi_store_;
         bool adjoint_store_;
@@ -586,6 +592,7 @@ class VecField {
         PetscErrorCode computeMagnitude (Vec);
         PetscErrorCode copy (std::shared_ptr<VecField> field);
         PetscErrorCode set (ScalarType scalar);
+        PetscErrorCode scale (ScalarType scalar);
         PetscErrorCode getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
         PetscErrorCode restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z

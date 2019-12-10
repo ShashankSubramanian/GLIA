@@ -203,26 +203,50 @@ PetscErrorCode Tumor::computeForce (Vec c1) {
     ierr = spec_ops_->weierstrassSmoother (work_[0], work_[0], n_misc_, sigma_smooth);
     spec_ops_->computeGradient (force_->x_, force_->y_, force_->z_, work_[0], &XYZ, t.data());
 
-    ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
-#ifdef CUDA
-    ierr = VecCUDAGetArrayReadWrite (work_[0], &c_ptr);                                  CHKERRQ (ierr);
-    nonlinearForceScalingCuda (c_ptr, fx_ptr, fy_ptr, fz_ptr, n_misc_->forcing_factor_, n_misc_->n_local_);
-    ierr = VecCUDARestoreArrayReadWrite (work_[0], &c_ptr);                              CHKERRQ (ierr);
-#else
-    ierr = VecGetArray (work_[0], &c_ptr);                                  CHKERRQ (ierr);
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        fx_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
-        fy_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
-        fz_ptr[i] *= n_misc_->forcing_factor_ * tanh (c_ptr[i]);
+    // scale force by constant
+    ierr = force_->scale (n_misc_->forcing_factor_);                                     CHKERRQ (ierr);
+
+    if (n_misc_->use_tanh_scaling_) {
+        ierr = force_->getComponentArrays (fx_ptr, fy_ptr, fz_ptr);
+        ierr = vecGetArray (work_[0], &c_ptr);                                          CHKERRQ (ierr);
+        #ifdef CUDA
+            nonlinearForceScalingCuda (c_ptr, fx_ptr, fy_ptr, fz_ptr, n_misc_->n_local_);
+        #else
+            for (int i = 0; i < n_misc_->n_local_; i++) {
+                fx_ptr[i] *= tanh (c_ptr[i]);
+                fy_ptr[i] *= tanh (c_ptr[i]);
+                fz_ptr[i] *= tanh (c_ptr[i]);
+            }
+        #endif
+        ierr = vecRestoreArray (work_[0], &c_ptr);                                  CHKERRQ (ierr);
+        ierr = force_->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr); 
     }
-    ierr = VecRestoreArray (work_[0], &c_ptr);                              CHKERRQ (ierr);
-#endif
-    ierr = force_->restoreComponentArrays (fx_ptr, fy_ptr, fz_ptr); 
 
     self_exec_time += MPI_Wtime();
     accumulateTimers (n_misc_->timers_, t, self_exec_time);
     e.addTimings (t);
     e.stop ();
+
+    PetscFunctionReturn (ierr);
+}
+
+PetscErrorCode Tumor::computeEdema () {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    ScalarType *i_ptr, *ed_ptr;
+    ierr = VecGetArray (species_["infiltrative"], &i_ptr);                  CHKERRQ (ierr);
+    ierr = VecGetArray (species_["edema"], &ed_ptr);                        CHKERRQ (ierr);
+
+    for (int i = 0; i < n_misc_->n_local_; i++) 
+        ed_ptr[i] = (i_ptr[i] > n_misc_->invasive_threshold_) ? 1.0 : 0.0;
+
+    ierr = VecRestoreArray (species_["infiltrative"], &i_ptr);                  CHKERRQ (ierr);
+    ierr = VecRestoreArray (species_["edema"], &ed_ptr);                        CHKERRQ (ierr);
+
+    // smooth
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
+    ierr = spec_ops_->weierstrassSmoother (species_["edema"], species_["edema"], n_misc_, sigma_smooth);  CHKERRQ (ierr);
 
     PetscFunctionReturn (ierr);
 }
@@ -235,36 +259,63 @@ PetscErrorCode Tumor::computeSegmentation () {
     // compute seg_ of gm, wm, csf, bg, tumor
     std::vector<ScalarType> v;
     std::vector<ScalarType>::iterator seg_component;
-    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *glm_ptr, *seg_ptr;
+    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *glm_ptr, *seg_ptr, *p_ptr, *n_ptr, *ed_ptr;
     ierr = VecGetArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecGetArray (mat_prop_->glm_, &glm_ptr);                   CHKERRQ(ierr);
-    ierr = VecGetArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
-    ierr = VecGetArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
+    ierr = VecGetArray (seg_, &seg_ptr);                              CHKERRQ(ierr);
 
-    // segmentation for c0
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        v.push_back (bg_ptr[i]);
-        v.push_back (c_ptr[i]);
-        v.push_back (wm_ptr[i]);
-        v.push_back (gm_ptr[i]);
-        v.push_back (csf_ptr[i]);
-        v.push_back (glm_ptr[i]);
+    if (n_misc_->model_ == 5) {
+        ierr = VecGetArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr);
+        ierr = VecGetArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr);
+        ierr = VecGetArray (species_["edema"], &ed_ptr);              CHKERRQ(ierr);
 
-        seg_component = std::max_element (v.begin(), v.end());
-        seg_ptr[i] = std::distance (v.begin(), seg_component);
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            v.push_back (bg_ptr[i]);
+            v.push_back (p_ptr[i]);
+            v.push_back (n_ptr[i]);
+            v.push_back (ed_ptr[i]);
+            v.push_back (wm_ptr[i]);
+            v.push_back (gm_ptr[i]);
+            v.push_back (csf_ptr[i]);
+            v.push_back (glm_ptr[i]);
 
-        v.clear();
-    }   
+            seg_component = std::max_element (v.begin(), v.end());
+            seg_ptr[i] = std::distance (v.begin(), seg_component);
+
+            v.clear();
+        }   
+    } else {
+        ierr = VecGetArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            v.push_back (bg_ptr[i]);
+            v.push_back (c_ptr[i]);
+            v.push_back (wm_ptr[i]);
+            v.push_back (gm_ptr[i]);
+            v.push_back (csf_ptr[i]);
+            v.push_back (glm_ptr[i]);
+
+            seg_component = std::max_element (v.begin(), v.end());
+            seg_ptr[i] = std::distance (v.begin(), seg_component);
+
+            v.clear();
+        }   
+    }
     
     ierr = VecRestoreArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->glm_, &glm_ptr);                   CHKERRQ(ierr);
-    ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
+    if (n_misc_->model_ == 5) {
+        ierr = VecRestoreArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr);
+        ierr = VecRestoreArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr);
+        ierr = VecRestoreArray (species_["edema"], &ed_ptr);              CHKERRQ(ierr);
+    } else {
+        ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
+    }
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
     PetscFunctionReturn (ierr);

@@ -988,8 +988,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
     #else
         ScalarType p_temp, i_temp, frac_1, frac_2;
         ScalarType ox_heal = 1.;
-        ScalarType reac_ratio = 0.4;
-        ScalarType death_ratio = 1;
+        ScalarType reac_ratio = 0.3;
+        ScalarType death_ratio = 3;
         for (int i = 0; i < n_misc_->n_local_; i++) {
             p_temp = p_ptr[i]; i_temp = i_ptr[i];
             p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
@@ -1094,9 +1094,11 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);
-    ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
+    // ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
     // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
-    ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
+    // ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
+
+    ierr = VecSet (tumor_->species_["infiltrative"], 0.);                                 CHKERRQ (ierr);
     ierr = VecSet (tumor_->species_["oxygen"], 1.);                                       CHKERRQ (ierr);
 
     // smooth i_t to keep aliasing to a minimum
@@ -1143,6 +1145,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         ierr = tuMSGstd (s.str());                                                CHKERRQ(ierr);
         s.str (""); s.clear ();
         // compute CFL
+        ierr = tumor_->computeEdema ();                                           CHKERRQ (ierr);
         ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
         ierr = tumor_->velocity_->computeMagnitude (magnitude_);
         ierr = VecMax (magnitude_, NULL, &vel_max);      CHKERRQ (ierr);
@@ -1205,21 +1208,27 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
             dataOut (tumor_->species_["oxygen"], n_misc_, ss.str().c_str());
             ss.str(std::string()); ss.clear();
             if (n_misc_->verbosity_ > 2) {
-                ss << "rho_t[" << i << "].nc";
-                dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
+            //     ss << "rho_t[" << i << "].nc";
+            //     dataOut (tumor_->rho_->rho_vec_, n_misc_, ss.str().c_str());
+            //     ss.str(std::string()); ss.clear();
+                ss << "m_t[" << i << "].nc";
+                dataOut (tumor_->work_[0], n_misc_, ss.str().c_str());
+                ss.str(std::string()); ss.clear();
+                ss << "ed_t[" << i << "].nc";
+                dataOut (tumor_->species_["edema"], n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
                 ss << "kxx_t[" << i << "].nc";
                 dataOut (tumor_->k_->kxx_, n_misc_, ss.str().c_str());
                 ss.str(std::string()); ss.clear();
-                ss << "lam_t[" << i << "].nc";
-                dataOut (elasticity_solver_->ctx_->lam_, n_misc_, ss.str().c_str());
-                ss.str(std::string()); ss.clear();
-                ss << "mu_t[" << i << "].nc";
-                dataOut (elasticity_solver_->ctx_->mu_, n_misc_, ss.str().c_str());
-                ss.str(std::string()); ss.clear();
-                ss << "scr_t[" << i << "].nc";
-                dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
-                ss.str(std::string()); ss.clear();
+                // ss << "lam_t[" << i << "].nc";
+                // dataOut (elasticity_solver_->ctx_->lam_, n_misc_, ss.str().c_str());
+                // ss.str(std::string()); ss.clear();
+                // ss << "mu_t[" << i << "].nc";
+                // dataOut (elasticity_solver_->ctx_->mu_, n_misc_, ss.str().c_str());
+                // ss.str(std::string()); ss.clear();
+                // ss << "scr_t[" << i << "].nc";
+                // dataOut (elasticity_solver_->ctx_->screen_, n_misc_, ss.str().c_str());
+                // ss.str(std::string()); ss.clear();
                 ierr = tumor_->force_->computeMagnitude(magnitude_);
                 ss << "force_t[" << i << "].nc";
                 dataOut (magnitude_, n_misc_, ss.str().c_str());

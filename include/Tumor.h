@@ -61,6 +61,7 @@ class Tumor {
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setTrueP (std::shared_ptr<NMisc> n_misc, ScalarType val);
 		PetscErrorCode setTrueP (Vec p);
+		PetscErrorCode computeEdema ();
 		PetscErrorCode computeSegmentation ();
 		PetscErrorCode computeSpeciesNorms ();
 		PetscErrorCode clipTumor ();

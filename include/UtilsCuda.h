@@ -125,7 +125,7 @@ void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz);
 void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr,
                                        ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *sz);
-void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz);
+void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz);
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz);
 void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt, int64_t sz);
 void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz);

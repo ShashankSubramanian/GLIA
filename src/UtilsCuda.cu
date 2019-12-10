@@ -350,13 +350,13 @@ __global__ void computeMagnitude (ScalarType *mag_ptr, ScalarType *x_ptr, Scalar
 		mag_ptr[i] = sqrt (x_ptr[i] * x_ptr[i] + y_ptr[i] * y_ptr[i] + z_ptr[i] * z_ptr[i]);
 }
 
-__global__ void nonlinearForceScaling (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz) {
+__global__ void nonlinearForceScaling (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
-		fx_ptr[i] *= fac * tanh (c_ptr[i]);
-        fy_ptr[i] *= fac * tanh (c_ptr[i]);
-        fz_ptr[i] *= fac * tanh (c_ptr[i]);
+		fx_ptr[i] *= tanh (c_ptr[i]);
+        fy_ptr[i] *= tanh (c_ptr[i]);
+        fz_ptr[i] *= tanh (c_ptr[i]);
 	}
 }
 
@@ -441,8 +441,8 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType p_temp, i_temp, frac_1, frac_2;
 	    ScalarType ox_heal = 1.;
-	    ScalarType reac_ratio = 0.4;
-	    ScalarType death_ratio = 1;		
+	    ScalarType reac_ratio = 0.3;
+	    ScalarType death_ratio = 3;		
 
 	    p_temp = p_ptr[i]; i_temp = i_ptr[i];
         p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
@@ -590,10 +590,10 @@ void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int
 	cudaCheckKernelError ();
 }
 
-void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, ScalarType fac, int64_t sz) {
+void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
-	nonlinearForceScaling <<< (sz + n_th - 1) / n_th, n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, fac, sz);
+	nonlinearForceScaling <<< (sz + n_th - 1) / n_th, n_th >>> (c_ptr, fx_ptr, fy_ptr, fz_ptr, sz);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
