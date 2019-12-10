@@ -1323,6 +1323,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     std::stringstream s;
     ierr = VecGetArray (x, &x_ptr);                                 CHKERRQ (ierr);
     n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
+    n_misc_->rho_ = x_ptr[1];                  // rho
+    n_misc_->k_   = x_ptr[2];                  // kappa
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
     if (!disable_verbose_) {
@@ -1343,7 +1345,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
     misfit_brain *= 0.5 * n_misc_->lebesgue_measure_;
     if (!disable_verbose_) {
-    s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;}
+      s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    }
     ierr = tuMSGstd(s.str());                                       CHKERRQ (ierr);
     s.str(""); s.clear();
     (*J) += misfit_brain;

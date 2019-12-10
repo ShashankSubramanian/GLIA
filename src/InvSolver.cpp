@@ -60,13 +60,20 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
+    // For mass-effect; invert for rho, kappa, and gamma
+    int n_inv = 3;
+    ScalarType *xrec_ptr;
     // allocate memory for xrec_
-    ierr = VecCreateSeq (PETSC_COMM_SELF, 1, &xrec_);              CHKERRQ (ierr);
+    ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv, &xrec_);          CHKERRQ (ierr);
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
-    ierr = VecSet (xrec_, 0.1);                                    CHKERRQ (ierr);
+    ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);    
+    ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
+    xrec_ptr[0] = 0.1; xrec_ptr[1] = 15; xrec_ptr[2] = itctx_->n_misc_->k_lb_;
+    ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
+
     // set up routine to compute the hessian matrix vector product
     if (H_ == nullptr) {
-      ierr = MatCreateShell (PETSC_COMM_SELF, 1, 1, 1, 1, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
+      ierr = MatCreateShell (PETSC_COMM_SELF, n_inv, n_inv, n_inv, n_inv, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
     }
     // create TAO solver object
     if ( tao_ == nullptr && initialize_tao) {
@@ -2273,6 +2280,8 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
           << std::setw(18) << "||gradient||_2,rel" << "   " << std::setw(18) << "||gradient||_2"  << "   "
           << std::setw(18) << "step" << "   ";
         s << std::setw(18) << "gamma";
+        s << std::setw(18) << "rho";
+        s << std::setw(18) << "kappa";
 
         if(itctx->optsettings_->newtonsolver == QUASINEWTON) {
           ierr = tuMSGstd (" starting optimization, TAO's Quasi-Newton");            CHKERRQ(ierr);
@@ -2291,7 +2300,9 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->optfeedback_->gradnorm0
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step
-      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << tao_x_ptr[0];
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << tao_x_ptr[0]
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << tao_x_ptr[1]
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << tao_x_ptr[2];
 
     ierr = tuMSGwarn (s.str());                                                    CHKERRQ(ierr);
     s.str ("");s.clear ();
@@ -4047,7 +4058,14 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     ierr = VecSet (lower_bound, 0.);                                                CHKERRQ (ierr);
     Vec upper_bound;
     ierr = VecDuplicate (xrec_, &upper_bound);                            CHKERRQ (ierr);
-    ierr = VecSet (upper_bound, 2.);                                             CHKERRQ (ierr);
+    ierr = VecSet (upper_bound, PETSC_INFINITY);                                             CHKERRQ (ierr);
+
+    ScalarType *ub_ptr;
+    ierr = VecGetArray (upper_bound, &ub_ptr);                            CHKERRQ (ierr);
+    ub_ptr[0] = 2;
+    ub_ptr[1] = 20;
+    ub_ptr[2] = itctx_->n_misc_->k_ub_;
+    ierr = VecRestoreArray (upper_bound, &ub_ptr);                        CHKERRQ (ierr);
 
     ierr = TaoSetVariableBounds(tao, lower_bound, upper_bound);                     CHKERRQ (ierr);
     if (lower_bound != nullptr) {ierr = VecDestroy(&lower_bound); CHKERRQ(ierr); lower_bound = nullptr;}

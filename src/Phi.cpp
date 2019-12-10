@@ -678,7 +678,7 @@ PetscErrorCode Phi::setGaussians (std::string file, bool read_comp_data) {
     phi_vec_.resize (np_);
     ierr = VecCreate (PETSC_COMM_WORLD, &phi_vec_[0]);
     ierr = VecSetSizes (phi_vec_[0], n_misc_->n_local_, n_misc_->n_global_);
-    ierr = VecSetFromOptions (phi_vec_[0]);
+    ierr = setupVec (phi_vec_[0]);
     ierr = VecSet (phi_vec_[0], 0);
     for (int i = 1; i < np_; i++) {
         ierr = VecDuplicate (phi_vec_[0], &phi_vec_[i]);
