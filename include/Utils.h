@@ -344,7 +344,7 @@ class NMisc {
         , E_tumor_ (8000)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (1E-2)                    // low screening coefficient
-        , screen_high_ (1E2)                    // high screening 
+        , screen_high_ (1E3)                    // high screening 
         , forcing_factor_ (12E4)                 // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
