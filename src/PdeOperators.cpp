@@ -1008,9 +1008,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
             }
             frac_1 = (std::isnan(frac_1)) ? 0. : frac_1;
             frac_2 = (std::isnan(frac_2)) ? 0. : frac_2;
-            gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
+            gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i])
                              + h_ptr[i] * n_misc_->death_rate_ * gm_ptr[i]); 
-            wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) + reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + di_ptr[i])
+            wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i])
                              + h_ptr[i] * n_misc_->death_rate_ * wm_ptr[i]); 
         }
     #endif
