@@ -63,7 +63,7 @@ if __name__=='__main__':
         rand_a = random.random()
         for atlas, aid in zip(atlas_list,range(len(atlas_list))):
             if VAL or TEST:
-                if int(rand_a/len(atlas_list)) != aid:
+                if int(rand_a*en(atlas_list)) != aid:
                     continue;
             if VAL:
                 print("[] BID {} has been selected for VAL; patient/atlas pair [{} / {}] chosen".format(patient, patient, atlas));

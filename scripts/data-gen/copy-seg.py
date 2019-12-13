@@ -65,64 +65,35 @@ if __name__=='__main__':
         if VAL:
             print("[] BID {} w/ AID {} has been selected for VAL".format(patient,atlas))
 
-        patient_image_path = os.path.join(os.path.join(os.path.join(os.path.join(base_patient_image_path, p_path), "data"), "affreg2-"+str(atlas)), patient + '_seg_dl_tu_256x256x256_aff2'+str(atlas)+'.nii.gz');
-        atlas_image_path = os.path.join(os.path.join(base_atlas_image_path, '256x256x256_nii'), atlas + '_segmented.nii.gz');
         atlas_ref_path   = os.path.join(os.path.join(base_atlas_image_path,"../698_templates/256x256x124_analyze"), atlas + '_segmented.img');
-        atlas_t1_image   = os.path.join(os.path.join(base_atlas_image_path, '256x256x256_nii'), atlas + '_cbq_n3.nii.gz');
+        patient_image_path = os.path.join(os.path.join(os.path.join(base_patient_image_path, p_path), "data"), str(patient)+'_seg_dl_tu.nii.gz');
         # directories
-        reg_out_dir = os.path.join(os.path.join(base_patient_image_path, p_path), "{}_regto_{}".format(patient,atlas));
-        reg_out_dir = os.path.join(reg_out_dir, "registration");
         out_dir = os.path.join(os.path.join(base_results_dir, p_path), "{}_regto_{}".format(patient,atlas));
         if not os.path.exists(out_dir):
             print("results folder doesn't exist, creating one!\n");
             os.makedirs(out_dir);
         run_ok = True;
         p_dict = {}
-        p_dict['normal_seg']   = os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")
-        p_dict['normal_t1']    = os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_t1_256x256x124.nii.gz")
-        p_dict['normal_c0']    = os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_with_c0_256x256x124.nii.gz")
-        p_dict["abnormal_seg"] = os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz")
-        p_dict["abnormal_t1"]  = os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x124.nii.gz")
+        p_dict['normal_seg']   = "" #os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")
+        p_dict['normal_t1']    = "" #os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_t1_256x256x124.nii.gz")
+        p_dict['normal_c0']    = "" #os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "normal_"+str(atlas)+"_with_c0_256x256x124.nii.gz")
+        p_dict["abnormal_seg"] = os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), str(patient)+"_seg_dl_tu-combined_"+"_256x256x124.nii.gz")
+        p_dict["abnormal_t1"]  = "" #os.path.join(os.path.join(p_path, "{}_regto_{}".format(patient,atlas)), "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x124.nii.gz")
 
-        if False:#os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
+        if False: #os.path.exists(os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz")):
             print("  sample already resampled and copied ... skipping!");
         else:
-           try:
-               shutil.copy2(atlas_image_path, os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x256.nii.gz"))
-               shutil.copy2(atlas_t1_image, os.path.join(out_dir, "normal_"+str(atlas)+"_t1_256x256x256.nii.gz"))
-               shutil.copy2(patient_image_path, os.path.join(out_dir, str(patient)+"_seg_aff2_"+str(atlas)+"_256x256x256.nii.gz"))
-               shutil.copy2(os.path.join(reg_out_dir, "atlas_with_warped_tumor_in_Pspace.nii.gz"), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg_"+"_256x256x256.nii.gz"))
-               shutil.copy2(os.path.join(reg_out_dir, "atlas_t1_in_Pspace.nii.gz"), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_t1_"+"_256x256x256.nii.gz"))
-               shutil.copy2(os.path.join(reg_out_dir, "patient_seg_in_Aspace.nii.gz"), os.path.join(out_dir, str(patient)+"_seg_in_Aspace_"+"_256x256x256.nii.gz"))
-           except Exception as e:
-               print("Error processing [{} / {}] combination: FILES NOT AVAILABLE (maybe registration has not been run)".format(patient,atlas))
-               print(e)
-               run_ok = False;
-           if run_ok:
                a_ref = nib.load(atlas_ref_path);
-               # resize atlas
-               a_img = nib.load(atlas_image_path);
-               rz_img = imgtools.resizeNIIImage(a_img, tuple([256,256,124]), interp_order=0)
-               print(" .. resmapling altas"); 
-               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "normal_"+str(atlas)+"_seg_256x256x124.nii.gz"), ref_image=a_ref)
 
                # resize patient
-               p_img = nib.load(os.path.join(reg_out_dir, "atlas_with_warped_tumor_in_Pspace.nii.gz"))
+               p_img = nib.load(patient_image_path)
                rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
                print(" .. resmapling altas w/ tumor in p-space"); 
-               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg_"+"_256x256x124.nii.gz"), ref_image=a_ref);
+               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_dl_tu_"+"_256x256x124.nii.gz"), ref_image=a_ref);
                im = rz_img.get_fdata()
                wt = np.logical_or(np.logical_or(im == 4, im == 1), im == 2)
                im[wt] = 3;
-               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, "abnormal_"+str(atlas)+"_from_"+str(patient)+"_seg-combined_"+"_256x256x124.nii.gz"), ref_image=a_ref);
-               p_img = nib.load(os.path.join(reg_out_dir, "patient_seg_in_Aspace.nii.gz"))
-               rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
-               print(" .. resmapling patient in a-space"); 
-               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_in_Aspace_"+"_256x256x124.nii.gz"), ref_image=a_ref);
-               p_img = nib.load(patient_image_path);
-               rz_img = imgtools.resizeNIIImage(p_img, tuple([256,256,124]), interp_order=0)
-               print(" .. resmapling patient"); 
-               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_aff2_"+str(atlas)+"_256x256x124.nii.gz"), ref_image=a_ref);
+               fio.writeNII(rz_img.get_fdata(), os.path.join(out_dir, str(patient)+"_seg_dl_tu-combined_"+"_256x256x124.nii.gz"), ref_image=a_ref);
 
         fname_df.loc[len(fname_df)] = p_dict;
         if TRAIN:
@@ -136,7 +107,7 @@ if __name__=='__main__':
             print("  .. sucessfully added [{} / {}] combination to TEST".format(patient,atlas))
 
 
-    fname_df.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames.csv"), index=False);
-    fname_df_train.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_train.csv"), index=False);
-    fname_df_val.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_val.csv"), index=False);
-    fname_df_test.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_test.csv"), index=False);
+    #fname_df.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames.csv"), index=False);
+    #fname_df_train.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_train.csv"), index=False);
+    #fname_df_val.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_val.csv"), index=False);
+    fname_df_test.to_csv(os.path.join(base_results_dir, "dataset_reg_all_atlasses_fnames_test_brats_orig_data.csv"), index=False);
