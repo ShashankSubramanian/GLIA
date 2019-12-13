@@ -1051,7 +1051,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::updateReacAndDiffCoefficients (Vec seg,
     // ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
     for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3 || std::abs(seg_ptr[i] - 4) < 1E-3) { //p,n,wm
+        if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
             // 1 is tumor, 2 is wm
             rho_ptr[i] = n_misc_->rho_;
             // k_ptr[i] = n_misc_->k_;
@@ -1094,15 +1094,15 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);
-    // ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);
     // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
-    // ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
+    ierr = VecScale (tumor_->species_["infiltrative"], 0.1);                              CHKERRQ (ierr); 
 
-    ierr = VecSet (tumor_->species_["infiltrative"], 0.);                                 CHKERRQ (ierr);
     ierr = VecSet (tumor_->species_["oxygen"], 1.);                                       CHKERRQ (ierr);
 
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
     // smooth i_t to keep aliasing to a minimum
-    // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], n_misc_, (4.0 * 2.0 * M_PI / n_misc_->n_[0]));     CHKERRQ (ierr);
+    // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], n_misc_, sigma_smooth);     CHKERRQ (ierr);
 
     ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
 
@@ -1134,7 +1134,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
     std::stringstream s;
 
-    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / n_misc_->n_[0];
     bool flag_smooth_velocity = true;
     bool write_output_and_break = false;
 

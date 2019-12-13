@@ -267,27 +267,27 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecGetArray (mat_prop_->glm_, &glm_ptr);                   CHKERRQ(ierr);
     ierr = VecGetArray (seg_, &seg_ptr);                              CHKERRQ(ierr);
 
-    if (n_misc_->model_ == 5) {
-        ierr = VecGetArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr);
-        ierr = VecGetArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr);
-        ierr = VecGetArray (species_["edema"], &ed_ptr);              CHKERRQ(ierr);
+    // if (n_misc_->model_ == 5) {
+    //     ierr = VecGetArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr);
+    //     ierr = VecGetArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr);
+    //     ierr = VecGetArray (species_["edema"], &ed_ptr);              CHKERRQ(ierr);
 
-        for (int i = 0; i < n_misc_->n_local_; i++) {
-            v.push_back (bg_ptr[i]);
-            v.push_back (p_ptr[i]);
-            v.push_back (n_ptr[i]);
-            v.push_back (ed_ptr[i]);
-            v.push_back (wm_ptr[i]);
-            v.push_back (gm_ptr[i]);
-            v.push_back (csf_ptr[i]);
-            v.push_back (glm_ptr[i]);
+    //     for (int i = 0; i < n_misc_->n_local_; i++) {
+    //         v.push_back (bg_ptr[i]);
+    //         v.push_back (p_ptr[i]);
+    //         v.push_back (n_ptr[i]);
+    //         v.push_back (ed_ptr[i]);
+    //         v.push_back (wm_ptr[i]);
+    //         v.push_back (gm_ptr[i]);
+    //         v.push_back (csf_ptr[i]);
+    //         v.push_back (glm_ptr[i]);
 
-            seg_component = std::max_element (v.begin(), v.end());
-            seg_ptr[i] = std::distance (v.begin(), seg_component);
+    //         seg_component = std::max_element (v.begin(), v.end());
+    //         seg_ptr[i] = std::distance (v.begin(), seg_component);
 
-            v.clear();
-        }   
-    } else {
+    //         v.clear();
+    //     }   
+    // } else {
         ierr = VecGetArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
         for (int i = 0; i < n_misc_->n_local_; i++) {
             v.push_back (bg_ptr[i]);
@@ -302,7 +302,7 @@ PetscErrorCode Tumor::computeSegmentation () {
 
             v.clear();
         }   
-    }
+    // }
     
     ierr = VecRestoreArray (mat_prop_->bg_, &bg_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->gm_, &gm_ptr);                     CHKERRQ(ierr);
