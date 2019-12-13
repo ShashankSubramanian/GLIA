@@ -344,8 +344,8 @@ class NMisc {
         , E_tumor_ (8000)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (1E-2)                    // low screening coefficient
-        , screen_high_ (1E3)                    // high screening 
-        , forcing_factor_ (12E4)                 // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
+        , screen_high_ (1E2)                    // high screening 
+        , forcing_factor_ (1E5)                 // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
@@ -360,10 +360,10 @@ class NMisc {
         , ox_inv_ (0.7)                         // invasive oxygen conc
         , ox_hypoxia_ (0.65)                    // hypoxia threshold
         , death_rate_ (3)                       // death rate
-        , ox_source_ (55)                       // source of oxygen
-        , ox_consumption_ (8)                   // consumption of oxygen
-        , beta_0_ (0.02)                        // conversion btw inv and proliferative
-        , alpha_0_ (0.15)                       // conversion btw inv and proliferative
+        , ox_source_ (50)                       // source of oxygen
+        , ox_consumption_ (10)                   // consumption of oxygen
+        , beta_0_ (0.01)                        // conversion btw inv and proliferative
+        , alpha_0_ (0.1)                       // conversion btw inv and proliferative
         , invasive_threshold_ (0.003)           // invasive threshold for edema
         , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
                                 {
