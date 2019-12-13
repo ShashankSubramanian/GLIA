@@ -191,7 +191,7 @@ def registration(args, basedir, data_dir, patient, atlas):
 def run_bratsreg(basedir, args, patient, atlas):
 
     # ########### SETTINGS ############
-    patients_per_job   = 10;
+    patients_per_job   = 11;
     level              = 256;
     nodes              = 5;
     procs              = 256;
@@ -337,8 +337,8 @@ if __name__=='__main__':
         atlas = row['aid']
         p_path = row['patient_path']
         split = row['set']
-        #if row['reg'] == True:
-        if "HGG" in  p_path:
+        if row['reg'] == True:
+        #if "HGG" in  p_path:
              print('..skipping patient/atlas pair [{} / {}]: already registered'.format(patient, atlas))
              continue;
         if counter >= MAX_JOBS*10:
