@@ -309,13 +309,13 @@ PetscErrorCode Tumor::computeSegmentation () {
     ierr = VecRestoreArray (mat_prop_->wm_, &wm_ptr);                     CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->csf_, &csf_ptr);                   CHKERRQ(ierr);
     ierr = VecRestoreArray (mat_prop_->glm_, &glm_ptr);                   CHKERRQ(ierr);
-    if (n_misc_->model_ == 5) {
-        ierr = VecRestoreArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr);
-        ierr = VecRestoreArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr);
-        ierr = VecRestoreArray (species_["edema"], &ed_ptr);              CHKERRQ(ierr);
-    } else {
+    // if (n_misc_->model_ == 5) {
+    //     ierr = VecRestoreArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr);
+    //     ierr = VecRestoreArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr);
+    //     ierr = VecRestoreArray (species_["edema"], &ed_ptr);              CHKERRQ(ierr);
+    // } else {
         ierr = VecRestoreArray (c_t_, &c_ptr);                                CHKERRQ(ierr);
-    }
+    // }
     ierr = VecRestoreArray (seg_, &seg_ptr);                               CHKERRQ(ierr);
 
     PetscFunctionReturn (ierr);
