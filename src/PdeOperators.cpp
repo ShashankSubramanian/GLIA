@@ -1284,7 +1284,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
 
         // ------------------------------------------------ diffusion  ------------------------------------------------
         ierr = diff_solver_->solve (tumor_->species_["infiltrative"], dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
-        ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
+        // ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
         
         // ------------------------------------------------ explicit source terms for all equations (includes reaction source)  ------------------------------------------------
         ierr = computeSources (tumor_->species_["proliferative"], tumor_->species_["infiltrative"], tumor_->species_["necrotic"], 
