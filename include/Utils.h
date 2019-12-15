@@ -357,14 +357,14 @@ class NMisc {
         , outfile_grad_()
         , outfile_glob_grad_()
         , num_species_ (5)                      // Number of species for the multi-species model - only used if model is 5
-        , ox_inv_ (0.7)                         // invasive oxygen conc
-        , ox_hypoxia_ (0.65)                    // hypoxia threshold
-        , death_rate_ (3)                       // death rate
-        , ox_source_ (50)                       // source of oxygen
-        , ox_consumption_ (10)                   // consumption of oxygen
+        , ox_inv_ (0.8)                         // invasive oxygen conc
+        , ox_hypoxia_ (0.6)                    // hypoxia threshold
+        , death_rate_ (4)                       // death rate
+        , ox_source_ (1)                       // source of oxygen
+        , ox_consumption_ (2)                   // consumption of oxygen
         , beta_0_ (0.01)                        // conversion btw inv and proliferative
         , alpha_0_ (0.1)                       // conversion btw inv and proliferative
-        , invasive_threshold_ (0.003)           // invasive threshold for edema
+        , invasive_threshold_ (0.001)           // invasive threshold for edema
         , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
                                 {
 

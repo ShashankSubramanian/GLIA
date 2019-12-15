@@ -440,7 +440,7 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
 		ScalarType p_temp, i_temp, frac_1, frac_2;
-	    ScalarType ox_heal = 1.;
+	    ScalarType ox_heal = 1;
 	    ScalarType reac_ratio = 0;
 	    ScalarType death_ratio = 1;		
 
