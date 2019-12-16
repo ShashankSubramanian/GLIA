@@ -1278,6 +1278,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
         // clip tumor : single-precision advection seems to have issues if this is not clipped.
         ierr = tumor_->clipTumor();                                                                 CHKERRQ (ierr);
           
+        // smooth infiltrative to avoid aliasing
+        ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], n_misc_, sigma_smooth);  CHKERRQ (ierr);
+
         // compute Di to be used for healthy cell evolution equations: make sure work[11] is not used till sources are computed
         ierr = VecCopy (tumor_->species_["infiltrative"], tumor_->work_[11]);      CHKERRQ (ierr);
         ierr = tumor_->k_->applyD (tumor_->work_[11], tumor_->work_[11]);          CHKERRQ (ierr);
@@ -1292,6 +1295,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
 
         // set tumor core as c_t_
         ierr = VecWAXPY (tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["necrotic"]);                        CHKERRQ (ierr);
+        ierr = VecAXPY (tumor_->c_t_, 1., tumor_->species_["infiltrative"]);                                                        CHKERRQ (ierr);
 
         if (n_misc_->forcing_factor_ > 0) {
             // ------------------------------------------------ elasticity update ------------------------------------------------ 
