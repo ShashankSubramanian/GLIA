@@ -987,8 +987,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources (Vec p, Vec i, Vec n, Ve
             n_misc_->death_rate_, n_misc_->ox_source_, n_misc_->ox_consumption_, n_misc_->n_local_);
     #else
         ScalarType p_temp, i_temp, frac_1, frac_2;
-        ScalarType ox_heal = 1.;
-        ScalarType reac_ratio = 0;
+        ScalarType ox_heal = 1;
+        ScalarType reac_ratio = 1;
         ScalarType death_ratio = 1;
         for (int i = 0; i < n_misc_->n_local_; i++) {
             p_temp = p_ptr[i]; i_temp = i_ptr[i];

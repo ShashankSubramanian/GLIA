@@ -361,7 +361,7 @@ class NMisc {
         , ox_hypoxia_ (0.6)                    // hypoxia threshold
         , death_rate_ (4)                       // death rate
         , ox_source_ (1)                       // source of oxygen
-        , ox_consumption_ (8)                   // consumption of oxygen
+        , ox_consumption_ (5)                   // consumption of oxygen
         , beta_0_ (0.01)                        // conversion btw inv and proliferative
         , alpha_0_ (0.1)                       // conversion btw inv and proliferative
         , invasive_threshold_ (0.001)           // invasive threshold for edema
