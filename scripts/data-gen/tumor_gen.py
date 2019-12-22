@@ -361,7 +361,9 @@ if __name__ == '__main__':
 
             jobfile.write(cmd)
             jobfile.close()
-
+            
+            # remove this when submitting jobs for all patients.
+            # keep this to test for one patient.
             sys.exit()
                         
     f.close()
