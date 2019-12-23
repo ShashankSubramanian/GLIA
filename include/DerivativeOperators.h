@@ -94,7 +94,7 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 		DerivativeOperatorsMassEffect (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor) 
 									: DerivativeOperators (pde_operators, n_misc, tumor) {
 					tuMSGstd (" ----- Setting RD derivative operators with mass-effect objective --------");
-					VecCreateSeq (PETSC_COMM_SELF, 1, &delta_);           
+					VecCreateSeq (PETSC_COMM_SELF, 3, &delta_);           
     				setupVec (delta_, SEQ);                                  
     				VecSet (delta_, 0.);			
     				disable_verbose_ = false;						
