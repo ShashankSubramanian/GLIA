@@ -1323,8 +1323,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     std::stringstream s;
     ierr = VecGetArray (x, &x_ptr);                                 CHKERRQ (ierr);
     n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
-    n_misc_->rho_ = x_ptr[1];                  // rho
-    n_misc_->k_   = x_ptr[2];                  // kappa
+    n_misc_->rho_ = 10 * x_ptr[1];                  // rho
+    n_misc_->k_   = 1E-2 * x_ptr[2];                  // kappa
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
     if (!disable_verbose_) {
@@ -1376,21 +1376,21 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     h = PETSC_SQRT_MACHINE_EPSILON * characteristic_scale;
     PetscReal J_f, J_b;
 
-    ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
-    ierr = VecShift (delta_, h);                                   CHKERRQ (ierr);
-
-    ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-
-    ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
-    // ierr = VecShift (delta_, -h);                                  CHKERRQ (ierr);
-
-    ierr = evaluateObjective (&J_b, delta_, data);                 CHKERRQ (ierr);
-
-    PetscReal g = 0;
-    // g = (J_f - J_b) / (2 * h);
-    g = (J_f - J_b) / h;
-    ierr = VecSet(dJ, g);                                          CHKERRQ (ierr);
-
+    ierr = evaluateObjective (&J_b, x, data);                      CHKERRQ (ierr);
+    int sz;
+    ScalarType *delta_ptr, *dj_ptr;
+    ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    for (int i = 0; i < sz; i++) {
+        ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
+        ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
+        ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+        delta_ptr[i] += h;
+        ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
+        ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+        dj_ptr[i] = (J_f - J_b) / h;
+        ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
+    }
+      
     disable_verbose_ = false;
 
     PetscFunctionReturn (ierr);
@@ -1412,16 +1412,23 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
     h = PETSC_SQRT_MACHINE_EPSILON;
     PetscReal J_f = 0.;
-    ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
-    ierr = VecShift (delta_, h);                                   CHKERRQ (ierr);
-
-    disable_verbose_ = true;    
-    ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-    disable_verbose_ = false;    
-
-    PetscReal g = 0;
-    g = (J_f - (*J)) / h;
-    ierr = VecSet (dJ, g);                                         CHKERRQ (ierr);
+    
+    disable_verbose_ = true;
+    int sz;
+    ScalarType *delta_ptr, *dj_ptr;
+    ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    for (int i = 0; i < sz; i++) {
+        ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
+        ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
+        ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+        delta_ptr[i] += h;
+        ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
+        ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+        dj_ptr[i] = (J_f - (*J)) / h;
+        ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
+    }
+      
+    disable_verbose_ = false;
     
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
