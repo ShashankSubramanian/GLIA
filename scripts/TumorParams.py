@@ -57,14 +57,13 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
     ### Path to patient gm
-    p_gm_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/gm_t[50].nc"
+    p_gm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/gm_t[50].nc"
     ### Path to patient wm
-    p_wm_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/wm_t[50].nc"
+    p_wm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/wm_t[50].nc"
     ### Path to patient csf
-    p_csf_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/vt_t[50].nc"
+    p_csf_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/vt_t[50].nc"
     ### Path to patient glm
-    p_glm_path = "/scratch1/05027/shas1693/pglistr_tumor/results/masseffect-f12-/csf_t[50].nc"
-
+    p_glm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/csf_t[50].nc" 
 
     verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
@@ -82,11 +81,11 @@ def getTumorRunCmd(params):
     model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
-    k_data = 0.01
+    k_data = 0.025
     nt_data = 50
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 1.2E5
+    forcing_factor = 1E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 128
     y_cm = 76
@@ -108,7 +107,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1
+    smooth_f = 1.5
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -118,9 +117,9 @@ def getTumorRunCmd(params):
     ### Forward flag -- Flag to run only forward solve
     forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
-    diffusivity_flag = 0
+    diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
-    reaction_flag = 0
+    reaction_flag = 1
     ### Radial basis flag: 1 - data driven, 0 - grid-based (bounding box)  (Use data-driven for all tests)
     basis_type = 1
     ### Lambda continuation flag -- Flag for parameter continuation in L1 optimization (Keep turned on)
@@ -164,9 +163,9 @@ def getTumorRunCmd(params):
     ### number of line-search attempts
     ls_max_func_evals = 10
     ## lower bound on kappa
-    lower_bound_kappa = 1E-3
+    lower_bound_kappa = 1E-1
     ## upper bound on kappa
-    upper_bound_kappa = 5E-2
+    upper_bound_kappa = 5
 
     ### TUMOR PARAMETERS SET END
 
