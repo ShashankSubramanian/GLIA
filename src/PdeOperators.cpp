@@ -46,7 +46,7 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
     ScalarType dt = n_misc_->dt_;
     int nt = n_misc->nt_;
 
-    if (!n_misc->forward_flag_) {
+    if (!n_misc->forward_flag_ && n_misc_->model_ < 4) {
         c_.resize (nt + 1);                         //Time history of tumor
         p_.resize (nt + 1);                         //Time history of adjoints
         if (n_misc->adjoint_store_) {

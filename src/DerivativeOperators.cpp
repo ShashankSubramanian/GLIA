@@ -1324,7 +1324,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = VecGetArray (x, &x_ptr);                                 CHKERRQ (ierr);
     n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
     n_misc_->rho_ = 10 * x_ptr[1];                  // rho
-    n_misc_->k_   = 1E-2 * x_ptr[2];                  // kappa
+    n_misc_->k_   = 1E-1 * x_ptr[2];                  // kappa
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
     if (!disable_verbose_) {
@@ -1380,16 +1380,16 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     int sz;
     ScalarType *delta_ptr, *dj_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
-        ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
         delta_ptr[i] += h;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
         dj_ptr[i] = (J_f - J_b) / h;
-        ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
     }
+    ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
     disable_verbose_ = false;
 
@@ -1417,16 +1417,16 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     int sz;
     ScalarType *delta_ptr, *dj_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
-        ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
         delta_ptr[i] += h;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
         dj_ptr[i] = (J_f - (*J)) / h;
-        ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
     }
+    ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
     disable_verbose_ = false;
     

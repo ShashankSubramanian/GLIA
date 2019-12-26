@@ -68,7 +68,7 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
     ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);    
     ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
-    xrec_ptr[0] = 0.1; xrec_ptr[1] = 0.8; xrec_ptr[2] = 0.1;
+    xrec_ptr[0] = 0.1; xrec_ptr[1] = 0.8; xrec_ptr[2] = 0.05;
     ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
 
     // set up routine to compute the hessian matrix vector product
@@ -4066,6 +4066,12 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     ub_ptr[1] = 1.5;
     ub_ptr[2] = itctx_->n_misc_->k_ub_;
     ierr = VecRestoreArray (upper_bound, &ub_ptr);                        CHKERRQ (ierr);
+
+
+    ScalarType *lb_ptr;
+    ierr = VecGetArray (lower_bound, &lb_ptr);                            CHKERRQ (ierr);
+    lb_ptr[2] = itctx_->n_misc_->k_lb_;
+    ierr = VecRestoreArray (lower_bound, &lb_ptr);                        CHKERRQ (ierr);
 
     ierr = TaoSetVariableBounds(tao, lower_bound, upper_bound);                     CHKERRQ (ierr);
     if (lower_bound != nullptr) {ierr = VecDestroy(&lower_bound); CHKERRQ(ierr); lower_bound = nullptr;}

@@ -81,11 +81,11 @@ def getTumorRunCmd(params):
     model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
-    k_data = 0.025
+    k_data = 0.01
     nt_data = 50
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 1E5
+    forcing_factor = 1.2E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 128
     y_cm = 76
@@ -163,9 +163,9 @@ def getTumorRunCmd(params):
     ### number of line-search attempts
     ls_max_func_evals = 10
     ## lower bound on kappa
-    lower_bound_kappa = 1E-1
+    lower_bound_kappa = 5E-2
     ## upper bound on kappa
-    upper_bound_kappa = 5
+    upper_bound_kappa = 5E-1
 
     ### TUMOR PARAMETERS SET END
 
