@@ -2885,7 +2885,6 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     nl = ctx->n_misc_->n_local_;
     ng = ctx->n_misc_->n_global_;
     ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
-    ierr = VecDuplicate (ctx->tumor_->p_, &g);                                  CHKERRQ(ierr);
     ierr = TaoLineSearchGetSolution(ls, x, &J, g, &step, &ls_flag);             CHKERRQ (ierr);
 
     // display line-search convergence reason
