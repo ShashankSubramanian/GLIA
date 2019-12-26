@@ -57,13 +57,13 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
     ### Path to patient gm
-    p_gm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/gm_t[50].nc"
+    p_gm_path = "/work/05027/shas1693/maverick2/pglistr_tumor/results/masseffect-f12/gm_t[50].nc"
     ### Path to patient wm
-    p_wm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/wm_t[50].nc"
+    p_wm_path = "/work/05027/shas1693/maverick2/pglistr_tumor/results/masseffect-f12/wm_t[50].nc"
     ### Path to patient csf
-    p_csf_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/vt_t[50].nc"
+    p_csf_path = "/work/05027/shas1693/maverick2/pglistr_tumor/results/masseffect-f12/vt_t[50].nc"
     ### Path to patient glm
-    p_glm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/csf_t[50].nc" 
+    p_glm_path = "/work/05027/shas1693/maverick2/pglistr_tumor/results/masseffect-f12/csf_t[50].nc" 
 
     verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
