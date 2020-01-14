@@ -31,6 +31,24 @@ class bcolors:
 
 ###
 ### ------------------------------------------------------------------------ ###
+def GetFileList(dirname, template):
+    list_of_files = os.listdir(dirname)
+    all_files = list()
+    # iterate over all files in the directory
+    for entry in list_of_files:
+        # create full path
+        full_path = os.path.join(dirname, entry)
+        # if entry is a directory then get the list of files in this directory
+        if os.path.isdir(full_path):
+            all_files = all_files + GetFileList(full_path,template)
+        else:
+            if template in full_path:
+                all_files.append(full_path)
+
+    return all_files
+
+###
+### ------------------------------------------------------------------------ ###
 def extractRhoK(path, rhofac):
     env_file = open(os.path.join(path,'env_rhok.sh'), 'w')
     env_file.write("#!/bin/bash\n")
