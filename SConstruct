@@ -184,6 +184,10 @@ if env["gpu"] == True:
     uniqueCheckLib(conf, "cufft")
     uniqueCheckLib(conf, "cublas")
     uniqueCheckLib(conf, "cudart")
+# MPI
+MPI_DIR = checkset_var("MPI_DIR", "")
+env.Append(CPPPATH = [os.path.join( MPI_DIR, "include")])
+env.Append(LIBPATH = [os.path.join( MPI_DIR, "lib")])
 
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
