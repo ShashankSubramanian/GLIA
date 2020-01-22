@@ -172,8 +172,11 @@ if env["multi_gpu"] == True:
 # env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 
 # avx
-#if env["platform"] != "stampede2":
-env.Append(CCFLAGS = ['-march=native'])
+if env["platform"] != "frontera":
+    env.Append(CCFLAGS = ['-march=native'])
+elif env["platform"] == "frontera" and env["gpu"] == False:
+    env.Append(CCFLAGS = ['-march=native'])
+
 
 # ====== CUDA =======
 if env["gpu"] == True:
@@ -229,7 +232,7 @@ env.Append(LIBPATH = [os.path.join( PETSC_DIR, "lib"),
 if env["platform"] == "hazelhen":
   # do nothing
   pass
-elif env["platform"] == "lonestar" or env["platform"] == "stampede2":
+elif env["platform"] == "lonestar" or env["platform"] == "stampede2" or env["platform"] == "maverick2" or env["platform"] == "frontera":
   uniqueCheckLib(conf, "petsc")
 else:
   uniqueCheckLib(conf, "petsc")
