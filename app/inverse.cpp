@@ -832,21 +832,23 @@ int main (int argc, char** argv) {
             if (n_misc->invert_mass_effect_) {
                 // apply phi to get tumor c0: rho, kappa already set before; inv-solver setParams will allocate the correct vector sizes
                 ierr = tumor->phi_->apply(tumor->c_0_, p_rec);  
-                ierr = solver_interface->solveInverseMassEffect (&gamma, data, nullptr); // solve tumor inversion for only mass-effect gamma = forcing factor
+                // ierr = solver_interface->solveInverseMassEffect (&gamma, data, nullptr); // solve tumor inversion for only mass-effect gamma = forcing factor
 
-//                Vec x_gamma;
-//                ierr = VecDuplicate(solver_interface->getInvSolver()->getPrec(), &x_gamma); CHKERRQ (ierr);
-//
-//                if (procid == 0) obj_file.open("obj_masseffect_list.txt");
-//                // obj-tests
-//                for (ScalarType j = 0.1; j <= 2; j += 0.1) {
-//                    // print objective function values
-//                    ierr = VecSet (x_gamma, j); CHKERRQ (ierr);
-//                    ierr = solver_interface->getDerivativeOperators()->evaluateObjective(&J, x_gamma, data);    CHKERRQ(ierr);
-//                    if (procid == 0) obj_file << j << " " << J << std::endl;
-//                }
-//                if (procid == 0) obj_file.close();
-//                ierr = VecDestroy (&x_gamma);   CHKERRQ (ierr);
+               Vec x_gamma; ScalarType *x_gamma_ptr;
+               ierr = VecDuplicate(solver_interface->getInvSolver()->getPrec(), &x_gamma); CHKERRQ (ierr);
+
+               if (procid == 0) obj_file.open("obj_masseffect_list.txt");
+               // obj-tests
+               for (ScalarType j = 0.1; j <= 2; j += 0.01) {
+                    // print objective function values
+                    ierr = VecGetArray (x_gamma, &x_gamma_ptr); CHKERRQ (ierr);
+                    x_gamma_ptr[0] = j; x_gamma_ptr[1] = 0.8; x_gamma_ptr[2] = 0.05;
+                    ierr = VecRestoreArray (x_gamma, &x_gamma_ptr); CHKERRQ (ierr);
+                    ierr = solver_interface->getDerivativeOperators()->evaluateObjective(&J, x_gamma, data);    CHKERRQ(ierr);
+                    if (procid == 0) obj_file << j << " " << J << std::endl;
+               }
+               if (procid == 0) obj_file.close();
+               ierr = VecDestroy (&x_gamma);   CHKERRQ (ierr);
 //
                 // Reset mat-props and diffusion and reaction operators, tumor IC does not change
                 ierr = tumor->mat_prop_->resetValues ();                       CHKERRQ (ierr);
