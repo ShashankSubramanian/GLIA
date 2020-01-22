@@ -1452,6 +1452,53 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateHessian (Vec y, Vec x){
     PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    std::stringstream s;
+    s << " ----- Gradient check with taylor expansion ----- "; ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    ScalarType *x_ptr;
+    ierr = VecGetArray (x, &x_ptr);                               CHKERRQ (ierr);
+
+    ScalarType h[6];
+    ScalarType J, J_taylor, J_p, diff;
+
+    Vec dJ, x_tilde, x_new;
+    ierr = VecDuplicate (x, &dJ);                               CHKERRQ (ierr);
+    ierr = VecDuplicate (x, &x_tilde);                          CHKERRQ (ierr);
+    ierr = VecDuplicate (x, &x_new);                            CHKERRQ (ierr);
+
+    ierr = evaluateObjectiveAndGradient (&J_p, dJ, x, data);    CHKERRQ (ierr);
+
+    PetscRandom rctx;
+    #ifdef SERIAL
+      ierr = PetscRandomCreate (PETSC_COMM_SELF, &rctx);          CHKERRQ (ierr);
+    #else
+      ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);         CHKERRQ (ierr);
+    #endif
+    ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
+    ierr = VecSetRandom (x_tilde, rctx);                        CHKERRQ (ierr);
+
+    for (int i = 0; i < 6; i++) {
+        h[i] = 1E-5 * std::pow (10, -i);
+        ierr = VecWAXPY (x_new, h[i], x_tilde, x);              CHKERRQ (ierr);
+        ierr = evaluateObjective (&J, x_new, data);
+        ierr = VecDot (dJ, x_tilde, &J_taylor);                 CHKERRQ (ierr);
+        J_taylor *= h[i];
+        J_taylor +=  J_p;
+        diff = std::abs(J - J_taylor);
+        s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff); ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    }
+
+    ierr = VecDestroy (&dJ);               CHKERRQ (ierr);
+    ierr = VecDestroy (&x_tilde);          CHKERRQ (ierr);
+    ierr = VecDestroy (&x_new);            CHKERRQ (ierr);
+    ierr = PetscRandomDestroy (&rctx);     CHKERRQ (ierr);
+
+    PetscFunctionReturn (ierr);
+}
+
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                  BASE CLASS                       ======== #### */

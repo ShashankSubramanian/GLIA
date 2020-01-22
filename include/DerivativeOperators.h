@@ -32,8 +32,8 @@ class DerivativeOperators {
         virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
 		virtual PetscErrorCode setDistMeassureDiffImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
 		virtual PetscErrorCode setMaterialProperties (Vec gm, Vec wm, Vec csf, Vec glm) {PetscFunctionReturn(0);}
-        PetscErrorCode checkGradient (Vec p, Vec data);
-        PetscErrorCode checkHessian (Vec p, Vec data);
+        virtual PetscErrorCode checkGradient (Vec p, Vec data);
+        virtual PetscErrorCode checkHessian (Vec p, Vec data);
         // reset vector sizes
         virtual PetscErrorCode reset(Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
 
@@ -112,6 +112,8 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 			gm_ = gm; wm_ = wm; csf_ = csf; glm_ = glm;
 			PetscFunctionReturn(0);
 		}
+
+		PetscErrorCode checkGradient (Vec p, Vec data);
 
 		~DerivativeOperatorsMassEffect () {VecDestroy(&delta_);}
 
