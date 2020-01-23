@@ -1372,8 +1372,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     // Finite difference gradient -- forward for now
     ScalarType h;
     // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
-    ScalarType characteristic_scale = 1;
-    h = PETSC_SQRT_MACHINE_EPSILON * characteristic_scale;
+    h = PETSC_SQRT_MACHINE_EPSILON;
     PetscReal J_f, J_b;
 
     ierr = evaluateObjective (&J_b, x, data);                      CHKERRQ (ierr);
@@ -1486,15 +1485,15 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (x_tilde, rctx);                        CHKERRQ (ierr);
 
+    ScalarType xg_dot;
     for (int i = 1; i < 6; i++) {
         h[i] = std::pow (10, -i);
         ierr = VecWAXPY (x_new, h[i], x_tilde, x);              CHKERRQ (ierr);
         ierr = evaluateObjective (&J, x_new, data);
-        ierr = VecDot (dJ, x_tilde, &J_taylor);                 CHKERRQ (ierr);
-        J_taylor *= h[i];
-        J_taylor +=  J_p;
+        ierr = VecDot (dJ, x_tilde, &xg_dot);                   CHKERRQ (ierr);
+        J_taylor = J_p + xg_dot * h[i];
         diff = std::abs(J - J_taylor);
-        s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff); ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+        s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << " g_fd - xg_dot: " << (J - J_p)/h[i] - xg_dot; ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
 
     ierr = VecDestroy (&dJ);               CHKERRQ (ierr);
