@@ -1384,10 +1384,10 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
-        delta_ptr[i] += h;
+        delta_ptr[i] += h * x_ptr[i];
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-        dj_ptr[i] = (J_f - J_b) / h;
+        dj_ptr[i] = (J_f - J_b) / (h * x_ptr[i]);
     }
     ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
@@ -1421,10 +1421,10 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
-        delta_ptr[i] += h;
+        delta_ptr[i] += h * x_ptr[i];
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-        dj_ptr[i] = (J_f - (*J)) / h;
+        dj_ptr[i] = (J_f - (*J)) / (h * x_ptr[i]);
     }
     ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
@@ -1480,8 +1480,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (x_tilde, rctx);                        CHKERRQ (ierr);
 
-    for (int i = 0; i < 6; i++) {
-        h[i] = 1E-5 * std::pow (10, -i);
+    for (int i = 1; i < 6; i++) {
+        h[i] = std::pow (10, -i);
         ierr = VecWAXPY (x_new, h[i], x_tilde, x);              CHKERRQ (ierr);
         ierr = evaluateObjective (&J, x_new, data);
         ierr = VecDot (dJ, x_tilde, &J_taylor);                 CHKERRQ (ierr);
