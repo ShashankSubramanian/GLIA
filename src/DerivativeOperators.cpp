@@ -1381,15 +1381,18 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     ScalarType const *x_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+
+    ScalarType scale = 1.;
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
-        ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
-        delta_ptr[i] += h * x_ptr[i];
+        ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
+        scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
+        delta_ptr[i] += h * scale;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-        dj_ptr[i] = (J_f - J_b) / (h * x_ptr[i]);
-        ierr = VecRestoreArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
+        dj_ptr[i] = (J_f - J_b) / (h * scale);
+        ierr = VecRestoreArrayRead (x, &x_ptr);                        CHKERRQ (ierr);
     }
     ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
@@ -1421,14 +1424,17 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     ScalarType const *x_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+
+    ScalarType scale = 1;
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
-        delta_ptr[i] += h * x_ptr[i];
+        scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
+        delta_ptr[i] += h * scale;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-        dj_ptr[i] = (J_f - (*J)) / (h * x_ptr[i]);
+        dj_ptr[i] = (J_f - (*J)) / (h * scale);
         ierr = VecRestoreArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
     }
     ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
