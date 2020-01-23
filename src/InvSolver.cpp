@@ -81,7 +81,27 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     }
 
     ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);         CHKERRQ(ierr);
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
+        ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsMassEffect);
+    #endif
     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
+
+    PetscFunctionReturn (ierr);
+}
+
+PetscErrorCode operatorCreateVecsMassEffect (Mat A, Vec *left, Vec *right) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    CtxInv *ctx;
+    ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
+
+    if (right) {
+        ierr = VecDuplicate (ctx->x_old, right);             CHKERRQ(ierr);
+    }
+    if (left) {
+        ierr = VecDuplicate (ctx->x_old, left);              CHKERRQ(ierr);
+    }
 
     PetscFunctionReturn (ierr);
 }

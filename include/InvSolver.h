@@ -294,5 +294,6 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObjMassEffect (Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason (TaoConvergedReason flag, std::string &solverstatus);
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);
+PetscErrorCode operatorCreateVecsMassEffect (Mat A, Vec *left, Vec *right);
 
 #endif
