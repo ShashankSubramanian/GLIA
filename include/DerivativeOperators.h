@@ -12,11 +12,15 @@ class DerivativeOperators {
 					VecDuplicate (tumor_->c_0_, &temp_);
 					VecDuplicate (tumor_->p_, &ptemp_);
                     VecDuplicate (tumor_->p_, &p_current_);
+
+                    disable_verbose_ = true;
 				}
 
 		std::shared_ptr<PdeOperators> pde_operators_;
 		std::shared_ptr<Tumor> tumor_;
 		std::shared_ptr<NMisc> n_misc_;
+
+		bool disable_verbose_; // temp flag for log file vis purposes
 
 		Vec temp_;
 		Vec ptemp_;
@@ -119,7 +123,6 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 
 	private:
 		Vec gm_, wm_, csf_, glm_;
-		bool disable_verbose_;
 };
 
 class DerivativeOperatorsRDObj : public DerivativeOperators {

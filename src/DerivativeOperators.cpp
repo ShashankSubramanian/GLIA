@@ -1348,10 +1348,11 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
     misfit_brain *= 0.5 * n_misc_->lebesgue_measure_;
     if (!disable_verbose_) {
-      s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+        s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+        ierr = tuMSGstd(s.str());                                       CHKERRQ (ierr);
+        s.str(""); s.clear();
     }
-    ierr = tuMSGstd(s.str());                                       CHKERRQ (ierr);
-    s.str(""); s.clear();
+
     (*J) += misfit_brain;
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -1387,7 +1388,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
-        scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
+        // scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
+        scale = 1.;
         delta_ptr[i] += h * scale;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
@@ -1431,6 +1433,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
         scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
+        scale = 1.;
         delta_ptr[i] += h * scale;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
@@ -1489,7 +1492,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (x_tilde, rctx);                        CHKERRQ (ierr);
 
-    ScalarType xg_dot;
+    ScalarType xg_dot, sum;
+    ierr = VecSum (x_tilde, &sum);                              CHKERRQ (ierr);
     for (int i = 1; i < 6; i++) {
         h[i] = std::pow (10, -i);
         ierr = VecWAXPY (x_new, h[i], x_tilde, x);              CHKERRQ (ierr);
@@ -1497,7 +1501,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
         ierr = VecDot (dJ, x_tilde, &xg_dot);                   CHKERRQ (ierr);
         J_taylor = J_p + xg_dot * h[i];
         diff = std::abs(J - J_taylor);
-        s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << " g_fd - xg_dot: " << (J - J_p)/h[i] - xg_dot; 
+        s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << " g_fd - xg_dot: " << ((J - J_p)/h[i] - xg_dot) / sum; 
         ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
 

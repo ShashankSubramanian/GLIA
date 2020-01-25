@@ -163,9 +163,9 @@ def getTumorRunCmd(params):
     ### number of line-search attempts
     ls_max_func_evals = 10
     ## lower bound on kappa
-    lower_bound_kappa = 5E-2
+    lower_bound_kappa = 5E-3
     ## upper bound on kappa
-    upper_bound_kappa = 5E-1
+    upper_bound_kappa = 5E-2
 
     ### TUMOR PARAMETERS SET END
 
