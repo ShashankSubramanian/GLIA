@@ -600,6 +600,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
+    ierr = displacement_old_->set(0);                            CHKERRQ (ierr);
 
     ScalarType k1, k2, k3, r1, r2, r3;
     k1 = n_misc_->k_;
@@ -1092,6 +1093,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+    
+    ierr = displacement_old_->set(0);                            CHKERRQ (ierr);
 
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["infiltrative"]);                      CHKERRQ (ierr);

@@ -1880,6 +1880,12 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
 
     itctx->optfeedback_->nb_gradevals++;
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
+
+    // use petsc default fd gradient
+//    itctx->derivative_operators_->disable_verbose_ = true;
+//    ierr = TaoDefaultComputeGradient(tao, x, dJ, ptr); CHKERRQ(ierr);
+//    itctx->derivative_operators_->disable_verbose_ = false;
+
     std::stringstream s;
     if (itctx->optsettings_->verbosity > 1) {
         ScalarType gnorm;

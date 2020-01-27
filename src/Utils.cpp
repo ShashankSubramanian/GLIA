@@ -1125,16 +1125,17 @@ PetscErrorCode vecMax (Vec x, PetscInt *p, PetscReal *val) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  #ifdef CUDA
-    ScalarType *x_ptr;
-    int sz;
-    ierr = vecGetArray (x, &x_ptr);       CHKERRQ (ierr);
-    ierr = VecGetSize (x, &sz);           CHKERRQ (ierr);
-    vecMaxCuda (x_ptr, p, val, sz);
-    ierr = vecRestoreArray (x, &x_ptr);   CHKERRQ (ierr);
-  #else
+  // TODO: thrust max fails in frontera rtx queue; hence commented: has to be fixed
+  // #ifdef CUDA
+  //   ScalarType *x_ptr;
+  //   int sz;
+  //   ierr = vecGetArray (x, &x_ptr);       CHKERRQ (ierr);
+  //   ierr = VecGetSize (x, &sz);           CHKERRQ (ierr);
+  //   vecMaxCuda (x_ptr, p, val, sz);
+  //   ierr = vecRestoreArray (x, &x_ptr);   CHKERRQ (ierr);
+  // #else
     ierr = VecMax (x, p, val);            CHKERRQ (ierr);
-  #endif
+  // #endif
 
   PetscFunctionReturn (ierr);
 }

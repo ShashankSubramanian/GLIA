@@ -9,13 +9,13 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/check-gpu/'
+params['results_path'] = tumor_dir + '/results/check/'
 params['compute_sys'] = 'frontera'
 
 
 
 # ### Real data
-params['data_path'] = tumor_dir + '/results/masseffect-f12/c_t[50].nc'
+params['data_path'] = tumor_dir + '/results/masseffect-f12/c_final.nc'
 # # # ## Atlas
 params['gm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_gm.nc" 
 params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc" 
@@ -40,7 +40,7 @@ elif params['compute_sys'] == 'frontera':
     N = 1
     n = 1
 elif params['compute_sys'] == 'maverick2':
-    queue = 'p100'
+    queue = 'gtx'
     N = 1
     n = 1
 elif params['compute_sys'] == 'hazelhen':
@@ -74,7 +74,7 @@ if not err:  # No error in tumor input parameters
         "#SBATCH -p " + queue + "\n" + \
         "#SBATCH -N " + str(N) + "\n" + \
         "#SBATCH -n " + str(n) + "\n" + \
-        "#SBATCH -t 01:00:00\n" + \
+        "#SBATCH -t 10:00:00\n" + \
         "source ~/.bashrc\n" + \
         "export OMP_NUM_THREADS=1\n")
     submit_file.write(run_str)

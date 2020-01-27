@@ -1337,7 +1337,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = tumor_->mat_prop_->resetValues ();                       CHKERRQ (ierr);
     ierr = tumor_->rho_->setValues (n_misc_->rho_, n_misc_->r_gm_wm_ratio_, n_misc_->r_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);
     ierr = tumor_->k_->setValues (n_misc_->k_, n_misc_->k_gm_wm_ratio_, n_misc_->k_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);
-    ierr = tumor_->velocity_->set(0.);                      
+    ierr = tumor_->velocity_->set(0);                      
+    ierr = tumor_->displacement_->set(0);
 
     ierr = pde_operators_->solveState (0);
     ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
@@ -1388,8 +1389,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
-        // scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
-        scale = 1.;
+        scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
+        // scale = 1.;
         delta_ptr[i] += h * scale;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
@@ -1433,7 +1434,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
         scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
-        scale = 1.;
+        // scale = 1.;
         delta_ptr[i] += h * scale;
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
