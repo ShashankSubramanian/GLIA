@@ -1495,14 +1495,16 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
 
     ScalarType xg_dot, sum;
     ierr = VecSum (x_tilde, &sum);                              CHKERRQ (ierr);
-    for (int i = 1; i < 6; i++) {
-        h[i] = std::pow (10, -i);
+    ScalarType start = 1E-3;
+    for (int i = 0; i < 6; i++) {
+        h[i] = start * std::pow (2, -i);
         ierr = VecWAXPY (x_new, h[i], x_tilde, x);              CHKERRQ (ierr);
         ierr = evaluateObjective (&J, x_new, data);
         ierr = VecDot (dJ, x_tilde, &xg_dot);                   CHKERRQ (ierr);
         J_taylor = J_p + xg_dot * h[i];
         diff = std::abs(J - J_taylor);
-        s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << " g_fd - xg_dot: " << ((J - J_p)/h[i] - xg_dot) / sum; 
+        // s << "h[i]: " << h[i] << " |J - J_taylor|: " << diff << "  log2(diff) : " << log2(diff) << " g_fd - xg_dot: " << ((J - J_p)/h[i] - xg_dot) / sum; 
+        s << "h: " << h[i] << " |J - J*|: " << std::abs(J - J_p) << " |J - J_taylor|: " << diff;
         ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     }
 
