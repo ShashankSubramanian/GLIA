@@ -4073,7 +4073,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     // set routine for evaluating the Gradient
     ierr = TaoSetGradientRoutine (tao, evaluateGradient, (void*) ctx);              CHKERRQ(ierr);
     // set the routine to evaluate the objective and compute the gradient
-    ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
+    // ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
     // set monitor function
     ierr = TaoSetMonitor (tao, optimizationMonitorMassEffect, (void *) ctx, NULL);            CHKERRQ(ierr);
     
