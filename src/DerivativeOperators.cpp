@@ -1382,12 +1382,12 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     ScalarType const *x_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
-
+    std::array<ScalarType, 3> characteristic_scale = {1, 0.1, 10};
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
-        h = (x_ptr[i] == 0) ? PETSC_SQRT_MACHINE_EPSILON : PETSC_SQRT_MACHINE_EPSILON * x_ptr[i];
+        h = (x_ptr[i] == 0) ? PETSC_SQRT_MACHINE_EPSILON * characteristic_scale[i] : PETSC_SQRT_MACHINE_EPSILON * x_ptr[i] * characteristic_scale[i];
         xph = x_ptr[i] + h;
         delta_ptr[i] = xph;
         dx = xph - x_ptr[i];  
@@ -1409,40 +1409,42 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     n_misc_->statistics_.nb_obj_evals++;
     n_misc_->statistics_.nb_grad_evals++;
 
-    // Event e ("tumor-eval-objandgrad");
-    // std::array<double, 7> t = {0};
-    // double self_exec_time = -MPI_Wtime ();
+    Event e ("tumor-eval-objandgrad");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
 
-    // ierr = evaluateObjective (J, x, data);                        CHKERRQ(ierr);
-    // // Finite difference gradient -- forward for now
-    // ScalarType h;
-    // // h = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
-    // h = PETSC_SQRT_MACHINE_EPSILON;
-    // PetscReal J_f = 0.;
+    ierr = evaluateObjective (J, x, data);                        CHKERRQ(ierr);
+    // Finite difference gradient -- forward for now
+    ScalarType h, dx;
+    ScalarType volatile xph;
+    h = PETSC_SQRT_MACHINE_EPSILON;
+    PetscReal J_f = 0.;
     
-    // disable_verbose_ = true;
-    // int sz;
-    // ScalarType *delta_ptr, *dj_ptr;
-    // ScalarType const *x_ptr;
-    // ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
-    // ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+    disable_verbose_ = true;
+    int sz;
+    ScalarType *delta_ptr, *dj_ptr;
+    ScalarType const *x_ptr;
+    ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
 
-    // ScalarType scale = 1;
-    // for (int i = 0; i < sz; i++) {
-    //     ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
-    //     ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
-    //     ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
-    //     scale = (x_ptr[i] == 0) ? 1 : x_ptr[i];
-    //     // scale = 1.;
-    //     delta_ptr[i] += h * scale;
-    //     ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
-    //     ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-    //     dj_ptr[i] = (J_f - (*J)) / (h * scale);
-    //     ierr = VecRestoreArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
-    // }
-    // ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
+    ScalarType scale = 1;
+    std::array<ScalarType, 3> characteristic_scale = {1, 0.1, 10};
+    for (int i = 0; i < sz; i++) {
+        ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
+        ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
+        ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
+        h = (x_ptr[i] == 0) ? PETSC_SQRT_MACHINE_EPSILON * characteristic_scale[i] : PETSC_SQRT_MACHINE_EPSILON * x_ptr[i] * characteristic_scale[i];
+        xph = x_ptr[i] + h;
+        delta_ptr[i] = xph;
+        dx = xph - x_ptr[i];  
+        ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
+        ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+        dj_ptr[i] = (J_f - (*J)) / dx;
+        ierr = VecRestoreArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
+    }
+    ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
-    // disable_verbose_ = false;
+    disable_verbose_ = false;
     
     // // timing
     // self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
