@@ -9,22 +9,23 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/check/'
-params['compute_sys'] = 'frontera'
-
-
-
-# ### Real data
-params['data_path'] = tumor_dir + '/results/masseffect-f12/c_final.nc'
-# # # ## Atlas
-params['gm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_gm.nc" 
-params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc" 
-params['glm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_csf.nc" 
-params['csf_path'] = tumor_dir + "/brain_data/jakob/256/jakob_vt.nc"
-
+params['results_path'] = tumor_dir + '/results/inv-128/'
+params['compute_sys'] = 'rebels'
+#### tumor data
+params['data_path'] = tumor_dir + '/results/fwd-128/c_final.nc'
+### atlas
+params['gm_path'] = tumor_dir + "/brain_data/jakob/128/jakob_gm.nc" 
+params['wm_path'] = tumor_dir + "/brain_data/jakob/128/jakob_wm.nc" 
+params['glm_path'] = tumor_dir + "/brain_data/jakob/128/jakob_csf.nc" 
+params['csf_path'] = tumor_dir + "/brain_data/jakob/128/jakob_vt.nc"
 ### input p and phi-cm (needed for mass-effect inversion)
-params['gaussian_cm_path'] = tumor_dir + "/results/masseffect-f12/phi-mesh-forward.txt"
-params['pvec_path'] = tumor_dir + "/results/masseffect-f12/p-rec-forward.txt"
+params['gaussian_cm_path'] = tumor_dir + "/results/fwd-128/phi-mesh-forward.txt"
+params['pvec_path'] = tumor_dir + "/results/fwd-128/p-rec-forward.txt"
+### data to healthy patient
+params['p_gm_path'] = tumor_dir + "/results/fwd-128/gm_final.nc"
+params['p_wm_path'] = tumor_dir + "/results/fwd-128/wm_final.nc"
+params['p_csf_path'] = tumor_dir + "/results/fwd-128/vt_final.nc"
+params['p_glm_path'] = tumor_dir + "/results/fwd-128/csf_final.nc"
 
 
 if params['compute_sys'] == 'rebels':
@@ -74,7 +75,7 @@ if not err:  # No error in tumor input parameters
         "#SBATCH -p " + queue + "\n" + \
         "#SBATCH -N " + str(N) + "\n" + \
         "#SBATCH -n " + str(n) + "\n" + \
-        "#SBATCH -t 10:00:00\n" + \
+        "#SBATCH -t 100:00:00\n" + \
         "source ~/.bashrc\n" + \
         "export OMP_NUM_THREADS=1\n")
     submit_file.write(run_str)

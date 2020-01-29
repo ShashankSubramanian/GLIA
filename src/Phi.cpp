@@ -253,7 +253,7 @@ PetscErrorCode Phi::truncate (ScalarType *out, std::shared_ptr<NMisc> n_misc, Sc
                 // truncate to zero after radius 5*sigma
                 out[ptr] = (r/sigma_ <= 5) ? out[ptr] : 0.0;
             }
-  PetscFunctionReturn (ierr);
+    PetscFunctionReturn (ierr);
 }
 
 // ### _____________________________________________________________________ ___

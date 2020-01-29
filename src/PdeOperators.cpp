@@ -513,16 +513,20 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
         conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            scale_gm_ptr[i] = 0.0;
-            scale_wm_ptr[i] = 0.0;
+            // scale_gm_ptr[i] = 0.0;
+            // scale_wm_ptr[i] = 0.0;
 
-            if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
-                scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-                scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-            }
+            // if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
+            //     scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            //     scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            // }
 
-            scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
-            scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+            // scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
+            // scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+
+            // avoid division by zero but use smooth functions
+            scale_wm_ptr[i] = -dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
+            scale_gm_ptr[i] = -dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
 
             gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
             wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
@@ -549,37 +553,64 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
-    ScalarType *seg_ptr, *rho_ptr, *k_ptr;
-    ierr = VecSet (tumor_->rho_->rho_vec_, 0.);                 CHKERRQ (ierr);
-    ierr = VecSet (tumor_->k_->kxx_, 0.);                       CHKERRQ (ierr);
+    // ScalarType *seg_ptr, *rho_ptr, *k_ptr;
+    // ierr = VecSet (tumor_->rho_->rho_vec_, 0.);                 CHKERRQ (ierr);
+    // ierr = VecSet (tumor_->k_->kxx_, 0.);                       CHKERRQ (ierr);
 
-    ierr = VecGetArray (seg, &seg_ptr);                         CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-    // ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
+    // ierr = VecGetArray (seg, &seg_ptr);                         CHKERRQ (ierr);
+    // ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
+    // // ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
 
+    // for (int i = 0; i < n_misc_->n_local_; i++) {
+    //     if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
+    //         // 1 is tumor, 2 is wm
+    //         rho_ptr[i] = n_misc_->rho_;
+    //         // k_ptr[i] = n_misc_->k_;
+    //     }
+    // }
+
+    // ierr = VecRestoreArray (seg, &seg_ptr);                         CHKERRQ (ierr);
+    // ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
+    // // ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
+
+    // // smooth them now
+    // ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
+    // ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, n_misc_, sigma_smooth);
+    // // ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
+
+    // // copy kxx to other directions
+    // // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
+    // // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
+
+    // // ignore the avg for now since it won't change much and the preconditioner does not have much effect on
+    // // the diffusion solver
+
+
+    ScalarType *bg_ptr, *gm_ptr, *csf_ptr, *vt_ptr, *rho_ptr, *k_ptr;
+    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);                  CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->mat_prop_->bg_, &bg_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->mat_prop_->csf_, &vt_ptr);          CHKERRQ (ierr);
+    ierr = VecGetArray (tumor_->mat_prop_->glm_, &csf_ptr);         CHKERRQ (ierr);
+    ScalarType temp;
     for (int i = 0; i < n_misc_->n_local_; i++) {
-        if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
-            // 1 is tumor, 2 is wm
-            rho_ptr[i] = n_misc_->rho_;
-            // k_ptr[i] = n_misc_->k_;
-        }
+        temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+        rho_ptr[i] = temp * n_misc_->rho_;
+        k_ptr[i] = temp * n_misc_->k_;
     }
-
-    ierr = VecRestoreArray (seg, &seg_ptr);                         CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-    // ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
-
-    // smooth them now
-    ScalarType sigma_smooth = n_misc_->smoothing_factor_ * 2 * M_PI / n_misc_->n_[0];
-    ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, n_misc_, sigma_smooth);
-    // ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, n_misc_, sigma_smooth);
+    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);                  CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->mat_prop_->bg_, &bg_ptr);           CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->mat_prop_->csf_, &vt_ptr);          CHKERRQ (ierr);
+    ierr = VecRestoreArray (tumor_->mat_prop_->glm_, &csf_ptr);         CHKERRQ (ierr);
 
     // copy kxx to other directions
-    // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
-    // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
+    ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
 
-    // ignore the avg for now since it won't change much and the preconditioner does not have much effect on
-    // the diffusion solver
+
 
     PetscFunctionReturn (ierr);
 }
@@ -1093,7 +1124,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState (int linearized) {
     int procid, nprocs;
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-    
+
     ierr = displacement_old_->set(0);                            CHKERRQ (ierr);
 
     ierr = VecCopy (tumor_->c_0_, tumor_->species_["proliferative"]);                     CHKERRQ (ierr);

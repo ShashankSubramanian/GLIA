@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 256
+    N = 128
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -57,20 +57,20 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
     ### Path to patient gm
-    p_gm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/gm_final.nc"
+    p_gm_path = ""
     ### Path to patient wm
-    p_wm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/wm_final.nc"
+    p_wm_path = ""
     ### Path to patient csf
-    p_csf_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/vt_final.nc"
+    p_csf_path = ""
     ### Path to patient glm
-    p_glm_path = "/work/05027/shas1693/frontera/pglistr_tumor/results/masseffect-f12/csf_final.nc" 
+    p_glm_path = "" 
 
     verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
     create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-    rho_inv = 12
+    rho_inv = 10
     k_inv = 0.01
     nt_inv = 50
     dt_inv = 0.02
@@ -80,12 +80,12 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 12
+    rho_data = 10
     k_data = 0.01
     nt_data = 50
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 1.2E5
+    forcing_factor = 0E4
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 128
     y_cm = 76
@@ -107,7 +107,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1.5
+    smooth_f = 1
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -149,7 +149,7 @@ def getTumorRunCmd(params):
     ### Solver type: QN - Quasi newton, GN - Gauss newton
     solvertype = "QN"
     ### Line-search type: armijo - armijo line-search, mt - more-thuene line search (wolfe conditions)
-    linesearchtype = "mt"
+    linesearchtype = "armijo"
     ### Newton max iterations
     newton_maxit = 50
     ### GIST max iterations (for L1 solver)
@@ -379,6 +379,45 @@ def getTumorRunCmd(params):
             print('Default atlas glm path does not exist and no input path provided!\n')
         else:
             print ('Default atlas glm path = {} used'.format(glm_path))
+    # ---
+    if 'p_gm_path' in params:
+        p_gm_path = params['p_gm_path']
+        print('Data gray matter path = {}'.format(p_gm_path))
+    else:
+        if not os.path.exists(p_gm_path):
+            print('Default data gray matter path does not exist and no input path provided!\n')
+            error_flag = 1
+        else:
+            print ('Default data gray matter path = {} used'.format(p_gm_path))
+    # ---
+    if 'p_wm_path' in params:
+        p_wm_path = params['p_wm_path']
+        print('Data white matter path = {}'.format(p_wm_path))
+    else:
+        if not os.path.exists(p_wm_path):
+            print('Default data white matter path does not exist and no input path provided!\n')
+            error_flag = 1
+        else:
+            print ('Default data white matter path = {} used'.format(p_wm_path))
+    # ---
+    if 'p_csf_path' in params:
+        p_csf_path = params['p_csf_path']
+        print('Data CSF path = {}'.format(p_csf_path))
+    else:
+        if not os.path.exists(p_csf_path):
+            print('Default data csf path does not exist and no input path provided!\n')
+            error_flag = 1
+        else:
+            print ('Default data csf path = {} used'.format(p_csf_path))
+    # ---
+    if 'p_glm_path' in params:
+        p_glm_path = params['p_glm_path']
+        print('Data GLM path = {}'.format(p_glm_path))
+    else:
+        if not os.path.exists(p_glm_path):
+            print('Default data glm path does not exist and no input path provided!\n')
+        else:
+            print ('Default data glm path = {} used'.format(p_glm_path))
     # ---
     if 'obs_mask_path' in params:
         obs_mask_path = params['obs_mask_path']

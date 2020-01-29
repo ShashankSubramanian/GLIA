@@ -68,7 +68,7 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
     ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);    
     ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
-    xrec_ptr[0] = 0.1; xrec_ptr[1] = 10; xrec_ptr[2] = 0.005;
+    xrec_ptr[0] = 0; xrec_ptr[1] = 10; xrec_ptr[2] = 0.01;
     ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
 
     // set up routine to compute the hessian matrix vector product
@@ -1882,9 +1882,9 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
 
     // use petsc default fd gradient
-//    itctx->derivative_operators_->disable_verbose_ = true;
-//    ierr = TaoDefaultComputeGradient(tao, x, dJ, ptr); CHKERRQ(ierr);
-//    itctx->derivative_operators_->disable_verbose_ = false;
+   // itctx->derivative_operators_->disable_verbose_ = true;
+   // ierr = TaoDefaultComputeGradient(tao, x, dJ, ptr); CHKERRQ(ierr);
+   // itctx->derivative_operators_->disable_verbose_ = false;
 
     std::stringstream s;
     if (itctx->optsettings_->verbosity > 1) {
@@ -2334,9 +2334,11 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     s.str ("");s.clear ();
 
     ierr = VecRestoreArray (tao_x, &tao_x_ptr);                                    CHKERRQ(ierr);
-
+    if (procid == 0) {
+        ierr = VecView (tao_grad, PETSC_VIEWER_STDOUT_SELF);                           CHKERRQ(ierr);
+    }
     //Gradient check begin
-    // ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
+    ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     // ierr = itctx->derivative_operators_->checkHessian (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (ierr);
@@ -4073,7 +4075,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     // set routine for evaluating the Gradient
     ierr = TaoSetGradientRoutine (tao, evaluateGradient, (void*) ctx);              CHKERRQ(ierr);
     // set the routine to evaluate the objective and compute the gradient
-    // ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
+    ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
     // set monitor function
     ierr = TaoSetMonitor (tao, optimizationMonitorMassEffect, (void *) ctx, NULL);            CHKERRQ(ierr);
     

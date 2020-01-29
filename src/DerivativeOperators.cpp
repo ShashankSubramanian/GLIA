@@ -1382,7 +1382,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     ScalarType const *x_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
-    std::array<ScalarType, 3> characteristic_scale = {1, 0.1, 10};
+    std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
@@ -1428,7 +1428,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
 
     ScalarType scale = 1;
-    std::array<ScalarType, 3> characteristic_scale = {1, 0.1, 10};
+    std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
