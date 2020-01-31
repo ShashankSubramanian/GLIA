@@ -509,24 +509,19 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     ierr = vecGetArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
     ierr = vecGetArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
 
+    ScalarType denom;
+
     #ifdef CUDA
         conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            // scale_gm_ptr[i] = 0.0;
-            // scale_wm_ptr[i] = 0.0;
+            denom = (gm_ptr[i] + wm_ptr[i]);
 
-            // if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
-            //     scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-            //     scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-            // }
+            // scale_wm_ptr[i] = -dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
+            // scale_gm_ptr[i] = -dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
 
-            // scale_gm_ptr[i] = (std::isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
-            // scale_wm_ptr[i] = (std::isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
-
-            // avoid division by zero but use smooth functions
-            scale_wm_ptr[i] = -dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
-            scale_gm_ptr[i] = -dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
+            scale_wm_ptr[i] = -dt;
+            scale_gm_ptr[i] = 0;
 
             gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
             wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
@@ -753,7 +748,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         // Update diffusivity and reaction coefficient
         ierr = updateReacAndDiffCoefficients (tumor_->seg_, tumor_);              CHKERRQ (ierr);
-        ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+        // ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
 
         // need to update prefactors for diffusion KSP preconditioner, as k changed
         ierr = diff_solver_->precFactor();                                                          CHKERRQ(ierr);
@@ -770,8 +765,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr);
 
         // All solves complete except elasticity: clip values to ensure positivity
-        // clip healthy tissues
-        ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
+        // clip healthy tissues ~ this is non-differentiable. careful.
+        // ierr = tumor_->mat_prop_->clipHealthyTissues ();                          CHKERRQ (ierr);
 
         // Diffusion of tumor
         ierr = diff_solver_->solve (tumor_->c_t_, dt);

@@ -35,6 +35,11 @@ PetscErrorCode MatProp::setValues (std::shared_ptr<NMisc> n_misc) {
 	PetscFunctionReturn (ierr);
 }
 
+// ScalarType smoothMax(ScalarType x, ScalarType y) {
+// 	ScalarType alpha = 1E3;
+// 	return (x * std::exp(alpha * x) + y * std::exp(alpha * y))/(std::exp(alpha * x) + std::exp(alpha * y));
+// }
+
 PetscErrorCode MatProp::clipHealthyTissues () {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -55,6 +60,10 @@ PetscErrorCode MatProp::clipHealthyTissues () {
             wm_ptr[i] = (wm_ptr[i] <= 0.) ? 0. : wm_ptr[i];
             csf_ptr[i] = (csf_ptr[i] <= 0.) ? 0. : csf_ptr[i];
             glm_ptr[i] = (glm_ptr[i] <= 0.) ? 0. : glm_ptr[i];
+            // gm_ptr[i] = smoothMax(0, gm_ptr[i]);
+            // wm_ptr[i] = smoothMax(0, wm_ptr[i]);
+            // csf_ptr[i] = smoothMax(0, csf_ptr[i]);
+            // glm_ptr[i] = smoothMax(0, glm_ptr[i]);
         }
     #endif
     ierr = vecRestoreArray (gm_, &gm_ptr);                CHKERRQ (ierr);

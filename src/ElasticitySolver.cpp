@@ -417,6 +417,9 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties () {
         computeScreeningCuda (screen_ptr, c_ptr, bg_ptr, n_misc->screen_low_, n_misc->screen_high_, n_misc->n_local_);
     #else
         for (int i = 0; i < n_misc->n_local_; i++) {
+            mu_ptr[i] = (mu_ptr[i] > 0) ? mu_ptr[i] : 0;
+            lam_ptr[i] = (lam_ptr[i] > 0) ? lam_ptr[i] : 0;
+
             mu_ptr[i] += (c_ptr[i] > 0) ? (mu_tumor * c_ptr[i]) : 0;
             lam_ptr[i] += (c_ptr[i] > 0) ? (lam_tumor * c_ptr[i]) : 0;
 

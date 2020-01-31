@@ -65,12 +65,12 @@ def getTumorRunCmd(params):
     ### Path to patient glm
     p_glm_path = "" 
 
-    verbosity = 1
+    verbosity = 2
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-    rho_inv = 10
+    rho_inv = 12
     k_inv = 0.01
     nt_inv = 50
     dt_inv = 0.02
@@ -80,12 +80,12 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 4
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 10
+    rho_data = 12
     k_data = 0.01
     nt_data = 50
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 0E4
+    forcing_factor = 8E4
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 128
     y_cm = 76
@@ -107,7 +107,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1
+    smooth_f = 1.5
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -115,7 +115,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 0
+    forward_flag = 1
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -137,7 +137,7 @@ def getTumorRunCmd(params):
     ### Threshold of data tumor concentration above which Gaussians are switched on
     data_thres = 0.1
     ### Observation detection threshold
-    obs_thres = 1E-5
+    obs_thres = -0.99
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -163,9 +163,9 @@ def getTumorRunCmd(params):
     ### number of line-search attempts
     ls_max_func_evals = 10
     ## lower bound on kappa
-    lower_bound_kappa = 5E-3
+    lower_bound_kappa = 5E-2
     ## upper bound on kappa
-    upper_bound_kappa = 5E-2
+    upper_bound_kappa = 5E-1
 
     ### TUMOR PARAMETERS SET END
 

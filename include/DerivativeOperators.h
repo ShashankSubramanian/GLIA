@@ -118,6 +118,7 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 		}
 
 		PetscErrorCode checkGradient (Vec p, Vec data);
+		virtual PetscErrorCode reset(Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor);
 
 		~DerivativeOperatorsMassEffect () {VecDestroy(&delta_);}
 
