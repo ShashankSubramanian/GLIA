@@ -1371,7 +1371,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
         s.str(""); s.clear();
     }
 
-    // (*J) += misfit_brain;
+    (*J) += misfit_brain;
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
