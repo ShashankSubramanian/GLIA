@@ -2921,7 +2921,7 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
-
+    jx = J;
     Vec tao_grad;
     // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
     ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
