@@ -1438,9 +1438,10 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
 //     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
 //     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
 //     std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+//     ScalarType cbrt_eps = std::pow (PETSC_MACHINE_EPSILON, 1.0/3.0);
 //     for (int i = 0; i < sz; i++) {
 //         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
-//         h = (x_ptr[i] == 0) ? PETSC_SQRT_MACHINE_EPSILON * characteristic_scale[i] : PETSC_SQRT_MACHINE_EPSILON * x_ptr[i] * characteristic_scale[i];
+//         h = (x_ptr[i] == 0) ? cbrt_eps * characteristic_scale[i] : cbrt_eps * x_ptr[i] * characteristic_scale[i];
 
 //         // forward
 //         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);

@@ -2339,7 +2339,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
         ierr = VecView (tao_grad, PETSC_VIEWER_STDOUT_SELF);                           CHKERRQ(ierr);
     }
     //Gradient check begin
-    ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
+    // ierr = itctx->derivative_operators_->checkGradient (tao_x, itctx->data);
     // ierr = itctx->derivative_operators_->checkHessian (tao_x, itctx->data);
     //Gradient check end
     PetscFunctionReturn (ierr);
