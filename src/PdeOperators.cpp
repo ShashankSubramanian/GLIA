@@ -591,6 +591,7 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
     ScalarType temp;
     for (int i = 0; i < n_misc_->n_local_; i++) {
         temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+        temp = (temp < 0) ? 0 : temp;
         rho_ptr[i] = temp * n_misc_->rho_;
         k_ptr[i] = temp * n_misc_->k_;
     }
