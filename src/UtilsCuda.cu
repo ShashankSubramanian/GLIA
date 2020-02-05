@@ -384,16 +384,21 @@ __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, 
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		scale_gm_ptr[i] = 0.0;
-        scale_wm_ptr[i] = 0.0;
+		// scale_gm_ptr[i] = 0.0;
+  //       scale_wm_ptr[i] = 0.0;
 
-        if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
-            scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-            scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
-        }
+  //       if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
+  //           scale_gm_ptr[i] = -1.0 * dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+  //           scale_wm_ptr[i] = -1.0 * dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+  //       }
 
-        scale_gm_ptr[i] = (isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
-        scale_wm_ptr[i] = (isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+  //       scale_gm_ptr[i] = (isnan (scale_gm_ptr[i])) ? 0.0 : scale_gm_ptr[i];
+  //       scale_wm_ptr[i] = (isnan (scale_wm_ptr[i])) ? 0.0 : scale_wm_ptr[i];
+
+  //       gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
+  //       wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
+		scale_wm_ptr[i] = -dt;
+        scale_gm_ptr[i] = 0;
 
         gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
         wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
@@ -482,6 +487,10 @@ __global__ void computeTumorLame (ScalarType *mu_ptr, ScalarType *lam_ptr, Scala
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		// positivity clipping for mu, lam because tissues are no longer clipped
+		mu_ptr[i] = (mu_ptr[i] > 0) ? mu_ptr[i] : 0;
+        lam_ptr[i] = (lam_ptr[i] > 0) ? lam_ptr[i] : 0;
+
 		mu_ptr[i] += (c_ptr[i] > 0) ? (mu_tumor * c_ptr[i]) : 0;
         lam_ptr[i] += (c_ptr[i] > 0) ? (lam_tumor * c_ptr[i]) : 0;
 	}
@@ -574,6 +583,34 @@ __global__ void truncateGaussian (ScalarType *out, ScalarType sigma, ScalarType 
         r = sqrt(dx*dx + dy*dy + dz*dz);
         // truncate to zero after radius 5*sigma
         out[ptr] = (r/sigma <= 5) ? out[ptr] : 0.0;
+    }
+}
+
+__global__ void updateReacAndDiffCoefficients (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+		ScalarType temp;
+		temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+        temp = (temp < 0) ? 0 : temp;
+        rho_ptr[i] = temp * rho;
+        k_ptr[i] = temp * k;
+	}
+}
+
+__global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+        // bg: 0, c: 1, wm: 2, gm: 3, csf: 4, glm: 5
+        ScalarType max = bg_ptr[i];
+        int ct = 0;
+        if (c_ptr[i] > max) {max = c_ptr[i]; ct = 1;}
+        if (wm_ptr[i] > max) {max = wm_ptr[i]; ct = 2;}
+        if (gm_ptr[i] > max) {max = gm_ptr[i]; ct = 3;}
+        if (csf_ptr[i] > max) {max = csf_ptr[i]; ct = 4;}
+        if (glm_ptr[i] > max) {max = glm_ptr[i]; ct = 5;}
+        seg_ptr[i] = ct;
     }
 }
 
@@ -888,6 +925,24 @@ void vecMaxCuda (ScalarType *x, int *loc, ScalarType *val, int sz) {
 	}
 
 	cudaDeviceSynchronize();
+}
+
+void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, int64_t sz) {
+	int n_th = N_THREADS;
+
+	updateReacAndDiffCoefficients <<< (sz + n_th - 1) / n_th, n_th >>> (rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, rho, k);
+
+	cudaDeviceSynchronize ();
+	cudaCheckKernelError ();
+}
+
+void computeTumorSegmentationCuda (ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	computeTumorSegmentation <<< (sz + n_th - 1) / sz, n_th >>> (bg_ptr, gm_ptr, wm_ptr, csf_ptr, glm_ptr, c_ptr, seg_ptr);
+
+	cudaDeviceSynchronize ();
+	cudaCheckKernelError ();
 }
 
 

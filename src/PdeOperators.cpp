@@ -515,7 +515,7 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
         conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            denom = (gm_ptr[i] + wm_ptr[i]);
+            // denom = (gm_ptr[i] + wm_ptr[i]);
 
             // scale_wm_ptr[i] = -dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
             // scale_gm_ptr[i] = -dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
@@ -582,25 +582,31 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
 
 
     ScalarType *bg_ptr, *gm_ptr, *csf_ptr, *vt_ptr, *rho_ptr, *k_ptr;
-    ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);                  CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->mat_prop_->bg_, &bg_ptr);           CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->mat_prop_->csf_, &vt_ptr);          CHKERRQ (ierr);
-    ierr = VecGetArray (tumor_->mat_prop_->glm_, &csf_ptr);         CHKERRQ (ierr);
-    ScalarType temp;
-    for (int i = 0; i < n_misc_->n_local_; i++) {
-        temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
-        temp = (temp < 0) ? 0 : temp;
-        rho_ptr[i] = temp * n_misc_->rho_;
-        k_ptr[i] = temp * n_misc_->k_;
-    }
-    ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);                  CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->mat_prop_->bg_, &bg_ptr);           CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->mat_prop_->csf_, &vt_ptr);          CHKERRQ (ierr);
-    ierr = VecRestoreArray (tumor_->mat_prop_->glm_, &csf_ptr);         CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->k_->kxx_, &k_ptr);                  CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->mat_prop_->bg_, &bg_ptr);           CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->mat_prop_->csf_, &vt_ptr);          CHKERRQ (ierr);
+    ierr = vecGetArray (tumor_->mat_prop_->glm_, &csf_ptr);         CHKERRQ (ierr);
+
+    ScalarType temp = 1.;
+    #ifdef CUDA
+        updateReacAndDiffCoefficientsCuda (rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, n_misc_->rho_, n_misc_->k_, n_misc_->n_local_)
+    #else
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+            temp = (temp < 0) ? 0 : temp;
+            rho_ptr[i] = temp * n_misc_->rho_;
+            k_ptr[i] = temp * n_misc_->k_;
+        }
+    #endif
+
+    ierr = vecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);          CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->k_->kxx_, &k_ptr);                  CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->mat_prop_->bg_, &bg_ptr);           CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->mat_prop_->gm_, &gm_ptr);           CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->mat_prop_->csf_, &vt_ptr);          CHKERRQ (ierr);
+    ierr = vecRestoreArray (tumor_->mat_prop_->glm_, &csf_ptr);         CHKERRQ (ierr);
 
     // copy kxx to other directions
     ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);

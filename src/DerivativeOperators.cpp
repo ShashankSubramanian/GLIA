@@ -987,6 +987,8 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, Vec data
     ierr = tumor_->phi_->applyTranspose (ptemp_, temp_);
     ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
     ierr = VecAXPY (dJ, n_misc_->penalty_, x);                      CHKERRQ (ierr);
+
+    PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {

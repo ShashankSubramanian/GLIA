@@ -2892,7 +2892,8 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     PetscInt iter, maxiter, miniter;
     PetscReal J, gnorm, step, gatol, grtol, gttol, g0norm, minstep;
     PetscReal jx, jxold, gtolbound, theta, normx, normdx, tolj, tolx, tolg;
-    bool stop[3];
+    const int nstop = 7;
+    bool stop[nstop];
     int verbosity;
     std::stringstream ss;
     Vec x = nullptr, g = nullptr;

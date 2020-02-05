@@ -28,9 +28,9 @@ class DerivativeOperators {
 
 		virtual PetscErrorCode evaluateObjective (PetscReal *J, Vec x, Vec data) = 0;
 		virtual PetscErrorCode evaluateGradient (Vec dJ, Vec x, Vec data) = 0;
-		virtual PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data) {};
+		virtual PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, Vec data) {PetscFunctionReturn(0);};
 		virtual PetscErrorCode evaluateHessian (Vec y, Vec x) = 0;
-		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {};
+		virtual PetscErrorCode evaluateConstantHessianApproximation (Vec y, Vec x) {PetscFunctionReturn(0);};
 
         virtual PetscErrorCode setDistMeassureSimulationGeoImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
         virtual PetscErrorCode setDistMeassureTargetDataImages (Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) {PetscFunctionReturn(0);}
