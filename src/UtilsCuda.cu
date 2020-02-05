@@ -33,6 +33,7 @@ __global__ void computeWeierstrassFilter (ScalarType *f, ScalarType sigma) {
 		Z = (istart_cuda[2] + k) * hz;
 		Zp = Z - twopi;
 		
+		// exp -> expf 
 		f[ptr] = exp((-X * X - Y * Y - Z * Z) / sigma / sigma / 2.0)
 				+ exp((-Xp * Xp - Yp * Yp - Zp * Zp) / sigma / sigma / 2.0);
 

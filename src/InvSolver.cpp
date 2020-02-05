@@ -2977,7 +2977,9 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     //    ierr = PetscPrintf (MPI_COMM_WORLD, "||g(x)|| / ||g(x0)|| = %6E, ||g(x0)|| = %6E \n", gnorm/g0norm, g0norm);
     //}
     // only check convergence criteria after a certain number of iterations
-    stop[0] = false; stop[1] = false; stop[2] = false;
+    // initialize flags for stopping conditions
+    for (int i = 0; i < nstop; i++)
+        stop[i] = false;
     ctx->optfeedback_->converged     = false;
     ctx->cosamp_->converged_l2       = false;
     ctx->cosamp_->converged_error_l2 = false;
