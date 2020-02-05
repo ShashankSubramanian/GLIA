@@ -591,7 +591,7 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
 
     ScalarType temp = 1.;
     #ifdef CUDA
-        updateReacAndDiffCoefficientsCuda (rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, n_misc_->rho_, n_misc_->k_, n_misc_->n_local_)
+        updateReacAndDiffCoefficientsCuda (rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, n_misc_->rho_, n_misc_->k_, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
             temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
