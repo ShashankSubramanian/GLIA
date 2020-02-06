@@ -827,19 +827,19 @@ PetscErrorCode InvSolver::solveForMassEffect () {
 
     /* === initialize inverse tumor context === */
     if (itctx_->c0old == nullptr) {
-      ierr = VecDuplicate (data_, &itctx_->c0old);                              CHKERRQ(ierr);
-      ierr = VecSet (itctx_->c0old, 0.0);                                       CHKERRQ(ierr);
+      // ierr = VecDuplicate (data_, &itctx_->c0old);                              CHKERRQ(ierr);
+      // ierr = VecSet (itctx_->c0old, 0.0);                                       CHKERRQ(ierr);
     }
     if (itctx_->tmp == nullptr) {
-      ierr = VecDuplicate (data_, &itctx_->tmp);                                CHKERRQ(ierr);
-      ierr = VecSet (itctx_->tmp, 0.0);                                         CHKERRQ(ierr);
+      // ierr = VecDuplicate (data_, &itctx_->tmp);                                CHKERRQ(ierr);
+      // ierr = VecSet (itctx_->tmp, 0.0);                                         CHKERRQ(ierr);
     }
     if (itctx_->x_old == nullptr)  {
       ierr = VecDuplicate (xrec_, &itctx_->x_old);                              CHKERRQ (ierr);
       ierr = VecCopy (xrec_, itctx_->x_old);                                    CHKERRQ (ierr);
     }
     // initialize with zero; fresh solve
-    ierr = VecSet (itctx_->c0old, 0.0);                                         CHKERRQ(ierr);
+    // ierr = VecSet (itctx_->c0old, 0.0);                                         CHKERRQ(ierr);
     // set beta for this inverse solver call
     if (itctx_->n_misc_->beta_changed_)
         itctx_->optsettings_->beta   = itctx_->n_misc_->beta_;

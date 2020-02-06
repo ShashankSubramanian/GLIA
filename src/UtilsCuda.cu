@@ -940,12 +940,48 @@ void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, 
 void computeTumorSegmentationCuda (ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeTumorSegmentation <<< (sz + n_th - 1) / sz, n_th >>> (bg_ptr, gm_ptr, wm_ptr, csf_ptr, glm_ptr, c_ptr, seg_ptr);
+	computeTumorSegmentation <<< (sz + n_th - 1) / n_th, n_th >>> (bg_ptr, gm_ptr, wm_ptr, csf_ptr, glm_ptr, c_ptr, seg_ptr);
 
 	cudaDeviceSynchronize ();
 	cudaCheckKernelError ();
 }
 
+
+// others
+__global__ void copyDoubleToFloat(float *dst, double *src, int64_t sz) {
+    int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (i < sz) {
+        dst[i] = (float)src[i];
+    }
+}
+
+void copyDoubleToFloatCuda (float *dst, double *src, int64_t sz) {
+    int n_th = N_THREADS;
+
+    copyDoubleToFloat <<<  (sz + n_th - 1) / n_th, n_th >>> (dst, src, sz);
+
+    cudaDeviceSynchronize();
+    cudaCheckKernelError();
+}
+
+
+__global__ void copyFloatToDouble(double *dst, float *src, int64_t sz) {
+        int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+        if (i < sz) {
+            dst[i] = (double)src[i];
+        }
+}
+
+void copyFloatToDoubleCuda (double *dst, float *src, int64_t sz) {
+    int n_th = N_THREADS;
+
+    copyFloatToDouble <<<  (sz + n_th - 1) / n_th, n_th >>> (dst, src, sz);
+
+    cudaDeviceSynchronize();
+    cudaCheckKernelError();
+}
 
 
 

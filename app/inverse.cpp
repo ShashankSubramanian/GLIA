@@ -561,17 +561,17 @@ int main (int argc, char** argv) {
     }
 
     // some checks
-    if (n_misc->model_ >= 4) {
-        #if defined(CUDA) && !defined(MPICUDA)
-            // single gpu mass effect models
-            #ifndef SINGLE
-                PCOUT << "This forward model only runs with single precision on the GPU. Exiting solver...\n";
-                MPI_Comm_free(&c_comm);
-                ierr = PetscFinalize ();
-                exit(-1);
-            #endif
-        #endif
-    }
+    // if (n_misc->model_ >= 4) {
+    //     #if defined(CUDA) && !defined(MPICUDA)
+    //         // single gpu mass effect models
+    //         #ifndef SINGLE
+    //             PCOUT << "This forward model only runs with single precision on the GPU. Exiting solver...\n";
+    //             MPI_Comm_free(&c_comm);
+    //             ierr = PetscFinalize ();
+    //             exit(-1);
+    //         #endif
+    //     #endif
+    // }
 
     int fwd_temp;
     fwd_temp = n_misc->forward_flag_; // keep track of whether solver is in forward or inverse mode

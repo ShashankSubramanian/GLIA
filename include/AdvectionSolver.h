@@ -76,8 +76,8 @@ class SemiLagrangianSolver : public AdvectionSolver {
 		int n_ghost_;							  			// ghost padding number = order of interpolation
 		int n_alloc_;							  			// allocation size with ghosts
 
-		ScalarType *scalar_field_ghost_;			  			// local scalar field with ghost points
-		ScalarType *vector_field_ghost_;			  			// local vector field with ghost points
+		ScalarType *scalar_field_ghost_;			  		// local scalar field with ghost points
+		ScalarType *vector_field_ghost_;			  		// local vector field with ghost points
 
 		std::shared_ptr<InterpPlan> interp_plan_vector_;	// plans for interpolation on multi-GPU
 		std::shared_ptr<InterpPlan> interp_plan_scalar_;    // plans for interpolation on multi-GPU
@@ -87,16 +87,17 @@ class SemiLagrangianSolver : public AdvectionSolver {
 		float *temp_interpol1_;								// temporary floats for more efficient GPU interpolation
 		float *temp_interpol2_;
 
+		float *temp_1_, *temp_2_, *temp_3_;				    // temp arrays for double precision cuda interpolation
 
 		#ifdef CUDA
-			cudaTextureObject_t m_texture_;			  			//  cuda texture object for interp - only defined in cuda header files
+			cudaTextureObject_t m_texture_;			  	    //  cuda texture object for interp - only defined in cuda header files
 		#endif
 
 		virtual PetscErrorCode solve (Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);	// solve transport equation
-		PetscErrorCode computeTrajectories ();														// Computes RK2 trajectories and query points
-		PetscErrorCode interpolate (Vec out, Vec in);												// Interpolated scalar field
-		PetscErrorCode interpolate (std::shared_ptr<VecField> out, std::shared_ptr<VecField> in);	// Interpolates vector field
-		PetscErrorCode setCoords (std::shared_ptr<VecField> coords);								// sets global coordinates
+		PetscErrorCode computeTrajectories ();															// Computes RK2 trajectories and query points
+		PetscErrorCode interpolate (Vec out, Vec in);													// Interpolated scalar field
+		PetscErrorCode interpolate (std::shared_ptr<VecField> out, std::shared_ptr<VecField> in);		// Interpolates vector field
+		PetscErrorCode setCoords (std::shared_ptr<VecField> coords);									// sets global coordinates
 
 		virtual ~SemiLagrangianSolver ();
 };
