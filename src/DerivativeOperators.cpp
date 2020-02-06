@@ -1402,11 +1402,16 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
     std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+    #ifdef SINGLE
+    ScalarType small = 3.45266983e-04F;
+    #else
+    ScalarType small = 3.45266983e-04;
+    #endif
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
-        h = (x_ptr[i] == 0) ? PETSC_SQRT_MACHINE_EPSILON * characteristic_scale[i] : PETSC_SQRT_MACHINE_EPSILON * x_ptr[i] * characteristic_scale[i];
+        h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
         xph = x_ptr[i] + h;
         delta_ptr[i] = xph;
         dx = xph - x_ptr[i];  
@@ -1517,11 +1522,16 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
 
     ScalarType scale = 1;
     std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+    #ifdef SINGLE
+    ScalarType small = 3.45266983e-04F;
+    #else
+    ScalarType small = 3.45266983e-04;
+    #endif
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                                CHKERRQ (ierr);
-        h = (x_ptr[i] == 0) ? PETSC_SQRT_MACHINE_EPSILON * characteristic_scale[i] : PETSC_SQRT_MACHINE_EPSILON * x_ptr[i] * characteristic_scale[i];
+        h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
         xph = x_ptr[i] + h;
         delta_ptr[i] = xph;
         dx = xph - x_ptr[i];  
@@ -1563,7 +1573,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
     std::stringstream s;
     s << " ----- Gradient check with taylor expansion ----- "; ierr = tuMSGwarn(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
 
-    ScalarType h[8];
+    ScalarType h[10];
     ScalarType J, J_taylor, J_p, diff;
 
     Vec dJ, x_tilde, x_new;
@@ -1584,8 +1594,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient (Vec x, Vec data) {
 
     ScalarType xg_dot, sum;
     ierr = VecSum (x_tilde, &sum);                              CHKERRQ (ierr);
-    ScalarType start = std::pow (2, -6);
-    for (int i = 0; i < 8; i++) {
+    ScalarType start = std::pow (2, -1);
+    for (int i = 0; i < 10; i++) {
         h[i] = start * std::pow (2, -i);
         ierr = VecWAXPY (x_new, h[i], x_tilde, x);              CHKERRQ (ierr);
         ierr = evaluateObjective (&J, x_new, data);
