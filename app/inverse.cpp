@@ -1283,16 +1283,16 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
     dataIn (gm, n_misc, gm_path);
     dataIn (csf, n_misc, csf_path);
 
-    // ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
-    // ierr = spec_ops->weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
-    // ierr = spec_ops->weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
-    // ierr = spec_ops->weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
+    ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
+    ierr = spec_ops->weierstrassSmoother (gm, gm, n_misc, sigma_smooth);
+    ierr = spec_ops->weierstrassSmoother (wm, wm, n_misc, sigma_smooth);
+    ierr = spec_ops->weierstrassSmoother (csf, csf, n_misc, sigma_smooth);
 
-    // if (n_misc->model_ >= 4) {
-    //     // mass-effect included
-    //     dataIn (glm, n_misc, glm_path); 
-    //     ierr = spec_ops->weierstrassSmoother (glm, glm, n_misc, sigma_smooth);
-    // }
+    if (n_misc->model_ >= 4) {
+        // mass-effect included
+        dataIn (glm, n_misc, glm_path); 
+        ierr = spec_ops->weierstrassSmoother (glm, glm, n_misc, sigma_smooth);
+    }
 
     bg = nullptr;
 
