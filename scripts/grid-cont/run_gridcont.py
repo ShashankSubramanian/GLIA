@@ -70,7 +70,7 @@ def createJobsubFile(cmd, opt, level):
             opt['num_nodes'] = 1;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         elif opt['compute_sys'] == 'maverick2':
-            bash_file.write('#SBATCH -p p100\n');
+            bash_file.write('#SBATCH -p v100\n');
             opt['num_nodes'] = 1;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         else:
@@ -89,7 +89,7 @@ def createJobsubFile(cmd, opt, level):
         if opt['compute_sys'] == 'frontera':
             bash_file.write("#SBATCH -A FTA-Biros\n");
         else:
-            bash_file.write("#SBATCH -A PADAS\n");
+            bash_file.write("#SBATCH -A FTA-Biros\n");
         
         
     bash_file.write("\n\n");
@@ -221,7 +221,7 @@ def gridcont(basedir, args):
     gvf                = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default        = 8;
     k_default          = 0;
-    beta_p             = 1;
+    beta_p             = 0;
     opttol             = 1E-4;
     p_prev             = "";
     submit             = True;
@@ -431,7 +431,7 @@ def gridcont(basedir, args):
         t_params['wm_path']               = os.path.join(inp_dir, 'patient_seg_wm_wt.nc');
         t_params['data_path']             = os.path.join(inp_dir, 'patient_seg_tc.nc');
         t_params['forward_flag']          = 0
-        t_params['smooth_f']              = 1.5
+        t_params['smooth_f']              = 1
         t_params['model']                 = 1
         if gaussian_selection_mode in ["C0", "D"] or level == 64:
             t_params['support_data_path']  = os.path.join(inp_dir, 'support_data.nc'); # on coarsest level always d(1), i.e., TC as support_data
