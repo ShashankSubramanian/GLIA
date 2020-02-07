@@ -4161,7 +4161,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
 
     ScalarType *ub_ptr;
     ierr = VecGetArray (upper_bound, &ub_ptr);                            CHKERRQ (ierr);
-    ub_ptr[0] = 1.5;
+    ub_ptr[0] = 1.2;
     ub_ptr[1] = 1.5;
     ub_ptr[2] = itctx_->n_misc_->k_ub_;
     ierr = VecRestoreArray (upper_bound, &ub_ptr);                        CHKERRQ (ierr);

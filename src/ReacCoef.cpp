@@ -80,7 +80,7 @@ PetscErrorCode ReacCoef::updateIsotropicCoefficients (ScalarType rho_1, ScalarTy
   r_gm_wm_ratio_    = (n_misc->nr_ == 1) ? n_misc->r_gm_wm_ratio_ : rho_2 / rho_1;
   r_glm_wm_ratio_   = (n_misc->nr_ == 1) ? n_misc->r_glm_wm_ratio_ : rho_3 / rho_1;
   // and set the values
-  setValues (rho_scale_, r_gm_wm_ratio_, r_glm_wm_ratio_, mat_prop, n_misc);
+  ierr = setValues (rho_scale_, r_gm_wm_ratio_, r_glm_wm_ratio_, mat_prop, n_misc);
   PetscFunctionReturn (ierr);
 }
 
