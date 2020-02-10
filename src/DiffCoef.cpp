@@ -74,7 +74,7 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType 
                                                                               // provide user with option to control the diffusivity in others from n_misc
   k_glm_wm_ratio_ = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ : k3 / k1;   // glm is always zero. TODO:  take it out in new iterations of the solver
   // and set the values
-  setValues (k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, n_misc);
+  ierr = setValues (k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, n_misc);
   PetscFunctionReturn (ierr);
 }
 
