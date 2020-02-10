@@ -657,7 +657,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     bool flag_smooth_velocity = true;
     bool write_output_and_break = false;
 
-    ScalarType max_cfl = 8;
+    ScalarType max_cfl = 10;
 
     for (int i = 0; i < nt + 1; i++) {
         if (n_misc_->verbosity_ > 1) {
@@ -828,10 +828,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     if ((n_misc_->writeOutput_ && n_misc_->verbosity_ > 1 && !write_output_and_break)) {
         // for mass-effect inversion, write the very last one too. TODO: change loc of print statements instead.
-        ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
-        ss.str(std::string()); ss.clear();
-        ss << "seg_final.nc";
-        dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
         ss.str(std::string()); ss.clear();
         ss << "c_final.nc";
         dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
