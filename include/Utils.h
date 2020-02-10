@@ -353,6 +353,8 @@ class NMisc {
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                             // Upper bound on kappa
+        , gamma_ub_ (1.5)                       // Upper bound on gamma
+        , rho_ub_ (1.5)                         // Upper bound on rho
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
@@ -461,6 +463,7 @@ class NMisc {
         int forward_flag_;
         ScalarType k_lb_;
         ScalarType k_ub_;
+        ScalarType gamma_ub_, rho_ub_;
 
         ScalarType invasive_threshold_;
 
@@ -538,6 +541,7 @@ class NMisc {
 
         TumorStatistics statistics_;
         std::array<double, 7> timers_;
+        std::array<ScalarType, 3> bounds_array_;
 
         int64_t accfft_alloc_max_;
         int64_t n_local_;
