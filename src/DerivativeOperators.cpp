@@ -1407,34 +1407,18 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     #else
     ScalarType small = 3.45266983e-04;
     #endif
-    bool bounds_violated_ = false;
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
         h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
-        
-        if (!(x_ptr[i] < n_misc_->bounds_array_[i])) {
-            bounds_violated_ = true;
-            xph = x_ptr[i] - h; // switch to backward because upper bound is reached
-            dx = x_ptr[i] - xph;  
-        } else {
-            xph = x_ptr[i] + h;
-            dx = xph - x_ptr[i];  
-        }
-
-        delta_ptr[i] = xph;
-        
+        xph = x_ptr[i] + h;
+        dx = xph - x_ptr[i];  
+        delta_ptr[i] = xph;       
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-
-        if (bounds_violated_)
-            dj_ptr[i] = (J_b - J_f) / dx;
-        else
-            dj_ptr[i] = (J_f - J_b) / dx;
-
+        dj_ptr[i] = (J_f - J_b) / dx;
         ierr = VecRestoreArrayRead (x, &x_ptr);                        CHKERRQ (ierr);
-        bounds_violated_ = false;
     }
     ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
       
@@ -1544,35 +1528,19 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     ScalarType small = 3.45266983e-04;
     #endif
     ScalarType J_b = (*J);
-    
-    bool bounds_violated_ = false;
+
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
         ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
         h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
-        
-        if (!(x_ptr[i] < n_misc_->bounds_array_[i])) {
-            bounds_violated_ = true;
-            xph = x_ptr[i] - h; // switch to backward because upper bound is reached
-            dx = x_ptr[i] - xph;  
-        } else {
-            xph = x_ptr[i] + h;
-            dx = xph - x_ptr[i];  
-        }
-
-        delta_ptr[i] = xph;
-        
+        xph = x_ptr[i] + h;
+        dx = xph - x_ptr[i];  
+        delta_ptr[i] = xph;       
         ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
         ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
-
-        if (bounds_violated_)
-            dj_ptr[i] = (J_b - J_f) / dx;
-        else
-            dj_ptr[i] = (J_f - J_b) / dx;
-
+        dj_ptr[i] = (J_f - J_b) / dx;
         ierr = VecRestoreArrayRead (x, &x_ptr);                        CHKERRQ (ierr);
-        bounds_violated_ = false;
     }
 
     ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
