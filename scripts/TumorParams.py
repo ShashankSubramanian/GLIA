@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -57,18 +57,18 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
     ### Path to patient gm
-    p_gm_path = ""
+    p_gm_path = gm_path
     ### Path to patient wm
-    p_wm_path = ""
+    p_wm_path = wm_path
     ### Path to patient csf
-    p_csf_path = ""
+    p_csf_path = csf_path
     ### Path to patient glm
-    p_glm_path = "" 
+    p_glm_path = glm_path
 
-    verbosity = 2
+    verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 1
+    create_synthetic = 0
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 12
     k_inv = 0.01
@@ -85,7 +85,7 @@ def getTumorRunCmd(params):
     nt_data = 50
     dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 8E4
+    forcing_factor = 1.2E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 128
     y_cm = 76
@@ -107,7 +107,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1.5
+    smooth_f = 1
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -115,7 +115,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 1
+    forward_flag = 0
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -386,7 +386,6 @@ def getTumorRunCmd(params):
     else:
         if not os.path.exists(p_gm_path):
             print('Default data gray matter path does not exist and no input path provided!\n')
-            error_flag = 1
         else:
             print ('Default data gray matter path = {} used'.format(p_gm_path))
     # ---
@@ -396,7 +395,6 @@ def getTumorRunCmd(params):
     else:
         if not os.path.exists(p_wm_path):
             print('Default data white matter path does not exist and no input path provided!\n')
-            error_flag = 1
         else:
             print ('Default data white matter path = {} used'.format(p_wm_path))
     # ---
@@ -406,7 +404,6 @@ def getTumorRunCmd(params):
     else:
         if not os.path.exists(p_csf_path):
             print('Default data csf path does not exist and no input path provided!\n')
-            error_flag = 1
         else:
             print ('Default data csf path = {} used'.format(p_csf_path))
     # ---
@@ -535,10 +532,11 @@ def getTumorRunCmd(params):
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+    " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view
+#    " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
 #    " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
 #    " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
     return run_str, error_flag
