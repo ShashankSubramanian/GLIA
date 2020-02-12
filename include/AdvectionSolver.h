@@ -105,6 +105,7 @@ class SemiLagrangianSolver : public AdvectionSolver {
 //Helper functions for KSP solve
 PetscErrorCode operatorAdv (Mat A, Vec x, Vec y);
 PetscErrorCode operatorAdvEuler (Mat A, Vec x, Vec y);
+PetscErrorCode operatorCreateVecsEuler (Mat A, Vec *left, Vec *right);
 PetscErrorCode advSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr);
 
 #endif

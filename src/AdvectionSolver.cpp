@@ -112,15 +112,35 @@ TrapezoidalSolver::~TrapezoidalSolver () {
     ierr = VecDestroy (&rhs_);
 }
 
+PetscErrorCode operatorCreateVecsEuler (Mat A, Vec *left, Vec *right) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    CtxAdv *ctx;
+    ierr = MatShellGetContext (A, &ctx);                        CHKERRQ (ierr);
+    std::shared_ptr<NMisc> n_misc = ctx->n_misc_;
+
+    if (right) {
+        ierr = VecDuplicate (ctx->temp_[0], right);                CHKERRQ (ierr);
+    }
+    if (left) {
+        ierr = VecDuplicate (ctx->temp_[0], left);                CHKERRQ (ierr);
+    }
+
+    PetscFunctionReturn (ierr);
+}
+
 
 ImplicitEulerSolver::ImplicitEulerSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : AdvectionSolver (n_misc, tumor, spec_ops) {
     PetscErrorCode ierr = 0;
     ierr = MatCreateShell (PETSC_COMM_WORLD, n_misc->n_local_, n_misc->n_local_, n_misc->n_global_, n_misc->n_global_, ctx_.get(), &A_);
     ierr = MatShellSetOperation (A_, MATOP_MULT, (void(*)(void)) operatorAdvEuler);
-
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
+        ierr = MatShellSetOperation (A_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsEuler);
+    #endif
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
-    ierr = KSPSetTolerances (ksp_, 1e-3, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    ierr = KSPSetTolerances (ksp_, 1e-3, PETSC_DEFAULT, PETSC_DEFAULT, 50);
     ierr = KSPSetType (ksp_, KSPGMRES);
     // ierr = KSPMonitorSet(ksp_, advSolverKSPMonitor, ctx_.get(), 0);    
     ierr = KSPSetFromOptions (ksp_);
