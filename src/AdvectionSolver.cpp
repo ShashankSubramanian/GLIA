@@ -140,7 +140,7 @@ ImplicitEulerSolver::ImplicitEulerSolver (std::shared_ptr<NMisc> n_misc, std::sh
     #endif
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
-    ierr = KSPSetTolerances (ksp_, 1e-3, PETSC_DEFAULT, PETSC_DEFAULT, 50);
+    ierr = KSPSetTolerances (ksp_, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 50);
     ierr = KSPSetType (ksp_, KSPGMRES);
     // ierr = KSPMonitorSet(ksp_, advSolverKSPMonitor, ctx_.get(), 0);    
     ierr = KSPSetFromOptions (ksp_);
@@ -243,7 +243,7 @@ PetscErrorCode ImplicitEulerSolver::solve (Vec scalar, std::shared_ptr<VecField>
     ctx->velocity_->x_ = velocity->x_;
     ctx->velocity_->y_ = velocity->y_;
     ctx->velocity_->z_ = velocity->z_;
-
+    ctx->advection_mode_ = advection_mode_;
     ierr = VecCopy (scalar, rhs_);                              CHKERRQ (ierr);
     // RHS is simply c^n
     //KSP solve
