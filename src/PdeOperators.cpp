@@ -509,19 +509,19 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     ierr = vecGetArray (temp_[1], &scale_gm_ptr);                   CHKERRQ (ierr);
     ierr = vecGetArray (temp_[2], &scale_wm_ptr);                   CHKERRQ (ierr);
 
-    ScalarType denom;
-
     #ifdef CUDA
         conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
     #else
+        ScalarType eps = 1E-3;
+        ScalarType denom;
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            // denom = (gm_ptr[i] + wm_ptr[i]);
+            denom = (gm_ptr[i] + wm_ptr[i]);
 
-            // scale_wm_ptr[i] = -dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
-            // scale_gm_ptr[i] = -dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i] + PETSC_MACHINE_EPSILON);
+            scale_wm_ptr[i] = -dt * wm_ptr[i] / (denom + eps);
+            scale_gm_ptr[i] = -dt * gm_ptr[i] / (denom + eps);
 
-            scale_wm_ptr[i] = -dt;
-            scale_gm_ptr[i] = 0;
+            // scale_wm_ptr[i] = -dt;
+            // scale_gm_ptr[i] = 0;
 
             gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
             wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
@@ -778,10 +778,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         // Diffusion of tumor
         ierr = diff_solver_->solve (tumor_->c_t_, dt);
 
-        // Reaction of tumor
-        ierr = reaction (linearized, i);                                                            CHKERRQ(ierr);
         // Mass conservation of healthy: modified gm and wm to account for cell death   
         ierr = conserveHealthyTissues ();                                                           CHKERRQ(ierr);
+        // Reaction of tumor
+        ierr = reaction (linearized, i);                                                            CHKERRQ(ierr);
+        
 
         // force compute
         ierr = tumor_->computeForce (tumor_->c_t_);                                                 CHKERRQ(ierr);
@@ -828,6 +829,10 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
     if ((n_misc_->writeOutput_ && n_misc_->verbosity_ > 1 && !write_output_and_break)) {
         // for mass-effect inversion, write the very last one too. TODO: change loc of print statements instead.
+        ierr = tumor_->computeSegmentation ();                                    CHKERRQ (ierr);
+        ss.str(std::string()); ss.clear();
+        ss << "seg_final.nc";
+        dataOut (tumor_->seg_, n_misc_, ss.str().c_str());
         ss.str(std::string()); ss.clear();
         ss << "c_final.nc";
         dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
