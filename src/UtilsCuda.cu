@@ -385,18 +385,7 @@ __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, 
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
-		ScalarType eps = 1E-3;
-        ScalarType denom;
-        denom = (gm_ptr[i] + wm_ptr[i]);
-
-        scale_wm_ptr[i] = -dt * wm_ptr[i] / (denom + eps);
-        scale_gm_ptr[i] = -dt * gm_ptr[i] / (denom + eps);
-
-        // scale_wm_ptr[i] = -dt;
-        // scale_gm_ptr[i] = 0;
-
-        gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
-        wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
+        wm_ptr[i] = wm_ptr[i] * exp(-sum_ptr[i] * dt);
 	}
 }
 
