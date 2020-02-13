@@ -512,8 +512,20 @@ PetscErrorCode PdeOperatorsMassEffect::conserveHealthyTissues () {
     #ifdef CUDA
         conserveHealthyTissuesCuda (gm_ptr, wm_ptr, sum_ptr, scale_gm_ptr, scale_wm_ptr, dt, n_misc_->n_local_);
     #else
+        ScalarType threshold = 1E-3;
         for (int i = 0; i < n_misc_->n_local_; i++) {
-            wm_ptr[i] = wm_ptr[i] * std::exp(-sum_ptr[i] * dt);
+            scale_gm_ptr[i] = 0;
+            scale_wm_ptr[i] = 0;
+
+            if ((gm_ptr[i] > threshold || wm_ptr[i] > threshold) && (wm_ptr[i] + gm_ptr[i] > threshold)) {
+                scale_gm_ptr[i] = -dt * gm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+                scale_wm_ptr[i] = -dt * wm_ptr[i] / (gm_ptr[i] + wm_ptr[i]);
+            }
+
+            gm_ptr[i] += scale_gm_ptr[i] * sum_ptr[i];
+            wm_ptr[i] += scale_wm_ptr[i] * sum_ptr[i];
+
+            // wm_ptr[i] = wm_ptr[i] * std::exp(-sum_ptr[i] * dt);
         }
     #endif
 
