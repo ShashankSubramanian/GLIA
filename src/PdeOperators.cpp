@@ -780,7 +780,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = diff_solver_->solve (tumor_->c_t_, dt);
 
         // Mass conservation of healthy: modified gm and wm to account for cell death   
-        ierr = conserveHealthyTissues ();                                                           CHKERRQ(ierr);
+        // ierr = conserveHealthyTissues ();                                                           CHKERRQ(ierr);
         // Reaction of tumor
         ierr = reaction (linearized, i);                                                            CHKERRQ(ierr);
         
