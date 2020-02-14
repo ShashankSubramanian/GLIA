@@ -146,7 +146,7 @@ class TumorSolverInterface {
      */
     PetscErrorCode solveInverse (
         Vec prec,
-        Vec d1, Vec d1g = {});
+        std::shared_ptr<Data> d1, std::shared_ptr<Data> d1g = {});
 
     /** @brief: Solves only for rho and k, given a (scaled betwenn [0,1]) c(0) initial condition
      *
@@ -155,7 +155,7 @@ class TumorSolverInterface {
      */
     PetscErrorCode solveInverseReacDiff(
         Vec prec,
-        Vec d1, Vec d1g = {});
+        std::shared_ptr<Data> d1, std::shared_ptr<Data> d1g = {});
 
     /** @brief: Solves the L1 optimization problem using compressive sampling methods
      *
@@ -164,7 +164,7 @@ class TumorSolverInterface {
      */
     PetscErrorCode solveInverseCoSaMp (
         Vec prec,
-        Vec d1, Vec d1g = {});
+        std::shared_ptr<Data> d1, std::shared_ptr<Data> d1g = {});
 
     /** @brief: Solves the projection problem \Phi p = d for p.
      *
@@ -186,7 +186,7 @@ class TumorSolverInterface {
      */
     PetscErrorCode updateTumorCoefficients (Vec wm, Vec gm, Vec glm, Vec csf, Vec bg);
     /// @brief: evaluates gradient for given control variable p and data
-    PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
+    PetscErrorCode computeGradient(Vec dJ, Vec p, std::shared_ptr<Data> data_gradeval);
 
     // defines whether or not we have to update the reference gradeient for the inverse solve
     void updateReferenceGradient (bool b) {if (inv_solver_ != nullptr) inv_solver_->updateReferenceGradient(b);}

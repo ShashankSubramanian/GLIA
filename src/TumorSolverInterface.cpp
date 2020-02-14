@@ -50,7 +50,7 @@ TumorSolverInterface::TumorSolverInterface (
         initialize (n_misc, spec_ops, phi, mat_prop);
 }
 
-// Timings init 
+// Timings init
 PetscErrorCode TumorSolverInterface::initializeEvent() {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -58,7 +58,7 @@ PetscErrorCode TumorSolverInterface::initializeEvent() {
     PetscFunctionReturn(ierr);
 }
 
-// Timings finalize 
+// Timings finalize
 PetscErrorCode TumorSolverInterface::finalizeEvent() {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -387,7 +387,7 @@ PetscErrorCode TumorSolverInterface::solveForward (
 // ### ///////////////// solveInverseCoSaMp ////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     Vec prec,
-    Vec data, Vec data_gradeval)
+    std::shared_ptr<Data> data, std::shared_ptr<Data> data_gradeval)
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -400,7 +400,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
 
     if (!initialized_)  {ierr = tuMSGwarn("Error: (solveInverseCoSaMp) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
-    if (data == nullptr){ierr = tuMSGwarn("Error: (solveInverseCoSaMp) Variable data cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (data->dt1() == nullptr){ierr = tuMSGwarn("Error: (solveInverseCoSaMp) Variable data cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
     if (prec == nullptr){ierr = tuMSGwarn("Error: (solveInverseCoSaMp) Variable prec cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
     if (!optimizer_settings_changed_) {ierr = tuMSGwarn (" Tumor inverse solver running with default settings."); CHKERRQ (ierr);}
 
@@ -412,10 +412,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     if (n_misc_->verbosity_ > 2) {
       int sum = 0, global_sum = 0;
       ScalarType *pixel_ptr;
-      ierr = VecGetArray (data, &pixel_ptr);                                        CHKERRQ (ierr);
+      ierr = VecGetArray (data, &pixel_ptr);                                    CHKERRQ (ierr);
       for (int i = 0; i < n_misc_->n_local_; i++)
           if (pixel_ptr[i] > n_misc_->obs_threshold_) sum++;
-      ierr = VecRestoreArray (data, &pixel_ptr);                                    CHKERRQ (ierr);
+      ierr = VecRestoreArray (data, &pixel_ptr);                                CHKERRQ (ierr);
       MPI_Reduce (&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
       ss << " number of observed voxels: " << global_sum;
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -427,7 +427,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     // solve
     inv_solver_->solveInverseCoSaMp();
     // inv_solver_->solveInverseCoSaMpRS(false);
-    ierr = VecCopy (inv_solver_->getPrec(), prec);                                  CHKERRQ (ierr);
+    ierr = VecCopy (inv_solver_->getPrec(), prec);                              CHKERRQ (ierr);
     // timing
     self_exec_time += MPI_Wtime ();
     t[5] = self_exec_time;

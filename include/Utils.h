@@ -286,18 +286,18 @@ public:
     two_snapshot(false)
     {}
 
-    void setData(Vec dt1, Vec dt2){
+    void set(Vec dt1, Vec dt2){
         t1 = dt1;
         if (dt2 != nullptr) {
             t2 = dt2; two_snapshot = true;
         }
     }
 
-    void setDataT1(Vec dt1) {
+    void setT1(Vec dt1) {
         t1 = dt1;
     }
 
-    void setDataT0(Vec dt0) {
+    void setT0(Vec dt0) {
         t1 = dt0;
         two_snapshot = true;
     }
