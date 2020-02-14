@@ -42,7 +42,7 @@ def createCmdLineReg(param):
         creates command line arguments given the registration options given by the user
         '''
         cmd = '#perform patient(template) to atlas(reference) diffeomorphic registration\n'
-        cmd += 'if [ ! -f "$OUTPUT_DIR/velocity-field-x1.nii.gz" ]; then\n'
+        #cmd += 'if [ ! -f "$OUTPUT_DIR/velocity-field-x1.nii.gz" ]; then\n'
         # add executable env based on which cluster you are running
         claire_bin = '$CLAIRE_BDIR/claire';
         if param['compute_sys'] == 'lonestar':
@@ -100,7 +100,8 @@ def createCmdLineReg(param):
 
         # logfile
         cmd += ' > ' + '$OUTPUT_DIR/solver_log.txt\n';
-        cmd += 'fi\n\n\n' 
+        #cmd += 'fi\n\n\n' 
+        cmd += '\n\n\n' 
         return cmd;
   
 
@@ -110,8 +111,8 @@ def createCmdLineTransport(param, task, labels=None, input_filename=None, output
         '''
 
         cmd = "# ### transport Image ###\n"
-        if output_filename is not None:
-            cmd += 'if [ ! -f "'+output_filename +'" ]; then\n'
+        #if output_filename is not None:
+            #cmd += 'if [ ! -f "'+output_filename +'" ]; then\n'
         
         clairetools_bin = '$CLAIRE_BDIR/clairetools';
 
@@ -150,8 +151,8 @@ def createCmdLineTransport(param, task, labels=None, input_filename=None, output
         cmd += ' -v3 $OUTPUT_DIR/velocity-field-x3' + param['extension'];    
         cmd += ' -verbosity ' + str(2);
         cmd += ' > ' + '$OUTPUT_DIR/transport_image_log.txt\n';
-        if output_filename is not None:
-            cmd += 'fi\n'
+        #if output_filename is not None:
+            #cmd += 'fi\n'
         return cmd
 
 ##############################################################################
