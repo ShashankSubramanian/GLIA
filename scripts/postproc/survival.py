@@ -53,6 +53,13 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
+# def getSurvivalClass(x):
+#     m = x/30.
+#     if m < 6:
+#         return 0;# np.array([1,0,0])
+#     elif m > 18:
+#         return 1;
+
 def getSurvivalClass(x):
     m = x/30.
     if m < 10:
@@ -332,43 +339,66 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
         cols.append('n_comps');                    # number of components with rel. mass larger 1E-3
     # image based features used for survival prediciton
     if  'image_based' in type and purpose == 'prediction':
+        # ### TMI19 Image Based a)
         cols.append('vol(TC)_r');                   # ib.01 TC rel. volume
-        # cols.append('area(TC)_r');                  # ib.02 TC rel. surface (rel. to sphere with volume of TC)
         cols.append('vol(ED)_r');                   # ib.03 ED rel. volume
-        # cols.append('area(ED)_r');                  # ib.04 ED rel. surface (rel. to sphere with volume of ED)
-        # cols.append('vol(NEC)_r');                  # ib.05 NE rel. volume
-        # cols.append('area(NEC)_r');                 # ib.06 NE rel. surface (rel. to sphere with volume of NE)
         cols.append('age');                         # ib.07 patient age
-        # cols.append('int{c(0)}/int{c(1)}');
         cols.append('vol(EN)/vol(TC)');
-        # cols.append('resection_status[0]');
-        # cols.append('resection_status[1]');
-        # cols.append('resection_status');          # ib.08 resection status TODO
-        # cols_p.append('cm(NEC|_#c) (#c=0,apsace)')  # ib.09 center of mass of NE of largest TC component, in a-space
-        # cols.append('vol(TC|_#c)_r(#c=0)')          # ib.10 vol(TC) in comp #0 rel. to toatal vol(TC)
-        # cols.append('vol(TC|_#c)_r(#c=1)')          # ib.10 vol(TC) in comp #1 rel. to toatal vol(TC)
-        # cols.append('vol(TC|_#c)_r(#c=2)')          # ib.10 vol(TC) in comp #2 rel. to toatal vol(TC)
-        # cols.append('vol(NEC|_#c)_r(#c=0)')         # ib.10 vol(NE) in comp #0 rel. to toatal vol(NE)
-        # cols.append('vol(NEC|_#c)_r(#c=1)')         # ib.10 vol(NE) in comp #1 rel. to toatal vol(NE)
-        # cols.append('vol(NEC|_#c)_r(#c=2)')         # ib.10 vol(NE) in comp #2 rel. to toatal vol(NE)
-        # cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
+        # ### TMI19 Age Based b)
+        # cols.append('age');                         # ib.07 patient age
+
+        pass;
+        # cols.append('vol(TC)_r');                   # ib.01 TC rel. volume
+        # # cols.append('area(TC)_r');                  # ib.02 TC rel. surface (rel. to sphere with volume of TC)
+        # cols.append('vol(ED)_r');                   # ib.03 ED rel. volume
+        # # cols.append('area(ED)_r');                  # ib.04 ED rel. surface (rel. to sphere with volume of ED)
+        # # cols.append('vol(NEC)_r');                  # ib.05 NE rel. volume
+        # # cols.append('area(NEC)_r');                 # ib.06 NE rel. surface (rel. to sphere with volume of NE)
+        # cols.append('age');                         # ib.07 patient age
+        # # cols.append('int{c(0)}/int{c(1)}');
+        # cols.append('vol(EN)/vol(TC)');
+        # # cols.append('resection_status[0]');
+        # # cols.append('resection_status[1]');
+        # # cols.append('resection_status');          # ib.08 resection status TODO
+        # # cols_p.append('cm(NEC|_#c) (#c=0,apsace)')  # ib.09 center of mass of NE of largest TC component, in a-space
+        # # cols.append('vol(TC|_#c)_r(#c=0)')          # ib.10 vol(TC) in comp #0 rel. to toatal vol(TC)
+        # # cols.append('vol(TC|_#c)_r(#c=1)')          # ib.10 vol(TC) in comp #1 rel. to toatal vol(TC)
+        # # cols.append('vol(TC|_#c)_r(#c=2)')          # ib.10 vol(TC) in comp #2 rel. to toatal vol(TC)
+        # # cols.append('vol(NEC|_#c)_r(#c=0)')         # ib.10 vol(NE) in comp #0 rel. to toatal vol(NE)
+        # # cols.append('vol(NEC|_#c)_r(#c=1)')         # ib.10 vol(NE) in comp #1 rel. to toatal vol(NE)
+        # # cols.append('vol(NEC|_#c)_r(#c=2)')         # ib.10 vol(NE) in comp #2 rel. to toatal vol(NE)
+        # # cols.append('n_comps');                     # number of components with rel. mass larger 1E-3
     # physics based features used for survival prediciton
     if  'physics_based' in type and purpose == 'prediction':
-        # cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
-        # cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
-        # cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
-        # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
-        # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
-        # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
-        # add distance c(0) to VE as feature
-        # cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
-        # cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
-        cols.append('rho/k');                   # ph.03 inversion variables prolifaration, migration
+
+        # ### TMI Physics Based:
+        cols.append('rho/k');
         cols.append('vol(TC)/rho');
         cols.append('vol(ED)/k')
-        # cols.append('dist[c(0), VE] (aspace)');
-        # cols.append('dist[c(0), BG] (aspace)');
-        # cols.append('l2[c(1)|_TC-TC,scaled]_r')     # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
+
+        # cols.append('p(short|tc)');
+        # cols.append('p(mid|tc)');
+        # cols.append('p(long|tc)');
+
+        # cols.append('p(short|c0)');
+        # cols.append('p(mid|c0)');
+        # cols.append('p(long|c0)');
+
+        # # cols.append('l2[c(0)|_#c]_r(#c=0)');        # ph.01 l2norm of c(0) in comp #0 rel. to total l2norm of c(0)
+        # # cols.append('l2[c(0)|_#c]_r(#c=1)');        # ph.01 l2norm of c(0) in comp #1 rel. to total l2norm of c(0)
+        # # cols.append('l2[c(0)|_#c]_r(#c=2)');        # ph.01 l2norm of c(0) in comp #2 rel. to total l2norm of c(0)
+        # # cols_p.append('cm(c(0)|_#c) (#c=0,aspace)') # ph.02 center of mass of c(0) in comp #0 (in a-space)
+        # # cols_p.append('cm(c(0)|_#c) (#c=1,aspace)') # ph.02 center of mass of c(0) in comp #1 (in a-space)
+        # # cols_p.append('cm(c(0)|_#c) (#c=2,aspace)') # ph.02 center of mass of c(0) in comp #2 (in a-space)
+        # # add distance c(0) to VE as feature
+        # # cols.append('rho-inv');                     # ph.03 inversion variables prolifaration, migration
+        # # cols.append('k-inv');                       # ph.03 inversion variables prolifaration, migration
+        # cols.append('rho/k');                   # ph.03 inversion variables prolifaration, migration
+        # cols.append('vol(TC)/rho');
+        # cols.append('vol(ED)/k')
+        # # cols.append('dist[c(0), VE] (aspace)');
+        # # cols.append('dist[c(0), BG] (aspace)');
+        # # cols.append('l2[c(1)|_TC-TC,scaled]_r')     # ph.04 rescaled misfit, i.e., recon. 'Dice' of TC
         pass;
 
     # brats_data['vol(TC|_#c)_r(#c=0)'] = brats_data['vol(TC|_#c)_r(#c=0)'].apply(lambda x: -1 if pd.isna(x) else x);
@@ -402,16 +432,29 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
     print()
     print("active features:\n", cols)
 
-    brats_data['is_na'] = brats_data[cols].isnull().apply(lambda x: any(x), axis=1)
+    # brats_data['survival_binary'] = brats_data['survival(days)'].apply(lambda x: 0 if int(x/30.) <= 6 else 1 if int(x/30.) >= 18 else float('NaN'));
+    # print(brats_data['survival_binary'].values)
+    # nbshort = len(brats_data.loc[brats_data['survival_binary'] ==  0])
+    # nblong  = len(brats_data.loc[brats_data['survival_binary'] ==  1])
+    # nbmid   = len(brats_data.loc[brats_data['survival_binary'] == float('nan')])
+    # sum     = nbshort + nbmid + nblong
+    cc = cols.copy();
+    # cc.append('BID')
+    # cc.append('survival_binary')
+
+    brats_data['is_na'] = brats_data[cc].isnull().apply(lambda x: any(x), axis=1)
     # brats_data = brats_data.loc[brats_data['is_na']]
     # print(tabulate(brats_data[cols], headers='keys', tablefmt='psql'))
-    brats_data          = brats_data.loc[brats_data['is_na'] == False]
     dat_out             = brats_data.loc[brats_data['is_na'] == True]
+    brats_data          = brats_data.loc[brats_data['is_na'] == False]
+    print("discarding {} samples".format(len(dat_out)))
     dat_out["filter-reason"] = "nan values"
     if len(dat_out) >=1:
         print("\n\n### BraTS simulation data [discarded] ### ")
         print(tabulate(dat_out[["BID", "filter-reason"]], headers='keys', tablefmt='psql'))
 
+
+    # print("work dataset (after pruning) %d. short: %d, mid: %d, long: %d" % (len(brats_data),nbshort,nbmid,nblong))
 
     # pair plot
     # v_cols = cols.copy();
@@ -425,8 +468,9 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
     #     diag_kws=dict(shade=True))
     # plt.show()
 
-    X = brats_data[cols].values.astype('float');
+    X = brats_data[cc].values.astype('float');
     Y = np.ravel(brats_data[['survival_class']].values).astype('int');
+    # Y = np.ravel(brats_data[['survival_binary']].values).astype('int');
     if estimator == 'regressor':
         Y = np.ravel(brats_data[['survival(days)']].values).astype('float');
     return X, Y, cols;
@@ -735,6 +779,10 @@ if __name__=='__main__':
         print(len(brats_survival), X_ib.shape)
 
         X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0, test_size=0.25)
+
+        # print("TEST SPLIT: ", X_test[:,-1])
+        # print("TRAIN SPLIT: ", X_train[:,-1])
+
         X_ib_n , X_ib_n_test, d = preprocess_features(X_train, X_test, normalize=False);
 
         # randomized grid search with cross-validation for hyper parameter tuning
@@ -769,6 +817,7 @@ if __name__=='__main__':
         # --------------------
 
         rf_xgboost = XGBClassifier(learning_rate = 0.01, n_estimators = 100, max_depth = 5, min_child_weight = 1, gamma = 0, subsample = 0.8, colsample_bytree = 0.8, objective= 'multi:softmax', nthread = 4, scale_pos_weight = 1, seed = 27, num_class=3, verbosity=1)
+        # rf_xgboost = XGBClassifier(learning_rate = 0.01, n_estimators = 100, max_depth = 5, min_child_weight = 1, gamma = 0, subsample = 0.8, colsample_bytree = 0.8, nthread = 4, objective='binary:logistic', eval_metric='error', scale_pos_weight = 1, seed = 27, verbosity=1)
         rf_xgboost.fit(X_ib_n, y_train)
         print()
         print("++++++++++++++++++++++++++++++++++++")
@@ -780,139 +829,143 @@ if __name__=='__main__':
         print(" ############## ")
         print("++++++++++++++++++++++++++++++++++++")
 
+        if True:
 
-        modelfit(rf_xgboost, X_ib_n, y_train, useTrainCV=True)
+            modelfit(rf_xgboost, X_ib_n, y_train, useTrainCV=True)
 
-        opt_nb_rounds = rf_xgboost.get_params()['n_estimators']
-        print("found optimal number of rouns:", opt_nb_rounds)
-        rf_xgboost = XGBClassifier(eta=0.01, objective="multi:softprob", random_state=42, verbosity=1, num_class=3);
-        rf_xgboost.fit(X_ib_n, y_train)#, early_stopping_rounds=1000, eval_set=[(X_ib_n_test, y_test)]);
+            opt_nb_rounds = rf_xgboost.get_params()['n_estimators']
+            print("found optimal number of rouns:", opt_nb_rounds)
+            # rf_xgboost = XGBClassifier(eta=0.01, objective="multi:softprob", random_state=42, verbosity=1, num_class=3);
+            # rf_xgboost.fit(X_ib_n, y_train)#, early_stopping_rounds=1000, eval_set=[(X_ib_n_test, y_test)]);
 
-        param_test1 = {
-            'max_depth': range(2,10,1),
-            'min_child_weight': range(2,10,1)
-        }
-        # param_test1 = {
-        #     'max_depth': [4,5,6],
-        #     'min_child_weight': [4,5,6]
-        # }
-        # gsearch1 = GridSearchCV(estimator = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=5,
-        #                         min_child_weight=1, gamma=0, subsample=0.8, colsample_bytree=0.8,
-        #                         objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3),
-        #                         param_grid = param_test1, n_jobs=4,iid=False, cv=5)
-        # gsearch1.fit(X_ib_n,y_train)
-        # print("grid scores:", gsearch1.cv_results_)
-        # print("best params:", gsearch1.best_params_)
-        # print("best score:", gsearch1.best_score_)
-        #
-        # param_test3 = {
-        #     # 'gamma':[i/10.0 for i in range(0,5)]
-        #     'reg_lambda' : [1,2,4,8,16,32,64,128,256,512,1024]
-        # }
-        # gsearch3 = GridSearchCV(estimator = XGBClassifier(learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=2,
-        #                         min_child_weight=4, gamma=0, subsample=0.8, colsample_bytree=0.8,
-        #                         objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3),
-        #                         param_grid = param_test3, n_jobs=4,iid=False, cv=5)
-        # gsearch3.fit(X_ib_n,y_train)
-        # print("grid scores:", gsearch3.cv_results_)
-        # print("best params:", gsearch3.best_params_)
-        # print("best score:",  gsearch3.best_score_)
-
-
-        print()
-        print(" ################################################################################# ")
-        print("evaluate XGboost model (random forrest classifier):")
-        pprint(rf_xgboost.get_params())
-        evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
-        scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
-        print(" ############## ")
-        print("CV Scores: ", scores)
-        print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
-        print(" ############## ")
-
-        rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=5,
-                                    min_child_weight=3, gamma=0, reg_lambda=2, subsample=0.8, colsample_bytree=0.8,
-                                    objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
-
-        # # physics based CV accuracy: 0.5
-        # rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=40, max_depth=5,
-        #                             min_child_weight=3, gamma=0, reg_lambda=2, subsample=0.8, colsample_bytree=0.8,
-        #                             objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
-        rf_xgboost.fit(X_ib_n, y_train);
-
-        print()
-        print(" ################################################################################# ")
-        print("evaluate XGboost model (random forrest classifier):")
-        pprint(rf_xgboost.get_params())
-        evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
-        scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
-        print(" ############## ")
-        print("CV Scores: ", scores)
-        print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
-        print(" ############## ")
+            # param_test1 = {
+            #     'max_depth': range(2,10,1),
+            #     'min_child_weight': range(2,10,1)
+            # }
+            # # param_test1 = {
+            # #     'max_depth': [4,5,6],
+            # #     'min_child_weight': [4,5,6]
+            # # }
+            # gsearch1 = GridSearchCV(estimator = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=5,
+            #                         min_child_weight=1, gamma=0, subsample=0.8, colsample_bytree=0.8,
+            #                         objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3),
+            #                         param_grid = param_test1, n_jobs=4,iid=False, cv=5)
+            # gsearch1.fit(X_ib_n,y_train)
+            # print("grid scores:", gsearch1.cv_results_)
+            # print("best params:", gsearch1.best_params_)
+            # print("best score:", gsearch1.best_score_)
+            #
+            # param_test3 = {
+            #     # 'gamma':[i/10.0 for i in range(0,5)]
+            #     'reg_lambda' : [1,2,4,8,16,32,64,128,256,512,1024]
+            # }
+            # gsearch3 = GridSearchCV(estimator = XGBClassifier(learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=2,
+            #                         min_child_weight=4, gamma=0, subsample=0.8, colsample_bytree=0.8,
+            #                         objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3),
+            #                         param_grid = param_test3, n_jobs=4,iid=False, cv=5)
+            # gsearch3.fit(X_ib_n,y_train)
+            # print("grid scores:", gsearch3.cv_results_)
+            # print("best params:", gsearch3.best_params_)
+            # print("best score:",  gsearch3.best_score_)
 
 
-        # rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=2,
-        #                             min_child_weight=9, gamma=0.0, reg_lambda=1, subsample=0.8, colsample_bytree=0.8,
-        #                             objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
-        # rf_xgboost.fit(X_ib_n, y_train);
+            print()
+            print(" ################################################################################# ")
+            print("evaluate XGboost model (random forrest classifier):")
+            pprint(rf_xgboost.get_params())
+            evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
+            scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
+            print(" ############## ")
+            print("CV Scores: ", scores)
+            print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+            print(" ############## ")
+
+            # rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=5,
+            #                             min_child_weight=3, gamma=0, reg_lambda=2, subsample=0.8, colsample_bytree=0.8,
+            #                             objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
+            rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=3,
+                                        min_child_weight=2, gamma=0, reg_lambda=2, subsample=0.8, colsample_bytree=0.8,
+                                        objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
+
+            # # physics based CV accuracy: 0.5
+            # rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=40, max_depth=5,
+            #                             min_child_weight=3, gamma=0, reg_lambda=2, subsample=0.8, colsample_bytree=0.8,
+            #                             objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
+            rf_xgboost.fit(X_ib_n, y_train);
+
+            print()
+            print(" ################################################################################# ")
+            print("evaluate XGboost model (random forrest classifier):")
+            pprint(rf_xgboost.get_params())
+            evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
+            scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
+            print(" ############## ")
+            print("CV Scores: ", scores)
+            print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+            print(" ############## ")
 
 
-        # print("best score: {0}, best iteration: {1}, best ntree limit {2}".format(rf_xgboost.best_score, rf_xgboost.best_iteration, rf_xgboost.best_ntree_limit))
-
-        # rf_xgboost = XGBClassifier(n_estimators=rf_xgboost.best_iteration, objective="multi:softprob", random_state=42, verbosity=1, num_class=3);
-        # rf_xgboost.fit(X_ib_n, y_train);
-
-        # xgb.plot_importance(rf_xgboost)
-        # xgb.to_graphviz(rf_xgboost, num_trees=rf_xgboost.best_iteration)
-        # plt.show()
+            # rf_xgboost = XGBClassifier( learning_rate=0.01, n_estimators=opt_nb_rounds, max_depth=2,
+            #                             min_child_weight=9, gamma=0.0, reg_lambda=1, subsample=0.8, colsample_bytree=0.8,
+            #                             objective= 'multi:softmax', nthread=4, scale_pos_weight=1, seed=27, num_class=3)
+            # rf_xgboost.fit(X_ib_n, y_train);
 
 
+            # print("best score: {0}, best iteration: {1}, best ntree limit {2}".format(rf_xgboost.best_score, rf_xgboost.best_iteration, rf_xgboost.best_ntree_limit))
 
-        # print()
-        # print(" ################################################################################# ")
-        # print("evaluate XGboost model (random forrest classifier):")
-        # pprint(rf_xgboost.get_params())
-        # evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
+            # rf_xgboost = XGBClassifier(n_estimators=rf_xgboost.best_iteration, objective="multi:softprob", random_state=42, verbosity=1, num_class=3);
+            # rf_xgboost.fit(X_ib_n, y_train);
 
-        scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
-        print(" ############## ")
-        print("CV Scores: ", scores)
-        print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
-        print(" ############## ")
+            # xgb.plot_importance(rf_xgboost)
+            # xgb.to_graphviz(rf_xgboost, num_trees=rf_xgboost.best_iteration)
+            # plt.show()
 
 
-        # --------------------
 
-        """
-        # X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based"], purpose='prediction', estimator='regressor');
-        X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based", "physics_based"], purpose='prediction', estimator='regressor');
+            # print()
+            # print(" ################################################################################# ")
+            # print("evaluate XGboost model (random forrest classifier):")
+            # pprint(rf_xgboost.get_params())
+            # evaluate(rf_xgboost, X_ib_n_test, y_test, cols, estimator='classifier');
 
-        # plot_feature_subset(brats_survival, cols);
+            scores = cross_val_score(rf_xgboost, X_ib, Y_ib, cv=5)
+            print(" ############## ")
+            print("CV Scores: ", scores)
+            print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+            print(" ############## ")
 
-        X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0, test_size=0.25)
-        X_ib_n , X_ib_n_test, d = preprocess_features(X_train, X_test, normalize=False);
 
-        # base model (random forrest regressor)
-        from sklearn.ensemble import RandomForestRegressor
-        rf_reg_base = RandomForestRegressor(n_estimators=1000, random_state=42);
-        rf_reg_base.fit(X_ib_n, y_train);
+            # --------------------
 
-        print()
-        print(" ################################################################################# ")
-        print("evaluate base model (random forrest regressor):")
-        pprint(rf_reg_base.get_params())
-        evaluate(rf_reg_base, X_ib_n_test, y_test, cols, estimator='regressor');
-        print()
-        """
+            """
+            # X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based"], purpose='prediction', estimator='regressor');
+            X_ib, Y_ib, cols = get_feature_subset(brats_survival, type=["image_based", "physics_based"], purpose='prediction', estimator='regressor');
 
-        # print("tune hyperparams (best random search model):")
-        # pprint(rf_best_rs.get_params())
-        # evaluate(rf_best_rs, X_ib_n_test, y_test, cols);
-        # print()
-        # print("evaluate best grid search model:")
-        # pprint(rf_best_gs.get_params())
-        # evaluate(rf_best_gs, X_ib_n_test, y_test, cols);
+            # plot_feature_subset(brats_survival, cols);
+
+            X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0, test_size=0.25)
+            X_ib_n , X_ib_n_test, d = preprocess_features(X_train, X_test, normalize=False);
+
+            # base model (random forrest regressor)
+            from sklearn.ensemble import RandomForestRegressor
+            rf_reg_base = RandomForestRegressor(n_estimators=1000, random_state=42);
+            rf_reg_base.fit(X_ib_n, y_train);
+
+            print()
+            print(" ################################################################################# ")
+            print("evaluate base model (random forrest regressor):")
+            pprint(rf_reg_base.get_params())
+            evaluate(rf_reg_base, X_ib_n_test, y_test, cols, estimator='regressor');
+            print()
+            """
+
+            # print("tune hyperparams (best random search model):")
+            # pprint(rf_best_rs.get_params())
+            # evaluate(rf_best_rs, X_ib_n_test, y_test, cols);
+            # print()
+            # print("evaluate best grid search model:")
+            # pprint(rf_best_gs.get_params())
+            # evaluate(rf_best_gs, X_ib_n_test, y_test, cols);
 
 
 

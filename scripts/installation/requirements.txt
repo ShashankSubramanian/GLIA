@@ -1,0 +1,8 @@
+pandas
+nibabel
+numpy
+netCDF4
+networkx
+seaborn
+scipy
+colorama

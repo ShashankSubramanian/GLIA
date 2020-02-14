@@ -1,4 +1,5 @@
 import os, sys, warnings, argparse, subprocess
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../common/'))
 import TumorParams
 from shutil import copyfile
 import preprocess as prep
