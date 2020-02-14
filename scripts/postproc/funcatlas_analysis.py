@@ -1,6 +1,7 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../common/'))
 import matplotlib as mpl
 # mpl.use('Agg')
-import os, sys
 from os import listdir
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ from pprint import pprint
 from tabulate import tabulate
 
 # ### LABEL LIST FUNCTIONAL ATLAS ###
-# -----------------------------------
+# # -----------------------------------
 LABELS_ATLAS = {
     0  : 'background',
     1  : 'superior_frontal_gyrus',
@@ -76,6 +77,12 @@ hellblau = (0., 0.7529411, 1.)
 signalred = (1., 0., 0.12549)
 hellblauT = (0., 0.7529411, 1., 0.1)
 signalredT = (1., 0., 0.12549, 0.1)
+
+pastGcolrA = '#045c9b'
+pastGcolrB = '#068c75'
+pastGcolrC = '#7ad3e3'
+pastGcolrD = '#0ca3ab'
+pastGcolrE = '#7cb4d4'
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -206,11 +213,12 @@ def clean_data(brats_data, max_l2c1error = 0.8, filter_GTR=True):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def analyze_frequenzies(dir, brats_data):
+def analyze_frequenzies(dir, brats_data, LABELS_ATLAS):
     print("reading glioma atlasses");
     atlas = nib.load(os.path.join(dir,"jakob_segmented_with_cere_lps_240x240x155_in_brats_hdr.nii.gz"));
     atlas_t1 = nib.load(os.path.join(dir,"jakob_stripped_with_cere_lps_240x240x155_in_brats_hdr.nii.gz"));
     atlas_func = nib.load(os.path.join(dir,"lpba40_combined_LR_256x256x256_aff2jakob_in_jakob_space_240x240x155.nii.gz")).get_fdata();
+    # atlas_func = nib.load(os.path.join(dir,"Template16_label_aff2jacob_warped.nii.gz")).get_fdata();
     affine = atlas.affine;
     ashape = atlas.shape;
     atlas = atlas.get_fdata();
@@ -224,8 +232,8 @@ def analyze_frequenzies(dir, brats_data):
     atlas_sml_c0_abs  = glioma_c0_atlas_short_abs + glioma_c0_atlas_mid_abs + glioma_c0_atlas_long_abs;
     atlas_sml_c1_abs  = glioma_c1_atlas_short_abs + glioma_c1_atlas_mid_abs + glioma_c1_atlas_long_abs;
 
-    ref_c0 = np.linalg.norm(atlas_sml_c0_abs.flatten(), 2);
-    ref_c1 = np.linalg.norm(atlas_sml_c1_abs.flatten(), 2);
+    ref_c0 = np.linalg.norm(atlas_sml_c0_abs.flatten(), 2)**2;
+    ref_c1 = np.linalg.norm(atlas_sml_c1_abs.flatten(), 2)**2;
 
     l2sumc0_label_over_l2sumc0__SHORT = {}
     l2sumc0_label_over_l2sumc0__MID   = {}
@@ -247,18 +255,18 @@ def analyze_frequenzies(dir, brats_data):
     for label, descr in LABELS_ATLAS.items():
         mask = (atlas_func == label).astype(int)
 
-        ref_c0_label = np.linalg.norm(np.multiply(atlas_sml_c0_abs, mask).flatten(), 2);
-        ref_c1_label = np.linalg.norm(np.multiply(atlas_sml_c1_abs, mask).flatten(), 2);
+        ref_c0_label = np.linalg.norm(np.multiply(atlas_sml_c0_abs, mask).flatten(), 2)**2;
+        ref_c1_label = np.linalg.norm(np.multiply(atlas_sml_c1_abs, mask).flatten(), 2)**2;
 
         l2sumc0_sml_label_over_l2sumc0[label]  = ref_c0_label  / ref_c0;
         l2sumc1_sml_label_over_l2sumc1[label]  = ref_c1_label  / ref_c1;
 
-        l2sumc0_label_short = np.linalg.norm(np.multiply(glioma_c0_atlas_short_abs, mask).flatten(), 2);
-        l2sumc0_label_mid   = np.linalg.norm(np.multiply(glioma_c0_atlas_mid_abs, mask).flatten(), 2);
-        l2sumc0_label_long  = np.linalg.norm(np.multiply(glioma_c0_atlas_long_abs, mask).flatten(), 2);
-        l2sumc1_label_short = np.linalg.norm(np.multiply(glioma_c1_atlas_short_abs, mask).flatten(), 2);
-        l2sumc1_label_mid   = np.linalg.norm(np.multiply(glioma_c1_atlas_mid_abs, mask).flatten(), 2);
-        l2sumc1_label_long  = np.linalg.norm(np.multiply(glioma_c1_atlas_long_abs, mask).flatten(), 2);
+        l2sumc0_label_short = np.linalg.norm(np.multiply(glioma_c0_atlas_short_abs, mask).flatten(), 2)**2;
+        l2sumc0_label_mid   = np.linalg.norm(np.multiply(glioma_c0_atlas_mid_abs, mask).flatten(), 2)**2;
+        l2sumc0_label_long  = np.linalg.norm(np.multiply(glioma_c0_atlas_long_abs, mask).flatten(), 2)**2;
+        l2sumc1_label_short = np.linalg.norm(np.multiply(glioma_c1_atlas_short_abs, mask).flatten(), 2)**2;
+        l2sumc1_label_mid   = np.linalg.norm(np.multiply(glioma_c1_atlas_mid_abs, mask).flatten(), 2)**2;
+        l2sumc1_label_long  = np.linalg.norm(np.multiply(glioma_c1_atlas_long_abs, mask).flatten(), 2)**2;
 
         l2sumc0_label_over_l2sumc0__SHORT[label] = l2sumc0_label_short / ref_c0;
         l2sumc0_label_over_l2sumc0__MID[label]   = l2sumc0_label_mid   / ref_c0;
@@ -295,11 +303,24 @@ def analyze_frequenzies(dir, brats_data):
         freq_cm_TC_in_label__LONG[l]  = 0;
     brats_data['labels_func_atlas(cm(c0))'].astype(str);
     brats_data['labels_func_atlas(cm(TC))'].astype(str);
+    UNDEFINED = []
     for index, row in brats_data.iterrows():
+        undef = False;
         if pd.isna(row['labels_func_atlas(cm(c0))']) or pd.isna(row['labels_func_atlas(cm(TC))']):
             continue;
-        label_cm_c0 = int(row['labels_func_atlas(cm(c0))'].split(',')[1]);
-        label_cm_TC = int(row['labels_func_atlas(cm(TC))'].split(',')[1]);
+        try:
+            label_cm_c0 = int(row['labels_func_atlas(cm(c0))'].split(',')[1]);
+        except ValueError:
+            label_cm_c0 = 0;
+            undef = True;
+        try:
+            label_cm_TC = int(row['labels_func_atlas(cm(TC))'].split(',')[1]);
+        except ValueError:
+            label_cm_TC = 0;
+            undef = True;
+
+        if undef:
+            UNDEFINED.append(row['BID'])
 
         # short
         if row['survival_class'] == 0:
@@ -326,6 +347,9 @@ def analyze_frequenzies(dir, brats_data):
         freq_cm_TC_in_label__SHORT[l] /= float(total_hits);
         freq_cm_TC_in_label__MID[l]   /= float(total_hits);
         freq_cm_TC_in_label__LONG[l]  /= float(total_hits);
+
+
+    print(" UNDEFINED BRAIN IDs: \n", UNDEFINED)
 
     # sort by size of label
     size_label_sorted = sorted(size_label.items(), key=lambda x: x[1], reverse=True);
@@ -392,6 +416,8 @@ def analyze_frequenzies(dir, brats_data):
     df.to_csv(os.path.join(dir, "functional_atlas_stats.csv"));
     df_long.to_csv(os.path.join(dir, "functional_atlas_stats_long_format.csv"));
 
+    return df, df_long
+
 
 
 ###
@@ -400,27 +426,191 @@ def judge_discriminability(frac_s, frac_m, frac_l):
     tot = frac_s + frac_m + frac_l;
 
     if frac_s > 0.8 * tot:
-        return "short (strong)";
+        return r'$S^{+}$ ';
     if frac_m > 0.8 * tot:
-        return "mid   (strong)";
+        return r'$M^{+}$ ';
     if frac_l > 0.8 * tot:
-        return "long  (strong)";
+        return r'$L^{+}$ ';
 
     if frac_s > frac_m + frac_l:
-        return "short (weak)";
+        return r'$S^{-}$ ';
     if frac_m > frac_s + frac_l:
-        return "mid   (weak)";
+        return r'$M^{-}$ ';
     if frac_l > frac_m + frac_s:
-        return "long  (weak)";
+        return r'$L^{-}$ ';
 
     if frac_s < 0.2 * tot:
-        return 'not short (strong)';
+        return r'$!S^{+}$';
     if frac_m < 0.2 * tot:
-        return 'not mid   (strong)';
+        return r'$!M^{+}$';
     if frac_l < 0.2 * tot:
-        return 'not long  (strong)';
+        return r'$!M^{+}$';
 
-    return "uninformative";
+    return     " ---    ";
+
+
+###
+### ------------------------------------------------------------------------ ###
+def get_subgroup(label, muse_map, SB):
+    if label == 0:
+        return "BG";
+    try:
+        subgroup = str(muse_map.loc[muse_map['ROI_INDEX'] == label][SB].iloc[0])
+    except:
+        print("label {} with subgroup {}".format(label, muse_map.loc[muse_map['ROI_INDEX'] == label][SB]))
+    # print("label {} with subgroup {}".format(label, subgroup))
+    return subgroup;
+
+###
+### ------------------------------------------------------------------------ ###
+def accumulate_frequencies(dir, long_df, muse_map, label_map):
+
+    cols_long  = ['label', 'name', 'rel. size', 'c0 freq.', 'c1 freq.',
+                  'freq_short', 'freq_mid', 'freq_long', 'discriminability', 'type'
+                 ];
+    long_df['SUBGROUP_0'] = long_df['label'].apply(lambda x: get_subgroup(x, muse_map, 'iSUBGROUP_0'))
+    long_df['SUBGROUP_1'] = long_df['label'].apply(lambda x: get_subgroup(x, muse_map, 'iSUBGROUP_1'))
+    long_df['SUBGROUP_2'] = long_df['label'].apply(lambda x: get_subgroup(x, muse_map, 'iSUBGROUP_2'))
+
+    for SB in ['SUBGROUP_0', 'SUBGROUP_1', 'SUBGROUP_2']:
+        print()
+        print()
+        print("SUBGROUP: ", SB)
+        S0_s = long_df.groupby([SB, 'type'], as_index=False)['freq_short'].sum().reset_index()
+        S0_m = long_df.groupby([SB, 'type'], as_index=False)['freq_mid'].sum().reset_index()
+        S0_l = long_df.groupby([SB, 'type'], as_index=False)['freq_long'].sum().reset_index()
+        S0_size = long_df.groupby([SB, 'type'], as_index=False)['rel. size'].sum().reset_index()
+        S0_c0freq = long_df.groupby([SB, 'type'], as_index=False)['c0 freq.'].sum().reset_index()
+
+        table = [];
+        cols  = ['name', 'rel. size', 'c0 freq.',
+                'rel.l2[sum_{S}(c0)]', 'rel.l2[sum_{M}(c0)]', 'rel.l2[sum_{L}(c0)]', 'discriminability #1',
+                'rel.#hits_{S}[cm(c0)]', 'rel.#hits_{M}[cm(c0)]', 'rel.#hits_{L}[cm(c0)]', 'discriminability #2',
+                'rel.#hits_{S}[cm(TC)]', 'rel.#hits_{M}[cm(TC)]', 'rel.#hits_{L}[cm(TC)]', 'discriminability #3',
+                'rel.l2[sum_{S}(c1)]', 'rel.l2[sum_{M}(c1)]', 'rel.l2[sum_{L}(c1)]', 'discriminability #4',
+                ];
+        df = pd.DataFrame(columns=cols);
+        for i in range(0,len(S0_s),4):
+            name = S0_s.values[i][1]
+            ROW = [name, float(S0_size.values[i][3]),
+                    float(S0_c0freq.values[i][3]),
+                    float(S0_s.values[i][3]), float(S0_m.values[i][3]), float(S0_l.values[i][3]),
+                    judge_discriminability(float(S0_s.values[i][3]), float(S0_m.values[i][3]), float(S0_l.values[i][3])),
+                    float(S0_s.values[i+3][3]), float(S0_m.values[i+3][3]), float(S0_l.values[i+3][3]),
+                    judge_discriminability(float(S0_s.values[i+3][3]), float(S0_m.values[i+3][3]), float(S0_l.values[i+3][3])),
+                    float(S0_s.values[i+2][3]), float(S0_m.values[i+2][3]), float(S0_l.values[i+2][3]),
+                    judge_discriminability(float(S0_s.values[i+2][3]), float(S0_m.values[i+2][3]), float(S0_l.values[i+2][3])),
+                    float(S0_s.values[i+1][3]), float(S0_m.values[i+1][3]), float(S0_l.values[i+1][3]),
+                    judge_discriminability(float(S0_s.values[i+1][3]), float(S0_m.values[i+1][3]), float(S0_l.values[i+1][3])),
+                    ];
+            df = df.append(pd.Series({ c:r for c,r in zip(cols, ROW) }), ignore_index=True);
+            table.append(ROW);
+        #
+        df.to_csv(os.path.join(dir, "MUSE/functional_atlas_stats_"+SB+".csv"));
+        print()
+        print(tabulate(table,
+                        headers = ['label', 'name', 'rel. size', 'c0 freq.', 'c1 freq.',
+                            'rel.l2\n[sum_{S}(c0)]', 'rel.l2\n[sum_{M}(c0)]', 'rel.l2\n[sum_{L}(c0)]', 'discriminability #1',
+                            'rel.#hits_{S}\n[cm(c0)]', 'rel.#hits_{M}\n[cm(c0)]', 'rel.#hits_{L}\n[cm(c0)]', 'discriminability #2',
+                            'rel.#hits_{S}\n[cm(TC)]', 'rel.#hits_{M}\n[cm(TC)]', 'rel.#hits_{L}\n[cm(TC)]', 'discriminability #3',
+                            'rel.l2\n[sum_{S}(c1)]', 'rel.l2\n[sum_{M}(c1)]', 'rel.l2\n[sum_{L}(c1)]', 'discriminability #4',
+                        ],
+                        tablefmt="rst", floatfmt="0.6f"));
+        print()
+        print(tabulate(table,
+                        headers = ['label', 'name', 'rel. size', 'c0 freq.', 'c1 freq.',
+                            'rel.l2\n[sum_{S}(c0)]', 'rel.l2\n[sum_{M}(c0)]', 'rel.l2\n[sum_{L}(c0)]', 'discriminability #1',
+                            'rel.#hits_{S}\n[cm(c0)]', 'rel.#hits_{M}\n[cm(c0)]', 'rel.#hits_{L}\n[cm(c0)]', 'discriminability #2',
+                            'rel.#hits_{S}\n[cm(TC)]', 'rel.#hits_{M}\n[cm(TC)]', 'rel.#hits_{L}\n[cm(TC)]', 'discriminability #3',
+                            'rel.l2\n[sum_{S}(c1)]', 'rel.l2\n[sum_{M}(c1)]', 'rel.l2\n[sum_{L}(c1)]', 'discriminability #4',
+                        ],
+                        tablefmt="latex", floatfmt="0.2f"));
+
+
+def plot_frequencies(dir, long_df, df, muse_map, label_map):
+
+    cols  = ['label', 'name', 'rel. size', 'c0 freq.', 'c1 freq.',
+            'rel.l2[sum_{S}(c0)]', 'rel.l2[sum_{M}(c0)]', 'rel.l2[sum_{L}(c0)]', 'discriminability #1',
+            'rel.#hits_{S}[cm(c0)]', 'rel.#hits_{M}[cm(c0)]', 'rel.#hits_{L}[cm(c0)]', 'discriminability #2',
+            'rel.#hits_{S}[cm(TC)]', 'rel.#hits_{M}[cm(TC)]', 'rel.#hits_{L}[cm(TC)]', 'discriminability #3',
+            'rel.l2[sum_{S}(c1)]', 'rel.l2[sum_{M}(c1)]', 'rel.l2[sum_{L}(c1)]', 'discriminability #4',
+            ];
+
+
+    f = plt.figure(figsize=(18,10))
+
+    df = df[df['name'] != 'undefined/background']
+    df = df[:16]
+
+    categories = ['C0 Freq.', 'CM(C0) Freq.', 'CM(TC) Freg.', 'C1 Freq.']
+    ind = np.arange(len(df));
+    # print(ind)
+    for i in range(4):
+
+        if i==1 or i==2:
+            continue;
+
+        c1 = '#ff6961cc'
+        c2 = '#77dd77cc'
+        c3 = '#449afecc'
+
+        c1 = pastGcolrA
+        c2 = pastGcolrB
+        c3 = pastGcolrC
+
+        # ax = f.add_subplot(4,1,i+1);
+        ax = f.add_subplot(2,1,int(i/3)+1);
+        totals = [i+j+k for i,j,k in zip(df[cols[5+i*4]], df[cols[6+i*4]], df[cols[7+i*4]])]
+        greenBars = [i / j * 100 if j > 0 else 0 for i,j in zip(df[cols[5+i*4]], totals)]
+        orangeBars = [i / j * 100 if j > 0 else 0 for i,j in zip(df[cols[6+i*4]], totals)]
+        blueBars = [i / j * 100 if j > 0 else 0 for i,j in zip(df[cols[7+i*4]], totals)]
+        # plot
+        barWidth = 1
+        names = np.squeeze(df['name'].values)
+        ax.bar(ind, greenBars, color=c1, edgecolor='white', width=barWidth, label='short')
+        ax.bar(ind, orangeBars, bottom=greenBars, color=c2, edgecolor='white', width=barWidth, label='mid')
+        ax.bar(ind, blueBars, bottom=[i+j for i,j in zip(greenBars, orangeBars)], color=c3, edgecolor='white', width=barWidth, label='long')
+        plt.xticks(ind, [])
+        plt.yticks([0,100],['0','100'], size='8')
+        ax.set(ylabel=categories[i]);
+
+
+        if i == 3:
+            plt.xticks(ind, names, rotation=90, size='6')
+
+        # else:
+        ax2 = ax.twinx();
+        ax2.plot(ind, np.squeeze(df['c0 freq.'].values), color='k', linestyle='--',linewidth=1.5, label='f(c0)');
+        ax2.plot(ind, np.squeeze(df['c1 freq.'].values), color='white', linestyle='--', linewidth=1.5, label='f(c1)');
+        ax2.plot(ind, np.squeeze(df['rel. size'].values), color='gray', linestyle='--', linewidth=1.5, label='size');
+        plt.yticks(size='8')
+
+        if i == 0:
+            ax.legend(loc='upper right', fontsize='6',)
+        if i == 3:
+            ax2.legend(loc='upper right', fontsize='6',)
+
+    # if i == 0:
+        # handles, labels = ax.get_legend_handles_labels()
+        # labels = ["short", "mid", "long"]
+        # handles = []
+        # labels = []
+        # lgd = ax.legend(handles[0:3], labels[0:3], loc='lower right', fontsize='small', handletextpad=0.5)
+        # ax.legend(loc='lower right', fontsize='small', handletextpad=0.5)
+
+    plt.tight_layout()
+    sns.despine(offset=5, left=True, right=True, top=True, bottom=True)
+    # sns.despine()
+
+
+
+
+
+
+    # p1 = plt.bar(ind, np.squeeze(df[['rel.l2[sum_{S}(c0)]']].values), width,)
+    # p2 = plt.bar(ind, np.squeeze(df[['rel.l2[sum_{M}(c0)]']].values), width, bottom=np.squeeze(df[['rel.l2[sum_{S}(c0)]']].values))
+    # p3 = plt.bar(ind, np.squeeze(df[['rel.l2[sum_{L}(c0)]']].values), width, bottom=np.squeeze(df[['rel.l2[sum_{M}(c0)]']].values))
+    plt.show()
 
 
 ###
@@ -499,28 +689,49 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='process BRATS results')
     parser.add_argument ('-x',    '--dir',   type = str, help = 'path to the results folder');
     parser.add_argument ('-file', '--f',     type = str, help = 'path to the csv brats file');
+    parser.add_argument ('-labels_file', '--lf',     type = str, help = 'path to the csv file for atlas labels');
+    parser.add_argument ('-freq_file1', '--ff1',     type = str, help = 'path to the csv file for frequencies');
+    parser.add_argument ('-freq_file2', '--ff2',     type = str, help = 'path to the csv file for frequencies');
     args = parser.parse_args();
     dir = args.dir;
     file = args.f;
 
     ANALYZE_FREQ = False;
-    PLOT_STATS   = True;
+    PLOT_STATS   = False;
     PRINT_TABLE  = False;
 
 
-    LABELS_ATLAS_REV = {v:k for k,v in LABELS_ATLAS.items()}
+    # LABELS_ATLAS_REV = {v:k for k,v in LABELS_ATLAS.items()}
     FILTER = ['Brats18_CBICA_AQJ_1', 'Brats18_TCIA08_242_1', 'Brats18_CBICA_AZD_1', 'Brats18_TCIA02_374_1', 'Brats18_CBICA_ANI_1', 'Brats18_CBICA_AUR_1']
     # read SURVIVAL DATA
     survival_data = pd.read_csv(os.path.join(basedir,"survival_data.csv"), header = 0, error_bad_lines=True, skipinitialspace=True);
+    if args.lf is not None:
+        atlas_label_mapping = pd.read_csv(os.path.join(basedir, args.lf), header = 0, error_bad_lines=True, skipinitialspace=True);
+    if args.ff1 is not None:
+        freq_mapping1 = pd.read_csv(os.path.join(basedir, args.ff1), header = 0, error_bad_lines=True, skipinitialspace=True);
+    if args.ff2 is not None:
+        freq_mapping2 = pd.read_csv(os.path.join(basedir, args.ff2), header = 0, error_bad_lines=True, skipinitialspace=True);
     # read BRATS DATA
     brats_data, weights = read_data(args.f);
     brats_clustering, brats_survival = clean_data(brats_data, filter_GTR=False);
+
+    # label_dict = atlas_label_mapping.to_dict()
+    # LABELS_ATLAS = {}
+    # for i in range(len(atlas_label_mapping)):
+    #     LABELS_ATLAS[label_dict['ROI_INDEX'][i]] = label_dict['ROI_NAME'][i]
+    #     # print("adding dict entry {} : {}".format(label_dict['ROI_INDEX'][i], label_dict['ROI_NAME'][i]))
+    # LABELS_ATLAS[0] = "undefined/background"
+
+
+    accumulate_frequencies(dir, freq_mapping1, atlas_label_mapping, LABELS_ATLAS)
+    plot_frequencies(dir, freq_mapping1, freq_mapping2, atlas_label_mapping, LABELS_ATLAS)
 
     if PRINT_TABLE:
         print_table(brats_data);
 
     if ANALYZE_FREQ:
-        analyze_frequenzies(dir, brats_survival);
+        df, df_long = analyze_frequenzies(dir, brats_survival, LABELS_ATLAS);
+        # accumulate_frequencies(dir, df_long, atlas_label_mapping, LABELS_ATLAS)
 
 
 

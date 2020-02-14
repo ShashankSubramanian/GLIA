@@ -1,6 +1,7 @@
 import matplotlib as mpl
 mpl.use('Agg')
 import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../common/'))
 from os import listdir
 import numpy as np
 import pandas as pd
@@ -18,43 +19,100 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import file_io as fio
 from pprint import pprint
 from tabulate import tabulate
+import random
 
 # ### LABEL LIST FUNCTIONAL ATLAS ###
 # -----------------------------------
-LABELS_ATLAS = {
-    0  : 'background',
-    1  : 'superior_frontal_gyrus',
-    2  : 'middle_frontal_gyrus',
-    3  : 'inferior_frontal_gyrus',
-    4  : 'precentral_gyrus',
-    5  : 'middle_orbitofrontal_gyrus',
-    6  : 'lateral_orbitofrontal_gyrus',
-    7  : 'gyrus_rectus',
-    8  : 'postcentral_gyrus',
-    9  : 'superior_parietal_gyrus',
-    10 : 'supramarginal_gyrus',
-    11 : 'angular_gyrus',
-    12 : 'precuneus',
-    13 : 'superior_occipital_gyrus',
-    14 : 'middle_occipital_gyrus',
-    15 : 'inferior_occipital_gyrus',
-    16 : 'cuneus',
-    17 : 'superior_temporal_gyrus',
-    18 : 'middle_temporal_gyrus',
-    19 : 'inferior_temporal_gyrus',
-    20 : 'parahippocampal_gyrus',
-    21 : 'lingual_gyrus',
-    22 : 'fusiform_gyrus',
-    23 : 'insular_cortex',
-    24 : 'cingulate_gyrus',
-    25 : 'caudate',
-    26 : 'putamen',
-    27 : 'hippocampus',
-    28 : 'cerebellum',
-    29 : 'brainstem',
-    30 : 'unlabelled white matter',
-    31 : 'ventricles'}
+# LABELS_ATLAS = {
+#     0  : 'background',
+#     1  : 'superior_frontal_gyrus',
+#     2  : 'middle_frontal_gyrus',
+#     3  : 'inferior_frontal_gyrus',
+#     4  : 'precentral_gyrus',
+#     5  : 'middle_orbitofrontal_gyrus',
+#     6  : 'lateral_orbitofrontal_gyrus',
+#     7  : 'gyrus_rectus',
+#     8  : 'postcentral_gyrus',
+#     9  : 'superior_parietal_gyrus',
+#     10 : 'supramarginal_gyrus',
+#     11 : 'angular_gyrus',
+#     12 : 'precuneus',
+#     13 : 'superior_occipital_gyrus',
+#     14 : 'middle_occipital_gyrus',
+#     15 : 'inferior_occipital_gyrus',
+#     16 : 'cuneus',
+#     17 : 'superior_temporal_gyrus',
+#     18 : 'middle_temporal_gyrus',
+#     19 : 'inferior_temporal_gyrus',
+#     20 : 'parahippocampal_gyrus',
+#     21 : 'lingual_gyrus',
+#     22 : 'fusiform_gyrus',
+#     23 : 'insular_cortex',
+#     24 : 'cingulate_gyrus',
+#     25 : 'caudate',
+#     26 : 'putamen',
+#     27 : 'hippocampus',
+#     28 : 'cerebellum',
+#     29 : 'brainstem',
+#     30 : 'unlabelled white matter',
+#     31 : 'ventricles'}
 # -----------------------------------
+
+
+TEST_SPLIT =  ['Brats18_TCIA02_290_1', 'Brats18_CBICA_AQZ_1', 'Brats18_CBICA_AVV_1',
+ 'Brats18_CBICA_ASA_1', 'Brats18_TCIA02_135_1', 'Brats18_TCIA02_394_1',
+ 'Brats18_TCIA02_179_1', 'Brats18_TCIA03_265_1', 'Brats18_TCIA08_218_1',
+ 'Brats18_CBICA_AYW_1', 'Brats18_CBICA_AYI_1', 'Brats18_CBICA_AOZ_1',
+ 'Brats18_CBICA_ALN_1', 'Brats18_TCIA02_151_1', 'Brats18_TCIA03_133_1',
+ 'Brats18_TCIA02_226_1', 'Brats18_CBICA_AXW_1', 'Brats18_TCIA01_411_1',
+ 'Brats18_TCIA08_319_1', 'Brats18_TCIA04_149_1', 'Brats18_TCIA06_409_1',
+ 'Brats18_TCIA03_498_1', 'Brats18_CBICA_ARZ_1', 'Brats18_CBICA_AQN_1',
+ 'Brats18_TCIA02_314_1', 'Brats18_CBICA_AAP_1', 'Brats18_TCIA01_429_1',
+ 'Brats18_CBICA_AOH_1', 'Brats18_TCIA03_474_1', 'Brats18_TCIA03_199_1',
+ 'Brats18_CBICA_APY_1', 'Brats18_CBICA_AXL_1', 'Brats18_TCIA08_167_1',
+ 'Brats18_CBICA_AQU_1', 'Brats18_CBICA_ASE_1', 'Brats18_TCIA04_343_1',
+ 'Brats18_CBICA_AOD_1', 'Brats18_TCIA01_203_1', 'Brats18_TCIA02_368_1',
+ 'Brats18_CBICA_AVG_1', 'Brats18_TCIA04_361_1'];
+TRAIN_SPLIT = ['Brats18_CBICA_AAL_1', 'Brats18_TCIA02_491_1', 'Brats18_CBICA_ABB_1',
+ 'Brats18_CBICA_AXJ_1', 'Brats18_CBICA_AAG_1', 'Brats18_CBICA_ASG_1',
+ 'Brats18_TCIA06_165_1', 'Brats18_CBICA_AQP_1', 'Brats18_CBICA_AMH_1',
+ 'Brats18_CBICA_ASH_1', 'Brats18_TCIA01_401_1', 'Brats18_TCIA02_300_1',
+ 'Brats18_TCIA02_274_1', 'Brats18_CBICA_ASY_1', 'Brats18_CBICA_APZ_1',
+ 'Brats18_TCIA03_375_1', 'Brats18_CBICA_AQT_1', 'Brats18_CBICA_ARW_1',
+ 'Brats18_TCIA04_479_1', 'Brats18_TCIA01_425_1', 'Brats18_TCIA02_331_1',
+ 'Brats18_CBICA_AUQ_1', 'Brats18_TCIA01_147_1', 'Brats18_TCIA04_111_1',
+ 'Brats18_TCIA01_390_1', 'Brats18_CBICA_AWG_1', 'Brats18_TCIA01_231_1',
+ 'Brats18_CBICA_ASN_1', 'Brats18_CBICA_ASU_1', 'Brats18_TCIA02_377_1',
+ 'Brats18_TCIA03_121_1', 'Brats18_CBICA_ATP_1', 'Brats18_CBICA_AQA_1',
+ 'Brats18_CBICA_AWH_1', 'Brats18_TCIA04_437_1', 'Brats18_CBICA_AXN_1',
+ 'Brats18_TCIA08_469_1', 'Brats18_TCIA02_322_1', 'Brats18_CBICA_AQG_1',
+ 'Brats18_CBICA_AQD_1', 'Brats18_CBICA_ABO_1', 'Brats18_TCIA03_419_1',
+ 'Brats18_TCIA02_118_1', 'Brats18_CBICA_ASO_1', 'Brats18_CBICA_AQJ_1',
+ 'Brats18_TCIA01_150_1', 'Brats18_CBICA_ANP_1', 'Brats18_CBICA_AXO_1',
+ 'Brats18_CBICA_ASK_1', 'Brats18_CBICA_AQY_1', 'Brats18_CBICA_ABY_1',
+ 'Brats18_CBICA_ATV_1', 'Brats18_2013_27_1', 'Brats18_TCIA06_247_1',
+ 'Brats18_TCIA03_296_1', 'Brats18_TCIA01_448_1', 'Brats18_TCIA02_321_1',
+ 'Brats18_CBICA_ANG_1', 'Brats18_TCIA02_455_1', 'Brats18_CBICA_ALX_1',
+ 'Brats18_CBICA_ATB_1', 'Brats18_TCIA08_406_1', 'Brats18_CBICA_AQO_1',
+ 'Brats18_CBICA_ALU_1', 'Brats18_CBICA_APR_1', 'Brats18_TCIA01_499_1',
+ 'Brats18_CBICA_ASW_1', 'Brats18_CBICA_ANZ_1', 'Brats18_CBICA_AQR_1',
+ 'Brats18_CBICA_AYU_1', 'Brats18_TCIA08_280_1', 'Brats18_TCIA02_471_1',
+ 'Brats18_TCIA01_412_1', 'Brats18_CBICA_AXM_1', 'Brats18_TCIA05_478_1',
+ 'Brats18_CBICA_ATF_1', 'Brats18_TCIA08_105_1', 'Brats18_CBICA_AXQ_1',
+ 'Brats18_CBICA_AUN_1', 'Brats18_TCIA08_278_1', 'Brats18_CBICA_AWI_1',
+ 'Brats18_CBICA_ABM_1', 'Brats18_CBICA_AAB_1', 'Brats18_TCIA01_186_1',
+ 'Brats18_CBICA_AZH_1', 'Brats18_TCIA05_277_1', 'Brats18_CBICA_AOO_1',
+ 'Brats18_CBICA_ATD_1', 'Brats18_TCIA03_338_1', 'Brats18_CBICA_BHB_1',
+ 'Brats18_TCIA02_198_1', 'Brats18_TCIA02_283_1', 'Brats18_TCIA01_460_1',
+ 'Brats18_TCIA02_430_1', 'Brats18_2013_11_1', 'Brats18_TCIA01_378_1',
+ 'Brats18_TCIA02_473_1', 'Brats18_CBICA_ABN_1', 'Brats18_CBICA_BHM_1',
+ 'Brats18_CBICA_ABE_1', 'Brats18_CBICA_ASV_1', 'Brats18_TCIA01_235_1',
+ 'Brats18_TCIA01_335_1', 'Brats18_CBICA_AQV_1', 'Brats18_CBICA_AQQ_1',
+ 'Brats18_CBICA_AVJ_1', 'Brats18_TCIA01_190_1', 'Brats18_TCIA03_138_1',
+ 'Brats18_TCIA08_242_1', 'Brats18_CBICA_AME_1', 'Brats18_CBICA_AZD_1',
+ 'Brats18_CBICA_ARF_1', 'Brats18_CBICA_AOP_1', 'Brats18_TCIA03_257_1',
+ 'Brats18_CBICA_ATX_1', 'Brats18_TCIA04_192_1', 'Brats18_TCIA01_201_1',
+ 'Brats18_TCIA06_372_1', 'Brats18_TCIA06_184_1', 'Brats18_CBICA_AYA_1'];
 
 class bcolors:
     HEADER = '\033[95m'
@@ -107,9 +165,8 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='process BRATS results')
     parser.add_argument ('-x',    '--dir',   type = str, help = 'path to the results folder');
     parser.add_argument ('-file', '--f',     type = str, help = 'path to the csv brats file');
+    parser.add_argument ('-labels_file', '--lf',     type = str, help = 'path to the csv file for atlas labels');
     args = parser.parse_args();
-
-    LABELS_ATLAS_REV = {v:k for k,v in LABELS_ATLAS.items()}
 
     gen_atlas  = False;
     read_atlas = False;
@@ -128,6 +185,17 @@ if __name__=='__main__':
     file = args.f;
     FILTER = ['Brats18_CBICA_AQJ_1', 'Brats18_TCIA08_242_1', 'Brats18_CBICA_AZD_1', 'Brats18_TCIA02_374_1', 'Brats18_CBICA_ANI_1', 'Brats18_CBICA_AUR_1']
     survival_data = pd.read_csv(os.path.join(basedir,"survival_data.csv"), header = 0, error_bad_lines=True, skipinitialspace=True);
+    atlas_label_mapping = pd.read_csv(os.path.join(basedir, args.lf), header = 0, error_bad_lines=True, skipinitialspace=True);
+
+    label_dict = atlas_label_mapping.to_dict()
+    LABELS_ATLAS = {}
+    for i in range(len(atlas_label_mapping)):
+        LABELS_ATLAS[label_dict['ROI_INDEX'][i]] = label_dict['ROI_NAME'][i]
+        print("adding dict entry {} : {}".format(label_dict['ROI_INDEX'][i], label_dict['ROI_NAME'][i]))
+    LABELS_ATLAS_REV = {v:k for k,v in LABELS_ATLAS.items()}
+
+    TEST  = []
+    TRAIN = []
 
     brats_data = None;
     brats_survival = None;
@@ -167,7 +235,8 @@ if __name__=='__main__':
     affine = atlas.affine;
     ashape = atlas.shape;
     atlas = atlas.get_fdata();
-    atlas_func = nib.load(os.path.join(dir,"lpba40_combined_LR_256x256x256_aff2jakob_in_jakob_space_240x240x155.nii.gz")).get_fdata();
+    # atlas_func = nib.load(os.path.join(dir,"lpba40_combined_LR_256x256x256_aff2jakob_in_jakob_space_240x240x155.nii.gz")).get_fdata();
+    atlas_func = nib.load(os.path.join(dir,"Template16_label_aff2jacob_warped.nii.gz")).get_fdata();
     atlas_t1 = nib.load(os.path.join(dir,"jakob_stripped_with_cere_lps_240x240x155_in_brats_hdr.nii.gz")).get_fdata();
 
     # genrate glioma atlas
@@ -190,6 +259,8 @@ if __name__=='__main__':
         glioma_c1_atlas_small  = np.zeros_like(atlas);
         glioma_c1_atlas_medium = np.zeros_like(atlas);
         glioma_c1_atlas_large  = np.zeros_like(atlas);
+
+        nb_cases = 0;
 
         atlas_mask = (atlas <= 0).astype(int);
         csf_mask   = (atlas == 7).astype(int);
@@ -221,44 +292,55 @@ if __name__=='__main__':
                     size_class = getSizeClass(float(data_row.iloc[0]['vol(TC)_r']), max_TC_r)
 
                 patient_path = os.path.join(os.path.join(dir, P), "tumor_inversion/nx256/obs-1.0/");
-                # load patient c(0) nii image
+
+                    # load patient c(0) nii image
                 c0_in_aspace = nib.load(os.path.join(patient_path, "c0Recon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz")).get_fdata();
                 c1_in_aspace = nib.load(os.path.join(patient_path, "cRecon_256x256x256_aff2jakob_in_Aspace_240x240x155.nii.gz")).get_fdata();
 
-                # filter brain IDs which c(0) lieas outside or in ventricles of atlas
-                ref = np.linalg.norm(c0_in_aspace);
-                if np.linalg.norm(np.multiply(c0_in_aspace, atlas_mask)) > 0.5*ref:
-                    BAD_BRAINS_OUT.append(BID);
-                if np.linalg.norm(np.multiply(c0_in_aspace, csf_mask)) > 0.5*ref:
-                    BAD_BRAINS_CSF.append(BID);
+                # rnd = random.random();
+                # if rnd >= 0.85 and rnd < 1:
+                if BID in TEST_SPLIT:
+                    TEST.append(BID)
+                # elif rnd >= 0 and rnd < 0.85:
+                elif BID in TRAIN_SPLIT:
+                    TRAIN.append(BID)
+                # if True:
 
-                # superimpose in atlas
-                glioma_c0_atlas += c0_in_aspace;
-                glioma_c1_atlas += c1_in_aspace;
-                # superimpose on srvl atlas
-                if srvl_class == 0:
-                    glioma_c0_atlas_short += c0_in_aspace;
-                    glioma_c1_atlas_short += c1_in_aspace;
-                elif srvl_class == 1:
-                    glioma_c0_atlas_mid += c0_in_aspace;
-                    glioma_c1_atlas_mid += c1_in_aspace;
-                elif srvl_class == 2:
-                    glioma_c0_atlas_long += c0_in_aspace;
-                    glioma_c1_atlas_long += c1_in_aspace;
-                else:
-                    glioma_c0_atlas_na += c0_in_aspace;
-                    glioma_c1_atlas_na += c1_in_aspace;
+                    # filter brain IDs which c(0) lieas outside or in ventricles of atlas
+                    ref = np.linalg.norm(c0_in_aspace);
+                    if np.linalg.norm(np.multiply(c0_in_aspace, atlas_mask)) > 0.5*ref:
+                        BAD_BRAINS_OUT.append(BID);
+                    if np.linalg.norm(np.multiply(c0_in_aspace, csf_mask)) > 0.5*ref:
+                        BAD_BRAINS_CSF.append(BID);
 
-                # superimpose on size atlas
-                if size_class == 0:
-                    glioma_c0_atlas_small += c0_in_aspace;
-                    glioma_c1_atlas_small += c1_in_aspace;
-                elif size_class == 1:
-                    glioma_c0_atlas_medium += c0_in_aspace;
-                    glioma_c1_atlas_medium += c1_in_aspace;
-                elif size_class == 2:
-                    glioma_c0_atlas_large += c0_in_aspace;
-                    glioma_c1_atlas_large += c1_in_aspace;
+                    nb_cases = nb_cases + 1
+                    # superimpose in atlas
+                    glioma_c0_atlas += c0_in_aspace;
+                    glioma_c1_atlas += c1_in_aspace;
+                    # superimpose on srvl atlas
+                    if srvl_class == 0:
+                        glioma_c0_atlas_short += c0_in_aspace;
+                        glioma_c1_atlas_short += c1_in_aspace;
+                    elif srvl_class == 1:
+                        glioma_c0_atlas_mid += c0_in_aspace;
+                        glioma_c1_atlas_mid += c1_in_aspace;
+                    elif srvl_class == 2:
+                        glioma_c0_atlas_long += c0_in_aspace;
+                        glioma_c1_atlas_long += c1_in_aspace;
+                    else:
+                        glioma_c0_atlas_na += c0_in_aspace;
+                        glioma_c1_atlas_na += c1_in_aspace;
+
+                    # superimpose on size atlas
+                    if size_class == 0:
+                        glioma_c0_atlas_small += c0_in_aspace;
+                        glioma_c1_atlas_small += c1_in_aspace;
+                    elif size_class == 1:
+                        glioma_c0_atlas_medium += c0_in_aspace;
+                        glioma_c1_atlas_medium += c1_in_aspace;
+                    elif size_class == 2:
+                        glioma_c0_atlas_large += c0_in_aspace;
+                        glioma_c1_atlas_large += c1_in_aspace;
 
                 # identify region in functional atlas that cm(TC) falls into
                 cm_TC_aspace_x = round(float(brats_data_row.iloc[0]['cm(TC) (aspace)'].split('(')[-1].split(',')[0]));
@@ -311,6 +393,11 @@ if __name__=='__main__':
                 print("cm(c(0)) of {} falls into region(s) {} of functional atlas.".format(BID, cmC0_labels_descr_str));
                 print("cm(TC)   of {} falls into region(s) {} of functional atlas.".format(BID, tc_labels_descr_str));
 
+
+            # out_dir = dir;
+            out_dir = os.path.join(dir, 'train_test_split_paper');
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir);
             # add labels of region in functional atlas that c(0) falls into to features
             brats_data['labels_func_atlas(c0)'] = brats_data['BID'].map(c0_falls_in_functional_labels);
             brats_data['labels_percentage_func_atlas(c0)'] = brats_data['BID'].map(c0_falls_in_functional_labels_with_percentage);
@@ -319,8 +406,13 @@ if __name__=='__main__':
             brats_data['labels(descr)_func_atlas(cm(c0))'] = brats_data['BID'].map(cmC0_falls_in_functional_labels_descr);
             brats_data['labels_func_atlas(cm(TC))'] = brats_data['BID'].map(cmTC_falls_in_functional_labels);
             brats_data['labels(descr)_func_atlas(cm(TC))'] = brats_data['BID'].map(cmTC_falls_in_functional_labels_descr);
-            brats_data.to_csv(os.path.join(dir, "features_brats18.csv"));
+            brats_data.to_csv(os.path.join(out_dir, "features_brats18_MUSE.csv"));
             print("writing .csv data");
+
+            train_brats = brats_data[brats_data['BID'].isin(TRAIN)];
+            test_brats  = brats_data[brats_data['BID'].isin(TEST)];
+            train_brats.to_csv(os.path.join(out_dir, "features_brats18_TRAIN.csv"));
+            test_brats.to_csv(os.path.join(out_dir, "features_brats18_TEST.csv"));
 
             atlas_c1_sml = glioma_c1_atlas_short + glioma_c1_atlas_mid + glioma_c1_atlas_long;
             atlas_c0_sml = glioma_c0_atlas_short + glioma_c0_atlas_mid + glioma_c0_atlas_long;
@@ -329,46 +421,59 @@ if __name__=='__main__':
 
             print("write nii.gz files")
             # c(0) atlas
-            fio.writeNII(np.abs(glioma_c0_atlas        / np.amax(glioma_c0_atlas.flatten())),   os.path.join(dir,'brats_c0_atlas_plain.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_short  / np.amax(glioma_c0_atlas_short.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_short_normalized-ind.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_long   / np.amax(glioma_c0_atlas_long.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_long_normalized-ind.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_mid    / np.amax(glioma_c0_atlas_mid.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_mid_normalized-ind.nii.gz'),     affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_short  / max_atlas_c0_sml),   os.path.join(dir,'brats[srvl]_c0_atlas_short_normalized-across.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_mid    / max_atlas_c0_sml),   os.path.join(dir,'brats[srvl]_c0_atlas_mid_normalized-across.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_long   / max_atlas_c0_sml),   os.path.join(dir,'brats[srvl]_c0_atlas_long_normalized-across.nii.gz'),  affine);
-            fio.writeNII((np.abs(glioma_c0_atlas_short  / max_atlas_c0_sml) > 0.1).astype('int'),   os.path.join(dir,'brats[srvl]_c0_atlas_short_normalized-across_SEG.nii.gz'), affine);
-            fio.writeNII((np.abs(glioma_c0_atlas_mid    / max_atlas_c0_sml) > 0.1).astype('int'),   os.path.join(dir,'brats[srvl]_c0_atlas_mid_normalized-across_SEG.nii.gz'),   affine);
-            fio.writeNII((np.abs(glioma_c0_atlas_long   / max_atlas_c0_sml) > 0.1).astype('int'),   os.path.join(dir,'brats[srvl]_c0_atlas_long_normalized-across_SEG.nii.gz'),  affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_short                    ),   os.path.join(dir,'brats[srvl]_c0_atlas_short_abs.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_mid                      ),   os.path.join(dir,'brats[srvl]_c0_atlas_mid_abs.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_long                     ),   os.path.join(dir,'brats[srvl]_c0_atlas_long_abs.nii.gz'),  affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_na     / np.amax(glioma_c0_atlas_na.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_na_normalized-ind.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_small  / np.amax(glioma_c0_atlas_small.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_small[TC+ED]_normalized-ind.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_medium / np.amax(glioma_c0_atlas_medium.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_medium[TC+ED]_normalized-ind.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c0_atlas_large  / np.amax(glioma_c0_atlas_large.flatten())), os.path.join(dir,'brats[srvl]_c0_atlas_large[TC+ED]_normalized-ind.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c0_atlas), os.path.join(out_dir,'brats_c0_atlas_unnormalized.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas        / float(nb_cases)),   os.path.join(out_dir,'brats_c0_atlas_norm_nbcases.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_short), os.path.join(out_dir,'brats[srvl]_c0_atlas_short_unnormalized.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_long),  os.path.join(out_dir,'brats[srvl]_c0_atlas_long_unnormalized.nii.gz'),  affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_mid),   os.path.join(out_dir,'brats[srvl]_c0_atlas_mid_unnormalized.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_short), os.path.join(out_dir,'brats[srvl]_c1_atlas_short_unnormalized.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_long),  os.path.join(out_dir,'brats[srvl]_c1_atlas_long_unnormalized.nii.gz'),  affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_mid),   os.path.join(out_dir,'brats[srvl]_c1_atlas_mid_unnormalized.nii.gz'),   affine);
+
+            fio.writeNII(np.abs(glioma_c0_atlas        / np.amax(glioma_c0_atlas.flatten())),   os.path.join(out_dir,'brats_c0_atlas_plain.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_short  / np.amax(glioma_c0_atlas_short.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_short_normalized-ind.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_long   / np.amax(glioma_c0_atlas_long.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_long_normalized-ind.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_mid    / np.amax(glioma_c0_atlas_mid.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_mid_normalized-ind.nii.gz'),     affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_short  / max_atlas_c0_sml),   os.path.join(out_dir,'brats[srvl]_c0_atlas_short_normalized-across.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_mid    / max_atlas_c0_sml),   os.path.join(out_dir,'brats[srvl]_c0_atlas_mid_normalized-across.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_long   / max_atlas_c0_sml),   os.path.join(out_dir,'brats[srvl]_c0_atlas_long_normalized-across.nii.gz'),  affine);
+            fio.writeNII((np.abs(glioma_c0_atlas_short  / max_atlas_c0_sml) > 0.1).astype('int'),   os.path.join(out_dir,'brats[srvl]_c0_atlas_short_normalized-across_SEG.nii.gz'), affine);
+            fio.writeNII((np.abs(glioma_c0_atlas_mid    / max_atlas_c0_sml) > 0.1).astype('int'),   os.path.join(out_dir,'brats[srvl]_c0_atlas_mid_normalized-across_SEG.nii.gz'),   affine);
+            fio.writeNII((np.abs(glioma_c0_atlas_long   / max_atlas_c0_sml) > 0.1).astype('int'),   os.path.join(out_dir,'brats[srvl]_c0_atlas_long_normalized-across_SEG.nii.gz'),  affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_short                    ),   os.path.join(out_dir,'brats[srvl]_c0_atlas_short_abs.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_mid                      ),   os.path.join(out_dir,'brats[srvl]_c0_atlas_mid_abs.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_long                     ),   os.path.join(out_dir,'brats[srvl]_c0_atlas_long_abs.nii.gz'),  affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_na     / np.amax(glioma_c0_atlas_na.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_na_normalized-ind.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_small  / np.amax(glioma_c0_atlas_small.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_small[TC+ED]_normalized-ind.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_medium / np.amax(glioma_c0_atlas_medium.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_medium[TC+ED]_normalized-ind.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c0_atlas_large  / np.amax(glioma_c0_atlas_large.flatten())), os.path.join(out_dir,'brats[srvl]_c0_atlas_large[TC+ED]_normalized-ind.nii.gz'),   affine);
             # c(1) atlas
-            fio.writeNII(np.abs(glioma_c1_atlas        / np.amax(glioma_c1_atlas.flatten())),   os.path.join(dir,'brats_c1_atlas_plain.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_short  / np.amax(glioma_c1_atlas_short.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_short_normalized-ind.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_mid    / np.amax(glioma_c1_atlas_mid.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_mid_normalized-ind.nii.gz'),     affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_long   / np.amax(glioma_c1_atlas_long.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_long_normalized-ind.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_short  / max_atlas_c1_sml),   os.path.join(dir,'brats[srvl]_c1_atlas_short_normalized-across.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_mid    / max_atlas_c1_sml),   os.path.join(dir,'brats[srvl]_c1_atlas_mid_normalized-across.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_long   / max_atlas_c1_sml),   os.path.join(dir,'brats[srvl]_c1_atlas_long_normalized-across.nii.gz'),  affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_short                    ),   os.path.join(dir,'brats[srvl]_c1_atlas_short_abs.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_mid                      ),   os.path.join(dir,'brats[srvl]_c1_atlas_mid_abs.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_long                     ),   os.path.join(dir,'brats[srvl]_c1_atlas_long_abs.nii.gz'),  affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_na     / np.amax(glioma_c1_atlas_na.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_na_normalized-ind.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_small  / np.amax(glioma_c1_atlas_small.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_small[TC+ED]_normalized-ind.nii.gz'),   affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_medium / np.amax(glioma_c1_atlas_medium.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_medium[TC+ED]_normalized-ind.nii.gz'), affine);
-            fio.writeNII(np.abs(glioma_c1_atlas_large  / np.amax(glioma_c1_atlas_large.flatten())), os.path.join(dir,'brats[srvl]_c1_atlas_large[TC+ED]_normalized-ind.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c1_atlas), os.path.join(out_dir,'brats_c1_atlas_unnormalized.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas        / float(nb_cases)),   os.path.join(out_dir,'brats_c1_atlas_norm_nbcases.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas        / np.amax(glioma_c1_atlas.flatten())),   os.path.join(out_dir,'brats_c1_atlas_plain.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_short  / np.amax(glioma_c1_atlas_short.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_short_normalized-ind.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_mid    / np.amax(glioma_c1_atlas_mid.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_mid_normalized-ind.nii.gz'),     affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_long   / np.amax(glioma_c1_atlas_long.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_long_normalized-ind.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_short  / max_atlas_c1_sml),   os.path.join(out_dir,'brats[srvl]_c1_atlas_short_normalized-across.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_mid    / max_atlas_c1_sml),   os.path.join(out_dir,'brats[srvl]_c1_atlas_mid_normalized-across.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_long   / max_atlas_c1_sml),   os.path.join(out_dir,'brats[srvl]_c1_atlas_long_normalized-across.nii.gz'),  affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_short                    ),   os.path.join(out_dir,'brats[srvl]_c1_atlas_short_abs.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_mid                      ),   os.path.join(out_dir,'brats[srvl]_c1_atlas_mid_abs.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_long                     ),   os.path.join(out_dir,'brats[srvl]_c1_atlas_long_abs.nii.gz'),  affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_na     / np.amax(glioma_c1_atlas_na.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_na_normalized-ind.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_small  / np.amax(glioma_c1_atlas_small.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_small[TC+ED]_normalized-ind.nii.gz'),   affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_medium / np.amax(glioma_c1_atlas_medium.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_medium[TC+ED]_normalized-ind.nii.gz'), affine);
+            fio.writeNII(np.abs(glioma_c1_atlas_large  / np.amax(glioma_c1_atlas_large.flatten())), os.path.join(out_dir,'brats[srvl]_c1_atlas_large[TC+ED]_normalized-ind.nii.gz'),   affine);
 
-
+            print("NB CASES: ", nb_cases)
 
     # print("Bad brains outside:", BAD_BRAINS_OUT)
     # print("Bad brains in CSF:", BAD_BRAINS_CSF)
     # ### ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ### #
     if read_atlas:
         print("reading glioma atlasses");
+        glioma_c0_atlas_unnormalized = nib.load(os.path.join(dir, "brats_c0_atlas_unnormalized.nii.gz")).get_fdata();
+        glioma_c0_atlas_norm_nbcases = nib.load(os.path.join(dir, "brats_c0_atlas_norm_nbcases.nii.gz")).get_fdata();
         glioma_c0_atlas           = nib.load(os.path.join(dir, "brats_c0_atlas_plain.nii.gz")).get_fdata();
         glioma_c0_atlas_short_ind = nib.load(os.path.join(dir, "brats[srvl]_c0_atlas_short_normalized-ind.nii.gz")).get_fdata();
         glioma_c0_atlas_mid_ind   = nib.load(os.path.join(dir, "brats[srvl]_c0_atlas_mid_normalized-ind.nii.gz")).get_fdata();
@@ -381,6 +486,8 @@ if __name__=='__main__':
         glioma_c0_atlas_medium    = nib.load(os.path.join(dir, "brats[srvl]_c0_atlas_medium[TC+ED]_normalized-ind.nii.gz")).get_fdata();
         glioma_c0_atlas_large     = nib.load(os.path.join(dir, "brats[srvl]_c0_atlas_large[TC+ED]_normalized-ind.nii.gz")).get_fdata();
 
+        glioma_c1_atlas_unnormalized = nib.load(os.path.join(dir, "brats_c1_atlas_unnormalized.nii.gz")).get_fdata();
+        glioma_c1_atlas_norm_nbcases = nib.load(os.path.join(dir, "brats_c1_atlas_norm_nbcases.nii.gz")).get_fdata();
         glioma_c1_atlas           = nib.load(os.path.join(dir, "brats_c1_atlas_plain.nii.gz")).get_fdata();
         glioma_c1_atlas_short_ind = nib.load(os.path.join(dir, "brats[srvl]_c1_atlas_short_normalized-ind.nii.gz")).get_fdata();
         glioma_c1_atlas_mid_ind   = nib.load(os.path.join(dir, "brats[srvl]_c1_atlas_mid_normalized-ind.nii.gz")).get_fdata();
@@ -399,6 +506,17 @@ if __name__=='__main__':
         atlas_sml_size = glioma_c1_atlas_small + glioma_c1_atlas_medium + glioma_c1_atlas_large;
 
         max_atlas_c0_sml = np.amax(atlas_c0_sml.flatten());
+        max_atlas_c1_sml = np.amax(atlas_sml.flatten());
+        max_atlas_c0_unnormalized = np.amax(glioma_c0_atlas_unnormalized.flatten());
+        max_atlas_c0_nb_cases = np.amax(glioma_c0_atlas_norm_nbcases.flatten());
+        max_atlas_c1_unnormalized = np.amax(glioma_c1_atlas_unnormalized.flatten());
+        max_atlas_c1_nb_cases = np.amax(glioma_c1_atlas_norm_nbcases.flatten());
+        print("max. relative frequency in atlas_c0_sml: {}".format(max_atlas_c0_sml))
+        print("max. relative frequency in atlas_c1_sml: {}".format(max_atlas_c1_sml))
+        print("max. relative frequency in atlas_c0_cohort_unnormalized: {}".format(max_atlas_c0_unnormalized))
+        print("max. relative frequency in atlas_c1_cohort_unnormalized: {}".format(max_atlas_c1_unnormalized))
+        print("max. relative frequency in atlas_c0_cohort_norm_nbcases: {}".format(max_atlas_c0_nb_cases))
+        print("max. relative frequency in atlas_c1_cohort_norm_nbcases: {}".format(max_atlas_c1_nb_cases))
         fio.writeNII((np.abs(glioma_c0_atlas_short  / max_atlas_c0_sml) > 0.1).astype(float),   os.path.join(dir,'brats[srvl]_c0_atlas_short_normalized-across_SEG.nii.gz'), affine);
         fio.writeNII((np.abs(glioma_c0_atlas_mid    / max_atlas_c0_sml) > 0.1).astype(float),   os.path.join(dir,'brats[srvl]_c0_atlas_mid_normalized-across_SEG.nii.gz'),   affine);
         fio.writeNII((np.abs(glioma_c0_atlas_long   / max_atlas_c0_sml) > 0.1).astype(float),   os.path.join(dir,'brats[srvl]_c0_atlas_long_normalized-across_SEG.nii.gz'),  affine);
@@ -639,7 +757,8 @@ if __name__=='__main__':
         imshow_kwargs_c1 = {"cmap":plt.cm.rainbow, "aspect":"equal"}
         imshow_kwargs_r = {"cmap":"gray_r", "aspect":"equal"}
 
-        COLOR_BY_SURVIVAL         = True;
+        ENTIRE_COHORT             = True
+        COLOR_BY_SURVIVAL         = False;
         COLOR_BY_SIZE             = False;
         COLOR_BY_FREQUENCY        = False;
         COLOR_BY_DISCRIMINABILITY = False;
@@ -738,6 +857,8 @@ if __name__=='__main__':
 
         vpath      = os.path.join(dir,'vis-atlas/');
         vpath_srvl = os.path.join(dir,'vis-atlas/gbm-atlas-by-srvl');
+        vpath_cohort_c0 = os.path.join(dir,'vis-atlas/gbm-atlas-cohort/slices/c0');
+        vpath_cohort_c1 = os.path.join(dir,'vis-atlas/gbm-atlas-cohort/slices/c1');
         vpath_size = os.path.join(dir,'vis-atlas/gbm-atlas-by-size');
         vpath_func = os.path.join(dir,'vis-atlas/gbm-atlas-functional');
         vpath_srvl_single_c0  = os.path.join(dir,'vis-atlas/gbm-atlas-by-srvl/slices/c0');
@@ -752,6 +873,10 @@ if __name__=='__main__':
         vpath_func_single_c0_l    = os.path.join(dir,'vis-atlas/gbm-atlas-functional/slices/c0-long');
         vpath_func_single_c0_rgb  = os.path.join(dir,'vis-atlas/gbm-atlas-functional/slices/c0-rgb');
 
+        if not os.path.exists(vpath_cohort_c0):
+            os.makedirs(vpath_cohort_c0);
+        if not os.path.exists(vpath_cohort_c1):
+            os.makedirs(vpath_cohort_c1);
         for vp in [ vpath, vpath_srvl, vpath_size, vpath_func,
                     vpath_srvl_single_c0, vpath_srvl_single_s, vpath_srvl_single_m, vpath_srvl_single_l, vpath_srvl_single_rgb,
                     vpath_size_single,
@@ -770,8 +895,35 @@ if __name__=='__main__':
             _fig_single_c1_m   = plt.figure();
             _fig_single_c1_l   = plt.figure();
             _fig_single_c1_rgb = plt.figure();
+
+        if ENTIRE_COHORT:
+            _fig_single_c0     = plt.figure();
+
         for k in range(nslices):
             ax_slice += axs_inc;
+
+            if ENTIRE_COHORT:
+                for aaimg, th, txt, pp in zip([glioma_c0_atlas_unnormalized, glioma_c1_atlas_unnormalized], [t_c0, t_c1], ['c0', 'c1'], [vpath_cohort_c0, vpath_cohort_c1]):
+                    aax = _fig_single_c0.add_subplot(1,1,1)
+                    aax.tick_params(**tick_param_kwargs);
+                    aax.imshow(atlas_t1[:,:,ax_slice].T, **imshow_kwargs_template);
+                    aax.imshow(thresh(aaimg[:,:,ax_slice].T, cmap=plt.cm.jet, threshold=th, logNorm=True), interpolation='none', aspect='equal', alpha=1);
+                    aax.set_title("axial slice %d" %  ax_slice , size='14', y=1.0)
+                    _fig_single_c0.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
+                    _fig_single_c0.savefig(os.path.join(pp, 'brats[cohort]_gbm_atlas_' + txt + '_unnormalized_ax-slice-' +str(ax_slice) + '_t1.pdf'), format='pdf', dpi=300);
+                    _fig_single_c0.clf()
+
+                for aaimg, th, mval, txt, pp in zip([glioma_c0_atlas_norm_nbcases, glioma_c1_atlas_norm_nbcases], [t_c0, t_c1], [max_atlas_c0_nb_cases, max_atlas_c1_nb_cases], ['c0', 'c1'], [vpath_cohort_c0, vpath_cohort_c1]):
+                    aaimg = aaimg / float(mval);
+                    aax = _fig_single_c0.add_subplot(1,1,1)
+                    aax.tick_params(**tick_param_kwargs);
+                    aax.imshow(atlas_t1[:,:,ax_slice].T, **imshow_kwargs_template);
+                    lnorm = True if txt == 'c0' else False
+                    aax.imshow(thresh(aaimg[:,:,ax_slice].T, cmap=plt.cm.jet, threshold=th,  v_max=1, v_min=0, logNorm=lnorm), interpolation='none', aspect='equal', alpha=1);
+                    aax.set_title("axial slice %d" %  ax_slice , size='14', y=1.0)
+                    _fig_single_c0.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3);
+                    _fig_single_c0.savefig(os.path.join(pp, 'brats[cohort]_gbm_atlas_' + txt + '_norm_nbcases_ax-slice-' +str(ax_slice) + '_t1.pdf'), format='pdf', dpi=300);
+                    _fig_single_c0.clf()
 
             # -------- color by survival ------- #
             if COLOR_BY_SURVIVAL:

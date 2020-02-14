@@ -371,11 +371,11 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-    TU_assert (initialized_,              "InvSolver::solveInverseReacDiff (): InvSolver needs to be initialized.")
-    TU_assert (data_ != nullptr,          "InvSolver::solveInverseReacDiff (): requires non-null input data for inversion.");
-    TU_assert (data_gradeval_ != nullptr, "InvSolver::solveInverseReacDiff (): requires non-null input data for gradient evaluation.");
-    TU_assert (xrec_ != nullptr,          "InvSolver::solveInverseReacDiff (): requires non-null p_rec vector to be set");
-    TU_assert (optsettings_ != nullptr,   "InvSolver::solveInverseReacDiff (): requires non-null optimizer settings to be passed.");
+    TU_assert (initialized_,                      "InvSolver::solveInverseReacDiff (): InvSolver needs to be initialized.")
+    TU_assert (data_->dt1() != nullptr,           "InvSolver::solveInverseReacDiff (): requires non-null input data for inversion.");
+    TU_assert (data_gradeval_->dt1t() != nullptr, "InvSolver::solveInverseReacDiff (): requires non-null input data for gradient evaluation.");
+    TU_assert (xrec_ != nullptr,                  "InvSolver::solveInverseReacDiff (): requires non-null p_rec vector to be set");
+    TU_assert (optsettings_ != nullptr,           "InvSolver::solveInverseReacDiff (): requires non-null optimizer settings to be passed.");
 
     PetscReal beta_p = itctx_->n_misc_->beta_;     // set beta to zero here as the params are rho and kappa
     itctx_->n_misc_->flag_reaction_inv_ = true;    // enables derivative operators to compute the gradient w.r.t rho
@@ -447,21 +447,21 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = VecSetFromOptions(noise);                                              CHKERRQ(ierr);
     ierr = VecSetRandom(noise, NULL);                                             CHKERRQ(ierr);
     ierr = VecGetArray (noise, &noise_ptr);                                       CHKERRQ(ierr);
-    ierr = VecGetArray (data_, &d_ptr);                                           CHKERRQ(ierr);
+    ierr = VecGetArray (data_->dt1(), &d_ptr);                                    CHKERRQ(ierr);
     for (int i = 0; i < itctx_->n_misc_->n_local_; i++) {
       d_ptr[i] += noise_ptr[i] * itctx_->n_misc_->noise_scale_;
       noise_ptr[i] = d_ptr[i];                                                  // just to measure d norm
     }
     ierr = VecRestoreArray (noise, &noise_ptr);                                   CHKERRQ(ierr);
-    ierr = VecRestoreArray (data_, &d_ptr);                                       CHKERRQ(ierr);
+    ierr = VecRestoreArray (data_->dt1(), &d_ptr);                                CHKERRQ(ierr);
     #ifdef POSITIVITY
-    ierr = enforcePositivity (data_, itctx_->n_misc_);
+    ierr = enforcePositivity (data_->dt1(), itctx_->n_misc_);
     ierr = enforcePositivity (noise, itctx_->n_misc_);
     #endif
     ierr = VecNorm (noise, NORM_2, &d_norm);                                      CHKERRQ(ierr);
     ierr = VecMax  (noise, NULL, &max);                                           CHKERRQ(ierr);
     ierr = VecMin  (noise, NULL, &min);                                           CHKERRQ(ierr);
-    ierr = VecAXPY (noise, -1.0, data_);                                          CHKERRQ(ierr);
+    ierr = VecAXPY (noise, -1.0, data_->dt1());                                   CHKERRQ(ierr);
     ierr = VecNorm (noise, NORM_2, &d_errorl2norm);                               CHKERRQ(ierr);
     ierr = VecNorm (noise, NORM_INFINITY, &d_errorInfnorm);                       CHKERRQ(ierr);
     ss << " tumor inversion target data (with noise): l2norm = "<< d_norm <<" [max: "<<max<<", min: "<<min<<"]";  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -512,8 +512,8 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
       ierr = itctx_->derivative_operators_->pde_operators_->solveState (0);    // solve state with guess reaction and inverted diffusivity
       ierr = itctx_->tumor_->obs_->apply (itctx_->derivative_operators_->temp_, itctx_->tumor_->c_t_);               CHKERRQ (ierr);
       // mismatch between data and c
-      ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_);       CHKERRQ (ierr);    // Oc(1) - d
-      ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);     CHKERRQ (ierr);
+      ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_->dt1()); CHKERRQ (ierr);    // Oc(1) - d1
+      ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);      CHKERRQ (ierr);
       if (norm < min_norm) { min_norm = norm; idx = i; }
     }
     x_ptr[nk] = rho_guess[idx];  // rho
