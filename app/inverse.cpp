@@ -102,7 +102,8 @@ int main (int argc, char** argv) {
     int verbosity_in = 1;
     ScalarType sigma_dd = -1.0;
     ScalarType data_thres = -1.0;
-    ScalarType obs_thres = -1.0;
+    ScalarType obs_thresh_1 = -1.0;
+    ScalarType obs_thresh_0 = -1.0;
 
     ScalarType k_gm_wm = -1.0;
     ScalarType r_gm_wm = -1.0;
@@ -117,7 +118,7 @@ int main (int argc, char** argv) {
     int multilevel_flag = -1;
     int inject_coarse_solution = -1;
     int model = -1;
-
+    int two_snapshot_flag = -1;
     int fwd_flag = 0;
 
     int flag_cosamp = 0;
@@ -170,7 +171,8 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-lambda_continuation", "Lambda continuation", "", lam_cont, &lam_cont, NULL);
     PetscOptionsReal ("-sigma_data_driven", "Sigma for data-driven Gaussians", "", sigma_dd, &sigma_dd, NULL);
     PetscOptionsReal ("-threshold_data_driven", "Data threshold for data-driven Gaussians", "", data_thres, &data_thres, NULL);
-    PetscOptionsReal ("-observation_threshold", "Observation detection threshold", "", obs_thres, &obs_thres, NULL);
+    PetscOptionsReal ("-observation_threshold", "Observation detection threshold for time point T=1", "", obs_thresh_1, &obs_thresh_1, NULL);
+    PetscOptionsReal ("-observation_threshold_0", "Observation detection threshold fot time point T=0", "", obs_thresh_0, &obs_thresh_0, NULL);
     PetscOptionsReal ("-k_gm_wm", "WM to GM ratio for diffusivity", "", k_gm_wm, &k_gm_wm, NULL);
     PetscOptionsReal ("-r_gm_wm", "WM to GM ratio for reaction", "", r_gm_wm, &r_gm_wm, NULL);
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
@@ -192,6 +194,7 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-rel_grad_tol", "Relative gradient tolerance for L2 solves", "", opttolgrad, &opttolgrad, NULL);
     PetscOptionsInt ("-syn_flag", "Flag for synthetic data generation", "", syn_flag, &syn_flag, NULL);
     PetscOptionsInt ("-multilevel", "Flag indicating whether or not solver is running in multilevel mode", "", multilevel_flag, &multilevel_flag, NULL);
+    PetscOptionsInt ("-two_snapshot", "Flag indicating whether or not solver is running in two snapshot mode", "", two_snapshot_flag, &two_snapshot_flag, NULL);
     PetscOptionsInt ("-inject_solution", "Flag indicating if solution from coarser level should be injected (need to set pvec_path and gaussian_cm_path)", "", inject_coarse_solution, &inject_coarse_solution, NULL);
     PetscOptionsInt ("-sparsity_level", "Sparsity level guess for tumor initial condition", "", sparsity_level, &sparsity_level, NULL);
     PetscOptionsInt ("-prediction", "Flag to predict future tumor growth", "", predict_flag, &predict_flag, NULL);
@@ -402,8 +405,12 @@ int main (int argc, char** argv) {
         n_misc->data_threshold_ = data_thres;
     }
 
-    if (obs_thres > -1.0) {
-        n_misc->obs_threshold_ = obs_thres;
+    if (obs_thresh_1 > -1.0) {
+        n_misc->obs_threshold_1_ = obs_thresh_1;
+    }
+
+    if (obs_thresh_0 > -1.0) {
+        n_misc->obs_threshold_0_ = obs_thresh_0;
     }
 
     if (opttolgrad != -1.0) {
@@ -434,6 +441,11 @@ int main (int argc, char** argv) {
     if (multilevel_flag != -1.0) {
         n_misc->multilevel_ = multilevel_flag;
         ss << " solver is running in multi-level mode"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    }
+
+    if (two_snapshot_flag != -1.0) {
+        n_misc->two_snapshot_ = two_snapshot_flag;
+        ss << " solver is running in two-snapshot mode"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
 
     if (newton_maxit != -1.0) {
@@ -1200,7 +1212,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     if (n_misc->model_ >= 4) {
         // mass-effect included
-        dataIn (glm, n_misc, glm_path); 
+        dataIn (glm, n_misc, glm_path);
         ierr = spec_ops->weierstrassSmoother (glm, glm, n_misc, sigma_smooth);
     }
 

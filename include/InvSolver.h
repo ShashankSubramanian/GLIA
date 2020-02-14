@@ -142,8 +142,8 @@ struct CtxInv {
     std::vector<std::string> convergence_message; // convergence message
     int verbosity;                  // controls verbosity of inverse solver
     /* additional data */
-    Vec data;                       // data for tumor inversion
-    Vec data_gradeval;              // data only for gradient evaluation (may differ)
+    std::shared_ptr<Data> data;                       // data for tumor inversion
+    std::shared_ptr<Data> data_gradeval;              // data only for gradient evaluation (may differ)
 
 
     CtxInv ()
@@ -151,8 +151,8 @@ struct CtxInv {
       derivative_operators_ ()
     , n_misc_ ()
     , tumor_ ()
-    , data (nullptr)
-    , data_gradeval (nullptr)
+    , data ()
+    , data_gradeval ()
     , convergence_message ()
     , cosamp_(nullptr) {
         ksp_gradnorm0 = 1.;
@@ -206,8 +206,10 @@ class InvSolver {
 
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
         // setter functions
-        void setData (Vec d) {data_ = d;}
-        void setDataGradient (Vec d) {data_gradeval_ = d;}
+        void setData (Vec d1, Vec d0={}) {data_->setData(d1, d0);}
+        void setDataT1 (Vec d1) {data_->setDataT1(d1);}
+        void setDataT0 (Vec d0) {data_->setDataT1(d0);}
+        void setDataGradient (Vec d1, Vec d0={}) {data_gradeval_->setData(d1, d0);}
         void updateReferenceGradient (bool b) {if (itctx_ != nullptr) itctx_->update_reference_gradient = b;}
         void setOptFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {optfeedback_ = optfeed; itctx_->optfeedback_ = optfeed;}
         // getter functions
@@ -252,9 +254,9 @@ class InvSolver {
         /// @brief true if TAO just recently got reset
         bool tao_is_reset_;
         /// @brief data d1 for tumor inversion (memory managed from outside)
-        Vec data_;
+        std::shared_ptr<Data> data_;
         /// @brief data d1_grad for gradient evaluation, may differ from data_ (memory managed from outside)
-        Vec data_gradeval_;
+        std::shared_ptr<Data> data_gradeval_;
         /// @brief holds a copy of the reconstructed p vector
         Vec xrec_;
         /// @brief holds solution vector for reaction/diffusion

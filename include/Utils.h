@@ -274,6 +274,39 @@ public:
 };
 
 
+struct Data {
+    Vec t1;
+    Vec t0;
+    bool two_snapshot;
+
+public:
+    Data() :
+    t1(nullptr),
+    t0(nullptr),
+    two_snapshot(false)
+    {}
+
+    void setData(Vec dt1, Vec dt2){
+        t1 = dt1;
+        if (dt2 != nullptr) {
+            t2 = dt2; two_snapshot = true;
+        }
+    }
+
+    void setDataT1(Vec dt1) {
+        t1 = dt1;
+    }
+
+    void setDataT0(Vec dt0) {
+        t1 = dt0;
+        two_snapshot = true;
+    }
+
+    Vec dt1() {return t1;}
+    Vec dt0() {return (two_snapshot) ? t0 : nullptr;}
+}
+
+
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
@@ -306,7 +339,8 @@ class NMisc {
         , phi_sigma_ (2 * M_PI / 64)            // Gaussian standard deviation for bounding box
         , phi_sigma_data_driven_ (2 * M_PI / 256) // Sigma for data-driven gaussians
         , phi_spacing_factor_ (1.5)             // Gaussian spacing for bounding box
-        , obs_threshold_ (0.0)                  // Observation threshold
+        , obs_threshold_1_ (0.0)                  // Observation threshold
+        , obs_threshold_0_ (0.0)                  // Observation threshold
         , statistics_()                         //
         , exp_shift_ (10.0)                     // Parameter for positivity shift
         , penalty_ (1E-4)                       // Parameter for positivity objective function
@@ -343,11 +377,12 @@ class NMisc {
         , E_tumor_ (8000)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (1E-2)                    // low screening coefficient
-        , screen_high_ (1E3)                    // high screening 
+        , screen_high_ (1E3)                    // high screening
         , forcing_factor_ (12E4)                 // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
+        , two_snapshot_(0)
         , phi_store_ (false)                    // Flag to store phis
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
@@ -511,7 +546,8 @@ class NMisc {
         ScalarType data_threshold_;
         ScalarType gaussian_vol_frac_;
 
-        ScalarType obs_threshold_;
+        ScalarType obs_threshold_1_;
+        ScalarType obs_threshold_0_;
 
         bool nk_fixed_;
         bool diffusivity_inversion_;
@@ -519,6 +555,7 @@ class NMisc {
         bool reaction_inversion_;
         bool flag_reaction_inv_;
         bool multilevel_;
+        bool two_snapshot_;
 
         ScalarType target_sparsity_;
 
