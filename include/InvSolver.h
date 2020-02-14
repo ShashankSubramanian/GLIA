@@ -206,10 +206,12 @@ class InvSolver {
 
         PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
         // setter functions
-        void setData (Vec d1, Vec d0={}) {data_->setData(d1, d0);}
-        void setDataT1 (Vec d1) {data_->setDataT1(d1);}
-        void setDataT0 (Vec d0) {data_->setDataT1(d0);}
-        void setDataGradient (Vec d1, Vec d0={}) {data_gradeval_->setData(d1, d0);}
+        void setData (Vec d1, Vec d0={}) {data_->set(d1, d0);}
+        void setData (std::shared_ptr<Data> d) { data_ = d;}
+        void setDataT1 (Vec d1) {data_->setT1(d1);}
+        void setDataT0 (Vec d0) {data_->setT1(d0);}
+        void setDataGradient (Vec d1, Vec d0={}) {data_gradeval_->set(d1, d0);}
+        void setDataGradient (std::shared_ptr<Data> d) { data_gradeval_ = d;}
         void updateReferenceGradient (bool b) {if (itctx_ != nullptr) itctx_->update_reference_gradient = b;}
         void setOptFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {optfeedback_ = optfeed; itctx_->optfeedback_ = optfeed;}
         // getter functions
