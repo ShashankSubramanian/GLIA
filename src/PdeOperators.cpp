@@ -658,7 +658,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     bool flag_smooth_velocity = true;
     bool write_output_and_break = false;
 
-    ScalarType max_cfl = 10;
+    ScalarType max_cfl = 20;
 
     for (int i = 0; i < nt + 1; i++) {
         if (n_misc_->verbosity_ > 1) {
