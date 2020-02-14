@@ -774,7 +774,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
 
         if (tumor_->mat_prop_->mri_ != nullptr) {
             // transport mri
+            adv_solver_->advection_mode_ = 2;
             ierr = adv_solver_->solve(tumor_->mat_prop_->mri_, tumor_->velocity_, dt);              CHKERRQ(ierr);
+            adv_solver_->advection_mode_ = 1;
         }
 
         // All solves complete except elasticity: clip values to ensure positivity

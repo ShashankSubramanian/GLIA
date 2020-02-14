@@ -57,13 +57,13 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
     ### Path to patient gm
-    p_gm_path = gm_path
+    p_gm_path = ""
     ### Path to patient wm
-    p_wm_path = wm_path
+    p_wm_path = ""
     ### Path to patient csf
-    p_csf_path = csf_path
+    p_csf_path = ""
     ### Path to patient glm
-    p_glm_path = glm_path
+    p_glm_path = ""
     ### Path to atlas MRI
     mri_path = ""
 
@@ -417,6 +417,15 @@ def getTumorRunCmd(params):
             print('Default data glm path does not exist and no input path provided!\n')
         else:
             print ('Default data glm path = {} used'.format(p_glm_path))
+    # ---
+    if 'mri_path' in params:
+        mri_path = params['mri_path']
+        print('MRI image path = {}'.format(mri_path))
+    else:
+        if not os.path.exists(mri_path):
+            print('Default MRI path does not exist and no input path provided!\n')
+        else:
+            print ('Default MRI path = {} used'.format(mri_path))
     # ---
     if 'obs_mask_path' in params:
         obs_mask_path = params['obs_mask_path']
