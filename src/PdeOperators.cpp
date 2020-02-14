@@ -618,7 +618,6 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients (Vec seg, s
     PetscFunctionReturn (ierr);
 }
 
-
 PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -703,6 +702,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
             write_output_and_break = true;
         }
 
+
         if ((n_misc_->writeOutput_ && n_misc_->verbosity_ > 1 && i % 5 == 0) || write_output_and_break) {
             ss << "velocity_t[" << i << "].nc";
             dataOut (magnitude_, n_misc_, ss.str().c_str());
@@ -771,6 +771,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ierr = adv_solver_->solve (tumor_->mat_prop_->glm_, tumor_->velocity_, dt);                 CHKERRQ(ierr); 
         adv_solver_->advection_mode_ = 1;  // reset to mass conservation
         ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr);
+
+        if (tumor_->mat_prop_->mri_ != nullptr) {
+            // transport mri
+            ierr = adv_solver_->solve(tumor_->mat_prop_->mri_, tumor_->velocity_, dt);              CHKERRQ(ierr);
+        }
 
         // All solves complete except elasticity: clip values to ensure positivity
         // clip healthy tissues ~ this is non-differentiable. careful.
@@ -850,6 +855,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ss << "gm_final.nc";
         dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
         ss.str(std::string()); ss.clear();
+        if (tumor_->mat_prop_->mri_ != nullptr) {
+            ss << "mri_final.nc";
+            dataOut (tumor_->mat_prop_->mri_, n_misc_, ss.str().c_str());
+            ss.str(std::string()); ss.clear();
+        }
     }
 
     self_exec_time += MPI_Wtime();

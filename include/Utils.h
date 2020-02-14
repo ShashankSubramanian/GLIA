@@ -368,6 +368,7 @@ class NMisc {
         , alpha_0_ (0.1)                       // conversion btw inv and proliferative
         , invasive_threshold_ (0.001)           // invasive threshold for edema
         , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
+        , transport_mri_ (false)                // transport T1 image
                                 {
 
 
@@ -468,6 +469,8 @@ class NMisc {
         ScalarType invasive_threshold_;
 
         bool use_tanh_scaling_;
+
+        bool transport_mri_;
 
         bool phi_store_;
         bool adjoint_store_;

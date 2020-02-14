@@ -19,6 +19,8 @@ MatProp::MatProp (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperato
 	ierr = VecSet (bg_, 0);
 	ierr = VecSet (filter_ , 0);
 
+	mri_ = nullptr;
+
 	n_misc_ = n_misc;
 }
 
@@ -207,5 +209,9 @@ MatProp::~MatProp() {
 	ierr = VecDestroy (&glm_);
 	ierr = VecDestroy (&bg_);
 	ierr = VecDestroy (&filter_);
+
+	if (mri_ != nullptr) {
+		ierr = VecDestroy (&mri_);
+	}
 
 }

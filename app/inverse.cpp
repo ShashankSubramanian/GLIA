@@ -77,7 +77,7 @@ struct MData {
     }
 };
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*);
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*, char*);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *data_path, char* support_data_path, char* data_comp_path);
@@ -132,6 +132,7 @@ int main (int argc, char** argv) {
     char data_comp_path[400];
     char data_comp_dat_path[400];
     char init_tumor_path[400];
+    char mri_path[400];
     char p_vec_path[400];
     char gaussian_cm_path[400];
     int np_user = 0;
@@ -270,6 +271,7 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-data_comp_path", "Path to label img of data components", "", data_comp_path, data_comp_path, 400, NULL);
     PetscOptionsString ("-data_comp_dat_path", "Path to .dat file of data components", "", data_comp_dat_path, data_comp_dat_path, 400, NULL);
     PetscOptionsString ("-init_tumor_path", "Path to nc file containing tumor initial condition", "", init_tumor_path, init_tumor_path, 400, NULL);
+    PetscOptionsString ("-mri_path", "Path to mri nc file", "", mri_path, mri_path, 400, NULL);
 
     PetscOptionsReal ("-kappa_lb", "Lower bound for diffusivity", "", klb, &klb, NULL);
     PetscOptionsReal ("-kappa_ub", "Upper bound for diffusivity", "", kub, &kub, NULL);
@@ -619,7 +621,7 @@ int main (int argc, char** argv) {
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
         } else {
-            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, spec_ops,init_tumor_path);
+            ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, spec_ops, init_tumor_path, mri_path);
         }
         read_support_data_nc = false;
         support_data = data;
@@ -1647,7 +1649,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *init_tumor_path) {
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *init_tumor_path, char *mri_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -1734,6 +1736,11 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     ierr = VecMin (c_0, NULL, &min);                                      CHKERRQ (ierr);
 
     ss << " c data initc cond. max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+    if (n_misc->transport_mri_) {
+        ierr = VecDuplicate (c_0, &solver_interface->getTumor()->mat_prop_->mri_);              CHKERRQ (ierr);
+        ierr = dataIn (solver_interface->getTumor()->mat_prop_->mri_, n_misc, mri_path);        CHKERRQ (ierr);
+    }
 
     if (n_misc->model_ == 5) {
         std::map<std::string, Vec> species;

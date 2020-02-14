@@ -27,6 +27,9 @@ class MatProp {
 		Vec csf_0_;
 		Vec glm_0_;
 
+		// mri
+		Vec mri_;
+
 		PetscErrorCode setValues (std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode setValuesCustom (Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<NMisc> n_misc);
 		PetscErrorCode clipHealthyTissues ();

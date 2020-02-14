@@ -64,16 +64,18 @@ def getTumorRunCmd(params):
     p_csf_path = csf_path
     ### Path to patient glm
     p_glm_path = glm_path
+    ### Path to atlas MRI
+    mri_path = ""
 
-    verbosity = 1
+    verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 12
     k_inv = 0.01
-    nt_inv = 50
-    dt_inv = 0.02
+    nt_inv = 25
+    dt_inv = 0.04
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
@@ -82,8 +84,8 @@ def getTumorRunCmd(params):
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
     k_data = 0.01
-    nt_data = 50
-    dt_data = 0.02
+    nt_data = 25
+    dt_data = 0.04
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.2E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
@@ -115,7 +117,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 0
+    forward_flag = 1
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -532,7 +534,8 @@ def getTumorRunCmd(params):
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
-    " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
+    " -mri_path " + mri_path + \
+    " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal" + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view
