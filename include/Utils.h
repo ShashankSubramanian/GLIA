@@ -312,9 +312,9 @@ public:
 class NMisc {
     public:
         NMisc (int *n, int *isize, int *osize, int *istart, int *ostart, fft_plan *plan, MPI_Comm c_comm, int *c_dims, int testcase = BRAIN)
-        : model_ (1)                            //Reaction Diffusion --  1 , Positivity -- 2
-                                                // Modified Obj -- 3
-                                                // Mass effect -- 4
+        : model_ (1)                            // Reaction Diffusion --  1 , Positivity -- 2
+                                                // Modified Obj  -- 3
+                                                // Mass effect   -- 4
                                                 // Multi-species -- 5
         , dt_ (0.5)                             // Time step
         , nt_(1)                                // Total number of time steps

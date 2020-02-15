@@ -43,7 +43,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_obj_evals++;
     ScalarType *x_ptr, k1, k2, k3;
-
+    PetscReal m1 = 0, m0 = 0, reg = 0;
     int x_sz;
 
 
@@ -60,6 +60,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+    // update diffusion coefficient based on new k_i
     if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
@@ -82,6 +83,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
       pde_operators_->diff_solver_->precFactor();
     }
 
+    // update reaction coefficient based on new rho
     ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
@@ -95,24 +97,28 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
     std::stringstream s;
     if (n_misc_->verbosity_ >= 3) {
       if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
-        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";
-        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")"; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
       }
       if (n_misc_->flag_reaction_inv_) {
-        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")";
-        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")"; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
       }
     }
 
+    // compute mismatch ||Oc(1) - d1||
+    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr); // c(0)
+    ierr = pde_operators_->solveState (0);                          CHKERRQ (ierr); // c(1)
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr); // Oc(1)
+    ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr); // Oc(1) - d1
+    ierr = VecDot (temp_, temp_, &m1);                              CHKERRQ (ierr); // ||.||^2
 
-    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
-    ierr = pde_operators_->solveState (0);
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
-    ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr);
-    ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
+    // compute mismatch ||Oc(0) - d0||
+    if (n_misc->two_snapshot_) {
+        ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // Oc(0)
+        ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // Oc(0) - d0
+        ierr = VecDot (temp_, temp_, &m0);                          CHKERRQ (ierr); // ||.||^2
+    }
 
-    /*Regularization term*/
-    PetscReal reg = 0;
+    // compute regularization
     if (n_misc_->regularization_norm_ == L1) {
       ierr = VecNorm (x, NORM_1, &reg);                             CHKERRQ (ierr);
       reg *= n_misc_->lambda_;
@@ -134,15 +140,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
       reg *= 0.5 * n_misc_->beta_;
     }
 
+    // objective function value
+    (*J) = n_misc_->lebesgue_measure_ * 0.5 *(m1 + m0) + reg;
 
-    (*J) *= n_misc_->lebesgue_measure_;
-
-
-    s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
-
-
-    (*J) *= 0.5;
-    (*J) += reg;
+    if (n_misc_->two_snapshot) {
+        s << "  J(p) = Dc(c1) + Dc(c0) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m0 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    } else {
+        s << "  J(p) = Dc(c1) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    }
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (lock_state != 0) {
@@ -373,7 +378,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
     PetscFunctionReturn (ierr);
 }
 
-// saves on forward solve
+// saves one forward solve
 PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -384,7 +389,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     ScalarType *x_ptr, k1, k2, k3;
-
+    PetscReal m1 = 0, m0 = 0, reg = 0;
     int x_sz;
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -399,7 +404,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
-
+    // update diffusion coefficient based on new k_i
     if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) { // if solveForParameters is happening always invert for diffusivity
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
@@ -422,6 +427,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       pde_operators_->diff_solver_->precFactor();
     }
 
+    // update reaction coefficient based on new rho
     ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
@@ -435,24 +441,26 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     std::stringstream s;
     if (n_misc_->verbosity_ >= 3) {
       if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
-        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";
-        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")"; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
       }
       if (n_misc_->flag_reaction_inv_) {
-        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")";
-        ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")"; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
       }
     }
 
-    // solve state
-    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
-    ierr = pde_operators_->solveState (0);
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);            CHKERRQ (ierr);
+    // compute mismatch ||Oc(0) - d0||
+    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr); // c(0)
+    if (n_misc->two_snapshot_) {
+        ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // Oc(0)
+        ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // Oc(0) - d0
+        ierr = VecDot (temp_, temp_, &m0);                          CHKERRQ (ierr); // ||.||^2
+    }
+    // compute mismatch ||Oc(1) - d1||
+    ierr = pde_operators_->solveState (0);                          CHKERRQ (ierr); // c(1)
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr); // Oc(1)
+    ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr); // Oc(1) - d1
+    ierr = VecDot (temp_, temp_, &m1);                              CHKERRQ (ierr); // ||.||^2
 
-    // c(1) - d
-    ierr = VecAXPY (temp_, -1.0, data->dt1());                   CHKERRQ (ierr);
-    // mismatch, squared residual norm
-    ierr = VecDot (temp_, temp_, J);                             CHKERRQ (ierr);
     // solve adjoint
     ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);            CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
@@ -493,8 +501,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       }
     }
 
-    // regularization
-    PetscReal reg;
+    // compute regularization
     if (n_misc_->regularization_norm_ == L1) {
       ierr = VecNorm (x, NORM_1, &reg);                                CHKERRQ (ierr);
       reg *= n_misc_->lambda_;
@@ -516,13 +523,14 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
       reg *= 0.5 * n_misc_->beta_;
     }
 
-
-    (*J) *= n_misc_->lebesgue_measure_;
-
-    s << "  J(p) = Dc(c) + S(c0) = "<< std::setprecision(12) << 0.5*(*J)+reg <<" = " << std::setprecision(12)<< 0.5*(*J) <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     // objective function value
-    (*J) *= 0.5;
-    (*J) += reg;
+    (*J) = n_misc_->lebesgue_measure_ * 0.5 *(m1 + m0) + reg;
+
+    if (n_misc_->two_snapshot) {
+        s << "  J(p) = Dc(c1) + Dc(c0) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m0 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    } else {
+        s << "  J(p) = Dc(c1) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    }
 
 
 
@@ -888,6 +896,8 @@ PetscErrorCode DerivativeOperatorsPos::sigmoid (Vec temp, Vec input) {
 PetscErrorCode DerivativeOperatorsPos::evaluateObjective (PetscReal *J, Vec x, std::shared_ptr<Data> data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Two-snapshot scenario not implemented for DerivativeOperatorsPos. Exiting..."); CHKERRQ(ierr); return -1;}
+
     n_misc_->statistics_.nb_obj_evals++;
 
     ierr = tumor_->phi_->apply (temp_phip_, x);                     CHKERRQ (ierr);
@@ -915,6 +925,8 @@ PetscErrorCode DerivativeOperatorsPos::evaluateObjective (PetscReal *J, Vec x, s
 PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, std::shared_ptr<Data> data) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Two-snapshot scenario not implemented for DerivativeOperatorsPos. Exiting..."); CHKERRQ(ierr); return -1;}
+
     n_misc_->statistics_.nb_grad_evals++;
 
     ierr = tumor_->phi_->apply (temp_phip_, x);                     CHKERRQ (ierr);
@@ -975,6 +987,8 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, std::sha
 PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Two-snapshot scenario not implemented for DerivativeOperatorsPos. Exiting..."); CHKERRQ(ierr); return -1;}
+
     n_misc_->statistics_.nb_hessian_evals++;
 
     ierr = tumor_->phi_->apply (temp_phip_, p_current_);            CHKERRQ (ierr);
@@ -1065,6 +1079,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     PetscReal reg;
     n_misc_->statistics_.nb_obj_evals++;
 
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Two-snapshot scenario not implemented for DerivativeOperatorsRDObj. Exiting..."); CHKERRQ(ierr); return -1;}
+
     //compute c0
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     // compute c1
@@ -1117,6 +1133,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, std::s
     PetscErrorCode ierr = 0;
     ScalarType misfit_brain;
     n_misc_->statistics_.nb_grad_evals++;
+
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Two-snapshot scenario not implemented for DerivativeOperatorsRDObj. Exiting..."); CHKERRQ(ierr); return -1;}
 
     ScalarType dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
     ScalarType norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d =0.;
@@ -1220,6 +1238,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_hessian_evals++;
+
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Two-snapshot scenario not implemented for DerivativeOperatorsRDObj. Exiting..."); CHKERRQ(ierr); return -1;}
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     ierr = pde_operators_->solveState (1);                       CHKERRQ (ierr);
@@ -1387,7 +1407,7 @@ PetscErrorCode DerivativeOperators::checkHessian (Vec p, std::shared_ptr<Data> d
     Vec p_tilde;
     Vec p_new;
     ierr = VecDuplicate (p, &dJ);                               CHKERRQ (ierr);
-    ierr = VecDuplicate (p, &temp);                               CHKERRQ (ierr);
+    ierr = VecDuplicate (p, &temp);                             CHKERRQ (ierr);
     ierr = VecDuplicate (p, &Hx);                               CHKERRQ (ierr);
     ierr = VecDuplicate (p, &p_tilde);                          CHKERRQ (ierr);
     ierr = VecDuplicate (p, &p_new);                            CHKERRQ (ierr);
@@ -1396,9 +1416,9 @@ PetscErrorCode DerivativeOperators::checkHessian (Vec p, std::shared_ptr<Data> d
 
     PetscRandom rctx;
     #ifdef SERIAL
-      ierr = PetscRandomCreate (PETSC_COMM_SELF, &rctx);          CHKERRQ (ierr);
+      ierr = PetscRandomCreate (PETSC_COMM_SELF, &rctx);        CHKERRQ (ierr);
     #else
-      ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);         CHKERRQ (ierr);
+      ierr = PetscRandomCreate (PETSC_COMM_WORLD, &rctx);       CHKERRQ (ierr);
     #endif
     ierr = PetscRandomSetFromOptions (rctx);                    CHKERRQ (ierr);
     ierr = VecSetRandom (p_tilde, rctx);                        CHKERRQ (ierr);
