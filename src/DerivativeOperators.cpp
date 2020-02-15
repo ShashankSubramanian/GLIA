@@ -1211,8 +1211,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjectiveAndGradient (PetscReal
     PetscErrorCode ierr = 0;
     n_misc_->statistics_.nb_obj_evals++;
     n_misc_->statistics_.nb_grad_evals++;
-    ierr = evaluateObjective (J, x, data->dt1());                 CHKERRQ(ierr);
-    ierr = evaluateGradient (dJ, x, data->dt1());                 CHKERRQ(ierr);
+    ierr = evaluateObjective (J, x, data);                 CHKERRQ(ierr);
+    ierr = evaluateGradient (dJ, x, data);                 CHKERRQ(ierr);
     PetscFunctionReturn (ierr);
 }
 

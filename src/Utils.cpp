@@ -315,7 +315,9 @@ PetscErrorCode dataIn (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
   isize[0] = static_cast<MPI_Offset>(n_misc->isize_[0]);
   isize[1] = static_cast<MPI_Offset>(n_misc->isize_[1]);
   isize[2] = static_cast<MPI_Offset>(n_misc->isize_[2]);
-  int ncerr, fileid, ndims, nvars, ngatts, unlimited, varid[1];  
+  int ncerr, fileid, ndims, nvars, ngatts, unlimited, varid[1];
+  std::stringstream s; s << "reading "<< fname;
+  ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   // open file
   ncerr = ncmpi_open (PETSC_COMM_WORLD, fname, NC_NOWRITE, MPI_INFO_NULL, &fileid);
   ierr = NCERRQ (ncerr);                                              CHKERRQ (ierr);

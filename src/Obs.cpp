@@ -3,10 +3,10 @@
 Obs::Obs (std::shared_ptr<NMisc> n_misc) :
     n_misc_ (n_misc)
 {
+    PetscErrorCode ierr;
     two_snapshot_ = n_misc->two_snapshot_;
     threshold_1_ = n_misc->obs_threshold_1_;
     threshold_0_ = n_misc->obs_threshold_0_;
-    PetscErrorCode ierr;
     ierr = VecCreate (PETSC_COMM_WORLD, &filter_1_);
     ierr = VecSetSizes (filter_1_, n_misc->n_local_, n_misc->n_global_);
     ierr = setupVec (filter_1_);
@@ -23,7 +23,7 @@ Obs::Obs (std::shared_ptr<NMisc> n_misc) :
     }
 }
 
-PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point=1) {
+PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ScalarType *filter_ptr, *data_ptr;
@@ -32,7 +32,7 @@ PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point=1) {
         if (not two_snapshot_) {ierr = tuMSGwarn("Error: Cannot apply Obs(T=0), not a two snapshot scenario."); CHKERRQ(ierr); }
         ierr = VecGetArray (filter_0_, &filter_ptr);                                CHKERRQ (ierr);
         th = threshold_0_;
-    } else
+    } else {
         ierr = VecGetArray (filter_1_, &filter_ptr);                                CHKERRQ (ierr);
         th = threshold_1_;
     }
@@ -49,7 +49,7 @@ PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point=1) {
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode Obs::setCustomFilter (Vec custom_filter, int time_point=1) {
+PetscErrorCode Obs::setCustomFilter (Vec custom_filter, int time_point) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     if (time_point==0){
@@ -61,7 +61,7 @@ PetscErrorCode Obs::setCustomFilter (Vec custom_filter, int time_point=1) {
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode Obs::apply(Vec y, Vec x, time_point=1) {
+PetscErrorCode Obs::apply(Vec y, Vec x, int time_point) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     if (time_point==0){

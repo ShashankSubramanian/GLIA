@@ -234,7 +234,8 @@ PetscErrorCode TumorSolverInterface::setParams (
         n_misc_->beta_                  = tumor_params->betap;
         n_misc_->writeOutput_           = tumor_params->writeOutput;
         n_misc_->verbosity_             = tumor_params->verbosity;
-        n_misc_->obs_threshold_         = tumor_params->obs_threshold;
+        n_misc_->obs_threshold_1_       = tumor_params->obs_threshold_1_;
+        n_misc_->obs_threshold_0_       = tumor_params->obs_threshold_0_;
         n_misc_->k_                     = tumor_params->diff_coeff_scale;
         n_misc_->kf_                    = tumor_params->diff_coeff_scale_anisotropic;
         n_misc_->rho_                   = tumor_params->reaction_coeff_scale;
@@ -412,10 +413,10 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
     if (n_misc_->verbosity_ > 2) {
       int sum = 0, global_sum = 0;
       ScalarType *pixel_ptr;
-      ierr = VecGetArray (data, &pixel_ptr);                                    CHKERRQ (ierr);
+      ierr = VecGetArray (data->dt1(), &pixel_ptr);                             CHKERRQ (ierr);
       for (int i = 0; i < n_misc_->n_local_; i++)
-          if (pixel_ptr[i] > n_misc_->obs_threshold_) sum++;
-      ierr = VecRestoreArray (data, &pixel_ptr);                                CHKERRQ (ierr);
+          if (pixel_ptr[i] > n_misc_->obs_threshold_1_) sum++;
+      ierr = VecRestoreArray (data->dt1(), &pixel_ptr);                         CHKERRQ (ierr);
       MPI_Reduce (&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
       ss << " number of observed voxels: " << global_sum;
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -440,7 +441,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp (
 // ### ///////////////// solveInverse ////////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::solveInverse (
     Vec prec,
-    Vec data, Vec data_gradeval)
+    std::shared_ptr<Data> data, std::shared_ptr<Data> data_gradeval)
 {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -452,7 +453,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (
     std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
 
     if (!initialized_)  {ierr = tuMSGwarn("Error: (solveInverse) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
-    if (data == nullptr){ierr = tuMSGwarn("Error: (solveInverse) Variable data cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
+    if (data->dt1() == nullptr){ierr = tuMSGwarn("Error: (solveInverse) Variable data cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
     if (prec == nullptr){ierr = tuMSGwarn("Error: (solveInverse) Variable prec cannot be nullptr. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }
     if (!optimizer_settings_changed_) {ierr = tuMSGwarn (" Tumor inverse solver running with default settings."); CHKERRQ (ierr);}
 
@@ -463,8 +464,8 @@ PetscErrorCode TumorSolverInterface::solveInverse (
     }
 
     // TODO[CHANGE]: set the observation operator filter : default filter
-    ierr = tumor_->obs_->setDefaultFilter (data);                                   CHKERRQ (ierr);
-    ierr = tumor_->obs_->apply (data, data);                                        CHKERRQ (ierr);
+    ierr = tumor_->obs_->setDefaultFilter (data->dt1(), 1);                         CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (data->dt1(), data->dt1(), 1);                       CHKERRQ (ierr);
 
     // set target data for inversion (just sets the vector, no deep copy) and solve
     inv_solver_->setData (data); if (data_gradeval == nullptr) data_gradeval = data;
@@ -486,7 +487,7 @@ PetscErrorCode TumorSolverInterface::solveInverse (
 // ### ///////////////// solveInverseReacDiff ////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::solveInverseReacDiff(
     Vec prec,
-    Vec data, Vec data_gradeval)
+    std::shared_ptr<Data> data, std::shared_ptr<Data> data_gradeval)
 {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
@@ -557,7 +558,7 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(
 // ### _____________________________________________________________________ ___
 // ### ///////////////// computeGradient /////////////////////////////////// ###
 PetscErrorCode TumorSolverInterface::computeGradient (
-    Vec dJ, Vec p, Vec data_gradeval) {
+    Vec dJ, Vec p, std::shared_ptr<Data> data_gradeval) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     if (!initialized_) {ierr = tuMSGwarn("Error: (solveForward) computeGradient needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr); PetscFunctionReturn(ierr); }

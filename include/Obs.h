@@ -16,9 +16,9 @@ class Obs {
         bool two_snapshot_;
 		std::shared_ptr<NMisc> n_misc_;
 
-		PetscErrorCode setDefaultFilter (Vec data, int time_point);
-		PetscErrorCode setCustomFilter (Vec custom_filter, int time_point);
-		PetscErrorCode apply (Vec y, Vec x, int time_point);
+		PetscErrorCode setDefaultFilter (Vec data, int time_point=1);
+		PetscErrorCode setCustomFilter (Vec custom_filter, int time_point=1);
+		PetscErrorCode apply (Vec y, Vec x, int time_point=1);
 		// PetscErrorCode apply_transpose (ScalarType *y, ScalarType *x);
 
 

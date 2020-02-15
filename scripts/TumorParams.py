@@ -73,10 +73,16 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data = 0.025
-    nt_data = 100
-    dt_data = 0.01
+    rho_data = 10.2911
+    k_data   = 0.0316197
+    nt_data  = 120
+    dt_data  = 0.01
+    rho_inv  = 10.2911
+    k_inv    = 0.0316197
+    nt_inv   = 120
+    dt_inv   = 0.01
+
+
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.5E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
@@ -89,7 +95,7 @@ def getTumorRunCmd(params):
     ###              2: No-brain sinusoidal coefficients
     ###              3: brain multifocal synthetic tumor with nearby ground truths
     ##               4: brain multifocal synthetic tumor with far away ground truths
-    tumor_testcase = 4
+    tumor_testcase = 0
 
     multilevel         = 0;
     inject_solution    = 0;
@@ -108,7 +114,7 @@ def getTumorRunCmd(params):
     ### Prediction flag -- Flag to predict tumor at a later time
     predict_flag = 0
     ### Forward flag -- Flag to run only forward solve
-    forward_flag = 0
+    forward_flag = 1
     ### Diffusivity inversion flag  -- Flag to invert for diffusivity/diffusion coefficient
     diffusivity_flag = 1
     ### Reaction inversion flag -- Flag to invert for reaction coefficient
@@ -320,16 +326,17 @@ def getTumorRunCmd(params):
     if 'create_synthetic' in params:
         create_synthetic = params['create_synthetic'];
     # ---
-    if 'data_path' in params:
-        data_path = params['data_path']
-        print('Tumor data path = {}'.format(data_path))
-    else:
-        if not os.path.exists(data_path):
-            if not create_synthetic:
-                print('Default data path does not exist and no input path provided!\n')
-                error_flag = 1
+    if not forward_flag:
+        if 'data_path' in params:
+            data_path = params['data_path']
+            print('Tumor data path = {}'.format(data_path))
         else:
-            print ('Default datapath = {} used'.format(data_path))
+            if not os.path.exists(data_path):
+                if not create_synthetic:
+                    print('Default data path does not exist and no input path provided!\n')
+                    error_flag = 1
+            else:
+                print ('Default datapath = {} used'.format(data_path))
     # ---
     if 'gm_path' in params:
         gm_path = params['gm_path']

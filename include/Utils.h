@@ -140,7 +140,8 @@ struct TumorSettings {
     ScalarType betap;
     bool   writeOutput;
     int    verbosity;
-    ScalarType obs_threshold;
+    ScalarType obs_threshold_1_;
+    ScalarType obs_threshold_0_;
     ScalarType diff_coeff_scale;        /// @brief (scalar) diffusion rate
     ScalarType diff_coeff_scale_anisotropic; /// @brief (scalar) anisotropic diffusion rate
     ScalarType reaction_coeff_scale;    /// @brief (scalar) reaction rate
@@ -186,7 +187,8 @@ struct TumorSettings {
     , betap(1E-4)
     , writeOutput(false)
     , verbosity(3)
-    , obs_threshold(0.0)
+    , obs_threshold_1_(0.0)
+    , obs_threshold_0_(0.0)
     , diff_coeff_scale(1E-2)
     , diff_coeff_scale_anisotropic(0.0)
     , reaction_coeff_scale(15)
@@ -286,10 +288,10 @@ public:
     two_snapshot(false)
     {}
 
-    void set(Vec dt1, Vec dt2){
+    void set(Vec dt1, Vec dt0){
         t1 = dt1;
-        if (dt2 != nullptr) {
-            t2 = dt2; two_snapshot = true;
+        if (dt0 != nullptr) {
+            t0 = dt0; two_snapshot = true;
         }
     }
 
@@ -298,13 +300,13 @@ public:
     }
 
     void setT0(Vec dt0) {
-        t1 = dt0;
+        t0 = dt0;
         two_snapshot = true;
     }
 
     Vec dt1() {return t1;}
     Vec dt0() {return (two_snapshot) ? t0 : nullptr;}
-}
+};
 
 
 class NMisc {
