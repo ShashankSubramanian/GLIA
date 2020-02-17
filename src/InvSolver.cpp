@@ -1882,8 +1882,6 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
     itctx->optfeedback_->nb_gradevals++;
     ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
 
-    ierr = VecScale (dJ, itctx->step_init);                                             CHKERRQ (ierr);
-
     // use petsc default fd gradient
    // itctx->derivative_operators_->disable_verbose_ = true;
    // ierr = TaoDefaultComputeGradient(tao, x, dJ, ptr); CHKERRQ(ierr);
@@ -1932,7 +1930,6 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
       s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
 
-  ierr = VecScale (dJ, itctx->step_init);                                             CHKERRQ (ierr);
   self_exec_time += MPI_Wtime ();
   accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
   e.addTimings (t);
@@ -2285,14 +2282,12 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
     ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
-    gnorm /= itctx->step_init;
 
     PetscInt num_feval;
     TaoLineSearch ls = nullptr;
     ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
     ierr = TaoLineSearchGetNumberFunctionEvaluations (ls, &num_feval, nullptr, nullptr);   CHKERRQ (ierr);
 
-    step = itctx->step_init * step;     // this is the true step-size
     ScalarType step_tol = 1/(2*2*2);
     // adaptive ls step
     if (step < step_tol) {
@@ -2302,6 +2297,9 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     }
     itctx->step_init = std::min(itctx->step_init, (ScalarType)1);
     // itctx->step_init = 1;
+
+    ierr = TaoLineSearchSetInitialStepLength (ls, itctx->step_init);            CHKERRQ(ierr);
+
 
     // update/set reference gradient 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -2945,13 +2943,11 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     ierr = dispLineSearchStatus(tao, ctx, ls_flag);                             CHKERRQ(ierr);
     ierr = TaoGetMaximumIterations(tao, &maxiter);                              CHKERRQ(ierr);
     ierr = TaoGetSolutionStatus(tao, &iter, &J, &gnorm, NULL, &step, NULL);     CHKERRQ(ierr);
-    step = ctx->step_init * step;     // this is the true step-size
     jx = J;
     Vec tao_grad;
     // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
     ierr = TaoGetGradientVector(tao, &tao_grad);                                CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
-    gnorm /= ctx->step_init;
 
     // update/set reference gradient 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
@@ -4269,6 +4265,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
         tuMSGstd(" using line-search type: more-thuene");
     }
 
+    ierr = TaoLineSearchSetInitialStepLength (linesearch, 1.0);                    CHKERRQ(ierr);
     ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_");                    CHKERRQ(ierr);
 
     std::stringstream s;
