@@ -2283,10 +2283,10 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     ierr =  TaoGetGradientVector(tao, &tao_grad);                               CHKERRQ(ierr);
     ierr = VecNorm (tao_grad, NORM_2, &gnorm);                                  CHKERRQ (ierr);
 
-    PetscInt num_feval;
+    PetscInt num_feval, n2, n3;
     TaoLineSearch ls = nullptr;
     ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
-    ierr = TaoLineSearchGetNumberFunctionEvaluations (ls, &num_feval, nullptr, nullptr);   CHKERRQ (ierr);
+    ierr = TaoLineSearchGetNumberFunctionEvaluations (ls, &num_feval, &n2, &n3);   CHKERRQ (ierr);
 
     ScalarType step_tol = 1/(2*2*2);
     // adaptive ls step
