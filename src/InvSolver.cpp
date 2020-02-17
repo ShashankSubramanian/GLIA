@@ -2300,7 +2300,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     } else {
         itctx->step_init *= 2;
     }
-    itctx->step_init = std::min(itctx->step_init, 1.);
+    itctx->step_init = std::min(itctx->step_init, (ScalarType)1);
     // itctx->step_init = 1;
 
     // update/set reference gradient 
