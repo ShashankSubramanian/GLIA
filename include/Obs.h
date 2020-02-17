@@ -14,6 +14,9 @@ class Obs {
 		Vec filter_1_;
         Vec filter_0_;
         bool two_snapshot_;
+        bool low_res_data_;
+        int isize_[3];
+        int istart_[3];
 		std::shared_ptr<NMisc> n_misc_;
 
 		PetscErrorCode setDefaultFilter (Vec data, int time_point=1);

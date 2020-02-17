@@ -112,7 +112,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
     ierr = VecDot (temp_, temp_, &m1);                              CHKERRQ (ierr); // ||.||^2
 
     // compute mismatch ||Oc(0) - d0||
-    if (n_misc->two_snapshot_) {
+    if (n_misc_->two_snapshot_) {
         ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // Oc(0)
         ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // Oc(0) - d0
         ierr = VecDot (temp_, temp_, &m0);                          CHKERRQ (ierr); // ||.||^2
@@ -143,7 +143,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective (PetscReal *J, Vec x, st
     // objective function value
     (*J) = n_misc_->lebesgue_measure_ * 0.5 *(m1 + m0) + reg;
 
-    if (n_misc_->two_snapshot) {
+    if (n_misc_->two_snapshot_) {
         s << "  J(p) = Dc(c1) + Dc(c0) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m0 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     } else {
         s << "  J(p) = Dc(c1) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
@@ -456,7 +456,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     // compute mismatch ||Oc(0) - d0||
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr); // c(0)
-    if (n_misc->two_snapshot_) {
+    if (n_misc_->two_snapshot_) {
         ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // Oc(0)
         ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // Oc(0) - d0
         ierr = VecDot (temp_, temp_, &m0);                          CHKERRQ (ierr); // ||.||^2
@@ -537,7 +537,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     // objective function value
     (*J) = n_misc_->lebesgue_measure_ * 0.5 *(m1 + m0) + reg;
 
-    if (n_misc_->two_snapshot) {
+    if (n_misc_->two_snapshot_) {
         s << "  J(p) = Dc(c1) + Dc(c0) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m0 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     } else {
         s << "  J(p) = Dc(c1) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();

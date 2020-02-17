@@ -25,7 +25,7 @@ def getTumorRunCmd(params):
     ### TUMOR PARAMETERS SET BEGIN
 
     ### No of discretization points (Assumed uniform)
-    N = 128
+    N = 256
     ### Path to all output results (Directories are created automatically)
     results_path = tumor_dir + '/results/'
     if not os.path.exists(results_path):
@@ -73,12 +73,12 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 10.2911
-    k_data   = 0.0316197
+    rho_data = 8
+    k_data   = 0.2
     nt_data  = 120
     dt_data  = 0.01
-    rho_inv  = 10.2911
-    k_inv    = 0.0316197
+    rho_inv  = 8
+    k_inv    = 0.2
     nt_inv   = 120
     dt_inv   = 0.01
 
@@ -86,9 +86,9 @@ def getTumorRunCmd(params):
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.5E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
-    z_cm = 112
-    y_cm = 136
-    x_cm = 144
+    z_cm = 83
+    y_cm = 156
+    x_cm = 126
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
