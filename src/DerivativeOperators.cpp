@@ -168,7 +168,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
     ScalarType k1, k2, k3;
-
     int x_sz;
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -183,6 +182,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+    // update diffusion coefficient based on new k_i
     if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
       #ifndef SERIAL
         TU_assert(false, "Inversion for diffusivity only supported for serial p.");
@@ -205,6 +205,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
       pde_operators_->diff_solver_->precFactor();
     }
 
+    // update reaction coefficient based on new rho
     ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
@@ -218,15 +219,16 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
     /* ------------------ */
     /* (1) compute grad_p */
     // c = Phi(p), solve state
-    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
-    ierr = pde_operators_->solveState (0);
+    ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr); // c(0)
+    ierr = pde_operators_->solveState (0);                          CHKERRQ (ierr); // c(1)
     // final cond adjoint
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
-    ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr);
-    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
-    ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr); // O(c1)
+    ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr); // O(c1) - d1
+    ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr); // O^T(O(c1) - d1)
+    ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr); // - O^T(O(c1) - d1)
     // solve adjoint
-    ierr = pde_operators_->solveAdjoint (1);
+    ierr = pde_operators_->solveAdjoint (1);                        CHKERRQ (ierr); // a(0)
+
     // compute gradient
     if (!n_misc_->phi_store_) {
       // restructure phi compute because it is now expensive
@@ -236,31 +238,40 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
       // p0 = p0 - beta * phi * p
       ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_);   CHKERRQ (ierr);
       // dJ is phiT p0 - beta * phiT * phi * p
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);        CHKERRQ (ierr);
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);     CHKERRQ (ierr);
       // dJ is beta * phiT * phi * p - phiT * p0
-      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
+      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);              CHKERRQ (ierr);
 
     } else {
-      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr);
+      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);     CHKERRQ (ierr); // Phi^T a(0)
+      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr); // lebesgue
 
       // Gradient according to reg parameter chosen
       if (n_misc_->regularization_norm_ == L1) {
         ierr = VecCopy (ptemp_, dJ);                                  CHKERRQ (ierr);
         ierr = VecScale (dJ, -1.0);                                   CHKERRQ (ierr);
       } else if (n_misc_->regularization_norm_ == wL2) {
-        ierr = VecPointwiseMult (dJ, tumor_->weights_, x);              CHKERRQ (ierr);
-        ierr = VecScale (dJ, n_misc_->beta_);                           CHKERRQ (ierr);
-        ierr = VecAXPY (dJ, -1.0, ptemp_);                              CHKERRQ (ierr);
+        ierr = VecPointwiseMult (dJ, tumor_->weights_, x);            CHKERRQ (ierr);
+        ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
+        ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
       } else if (n_misc_->regularization_norm_ == L2){
         ierr = tumor_->phi_->applyTranspose (dJ, tumor_->c_0_);
-        ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_);                         CHKERRQ (ierr);
+        ierr = VecScale (dJ, n_misc_->beta_ * n_misc_->lebesgue_measure_); CHKERRQ (ierr);
         ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
       } else if (n_misc_->regularization_norm_ == L2b){
         ierr = VecCopy (x, dJ);                                       CHKERRQ (ierr);
         ierr = VecScale (dJ, n_misc_->beta_);                         CHKERRQ (ierr);
         ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
       }
+    }
+
+    // compute gradient part Phi^T [ O^T(Oc(0)-d0) ] originating from ||O(c0)-d0||
+    if (n_misc_->two_snapshot_) {
+        ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // O(c0)
+        ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // O(c0) - d0
+        ierr = tumor_->obs_->applyT (temp_, temp_, 0);              CHKERRQ (ierr); // O^T(O(c0) - d0)
+        ierr = tumor_->phi_->applyTranspose (ptemp_, temp_);        CHKERRQ (ierr); // Phi^T [O^T(O(c0) - d0)]    // TODO: IS THIS REQUIRED, also LEBESGUE
+        ierr = VecAXPY (dJ, 1.0, ptemp_);                           CHKERRQ (ierr); // add to dJ
     }
 
     ScalarType temp_scalar;
@@ -270,7 +281,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
     /* (2) compute grad_k   int_T int_Omega { m_i * (grad c)^T grad alpha } dx dt */
     ScalarType integration_weight = 1.0;
     if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
-      ierr = VecSet(temp_, 0.0);                                      CHKERRQ (ierr);
+      ierr = VecSet(temp_, 0.0);                                    CHKERRQ (ierr);
       // compute numerical time integration using trapezoidal rule
       for (int i = 0; i < n_misc_->nt_ + 1; i++) {
         // integration weight for chain trapezoidal rule
@@ -462,8 +473,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
     ierr = VecDot (temp_, temp_, &m1);                              CHKERRQ (ierr); // ||.||^2
 
     // solve adjoint
-    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);            CHKERRQ (ierr);
-    ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
+    ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr); // O^T(Oc(1) - d1)
+    ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
     ierr = pde_operators_->solveAdjoint (1);
 
     if (!n_misc_->phi_store_) {
@@ -681,8 +692,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
       ierr = pde_operators_->solveState (1);
       // Solve incr adj with alpha1_tilde = -OT * O * c1_tilde
-      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
-      ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr);
+      ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr);
       ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
       ierr = pde_operators_->solveAdjoint (2);
       // Matvec is \beta\phiT\phi p_tilde - \phiT \alpha0_tilde
@@ -763,8 +774,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
 
       ierr = pde_operators_->solveState (2);                          CHKERRQ (ierr);
       // Solve incr adj with alpha1_tilde = -OT * O * c1_tilde
-      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
-      ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr);
+      ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr);
       ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
       ierr = pde_operators_->solveAdjoint (2);
       // Matvec is  - \phiT \alpha0_tilde
@@ -834,8 +845,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
       ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
       ierr = pde_operators_->solveState (1);
 
-      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
-      ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+      ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr);
+      ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr);
       ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
 
       ierr = pde_operators_->solveAdjoint (2);
@@ -934,10 +945,10 @@ PetscErrorCode DerivativeOperatorsPos::evaluateGradient (Vec dJ, Vec x, std::sha
     ierr = pde_operators_->solveState (0);
 
 
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr);
     ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr);
 
-    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+    ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_,1 );           CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
 
     ierr = pde_operators_->solveAdjoint (1);
@@ -1008,8 +1019,8 @@ PetscErrorCode DerivativeOperatorsPos::evaluateHessian (Vec y, Vec x) {
     ierr = VecPointwiseMult (tumor_->c_0_, tumor_->c_0_, temp_phiptilde_);    CHKERRQ (ierr);
     ierr = pde_operators_->solveState (1);
 
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);               CHKERRQ (ierr);
-    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);               CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr);
+    ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
 
     ierr = pde_operators_->solveAdjoint (2);
@@ -1085,7 +1096,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective (PetscReal *J, Vec x,
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     // compute c1
     ierr = pde_operators_->solveState (0);                       CHKERRQ (ierr);
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);            CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);         CHKERRQ (ierr);
     // geometric coupling, update probability maps
     ierr = geometricCoupling(
       xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_,
@@ -1146,10 +1157,10 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient (Vec dJ, Vec x, std::s
     if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (tumor_->c_0_, NORM_2, &norm_c0); CHKERRQ (ierr);}
     ierr = pde_operators_->solveState (0);                       CHKERRQ (ierr);
 
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);            CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);          CHKERRQ (ierr);
     if (n_misc_->verbosity_ >= 2) {ierr = VecNorm (tumor_->c_t_, NORM_2, &norm_c1);  CHKERRQ (ierr);}
     ierr = VecAXPY (temp_, -1.0, data->dt1());                   CHKERRQ (ierr);
-    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);            CHKERRQ (ierr);
+    ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);        CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
     ierr = geometricCoupling(
       xi_wm_, xi_gm_, xi_csf_, xi_glm_, xi_bg_,
@@ -1244,8 +1255,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateHessian (Vec y, Vec x){
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                CHKERRQ (ierr);
     ierr = pde_operators_->solveState (1);                       CHKERRQ (ierr);
     // alpha(1) = - O^TO \tilde{c(1)}
-    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_);            CHKERRQ (ierr);
-    ierr = tumor_->obs_->apply (tumor_->p_t_, temp_);            CHKERRQ (ierr);
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);         CHKERRQ (ierr);
+    ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);        CHKERRQ (ierr);
     ierr = VecScale (tumor_->p_t_, -1.0);                        CHKERRQ (ierr);
     // alpha(1) = - O^TO \tilde{c(1)} - mA0 mA0 \tilde{c(1)}
     if(m_geo_wm_ != nullptr) {

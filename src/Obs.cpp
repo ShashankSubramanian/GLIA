@@ -72,6 +72,18 @@ PetscErrorCode Obs::apply(Vec y, Vec x, int time_point) {
     PetscFunctionReturn (ierr);
 }
 
+
+PetscErrorCode Obs::applyT(Vec y, Vec x, int time_point) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr;
+    if (time_point==0){
+        ierr = VecPointwiseMult (y, x, filter_0_);                                  CHKERRQ (ierr);
+    } else {
+        ierr = VecPointwiseMult (y, x, filter_1_);                                  CHKERRQ (ierr);
+    }
+    PetscFunctionReturn (ierr);
+}
+
 Obs::~Obs () {
     PetscErrorCode ierr;
     ierr = VecDestroy (&filter_1_);
