@@ -47,7 +47,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
 
     ierr = KSPCreate (PETSC_COMM_WORLD, &ksp_);
     ierr = KSPSetOperators (ksp_, A_, A_);
-    ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    ierr = KSPSetTolerances (ksp_, 1E-3, PETSC_DEFAULT, PETSC_DEFAULT, 200);
     ierr = KSPSetType (ksp_, KSPCG);
     // if (n_misc->forward_flag_) ierr = KSPMonitorSet(ksp_, elasticitySolverKSPMonitor, ctx_.get(), 0);      
     ierr = KSPSetInitialGuessNonzero (ksp_,PETSC_TRUE);

@@ -354,7 +354,7 @@ class NMisc {
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                             // Upper bound on kappa
         , gamma_ub_ (1.3)                       // Upper bound on gamma
-        , rho_ub_ (1.5)                         // Upper bound on rho
+        , rho_ub_ (1.4)                         // Upper bound on rho
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
