@@ -137,6 +137,7 @@ struct CtxInv {
     /* optimization state */
     ScalarType jvalold;                 // old value of objective function (previous newton iteration)
     ScalarType last_ls_step;            // remeber line-search step of previous solve
+    ScalarType step_init;           // init step length for ls
     Vec c0old, tmp;                 // previous initial condition \Phi p^k-1 and tmp vec
     Vec x_old;                      // previous solution
     std::vector<std::string> convergence_message; // convergence message
@@ -161,6 +162,7 @@ struct CtxInv {
         grtol = 1e-12;
         jvalold = 0;
         last_ls_step = 1.0;
+        step_init = 1.0; 
         weights = nullptr;
         c0old = nullptr;
         x_old = nullptr;
