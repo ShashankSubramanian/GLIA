@@ -234,14 +234,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
       // restructure phi compute because it is now expensive
       // assume that reg norm is L2 for now
       // TODO: change to normal if reg norm is not L2
-
-      // p0 = p0 - beta * phi * p
-      ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_);   CHKERRQ (ierr);
-      // dJ is phiT p0 - beta * phiT * phi * p
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);     CHKERRQ (ierr);
-      // dJ is beta * phiT * phi * p - phiT * p0
-      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);              CHKERRQ (ierr);
-
+      ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_);   CHKERRQ (ierr); // a(0) - bata Phi p
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);         CHKERRQ (ierr); // Phi^T (a(0) - bata Phi p)
+      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);              CHKERRQ (ierr); // lebesgue, *(-1)
     } else {
       ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);     CHKERRQ (ierr); // Phi^T a(0)
       ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);           CHKERRQ (ierr); // lebesgue
@@ -271,7 +266,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient (Vec dJ, Vec x, std::shar
         ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // O(c0) - d0
         ierr = tumor_->obs_->applyT (temp_, temp_, 0);              CHKERRQ (ierr); // O^T(O(c0) - d0)
         ierr = tumor_->phi_->applyTranspose (ptemp_, temp_);        CHKERRQ (ierr); // Phi^T [O^T(O(c0) - d0)]    // TODO: IS THIS REQUIRED, also LEBESGUE
-        ierr = VecAXPY (dJ, 1.0, ptemp_);                           CHKERRQ (ierr); // add to dJ
+        ierr = VecAXPY (dJ, n_misc_->lebesgue_measure_, ptemp_);    CHKERRQ (ierr); // add to dJ, lebesgue
     }
 
     ScalarType temp_scalar;
@@ -474,24 +469,19 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 
     // solve adjoint
     ierr = tumor_->obs_->applyT (tumor_->p_t_, temp_, 1);           CHKERRQ (ierr); // O^T(Oc(1) - d1)
-    ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr);
-    ierr = pde_operators_->solveAdjoint (1);
+    ierr = VecScale (tumor_->p_t_, -1.0);                           CHKERRQ (ierr); // - O^T(O(c1) - d1)
+    ierr = pde_operators_->solveAdjoint (1);                        CHKERRQ (ierr); // a(0)
 
     if (!n_misc_->phi_store_) {
       // restructure phi compute because it is now expensive
       // assume that reg norm is L2 for now
       // TODO: change to normal if reg norm is not L2
-
-      // p0 = p0 - beta * phi * p
-      ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_); CHKERRQ (ierr);
-      // dJ is phiT p0 - beta * phiT * phi * p
-      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);       CHKERRQ (ierr);
-      // dJ is beta * phiT * phi * p - phiT * p0
-      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);            CHKERRQ (ierr);
-
+      ierr = VecAXPY (tumor_->p_0_, -n_misc_->beta_, tumor_->c_0_); CHKERRQ (ierr); // a(0) - bata Phi p
+      ierr = tumor_->phi_->applyTranspose (dJ, tumor_->p_0_);       CHKERRQ (ierr); // Phi^T (a(0) - bata Phi p)
+      ierr = VecScale (dJ, -n_misc_->lebesgue_measure_);            CHKERRQ (ierr); // lebesgue
     } else {
-      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);
-      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);         CHKERRQ (ierr);
+      ierr = tumor_->phi_->applyTranspose (ptemp_, tumor_->p_0_);   CHKERRQ (ierr); // Phi^T a(0)
+      ierr = VecScale (ptemp_, n_misc_->lebesgue_measure_);         CHKERRQ (ierr); // lebesgue
 
       // Gradient according to reg parameter chosen
       if (n_misc_->regularization_norm_ == L1) {
@@ -511,6 +501,16 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
         ierr = VecAXPY (dJ, -1.0, ptemp_);                            CHKERRQ (ierr);
       }
     }
+
+    // compute gradient part Phi^T [ O^T(Oc(0)-d0) ] originating from ||O(c0)-d0||
+    if (n_misc_->two_snapshot_) {
+        ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // O(c0)
+        ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // O(c0) - d0
+        ierr = tumor_->obs_->applyT (temp_, temp_, 0);              CHKERRQ (ierr); // O^T(O(c0) - d0)
+        ierr = tumor_->phi_->applyTranspose (ptemp_, temp_);        CHKERRQ (ierr); // Phi^T [O^T(O(c0) - d0)]    // TODO: IS THIS REQUIRED, also LEBESGUE
+        ierr = VecAXPY (dJ, n_misc_->lebesgue_measure_, ptemp_);    CHKERRQ (ierr); // add to dJ, lebesgue
+    }
+
 
     // compute regularization
     if (n_misc_->regularization_norm_ == L1) {
@@ -672,6 +672,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient (PetscReal *J
 PetscErrorCode DerivativeOperatorsRD::evaluateHessian (Vec y, Vec x){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+    if (n_misc_->two_snapshot_) {ierr = tuMSGwarn("Error: Hessian currently not implemented for two-snapshot scenario. Exiting..."); CHKERRQ(ierr); return -1;}
+
+
     n_misc_->statistics_.nb_hessian_evals++;
 
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;

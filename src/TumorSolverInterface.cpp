@@ -528,11 +528,11 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(
 
   ierr = resetTaoSolver();                                                      CHKERRQ (ierr);
   ierr = setParams (prec, nullptr);                                             CHKERRQ (ierr);
-  ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
-  ierr = tuMSG    ("###                  Initial L2 Solve                 ###"); CHKERRQ (ierr);
-  ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
-  ierr = inv_solver_->solve ();
-  ierr = VecCopy (inv_solver_->getPrec(), prec);                                               CHKERRQ (ierr);
+  // ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+  // ierr = tuMSG    ("###                  Initial L2 Solve                 ###"); CHKERRQ (ierr);
+  // ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+  // ierr = inv_solver_->solve ();
+  // ierr = VecCopy (inv_solver_->getPrec(), prec);                                               CHKERRQ (ierr);
 
   if (n_misc_->reaction_inversion_) {
     inv_solver_->itctx_->cosamp_->cosamp_stage = POST_RD;

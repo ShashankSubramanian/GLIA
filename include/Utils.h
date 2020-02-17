@@ -385,6 +385,7 @@ class NMisc {
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
         , two_snapshot_(0)
+        , low_res_data_(0)
         , phi_store_ (false)                    // Flag to store phis
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
@@ -558,6 +559,7 @@ class NMisc {
         bool flag_reaction_inv_;
         bool multilevel_;
         bool two_snapshot_;
+        bool low_res_data_;
 
         ScalarType target_sparsity_;
 
