@@ -2288,7 +2288,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     ierr = TaoGetLineSearch(tao, &ls);                                          CHKERRQ (ierr);
     ierr = TaoLineSearchGetNumberFunctionEvaluations (ls, &num_feval, &n2, &n3);   CHKERRQ (ierr);
 
-    ScalarType step_tol = 1/(2*2*2);
+    ScalarType step_tol = std::pow(2, -3);
     // adaptive ls step
     if (step < step_tol) {
         itctx->step_init = step * 2;
