@@ -674,7 +674,6 @@ int main (int argc, char** argv) {
         ss << "forward solve completed: exiting..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     } else {
         ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-        ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
         std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
         if (n_misc->model_ == 4) {
             n_misc->invert_mass_effect_ = 1;
@@ -683,6 +682,7 @@ int main (int argc, char** argv) {
             ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data 
             ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed 
         }
+        ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
         n_misc->rho_ = rho_inv;
         // n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->k_ = k_inv; // (n_misc->diffusivity_inversion_) ? 0 : k_inv;
