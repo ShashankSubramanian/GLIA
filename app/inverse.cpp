@@ -1640,6 +1640,7 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         ierr = tumor->phi_->apply (c_0, tumor->p_true_);
     }
+    writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn"));
 
     if (n_misc->model_ == 2) {
         ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);

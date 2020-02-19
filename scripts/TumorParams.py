@@ -32,7 +32,8 @@ def getTumorRunCmd(params):
         os.makedirs(results_path)
     ### Input data
     ### Path to data
-    data_path = tumor_dir + '/brain_data/' + str(N) +'/cpl/c1p.nc'
+    data_path_t1 = tumor_dir + '/brain_data/' + str(N) +'/cpl/c1p.nc'
+    data_path_t0 = ''
     ### Atlas
     ### Path to gm
     gm_path = tumor_dir + '/brain_data/' + str(N) +'/gray_matter.nc'
@@ -58,12 +59,12 @@ def getTumorRunCmd(params):
     init_tumor_path = ""
 
 
-    verbosity = 1
+    verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
     create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-    rho_inv = 15
+    rho_inv = 10
     k_inv = 0.0
     nt_inv = 20
     dt_inv = 0.05
@@ -73,22 +74,18 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data   = 0.2
-    nt_data  = 120
+    rho_data = 12
+    k_data   = 0.1
+    nt_data  = 100
     dt_data  = 0.01
-    rho_inv  = 8
-    k_inv    = 0.2
-    nt_inv   = 120
-    dt_inv   = 0.01
 
 
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.5E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
-    z_cm = 83
-    y_cm = 156
-    x_cm = 126
+    z_cm = 86
+    y_cm = 136
+    x_cm = 137
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -100,6 +97,8 @@ def getTumorRunCmd(params):
     multilevel         = 0;
     inject_solution    = 0;
     pre_reacdiff_solve = 0;
+    two_snapshot       = 0;
+    low_res_data       = 0;
 
     ### k_gm_wm ratio
     k_gm_wm = 0.0
@@ -221,6 +220,12 @@ def getTumorRunCmd(params):
         gvf = params['gvf']
     else:
         print ('Default gvf = {} used'.format(gvf))
+     # ---
+    if 'two_snapshot' in params:
+        two_snapshot = params['two_snapshot']
+    # ---
+    if 'low_res_data' in params:
+        low_res_data = params['low_res_data']
     # ---
     if 'predict_flag' in params:
         predict_flag = params['predict_flag']
@@ -279,7 +284,8 @@ def getTumorRunCmd(params):
     # ---
     if 'inject_solution' in params:
         inject_solution = params['inject_solution']
-        print ('Solution from previous level is injected.')
+        if inject_solution:
+            print ('Solution from previous level is injected.')
     # ---
     if 'pre_reacdiff_solve' in params:
         pre_reacdiff_solve = params['pre_reacdiff_solve']
@@ -325,18 +331,30 @@ def getTumorRunCmd(params):
     # ---
     if 'create_synthetic' in params:
         create_synthetic = params['create_synthetic'];
-    # ---
+    #
     if not forward_flag:
-        if 'data_path' in params:
-            data_path = params['data_path']
-            print('Tumor data path = {}'.format(data_path))
+        if 'data_path_t0' in params:
+            data_path_t0 = params['data_path_t0']
+            print('Tumor data path  (T=0) = {}'.format(data_path_t0))
         else:
-            if not os.path.exists(data_path):
+            if not os.path.exists(data_path_t0):
                 if not create_synthetic:
                     print('Default data path does not exist and no input path provided!\n')
                     error_flag = 1
             else:
-                print ('Default datapath = {} used'.format(data_path))
+                print ('Default datapath = {} used'.format(data_path_t0))
+    # ---
+    if not forward_flag:
+        if 'data_path_t1' in params:
+            data_path_t1 = params['data_path_t1']
+            print('Tumor data path (T=1)= {}'.format(data_path_t1))
+        else:
+            if not os.path.exists(data_path_t1):
+                if not create_synthetic:
+                    print('Default data path does not exist and no input path provided!\n')
+                    error_flag = 1
+            else:
+                print ('Default datapath = {} used'.format(data_path_t1))
     # ---
     if 'gm_path' in params:
         gm_path = params['gm_path']
@@ -466,7 +484,10 @@ def getTumorRunCmd(params):
     " -krylov_maxit " + str(max_krylov_iter) + \
     " -rel_grad_tol " + str(grad_tol) + \
     " -syn_flag " + str(create_synthetic) + \
-    " -data_path " + data_path + \
+    " -data_path_t1 " + data_path_t1 + \
+    " -data_path_t0 " + data_path_t0 + \
+    " -two_snapshot " + str(two_snapshot) + \
+    " -low_res_data " + str(low_res_data) + \
     " -gm_path " + gm_path + \
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \

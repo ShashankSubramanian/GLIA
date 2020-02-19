@@ -10,8 +10,8 @@ tumor_dir = scripts_path + '/../'
 params = {}
 
 
-case_dir = '/scratch1/04678/scheufks/alzh/syn_test/test01/res'
-d_dir = '/scratch1/04678/scheufks/alzh/syn_test/test01/data'
+case_dir = '/scratch1/04678/scheufks/alzh/syn_test/test01/res/'
+d_dir = '/scratch1/04678/scheufks/alzh/syn_test/test01/data/'
 
 params['code_path'] = tumor_dir
 params['results_path'] = case_dir; #tumor_dir + '/results/dev-tc4-l0-lb0-50vecs/'

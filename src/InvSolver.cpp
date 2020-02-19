@@ -495,31 +495,30 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ss << " initial guess for diffusion coefficient: " << x_ptr[0]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     // initial guess rho
-    if (itctx_->n_misc_->multilevel_ && itctx_->n_misc_->n_[0] > 64) {
+    //if (itctx_->n_misc_->multilevel_ && itctx_->n_misc_->n_[0] > 64) {
     x_ptr[nk] = x_in_ptr[itctx_->n_misc_->np_ + nk];                      // r1
     if (nr > 1) x_ptr[nk + 1] = x_in_ptr[itctx_->n_misc_->np_ + nk + 1];  // r2
     if (nr > 2) x_ptr[nk + 2] = x_in_ptr[itctx_->n_misc_->np_ + nk + 2];  // r3
-    } else {
-    ss<<" computing rough approximation to rho.."; ierr = tuMSGstd(ss.str());   CHKERRQ(ierr); ss.str(""); ss.clear();
-    std::array<ScalarType, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15};
-    ScalarType min_norm = 1E15, norm = 0.;
-
-    int idx = 0;
-    for (int i = 0; i < rho_guess.size(); i++) {
+    //} else {
+    //ss<<" computing rough approximation to rho.."; ierr = tuMSGstd(ss.str());   CHKERRQ(ierr); ss.str(""); ss.clear();
+    //std::array<ScalarType, 7> rho_guess = {0, 3, 6, 9, 10, 12, 15};
+    //ScalarType min_norm = 1E15, norm = 0.;
+    //int idx = 0;
+    //for (int i = 0; i < rho_guess.size(); i++) {
       // update the tumor with this rho
-      ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
-      ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_in);          CHKERRQ (ierr);   // apply scaled p to IC
-      ierr = itctx_->derivative_operators_->pde_operators_->solveState (0);    // solve state with guess reaction and inverted diffusivity
-      ierr = itctx_->tumor_->obs_->apply (itctx_->derivative_operators_->temp_, itctx_->tumor_->c_t_);               CHKERRQ (ierr);
+      //ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (rho_guess[i], 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
+      //ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_in);          CHKERRQ (ierr);   // apply scaled p to IC
+      //ierr = itctx_->derivative_operators_->pde_operators_->solveState (0);    // solve state with guess reaction and inverted diffusivity
+      //ierr = itctx_->tumor_->obs_->apply (itctx_->derivative_operators_->temp_, itctx_->tumor_->c_t_);               CHKERRQ (ierr);
       // mismatch between data and c
-      ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_->dt1()); CHKERRQ (ierr);    // Oc(1) - d1
-      ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);      CHKERRQ (ierr);
-      if (norm < min_norm) { min_norm = norm; idx = i; }
-    }
-    x_ptr[nk] = rho_guess[idx];  // rho
-    if (nr > 1) x_ptr[nk + 1] = 0;  // r2
-    if (nr > 2) x_ptr[nk + 2] = 0;  // r3
-    }
+      //ierr = VecAXPY (itctx_->derivative_operators_->temp_, -1.0, data_->dt1()); CHKERRQ (ierr);    // Oc(1) - d1
+      //ierr = VecNorm (itctx_->derivative_operators_->temp_, NORM_2, &norm);      CHKERRQ (ierr);
+      //if (norm < min_norm) { min_norm = norm; idx = i; }
+    //}
+    //x_ptr[nk] = rho_guess[idx];  // rho
+    //if (nr > 1) x_ptr[nk + 1] = 0;  // r2
+    //if (nr > 2) x_ptr[nk + 2] = 0;  // r3
+   // }
     ss << " initial guess for reaction coefficient: " << x_ptr[nk]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     ierr = VecRestoreArray     (x_in, &x_in_ptr);                                 CHKERRQ (ierr);
@@ -2284,8 +2283,9 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
         s << "   " << std::scientific << std::setprecision(12) << std::setw(18) << x_ptr[2];
       }
 
-
     ierr = VecRestoreArray(x, &x_ptr);                                          CHKERRQ(ierr);
+    // gradient check
+    // ierr = itctx->derivative_operators_->checkGradient (x, itctx->data);
 
     ierr = tuMSGwarn (s.str());                                                 CHKERRQ(ierr);
     s.str ("");
