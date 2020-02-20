@@ -183,7 +183,7 @@ PetscErrorCode TumorSolverInterface::initialize (
     }
     if (n_misc->model_ == 2) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
-        derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc, tumor_);
+        derivative_operators_ = std::make_shared<PdeOperatorsRDOnly> (pde_operators_, n_misc, tumor_);
     }
     if (n_misc->model_ == 3) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
@@ -316,7 +316,7 @@ PetscErrorCode TumorSolverInterface::setParams (
                     derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
                     break;
             case 2: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
-                    derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);
+                    derivative_operators_ = std::make_shared<PdeOperatorsRDOnly> (pde_operators_, n_misc_, tumor_);
                     break;
             case 3: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj> (pde_operators_, n_misc_, tumor_);
@@ -541,8 +541,9 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(
     ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
     inv_solver_->setData (data); if (data_gradeval == nullptr) data_gradeval = data;
     inv_solver_->setDataGradient (data_gradeval);
-    ierr = inv_solver_->solveInverseReacDiff (prec);
-    ierr = VecCopy (inv_solver_->getPrec(), prec);                            CHKERRQ (ierr);
+    ierr = getTumor()->phi_->apply (getTumor()->c_0_, prec);                       CHKERRQ (ierr); // c(0)
+    ierr = inv_solver_->solveInverseReacDiff (prec);                               CHKERRQ (ierr); // === SOLVE ====
+    ierr = VecCopy (inv_solver_->getPrec(), prec);                                 CHKERRQ (ierr); // get solution
   } else {
     ierr = tuMSGwarn ( " WARNING: Attempting to solve for reaction and diffusion, but reaction inversion is nor enabled."); CHKERRQ (ierr);
   }

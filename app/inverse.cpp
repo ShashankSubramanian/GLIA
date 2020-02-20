@@ -1370,13 +1370,13 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
 
     ScalarType *c0_ptr;
 
-    if (n_misc->model_ == 2) {
-        ierr = VecGetArray (c_rec_0, &c0_ptr);                              CHKERRQ (ierr);
-        for (int i = 0; i < n_misc->n_local_; i++) {
-            c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
-        }
-        ierr = VecRestoreArray (c_rec_0, &c0_ptr);                          CHKERRQ (ierr);
-    }
+    // if (n_misc->model_ == 2) {
+    //     ierr = VecGetArray (c_rec_0, &c0_ptr);                              CHKERRQ (ierr);
+    //     for (int i = 0; i < n_misc->n_local_; i++) {
+    //         c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
+    //     }
+    //     ierr = VecRestoreArray (c_rec_0, &c0_ptr);                          CHKERRQ (ierr);
+    // }
 
     #ifdef POSITIVITY
         ierr = enforcePositivity (c_rec_0, n_misc);
@@ -1643,13 +1643,13 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
     }
     writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn"));
 
-    if (n_misc->model_ == 2) {
-        ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
-        for (int i = 0; i < n_misc->n_local_; i++) {
-            c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
-        }
-        ierr = VecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
-    }
+    // if (n_misc->model_ == 2) {
+    //     ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
+    //     for (int i = 0; i < n_misc->n_local_; i++) {
+    //         c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
+    //     }
+    //     ierr = VecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
+    // }
 
     ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);

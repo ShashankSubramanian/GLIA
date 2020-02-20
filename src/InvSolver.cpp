@@ -1759,7 +1759,8 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
     }
   #endif
 
-  ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
+  ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
+  // ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
 
   self_exec_time += MPI_Wtime ();
   accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -1788,6 +1789,10 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
+  ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
+
+  // if DerivativeOperatorsRD are used: use large vector [p, k, r]^T
+  /*
   // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
   ScalarType *x_ptr, *x_full_ptr;
   ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
@@ -1827,6 +1832,8 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
 
   ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
   ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+  if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
+  */
 
   std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
@@ -1838,8 +1845,6 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
   e.addTimings (t);
   e.stop ();
-
-  if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
   PetscFunctionReturn (ierr);
 }
 
@@ -1851,6 +1856,14 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
 
+
+  itctx->optfeedback_->nb_objevals++;
+  itctx->optfeedback_->nb_gradevals++;
+
+  ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
+
+  // if DerivativeOperatorsRD are used: use large vector [p, k, r]^T
+  /*
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
@@ -1858,9 +1871,6 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
       x->lock = 0;
     }
   #endif
-
-  itctx->optfeedback_->nb_objevals++;
-  itctx->optfeedback_->nb_gradevals++;
 
   // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
   ScalarType *x_ptr, *x_full_ptr;
@@ -1901,6 +1911,8 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
 
   ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
   ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+  if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
+  */
 
   std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
@@ -1913,7 +1925,7 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
   e.addTimings (t);
   e.stop ();
 
-  if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
+
   PetscFunctionReturn (ierr);
 }
 

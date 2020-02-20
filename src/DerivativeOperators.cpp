@@ -887,6 +887,250 @@ PetscErrorCode DerivativeOperatorsRD::evaluateConstantHessianApproximation  (Vec
     PetscFunctionReturn (ierr);
 }
 
+
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========          REACTION DIFFUSION ONLY (FD)             ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x, std::shared_ptr<Data> data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_obj_evals++;
+    ScalarType *x_ptr, k1, k2, k3;
+    PetscReal m1 = 0, m0 = 0, reg = 0;
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      x->lock = 0;
+    }
+    #endif
+
+    // update diffusion coefficient based on new k_i
+    if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
+      #ifndef SERIAL
+        TU_assert(false, "Inversion for diffusivity only supported for serial p.");
+      #endif
+      ierr = VecGetArray (x, &x_ptr);                            CHKERRQ (ierr);
+      #ifdef POSITIVITY_DIFF_COEF
+        //Positivity clipping in diffusio coefficient
+        for ( int i=0; i<n_misc_->nk_; i++)
+            x_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : 0;
+      #endif
+      k1 = x_ptr[0];
+      k2 = (n_misc_->nk_ > 1) ? x_ptr[1] : 0;
+      k3 = (n_misc_->nk_ > 2) ? x_ptr[2] : 0;
+      ierr = VecRestoreArray (x, &x_ptr);                        CHKERRQ (ierr);
+      ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
+      // need to update prefactors for diffusion KSP preconditioner, as k changed
+      pde_operators_->diff_solver_->precFactor();
+    }
+    // update reaction coefficient based on new rho
+    ScalarType r1, r2, r3;
+    if (n_misc_->flag_reaction_inv_) {
+      ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
+      r1 = x_ptr[n_misc_->nk_];
+      r2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->nk_ + 1] : 0;
+      r3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->nk_ + 2] : 0;
+      ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
+      ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
+    }
+
+    std::stringstream s;
+    if (n_misc_->verbosity_ >= 3) {
+      if (n_misc_->diffusivity_inversion_ || n_misc_->flag_reaction_inv_) {
+        s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")"; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      }
+      if (n_misc_->flag_reaction_inv_) {
+        s << " Reaction  guess   = (" << r1 << ", " << r2 << ", " << r3 << ")"; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+      }
+    }
+
+    // compute mismatch ||Oc(1) - d1||
+    ierr = pde_operators_->solveState (0);                          CHKERRQ (ierr); // c(1)
+    ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1);            CHKERRQ (ierr); // Oc(1)
+    ierr = VecAXPY (temp_, -1.0, data->dt1());                      CHKERRQ (ierr); // Oc(1) - d1
+    ierr = VecDot (temp_, temp_, &m1);                              CHKERRQ (ierr); // ||.||^2
+
+    // compute mismatch ||Oc(0) - d0||
+    if (n_misc_->two_snapshot_) {
+        ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // Oc(0)
+        ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // Oc(0) - d0
+        ierr = VecDot (temp_, temp_, &m0);                          CHKERRQ (ierr); // ||.||^2
+    }
+
+    // compute regularization
+    // no-op
+
+    // objective function value
+    (*J) = n_misc_->lebesgue_measure_ * 0.5 *(m1 + m0) + reg;
+
+    if (n_misc_->two_snapshot_) {
+        s << "  J(p) = Dc(c1) + Dc(c0) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m0 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    } else {
+        s << "  J(p) = Dc(c1) + S(c0) = "<< std::setprecision(12) << (*J)<<" = " << std::setprecision(12)<< n_misc_->lebesgue_measure_*0.5*m1 <<" + "<< std::setprecision(12) <<reg<<"";  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    }
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      x->lock = lock_state;
+    }
+    #endif
+    PetscFunctionReturn (ierr);
+}
+
+PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::shared_ptr<Data> data){
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    ScalarType *x_ptr;
+    std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
+    n_misc_->statistics_.nb_grad_evals++;
+    Event e ("tumor-eval-grad");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      x->lock = 0;
+    }
+    #endif
+
+    // Finite difference gradient -- forward for now
+    ScalarType h, dx;
+    ScalarType volatile xph;
+    PetscReal J_f, J_b;
+    Vec delta_;
+
+    ierr = VecDuplicate(x, &delta_);                               CHKERRQ (ierr);
+    ierr = evaluateObjective (&J_b, x, data);                      CHKERRQ (ierr);
+    int sz;
+    ScalarType *delta_ptr, *dj_ptr;
+    ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+    std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+    #ifdef SINGLE
+    ScalarType small = 3.45266983e-04F;
+    #else
+    ScalarType small = 3.45266983e-04;
+    #endif
+    for (int i = 0; i < sz; i++) {
+        ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
+        ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
+        ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
+        h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
+        xph = x_ptr[i] + h;
+        dx = xph - x_ptr[i];
+        delta_ptr[i] = xph;
+        ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
+        ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+        dj_ptr[i] = (J_f - J_b) / dx;
+        ierr = VecRestoreArrayRead (x, &x_ptr);                        CHKERRQ (ierr);
+    }
+    ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      x->lock = lock_state;
+    }
+    #endif
+
+    if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
+
+    // timing
+    self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
+    PetscFunctionReturn (ierr);
+}
+
+PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_obj_evals++;
+    n_misc_->statistics_.nb_grad_evals++;
+    std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
+    Event e ("tumor-eval-objandgrad");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    int lock_state;
+    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+    if (lock_state != 0) {
+      x->lock = 0;
+    }
+    #endif
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    ierr = evaluateObjective (J, x, data);                        CHKERRQ(ierr);
+    // Finite difference gradient -- forward for now
+    ScalarType h, dx;
+    ScalarType volatile xph;
+    PetscReal J_f;
+    Vec delta_;
+    ierr = VecDuplicate(x, &delta_);                               CHKERRQ (ierr);
+
+    int sz;
+    ScalarType *delta_ptr, *dj_ptr;
+    ScalarType const *x_ptr;
+    ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
+    ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
+
+    ScalarType scale = 1;
+    std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+    #ifdef SINGLE
+    ScalarType small = 3.45266983e-04F;
+    #else
+    ScalarType small = 3.45266983e-04;
+    #endif
+    ScalarType J_b = (*J);
+
+    for (int i = 0; i < sz; i++) {
+        ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
+        ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
+        ierr = VecGetArrayRead (x, &x_ptr);                            CHKERRQ (ierr);
+        h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
+        xph = x_ptr[i] + h;
+        dx = xph - x_ptr[i];
+        delta_ptr[i] = xph;
+        ierr = VecRestoreArray (delta_, &delta_ptr);                   CHKERRQ (ierr);
+        ierr = evaluateObjective (&J_f, delta_, data);                 CHKERRQ (ierr);
+        dj_ptr[i] = (J_f - J_b) / dx;
+        ierr = VecRestoreArrayRead (x, &x_ptr);                        CHKERRQ (ierr);
+    }
+
+    ierr = VecRestoreArray (dJ, &dj_ptr);                          CHKERRQ (ierr);
+
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+    if (lock_state != 0) {
+      x->lock = lock_state;
+    }
+    #endif
+
+    if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
+
+    // timing
+    self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
+    PetscFunctionReturn (ierr);
+}
+
+
+
+
+
+
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========       POSITIVITY/SIGMOID PARAMETRIZATION          ======== #### */
 /* #### ------------------------------------------------------------------- #### */
