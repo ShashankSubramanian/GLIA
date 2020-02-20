@@ -4127,7 +4127,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     std::string msg;
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 25.0);
+    minstep = std::pow (2.0, 20.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 
