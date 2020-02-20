@@ -68,7 +68,7 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
     ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);    
     ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
-    xrec_ptr[0] = 0.1; xrec_ptr[1] = 0.4; xrec_ptr[2] = 0.08;
+    xrec_ptr[0] = 0.6; xrec_ptr[1] = 0.6; xrec_ptr[2] = 0.05;
     // xrec_ptr[0] = 0.4; xrec_ptr[1] = 0.08;
     ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
 
@@ -883,7 +883,17 @@ PetscErrorCode InvSolver::solveForMassEffect () {
     /* === get solution === */
     Vec p; ierr = TaoGetSolutionVector (tao_, &p);                                CHKERRQ(ierr);
     ierr = VecCopy (p, xrec_);                                                    CHKERRQ(ierr);
+    
+    PetscScalar *x_ptr;
+    ierr = VecGetArray (xrec_, &x_ptr);                                 CHKERRQ (ierr);
+    itctx_->n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
+    itctx_->n_misc_->rho_ = 10 * x_ptr[1];                  // rho
+    itctx_->n_misc_->k_   = 1E-1 * x_ptr[2];                  // kappa
+    ierr = VecRestoreArray (xrec_, &x_ptr);                             CHKERRQ (ierr);
 
+    s << " Forcing factor at final guess = " << itctx_->n_misc_->forcing_factor_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    s << " Reaction at final guess       = " << itctx_->n_misc_->rho_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    s << " Diffusivity at final guess    = " << itctx_->n_misc_->k_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     /* === get termination info === */
     TaoGetConvergedReason (tao_, &reason);
 
@@ -2296,7 +2306,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
         itctx->step_init *= 2;
     }
     itctx->step_init = std::min(itctx->step_init, (ScalarType)1);
-    // itctx->step_init = 1;
+    //itctx->step_init = 1;
 
     ierr = TaoLineSearchSetInitialStepLength (ls, itctx->step_init);            CHKERRQ(ierr);
 

@@ -1401,12 +1401,13 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient (Vec dJ, Vec x, V
     ScalarType const *x_ptr;
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
-    std::array<ScalarType, 3> characteristic_scale = {0.01, 0.01, 0.01};
-    #ifdef SINGLE
-    ScalarType small = 3.45266983e-04F;
-    #else
-    ScalarType small = 3.45266983e-04;
-    #endif
+    std::array<ScalarType, 3> characteristic_scale = {1,1,1};
+//    #ifdef SINGLE
+//    ScalarType small = 3.45266983e-04F;
+//    #else
+//    ScalarType small = 3.45266983e-04;
+//    #endif
+    ScalarType small = 1E-5;
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
@@ -1521,14 +1522,14 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient (Pets
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
 
     ScalarType scale = 1;
-    std::array<ScalarType, 3> characteristic_scale = {0.01, 0.01, 0.01};
-    #ifdef SINGLE
-    ScalarType small = 3.45266983e-04F;
-    #else
-    ScalarType small = 3.45266983e-04;
-    #endif
+    std::array<ScalarType, 3> characteristic_scale = {1,1,1};
+//    #ifdef SINGLE
+//    ScalarType small = 3.45266983e-04F;
+//    #else
+//    ScalarType small = 3.45266983e-04;
+//    #endif
     ScalarType J_b = (*J);
-
+    ScalarType small = 1E-5;
     for (int i = 0; i < sz; i++) {
         ierr = VecCopy (x, delta_);                                    CHKERRQ (ierr);
         ierr = VecGetArray (delta_, &delta_ptr);                       CHKERRQ (ierr);
