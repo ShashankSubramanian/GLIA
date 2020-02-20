@@ -1010,7 +1010,9 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::
     ScalarType h, dx;
     ScalarType volatile xph;
     PetscReal J_f, J_b;
+    Vec delta_;
 
+    ierr = VecDuplicate(x, &delta_);                               CHKERRQ (ierr);
     ierr = evaluateObjective (&J_b, x, data);                      CHKERRQ (ierr);
     int sz;
     ScalarType *delta_ptr, *dj_ptr;
@@ -1042,6 +1044,8 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::
       x->lock = lock_state;
     }
     #endif
+
+    if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
 
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
@@ -1075,6 +1079,8 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscRea
     ScalarType h, dx;
     ScalarType volatile xph;
     PetscReal J_f;
+    Vec delta_;
+    ierr = VecDuplicate(x, &delta_);                               CHKERRQ (ierr);
 
     int sz;
     ScalarType *delta_ptr, *dj_ptr;
@@ -1112,6 +1118,8 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscRea
       x->lock = lock_state;
     }
     #endif
+
+    if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
 
     // timing
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
