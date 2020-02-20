@@ -988,7 +988,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
 PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::shared_ptr<Data> data){
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    ScalarType *x_ptr;
+    const ScalarType *x_ptr;
     std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
     n_misc_->statistics_.nb_grad_evals++;
     Event e ("tumor-eval-grad");
@@ -1126,6 +1126,22 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscRea
     PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode DerivativeOperatorsRDOnly::evaluateHessian (Vec y, Vec x){
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    n_misc_->statistics_.nb_hessian_evals++;
+
+    std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
+    Event e ("tumor-eval-hessian");
+    std::array<double, 7> t = {0};
+    double self_exec_time = -MPI_Wtime ();
+    
+    // gradient descent
+    ierr = VecCopy (x, y);          CHKERRQ (ierr);
+
+    self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
+    PetscFunctionReturn (ierr);
+}
 
 
 

@@ -74,7 +74,7 @@ class DerivativeOperatorsRDOnly : public DerivativeOperators {
 		PetscErrorCode evaluateGradient (Vec dJ, Vec x, std::shared_ptr<Data> data);
 		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, std::shared_ptr<Data> data);
 		PetscErrorCode evaluateHessian (Vec y, Vec x);
-		~DerivativeOperatorsRD () {}
+		~DerivativeOperatorsRDOnly () {}
 };
 
 
