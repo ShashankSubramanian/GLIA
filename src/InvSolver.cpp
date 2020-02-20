@@ -332,6 +332,7 @@ PetscErrorCode InvSolver::prolongateSubspace (Vec x_full, Vec *x_restricted, std
       x_full_ptr[itctx->n_misc_->support_[i]] = x_restricted_ptr[i];
     // correct diffusivity
     if (itctx->n_misc_->diffusivity_inversion_) {
+        itctx->n_misc_->k_ = x_restricted_ptr[np_r];
         x_full_ptr[np_full] = itctx->n_misc_->k_;
         if (nk > 1) x_full_ptr[np_full+1] = itctx->n_misc_->k_ * itctx->n_misc_->k_gm_wm_ratio_;
         if (nk > 2) x_full_ptr[np_full+2] = itctx->n_misc_->k_ * itctx->n_misc_->k_glm_wm_ratio_;
