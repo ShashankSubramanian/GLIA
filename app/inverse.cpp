@@ -664,6 +664,7 @@ int main (int argc, char** argv) {
               ss << " set custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             } else {
               ierr = tumor->obs_->setDefaultFilter (data_t1, 1);
+              ierr = tumor->obs_->setDefaultFilter (data_t0, 0);
               ss << " set default observation mask based on input data and threshold " << tumor->obs_->threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             }
             // apply observer on ground truth, store observed data in d

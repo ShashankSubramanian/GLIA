@@ -115,7 +115,7 @@ def set_params(basedir, args):
 
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
-    res_dir = os.path.join(args.results_directory, 'inv-r0-k0/');
+    res_dir = os.path.join(args.results_directory, 'inv-r-8-k-1E-2-lmvm-3-obj/');
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 
@@ -161,8 +161,8 @@ def set_params(basedir, args):
     t_params['ls_max_func_evals']     = 10;
     t_params['diffusivity_inversion'] = 1;
     t_params['data_thres']            = 1E-4;
-    t_params['rho_inv']               = 0;
-    t_params['k_inv']                 = 0;
+    t_params['rho_inv']               = 8;
+    t_params['k_inv']                 = 1E-2;
     t_params['gist_maxit']            = 2;
     t_params['linesearchtype']        = 'armijo';
     t_params['newton_maxit']          = 30;
