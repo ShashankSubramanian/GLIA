@@ -1341,9 +1341,9 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
 
     std::stringstream s;
     ierr = VecGetArray (x, &x_ptr);                                 CHKERRQ (ierr);
-    n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
-    n_misc_->rho_ = 10 * x_ptr[1];                  // rho
-    n_misc_->k_   = 1E-1 * x_ptr[2];                  // kappa
+    n_misc_->forcing_factor_ = 1E4 * x_ptr[0]; // re-scaling parameter scales
+    n_misc_->rho_ = 1 * x_ptr[1];                  // rho
+    n_misc_->k_   = 1E-2 * x_ptr[2];                  // kappa
     ierr = VecRestoreArray (x, &x_ptr);                             CHKERRQ (ierr);
 
     if (!disable_verbose_) {

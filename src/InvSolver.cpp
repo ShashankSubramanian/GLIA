@@ -68,7 +68,7 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
     ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);    
     ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
-    xrec_ptr[0] = 0.6; xrec_ptr[1] = 0.6; xrec_ptr[2] = 0.05;
+    xrec_ptr[0] = 6; xrec_ptr[1] = 6; xrec_ptr[2] = 0.5;
     // xrec_ptr[0] = 0.4; xrec_ptr[1] = 0.08;
     ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
 
@@ -895,9 +895,9 @@ PetscErrorCode InvSolver::solveForMassEffect () {
     
     PetscScalar *x_ptr;
     ierr = VecGetArray (xrec_, &x_ptr);                                 CHKERRQ (ierr);
-    itctx_->n_misc_->forcing_factor_ = 1E5 * x_ptr[0]; // re-scaling parameter scales
-    itctx_->n_misc_->rho_ = 10 * x_ptr[1];                  // rho
-    itctx_->n_misc_->k_   = 1E-1 * x_ptr[2];                  // kappa
+    itctx_->n_misc_->forcing_factor_ = 1E4 * x_ptr[0]; // re-scaling parameter scales
+    itctx_->n_misc_->rho_ = 1 * x_ptr[1];                  // rho
+    itctx_->n_misc_->k_   = 1E-2 * x_ptr[2];                  // kappa
     ierr = VecRestoreArray (xrec_, &x_ptr);                             CHKERRQ (ierr);
 
     s << " Forcing factor at final guess = " << itctx_->n_misc_->forcing_factor_; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
@@ -2324,6 +2324,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
         itctx->optfeedback_->gradnorm0 = gnorm;
+        itctx->optfeedback_->j0 = J;
         itctx->update_reference_gradient = false;
         std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << itctx->optfeedback_->gradnorm0;
         ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
@@ -2972,6 +2973,7 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
         ctx->optfeedback_->gradnorm0 = gnorm;
+        ctx->optfeedback_->j0 = jx;
         ctx->update_reference_gradient = false;
         std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->optfeedback_->gradnorm0;
         ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);

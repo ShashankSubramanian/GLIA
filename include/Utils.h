@@ -78,7 +78,7 @@ struct OptimizerSettings {
     , ftol (1E-3)
     , ls_minstep (1E-9)
     , gtolbound (0.8)
-    , grtol (1E-3)
+    , grtol (1E-5)
     , gatol (1E-5)
     , newton_maxit (30)
     , newton_minit (1)
@@ -353,8 +353,8 @@ class NMisc {
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                             // Upper bound on kappa
-        , gamma_ub_ (1.3)                       // Upper bound on gamma
-        , rho_ub_ (1.4)                         // Upper bound on rho
+        , gamma_ub_ (13)                       // Upper bound on gamma
+        , rho_ub_ (14)                         // Upper bound on rho
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
