@@ -115,14 +115,14 @@ def set_params(basedir, args):
 
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
-        ###########
+    ###########
     rho_inv = 0;
     k_inv   = 0;
     nt_inv  = 40;
     dt_inv  = 0.025;
     k_lb    = 1E-3;
     k_ub    = 10;
-    rho_lb  = 3;
+    rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
     b_name  = 'inverse_scale'
@@ -131,14 +131,22 @@ def set_params(basedir, args):
     solver  = 'QN'
     ###########
     
-    #d1      = 'd_nc/data_t1_64_256.nc'
-    #d0      = 'd_nc/data_t0_64_256.nc'
-    d1      = 'd_nc/data_t1_noise-02-515.nc'
-    d0      = 'd_nc/data_t0_noise-02-61.nc'
+    d1      = 'd_nc/data_t1_64_256.nc'
+    d0      = 'd_nc/data_t0_64_256.nc'
+    
+    # test02
+    d1      = 'd_nc/data_t1_noise-01-118.nc'
+    d0      = 'd_nc/data_t0_noise-01-45.nc'
+    d1      = 'd_nc/data_t1_noise-02-468.nc'
+    d0      = 'd_nc/data_t0_noise-02-60.nc'
+    
+    # test01
     #d1      = 'd_nc/data_t1_noise-01-130.nc'
     #d0      = 'd_nc/data_t0_noise-01-130.nc'
+    #d1      = 'd_nc/data_t1_noise-02-515.nc'
+    #d0      = 'd_nc/data_t0_noise-02-61.nc'
 
-    res_dir = os.path.join(args.results_directory, 'inv-noise-sp20-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds-scaled/');
+    res_dir = os.path.join(args.results_directory, 'inv-noise-sp20-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds-scale/');
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 

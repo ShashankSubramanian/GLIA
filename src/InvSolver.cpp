@@ -1835,7 +1835,7 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
     }
   #endif
 
-  if (itctx->n_misc->model_ == 2) {
+  if (itctx->n_misc_->model_ == 2) {
       ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
   } else {
       ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
@@ -1869,7 +1869,7 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
-  if (itctx->n_misc->model_ == 2) {
+  if (itctx->n_misc_->model_ == 2) {
       ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
 
 
@@ -1942,7 +1942,7 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
-  if (itctx->n_misc->model_ == 2) {
+  if (itctx->n_misc_->model_ == 2) {
       ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
 
   // if DerivativeOperatorsRD are used: use large vector [p, k, r]^T
