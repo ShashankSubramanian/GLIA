@@ -480,13 +480,19 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = VecDuplicate (x_in, &xrec_);                                           CHKERRQ(ierr);
     ierr = VecSet       (xrec_, 0.0);                                             CHKERRQ(ierr);
     ierr = TaoCreate    (PETSC_COMM_SELF, &tao_);                                 CHKERRQ (ierr);
-    ierr = TaoSetType   (tao_, "blmvm");                                          CHKERRQ (ierr);
+    if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
+        ierr = TaoSetType (tao_, "blmvm");                                        CHKERRQ (ierr);
+    } else {
+        ierr = TaoSetType (tao_, "bnls");                                         CHKERRQ(ierr);  // set TAO solver type
+        ierr = MatCreateShell (PETSC_COMM_SELF, x_sz, x_sz, x_sz, x_sz, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
+        ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);                CHKERRQ(ierr);
+        ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                        CHKERRQ(ierr);
+        ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get());          CHKERRQ(ierr);
+    } 
     ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &xrec_rd_); /* inv rho and k */   CHKERRQ (ierr);
     ierr = setupVec     (xrec_rd_, SEQ);                                          CHKERRQ (ierr);
     ierr = VecSet       (xrec_rd_, 0.);                                           CHKERRQ (ierr);
-    ierr = MatCreateShell (PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void*) itctx_.get(), &H_); CHKERRQ(ierr);
-
-    // initial guess kappa
+        // initial guess kappa
     ierr = VecGetArray (x_in, &x_in_ptr);                                         CHKERRQ (ierr);
     ierr = VecGetArray (xrec_rd_, &x_ptr);                                        CHKERRQ (ierr);
     x_ptr[0] = (nk > 0) ? x_in_ptr[itctx_->n_misc_->np_] : 0;   // k1
@@ -572,17 +578,19 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     // lower and upper bounds
     upper_bound_kappa = itctx_->n_misc_->k_ub_;
     lower_bound_kappa = itctx_->n_misc_->k_lb_;
-    ierr = VecDuplicate (xrec_rd_, &lower_bound);                                CHKERRQ (ierr);
+    ierr = VecDuplicate (xrec_rd_, &lower_bound);                                 CHKERRQ (ierr);
     ierr = VecSet       (lower_bound, 0.);                                        CHKERRQ (ierr);
-    ierr = VecDuplicate (xrec_rd_, &upper_bound);                                CHKERRQ (ierr);
+    ierr = VecDuplicate (xrec_rd_, &upper_bound);                                 CHKERRQ (ierr);
     ierr = VecSet       (upper_bound, PETSC_INFINITY);                            CHKERRQ (ierr);
     ierr = VecGetArray  (upper_bound, &ub_ptr);                                   CHKERRQ (ierr);
     ub_ptr[0] = upper_bound_kappa;
+    ub_ptr[nk] = 15;
     if (nk > 1) ub_ptr[1] = upper_bound_kappa;
     if (nk > 2) ub_ptr[2] = upper_bound_kappa;
     ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
     ierr = VecGetArray     (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
     lb_ptr[0] = lower_bound_kappa;
+    lb_ptr[nk] = 4;
     if (nk > 1) lb_ptr[1] = lower_bound_kappa;
     if (nk > 2) lb_ptr[2] = lower_bound_kappa;
     ierr = VecRestoreArray (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
@@ -628,6 +636,65 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     itctx_->data_gradeval              = data_gradeval_;
     itctx_->n_misc_->statistics_.reset();
     ss << " tumor regularization = "<< itctx_->n_misc_->beta_ << " type: " << itctx_->n_misc_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+
+
+   
+  // /* 
+      std::stringstream sstm;
+      sstm << itctx_->n_misc_->writepath_ .str().c_str() << "objlist.dat";
+      std::ofstream ofile;
+      if (procid == 0) ofile.open (sstm.str().c_str());
+
+      int rsz_1 = 21, rsz_2 = 24;
+      std::array<double, 21> rho_arr;
+      std::array<double, 24> k_arr;
+       
+      ScalarType *delta_ptr;
+      Vec delta_;
+      ierr = VecDuplicate(xrec_rd_, &delta_);                               CHKERRQ (ierr);
+      int cc = 0;
+      for (double i = 4; i <= 15; i += .5) {rho_arr[cc] = i; cc++;}
+      cc = 0;
+      for (int i = -3; i <= -1; i++) {
+          for (int m = 1; m < 10; m++ ) {
+              if (i==-1 and m > 6) break;
+              k_arr[cc] = m * std::pow(10,i);
+              cc++;
+          }
+      }
+      ScalarType obj_norm = 0.;
+      double rt, kt;
+      for (int i = 0; i < rsz_1; i++) {
+          rt = rho_arr[i];
+          for (int j = 0; j < rsz_2; j++) {
+              ss << "computing k = "<<kt<<", rho = "<< rt; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+              kt = k_arr[j];
+              ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (rt, 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
+              ierr = itctx_->tumor_->k_->updateIsotropicCoefficients (kt, 0., 0., itctx_->tumor_->mat_prop_, itctx_->n_misc_);
+
+              ierr = VecGetArray(delta_, &delta_ptr);                               CHKERRQ (ierr);
+              delta_ptr[0] = kt;   // k1
+              if (nk > 1) delta_ptr[1] = 0;  // k2
+              if (nk > 2) delta_ptr[2] = 0;  // k3
+              delta_ptr[nk] = rt;                      // r1
+              if (nr > 1) delta_ptr[nk + 1] = 0;  // r2
+              if (nr > 2) delta_ptr[nk + 2] = 0;  // r3
+              ierr = VecRestoreArray(delta_, &delta_ptr);                               CHKERRQ (ierr);
+
+              evaluateObjectiveReacDiff (tao_, delta_, &obj_norm, (void*) ctx);
+              //ierr = itctx_->derivative_operators_->evaluateObjective (&obj_norm, delta_, itctx_-> data);    // solve state with guess reaction and inverted diffusivity
+              if (procid == 0) {
+                  ofile << rt << " " << kt << " " << obj_norm << std::endl;
+              }
+          }
+      }
+
+      if (delta_ != nullptr) {ierr= VecDestroy(&delta_); CHKERRQ(ierr);}
+      if (procid == 0) ofile.close();
+
+        //*/
+
 
     double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
     // ====== solve ======

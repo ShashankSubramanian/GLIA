@@ -24,6 +24,7 @@ def getTumorRunCmd(params):
 
     ### TUMOR PARAMETERS SET BEGIN
 
+    binary_name = 'inverse'
     ### No of discretization points (Assumed uniform)
     N = 256
     ### Path to all output results (Directories are created automatically)
@@ -165,6 +166,8 @@ def getTumorRunCmd(params):
     ## upper bound on kappa
     upper_bound_kappa = 1E-1
 
+    lower_bound_rho = 3
+    upper_bound_rho = 15
     ### TUMOR PARAMETERS SET END
 
     ############################################################################################################################
@@ -174,6 +177,12 @@ def getTumorRunCmd(params):
 
 
     ### Error checking and run script string generation
+     # ---
+    if 'solvertype' in params:
+        solvertype = params['solvertype']
+    else:
+        print ('Default solvertype = {} used'.format(solvertype))
+
     # ---
     error_flag = 0
     if 'N' in params:
@@ -444,6 +453,19 @@ def getTumorRunCmd(params):
         solve_rho_k = params['solve_rho_k']
         print('solving for rho and k only (c(0) must be set via p and Gaussian centers)')
 
+    if "binary_name" in params:
+        binary_name = params['binary_name'];
+
+    if "lower_bound_rho" in params:
+        lower_bound_rho = params['lower_bound_rho']
+
+    if "upper_bound_rho" in params:
+        upper_bound_rho = params['upper_bound_rho']
+
+    if "nt_inv" in params:
+        nt_inv = params['nt_inv']
+    if "dt_inv" in params: 
+        dt_inv = params['dt_inv']
 
     ibman = ""
     if 'ibrun_man' in params and params['ibrun_man']:
@@ -460,7 +482,7 @@ def getTumorRunCmd(params):
         cmd = cmd + "mpirun --prefix $OPENMPI -np $NSLOTS $MACHINES --mca plm_base_verbose 1 --mca orte_forward_job_control 1 ";
     else:
         cmd = cmd + "mpirun ";
-    run_str = cmd + tumor_dir + "/build/last/inverse_obj -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
+    run_str = cmd + tumor_dir + "/build/last/"+str(binary_name)+"  -nx " + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     " -multilevel " + str(multilevel) + \
     " -inject_solution " + str(inject_solution) + \
     " -pre_reacdiff_solve " + str(pre_reacdiff_solve) + \

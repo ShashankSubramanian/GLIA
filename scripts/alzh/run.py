@@ -115,11 +115,30 @@ def set_params(basedir, args):
 
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
-    res_dir = os.path.join(args.results_directory, 'inv-r-8-k-1E-2-lmvm-3-obj/');
+        ###########
+    rho_inv = 8;
+    k_inv   = 1E-2;
+    nt_inv  = 40;
+    dt_inv  = 0.025;
+    k_lb    = 1E-4;
+    k_ub    = 1;
+    rho_lb  = 3;
+    rho_ub  = 15;
+    model   = 2;
+    b_name  = 'inverse'
+    d1      = 'd_nc/dataBeforeObservation.nc'
+    d0      = 'd_nc/c0True.nc'
+    solver  = 'QN'
+    ###########
+    
+    d1      = 'd_nc/data_t1_noise-02-515.nc'
+    d0      = 'd_nc/data_t0_noise-02-61.nc'
+
+    res_dir = os.path.join(args.results_directory, 'inv-noise-sp20-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds/');
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 
-   
+
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
     opt['output_dir']  = res_dir;
@@ -139,6 +158,7 @@ def set_params(basedir, args):
         pythoncmd = "python3 ";
     
     t_params = {}
+    t_params['binary_name']           = b_name;
     t_params['code_path']             = os.path.join(basedir, '..'); 
     t_params['compute_sys']           = args.compute_cluster;
     t_params['num_nodes']             = opt['num_nodes'];
@@ -148,38 +168,43 @@ def set_params(basedir, args):
     t_params['ibrun_man']             = False;
     t_params['results_path']          = res_dir;
     t_params['N']                     = 256;
+    t_params['solvertype']            = solver;
     t_params['grad_tol']              = 1E-4;
     t_params['sparsity_lvl']          = 5;
     t_params['multilevel']            = 0;
-    t_params['model']                 = 1;
+    t_params['model']                 = 2;
     t_params['solve_rho_k']           = 1;
     t_params['inject_solution']       = 0;
     t_params['two_snapshot']          = 1;
     t_params['low_res_data']          = 0;
     t_params['pre_reacdiff_solve']    = 0;
     t_params['create_synthetic']      = 0;
-    t_params['ls_max_func_evals']     = 10;
+    t_params['ls_max_func_evals']     = 20;
     t_params['diffusivity_inversion'] = 1;
     t_params['data_thres']            = 1E-4;
-    t_params['rho_inv']               = 8;
-    t_params['k_inv']                 = 1E-2;
+    t_params['rho_inv']               = rho_inv;
+    t_params['k_inv']                 = k_inv;
+    t_params['nt_inv']                = nt_inv;
+    t_params['dt_inv']                = dt_inv;
     t_params['gist_maxit']            = 2;
     t_params['linesearchtype']        = 'armijo';
-    t_params['newton_maxit']          = 30;
+    t_params['newton_maxit']          = 50;
     t_params['gvf']                   = 0.9;
     t_params['beta']                  = 1E-4;
-    t_params['lower_bound_kappa']     = 1E-4;
-    t_params['upper_bound_kappa']     = 0.5;
+    t_params['lower_bound_kappa']     = k_lb;
+    t_params['upper_bound_kappa']     = k_ub;
+    t_params['lower_bound_rho']       = rho_lb;
+    t_params['upper_bound_rho']       = rho_ub;
     t_params['dd_fac']                = 1;
     t_params['predict_flag']          = 1;
     t_params['csf_path']              = os.path.join(inp_dir, 'atlas_seg_csf.nc');
     t_params['gm_path']               = os.path.join(inp_dir, 'atlas_seg_gm.nc');
     t_params['wm_path']               = os.path.join(inp_dir, 'atlas_seg_wm.nc');
-    t_params['data_path_t1']          = os.path.join(dat_dir, 'dataBeforeObservation.nc');
-    t_params['data_path_t0']          = os.path.join(dat_dir, 'c0True.nc');
+    t_params['data_path_t1']          = os.path.join(dat_dir, d1);
+    t_params['data_path_t0']          = os.path.join(dat_dir, d0);
     t_params['forward_flag']          = 0
     t_params['smooth_f']              = 1.5
-    t_params['model']                 = 1
+    t_params['model']                 = model;
     t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
     t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
  
