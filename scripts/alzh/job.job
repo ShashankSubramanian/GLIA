@@ -1,0 +1,8 @@
+#!/bin/bash
+
+CLAIRE_BDIR=/work/04678/scheufks/frontera/code/tumor-tools/3rdparty/claire/bin
+DATA_DIR=/scratch1/04678/scheufks/alzh/syn_test/test02/data/
+OUTPUT_DIR=/scratch1/04678/scheufks/alzh/syn_test/test02/reg/
+
+ibrun $CLAIRE_BDIR/claire -x $OUTPUT_DIR/ -mtc 3 $DATA_DIR/patient_vt.nii.gz $DATA_DIR/patient_gm.nii.gz $DATA_DIR/patient_wm_csf.nii.gz -mrc 3 $DATA_DIR/atlas_vt.nii.gz $DATA_DIR/atlas_gm.nii.gz $DATA_DIR/atlas_wm_csf.nii.gz -objwts 0.6,0.2,0.2 -disablerescaling -disablesmoothing -nx 256 -regnorm h1s-div -maxit 25 -krylovmaxit 50 -beta-div 1.000000e-04 -opttol 1.000000e-02 -train reduce -jbound 0.5 -format nifti -velocity -deffield -residual -defmap -detdefgrad -verbosity 2 > $OUTPUT_DIR/solver_log.txt
+
