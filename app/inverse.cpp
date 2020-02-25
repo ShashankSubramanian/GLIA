@@ -1081,9 +1081,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     //near
     if (n_misc->testcase_ == BRAINNEARMF) {
-        cm[0] = 2 * M_PI / 128 * 56;//82  //Z
-        cm[1] = 2 * M_PI / 128 * 68;//64  //Y
-        cm[2] = 2 * M_PI / 128 * 72;//52  //X
+        cm[0] = 2 * M_PI / 256 * 102;//82  //Z
+        cm[1] = 2 * M_PI / 256 * 134;//64  //Y
+        cm[2] = 2 * M_PI / 256 * 162;//52  //X
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
@@ -1093,14 +1093,15 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     // far
     if (n_misc->testcase_ == BRAINFARMF) {
-        cm[0] = 2 * M_PI / 128 * 60;//82  //Z
-        cm[1] = 2 * M_PI / 128 * 44;//64  //Y
-        cm[2] = 2 * M_PI / 128 * 76;//52  //X
+        cm[0] = 2 * M_PI / 256 * 112;//82  //Z
+        cm[1] = 2 * M_PI / 256 * 128;//64  //Y
+        cm[2] = 2 * M_PI / 256 * 94;//52  //X
+
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
         n_misc->user_cms_.push_back (cm[2]);
-        n_misc->user_cms_.push_back (1.);
+        n_misc->user_cms_.push_back (1);
     }
     std::shared_ptr<Tumor> tumor = solver_interface->getTumor ();
     ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
@@ -1117,7 +1118,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     ierr = VecDuplicate (c_0, &c_temp);                                     CHKERRQ (ierr);
     ierr = VecSet (c_temp, 0.);                                             CHKERRQ (ierr);
 
-    ScalarType scaling = 1.;
+    ScalarType scaling = 0.5;
     // Second tumor location
     // near
     if (n_misc->testcase_ == BRAINNEARMF) {
@@ -1132,9 +1133,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     }
     // far
     if (n_misc->testcase_ == BRAINFARMF) {
-        cm[0] = 2 * M_PI / 128 * 72;//82
-        cm[1] = 2 * M_PI / 128 * 80;//64
-        cm[2] = 2 * M_PI / 128 * 76;//52
+        cm[0] = 2 * M_PI / 256 * 176;//82  //Z
+        cm[1] = 2 * M_PI / 256 * 94;//64  //Y
+        cm[2] = 2 * M_PI / 256 * 118;//52  //X
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);

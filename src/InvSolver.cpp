@@ -3092,7 +3092,7 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
         if (gnorm < gttol*g0norm) {
           stop[4] = true;
       }
-        ss << "  " << stop[0] << "    ||g|| = " << std::setw(18)
+        ss << "  " << stop[4] << "    ||g|| = " << std::setw(18)
          << std::right << std::scientific << gnorm << "    <    "
          << std::left << std::setw(18) << gttol*g0norm << " = " << "tol";
       ctx->convergence_message.push_back(ss.str());
