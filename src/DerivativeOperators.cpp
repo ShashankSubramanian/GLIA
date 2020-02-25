@@ -903,6 +903,9 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+    ScalarType scale_rho = 1;
+    ScalarType scale_kap = 1E-1;
+
 
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     int lock_state;
@@ -923,9 +926,9 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
         for ( int i=0; i<n_misc_->nk_; i++)
             x_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : 0;
       #endif
-      k1 = x_ptr[0];
-      k2 = (n_misc_->nk_ > 1) ? x_ptr[1] : 0;
-      k3 = (n_misc_->nk_ > 2) ? x_ptr[2] : 0;
+      k1 = scale_kap * x_ptr[0];
+      k2 = (n_misc_->nk_ > 1) ? scale_kap * x_ptr[1] : 0;
+      k3 = (n_misc_->nk_ > 2) ? scale_kap * x_ptr[2] : 0;
       ierr = VecRestoreArray (x, &x_ptr);                        CHKERRQ (ierr);
       ierr = tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, tumor_->mat_prop_, n_misc_);    CHKERRQ(ierr);
       // need to update prefactors for diffusion KSP preconditioner, as k changed
@@ -935,9 +938,9 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
     ScalarType r1, r2, r3;
     if (n_misc_->flag_reaction_inv_) {
       ierr = VecGetArray(x, &x_ptr);                                        CHKERRQ(ierr);
-      r1 = x_ptr[n_misc_->nk_];
-      r2 = (n_misc_->nr_ > 1) ? x_ptr[n_misc_->nk_ + 1] : 0;
-      r3 = (n_misc_->nr_ > 2) ? x_ptr[n_misc_->nk_ + 2] : 0;
+      r1 = scale_rho * x_ptr[n_misc_->nk_];
+      r2 = (n_misc_->nr_ > 1) ? scale_rho * x_ptr[n_misc_->nk_ + 1] : 0;
+      r3 = (n_misc_->nr_ > 2) ? scale_rho * x_ptr[n_misc_->nk_ + 2] : 0;
       ierr = tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, tumor_->mat_prop_, n_misc_);
       ierr = VecRestoreArray(x, &x_ptr);                                    CHKERRQ(ierr);
     }
@@ -1135,7 +1138,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateHessian (Vec y, Vec x){
     Event e ("tumor-eval-hessian");
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
-    
+
     // gradient descent
     ierr = VecCopy (x, y);          CHKERRQ (ierr);
 
