@@ -641,7 +641,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
 
 
    
-  // /* 
+   /* 
       std::stringstream sstm;
       sstm << itctx_->n_misc_->writepath_ .str().c_str() << "objlist.dat";
       std::ofstream ofile;
@@ -694,7 +694,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
       if (delta_ != nullptr) {ierr= VecDestroy(&delta_); CHKERRQ(ierr);}
       if (procid == 0) ofile.close();
 
-        //*/
+        */
 
 
     double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;

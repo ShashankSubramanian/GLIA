@@ -116,25 +116,29 @@ def set_params(basedir, args):
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
         ###########
-    rho_inv = 8;
-    k_inv   = 1E-2;
+    rho_inv = 0;
+    k_inv   = 0;
     nt_inv  = 40;
     dt_inv  = 0.025;
-    k_lb    = 1E-4;
-    k_ub    = 1;
+    k_lb    = 1E-3;
+    k_ub    = 10;
     rho_lb  = 3;
     rho_ub  = 15;
     model   = 2;
-    b_name  = 'inverse'
+    b_name  = 'inverse_scale'
     d1      = 'd_nc/dataBeforeObservation.nc'
     d0      = 'd_nc/c0True.nc'
     solver  = 'QN'
     ###########
     
+    #d1      = 'd_nc/data_t1_64_256.nc'
+    #d0      = 'd_nc/data_t0_64_256.nc'
     d1      = 'd_nc/data_t1_noise-02-515.nc'
     d0      = 'd_nc/data_t0_noise-02-61.nc'
+    #d1      = 'd_nc/data_t1_noise-01-130.nc'
+    #d0      = 'd_nc/data_t0_noise-01-130.nc'
 
-    res_dir = os.path.join(args.results_directory, 'inv-noise-sp20-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds/');
+    res_dir = os.path.join(args.results_directory, 'inv-noise-sp20-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds-scaled/');
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 

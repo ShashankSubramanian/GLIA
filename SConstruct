@@ -270,7 +270,7 @@ else:
     source = [sourcesPGLISTR, './app/forward.cpp']
     )
     bininv = env.Program (
-        target = buildpath + '/inverse_obj',
+        target = buildpath + '/inverse_scale',
         source = [sourcesPGLISTR, './app/inverse.cpp']
     ) 
     env.Alias("bin", bininv)
