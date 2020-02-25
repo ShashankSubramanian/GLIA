@@ -489,7 +489,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
         ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);                CHKERRQ(ierr);
         ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                        CHKERRQ(ierr);
         ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get());          CHKERRQ(ierr);
-    } 
+    }
     ierr = VecCreateSeq (PETSC_COMM_SELF, x_sz, &xrec_rd_); /* inv rho and k */   CHKERRQ (ierr);
     ierr = setupVec     (xrec_rd_, SEQ);                                          CHKERRQ (ierr);
     ierr = VecSet       (xrec_rd_, 0.);                                           CHKERRQ (ierr);
@@ -640,8 +640,8 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
 
 
 
-   
-   /* 
+
+   /*
       std::stringstream sstm;
       sstm << itctx_->n_misc_->writepath_ .str().c_str() << "objlist.dat";
       std::ofstream ofile;
@@ -650,7 +650,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
       int rsz_1 = 21, rsz_2 = 24;
       std::array<double, 21> rho_arr;
       std::array<double, 24> k_arr;
-       
+
       ScalarType *delta_ptr;
       Vec delta_;
       ierr = VecDuplicate(xrec_rd_, &delta_);                               CHKERRQ (ierr);
@@ -1835,8 +1835,12 @@ PetscErrorCode evaluateObjectiveReacDiff (Tao tao, Vec x, PetscReal *J, void *pt
     }
   #endif
 
-  ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
-  // ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
+  if (itctx->n_misc->model_ == 2) {
+      ierr = itctx->derivative_operators_->evaluateObjective (J, x, itctx->data);
+  } else {
+      ierr = itctx->derivative_operators_->evaluateObjective (J, itctx->x_old, itctx->data);
+  }
+
 
   self_exec_time += MPI_Wtime ();
   accumulateTimers (itctx->n_misc_->timers_, t, self_exec_time);
@@ -1865,51 +1869,53 @@ PetscErrorCode evaluateGradientReacDiff (Tao tao, Vec x, Vec dJ, void *ptr){
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
-  ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
+  if (itctx->n_misc->model_ == 2) {
+      ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data_gradeval);
+
 
   // if DerivativeOperatorsRD are used: use large vector [p, k, r]^T
-  /*
-  // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
-  ScalarType *x_ptr, *x_full_ptr;
-  ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
-  ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+  } else {
+      // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
+      ScalarType *x_ptr, *x_full_ptr;
+      ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
+      ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
-  x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
-  if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
-  if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
-  x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
-  if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
-  if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
+      x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
+      if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
+      if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
+      x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
+      if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
+      if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
 
-  ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
-  ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+      ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
+      ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
-  Vec dJ_full;
-  ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
+      Vec dJ_full;
+      ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
 
-  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
-    if (lock_state != 0) {
-      x->lock = lock_state;
-    }
-  #endif
+      #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+        if (lock_state != 0) {
+          x->lock = lock_state;
+        }
+      #endif
 
-  ierr = itctx->derivative_operators_->evaluateGradient (dJ_full, itctx->x_old, itctx->data_gradeval);
+      ierr = itctx->derivative_operators_->evaluateGradient (dJ_full, itctx->x_old, itctx->data_gradeval);
 
-  ScalarType *dj_ptr, *dj_full_ptr;
-  ierr = VecGetArray (dJ, &dj_ptr);             CHKERRQ (ierr);
-  ierr = VecGetArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+      ScalarType *dj_ptr, *dj_full_ptr;
+      ierr = VecGetArray (dJ, &dj_ptr);             CHKERRQ (ierr);
+      ierr = VecGetArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
 
-  dj_ptr[0] = dj_full_ptr[itctx->n_misc_->np_];
-  if (itctx->n_misc_->nk_ > 1) dj_ptr[1] = dj_full_ptr[itctx->n_misc_->np_ + 1];  // k2
-  if (itctx->n_misc_->nk_ > 2) dj_ptr[2] = dj_full_ptr[itctx->n_misc_->np_ + 2];  // k3
-  dj_ptr[itctx->n_misc_->nk_] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_];  // rho
-  if (itctx->n_misc_->nr_ > 1) dj_ptr[itctx->n_misc_->nk_ + 1] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1];  // r2
-  if (itctx->n_misc_->nr_ > 2) dj_ptr[itctx->n_misc_->nk_ + 2] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2];  // r2
+      dj_ptr[0] = dj_full_ptr[itctx->n_misc_->np_];
+      if (itctx->n_misc_->nk_ > 1) dj_ptr[1] = dj_full_ptr[itctx->n_misc_->np_ + 1];  // k2
+      if (itctx->n_misc_->nk_ > 2) dj_ptr[2] = dj_full_ptr[itctx->n_misc_->np_ + 2];  // k3
+      dj_ptr[itctx->n_misc_->nk_] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_];  // rho
+      if (itctx->n_misc_->nr_ > 1) dj_ptr[itctx->n_misc_->nk_ + 1] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1];  // r2
+      if (itctx->n_misc_->nr_ > 2) dj_ptr[itctx->n_misc_->nk_ + 2] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2];  // r2
 
-  ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
-  ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
-  if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
-  */
+      ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
+      ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+      if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
+  }
 
   std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
@@ -1936,59 +1942,61 @@ PetscErrorCode evaluateObjectiveAndGradientReacDiff (Tao tao, Vec x, PetscReal *
   itctx->optfeedback_->nb_objevals++;
   itctx->optfeedback_->nb_gradevals++;
 
-  ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
+  if (itctx->n_misc->model_ == 2) {
+      ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data_gradeval);
 
   // if DerivativeOperatorsRD are used: use large vector [p, k, r]^T
-  /*
-  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
-    int lock_state;
-    ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
-    if (lock_state != 0) {
-      x->lock = 0;
-    }
-  #endif
+  } else {
 
-  // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
-  ScalarType *x_ptr, *x_full_ptr;
-  ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
-  ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+      #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+        int lock_state;
+        ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
+        if (lock_state != 0) {
+          x->lock = 0;
+        }
+      #endif
 
-  x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
-  if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
-  if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
-  x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
-  if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
-  if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
+      // set the last 2-3 entries to the parameters obtained from tao and pass to derivativeoperators
+      ScalarType *x_ptr, *x_full_ptr;
+      ierr = VecGetArray (x, &x_ptr);       CHKERRQ (ierr);
+      ierr = VecGetArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
-  ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
-  ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
+      x_full_ptr[itctx->n_misc_->np_] = x_ptr[0];   // k1
+      if (itctx->n_misc_->nk_ > 1) x_full_ptr[itctx->n_misc_->np_ + 1] = x_ptr[1];  // k2
+      if (itctx->n_misc_->nk_ > 2) x_full_ptr[itctx->n_misc_->np_ + 2] = x_ptr[2];  // k3
+      x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_] = x_ptr[itctx->n_misc_->nk_];  // rho
+      if (itctx->n_misc_->nr_ > 1) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1] = x_ptr[itctx->n_misc_->nk_ + 1];  // r2
+      if (itctx->n_misc_->nr_ > 2) x_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2] = x_ptr[itctx->n_misc_->nk_ + 2];  // r2
 
-  Vec dJ_full;
-  ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
+      ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
+      ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
-  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
-    if (lock_state != 0) {
-      x->lock = lock_state;
-    }
-  #endif
+      Vec dJ_full;
+      ierr = VecDuplicate (itctx->x_old, &dJ_full);         CHKERRQ (ierr);
 
-  ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ_full, itctx->x_old, itctx->data_gradeval);
+      #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
+        if (lock_state != 0) {
+          x->lock = lock_state;
+        }
+      #endif
 
-  ScalarType *dj_ptr, *dj_full_ptr;
-  ierr = VecGetArray (dJ, &dj_ptr);             CHKERRQ (ierr);
-  ierr = VecGetArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+      ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ_full, itctx->x_old, itctx->data_gradeval);
 
-  dj_ptr[0] = dj_full_ptr[itctx->n_misc_->np_];
-  if (itctx->n_misc_->nk_ > 1) dj_ptr[1] = dj_full_ptr[itctx->n_misc_->np_ + 1];  // k2
-  if (itctx->n_misc_->nk_ > 2) dj_ptr[2] = dj_full_ptr[itctx->n_misc_->np_ + 2];  // k3
-  dj_ptr[itctx->n_misc_->nk_] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_];  // rho
-  if (itctx->n_misc_->nr_ > 1) dj_ptr[itctx->n_misc_->nk_ + 1] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1];  // r2
-  if (itctx->n_misc_->nr_ > 2) dj_ptr[itctx->n_misc_->nk_ + 2] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2];  // r2
+      ScalarType *dj_ptr, *dj_full_ptr;
+      ierr = VecGetArray (dJ, &dj_ptr);             CHKERRQ (ierr);
+      ierr = VecGetArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
 
-  ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
-  ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
-  if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
-  */
+      dj_ptr[0] = dj_full_ptr[itctx->n_misc_->np_];
+      if (itctx->n_misc_->nk_ > 1) dj_ptr[1] = dj_full_ptr[itctx->n_misc_->np_ + 1];  // k2
+      if (itctx->n_misc_->nk_ > 2) dj_ptr[2] = dj_full_ptr[itctx->n_misc_->np_ + 2];  // k3
+      dj_ptr[itctx->n_misc_->nk_] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_];  // rho
+      if (itctx->n_misc_->nr_ > 1) dj_ptr[itctx->n_misc_->nk_ + 1] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 1];  // r2
+      if (itctx->n_misc_->nr_ > 2) dj_ptr[itctx->n_misc_->nk_ + 2] = dj_full_ptr[itctx->n_misc_->np_ + itctx->n_misc_->nk_ + 2];  // r2
+
+      ierr = VecRestoreArray (dJ, &dj_ptr);             CHKERRQ (ierr);
+      ierr = VecRestoreArray (dJ_full, &dj_full_ptr);   CHKERRQ (ierr);
+      if (dJ_full  != nullptr) {VecDestroy (&dJ_full);  CHKERRQ(ierr);  dJ_full  = nullptr;}
+  }
 
   std::stringstream s;
   if (itctx->optsettings_->verbosity > 1) {
