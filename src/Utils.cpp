@@ -33,7 +33,7 @@ PetscErrorCode VecField::set (ScalarType scalar) {
 	ierr = VecSet (x_, scalar);				CHKERRQ (ierr);
 	ierr = VecSet (y_, scalar);				CHKERRQ (ierr);
 	ierr = VecSet (z_, scalar);				CHKERRQ (ierr);
-	
+
 	PetscFunctionReturn (ierr);
 }
 
@@ -259,9 +259,9 @@ static bool isLittleEndian () {
 	return (numPtr[0] == 1);
 }
 
-PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file) {                                                                                                                                                                                                                
+PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file) {
     PetscErrorCode ierr = 0;
-    std::stringstream ss; 
+    std::stringstream ss;
     std::stringstream ss2;
 
     PetscFunctionBegin;
@@ -277,10 +277,10 @@ PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file) {
 PetscErrorCode myAssert(bool condition, std::string msg) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
-                                                                                                                                                                                                                                                                                           
+
     if (condition == false) {
         ierr = throwError(msg); CHKERRQ(ierr);
-    }   
+    }
 
     PetscFunctionReturn(ierr);
 }
@@ -289,7 +289,7 @@ PetscErrorCode myAssert(bool condition, std::string msg) {
 PetscErrorCode NCERRQ (int cerr) {
     int rank;
     PetscErrorCode ierr = 0;
-    std::stringstream ss;                                                                                                                                                                                                                                                                  
+    std::stringstream ss;
     PetscFunctionBegin;
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -297,7 +297,7 @@ PetscErrorCode NCERRQ (int cerr) {
     if (cerr != NC_NOERR) {
         ss << ncmpi_strerror(cerr);
         ierr = throwError(ss.str()); CHKERRQ(ierr);
-    }   
+    }
 
     PetscFunctionReturn(ierr);
 }
@@ -305,7 +305,7 @@ PetscErrorCode NCERRQ (int cerr) {
 
 PetscErrorCode dataIn (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
   PetscFunctionBegin;
-  PetscErrorCode ierr = 0; 
+  PetscErrorCode ierr = 0;
 	// get local sizes
   MPI_Offset istart[3], isize[3];
   istart[0] = static_cast<MPI_Offset>(n_misc->istart_[0]);
@@ -327,7 +327,7 @@ PetscErrorCode dataIn (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
   ncerr = ncmpi_inq_varid (fileid, "data", &varid[0]);
   ierr = NCERRQ(ncerr);                                               CHKERRQ(ierr);
   ncerr = ncmpi_get_vara_all (fileid, varid[0], istart, isize, p_x, n_misc->n_local_, MPIType);
-  ierr = NCERRQ (ncerr);                                              CHKERRQ(ierr);                                                                                                                                                                                                                                                   
+  ierr = NCERRQ (ncerr);                                              CHKERRQ(ierr);
   ncerr=ncmpi_close(fileid);
   PetscFunctionReturn (ierr);
 }
@@ -335,15 +335,33 @@ PetscErrorCode dataIn (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
 PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	ScalarType *a_ptr;
 	PetscErrorCode ierr;
-	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);  
+	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);
 	dataIn (a_ptr, n_misc, fname);
-	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);  
+	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);
   PetscFunctionReturn (ierr);
 }
 
+
+PetscErrorCode readVecField(
+    std::shared_ptr<VecField>  v,
+    std::string fnx1,
+    std::string fnx2,
+    std::string fnx3)
+    {
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+
+    ierr = dataIn(v->x_, fnx1); CHKERRQ(ierr);
+    ierr = dataIn(v->y_, fnx2); CHKERRQ(ierr);
+    ierr = dataIn(v->z_, fnx3); CHKERRQ(ierr);
+
+    PetscFunctionReturn(ierr);
+}
+
+
 PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
     PetscFunctionBegin;
-    PetscErrorCode ierr = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+    PetscErrorCode ierr = 0;
     int ncerr, mode, dims[3], varid[1], nx[3], iscdf5, fileid;
     int nl;
     MPI_Offset istart[3], isize[3];
@@ -360,7 +378,7 @@ PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const ch
         mode = NC_CLOBBER | NC_64BIT_DATA;
     } else {
         mode = NC_CLOBBER | NC_64BIT_OFFSET;
-    }    
+    }
 
     c_comm = n_misc->c_comm_;
 
@@ -389,7 +407,7 @@ PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const ch
   #endif
     ierr = NCERRQ(ncerr); CHKERRQ(ierr);
 
-    iscdf5 = usecdf5 ? 1 : 0; 
+    iscdf5 = usecdf5 ? 1 : 0;
     ncerr = ncmpi_put_att_int(fileid, NC_GLOBAL, "CDF-5 mode", NC_INT, 1, &iscdf5);
     ierr = NCERRQ(ncerr); CHKERRQ(ierr);
     ncerr = ncmpi_enddef(fileid);
@@ -412,16 +430,16 @@ PetscErrorCode dataOut (ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const ch
 
     // close file
     ncerr = ncmpi_close(fileid);
-    ierr = NCERRQ(ncerr); CHKERRQ(ierr);  
+    ierr = NCERRQ(ncerr); CHKERRQ(ierr);
     PetscFunctionReturn (ierr);
 }
 
 PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
 	ScalarType *a_ptr;
 	PetscErrorCode ierr;
-	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);  
+	ierr = VecGetArray (A, &a_ptr); CHKERRQ(ierr);
 	dataOut (a_ptr, n_misc, fname);
-	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);  
+	ierr = VecRestoreArray (A, &a_ptr); CHKERRQ(ierr);
   PetscFunctionReturn (ierr);
 }
 
@@ -1061,7 +1079,7 @@ PetscErrorCode computeCenterOfMass (Vec x, int *isize, int *istart, ScalarType *
 	ScalarType X, Y, Z;
     ScalarType *data_ptr;
     ScalarType com[3], sum;
-    for (int i = 0; i < 3; i++) 
+    for (int i = 0; i < 3; i++)
 
     com[i] = 0.;
     sum = 0;
@@ -1106,7 +1124,7 @@ PetscErrorCode setupVec (Vec x, int type) {
 		else
 			ierr = VecSetType (x, VECCUDA);
 	#else
-		ierr = VecSetFromOptions (x);						
+		ierr = VecSetFromOptions (x);
 	#endif
 
 	PetscFunctionReturn (ierr);

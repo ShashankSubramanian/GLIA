@@ -80,6 +80,9 @@ int main (int argc, char** argv) {
     char wm_path[400];
     char glm_path[400];
     char csf_path[400];
+    char vx1_path[400];
+    char vx2_path[400];
+    char vx3_path[400];
     char obs_mask_path[400];
     char data_comp_path[400];
     char data_comp_dat_path[400];
@@ -133,6 +136,8 @@ int main (int argc, char** argv) {
 
     ScalarType klb = -1.0;
     ScalarType kub = -1.0;
+    ScalarType rlb = -1.0;
+    ScalarType rub = -1.0;
 
     int predict_flag = 0;
     int pre_reacdiff_solve = 0;
@@ -213,6 +218,9 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-obs_mask_path", "Path to observation mask", "", obs_mask_path, obs_mask_path, 400, NULL);
     PetscOptionsString ("-pvec_path", "Path to initial guess p vector", "", p_vec_path, p_vec_path, 400, NULL);
     PetscOptionsString ("-gaussian_cm_path", "Path to file with Gaussian centers", "", gaussian_cm_path, gaussian_cm_path, 400, NULL);
+    PetscOptionsString ("-v_x1", "Path to velocity x_1 component", "", vx1_path, vx1_path, 400, NULL);
+    PetscOptionsString ("-v_x2", "Path to velocity x_1 component", "", vx2_path, vx2_path, 400, NULL);
+    PetscOptionsString ("-v_x3", "Path to velocity x_1 component", "", vx3_path, vx3_path, 400, NULL);
     PetscOptionsInt    ("-verbosity", "solver verbosity (1-4)", "", verbosity_in, &verbosity_in, NULL);
     PetscOptionsInt    ("-checkpointing_flag", "solver writes checkpoints for p vector and corresponding Gaussian centers", "", checkpointing_flag, &checkpointing_flag, NULL);
     PetscOptionsInt    ("-solve_rho_k", "Flag to do only the inversion for reaction and diffusion coefficient, keeping the initial condition c(0) fixed (needs to be read in)", "", solve_rho_k_only_flag, &solve_rho_k_only_flag, NULL);
@@ -225,6 +233,8 @@ int main (int argc, char** argv) {
 
     PetscOptionsReal ("-kappa_lb", "Lower bound for diffusivity", "", klb, &klb, NULL);
     PetscOptionsReal ("-kappa_ub", "Upper bound for diffusivity", "", kub, &kub, NULL);
+    PetscOptionsReal ("-rho_lb", "Lower bound for reaction", "", rlb, &rlb, NULL);
+    PetscOptionsReal ("-rho_ub", "Upper bound for reaction", "", rub, &rub, NULL);
 
 
     PetscOptionsEnd ();
@@ -306,6 +316,7 @@ int main (int argc, char** argv) {
       read_support_data_nc  = (strcmp(ext.c_str(),".nc") == 0);                                  // file ends with *.nc?
       read_support_data_txt = (strcmp(ext.c_str(),".txt") == 0);                                 // file ends with *.txt?
     }
+    bool read_data_velocity = (vx1_path != NULL && strlen(vx1_path) > 0) && (vx2_path != NULL && strlen(vx2_path) > 0) && (vx3_path != NULL && strlen(vx3_path) > 0);
     bool use_custom_obs_mask = (obs_mask_path != NULL && strlen(obs_mask_path) > 0);             // path set?
     bool use_data_comps      = (data_comp_path != NULL && strlen(data_comp_path) > 0);           // path set?
     bool read_data_comp_file = (data_comp_dat_path != NULL && strlen(data_comp_dat_path) > 0);   // path set?
@@ -422,6 +433,9 @@ int main (int argc, char** argv) {
 
     if (klb != -1.0) n_misc->k_lb_ = klb;
     if (kub != -1.0) n_misc->k_ub_ = kub;
+    if (rlb != -1.0) n_misc->rho_lb_ = rlb;
+    if (rub != -1.0) n_misc->rho_ub_ = rub;
+    n_misc_->data_velocity_set_ = read_data_velocity;
 
     PetscStrcmp ("QN", newton_solver, &strflg);
     if (strflg) {
@@ -592,9 +606,12 @@ int main (int argc, char** argv) {
         support_data = data_t1;
     } else {
         ierr = readData (data_t1, data_t0, support_data, data_components, c_0, p_rec, n_misc, spec_ops, data_path_t1, data_path_t0, support_data_path, data_comp_path);
-        if(use_custom_obs_mask){
+        if (use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
           ss << " use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        }
+        if (read_data_velocity) {
+            ierr = readVecField(tumor->velocity_, std::string(vx1_path), std::string(vx2_path), std::string(vx3_path)); CHKERRQ(ierr);
         }
     }
 

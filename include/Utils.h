@@ -71,6 +71,8 @@ struct OptimizerSettings {
     bool   reaction_inversion;   /// @brief if true, we also invert for rho
     ScalarType k_lb;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
     ScalarType k_ub;             /// @brief upper bound on kappa
+    ScalarType rho_lb_;
+    ScalarType rho_ub_;
     OptimizerSettings ()
     :
       beta (0E-3)
@@ -97,6 +99,8 @@ struct OptimizerSettings {
     , verbosity (3)
     , k_lb (1E-3)
     , k_ub (1)
+    , rho_lb_(0)
+    , rho_ub_(20)
     {}
 };
 
@@ -384,12 +388,15 @@ class NMisc {
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
         , multilevel_ (0)                       // scales INT_Omega phi(x) dx = const across levels
-        , two_snapshot_(0)
+        , two_snapshot_(0)                      // flag indicates whether or not two data points are read in
+        , data_velocity_set_(0)                 // flag indicates whether or not advection velocity is read in
         , low_res_data_(0)
         , phi_store_ (false)                    // Flag to store phis
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                             // Upper bound on kappa
+        , rho_lb_ (0)
+        , rho_ub_ (20)
         , outfile_sol_()
         , outfile_grad_()
         , outfile_glob_grad_()
@@ -495,6 +502,9 @@ class NMisc {
         int forward_flag_;
         ScalarType k_lb_;
         ScalarType k_ub_;
+        ScalarType rho_lb_;
+        ScalarType rho_ub_;
+
 
         bool phi_store_;
         bool adjoint_store_;
@@ -559,6 +569,7 @@ class NMisc {
         bool flag_reaction_inv_;
         bool multilevel_;
         bool two_snapshot_;
+        bool data_velocity_set_;
         bool low_res_data_;
 
         ScalarType target_sparsity_;
@@ -687,6 +698,7 @@ void write_pnetcdf(const std::string &filename,
 //Read/Write function prototypes
 PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode readVecField(std::shared_ptr<VecField> v, std::string fnx1, std::string fnx2, std::string fnx3);
 PetscErrorCode dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 /// @reads in binary vector, serial

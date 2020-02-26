@@ -60,7 +60,7 @@ class PdeOperatorsRD : public PdeOperators {
 		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc);
         virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
 
-		// This solves the diffusivity update part of the incremental forward equation 
+		// This solves the diffusivity update part of the incremental forward equation
 		PetscErrorCode solveIncremental (Vec c_tilde, std::vector<Vec> c_history, ScalarType dt, int iter, int mode);
 
 		/** @brief computes effect of varying/moving material properties, i.e.,
@@ -68,6 +68,8 @@ class PdeOperatorsRD : public PdeOperators {
 		 */
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4);
 		virtual ~PdeOperatorsRD ();
+
+        std::shared_ptr<AdvectionSolver> adv_solver_;
 };
 
 class PdeOperatorsMassEffect : public PdeOperatorsRD {

@@ -383,7 +383,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     itctx_->n_misc_->beta_ = 0.;
     PetscReal *d_ptr, *x_in_ptr, *x_ptr, *ub_ptr, *lb_ptr, *x_full_ptr;
     PetscReal d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0., max, min, xdiff;
-    PetscReal upper_bound_kappa, lower_bound_kappa, minstep;
+    PetscReal minstep;
     std::string msg;
     std::stringstream ss;
     int nk, nr, np, x_sz;
@@ -577,23 +577,21 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     ierr = tuMSGstd(msg);                                                         CHKERRQ(ierr);
 
     // lower and upper bounds
-    upper_bound_kappa = itctx_->n_misc_->k_ub_;
-    lower_bound_kappa = itctx_->n_misc_->k_lb_;
     ierr = VecDuplicate (xrec_rd_, &lower_bound);                                 CHKERRQ (ierr);
     ierr = VecSet       (lower_bound, 0.);                                        CHKERRQ (ierr);
     ierr = VecDuplicate (xrec_rd_, &upper_bound);                                 CHKERRQ (ierr);
     ierr = VecSet       (upper_bound, PETSC_INFINITY);                            CHKERRQ (ierr);
     ierr = VecGetArray  (upper_bound, &ub_ptr);                                   CHKERRQ (ierr);
-    ub_ptr[0] = upper_bound_kappa;
-    ub_ptr[nk] = 15;
-    if (nk > 1) ub_ptr[1] = upper_bound_kappa;
-    if (nk > 2) ub_ptr[2] = upper_bound_kappa;
+    ub_ptr[0] = itctx_->n_misc_->k_ub_;
+    ub_ptr[nk] = itctx_->n_misc_->rho_ub_;
+    if (nk > 1) ub_ptr[1] = itctx_->n_misc_->k_ub_;
+    if (nk > 2) ub_ptr[2] = itctx_->n_misc_->k_ub_;
     ierr = VecRestoreArray (upper_bound, &ub_ptr);                                CHKERRQ (ierr);
     ierr = VecGetArray     (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
-    lb_ptr[0] = lower_bound_kappa;
-    lb_ptr[nk] = 4;
-    if (nk > 1) lb_ptr[1] = lower_bound_kappa;
-    if (nk > 2) lb_ptr[2] = lower_bound_kappa;
+    lb_ptr[0] = itctx_->n_misc_->k_lb_;
+    lb_ptr[nk] = itctx_->n_misc_->rho_lb_;
+    if (nk > 1) lb_ptr[1] = itctx_->n_misc_->k_lb_;
+    if (nk > 2) lb_ptr[2] = itctx_->n_misc_->k_lb_;
     ierr = VecRestoreArray (lower_bound, &lb_ptr);                                CHKERRQ (ierr);
     ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound);                  CHKERRQ (ierr);
     if (lower_bound != nullptr) {ierr = VecDestroy (&lower_bound); CHKERRQ (ierr); lower_bound = nullptr;}
