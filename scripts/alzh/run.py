@@ -120,25 +120,29 @@ def set_params(basedir, args):
     k_inv   = 0;
     nt_inv  = 40;
     dt_inv  = 0.025;
-    k_lb    = 1E-3;
-    k_ub    = 10;
+    k_lb    = 1E-4;
+    k_ub    = 0.5;
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
-    b_name  = 'inverse_scale'
+    b_name  = 'inverse_adv'
     d1      = 'd_nc/dataBeforeObservation.nc'
     d0      = 'd_nc/c0True.nc'
     solver  = 'QN'
+    prefix  = 'atlas'
+    vx1     = 'reg/velocity-field-x1.nc'
+    vx2     = 'reg/velocity-field-x2.nc'
+    vx3     = 'reg/velocity-field-x3.nc'
     ###########
     
-    d1      = 'd_nc/data_t1_64_256.nc'
-    d0      = 'd_nc/data_t0_64_256.nc'
+    #d1      = 'd_nc/data_t1_64_256.nc'
+    #d0      = 'd_nc/data_t0_64_256.nc'
     
     # test02
-    d1      = 'd_nc/data_t1_noise-01-118.nc'
-    d0      = 'd_nc/data_t0_noise-01-45.nc'
-    d1      = 'd_nc/data_t1_noise-02-468.nc'
-    d0      = 'd_nc/data_t0_noise-02-60.nc'
+    #d1      = 'd_nc/data_t1_noise-01-118.nc'
+    #d0      = 'd_nc/data_t0_noise-01-45.nc'
+    #d1      = 'd_nc/data_t1_noise-02-468.nc'
+    #d0      = 'd_nc/data_t0_noise-02-60.nc'
     
     # test01
     #d1      = 'd_nc/data_t1_noise-01-130.nc'
@@ -146,7 +150,7 @@ def set_params(basedir, args):
     #d1      = 'd_nc/data_t1_noise-02-515.nc'
     #d0      = 'd_nc/data_t0_noise-02-61.nc'
 
-    res_dir = os.path.join(args.results_directory, 'inv-noise-sp20-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds-scale/');
+    res_dir = os.path.join(args.results_directory, 'inv-adv-nonoise-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds-tight/');
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 
@@ -209,9 +213,9 @@ def set_params(basedir, args):
     t_params['upper_bound_rho']       = rho_ub;
     t_params['dd_fac']                = 1;
     t_params['predict_flag']          = 1;
-    t_params['csf_path']              = os.path.join(inp_dir, 'atlas_seg_csf.nc');
-    t_params['gm_path']               = os.path.join(inp_dir, 'atlas_seg_gm.nc');
-    t_params['wm_path']               = os.path.join(inp_dir, 'atlas_seg_wm.nc');
+    t_params['csf_path']              = os.path.join(inp_dir, prefix + '_seg_csf.nc');
+    t_params['gm_path']               = os.path.join(inp_dir, prefix + '_seg_gm.nc');
+    t_params['wm_path']               = os.path.join(inp_dir, prefix + '_seg_wm.nc');
     t_params['data_path_t1']          = os.path.join(dat_dir, d1);
     t_params['data_path_t0']          = os.path.join(dat_dir, d0);
     t_params['forward_flag']          = 0
@@ -219,6 +223,9 @@ def set_params(basedir, args):
     t_params['model']                 = model;
     t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
     t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
+    t_params['velocity_x1']           = os.path.join(args.results_directory, vx1);
+    t_params['velocity_x2']           = os.path.join(args.results_directory, vx2);
+    t_params['velocity_x3']           = os.path.join(args.results_directory, vx3);
  
     #   ------------------------------------------------------------------------
     #    - get command line for tumor inversion

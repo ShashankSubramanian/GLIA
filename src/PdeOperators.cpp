@@ -266,11 +266,12 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
         // advection of healthy tissue
         if (n_misc_->data_velocity_set_) {
-            adv_solver_->advection_mode_ = 1;  //  mass conservation
+            //adv_solver_->advection_mode_ = 1;  //  mass conservation
+            adv_solver_->advection_mode_ = 2;  // pure advection
             ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
             ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
             ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr);
-            // ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr);  TODO: also advect c_t_?
+            ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr); 
         }
 
         if (n_misc_->order_ == 2) {

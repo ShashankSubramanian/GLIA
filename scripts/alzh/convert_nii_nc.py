@@ -7,6 +7,7 @@ import ntpath
 import numpy as np
 import netCDF4
 from netCDF4 import Dataset
+import argparse 
 
 ### ------------------------------------------------------------------------ ###
 def createNetCDF(filename,dimensions,variable):
@@ -34,12 +35,16 @@ def readNetCDF(filename):
 
 ###
 ### ------------------------------------------------------------------------ ###
-for dir in os.listdir('.'):
+parser = argparse.ArgumentParser(description='read objective')
+parser.add_argument ('-x',           type = str,          help = 'path to the results folder');
+args = parser.parse_args();
+
+for dir in os.listdir(args.x):
     if not ".nii.gz" in dir:
         continue
     print("converting {}".format(dir))
-    dat = nib.load(os.path.join('.',dir)).get_fdata()
+    dat = nib.load(os.path.join(args.x,dir)).get_fdata()
     filename = ntpath.basename(dir);
     filename = filename.split('.nii.gz')[0]
     newfilename = filename + '.nc';
-    createNetCDF(newfilename, np.shape(dat), np.swapaxes(dat,0,2));
+    createNetCDF(os.path.join(args.x, newfilename), np.shape(dat), np.swapaxes(dat,0,2));

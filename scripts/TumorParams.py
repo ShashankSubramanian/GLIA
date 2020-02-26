@@ -59,6 +59,9 @@ def getTumorRunCmd(params):
     ### Path the initial tumor concentration file
     init_tumor_path = ""
 
+    velocity_x1_path = ""
+    velocity_x2_path = ""
+    velocity_x3_path = ""
 
     verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
@@ -462,6 +465,13 @@ def getTumorRunCmd(params):
     if "upper_bound_rho" in params:
         upper_bound_rho = params['upper_bound_rho']
 
+    if "velocity_x1" in params:
+        velocity_x1_path = params['velocity_x1']
+    if "velocity_x2" in params:
+        velocity_x2_path = params['velocity_x2']
+    if "velocity_x3" in params:
+        velocity_x3_path = params['velocity_x3']
+
     if "nt_inv" in params:
         nt_inv = params['nt_inv']
     if "dt_inv" in params: 
@@ -537,6 +547,11 @@ def getTumorRunCmd(params):
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
+    " -rho_lb " + str(lower_bound_rho) + \
+    " -rho_ub " + str(upper_bound_rho) + \
+    " -v_x1 " + str(velocity_x1_path) + \
+    " -v_x2 " + str(velocity_x2_path) + \
+    " -v_x3 " + str(velocity_x3_path) + \
     " -tao_lmm_vectors 3 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 

@@ -35,12 +35,12 @@ Tumor::Tumor (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> 
 
     if (n_misc->data_velocity_set_ || n_misc->model_ == 4 || n_misc_->model_ == 5) {
         velocity_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
+        work_field_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     }
     if (n_misc->model_ == 4 || n_misc_->model_ == 5) { // mass effect model -- allocate space for more variables
         // velocity_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
         force_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
         displacement_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
-        work_field_ = std::make_shared<VecField> (n_misc->n_local_, n_misc->n_global_);
     }
 
     if (n_misc_->model_ == 5) {

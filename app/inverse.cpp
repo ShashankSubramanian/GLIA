@@ -435,7 +435,7 @@ int main (int argc, char** argv) {
     if (kub != -1.0) n_misc->k_ub_ = kub;
     if (rlb != -1.0) n_misc->rho_lb_ = rlb;
     if (rub != -1.0) n_misc->rho_ub_ = rub;
-    n_misc_->data_velocity_set_ = read_data_velocity;
+    n_misc->data_velocity_set_ = read_data_velocity;
 
     PetscStrcmp ("QN", newton_solver, &strflg);
     if (strflg) {
@@ -611,7 +611,8 @@ int main (int argc, char** argv) {
           ss << " use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         }
         if (read_data_velocity) {
-            ierr = readVecField(tumor->velocity_, std::string(vx1_path), std::string(vx2_path), std::string(vx3_path)); CHKERRQ(ierr);
+            ierr = readVecField(tumor->velocity_.get(), vx1_path, vx2_path, vx3_path, n_misc); CHKERRQ(ierr);
+            ierr = tumor->velocity_->scale(-1); CHKERRQ(ierr);
         }
     }
 
@@ -654,6 +655,8 @@ int main (int argc, char** argv) {
     } else {
         ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
+
+        ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
         n_misc->rho_ = rho_inv;
         // n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
         n_misc->k_ = k_inv; // (n_misc->diffusivity_inversion_) ? 0 : k_inv;

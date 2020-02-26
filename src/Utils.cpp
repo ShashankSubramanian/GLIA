@@ -37,6 +37,19 @@ PetscErrorCode VecField::set (ScalarType scalar) {
 	PetscFunctionReturn (ierr);
 }
 
+
+PetscErrorCode VecField::scale (ScalarType scalar) {
+	PetscFunctionBegin;
+	PetscErrorCode ierr = 0;
+
+	ierr = VecScale (x_, scalar);				CHKERRQ (ierr);
+	ierr = VecScale (y_, scalar);				CHKERRQ (ierr);
+	ierr = VecScale (z_, scalar);				CHKERRQ (ierr);
+
+	PetscFunctionReturn (ierr);
+}
+
+
 PetscErrorCode VecField::getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr) {
 	PetscFunctionBegin;
 	PetscErrorCode ierr = 0;
@@ -341,19 +354,23 @@ PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) 
   PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode dataIn (Vec *A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+	ScalarType *a_ptr;
+	PetscErrorCode ierr;
+	ierr = VecGetArray (*A, &a_ptr); CHKERRQ(ierr);
+	dataIn (a_ptr, n_misc, fname);
+	ierr = VecRestoreArray (*A, &a_ptr); CHKERRQ(ierr);
+  PetscFunctionReturn (ierr);
+}
 
-PetscErrorCode readVecField(
-    std::shared_ptr<VecField>  v,
-    std::string fnx1,
-    std::string fnx2,
-    std::string fnx3)
-    {
+
+PetscErrorCode readVecField(VecField *v, const char *fnx1, const char *fnx2, const char *fnx3, std::shared_ptr<NMisc> n_misc ) {
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
 
-    ierr = dataIn(v->x_, fnx1); CHKERRQ(ierr);
-    ierr = dataIn(v->y_, fnx2); CHKERRQ(ierr);
-    ierr = dataIn(v->z_, fnx3); CHKERRQ(ierr);
+    ierr = dataIn(&v->x_, n_misc, fnx1); CHKERRQ(ierr);
+    ierr = dataIn(&v->y_, n_misc, fnx2); CHKERRQ(ierr);
+    ierr = dataIn(&v->z_, n_misc, fnx3); CHKERRQ(ierr);
 
     PetscFunctionReturn(ierr);
 }

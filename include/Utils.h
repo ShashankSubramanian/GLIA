@@ -636,6 +636,7 @@ class VecField {
         PetscErrorCode computeMagnitude (Vec);
         PetscErrorCode copy (std::shared_ptr<VecField> field);
         PetscErrorCode set (ScalarType scalar);
+        PetscErrorCode scale (ScalarType scalar);
         PetscErrorCode getComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
         PetscErrorCode restoreComponentArrays (ScalarType *&x_ptr, ScalarType *&y_ptr, ScalarType *&z_ptr);
         PetscErrorCode setIndividualComponents (Vec in);  // uses indivdual components from in and sets it to x,y,z
@@ -698,7 +699,8 @@ void write_pnetcdf(const std::string &filename,
 //Read/Write function prototypes
 PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
-PetscErrorCode readVecField(std::shared_ptr<VecField> v, std::string fnx1, std::string fnx2, std::string fnx3);
+PetscErrorCode dataIn (Vec *A, std::shared_ptr<NMisc> n_misc, const char *fname);
+PetscErrorCode readVecField(VecField *v, const char *fnx1, const char *fnx2, const char *fnx3, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataOut (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 /// @reads in binary vector, serial
