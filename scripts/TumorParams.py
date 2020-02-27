@@ -74,8 +74,8 @@ def getTumorRunCmd(params):
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 12
     k_inv = 0.01
-    nt_inv = 25
-    dt_inv = 0.04
+    nt_inv = 50
+    dt_inv = 0.02
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
@@ -84,8 +84,8 @@ def getTumorRunCmd(params):
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 12
     k_data = 0.01
-    nt_data = 25
-    dt_data = 0.04
+    nt_data = 50
+    dt_data = 0.02
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 12E4
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
