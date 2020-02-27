@@ -87,11 +87,11 @@ def getTumorRunCmd(params):
     nt_data = 25
     dt_data = 0.04
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 1.2E5
+    forcing_factor = 12E4
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
-    z_cm = 128
-    y_cm = 76
-    x_cm = 112
+    z_cm = 137
+    y_cm = 169
+    x_cm = 96
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -163,11 +163,13 @@ def getTumorRunCmd(params):
     ### Forward solver time order of accuracy
     accuracy_order = 2
     ### number of line-search attempts
-    ls_max_func_evals = 10
+    ls_max_func_evals = 15
     ## lower bound on kappa
-    lower_bound_kappa = 5E-2
+    lower_bound_kappa = 5E-1
     ## upper bound on kappa
-    upper_bound_kappa = 5E-1
+    upper_bound_kappa = 10
+    ### order of interpolation for SL
+    ip_order = 3
 
     ### TUMOR PARAMETERS SET END
 
@@ -538,6 +540,7 @@ def getTumorRunCmd(params):
     " -low_freq_noise " + str(noise_scale) + \
     " -prediction " + str(predict_flag) + \
     " -forward " + str(forward_flag) + \
+    " -ip_order " + str(ip_order) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
     " -forcing_factor " + str(forcing_factor) + \

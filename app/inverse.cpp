@@ -141,6 +141,7 @@ int main (int argc, char** argv) {
     int reaction_flag = 0;
     int solve_rho_k_only_flag = 0;
     int checkpointing_flag = 1;
+    int interpolation_order = 3;
     // int invert_obs_mask = 0;
     int basis_type = 0;
     ScalarType sigma = -1.0;
@@ -266,6 +267,9 @@ int main (int argc, char** argv) {
     PetscOptionsInt    ("-checkpointing_flag", "solver writes checkpoints for p vector and corresponding Gaussian centers", "", checkpointing_flag, &checkpointing_flag, NULL);
     PetscOptionsInt    ("-solve_rho_k", "Flag to do only the inversion for reaction and diffusion coefficient, keeping the initial condition c(0) fixed (needs to be read in)", "", solve_rho_k_only_flag, &solve_rho_k_only_flag, NULL);
 
+
+    PetscOptionsInt ("-ip_order", "interpolation order for SL", "", interpolation_order, &interpolation_order, NULL);
+
     // bool flag = PETSC_FALSE;
     // PetscOptionsGetRealArray(NULL,NULL, "-data_comp_weights", data_comp_weights, &ncomp, &flag);
     PetscOptionsString ("-data_comp_path", "Path to label img of data components", "", data_comp_path, data_comp_path, 400, NULL);
@@ -385,6 +389,8 @@ int main (int argc, char** argv) {
     n_misc->user_cm_[0] = 2 * M_PI / 256 * z_cm;
     n_misc->user_cm_[1] = 2 * M_PI / 256 * y_cm;
     n_misc->user_cm_[2] = 2 * M_PI / 256 * x_cm;
+
+    n_misc->interpolation_order_ = interpolation_order;
 
     // Read input parameters (controlled from run script)
     if (beta_user >= 0) {    //user has provided tumor reg
