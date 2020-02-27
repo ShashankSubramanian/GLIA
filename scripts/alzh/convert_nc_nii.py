@@ -48,24 +48,36 @@ def writeNII(img, filename, affine=None, ref_image=None):
 
     nib.save(data, filename);
 
+
+###
+### ------------------------------------------------------------------------ ###
+def convert(d):
+    template = nib.load(os.path.join('data', 'atlas_seg_wm.nii.gz'));
+    for dir in os.listdir(d):
+        if not ".nc" in dir:
+            continue
+        print("   ... converting {}".format(dir))
+        dat = readNetCDF(os.path.join(d, dir));
+        dat = np.swapaxes(dat,0,2);
+        output_size = tuple(dat.shape)
+        filename = ntpath.basename(dir);
+        filename = filename.split('.nc')[0]
+        newfilename = filename + '.nii.gz';
+        writeNII(dat, os.path.join(d,newfilename), template.affine);
+ 
+
 ###
 ### ------------------------------------------------------------------------ ###
 import argparse
-
 parser = argparse.ArgumentParser(description='read objective')
 parser.add_argument ('-x',           type = str,          help = 'path to the results folder');
 args = parser.parse_args();
 
-template = nib.load(os.path.join('data', 'atlas_seg_wm.nii.gz'));
-for dir in os.listdir(args.x):
-    if not ".nc" in dir:
-        continue
-    print("converting {}".format(dir))
-    dat = readNetCDF(os.path.join(args.x, dir));
-    dat = np.swapaxes(dat,0,2);
-    output_size = tuple(dat.shape)
-    filename = ntpath.basename(dir);
-    filename = filename.split('.nc')[0]
-    newfilename = filename + '.nii.gz';
-    writeNII(dat, os.path.join(args.x,newfilename), template.affine);
+DIRS = os.listdir('.');
+for dir in DIRS:
+    if not "inv-" in dir:
+        continue;
+    print(" [] converting dir {}".format(dir))
+    convert(dir);
 
+   

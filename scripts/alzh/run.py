@@ -121,7 +121,7 @@ def set_params(basedir, args):
     nt_inv  = 40;
     dt_inv  = 0.025;
     k_lb    = 1E-4;
-    k_ub    = 0.5;
+    k_ub    = 1;
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
@@ -130,13 +130,14 @@ def set_params(basedir, args):
     d0      = 'd_nc/c0True.nc'
     solver  = 'QN'
     prefix  = 'atlas'
+    adv     = True;
     vx1     = 'reg/velocity-field-x1.nc'
     vx2     = 'reg/velocity-field-x2.nc'
     vx3     = 'reg/velocity-field-x3.nc'
     ###########
     
-    #d1      = 'd_nc/data_t1_64_256.nc'
-    #d0      = 'd_nc/data_t0_64_256.nc'
+    d1      = 'd_nc/data_t1_64_256.nc'
+    d0      = 'd_nc/data_t0_64_256.nc'
     
     # test02
     #d1      = 'd_nc/data_t1_noise-01-118.nc'
@@ -150,7 +151,7 @@ def set_params(basedir, args):
     #d1      = 'd_nc/data_t1_noise-02-515.nc'
     #d0      = 'd_nc/data_t0_noise-02-61.nc'
 
-    res_dir = os.path.join(args.results_directory, 'inv-adv-nonoise-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds-tight/');
+    res_dir = os.path.join(args.results_directory, 'inv-adv-noise-lres-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds/');
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 
@@ -161,7 +162,7 @@ def set_params(basedir, args):
     opt['input_dir']   = inp_dir;
     opt['num_nodes']   = 2;
     opt['mpi_pernode'] = 96;
-    opt['wtime_h']     = 4;
+    opt['wtime_h']     = 6;
     opt['wtime_m']     = 0;
 
     output_path = args.results_directory
@@ -223,9 +224,9 @@ def set_params(basedir, args):
     t_params['model']                 = model;
     t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
     t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
-    t_params['velocity_x1']           = os.path.join(args.results_directory, vx1);
-    t_params['velocity_x2']           = os.path.join(args.results_directory, vx2);
-    t_params['velocity_x3']           = os.path.join(args.results_directory, vx3);
+    t_params['velocity_x1']           = "" if not adv else os.path.join(args.results_directory, vx1);
+    t_params['velocity_x2']           = "" if not adv else os.path.join(args.results_directory, vx2);
+    t_params['velocity_x3']           = "" if not adv else os.path.join(args.results_directory, vx3);
  
     #   ------------------------------------------------------------------------
     #    - get command line for tumor inversion

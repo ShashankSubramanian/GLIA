@@ -904,7 +904,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ScalarType scale_rho = 1;
-    ScalarType scale_kap = 1;
+    ScalarType scale_kap = 1E-1;
 
 
     // Reset mat-props and diffusion and reaction operators, tumor IC does not change
@@ -1053,6 +1053,9 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::
     }
     #endif
 
+
+    if (procid == 0) { ierr = VecView (dJ, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+
     if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
 
     // timing
@@ -1126,6 +1129,9 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscRea
       x->lock = lock_state;
     }
     #endif
+
+
+    if (procid == 0) { ierr = VecView (dJ, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
 
     if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
 

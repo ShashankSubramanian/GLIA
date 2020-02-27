@@ -2385,8 +2385,8 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     s.str ("");
     s.clear ();
 
-    s << "c1guess_nit-" << its << ".nc";
-    dataOut (itctx->tumor_->c_t_, itctx->n_misc_, s.str().c_str());
+    //s << "c1guess_nit-" << its << ".nc";
+    //dataOut (itctx->tumor_->c_t_, itctx->n_misc_, s.str().c_str());
     if (itctx->n_misc_->writeOutput_ && itctx->n_misc_->verbosity_ >= 4 && its % 5 == 0) {
         s << "c1guess_paraminvitr-" << its << ".nc";
         dataOut (itctx->tumor_->c_t_, itctx->n_misc_, s.str().c_str());
