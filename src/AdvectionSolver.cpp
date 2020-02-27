@@ -390,12 +390,12 @@ PetscErrorCode SemiLagrangianSolver::interpolate (Vec output, Vec input) {
         ierr = VecCUDAGetArrayReadWrite (output, &out_ptr);                          CHKERRQ (ierr);
         #ifdef SINGLE
             gpuInterp3D (in_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
-                     out_ptr, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_ghost_, (float*)t.data());
+                     out_ptr, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_misc->interpolation_order_, (float*)t.data());
         #else
             // copy input to float temp
             copyDoubleToFloatCuda (temp_1_, in_ptr, n_misc->n_local_);
             gpuInterp3D (temp_1_, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
-                     temp_1_, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_ghost_, (float*)t.data());
+                     temp_1_, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_misc->interpolation_order_, (float*)t.data());
             copyFloatToDoubleCuda (out_ptr, temp_1_, n_misc->n_local_);
         #endif
         ierr = VecCUDARestoreArrayReadWrite (query_points_, &query_ptr);                 CHKERRQ (ierr);
@@ -437,13 +437,13 @@ PetscErrorCode SemiLagrangianSolver::interpolate (std::shared_ptr<VecField> outp
         ierr = output->getComponentArrays (ox_ptr, oy_ptr, oz_ptr);             CHKERRQ (ierr);
         #ifdef SINGLE
             gpuInterpVec3D (ix_ptr, iy_ptr, iz_ptr, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
-                     ox_ptr, oy_ptr, oz_ptr, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_ghost_, (float*)t.data());
+                     ox_ptr, oy_ptr, oz_ptr, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_misc->interpolation_order_, (float*)t.data());
         #else
             copyDoubleToFloatCuda (temp_1_, ix_ptr, n_misc->n_local_);                                                                                                                                                                  
             copyDoubleToFloatCuda (temp_2_, iy_ptr, n_misc->n_local_);                                                                                                                                                                  
             copyDoubleToFloatCuda (temp_3_, iz_ptr, n_misc->n_local_);
             gpuInterpVec3D (temp_1_, temp_2_, temp_3_, &query_ptr[0], &query_ptr[n_misc->n_local_], &query_ptr[2*n_misc->n_local_], 
-                     temp_1_, temp_2_, temp_3_, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_ghost_, (float*)t.data());
+                     temp_1_, temp_2_, temp_3_, temp_interpol1_, temp_interpol2_, n_misc->n_, m_texture_, n_misc->interpolation_order_, (float*)t.data());
             copyFloatToDoubleCuda (ox_ptr, temp_1_, n_misc->n_local_);                                                                                                                                                                  
             copyFloatToDoubleCuda (oy_ptr, temp_2_, n_misc->n_local_);                                                                                                                                                                  
             copyFloatToDoubleCuda (oz_ptr, temp_3_, n_misc->n_local_);

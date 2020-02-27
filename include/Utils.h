@@ -369,6 +369,7 @@ class NMisc {
         , invasive_threshold_ (0.001)           // invasive threshold for edema
         , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
         , transport_mri_ (false)                // transport T1 image
+        , interpolation_order_ (3)              // interpolation order for SL
                                 {
 
 
@@ -468,6 +469,7 @@ class NMisc {
 
         ScalarType invasive_threshold_;
 
+        int interpolation_order_;
         bool use_tanh_scaling_;
 
         bool transport_mri_;
