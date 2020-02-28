@@ -4138,8 +4138,9 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     std::string msg;
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 20.0);
-    minstep = 1.0 / minstep;
+//    minstep = std::pow (2.0, 20.0);
+//    minstep = 1.0 / minstep;
+    minstep = PETSC_MACHINE_EPSILON;
     itctx_->optsettings_->ls_minstep = minstep;
 
     if (itctx_->optsettings_->newtonsolver == QUASINEWTON)  {
