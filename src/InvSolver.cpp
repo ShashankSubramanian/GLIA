@@ -741,12 +741,13 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     itctx_->n_misc_->k_   = x_ptr[np];
     ierr = VecRestoreArray (xrec_, &x_ptr);                                     CHKERRQ (ierr);
     PetscReal r1, r2, r3, k1, k2, k3;
+    PetscReal scale_kap = 1E0;
     r1 = itctx_->n_misc_->rho_;                                                                      // equals x_in_ptr[np + nk]
     r2 = (itctx_->n_misc_->nr_ > 1) ? itctx_->n_misc_->rho_ * itctx_->n_misc_->r_gm_wm_ratio_  : 0;  // equals x_in_ptr[np + nk + 1]
     r3 = (itctx_->n_misc_->nr_ > 2) ? itctx_->n_misc_->rho_ * itctx_->n_misc_->r_glm_wm_ratio_ : 0;  // equals x_in_ptr[np + nk + 2]
-    k1 = itctx_->n_misc_->k_;                                                                        // equals x_in_ptr[np];
-    k2 = (itctx_->n_misc_->nk_ > 1) ? itctx_->n_misc_->k_   * itctx_->n_misc_->k_gm_wm_ratio_  : 0;  // equals x_in_ptr[np+1];
-    k3 = (itctx_->n_misc_->nk_ > 2) ? itctx_->n_misc_->k_   * itctx_->n_misc_->k_glm_wm_ratio_ : 0;  // equals x_in_ptr[np+2];
+    k1 = itctx_->n_misc_->k_ * scale_kap;                                                                        // equals x_in_ptr[np];
+    k2 = (itctx_->n_misc_->nk_ > 1) ? itctx_->n_misc_->k_   * itctx_->n_misc_->k_gm_wm_ratio_ * scale_kap  : 0;  // equals x_in_ptr[np+1];
+    k3 = (itctx_->n_misc_->nk_ > 2) ? itctx_->n_misc_->k_   * itctx_->n_misc_->k_glm_wm_ratio_ * scale_kap : 0;  // equals x_in_ptr[np+2];
 
     ierr = itctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, itctx_->tumor_->mat_prop_, itctx_->n_misc_);    CHKERRQ (ierr);
     ierr = itctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, itctx_->tumor_->mat_prop_, itctx_->n_misc_);  CHKERRQ (ierr);

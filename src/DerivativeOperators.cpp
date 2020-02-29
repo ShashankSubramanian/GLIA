@@ -904,7 +904,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ScalarType scale_rho = 1;
-    ScalarType scale_kap = 1E-1;
+    ScalarType scale_kap = 1E0;
 
 
     // Reset mat-props and diffusion and reaction operators, tumor IC does not change
@@ -1006,6 +1006,11 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+   
+    //ScalarType scale_rho = 1;
+    //ScalarType scale_kap = 1E-2;
+
+
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
@@ -1027,6 +1032,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateGradient (Vec dJ, Vec x, std::
     ierr = VecGetSize (x, &sz);                                    CHKERRQ (ierr);
     ierr = VecGetArray (dJ, &dj_ptr);                              CHKERRQ (ierr);
     std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+    //std::array<ScalarType, 3> characteristic_scale = {scale_kap * 1, scale_rho * 1, 1};
     #ifdef SINGLE
     ScalarType small = 3.45266983e-04F;
     #else
@@ -1073,6 +1079,10 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscRea
     std::array<double, 7> t = {0};
     double self_exec_time = -MPI_Wtime ();
 
+   
+    //ScalarType scale_rho = 1;
+    //ScalarType scale_kap = 1E-02
+
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     int lock_state;
     ierr = VecLockGet (x, &lock_state);     CHKERRQ (ierr);
@@ -1101,6 +1111,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjectiveAndGradient (PetscRea
 
     ScalarType scale = 1;
     std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+    //std::array<ScalarType, 3> characteristic_scale = {scale_kap * 1, scale_rho * 1, 1};
     #ifdef SINGLE
     ScalarType small = 3.45266983e-04F;
     #else

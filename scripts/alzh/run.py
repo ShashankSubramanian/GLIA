@@ -111,17 +111,18 @@ def createJobsubFile(cmd, opt, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def set_params(basedir, args):
+def set_params(basedir, args, nlevel='no'):
 
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
     ###########
-    rho_inv = 0;
-    k_inv   = 0;
+    scale   = 1;
+    rho_inv = 8;
+    k_inv   = 1E-2/scale;
     nt_inv  = 40;
     dt_inv  = 0.025;
-    k_lb    = 1E-4;
-    k_ub    = 1;
+    k_lb    = 1E-4/scale;
+    k_ub    = 1/scale;
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
@@ -134,24 +135,48 @@ def set_params(basedir, args):
     vx1     = 'reg/velocity-field-x1.nc'
     vx2     = 'reg/velocity-field-x2.nc'
     vx3     = 'reg/velocity-field-x3.nc'
+    noise_level = nlevel;
     ###########
     
-    d1      = 'd_nc/data_t1_64_256.nc'
-    d0      = 'd_nc/data_t0_64_256.nc'
+    if noise_level == 'lres':
+        d1      = 'd_nc/data_t1_64_256.nc'
+        d0      = 'd_nc/data_t0_64_256.nc'
     
     # test02
-    #d1      = 'd_nc/data_t1_noise-01-118.nc'
-    #d0      = 'd_nc/data_t0_noise-01-45.nc'
-    #d1      = 'd_nc/data_t1_noise-02-468.nc'
-    #d0      = 'd_nc/data_t0_noise-02-60.nc'
+    if noise_level == 'sp04':
+        d1      = 'd_nc/data_t1_noise-004-22.nc'
+        d0      = 'd_nc/data_t0_noise-004-40.nc'  # 22 % noise
+    if noise_level == 'sp05':
+        d1      = 'd_nc/data_t1_noise-005-32.nc'
+        d0      = 'd_nc/data_t0_noise-005-41.nc'  # 32 % noise
+    if noise_level == 'sp08':
+        d1      = 'd_nc/data_t1_noise-008-76.nc'
+        d0      = 'd_nc/data_t0_noise-008-43.nc'  # 76 % noise
+    if noise_level == 'sp09':
+        d1      = 'd_nc/data_t1_noise-009-96.nc'
+        d0      = 'd_nc/data_t0_noise-009-44.nc'  # 96 % noise
+    if noise_level == 'sp10':
+        d1      = 'd_nc/data_t1_noise-01-118.nc'
+        d0      = 'd_nc/data_t0_noise-01-45.nc'  # 118 % noise
+    if noise_level == 'sp20':
+        d1      = 'd_nc/data_t1_noise-02-468.nc'
+        d0      = 'd_nc/data_t0_noise-02-60.nc'  # 468 % noise
     
     # test01
-    #d1      = 'd_nc/data_t1_noise-01-130.nc'
-    #d0      = 'd_nc/data_t0_noise-01-130.nc'
-    #d1      = 'd_nc/data_t1_noise-02-515.nc'
-    #d0      = 'd_nc/data_t0_noise-02-61.nc'
+    if noise_level == 'sp10':
+        d1      = 'd_nc/data_t1_noise-01-130.nc' 
+        d0      = 'd_nc/data_t0_noise-01-130.nc'  # 130 % noise 
+    if noise_level == 'sp20':
+        d1      = 'd_nc/data_t1_noise-02-515.nc'
+        d0      = 'd_nc/data_t0_noise-02-61.nc'   # 515 % noise
 
-    res_dir = os.path.join(args.results_directory, 'inv-adv-noise-lres-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv)+']-fd-lbfgs-3-bounds/');
+
+    # define results path
+    if not adv:
+        res_dir =  os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds/');
+    else:
+        res_dir = os.path.join(args.results_directory,'inv-adv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds/');
+    # make paths
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 
@@ -261,4 +286,6 @@ if __name__=='__main__':
     parser.add_argument (                   '--tumor_code_dir',                    type = str, help = 'path to tumor solver code directory')
     args = parser.parse_args();
 
-    set_params(basedir, args);
+   
+    for nlevel in ['no', 'lres', 'sp04', 'sp05', 'sp08', 'sp09', 'sp10']:
+        set_params(basedir, args, nlevel);
