@@ -83,7 +83,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
 PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *data_path, char* support_data_path, char* data_comp_path);
 PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*, char*, char*, char*);
 PetscErrorCode readObsFilter (Vec &obs_mask, std::shared_ptr<NMisc> n_misc, char*);
-PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, char*);
 PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<HealthyProbMaps> h_maps, Vec);
 PetscErrorCode computeSegmentation(std::shared_ptr<Tumor> tumor, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops);
 PetscErrorCode applyLowFreqNoise (Vec data, std::shared_ptr<NMisc> n_misc);
@@ -625,7 +625,7 @@ int main (int argc, char** argv) {
     if (syn_flag == 1) {
         ss << " generating Synthetic Data"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
-            ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc);
+            ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc, mri_path);
         } else {
             ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, spec_ops, init_tumor_path, mri_path);
         }
@@ -1052,7 +1052,7 @@ PetscErrorCode setDistMeasuresFullObj (std::shared_ptr<TumorSolverInterface> sol
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, char *mri_path) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     std::stringstream ss;
@@ -1083,6 +1083,10 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     std::array<ScalarType, 3> cm;
 
+    if (n_misc->transport_mri_) {
+        ierr = VecDuplicate (c_0, &solver_interface->getTumor()->mat_prop_->mri_);              CHKERRQ (ierr);
+        ierr = dataIn (solver_interface->getTumor()->mat_prop_->mri_, n_misc, mri_path);        CHKERRQ (ierr);
+    }
     n_misc->user_cms_.clear ();
 
     //near
