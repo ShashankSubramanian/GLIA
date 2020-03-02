@@ -32,7 +32,7 @@ struct HealthyProbMaps { //Stores prob maps for healthy atlas and healthy tissue
     }
 };
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*);
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char*, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal);
 PetscErrorCode generateSinusoidalData (Vec &d, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, Vec p_rec, Vec data, Vec data_obs, Vec c_0, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc);
 PetscErrorCode readData (Vec &data_t1, Vec &data_t0, Vec &support_data, Vec &data_components, Vec &c_0, Vec &p_rec, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *data_path_t1, char *data_path_t0, char* support_data_path, char* data_comp_path);
@@ -143,7 +143,11 @@ int main (int argc, char** argv) {
     int pre_reacdiff_solve = 0;
     int order_of_accuracy = -1;
 
-    ScalarType z_cm, y_cm, x_cm;
+    ScalarType z_cm1 = -1, y_cm1 = -1, x_cm1 = -1;
+    ScalarType z_cm2 = -1, y_cm2 = -1, x_cm2 = -1;
+    ScalarType z_cm3 = -1, y_cm3 = -1, x_cm3 = -1;
+    ScalarType z_cm4 = -1, y_cm4 = -1, x_cm4 = -1;
+    ScalarType cm1_s = -1, cm2_s = -1, cm3_s = -1, cm4_s = -1;
 
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
@@ -186,9 +190,28 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-forcing_factor", "Forcing factor for mass-effect forward model", "", forcing_factor, &forcing_factor, NULL);
 
 
-    PetscOptionsReal ("-z_cm", "Z coordinate of tumor loc", "", z_cm, &z_cm, NULL);
-    PetscOptionsReal ("-y_cm", "Y coordinate of tumor loc", "", y_cm, &y_cm, NULL);
-    PetscOptionsReal ("-x_cm", "X coordinate of tumor loc", "", x_cm, &x_cm, NULL);
+    PetscOptionsReal ("-z_cm1", "Z coordinate of tumor loc", "", z_cm1, &z_cm1, NULL);
+    PetscOptionsReal ("-y_cm1", "Y coordinate of tumor loc", "", y_cm1, &y_cm1, NULL);
+    PetscOptionsReal ("-x_cm1", "X coordinate of tumor loc", "", x_cm1, &x_cm1, NULL);
+    PetscOptionsReal ("-cm1_s", "Scaling of cm1", "", cm1_s, &cm1_s, NULL);
+
+    PetscOptionsReal ("-z_cm2", "Z coordinate of tumor loc", "", z_cm2, &z_cm2, NULL);
+    PetscOptionsReal ("-y_cm2", "Y coordinate of tumor loc", "", y_cm2, &y_cm2, NULL);
+    PetscOptionsReal ("-x_cm2", "X coordinate of tumor loc", "", x_cm2, &x_cm2, NULL);
+    PetscOptionsReal ("-cm2_s", "Scaling of cm2", "", cm2_s, &cm2_s, NULL);
+
+    PetscOptionsReal ("-z_cm3", "Z coordinate of tumor loc", "", z_cm3, &z_cm3, NULL);
+    PetscOptionsReal ("-y_cm3", "Y coordinate of tumor loc", "", y_cm3, &y_cm3, NULL);
+    PetscOptionsReal ("-x_cm3", "X coordinate of tumor loc", "", x_cm3, &x_cm3, NULL);
+    PetscOptionsReal ("-cm3_s", "Scaling of cm3", "", cm3_s, &cm3_s, NULL);
+
+    PetscOptionsReal ("-z_cm4", "Z coordinate of tumor loc", "", z_cm4, &z_cm4, NULL);
+    PetscOptionsReal ("-y_cm4", "Y coordinate of tumor loc", "", y_cm4, &y_cm4, NULL);
+    PetscOptionsReal ("-x_cm4", "X coordinate of tumor loc", "", x_cm4, &x_cm4, NULL);
+    PetscOptionsReal ("-cm4_s", "Scaling of cm4", "", cm4_s, &cm4_s, NULL);
+
+
+
 
     PetscStrcpy (newton_solver, "QN");
     PetscStrcpy (line_search, "mt");
@@ -344,14 +367,14 @@ int main (int argc, char** argv) {
     int n_gist = 0, n_newton;
     std::shared_ptr<NMisc> n_misc =  std::make_shared<NMisc> (n, isize, osize, istart, ostart, plan, c_comm, c_dims, testcase);   //This class contains all required parameters
 
-    n_misc->user_cm_[0] = 2 * M_PI / 256 * z_cm;
-    n_misc->user_cm_[1] = 2 * M_PI / 256 * y_cm;
-    n_misc->user_cm_[2] = 2 * M_PI / 256 * x_cm;
+    n_misc->user_cm_[0] = 2 * M_PI / 256 * z_cm1;
+    n_misc->user_cm_[1] = 2 * M_PI / 256 * y_cm1;
+    n_misc->user_cm_[2] = 2 * M_PI / 256 * x_cm1;
 
     n_misc->user_cms_.push_back (n_misc->user_cm_[0]);
     n_misc->user_cms_.push_back (n_misc->user_cm_[1]);
     n_misc->user_cms_.push_back (n_misc->user_cm_[2]);
-    n_misc->user_cms_.push_back (1.); // this is the default scaling
+    n_misc->user_cms_.push_back (cm1_s); // this is the default scaling
 
     // Read input parameters (controlled from run script)
     if (beta_user >= 0) {    //user has provided tumor reg
@@ -600,7 +623,7 @@ int main (int argc, char** argv) {
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data_t1, p_rec, solver_interface, n_misc);
         } else {
-            ierr = generateSyntheticData (c_0, data_t1, p_rec, solver_interface, n_misc, spec_ops,init_tumor_path);
+            ierr = generateSyntheticData (c_0, data_t1, p_rec, solver_interface, n_misc, spec_ops,init_tumor_path, x_cm2, y_cm2, z_cm2, cm2_s, x_cm3, y_cm3, z_cm3, cm3_s, x_cm4, y_cm4, z_cm4, cm4_s);
         }
         read_support_data_nc = false;
         support_data = data_t1;
@@ -1598,7 +1621,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *init_tumor_path) {
+PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<TumorSolverInterface> solver_interface, std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops, char *init_tumor_path, ScalarType  x_cm2, ScalarType y_cm2, ScalarType z_cm2, ScalarType cm2_s, ScalarType x_cm3, ScalarType y_cm3, ScalarType z_cm3, ScalarType cm3_s,  ScalarType x_cm4, ScalarType y_cm4, ScalarType z_cm4, ScalarType cm4_s) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
 
@@ -1654,22 +1677,77 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         }
     } else {
         ierr = tumor->setTrueP (n_misc);
-        ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << " --------------  SYNTHETIC TRUE P (CM1) -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         if (procid == 0) {
             ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);
         }
         ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         ierr = tumor->phi_->apply (c_0, tumor->p_true_);
     }
-    writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn"));
+    writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn-cm1"));
 
-    // if (n_misc->model_ == 2) {
-    //     ierr = VecGetArray (c_0, &c0_ptr);                                  CHKERRQ (ierr);
-    //     for (int i = 0; i < n_misc->n_local_; i++) {
-    //         c0_ptr[i] = 1 / (1 + exp(-c0_ptr[i] + n_misc->exp_shift_));
-    //     }
-    //     ierr = VecRestoreArray (c_0, &c0_ptr);                              CHKERRQ (ierr);
-    // }
+    Vec c_temp = nullptr;
+    std::array<ScalarType, 3> cm;
+    if (z_cm2 != -1 && x_cm2 != -1 && y_cm2 != -1) {
+        if (c_temp == nullptr) {ierr = VecDuplicate (c_0, &c_temp);  CHKERRQ (ierr);}
+        ierr = VecSet (c_temp, 0.);                                  CHKERRQ (ierr);
+        cm[0] = (2 * M_PI / 256 * z_cm2);
+        cm[1] = (2 * M_PI / 256 * y_cm2);
+        cm[2] = (2 * M_PI / 256 * x_cm2);
+        cm2_s = cm2_s == -1 ? 1 : cm2_s;
+
+        ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
+        ierr = tumor->phi_->setValues (tumor->mat_prop_);
+        ierr = tumor->setTrueP (n_misc, cm2_s);
+        ss << " --------------  SYNTHETIC TRUE P (CM2) -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (procid == 0) { ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);}
+        ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ierr = tumor->phi_->apply (c_temp, tumor->p_true_);                        CHKERRQ (ierr);
+        ierr = VecAXPY (c_0, 1.0, c_temp);                                      CHKERRQ (ierr);
+        writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn-cm2"));
+    }
+
+    if (z_cm3 != -1 && x_cm3 != -1 && y_cm3 != -1) {
+        if (c_temp == nullptr) {ierr = VecDuplicate (c_0, &c_temp);  CHKERRQ (ierr);}
+        ierr = VecSet (c_temp, 0.);                                  CHKERRQ (ierr);
+        cm[0] = (2 * M_PI / 256 * z_cm3);
+        cm[1] = (2 * M_PI / 256 * y_cm3);
+        cm[2] = (2 * M_PI / 256 * x_cm3);
+        cm3_s = cm3_s == -1 ? 1 : cm3_s;
+
+        ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
+        ierr = tumor->phi_->setValues (tumor->mat_prop_);
+        ierr = tumor->setTrueP (n_misc, cm3_s);
+        ss << " --------------  SYNTHETIC TRUE P (CM2) -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (procid == 0) { ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);}
+        ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ierr = tumor->phi_->apply (c_temp, tumor->p_true_);                        CHKERRQ (ierr);
+        ierr = VecAXPY (c_0, 1.0, c_temp);                                      CHKERRQ (ierr);
+        writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn-cm3"));
+ 
+    }
+
+    if (z_cm4 != -1 && x_cm4 != -1 && y_cm4 != -1) {
+        if (c_temp == nullptr) {ierr = VecDuplicate (c_0, &c_temp);  CHKERRQ (ierr);}
+        ierr = VecSet (c_temp, 0.);                                  CHKERRQ (ierr); 
+        cm[0] = (2 * M_PI / 256 * z_cm4);
+        cm[1] = (2 * M_PI / 256 * y_cm4);
+        cm[2] = (2 * M_PI / 256 * x_cm4);
+        cm4_s = cm4_s == -1 ? 1 : cm4_s;
+        
+        ierr = tumor->phi_->setGaussians (cm, n_misc->phi_sigma_, n_misc->phi_spacing_factor_, n_misc->np_);
+        ierr = tumor->phi_->setValues (tumor->mat_prop_);
+        ierr = tumor->setTrueP (n_misc, cm4_s);
+        ss << " --------------  SYNTHETIC TRUE P (CM2) -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (procid == 0) { ierr = VecView (tumor->p_true_, PETSC_VIEWER_STDOUT_SELF);          CHKERRQ (ierr);}
+        ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ierr = tumor->phi_->apply (c_temp, tumor->p_true_);                        CHKERRQ (ierr);
+        ierr = VecAXPY (c_0, 1.0, c_temp);                                      CHKERRQ (ierr);
+        writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), std::string("p-syn-cm4"));
+ 
+    }
+     
+    if (c_temp != nullptr) {ierr = VecDestroy (&c_temp);                    CHKERRQ (ierr); c_temp = nullptr;}
 
     ScalarType max, min;
     ierr = VecMax (c_0, NULL, &max);                                       CHKERRQ (ierr);

@@ -61,6 +61,8 @@ def createJobsubFile(cmd, opt, level):
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         elif opt['compute_sys'] == 'frontera':
             bash_file.write('#SBATCH -p normal\n');
+            if opt['gpu']:
+                bash_file.write('#SBATCH -p rtx\n');
             #opt['num_nodes'] = 3;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         elif opt['compute_sys'] == 'local':
@@ -92,10 +94,14 @@ def createJobsubFile(cmd, opt, level):
 
     bash_file.write("\n\n");
     bash_file.write("source ~/.bashrc\n");
-    # bash_file.write("#### define paths\n");
-    # bash_file.write("DATA_DIR=" + opt['input_dir'] + "\n");
-    # bash_file.write("OUTPUT_DIR=" + opt['output_dir'] + "\n");
-    # bash_file.write("cd " + opt['output_dir']  + "\n");
+    if opt['gpu']:
+        bash_file.write("module load cuda")
+        bash_file.write("module load cudnn")
+        bash_file.write("module load nccl")
+        bash_file.write("module load petsc/3.11-rtx")
+        bash_file.write("export ACCFFT_DIR=/work/04678/scheufks/frontera/libs/accfft/build_gpu/")
+        bash_file.write("export CUDA_DIR=${TACC_CUDA_DIR}/")
+
     bash_file.write("export OMP_NUM_THREADS=1\n");
     bash_file.write("umask 002\n");
     bash_file.write("\n");
@@ -111,13 +117,13 @@ def createJobsubFile(cmd, opt, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def set_params(basedir, args, nlevel='no'):
+def set_params(basedir, args, nlevel='no', gpu=False):
 
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
     ###########
-    scale   = 1;
-    rho_inv = 8;
+    scale   = 1e-1;
+    rho_inv = 6;
     k_inv   = 1E-2/scale;
     nt_inv  = 40;
     dt_inv  = 0.025;
@@ -126,11 +132,11 @@ def set_params(basedir, args, nlevel='no'):
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
-    b_name  = 'inverse_adv'
+    b_name  = 'inverse_adv_scale'
     d1      = 'd_nc/dataBeforeObservation.nc'
     d0      = 'd_nc/c0True.nc'
     solver  = 'QN'
-    prefix  = 'atlas'
+    prefix  = '0368Y01'
     adv     = True;
     vx1     = 'reg/velocity-field-x1.nc'
     vx2     = 'reg/velocity-field-x2.nc'
@@ -139,43 +145,48 @@ def set_params(basedir, args, nlevel='no'):
     ###########
     
     if noise_level == 'lres':
-        d1      = 'd_nc/data_t1_64_256.nc'
-        d0      = 'd_nc/data_t0_64_256.nc'
+        d1      = 'd_nc/data_t1_128_256.nc'
+        d0      = 'd_nc/data_t0_128_256.nc'
     
     # test02
-    if noise_level == 'sp04':
-        d1      = 'd_nc/data_t1_noise-004-22.nc'
-        d0      = 'd_nc/data_t0_noise-004-40.nc'  # 22 % noise
-    if noise_level == 'sp05':
-        d1      = 'd_nc/data_t1_noise-005-32.nc'
-        d0      = 'd_nc/data_t0_noise-005-41.nc'  # 32 % noise
-    if noise_level == 'sp08':
-        d1      = 'd_nc/data_t1_noise-008-76.nc'
-        d0      = 'd_nc/data_t0_noise-008-43.nc'  # 76 % noise
-    if noise_level == 'sp09':
-        d1      = 'd_nc/data_t1_noise-009-96.nc'
-        d0      = 'd_nc/data_t0_noise-009-44.nc'  # 96 % noise
-    if noise_level == 'sp10':
-        d1      = 'd_nc/data_t1_noise-01-118.nc'
-        d0      = 'd_nc/data_t0_noise-01-45.nc'  # 118 % noise
-    if noise_level == 'sp20':
-        d1      = 'd_nc/data_t1_noise-02-468.nc'
-        d0      = 'd_nc/data_t0_noise-02-60.nc'  # 468 % noise
+    if 'sp' in noise_level:
+        d1      = 'd_nc/data_t1_noise-'+str(nlevel.split('sp')[-1])+'.nc'
+        d0      = 'd_nc/data_t0_noise-'+str(nlevel.split('sp')[-1])+'.nc'  # 22 % noise
+   
+    # test02
+   # if noise_level == 'sp04':
+   #     d1      = 'd_nc/data_t1_noise-004-22.nc'
+   #     d0      = 'd_nc/data_t0_noise-004-40.nc'  # 22 % noise
+   # if noise_level == 'sp05':
+   #     d1      = 'd_nc/data_t1_noise-005-32.nc'
+   #     d0      = 'd_nc/data_t0_noise-005-41.nc'  # 32 % noise
+   # if noise_level == 'sp08':
+   #     d1      = 'd_nc/data_t1_noise-008-76.nc'
+   #     d0      = 'd_nc/data_t0_noise-008-43.nc'  # 76 % noise
+   # if noise_level == 'sp09':
+   #     d1      = 'd_nc/data_t1_noise-009-96.nc'
+   #     d0      = 'd_nc/data_t0_noise-009-44.nc'  # 96 % noise
+   # if noise_level == 'sp10':
+   #     d1      = 'd_nc/data_t1_noise-01-118.nc'
+   #     d0      = 'd_nc/data_t0_noise-01-45.nc'  # 118 % noise
+   # if noise_level == 'sp20':
+   #     d1      = 'd_nc/data_t1_noise-02-468.nc'
+   #     d0      = 'd_nc/data_t0_noise-02-60.nc'  # 468 % noise
     
-    # test01
-    if noise_level == 'sp10':
-        d1      = 'd_nc/data_t1_noise-01-130.nc' 
-        d0      = 'd_nc/data_t0_noise-01-130.nc'  # 130 % noise 
-    if noise_level == 'sp20':
-        d1      = 'd_nc/data_t1_noise-02-515.nc'
-        d0      = 'd_nc/data_t0_noise-02-61.nc'   # 515 % noise
+   # # test01
+   # if noise_level == 'sp10':
+   #     d1      = 'd_nc/data_t1_noise-01-130.nc' 
+   #     d0      = 'd_nc/data_t0_noise-01-130.nc'  # 130 % noise 
+   # if noise_level == 'sp20':
+   #     d1      = 'd_nc/data_t1_noise-02-515.nc'
+   #     d0      = 'd_nc/data_t0_noise-02-61.nc'   # 515 % noise
 
 
     # define results path
     if not adv:
-        res_dir =  os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds/');
+        res_dir = os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
     else:
-        res_dir = os.path.join(args.results_directory,'inv-adv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds/');
+        res_dir =  os.path.join(args.results_directory,'inv-adv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
     # make paths
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
@@ -183,12 +194,13 @@ def set_params(basedir, args, nlevel='no'):
 
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
-    opt['output_dir']  = res_dir;
-    opt['input_dir']   = inp_dir;
-    opt['num_nodes']   = 2;
-    opt['mpi_pernode'] = 96;
-    opt['wtime_h']     = 6;
-    opt['wtime_m']     = 0;
+    opt['gpu']          = gpu; 
+    opt['output_dir']   = res_dir;
+    opt['input_dir']    = inp_dir;
+    opt['num_nodes']    = 1 if gpu else 2;
+    opt['mpi_pernode']  = 1 if gpu else 96;
+    opt['wtime_h']      = 6;
+    opt['wtime_m']      = 0;
 
     output_path = args.results_directory
     if not os.path.exists(res_dir):
@@ -199,7 +211,7 @@ def set_params(basedir, args, nlevel='no'):
     if args.compute_cluster in ["stampede2", "frontera", "local"]:
         pythoncmd = "python3 ";
     
-    t_params = {}
+    t_params = {}€O€O€O€O€O
     t_params['binary_name']           = b_name;
     t_params['code_path']             = os.path.join(basedir, '..'); 
     t_params['compute_sys']           = args.compute_cluster;
@@ -287,5 +299,5 @@ if __name__=='__main__':
     args = parser.parse_args();
 
    
-    for nlevel in ['no', 'lres', 'sp04', 'sp05', 'sp08', 'sp09', 'sp10']:
+    for nlevel in ['no', 'lres', 'sp0.1', 'sp0.2', 'sp0.25', 'sp0.3']:
         set_params(basedir, args, nlevel);

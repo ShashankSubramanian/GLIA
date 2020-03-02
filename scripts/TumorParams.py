@@ -24,7 +24,7 @@ def getTumorRunCmd(params):
 
     ### TUMOR PARAMETERS SET BEGIN
 
-    binary_name = 'inverse'
+    binary_name = 'inverse_adv'
     ### No of discretization points (Assumed uniform)
     N = 256
     ### Path to all output results (Directories are created automatically)
@@ -78,8 +78,8 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 12
-    k_data   = 0.1
+    rho_data = 8
+    k_data   = 0.18
     nt_data  = 100
     dt_data  = 0.01
 
@@ -87,9 +87,29 @@ def getTumorRunCmd(params):
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 1.5E5
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
-    z_cm = 86
-    y_cm = 136
-    x_cm = 137
+    #z_cm1 = 86
+    #y_cm1 = 136
+    #x_cm1 = 137
+    z_cm1 = 97
+    y_cm1 = 138
+    x_cm1 = 119
+    cm1_s = 1
+    z_cm2 = 97
+    y_cm2 = 138
+    x_cm2 = 146
+    cm2_s = 1
+    z_cm3 = 101
+    y_cm3 = 213
+    x_cm3 = 115
+    cm3_s = 1
+    z_cm4 = 101
+    y_cm4 = 200
+    x_cm4 = 115
+    cm4_s = 1
+
+
+
+
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -524,9 +544,22 @@ def getTumorRunCmd(params):
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -glm_path " + glm_path + \
-    " -z_cm " + str(z_cm) + \
-    " -y_cm " + str(y_cm) + \
-    " -x_cm " + str(x_cm) + \
+    " -z_cm1 " + str(z_cm1) + \
+    " -y_cm1 " + str(y_cm1) + \
+    " -x_cm1 " + str(x_cm1) + \
+    " -cm1_s " + str(cm1_s) + \
+    " -z_cm2 " + str(z_cm2) + \
+    " -y_cm2 " + str(y_cm2) + \
+    " -x_cm2 " + str(x_cm2) + \
+    " -cm2_s " + str(cm2_s) + \
+    " -z_cm3 " + str(z_cm3) + \
+    " -y_cm3 " + str(y_cm3) + \
+    " -x_cm3 " + str(x_cm3) + \
+    " -cm3_s " + str(cm3_s) + \
+    " -z_cm4 " + str(z_cm4) + \
+    " -y_cm4 " + str(y_cm4) + \
+    " -x_cm4 " + str(x_cm4) + \
+    " -cm4_s " + str(cm4_s) + \
     " -obs_mask_path " + obs_mask_path + \
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \

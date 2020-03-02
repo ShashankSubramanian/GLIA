@@ -904,7 +904,7 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     ScalarType scale_rho = 1;
-    ScalarType scale_kap = 1E0;
+    ScalarType scale_kap = 1E-1;
 
 
     // Reset mat-props and diffusion and reaction operators, tumor IC does not change

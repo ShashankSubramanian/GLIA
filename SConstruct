@@ -255,7 +255,7 @@ if env["gpu"] == True:
     source = [sourcesPGLISTRGPU, './app/forward.cpp']
     )
     bininv = env.Program (
-    target = buildpath + '/inverse',
+    target = buildpath + '/inverse_gpu_adv',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
     env.Alias("bin", bininv)
@@ -270,7 +270,7 @@ else:
     source = [sourcesPGLISTR, './app/forward.cpp']
     )
     bininv = env.Program (
-        target = buildpath + '/inverse_adv',
+        target = buildpath + '/inverse_adv_scale',
         source = [sourcesPGLISTR, './app/inverse.cpp']
     ) 
     env.Alias("bin", bininv)
