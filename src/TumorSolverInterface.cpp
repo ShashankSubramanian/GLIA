@@ -541,7 +541,8 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(
     ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
     inv_solver_->setData (data); if (data_gradeval == nullptr) data_gradeval = data;
     inv_solver_->setDataGradient (data_gradeval);
-    ierr = getTumor()->phi_->apply (getTumor()->c_0_, prec);                       CHKERRQ (ierr); // c(0)
+    // ierr = getTumor()->phi_->apply (getTumor()->c_0_, prec);                       CHKERRQ (ierr); // c(0)
+    ierr = VecCopy (data->dt0(), getTumor()->c_0_);                                CHKERRQ (ierr); // c(0) = Pd0
     ierr = inv_solver_->solveInverseReacDiff (prec);                               CHKERRQ (ierr); // === SOLVE ====
     ierr = VecCopy (inv_solver_->getPrec(), prec);                                 CHKERRQ (ierr); // get solution
   } else {
