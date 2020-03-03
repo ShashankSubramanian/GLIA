@@ -404,7 +404,8 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
 
     // rescale init cond. and invert for rho/kappa
     PetscReal ic_max = 0., g_norm_ref = 0.;
-    ierr = itctx_->tumor_->phi_->apply(itctx_->tumor_->c_0_, x_in);             CHKERRQ (ierr);
+    //ierr = itctx_->tumor_->phi_->apply(itctx_->tumor_->c_0_, x_in);             CHKERRQ (ierr);
+    ierr = VecCopy(data_->dt0(), itctx_->tumor_->c_0_);                         CHKERRQ (ierr);
     ierr = VecMax (itctx_->tumor_->c_0_, NULL, &ic_max);                        CHKERRQ (ierr);
     ierr = VecGetArray (x_in, &x_in_ptr);                                       CHKERRQ (ierr);
     /* scale p to one according to our modeling assumptions:
@@ -2326,9 +2327,9 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     ierr = VecRestoreArray (x, &x_ptr);       CHKERRQ (ierr);
     ierr = VecRestoreArray (itctx->x_old, &x_full_ptr);   CHKERRQ (ierr);
 
-    ierr = itctx->tumor_->phi_->apply (itctx->tumor_->c_0_, itctx->x_old);                 CHKERRQ (ierr);
+    //ierr = itctx->tumor_->phi_->apply (itctx->tumor_->c_0_, itctx->x_old);                 CHKERRQ (ierr);
     //Prints a warning if tumor IC is clipped
-    ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr);
+    //ierr = checkClipping (itctx->tumor_->c_0_, itctx->n_misc_);           CHKERRQ (ierr);
 
     ScalarType mx, mn;
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);

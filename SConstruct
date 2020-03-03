@@ -172,8 +172,11 @@ if env["multi_gpu"] == True:
 # env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
 
 # avx
-#if env["platform"] != "stampede2":
-env.Append(CCFLAGS = ['-march=native'])
+if env["platform"] != "frontera":
+    env.Append(CCFLAGS = ['-march=native'])
+elif env["platform"] == "frontera" and env["gpu"] == False:
+    env.Append(CCFLAGS = ['-march=native'])
+
 
 # ====== CUDA =======
 if env["gpu"] == True:
@@ -184,6 +187,10 @@ if env["gpu"] == True:
     uniqueCheckLib(conf, "cufft")
     uniqueCheckLib(conf, "cublas")
     uniqueCheckLib(conf, "cudart")
+# MPI
+MPI_DIR = checkset_var("MPI_DIR", "")
+env.Append(CPPPATH = [os.path.join( MPI_DIR, "include")])
+env.Append(LIBPATH = [os.path.join( MPI_DIR, "lib")])
 
 # ====== ACCFFT =======
 ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
@@ -225,7 +232,7 @@ env.Append(LIBPATH = [os.path.join( PETSC_DIR, "lib"),
 if env["platform"] == "hazelhen":
   # do nothing
   pass
-elif env["platform"] == "lonestar" or env["platform"] == "stampede2":
+elif env["platform"] == "lonestar" or env["platform"] == "stampede2" or env["platform"] == "maverick2" or env["platform"] == "frontera":
   uniqueCheckLib(conf, "petsc")
 else:
   uniqueCheckLib(conf, "petsc")
@@ -255,7 +262,7 @@ if env["gpu"] == True:
     source = [sourcesPGLISTRGPU, './app/forward.cpp']
     )
     bininv = env.Program (
-    target = buildpath + '/inverse_gpu_adv',
+    target = buildpath + '/inverse_gpu_scale',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
     env.Alias("bin", bininv)

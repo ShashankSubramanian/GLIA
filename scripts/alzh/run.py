@@ -60,9 +60,10 @@ def createJobsubFile(cmd, opt, level):
             #opt['num_nodes'] = 3;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         elif opt['compute_sys'] == 'frontera':
-            bash_file.write('#SBATCH -p normal\n');
             if opt['gpu']:
                 bash_file.write('#SBATCH -p rtx\n');
+            else:
+                bash_file.write('#SBATCH -p normal\n');
             #opt['num_nodes'] = 3;
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
         elif opt['compute_sys'] == 'local':
@@ -95,14 +96,16 @@ def createJobsubFile(cmd, opt, level):
     bash_file.write("\n\n");
     bash_file.write("source ~/.bashrc\n");
     if opt['gpu']:
-        bash_file.write("module load cuda")
-        bash_file.write("module load cudnn")
-        bash_file.write("module load nccl")
-        bash_file.write("module load petsc/3.11-rtx")
-        bash_file.write("export ACCFFT_DIR=/work/04678/scheufks/frontera/libs/accfft/build_gpu/")
-        bash_file.write("export CUDA_DIR=${TACC_CUDA_DIR}/")
+        bash_file.write("\nmodule load cuda")
+        bash_file.write("\nmodule load cudnn")
+        bash_file.write("\nmodule load nccl")
+        bash_file.write("\nmodule load petsc/3.11-rtx")
+        bash_file.write("\nexport ACCFFT_DIR=/work/04678/scheufks/frontera/libs/accfft/build_gpu/")
+        bash_file.write("\nexport ACCFFT_LIB=${ACCFFT_DIR}/lib/")
+        bash_file.write("\nexport ACCFFT_INC=${ACCFFT_DIR}/include/")
+        bash_file.write("\nexport CUDA_DIR=${TACC_CUDA_DIR}/")
 
-    bash_file.write("export OMP_NUM_THREADS=1\n");
+    bash_file.write("\nexport OMP_NUM_THREADS=1\n");
     bash_file.write("umask 002\n");
     bash_file.write("\n");
     bash_file.write("\n");
@@ -132,7 +135,8 @@ def set_params(basedir, args, nlevel='no', gpu=False):
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
-    b_name  = 'inverse_adv_scale'
+    #b_name  = 'inverse_adv_scale'
+    b_name  = 'inverse_gpu_scale'
     d1      = 'd_nc/dataBeforeObservation.nc'
     d0      = 'd_nc/c0True.nc'
     solver  = 'QN'
@@ -186,7 +190,7 @@ def set_params(basedir, args, nlevel='no', gpu=False):
     if not adv:
         res_dir = os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
     else:
-        res_dir =  os.path.join(args.results_directory,'inv-adv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
+        res_dir =  os.path.join(args.results_directory,'inv-adv-corr-c0-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
     # make paths
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
@@ -211,7 +215,7 @@ def set_params(basedir, args, nlevel='no', gpu=False):
     if args.compute_cluster in ["stampede2", "frontera", "local"]:
         pythoncmd = "python3 ";
     
-    t_params = {}€O€O€O€O€O
+    t_params = {}
     t_params['binary_name']           = b_name;
     t_params['code_path']             = os.path.join(basedir, '..'); 
     t_params['compute_sys']           = args.compute_cluster;
@@ -299,5 +303,6 @@ if __name__=='__main__':
     args = parser.parse_args();
 
    
-    for nlevel in ['no', 'lres', 'sp0.1', 'sp0.2', 'sp0.25', 'sp0.3']:
-        set_params(basedir, args, nlevel);
+    #for nlevel in ['no', 'lres', 'sp0.1', 'sp0.2', 'sp0.25', 'sp0.3']:
+    for nlevel in ['no', 'sp0.005', 'sp0.01', 'sp0.1', 'sp0.3', 'sp0.5']:
+        set_params(basedir, args, nlevel, gpu=True);

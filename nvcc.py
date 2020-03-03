@@ -1,11 +1,8 @@
 """SCons.Tool.nvcc
-
 Tool-specific initialization for NVIDIA CUDA Compiler.
-
 There normally shouldn't be any need to import this module directly.
 It will usually be imported through the generic SCons.Tool.Tool()
 selection method.
-
 """
 
 import SCons.Tool
@@ -88,4 +85,3 @@ def generate(env):
 
 def exists(env):
   return env.Detect('nvcc')
-

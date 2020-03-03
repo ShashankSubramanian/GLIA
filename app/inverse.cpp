@@ -310,6 +310,9 @@ int main (int argc, char** argv) {
 {
     int isize[3], osize[3], istart[3], ostart[3];
 
+    #ifdef CUDA
+        cudaPrintDeviceMemory ();
+    #endif
     std::shared_ptr<SpectralOperators> spec_ops;
     #if defined(CUDA) && !defined(MPICUDA)
         spec_ops = std::make_shared<SpectralOperators> (CUFFT);
@@ -319,6 +322,8 @@ int main (int argc, char** argv) {
     spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
     int64_t alloc_max = spec_ops->alloc_max_;
     fft_plan *plan = spec_ops->plan_;
+
+
 
     EventRegistry::initialize ();
     Event e1 ("solve-tumor-inverse-tao");
@@ -929,7 +934,8 @@ int main (int argc, char** argv) {
                 // reset time history
                 ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
                 // apply IC to tumor c0
-                ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
+                //ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
+                ierr = VecCopy (data_t0, tumor->c_0_); CHKERRQ(ierr);
                 // reaction and diffusion coefficient already set correctly at the end of the
                 // optimizer
                 ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
