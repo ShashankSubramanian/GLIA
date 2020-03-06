@@ -857,6 +857,17 @@ PetscErrorCode PdeOperatorsMassEffect::solveState (int linearized) {
         ss << "gm_final.nc";
         dataOut (tumor_->mat_prop_->gm_, n_misc_, ss.str().c_str());
         ss.str(std::string()); ss.clear();
+        ierr = tumor_->displacement_->computeMagnitude(magnitude_);
+        ss << "displacement_final.nc";
+        dataOut (magnitude_, n_misc_, ss.str().c_str());
+        ss.str(std::string()); ss.clear();
+        ScalarType mag_norm, mm;
+        ierr = VecNorm (magnitude_, NORM_2, &mag_norm);    CHKERRQ (ierr);
+        ierr = VecMax (magnitude_, NULL, &mm);                                    CHKERRQ (ierr);
+        ss << "norm of displacement: " << mag_norm << "; max of displacement: " << mm;
+        ierr = tuMSGstd(ss.str());                                                CHKERRQ (ierr);
+        ss.str(std::string()); ss.clear();
+
         if (tumor_->mat_prop_->mri_ != nullptr) {
             ss << "mri_final.nc";
             dataOut (tumor_->mat_prop_->mri_, n_misc_, ss.str().c_str());

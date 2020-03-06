@@ -1519,6 +1519,18 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
         ss << "gm_rec_final.nc";
         dataOut (solver_interface->getTumor()->mat_prop_->gm_, n_misc, ss.str().c_str());
         ss.str(std::string()); ss.clear();
+        Vec mag;
+        ierr = solver_interface->getPdeOperators()->getModelSpecificVector(mag);
+        ierr = solver_interface->getTumor()->displacement_->computeMagnitude(mag);
+        dataOut (mag, n_misc, ss.str().c_str());
+        ss << "displacement_rec_final.nc";
+        ss.str(std::string()); ss.clear();
+        ScalarType mag_norm, mm;
+        ierr = VecNorm (mag, NORM_2, &mag_norm);    CHKERRQ (ierr);
+        ierr = VecMax (mag, NULL, &mm);                                    CHKERRQ (ierr);
+        ss << "norm of displacement: " << mag_norm << "; max of displacement: " << mm;
+        ierr = tuMSGstd(ss.str());                                                CHKERRQ(ierr);
+        ss.str(std::string()); ss.clear();
         if (solver_interface->getTumor()->mat_prop_->mri_ != nullptr) {
             ss << "mri_rec_final.nc";
             dataOut (solver_interface->getTumor()->mat_prop_->mri_, n_misc, ss.str().c_str());

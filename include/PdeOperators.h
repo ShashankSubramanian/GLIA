@@ -38,6 +38,7 @@ class PdeOperators {
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) = 0;
 		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc) = 0;
         virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {}) = 0;
+        virtual PetscErrorCode getModelSpecificVector(Vec x) {PetscFunctionReturn(0);}
 
 		virtual ~PdeOperators () {}
 
@@ -128,7 +129,7 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 		PetscErrorCode computeSources (Vec p, Vec i, Vec n, Vec O, ScalarType dt);
 		PetscErrorCode updateReacAndDiffCoefficients (Vec c, std::shared_ptr<Tumor> tumor);
 		virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
-
+        virtual PetscErrorCode getModelSpecificVector (Vec x) {x = magnitude_; PetscFunctionReturn(0);}
 		virtual ~PdeOperatorsMultiSpecies () {
 			PetscErrorCode ierr = 0;
 			ierr = VecDestroy (&magnitude_);
