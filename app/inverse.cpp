@@ -1522,8 +1522,8 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
         Vec mag = nullptr;
         ierr = solver_interface->getPdeOperators()->getModelSpecificVector(&mag);
         ierr = solver_interface->getTumor()->displacement_->computeMagnitude(mag);
-        dataOut (mag, n_misc, ss.str().c_str());
         ss << "displacement_rec_final.nc";
+        dataOut (mag, n_misc, ss.str().c_str());
         ss.str(std::string()); ss.clear();
         ScalarType mag_norm, mm;
         ierr = VecNorm (mag, NORM_2, &mag_norm);    CHKERRQ (ierr);
