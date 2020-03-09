@@ -13,3 +13,4 @@ build
 /scripts/grid-cont/*.pyc
 /scripts/grid-cont/__pycache__/*.pyc
 /scripts/postproc/*.pyc
+/scripts/*.sh
