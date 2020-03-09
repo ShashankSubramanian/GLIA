@@ -3078,7 +3078,7 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
         ss.str(std::string());
         ss.clear();
         // ||g_k||_2 < tol
-        if (gnorm < gatol) {
+        if (gnorm < gatol || std::abs(jxold-jx) <= PETSC_MACHINE_EPSILON)  {
                 stop[3] = true;
         }
         ss  << "  " << stop[3] << "    ||g|| = " << std::setw(18)
