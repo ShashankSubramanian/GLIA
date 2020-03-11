@@ -316,9 +316,9 @@ int main (int argc, char** argv) {
 
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
     // hack
-    #ifdef CUDA
-        cudaSetDevice (0);
-    #endif
+//    #ifdef CUDA
+//        cudaSetDevice (0);
+//    #endif
 
     accfft_init();
     MPI_Comm c_comm;
@@ -1779,11 +1779,12 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
                     c0_ptr[i] = (c0_ptr[i] <= 0.) ? 0. : c0_ptr[i];
             #endif
             ierr = vecRestoreArray (c_0, &c0_ptr);                                          CHKERRQ (ierr);
-            // smooth a little bit because sometimes registration outputs have too much aliasing
-            ierr = spec_ops->weierstrassSmoother (c_0, c_0, n_misc, sigma_smooth);          CHKERRQ (ierr);
-            ierr = VecMax (c_0, NULL, &c0_max);                                             CHKERRQ (ierr);
-            ierr = VecScale (c_0, (1.0/c0_max));                                            CHKERRQ (ierr);
         }
+            // smooth a little bit because sometimes registration outputs have too much aliasing
+        ierr = spec_ops->weierstrassSmoother (c_0, c_0, n_misc, sigma_smooth);          CHKERRQ (ierr);
+        ierr = VecMax (c_0, NULL, &c0_max);                                             CHKERRQ (ierr);
+        ierr = VecScale (c_0, (1.0/c0_max));                                            CHKERRQ (ierr);
+        ierr = dataOut (c_0, n_misc, "c0True.nc");                                      CHKERRQ (ierr);
     } else {
         ierr = tumor->setTrueP (n_misc);
         ss << " --------------  SYNTHETIC TRUE P -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();

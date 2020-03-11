@@ -1365,7 +1365,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective (PetscReal *J, V
     ierr = VecDot (temp_, temp_, J);                                CHKERRQ (ierr);
     (*J) *= 0.5 * n_misc_->lebesgue_measure_;
     PetscReal misfit_brain = 0.;
-    ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
+    //ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
     misfit_brain *= 0.5 * n_misc_->lebesgue_measure_;
     if (!disable_verbose_) {
         s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;

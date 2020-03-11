@@ -68,7 +68,7 @@ PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
     ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);    
     ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
-    xrec_ptr[0] = 6; xrec_ptr[1] = 6; xrec_ptr[2] = 0.5;
+    xrec_ptr[0] = 1; xrec_ptr[1] = 6; xrec_ptr[2] = 0.5;
     // xrec_ptr[0] = 0.4; xrec_ptr[1] = 0.08;
     ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
 
