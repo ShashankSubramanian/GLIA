@@ -906,7 +906,6 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
     ScalarType scale_rho = 1;
     ScalarType scale_kap = 1E-1;
 
-
     // Reset mat-props and diffusion and reaction operators, tumor IC does not change
     ierr = tumor_->mat_prop_->resetValues ();                       CHKERRQ (ierr);
     //ierr = tumor_->rho_->setValues (n_misc_->rho_, n_misc_->r_gm_wm_ratio_, n_misc_->r_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);

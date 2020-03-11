@@ -24,7 +24,7 @@ def getTumorRunCmd(params):
 
     ### TUMOR PARAMETERS SET BEGIN
 
-    binary_name = 'inverse_adv'
+    binary_name = 'inverse_gpu_scale'
     ### No of discretization points (Assumed uniform)
     N = 256
     ### Path to all output results (Directories are created automatically)
@@ -35,6 +35,10 @@ def getTumorRunCmd(params):
     ### Path to data
     data_path_t1 = tumor_dir + '/brain_data/' + str(N) +'/cpl/c1p.nc'
     data_path_t0 = ''
+    data_path_mri = ''
+    data_path_pred_t0 = ''
+    data_path_pred_t1 = ''
+    data_path_pred_t2 = ''
     ### Atlas
     ### Path to gm
     gm_path = tumor_dir + '/brain_data/' + str(N) +'/gray_matter.nc'
@@ -62,6 +66,13 @@ def getTumorRunCmd(params):
     velocity_x1_path = ""
     velocity_x2_path = ""
     velocity_x3_path = ""
+    velocity_x1_path_p = ""
+    velocity_x2_path_p = ""
+    velocity_x3_path_p = ""
+    wm_path_p = ""
+    gm_path_p = ""
+    csf_path_p = ""
+
 
     verbosity = 3
     ### Other user parameters which typically stay as default: Change if needed
@@ -108,7 +119,10 @@ def getTumorRunCmd(params):
     cm4_s = 1
 
 
-
+    pred_t0 = -1
+    pred_t1 = -1
+    pred_t2 = -1
+    pre_adv_time = -1;
 
 
     ### Testcase: 0: brain single focal synthetic
@@ -160,6 +174,7 @@ def getTumorRunCmd(params):
     data_thres = 0.1
     ### Observation detection threshold
     obs_thres = -100
+    obs_thres_0 = -100
     ### Noise scaling for low freq noise: 0.05, 0.25, 0.5
     noise_scale = 0.0
     ### Target sparsity we expect for our initial tumor condition -- used in GIST
@@ -364,6 +379,15 @@ def getTumorRunCmd(params):
     if 'create_synthetic' in params:
         create_synthetic = params['create_synthetic'];
     #
+    if 'data_path_mri' in params:
+        data_path_mri = params['data_path_mri']
+        print("setting data path mri to {}".format(data_path_mri))
+    if 'data_path_pred_t0' in params:
+        data_path_pred_t0 = params['data_path_pred_t0']
+    if 'data_path_pred_t1' in params:
+        data_path_pred_t1 = params['data_path_pred_t1']
+    if 'data_path_pred_t2' in params:
+        data_path_pred_t2 = params['data_path_pred_t2']
     if not forward_flag:
         if 'data_path_t0' in params:
             data_path_t0 = params['data_path_t0']
@@ -411,6 +435,13 @@ def getTumorRunCmd(params):
     if "diffusivity_inversion" in params:
         diffusivity_flag = params['diffusivity_inversion'];
     # ---
+    if 'csf_pred_path' in params:
+        csf_path_p = params['csf_pred_path']
+    if 'wm_pred_path' in params:
+        wm_path_p = params['wm_pred_path']
+    if 'gm_pred_path' in params:
+        gm_path_p = params['gm_pred_path']
+
     if 'csf_path' in params:
         csf_path = params['csf_path']
         print('CSF path = {}'.format(csf_path))
@@ -484,6 +515,14 @@ def getTumorRunCmd(params):
 
     if "upper_bound_rho" in params:
         upper_bound_rho = params['upper_bound_rho']
+    if "pred_t0" in params:
+        pred_t0 = params["pred_t0"]
+    if "pred_t1" in params:
+        pred_t1 = params["pred_t1"]
+    if "pred_t2" in params:
+        pred_t2 = params["pred_t2"]
+    if "pre_adv_time" in params:
+        pre_adv_time = params["pre_adv_time"]
 
     if "velocity_x1" in params:
         velocity_x1_path = params['velocity_x1']
@@ -491,7 +530,14 @@ def getTumorRunCmd(params):
         velocity_x2_path = params['velocity_x2']
     if "velocity_x3" in params:
         velocity_x3_path = params['velocity_x3']
+    if "velocity_x_p1" in params:
+        velocity_x1_path_p = params['velocity_x1_p']
+    if "velocity_x2_p" in params:
+        velocity_x2_path_p = params['velocity_x2_p']
+    if "velocity_x3_p" in params:
+        velocity_x3_path_p = params['velocity_x3_p']
 
+    
     if "nt_inv" in params:
         nt_inv = params['nt_inv']
     if "dt_inv" in params: 
@@ -538,12 +584,19 @@ def getTumorRunCmd(params):
     " -syn_flag " + str(create_synthetic) + \
     " -data_path_t1 " + data_path_t1 + \
     " -data_path_t0 " + data_path_t0 + \
+    " -data_path_mri " + data_path_mri + \
+    " -data_path_pred_t0 " + data_path_pred_t0 + \
+    " -data_path_pred_t1 " + data_path_pred_t1 + \
+    " -data_path_pred_t2 " + data_path_pred_t2 + \
     " -two_snapshot " + str(two_snapshot) + \
     " -low_res_data " + str(low_res_data) + \
     " -gm_path " + gm_path + \
     " -wm_path " + wm_path + \
     " -csf_path " + csf_path + \
     " -glm_path " + glm_path + \
+    " -wm_pred_path " + wm_path_p + \
+    " -gm_pred_path " + gm_path_p + \
+    " -csf_pred_path " + csf_path_p + \
     " -z_cm1 " + str(z_cm1) + \
     " -y_cm1 " + str(y_cm1) + \
     " -x_cm1 " + str(x_cm1) + \
@@ -560,6 +613,10 @@ def getTumorRunCmd(params):
     " -y_cm4 " + str(y_cm4) + \
     " -x_cm4 " + str(x_cm4) + \
     " -cm4_s " + str(cm4_s) + \
+    " -pred_t0 " + str(pred_t0) + \
+    " -pred_t1 " + str(pred_t1) + \
+    " -pred_t2 " + str(pred_t2) + \
+    " -pre_adv_time " + str(pre_adv_time) + \
     " -obs_mask_path " + obs_mask_path + \
     " -support_data_path " + support_data_path + \
     " -gaussian_cm_path " + gaussian_cm_path + \
@@ -570,6 +627,7 @@ def getTumorRunCmd(params):
     " -model " + str(model) + \
     " -smooth " + str(smooth_f) + \
     " -observation_threshold " + str(obs_thres) + \
+    " -observation_threshold_0 " + str(obs_thres_0) + \
     " -k_gm_wm " + str(k_gm_wm) + \
     " -r_gm_wm " + str(r_gm_wm) + \
     " -low_freq_noise " + str(noise_scale) + \
@@ -585,7 +643,10 @@ def getTumorRunCmd(params):
     " -v_x1 " + str(velocity_x1_path) + \
     " -v_x2 " + str(velocity_x2_path) + \
     " -v_x3 " + str(velocity_x3_path) + \
-    " -tao_lmm_vectors 3 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
+    " -v_pred_x1 " + str(velocity_x1_path_p) + \
+    " -v_pred_x2 " + str(velocity_x2_path_p) + \
+    " -v_pred_x3 " + str(velocity_x3_path_p) + \
+    " -tao_lmm_vectors 10 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view

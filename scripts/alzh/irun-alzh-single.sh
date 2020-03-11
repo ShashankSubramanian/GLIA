@@ -1,5 +1,5 @@
 ALZH=/scratch1/04678/scheufks/alzh/
-RES=${ALZH}/syn_test/test05
+RES=${ALZH}/real_test/
 mkdir -p ${RES}
-python3  run.py       -cluster frontera \
+python3  run-real.py       -cluster frontera \
                       -x        ${RES}   

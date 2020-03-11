@@ -10,13 +10,12 @@ tumor_dir = scripts_path + '/../'
 params = {}
 
 
-case_dir = '/scratch1/04678/scheufks/alzh/syn_test/test02/tc-k03/'
-d_dir = '/scratch1/04678/scheufks/alzh/syn_test/test02/data/'
+case_dir = '/scratch1/04678/scheufks/alzh/syn_test/test04/tc/t_series/'
+d_dir = '/scratch1/04678/scheufks/alzh/syn_test/test04/data/'
 
 params['code_path'] = tumor_dir
 params['results_path'] = case_dir; #tumor_dir + '/results/dev-tc4-l0-lb0-50vecs/'
 params['compute_sys'] = 'frontera'
-
 
 
 # ### Real data
@@ -26,10 +25,10 @@ params['compute_sys'] = 'frontera'
 #params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc" 
 #params['glm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_csf.nc" 
 #params['csf_path'] = tumor_dir + "/brain_data/jakob/256/jakob_vt.nc"
-params['gm_path'] = d_dir + "atlas_seg_gm.nc"
-params['wm_path'] = d_dir + "atlas_seg_wm.nc"
+params['gm_path'] = d_dir + "0368Y02_seg_gm.nc"
+params['wm_path'] = d_dir + "0368Y02_seg_wm.nc"
 params['glm_path'] = ""
-params['csf_path'] = d_dir + "atlas_seg_csf.nc"
+params['csf_path'] = d_dir + "0368Y02_seg_csf.nc"
 
 params['data_path'] = ""
 #params['init_tumor_path'] = case_dir + "c0Recon.nc"
@@ -43,9 +42,9 @@ elif params['compute_sys'] == 'stampede2':
     N = 3
     n = 64
 elif params['compute_sys'] == 'frontera':
-    queue = 'normal'
+    queue = 'rtx'
     N = 1
-    n = 32
+    n = 1
 elif params['compute_sys'] == 'maverick2':
     queue = 'p100'
     N = 1
@@ -84,6 +83,16 @@ if not err:  # No error in tumor input parameters
         "#SBATCH -t 01:00:00\n" + \
         "source ~/.bashrc\n" + \
         "export OMP_NUM_THREADS=1\n")
+        submit_file.write("\nmodule load cuda")
+        submit_file.write("\nmodule load cudnn")
+        submit_file.write("\nmodule load nccl")
+        submit_file.write("\nmodule load petsc/3.11-rtx")
+        submit_file.write("\nexport ACCFFT_DIR=/work/04678/scheufks/frontera/libs/accfft/build_gpu/")
+        submit_file.write("\nexport ACCFFT_LIB=${ACCFFT_DIR}/lib/")
+        submit_file.write("\nexport ACCFFT_INC=${ACCFFT_DIR}/include/")
+        submit_file.write("\nexport CUDA_DIR=${TACC_CUDA_DIR}/\n")
+
+
     submit_file.write(run_str)
     submit_file.close()
     ### submit jobfile

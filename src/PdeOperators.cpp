@@ -50,7 +50,7 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
         adv_solver_ = std::make_shared<SemiLagrangianSolver> (n_misc, tumor, spec_ops);
     }
 
-    if (!n_misc->forward_flag_) {
+    if (!n_misc->forward_flag_ && !n_misc->time_hist_off_) {
         c_.resize (nt + 1);                         //Time history of tumor
         p_.resize (nt + 1);                         //Time history of adjoints
         if (n_misc->adjoint_store_) {
@@ -78,13 +78,15 @@ PdeOperatorsRD::PdeOperatorsRD (std::shared_ptr<Tumor> tumor, std::shared_ptr<NM
                 ierr = VecSet (c_half_[i], 0.);
             }
         }
-    }
+   }
 }
 
 
 PetscErrorCode PdeOperatorsRD::resizeTimeHistory (std::shared_ptr<NMisc> n_misc) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
+
+    if (n_misc->time_hist_off_) return 0;
 
     ScalarType dt = n_misc_->dt_;
     int nt = n_misc->nt_;
@@ -221,6 +223,46 @@ PetscErrorCode PdeOperatorsRD::solveIncremental (Vec c_tilde, std::vector<Vec> c
     PetscFunctionReturn (ierr);
 }
 
+
+
+PetscErrorCode PdeOperatorsRD::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+
+    ScalarType dt = n_misc_->dt_;
+    int nt = adv_time/dt;
+    std::stringstream ss;
+    ss << " Advecting using nt="<<nt<<" time steps"; tuMSGstd(ss.str());
+
+    int procid, nprocs;
+    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+    for (int i = 0; i < nt; i++) {
+            // advection of healthy tissue
+        if (n_misc_->data_velocity_set_) {
+            //adv_solver_->advection_mode_ = 1;  //  mass conservation
+            adv_solver_->advection_mode_ = 2;  // pure advection
+            ierr = adv_solver_->solve (gm, tumor_->velocity_, dt);                  CHKERRQ(ierr);
+            ierr = adv_solver_->solve (wm, tumor_->velocity_, dt);                  CHKERRQ(ierr);
+            ierr = adv_solver_->solve (csf, tumor_->velocity_, dt);                 CHKERRQ(ierr);
+            if(mri != nullptr) {
+                ierr = adv_solver_->solve (mri, tumor_->velocity_, dt);             CHKERRQ(ierr);
+	    }
+        }
+    }
+    dataOut (wm, n_misc_,  "wm_atlas_adv.nc");
+    dataOut (gm, n_misc_,  "gm_atlas_adv.nc");
+    dataOut (csf, n_misc_, "csf_atlas_adv.nc");
+    if(mri != nullptr) {
+        dataOut (mri, n_misc_, "mri_atlas_adv.nc");
+    }
+    PetscFunctionReturn (ierr);
+}
+
+
+
+
 PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
@@ -245,7 +287,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
     }
 
     ierr = VecCopy (tumor_->c_0_, tumor_->c_t_);                 CHKERRQ (ierr);
-    if (linearized == 0 && !n_misc_->forward_flag_) {
+    if (linearized == 0 && !n_misc_->forward_flag_ && !n_misc_->time_hist_off_) {
         ierr = VecCopy (tumor_->c_t_, c_[0]);                    CHKERRQ (ierr);
     }
 
@@ -256,6 +298,12 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
        linearized = 2 -- linearized state equation with diffusivity inversion
                          for hessian application
     */
+    
+    //std::stringstream ss;
+    //ScalarType norm_ref, norm_i;
+    //ierr = VecNorm (tumor_->c_0_, NORM_2, &norm_ref); CHKERRQ (ierr);
+    //norm_ref = 225.6508907756024;
+
 
     for (int i = 0; i < nt; i++) {
         if (linearized == 2) {
@@ -263,6 +311,12 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
             ierr = solveIncremental (tumor_->c_t_, c_, dt / 2, i, 1);
         }
+
+        //ss << "c_t[" << i << "].nc";
+        //dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+        //ss.str(std::string()); ss.clear();
+        //ierr = VecNorm (tumor_->c_t_, NORM_2, &norm_i); CHKERRQ (ierr);
+        //ss << "itr: " << i << " norm ||c(t)|| / ||c(1)|| = " << (norm_i/norm_ref); tuMSGstd(ss.str()); ss.str(""); ss.clear();
 
         // advection of healthy tissue
         if (n_misc_->data_velocity_set_) {
@@ -276,9 +330,10 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
 
         if (n_misc_->order_ == 2) {
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
-            if (linearized == 0 && n_misc_->adjoint_store_ && !n_misc_->forward_flag_) {
+            if (linearized == 0 && n_misc_->adjoint_store_ && !n_misc_->forward_flag_ && !n_misc_->time_hist_off_) {
                 ierr = VecCopy (tumor_->c_t_, c_half_[i]);                    CHKERRQ (ierr);
             }
+
             ierr = reaction (linearized, i);
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
 
@@ -290,7 +345,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             }
         } else {
             diff_solver_->solve (tumor_->c_t_, dt);         diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
-            if (linearized == 0 && n_misc_->adjoint_store_ && !n_misc_->forward_flag_) {
+            if (linearized == 0 && n_misc_->adjoint_store_ && !n_misc_->forward_flag_ && !n_misc_->time_hist_off_) {
                 ierr = VecCopy (tumor_->c_t_, c_half_[i]);                    CHKERRQ (ierr);
             }
             ierr = reaction (linearized, i);
@@ -302,7 +357,7 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
             #endif
         }
         //Copy current conc to use for the adjoint equation
-        if (linearized == 0 && !n_misc_->forward_flag_) {
+        if (linearized == 0 && !n_misc_->forward_flag_ && !n_misc_->time_hist_off_) {
             ierr = VecCopy (tumor_->c_t_, c_[i + 1]);            CHKERRQ (ierr);
         }
     }
@@ -490,7 +545,7 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
 
 PdeOperatorsRD::~PdeOperatorsRD () {
     PetscErrorCode ierr = 0;
-    if (!n_misc_->forward_flag_) {
+    if (!n_misc_->forward_flag_ && !n_misc_->time_hist_off_) {
         // use c_.size() not nt
         for (int i = 0; i < c_.size(); i++) {
             ierr = VecDestroy (&c_[i]);

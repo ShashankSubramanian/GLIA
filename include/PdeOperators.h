@@ -37,8 +37,8 @@ class PdeOperators {
 		virtual PetscErrorCode solveAdjoint (int linearized) = 0;
 		virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4) = 0;
 		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc) = 0;
-        virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {}) = 0;
-
+                virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {}) = 0;
+                virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) = 0;
 		virtual ~PdeOperators () {}
 
 
@@ -58,7 +58,8 @@ class PdeOperatorsRD : public PdeOperators {
 		virtual PetscErrorCode reactionAdjoint (int linearized, int i);
 		virtual PetscErrorCode solveAdjoint (int linearized);
 		virtual PetscErrorCode resizeTimeHistory (std::shared_ptr<NMisc> n_misc);
-        virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
+                virtual PetscErrorCode reset (std::shared_ptr <NMisc> n_misc, std::shared_ptr<Tumor> tumor = {});
+                virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time);
 
 		// This solves the diffusivity update part of the incremental forward equation
 		PetscErrorCode solveIncremental (Vec c_tilde, std::vector<Vec> c_history, ScalarType dt, int iter, int mode);

@@ -151,7 +151,7 @@ env.Append(LINKFLAGS = ["-fopenmp"])
 env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
 # enforce positivity inside tumor forward solve
-# env.Append(CCFLAGS = ['-DPOSITIVITY'])
+env.Append(CCFLAGS = ['-DPOSITIVITY'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
@@ -165,8 +165,7 @@ if env["single_precision"] == True:
 if env["multi_gpu"] == True:
     env.Append(CCFLAGS = ['-DMPICUDA'])
 
-# enforce positivity in diffusion inversion for ks
-# env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
+# enforce positivity in diffusion inversion for ksenv.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
 # print centers of phi's to file
 # env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
@@ -182,7 +181,7 @@ elif env["platform"] == "frontera" and env["gpu"] == False:
 if env["gpu"] == True:
     CUDA_DIR = checkset_var("CUDA_DIR", "")
     env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
-    env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
+    env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64/")])
     uniqueCheckLib(conf, "cusparse")
     uniqueCheckLib(conf, "cufft")
     uniqueCheckLib(conf, "cublas")
@@ -262,7 +261,7 @@ if env["gpu"] == True:
     source = [sourcesPGLISTRGPU, './app/forward.cpp']
     )
     bininv = env.Program (
-    target = buildpath + '/inverse_gpu_scale',
+    target = buildpath + '/inverse_gpu_scale_real',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
     env.Alias("bin", bininv)

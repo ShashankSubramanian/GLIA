@@ -120,25 +120,44 @@ def createJobsubFile(cmd, opt, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def set_params(basedir, args, nlevel='no', gpu=False):
+def set_params(basedir, args, nlevel='no', case_dir='d_nc', gpu=False):
+    
+    tpoint = case_dir.split('d_nc-')[-1]
+    Tp = {'0'  : {'t1.0' : 1.0,  't1.2' : 1.2,  't1.5' : 1.5},
+          '20' : {'t1.0' : 0.44, 't1.2' : 0.64, 't1.5' : 0.94},
+          '40' : {'t1.0' : 0.28, 't1.2' : 0.48, 't1.5' : 0.78},
+          '60' : {'t1.0' : 0.17, 't1.2' : 0.37, 't1.5' : 0.67},
+          '80' : {'t1.0' : 0.10, 't1.2' : 0.3,  't1.5' : 0.6}
+         }
 
+    Ts = {'0' : 100, '20' : 44,   '40' : 28,   '60' : 17,   '80' : 10}
+    Ta = {'0' : -1,  '20' : 0.56, '40' : 0.72, '60' : 0.83, '80' : 0.90}
+
+    #Ts = {'0' : 40, '20' : 17.6,   '40' : 11.2,   '60' : 6.8,   '80' : 4}
+    #Ta = {'0' : -1,  '20' : 0.56, '40' : 0.72, '60' : 0.83, '80' : 0.90}
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
     ###########
+    opttol  = 1E-5;
     scale   = 1e-1;
     rho_inv = 6;
     k_inv   = 1E-2/scale;
-    nt_inv  = 40;
-    dt_inv  = 0.025;
+    nt_inv  = Ts[tpoint];
+    dt_inv  = 0.01;
     k_lb    = 1E-4/scale;
     k_ub    = 1/scale;
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
+    smooth_fac = 1.5;
+    pred_t0 = Tp[tpoint]['t1.0']
+    pred_t1 = Tp[tpoint]['t1.2']
+    pred_t2 = Tp[tpoint]['t1.5']
+    pre_adv_time = Ta[tpoint]
     #b_name  = 'inverse_adv_scale'
     b_name  = 'inverse_gpu_scale'
-    d1      = 'd_nc/dataBeforeObservation.nc'
-    d0      = 'd_nc/c0True.nc'
+    d1      = os.path.join(case_dir, 'dataBeforeObservation.nc')
+    d0      = os.path.join(case_dir, 'c0True.nc')
     solver  = 'QN'
     prefix  = '0368Y01'
     adv     = True;
@@ -148,54 +167,30 @@ def set_params(basedir, args, nlevel='no', gpu=False):
     noise_level = nlevel;
     ###########
     
-    if noise_level == 'lres':
-        d1      = 'd_nc/data_t1_128_256.nc'
-        d0      = 'd_nc/data_t0_128_256.nc'
-    
-    # test02
-    if 'sp' in noise_level:
-        d1      = 'd_nc/data_t1_noise-'+str(nlevel.split('sp')[-1])+'.nc'
-        d0      = 'd_nc/data_t0_noise-'+str(nlevel.split('sp')[-1])+'.nc'  # 22 % noise
-   
-    # test02
-   # if noise_level == 'sp04':
-   #     d1      = 'd_nc/data_t1_noise-004-22.nc'
-   #     d0      = 'd_nc/data_t0_noise-004-40.nc'  # 22 % noise
-   # if noise_level == 'sp05':
-   #     d1      = 'd_nc/data_t1_noise-005-32.nc'
-   #     d0      = 'd_nc/data_t0_noise-005-41.nc'  # 32 % noise
-   # if noise_level == 'sp08':
-   #     d1      = 'd_nc/data_t1_noise-008-76.nc'
-   #     d0      = 'd_nc/data_t0_noise-008-43.nc'  # 76 % noise
-   # if noise_level == 'sp09':
-   #     d1      = 'd_nc/data_t1_noise-009-96.nc'
-   #     d0      = 'd_nc/data_t0_noise-009-44.nc'  # 96 % noise
-   # if noise_level == 'sp10':
-   #     d1      = 'd_nc/data_t1_noise-01-118.nc'
-   #     d0      = 'd_nc/data_t0_noise-01-45.nc'  # 118 % noise
-   # if noise_level == 'sp20':
-   #     d1      = 'd_nc/data_t1_noise-02-468.nc'
-   #     d0      = 'd_nc/data_t0_noise-02-60.nc'  # 468 % noise
-    
-   # # test01
-   # if noise_level == 'sp10':
-   #     d1      = 'd_nc/data_t1_noise-01-130.nc' 
-   #     d0      = 'd_nc/data_t0_noise-01-130.nc'  # 130 % noise 
-   # if noise_level == 'sp20':
-   #     d1      = 'd_nc/data_t1_noise-02-515.nc'
-   #     d0      = 'd_nc/data_t0_noise-02-61.nc'   # 515 % noise
-
-
-    # define results path
-    if not adv:
-        res_dir = os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
-    else:
-        res_dir =  os.path.join(args.results_directory,'inv-adv-corr-c0-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
     # make paths
     inp_dir = os.path.join(args.results_directory, 'data');
     dat_dir = os.path.join(args.results_directory, 'tc');
 
 
+    if noise_level == 'lres':
+        d1      = os.path.join(case_dir, 'data_t1_128_256.nc')
+        d0      = os.path.join(case_dir, 'data_t0_128_256.nc')
+    
+    # test02
+    if 'sp' in noise_level:
+        d1      = os.path.join(case_dir, 'data_t1_noise-'+str(nlevel.split('sp')[-1])+'.nc')
+        d0      = os.path.join(case_dir, 'data_t0_noise-'+str(nlevel.split('sp')[-1])+'.nc')
+    
+    d1_true  = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.0/dataBeforeObservation.nc')
+    d12_true = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.2/dataBeforeObservation.nc')
+    d15_true = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.5/dataBeforeObservation.nc')
+
+    # define results path
+    if not adv:
+        res_dir = os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
+    else:
+        res_dir =  os.path.join(args.results_directory,'inv-adv-'+str(case_dir)+'-corr-c0-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
+    
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
     opt['gpu']          = gpu; 
@@ -227,7 +222,7 @@ def set_params(basedir, args, nlevel='no', gpu=False):
     t_params['results_path']          = res_dir;
     t_params['N']                     = 256;
     t_params['solvertype']            = solver;
-    t_params['grad_tol']              = 1E-4;
+    t_params['grad_tol']              = opttol;
     t_params['sparsity_lvl']          = 5;
     t_params['multilevel']            = 0;
     t_params['model']                 = 2;
@@ -255,13 +250,21 @@ def set_params(basedir, args, nlevel='no', gpu=False):
     t_params['upper_bound_rho']       = rho_ub;
     t_params['dd_fac']                = 1;
     t_params['predict_flag']          = 1;
+    t_params['pred_t0']               = pred_t0;
+    t_params['pred_t1']               = pred_t1;
+    t_params['pred_t2']               = pred_t2;
+    t_params['pre_adv_time']          = pre_adv_time;
     t_params['csf_path']              = os.path.join(inp_dir, prefix + '_seg_csf.nc');
     t_params['gm_path']               = os.path.join(inp_dir, prefix + '_seg_gm.nc');
     t_params['wm_path']               = os.path.join(inp_dir, prefix + '_seg_wm.nc');
     t_params['data_path_t1']          = os.path.join(dat_dir, d1);
     t_params['data_path_t0']          = os.path.join(dat_dir, d0);
+    t_params['data_path_mri']         = os.path.join(inp_dir, prefix + '_cbq_n3.nc');
+    t_params['data_path_pred_t0']     = d1_true;
+    t_params['data_path_pred_t1']     = d12_true;
+    t_params['data_path_pred_t2']     = d15_true;
     t_params['forward_flag']          = 0
-    t_params['smooth_f']              = 1.5
+    t_params['smooth_f']              = smooth_fac;
     t_params['model']                 = model;
     t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
     t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
@@ -303,6 +306,13 @@ if __name__=='__main__':
     args = parser.parse_args();
 
    
-    #for nlevel in ['no', 'lres', 'sp0.1', 'sp0.2', 'sp0.25', 'sp0.3']:
-    for nlevel in ['no', 'sp0.005', 'sp0.01', 'sp0.1', 'sp0.3', 'sp0.5']:
-        set_params(basedir, args, nlevel, gpu=True);
+    for case_dir in ['d_nc-0', 'd_nc-20', 'd_nc-40', 'd_nc-60', 'd_nc-80']:
+    #for case_dir in ['d_nc-0', 'd_nc-20', 'd_nc-80']:
+    #for case_dir in ['d_nc-80']:
+        for nlevel in ['no', 'sp0.1', 'sp0.5', 'sp1.0', 'sp1.5', 'sp2.0']:
+        ##for nlevel in ['no', 'sp1.0']:
+        #for nlevel in ['no']:
+        #for nlevel in ['no', 'sp0.005', 'sp0.01', 'sp0.1', 'sp0.3', 'sp0.5']:
+        #for nlevel in ['sp0.005', 'sp0.01', 'sp0.1', 'sp0.3']:
+        #for nlevel in ['no', 'sp1E-1', 'sp1E-2', 'sp1E-3']:
+             set_params(basedir, args, nlevel, case_dir, gpu=True);

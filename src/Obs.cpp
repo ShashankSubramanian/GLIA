@@ -44,21 +44,9 @@ PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point) {
         th = threshold_1_;
     }
     ierr = VecGetArray (data, &data_ptr);                                           CHKERRQ (ierr);
-    int X, Y, Z, enabled, ptr;
-    for (int x = 0; x < isize_[0]; x++)
-        for (int y = 0; y < isize_[1]; y++)
-            for (int z = 0; z < isize_[2]; z++) {
-                X = istart_[0] + x;
-                Y = istart_[1] + y;
-                Z = istart_[2] + z;
-                ptr = x * isize_[1] * isize_[2] + y * isize_[2] + z;
-
-                enabled = low_res_data_ ? ((X%2==0) && (Y%2==0) && (Z%2==0)) : 1;
-                filter_ptr[ptr] = ScalarType (enabled && (data_ptr[ptr] > th));
-            }
-    // for (int i = 0; i < n_misc_->n_local_; i++) {
-        // filter_ptr[i] = ScalarType (data_ptr[i] > th);
-    // }
+    for (int i = 0; i < n_misc_->n_local_; i++) {
+        filter_ptr[i] = ScalarType (data_ptr[i] > th);
+    } 
     if (time_point==0){
         ierr = VecRestoreArray (filter_0_, &filter_ptr);                            CHKERRQ (ierr);
     } else {

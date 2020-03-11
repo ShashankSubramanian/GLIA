@@ -392,6 +392,8 @@ class NMisc {
         , data_velocity_set_(0)                 // flag indicates whether or not advection velocity is read in
         , low_res_data_(0)
         , phi_store_ (false)                    // Flag to store phis
+        , time_hist_off_ (true)                 // if tire do not allocate time history
+        , use_c0_ (true)                        // if true, use c(0) which is read in as d0
         , adjoint_store_ (true)                 // Flag to store half-step concentrations for adjoint solve to speed up time to solution
         , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
         , k_ub_ (1)                             // Upper bound on kappa
@@ -571,6 +573,8 @@ class NMisc {
         bool two_snapshot_;
         bool data_velocity_set_;
         bool low_res_data_;
+        bool time_hist_off_;
+        bool use_c0_;
 
         ScalarType target_sparsity_;
 

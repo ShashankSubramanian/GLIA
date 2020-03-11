@@ -75,6 +75,10 @@ int main (int argc, char** argv) {
     char results_dir[400];
     char data_path_t1[400];
     char data_path_t0[400];
+    char data_path_mri[400];
+    char data_path_pred_t0[400];
+    char data_path_pred_t1[400];
+    char data_path_pred_t2[400];
     char support_data_path[400];
     char gm_path[400];
     char wm_path[400];
@@ -148,7 +152,17 @@ int main (int argc, char** argv) {
     ScalarType z_cm3 = -1, y_cm3 = -1, x_cm3 = -1;
     ScalarType z_cm4 = -1, y_cm4 = -1, x_cm4 = -1;
     ScalarType cm1_s = -1, cm2_s = -1, cm3_s = -1, cm4_s = -1;
-
+    ScalarType pred_time_1 = -1;
+    ScalarType pred_time_2 = -1;
+    ScalarType pred_time_0 = -1;
+    ScalarType pre_adv_time = -1;
+    char gm_pred_path[400];
+    char wm_pred_path[400];
+    char csf_pred_path[400];
+    char vx1_pred_path[400];
+    char vx2_pred_path[400];
+    char vx3_pred_path[400];
+ 
     PetscBool strflg;
     PetscOptionsBegin (PETSC_COMM_WORLD, NULL, "Tumor Inversion Options", "");
     PetscOptionsInt ("-nx", "NX", "", n[0], &n[0], NULL);
@@ -209,8 +223,17 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-y_cm4", "Y coordinate of tumor loc", "", y_cm4, &y_cm4, NULL);
     PetscOptionsReal ("-x_cm4", "X coordinate of tumor loc", "", x_cm4, &x_cm4, NULL);
     PetscOptionsReal ("-cm4_s", "Scaling of cm4", "", cm4_s, &cm4_s, NULL);
+    PetscOptionsReal ("-pred_t1", "Prediction time", "", pred_time_1, &pred_time_1, NULL);
+    PetscOptionsReal ("-pred_t2", "Prediction time", "", pred_time_2, &pred_time_2, NULL);
+    PetscOptionsReal ("-pred_t0", "Prediction time", "", pred_time_0, &pred_time_0, NULL);
+    PetscOptionsReal ("-pre_adv_time", "Time to pre-advect the material properties with to define the atlas brain.", "", pre_adv_time, &pre_adv_time, NULL);
 
-
+    PetscOptionsString ("-gm_pred_path", "Path to GM", "",   gm_pred_path,  gm_pred_path, 400, NULL);
+    PetscOptionsString ("-wm_pred_path", "Path to WM", "",   wm_pred_path,  wm_pred_path, 400, NULL);
+    PetscOptionsString ("-csf_pred_path", "Path to CSF", "", csf_pred_path, csf_pred_path, 400, NULL);
+    PetscOptionsString ("-v_pred_x1", "Path to velocity x_1 component", "", vx1_pred_path, vx1_pred_path, 400, NULL);
+    PetscOptionsString ("-v_pred_x2", "Path to velocity x_2 component", "", vx2_pred_path, vx2_pred_path, 400, NULL);
+    PetscOptionsString ("-v_pred_x3", "Path to velocity x_3 component", "", vx3_pred_path, vx3_pred_path, 400, NULL);
 
 
     PetscStrcpy (newton_solver, "QN");
@@ -231,8 +254,12 @@ int main (int argc, char** argv) {
     PetscOptionsInt ("-forward", "Flag to do only the forward solve using data generation parameters", "", fwd_flag, &fwd_flag, NULL);
     PetscOptionsInt ("-order", "Order of accuracy of PDE solver", "", order_of_accuracy, &order_of_accuracy, NULL);
 
-    PetscOptionsString ("-data_path_t1", "Path to data (T=1)", "", data_path_t1, data_path_t1, 400, NULL);
-    PetscOptionsString ("-data_path_t0", "Path to data (T=0)", "", data_path_t0, data_path_t0, 400, NULL);
+    PetscOptionsString ("-data_path_t1",  "Path to data (T=1)", "", data_path_t1, data_path_t1, 400, NULL);
+    PetscOptionsString ("-data_path_t0",  "Path to data (T=0)", "", data_path_t0, data_path_t0, 400, NULL);
+    PetscOptionsString ("-data_path_mri", "Path to MRI", "", data_path_mri, data_path_mri, 400, NULL);
+    PetscOptionsString ("-data_path_pred_t0", "Path to data (T=1.2)", "", data_path_pred_t0, data_path_pred_t0, 400, NULL);
+    PetscOptionsString ("-data_path_pred_t1", "Path to data (T=1.5)", "", data_path_pred_t1, data_path_pred_t1, 400, NULL);
+    PetscOptionsString ("-data_path_pred_t2", "Path to data (T=1.5)", "", data_path_pred_t2, data_path_pred_t2, 400, NULL);
     PetscOptionsString ("-support_data_path", "Path to data used to generate Gaussian support", "", support_data_path, support_data_path, 400, NULL);
     PetscOptionsString ("-gm_path", "Path to GM", "", gm_path, gm_path, 400, NULL);
     PetscOptionsString ("-wm_path", "Path to WM", "", wm_path, wm_path, 400, NULL);
@@ -639,8 +666,16 @@ int main (int argc, char** argv) {
           ss << " use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
         }
         if (read_data_velocity) {
+            Vec mag;
             ierr = readVecField(tumor->velocity_.get(), vx1_path, vx2_path, vx3_path, n_misc); CHKERRQ(ierr);
             ierr = tumor->velocity_->scale(-1); CHKERRQ(ierr);
+            ierr = VecDuplicate (data_t1, &mag);
+            ierr = tumor->velocity_->computeMagnitude(mag); CHKERRQ(ierr);
+            dataOut (mag, n_misc, "velocity_mag.nc");
+            ScalarType vnorm;
+            ierr = VecNorm(mag, NORM_2, &vnorm); CHKERRQ(ierr);
+            ss << " norm of velocity magnitude: "<<vnorm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = VecDestroy(&mag); CHKERRQ(ierr);
         }
     }
 
@@ -683,7 +718,18 @@ int main (int argc, char** argv) {
     } else {
         ss << " inverse solver begin"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
+        if (pre_adv_time > 0) {
+           ss << " pre-advecting material properties with velocity to time t="<<pre_adv_time; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+ 
+           Vec mri = nullptr;
+           if (data_path_mri != NULL && strlen(data_path_mri) > 0){
+               ierr = VecDuplicate (data_t1, &mri);   CHKERRQ (ierr);
+               dataIn (mri, n_misc, data_path_mri);
+           }
 
+           ierr = solver_interface->getPdeOperators()->preAdvection(wm, gm, csf, mri, pre_adv_time); CHKERRQ(ierr);
+           if(mri != nullptr) {ierr = VecDestroy (&mri);                       CHKERRQ (ierr);}
+	}
         ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
         n_misc->rho_ = rho_inv;
         // n_misc->k_ = (n_misc->diffusivity_inversion_) ? 0 : k_inv;
@@ -929,23 +975,122 @@ int main (int argc, char** argv) {
                 ss << " predicting future tumor growth..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                 // predict tumor growth using inverted parameter values
                 // set dt and nt to synthetic values to ensure best accuracy
-                n_misc->dt_ = dt_data;
-                n_misc->nt_ = (int) (1.5 / dt_data);
-                // reset time history
-                ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
-                // apply IC to tumor c0
-                //ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
-                ierr = VecCopy (data_t0, tumor->c_0_); CHKERRQ(ierr);
-                // reaction and diffusion coefficient already set correctly at the end of the
-                // optimizer
-                ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
-                                                                             // pde_operators->c_
-                // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
-                dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
-                dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
-                dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
+                if (not n_misc->time_hist_off_) {
+                    n_misc->dt_ = dt_data;
+                    n_misc->nt_ = (int) (1.5 / dt_data);
+                    // reset time history
+                    ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
+                    // apply IC to tumor c0
+                    if (n_misc->use_c0_)  {ierr = VecCopy (data_t0, tumor->c_0_); CHKERRQ(ierr);}
+                    else                  {ierr = tumor->phi_->apply (tumor->c_0_, p_rec);}
+                    ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                                                                                 // pde_operators->c_
+                    // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
+                    dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
+                    dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
+                    dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
 
-                ss << " prediction complete for t = 1.2 and t = 1.5"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                    ss << " prediction complete for t = 1.2 and t = 1.5"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+		} else {
+                    n_misc->dt_ = dt_data;
+
+                    if (n_misc->use_c0_)  {ierr = VecCopy (data_t0, tumor->c_0_); CHKERRQ(ierr);}
+                    else                  {ierr = tumor->phi_->apply (tumor->c_0_, p_rec);}
+                    //n_misc->nt_ = (int) (1. / dt_data);
+                    //ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                    //ataOut (solver_interface->getTumor()->c_t_, n_misc, "cPrediction_[t=1.0].nc");
+                    //ss << " prediction complete for t = 1.0"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                    //n_misc->nt_ = (int) (1.2 / dt_data);
+                    //ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                    //dataOut (solver_interface->getTumor()->c_t_, n_misc, "cPrediction_[t=1.2].nc");
+                    //ss << " prediction complete for t = 1.2"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                    //n_misc->nt_ = (int) (1.5 / dt_data);
+                    //ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                    //dataOut (solver_interface->getTumor()->c_t_, n_misc, "cPrediction_[t=1.5].nc");
+                    //ss << " prediction complete for t = 1.5"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                    
+                    if (pred_time_0 > 0) {
+                        n_misc->nt_ = (int) (pred_time_0 / dt_data);
+                        ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
+                        ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                        ss << "cPrediction_[t=" << pred_time_0<<"].nc";
+                        dataOut (solver_interface->getTumor()->c_t_, n_misc, ss.str().c_str());ss.str(""); ss.clear();
+                        ss << " prediction complete for t = "<<pred_time_0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                       
+                        if (data_path_pred_t0 != NULL && strlen(data_path_pred_t0) > 0){
+                            Vec dat_t1;
+                            ierr = VecDuplicate (data_t1, &dat_t1);   CHKERRQ (ierr);
+                            dataIn (dat_t1, n_misc, data_path_pred_t0);
+                            ierr = solver_interface->getTumor()->obs_->apply (solver_interface->getTumor()->c_t_, solver_interface->getTumor()->c_t_);
+                            ScalarType obs_c_norm, obs_data_norm;
+                            ierr = VecAXPY (solver_interface->getTumor()->c_t_, -1.0, dat_t1);        CHKERRQ (ierr);
+                            ierr = VecNorm (solver_interface->getTumor()->c_t_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
+                            ierr = VecNorm (dat_t1, NORM_2, &obs_data_norm);                          CHKERRQ (ierr );
+                            obs_c_norm /= obs_data_norm;
+                            ss << " rel. l2-error at observation points (T=1.0) : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                            if(dat_t1 != nullptr) {ierr = VecDestroy (&dat_t1);                       CHKERRQ (ierr);}
+                        }
+                    }
+                    if (pred_time_1 > 0) {
+                                              n_misc->nt_ = (int) (pred_time_1 / dt_data);
+                        ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
+                        ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                        ss << "cPrediction_[t=" << pred_time_1<<"].nc";
+                        dataOut (solver_interface->getTumor()->c_t_, n_misc, ss.str().c_str()) ;ss.str(""); ss.clear();
+                        ss << " prediction complete for t = "<<pred_time_1; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+                        if (data_path_pred_t1 != NULL && strlen(data_path_pred_t1) > 0){
+                            Vec dat_t12;
+                            ierr = VecDuplicate (data_t1, &dat_t12);   CHKERRQ (ierr);
+                            dataIn (dat_t12, n_misc, data_path_pred_t1);
+                            ierr = solver_interface->getTumor()->obs_->apply (solver_interface->getTumor()->c_t_, solver_interface->getTumor()->c_t_);
+                            ScalarType obs_c_norm, obs_data_norm;
+                            ierr = VecAXPY (solver_interface->getTumor()->c_t_, -1.0, dat_t12);       CHKERRQ (ierr);
+                            ierr = VecNorm (solver_interface->getTumor()->c_t_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
+                            ierr = VecNorm (dat_t12, NORM_2, &obs_data_norm);                         CHKERRQ (ierr );
+                            obs_c_norm /= obs_data_norm;
+                            ss << " rel. l2-error at observation points (T=1.2) : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                            if(dat_t12 != nullptr) {ierr = VecDestroy (&dat_t12);                     CHKERRQ (ierr);}
+                        }
+                    } 
+                    if (pred_time_2 > 0) {
+                       if (wm_pred_path != NULL && strlen(wm_pred_path) > 0){
+                            ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, spec_ops, gm_pred_path, wm_pred_path, csf_pred_path, glm_path);
+                            ierr = solver_interface->updateTumorCoefficients (wm, gm, glm, csf, bg);
+                            ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
+                        }
+                        if (read_data_velocity && vx1_pred_path != NULL && strlen(vx1_pred_path) > 0){
+                            ierr = readVecField(tumor->velocity_.get(), vx1_pred_path, vx2_pred_path, vx3_pred_path, n_misc); CHKERRQ(ierr);
+                            ierr = tumor->velocity_->scale(-1); CHKERRQ(ierr);
+			}
+
+                        ierr = tumor->k_->updateIsotropicCoefficients   (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, tumor->mat_prop_, n_misc);    CHKERRQ (ierr);
+                        ierr = tumor->rho_->updateIsotropicCoefficients (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);  CHKERRQ (ierr);
+
+
+                        n_misc->nt_ = (int) (pred_time_2 / dt_data);
+                        ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
+                        ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+                        ss << "cPrediction_[t=" << pred_time_2<<"].nc";
+                        dataOut (solver_interface->getTumor()->c_t_, n_misc, ss.str().c_str());ss.str(""); ss.clear();
+                        ss << " prediction complete for t = "<<pred_time_2; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                        if (data_path_pred_t2 != NULL && strlen(data_path_pred_t2) > 0){
+                            Vec dat_t15;
+                            ierr = VecDuplicate (data_t1, &dat_t15);   CHKERRQ (ierr);
+                            dataIn (dat_t15, n_misc, data_path_pred_t2);
+                            ierr = solver_interface->getTumor()->obs_->apply (solver_interface->getTumor()->c_t_, solver_interface->getTumor()->c_t_);
+                            ScalarType obs_c_norm, obs_data_norm;
+                            ierr = VecAXPY (solver_interface->getTumor()->c_t_, -1.0, dat_t15);       CHKERRQ (ierr);
+                            ierr = VecNorm (solver_interface->getTumor()->c_t_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
+                            ierr = VecNorm (dat_t15, NORM_2, &obs_data_norm);                         CHKERRQ (ierr );
+                            obs_c_norm /= obs_data_norm;
+                            ss << " rel. l2-error at observation points (T=1.5) : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                            if(dat_t15 != nullptr) {ierr = VecDestroy (&dat_t15);                     CHKERRQ (ierr);}
+                        }
+
+                    }
+
+		}
             }
         }
 
@@ -1221,7 +1366,11 @@ PetscErrorCode readData (Vec &data_t1, Vec &data_t0, Vec &support_data, Vec &dat
     ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
     ierr = spec_ops->weierstrassSmoother (data_t1, data_t1, n_misc, sigma_smooth);
-    ierr = VecSet (c_0, 0.);        CHKERRQ (ierr);
+    ierr = VecSet (c_0, 0.);                  CHKERRQ (ierr);
+    //if (read_data_t0) {
+    //    ierr = spec_ops->weierstrassSmoother (data_t0, data_t0, n_misc, sigma_smooth);
+    //    ierr = VecCopy (data_t0, c_0);        CHKERRQ (ierr);
+    //}
 
     PetscFunctionReturn (ierr);
 }
@@ -1415,7 +1564,11 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     ierr = VecDuplicate (data, &c_rec_0);                                   CHKERRQ (ierr);
     ierr = VecDuplicate (data, &c_rec);                                     CHKERRQ (ierr);
 
-    ierr = tumor->phi_->apply (c_rec_0, p_rec);
+    if (n_misc->use_c0_) {
+        ierr = VecCopy (tumor->c_0_, c_rec_0); CHKERRQ(ierr);
+    } else {
+        ierr = tumor->phi_->apply (c_rec_0, p_rec); CHKERRQ(ierr);
+    }
 
     ScalarType *c0_ptr;
 
@@ -1434,6 +1587,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     if (n_misc->writeOutput_)
         dataOut (c_rec_0, n_misc, "c0Recon.nc");
 
+    ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
     ScalarType max, min;
@@ -1468,7 +1622,6 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     error_norm_c0 /= data_norm;
     ss << " error norm in c(0): " << error_norm_c0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
-    ierr = VecAXPY (c_rec, -1.0, data);                                     CHKERRQ (ierr);
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
     ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
 
