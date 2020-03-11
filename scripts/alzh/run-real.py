@@ -142,7 +142,7 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     rho_lb  = 0.1;
     rho_ub  = 15;
     model   = 2;
-    smooth_fac = 1.5;
+    smooth_fac = 2.5;
     pred_t0 = TF[case]['t1']
     pred_t1 = TF[case]['t02']
     pred_t2 = TF[case]['t2']
@@ -153,7 +153,7 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     solver  = 'QN'
     prefix  = 'time_point_0'
     prefix_p= 'time_point_1'
-    adv     = True;
+    adv     = False;
     vx1     = 'reg-1-0/velocity-field-x1.nc'
     vx2     = 'reg-1-0/velocity-field-x2.nc'
     vx3     = 'reg-1-0/velocity-field-x3.nc'
@@ -172,9 +172,9 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
 
     # define results path
     if not adv:
-        res_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'inv-smooth1.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
+        res_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'inv-smooth2.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
     else:
-        res_dir =  os.path.join(os.path.join(args.results_directory, case_dir), 'inv-adv-smooth1.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
+        res_dir =  os.path.join(os.path.join(args.results_directory, case_dir), 'inv-adv-smooth2.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
     
     opt = {}
     opt['compute_sys']  = args.compute_cluster;

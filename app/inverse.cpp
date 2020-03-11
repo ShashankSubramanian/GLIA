@@ -93,6 +93,12 @@ int main (int argc, char** argv) {
     char init_tumor_path[400];
     char p_vec_path[400];
     char gaussian_cm_path[400];
+    char ka_xx_path[400];
+    char ka_xy_path[400];
+    char ka_xz_path[400];
+    char ka_yy_path[400];
+    char ka_yz_path[400];
+    char ka_zz_path[400];
     int np_user = 0;
     int interp_flag = 0;
     int diffusivity_flag = 0;
@@ -235,6 +241,12 @@ int main (int argc, char** argv) {
     PetscOptionsString ("-v_pred_x2", "Path to velocity x_2 component", "", vx2_pred_path, vx2_pred_path, 400, NULL);
     PetscOptionsString ("-v_pred_x3", "Path to velocity x_3 component", "", vx3_pred_path, vx3_pred_path, 400, NULL);
 
+    PetscOptionsString ("-ka_xx_path", "Path to GM", "",   ka_xx_path,  ka_xx_path, 400, NULL);
+    PetscOptionsString ("-ka_xy_path", "Path to GM", "",   ka_xy_path,  ka_xy_path, 400, NULL);
+    PetscOptionsString ("-ka_xz_path", "Path to GM", "",   ka_xx_path,  ka_xz_path, 400, NULL);
+    PetscOptionsString ("-ka_yy_path", "Path to GM", "",   ka_yy_path,  ka_yy_path, 400, NULL);
+    PetscOptionsString ("-ka_yz_path", "Path to GM", "",   ka_yz_path,  ka_yz_path, 400, NULL);
+    PetscOptionsString ("-ka_zz_path", "Path to GM", "",   ka_zz_path,  ka_zz_path, 400, NULL);
 
     PetscStrcpy (newton_solver, "QN");
     PetscStrcpy (line_search, "mt");
