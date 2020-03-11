@@ -139,7 +139,7 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     dt_inv  = 0.01;
     k_lb    = 1E-4/scale;
     k_ub    = 1/scale;
-    rho_lb  = 4;
+    rho_lb  = 0.1;
     rho_ub  = 15;
     model   = 2;
     smooth_fac = 1.5;
@@ -147,7 +147,7 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     pred_t1 = TF[case]['t02']
     pred_t2 = TF[case]['t2']
     pre_adv_time = -1;
-    b_name  = 'inverse_gpu_scale_real'
+    b_name  = 'inverse_gpu_scale_real_smooth'
     d1      = 'time_point_1_tau.nc'
     d0      = 'time_point_0_tau.nc'
     solver  = 'QN'
@@ -172,9 +172,9 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
 
     # define results path
     if not adv:
-        res_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'inv-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-10-bounds-scale/');
+        res_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'inv-smooth1.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
     else:
-        res_dir =  os.path.join(os.path.join(args.results_directory, case_dir), 'inv-adv-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-10-bounds-scale/');
+        res_dir =  os.path.join(os.path.join(args.results_directory, case_dir), 'inv-adv-smooth1.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
     
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
@@ -254,8 +254,8 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     t_params['forward_flag']          = 0
     t_params['smooth_f']              = smooth_fac;
     t_params['model']                 = model;
-    t_params['gaussian_cm_path']      = ""
-    t_params['pvec_path']             = ""
+    t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
+    t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
     t_params['velocity_x1']           = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx1);
     t_params['velocity_x2']           = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx2);
     t_params['velocity_x3']           = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx3);

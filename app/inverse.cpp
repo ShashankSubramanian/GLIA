@@ -1367,10 +1367,10 @@ PetscErrorCode readData (Vec &data_t1, Vec &data_t0, Vec &support_data, Vec &dat
 
     ierr = spec_ops->weierstrassSmoother (data_t1, data_t1, n_misc, sigma_smooth);
     ierr = VecSet (c_0, 0.);                  CHKERRQ (ierr);
-    //if (read_data_t0) {
-    //    ierr = spec_ops->weierstrassSmoother (data_t0, data_t0, n_misc, sigma_smooth);
-    //    ierr = VecCopy (data_t0, c_0);        CHKERRQ (ierr);
-    //}
+    if (read_data_t0) {
+        ierr = spec_ops->weierstrassSmoother (data_t0, data_t0, n_misc, sigma_smooth);
+        ierr = VecCopy (data_t0, c_0);        CHKERRQ (ierr);
+    }
 
     PetscFunctionReturn (ierr);
 }

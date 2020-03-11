@@ -261,7 +261,7 @@ if env["gpu"] == True:
     source = [sourcesPGLISTRGPU, './app/forward.cpp']
     )
     bininv = env.Program (
-    target = buildpath + '/inverse_gpu_scale_real',
+    target = buildpath + '/inverse_gpu_scale_real_smooth',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
     )
     env.Alias("bin", bininv)
