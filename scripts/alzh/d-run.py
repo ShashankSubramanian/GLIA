@@ -120,67 +120,58 @@ def createJobsubFile(cmd, opt, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def set_params(basedir, args, case_dir='d_nc', gpu=False):
-    
-    TF = { 
-       #'022' :  {'t1' : 1.0,  't2' : 1.01, 't02' : 2.01},      # t0-t1: 379 days; t0-t2: 764 days; t1-t2: 385
-       '022' :  {'t1' : 0.1,  't2' : 0.1, 't02' : 0.2},      # t0-t1: 379 days; t0-t2: 764 days; t1-t2: 385
-       '114' :  {'t1' : 1.0,  't2' : 0.63, 't02' : 1.63},      # t0-t1: 435 days; t0-t2: 713 days; t1-t2: 278
-       #'114' :  {'t1' : 0.2,  't2' : 0.12, 't02' : 0.32},      # t0-t1: 435 days; t0-t2: 713 days; t1-t2: 278
-    }
+def set_params(basedir, args, nlevel='no', case_dir='d_nc', gpu=False):
 
-    case = str(case_dir.split('CASE_')[-1].split('_S')[0])
-    
+    tpoint = case_dir.split('d_nc-')[-1]
+    #T = {'0' : 40, '20' : 18, '40' : 12, '60' : 7, '80' : 2}
+    T = {'0' : 100, '20' : 44, '40' : 28, '60' : 17, '80' : 10}
+
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
     submit             = True;
     ###########
-    opttol  = 1E-4;
     scale   = 1e-1;
-    rho_inv = 4;
+    rho_inv = 6;
     k_inv   = 1E-2/scale;
+    nt_inv  = T[tpoint];
     dt_inv  = 0.01;
-    nt_inv  = int(TF['t1']/dt_inv);
     k_lb    = 1E-4/scale;
     k_ub    = 1/scale;
-    rho_lb  = 0.1;
+    rho_lb  = 2;
     rho_ub  = 15;
     model   = 2;
-    obs_th_1= 0.6;
-    obs_th_0= 0.6;
-    smooth_fac = 1.5;
-    pred_t0 = TF[case]['t1']
-    pred_t1 = TF[case]['t02']
-    pred_t2 = TF[case]['t2']
-    pre_adv_time = -1;
-    b_name  = 'inverse_gpu_scale_real'
-    d1      = 'time_point_1_tau.nc'
-    d0      = 'time_point_0_tau.nc'
+    #b_name  = 'inverse_adv_scale'
+    b_name  = 'inverse_gpu_scale'
+    d1      = os.path.join(case_dir, 'dataBeforeObservation_cl.nc')
+    d0      = os.path.join(case_dir, 'c0True_cl.nc')
     solver  = 'QN'
-    prefix  = 'time_point_0'
-    prefix_p= 'time_point_1'
+    prefix  = '0368Y01'
     adv     = True;
-    vx1     = 'reg-1-0/velocity-field-x1.nc'
-    vx2     = 'reg-1-0/velocity-field-x2.nc'
-    vx3     = 'reg-1-0/velocity-field-x3.nc'
-    vx1_p   = 'reg-2-1/velocity-field-x1.nc'
-    vx2_p   = 'reg-2-1/velocity-field-x2.nc'
-    vx3_p   = 'reg-2-1/velocity-field-x3.nc'
+    vx1     = 'reg/velocity-field-x1.nc'
+    vx2     = 'reg/velocity-field-x2.nc'
+    vx3     = 'reg/velocity-field-x3.nc'
+    noise_level = nlevel;
     ###########
     
-    # make paths
-    inp_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'data');
-    dat_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'data');
+    if noise_level == 'lres':
+        d1      = os.path.join(case_dir, 'data_t1_128_256.nc')
+        d0      = os.path.join(case_dir, 'data_t0_128_256.nc')
     
-    d1_true  = os.path.join(inp_dir, 'time_point_1_tau.nc')
-    d12_true = os.path.join(inp_dir, 'time_point_2_tau.nc')
-    d15_true = os.path.join(inp_dir, 'time_point_2_tau.nc')
-
+    # test02
+    if 'sp' in noise_level:
+        d1      = os.path.join(case_dir, 'data_t1_noise-'+str(nlevel.split('sp')[-1])+'.nc')
+        d0      = os.path.join(case_dir, 'data_t0_noise-'+str(nlevel.split('sp')[-1])+'.nc')
+   
+ 
     # define results path
     if not adv:
-        res_dir = os.path.join(os.path.join(args.results_directory, case_dir), 'inv-TADAPT-smooth1.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
+        res_dir = os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
     else:
-        res_dir =  os.path.join(os.path.join(args.results_directory, case_dir), 'inv-NO-data-smoothing-ADV-smoot-brain-h1.5-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale/');
-    
+        res_dir =  os.path.join(args.results_directory,'inv-adv-'+str(case_dir)+'-corr-c0-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
+    # make paths
+    inp_dir = os.path.join(args.results_directory, 'data');
+    dat_dir = os.path.join(args.results_directory, 'tc');
+
+
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
     opt['gpu']          = gpu; 
@@ -212,14 +203,12 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     t_params['results_path']          = res_dir;
     t_params['N']                     = 256;
     t_params['solvertype']            = solver;
-    t_params['grad_tol']              = opttol;
+    t_params['grad_tol']              = 1E-4;
     t_params['sparsity_lvl']          = 5;
     t_params['multilevel']            = 0;
-    t_params['model']                 = model; 
+    t_params['model']                 = 2;
     t_params['solve_rho_k']           = 1;
     t_params['inject_solution']       = 0;
-    t_params['obs_thres']             = obs_th_1;
-    t_params['obs_thres_0']           = obs_th_0;
     t_params['two_snapshot']          = 1;
     t_params['low_res_data']          = 0;
     t_params['pre_reacdiff_solve']    = 0;
@@ -242,33 +231,19 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     t_params['upper_bound_rho']       = rho_ub;
     t_params['dd_fac']                = 1;
     t_params['predict_flag']          = 1;
-    t_params['pred_t0']               = pred_t0;
-    t_params['pred_t1']               = pred_t1;
-    t_params['pred_t2']               = pred_t2;
-    t_params['pre_adv_time']          = pre_adv_time;
     t_params['csf_path']              = os.path.join(inp_dir, prefix + '_seg_csf.nc');
     t_params['gm_path']               = os.path.join(inp_dir, prefix + '_seg_gm.nc');
     t_params['wm_path']               = os.path.join(inp_dir, prefix + '_seg_wm.nc');
-    t_params['csf_pred_path']         = os.path.join(inp_dir, prefix_p + '_seg_csf.nc');
-    t_params['gm_pred_path']          = os.path.join(inp_dir, prefix_p + '_seg_gm.nc');
-    t_params['wm_pred_path']          = os.path.join(inp_dir, prefix_p + '_seg_wm.nc');
     t_params['data_path_t1']          = os.path.join(dat_dir, d1);
     t_params['data_path_t0']          = os.path.join(dat_dir, d0);
-    t_params['data_path_mri']         = ""
-    t_params['data_path_pred_t0']     = d1_true;
-    t_params['data_path_pred_t1']     = d12_true;
-    t_params['data_path_pred_t2']     = d15_true;
     t_params['forward_flag']          = 0
-    t_params['smooth_f']              = smooth_fac;
+    t_params['smooth_f']              = 1.5
     t_params['model']                 = model;
     t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
     t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
-    t_params['velocity_x1']           = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx1);
-    t_params['velocity_x2']           = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx2);
-    t_params['velocity_x3']           = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx3);
-    t_params['velocity_x1_p']         = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx1_p);
-    t_params['velocity_x2_p']         = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx2_p);
-    t_params['velocity_x3_p']         = "" if not adv else os.path.join(os.path.join(args.results_directory, case_dir), vx3_p);
+    t_params['velocity_x1']           = "" if not adv else os.path.join(args.results_directory, vx1);
+    t_params['velocity_x2']           = "" if not adv else os.path.join(args.results_directory, vx2);
+    t_params['velocity_x3']           = "" if not adv else os.path.join(args.results_directory, vx3);
  
     #   ------------------------------------------------------------------------
     #    - get command line for tumor inversion
@@ -303,6 +278,10 @@ if __name__=='__main__':
     parser.add_argument (                   '--tumor_code_dir',                    type = str, help = 'path to tumor solver code directory')
     args = parser.parse_args();
 
-    #case_dir = 'CASE_022_S_6013'   
-    case_dir = 'CASE_114_S_6039'   
-    set_params(basedir, args, case_dir, gpu=True);
+   
+    for case_dir in ['d_nc-20','d_nc-60', 'd_nc-80']:
+        for nlevel in ['no', 'sp0.1', 'sp0.5', 'sp1.0', 'sp1.5', 'sp2.0', 'sp3.0']:
+        #for nlevel in ['no', 'sp0.005', 'sp0.01', 'sp0.1', 'sp0.3', 'sp0.5']:
+        #for nlevel in ['sp0.005', 'sp0.01', 'sp0.1', 'sp0.3']:
+        #for nlevel in ['no', 'sp1E-1', 'sp1E-2', 'sp1E-3']:
+             set_params(basedir, args, nlevel, case_dir, gpu=True);

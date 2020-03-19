@@ -970,11 +970,15 @@ PetscErrorCode DerivativeOperatorsRDOnly::evaluateObjective (PetscReal *J, Vec x
         ierr = tumor_->obs_->apply (temp_, tumor_->c_0_, 0);        CHKERRQ (ierr); // Oc(0)
         ierr = VecAXPY (temp_, -1.0, data->dt0());                  CHKERRQ (ierr); // Oc(0) - d0
         ierr = VecDot (temp_, temp_, &m0);                          CHKERRQ (ierr); // ||.||^2
+
+       
+        // compute regularization
+        //ierr = tumor_->obs_->apply (temp_, tumor_->c_t_, 1, true);  CHKERRQ (ierr); // I-Oc(1)
+        //ierr = VecDot (temp_, temp_, &reg);                          CHKERRQ (ierr); // ||.||^2
+        //reg *= 0.5 * n_misc_->beta_;
     }
-
-    // compute regularization
-    // no-op
-
+    
+    
     // objective function value
     (*J) = n_misc_->lebesgue_measure_ * 0.5 *(m1 + m0) + reg;
 

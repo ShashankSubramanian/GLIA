@@ -138,6 +138,7 @@ int main (int argc, char** argv) {
     int flag_cosamp = 0;
 
     ScalarType sm = -1;
+    ScalarType sm_c0 = -1;
     ScalarType forcing_factor = -1;
 
     ScalarType opttolgrad = -1.0;
@@ -206,6 +207,7 @@ int main (int argc, char** argv) {
     PetscOptionsReal ("-k_gm_wm", "WM to GM ratio for diffusivity", "", k_gm_wm, &k_gm_wm, NULL);
     PetscOptionsReal ("-r_gm_wm", "WM to GM ratio for reaction", "", r_gm_wm, &r_gm_wm, NULL);
     PetscOptionsReal ("-smooth", "Smoothing factor", "", sm, &sm, NULL);
+    PetscOptionsReal ("-smooth_c0", "Smoothing factor", "", sm_c0, &sm_c0, NULL);
     PetscOptionsReal ("-low_freq_noise", "Noise level for low frequency noise addition", "", low_freq_noise_scale, &low_freq_noise_scale, NULL);
     PetscOptionsReal ("-forcing_factor", "Forcing factor for mass-effect forward model", "", forcing_factor, &forcing_factor, NULL);
 
@@ -673,6 +675,20 @@ int main (int argc, char** argv) {
         support_data = data_t1;
     } else {
         ierr = readData (data_t1, data_t0, support_data, data_components, c_0, p_rec, n_misc, spec_ops, data_path_t1, data_path_t0, support_data_path, data_comp_path);
+        ScalarType sig = sm_c0 * 2 * M_PI / n_misc->n_[0];
+        if (sm_c0 > 0) {
+            ss << " smoothing c(0) with factor: "<<sm_c0<<", and sigma: "<<sig; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = spec_ops->weierstrassSmoother (data_t0, data_t0, n_misc, sig);
+            ss << " smoothing c(1) with factor: "<<sm_c0<<", and sigma: "<<sig; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = spec_ops->weierstrassSmoother (data_t1, data_t1, n_misc, sig);
+	}
+    ScalarType max_c1, max_c0;
+    ierr = VecMax(data_t0, NULL, &max_c0); CHKERRQ(ierr);
+    ierr = VecMax(data_t1, NULL, &max_c1); CHKERRQ(ierr);
+    n_misc->obs_threshold_1_ = obs_thresh_1 * max_c1;
+    n_misc->obs_threshold_0_ = obs_thresh_0 * max_c0;
+    ss << " changing observation threshold to thr_0: "<<n_misc->obs_threshold_0_<<", and thr_1: "<<n_misc->obs_threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
         if (use_custom_obs_mask){
           ierr = readObsFilter(obs_mask, n_misc, obs_mask_path);
           ss << " use custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -769,10 +785,14 @@ int main (int argc, char** argv) {
               ierr = tumor->obs_->setCustomFilter (obs_mask, 1);
               ss << " set custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             } else {
-              ierr = tumor->obs_->setDefaultFilter (data_t1, 1);
-              ierr = tumor->obs_->setDefaultFilter (data_t0, 0);
-              ss << " set default observation mask based on input data and threshold " << tumor->obs_->threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+              ierr = tumor->obs_->setDefaultFilter (data_t1, 1, n_misc->obs_threshold_1_);
+              ierr = tumor->obs_->setDefaultFilter (data_t0, 0, n_misc->obs_threshold_0_);
+              ss << " set default observation mask based on input data (d1) and threshold " << tumor->obs_->threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+              ss << " set default observation mask based on input data (d0) and threshold " << tumor->obs_->threshold_0_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             }
+            dataOut (data_t0, n_misc, "d0_s.nc");
+            ierr = tumor->obs_->apply (data_t0, data_t0, 0);                    CHKERRQ (ierr);
+            dataOut (data_t0, n_misc, "d0_s_obs.nc");
             // apply observer on ground truth, store observed data in d
             // observation operator is applied before gaussians are set.
             ierr = tumor->obs_->apply (data_t1, data_t1, 1);                    CHKERRQ (ierr);
@@ -1025,29 +1045,45 @@ int main (int argc, char** argv) {
                         n_misc->nt_ = (int) (pred_time_0 / dt_data);
                         ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
                         ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
-                        ss << "cPrediction_[t=" << pred_time_0<<"].nc";
+                        ss << "cPrediction0_[t=" << pred_time_0<<"].nc";
                         dataOut (solver_interface->getTumor()->c_t_, n_misc, ss.str().c_str());ss.str(""); ss.clear();
                         ss << " prediction complete for t = "<<pred_time_0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                        
                         if (data_path_pred_t0 != NULL && strlen(data_path_pred_t0) > 0){
-                            Vec dat_t1;
+                            Vec dat_t1, tmp;
+                            ScalarType obs_c_norm, obs_data_norm, data_norm;
                             ierr = VecDuplicate (data_t1, &dat_t1);   CHKERRQ (ierr);
+                            ierr = VecDuplicate (data_t1, &tmp);      CHKERRQ (ierr);
                             dataIn (dat_t1, n_misc, data_path_pred_t0);
-                            ierr = solver_interface->getTumor()->obs_->apply (solver_interface->getTumor()->c_t_, solver_interface->getTumor()->c_t_);
-                            ScalarType obs_c_norm, obs_data_norm;
-                            ierr = VecAXPY (solver_interface->getTumor()->c_t_, -1.0, dat_t1);        CHKERRQ (ierr);
-                            ierr = VecNorm (solver_interface->getTumor()->c_t_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
+                            ierr = VecNorm (dat_t1, NORM_2, &data_norm);                              CHKERRQ (ierr );
+                            ierr = VecCopy (solver_interface->getTumor()->c_t_, tmp);                 CHKERRQ (ierr);
+                            ierr = VecAXPY (tmp, -1.0, dat_t1);                                       CHKERRQ (ierr);
+                            dataOut (tmp, n_misc, "res1.nc");
+                            dataOut (data_t1, n_misc, "d1_s.nc");
+                            ierr = VecNorm (tmp, NORM_2, &obs_c_norm);                                CHKERRQ (ierr);
+                            obs_c_norm /= data_norm;
+                            ss << " rel. l2-error (everywhere) (T=1.0) : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+                            ierr = solver_interface->getTumor()->obs_->apply (tmp, data_t1);          CHKERRQ (ierr);
+                            dataOut (tmp, n_misc, "d1_s_obs.nc");
+                            ierr = VecCopy (solver_interface->getTumor()->c_t_, tmp);                 CHKERRQ (ierr);
+                            ierr = solver_interface->getTumor()->obs_->apply (tmp, tmp);              CHKERRQ (ierr);
+                            ierr = solver_interface->getTumor()->obs_->apply (dat_t1, dat_t1);        CHKERRQ (ierr);
                             ierr = VecNorm (dat_t1, NORM_2, &obs_data_norm);                          CHKERRQ (ierr );
+                            ierr = VecAXPY (tmp, -1.0, dat_t1);                                       CHKERRQ (ierr);
+                            dataOut (tmp, n_misc, "res1_obs.nc");
+                            ierr = VecNorm (tmp, NORM_2, &obs_c_norm);                                CHKERRQ (ierr);
                             obs_c_norm /= obs_data_norm;
                             ss << " rel. l2-error at observation points (T=1.0) : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                             if(dat_t1 != nullptr) {ierr = VecDestroy (&dat_t1);                       CHKERRQ (ierr);}
+                            if(tmp != nullptr)    {ierr = VecDestroy (&tmp);                          CHKERRQ (ierr);}
                         }
                     }
                     if (pred_time_1 > 0) {
                                               n_misc->nt_ = (int) (pred_time_1 / dt_data);
                         ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
                         ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
-                        ss << "cPrediction_[t=" << pred_time_1<<"].nc";
+                        ss << "cPrediction1_[t=" << pred_time_1<<"].nc";
                         dataOut (solver_interface->getTumor()->c_t_, n_misc, ss.str().c_str()) ;ss.str(""); ss.clear();
                         ss << " prediction complete for t = "<<pred_time_1; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
@@ -1083,7 +1119,7 @@ int main (int argc, char** argv) {
                         n_misc->nt_ = (int) (pred_time_2 / dt_data);
                         ierr = solver_interface->getTumor()->mat_prop_->resetValues(); CHKERRQ(ierr);
                         ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
-                        ss << "cPrediction_[t=" << pred_time_2<<"].nc";
+                        ss << "cPrediction2_[t=" << pred_time_2<<"].nc";
                         dataOut (solver_interface->getTumor()->c_t_, n_misc, ss.str().c_str());ss.str(""); ss.clear();
                         ss << " prediction complete for t = "<<pred_time_2; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
                         if (data_path_pred_t2 != NULL && strlen(data_path_pred_t2) > 0){
@@ -1377,12 +1413,12 @@ PetscErrorCode readData (Vec &data_t1, Vec &data_t0, Vec &support_data, Vec &dat
     // Smooth the data
     ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
-    ierr = spec_ops->weierstrassSmoother (data_t1, data_t1, n_misc, sigma_smooth);
+    //ierr = spec_ops->weierstrassSmoother (data_t1, data_t1, n_misc, sigma_smooth);
     ierr = VecSet (c_0, 0.);                  CHKERRQ (ierr);
-    if (read_data_t0) {
-        ierr = spec_ops->weierstrassSmoother (data_t0, data_t0, n_misc, sigma_smooth);
-        ierr = VecCopy (data_t0, c_0);        CHKERRQ (ierr);
-    }
+    //if (read_data_t0) {
+    //    ierr = spec_ops->weierstrassSmoother (data_t0, data_t0, n_misc, sigma_smooth);
+    //    ierr = VecCopy (data_t0, c_0);        CHKERRQ (ierr);
+    //}
 
     PetscFunctionReturn (ierr);
 }
@@ -1635,6 +1671,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     ss << " error norm in c(0): " << error_norm_c0; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     ierr = VecNorm (data, NORM_2, &data_norm);                              CHKERRQ (ierr);
+    ierr = VecAXPY (c_rec, -1.0,   data);                                   CHKERRQ (ierr);
     ierr = VecNorm (c_rec, NORM_2, &error_norm);                            CHKERRQ (ierr);
 
     ss << " data mismatch: " << error_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();

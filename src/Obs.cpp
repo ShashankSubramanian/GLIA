@@ -25,21 +25,26 @@ Obs::Obs (std::shared_ptr<NMisc> n_misc) :
         ierr = VecSetSizes (filter_0_, n_misc->n_local_, n_misc->n_global_);
         ierr = setupVec (filter_0_);
         ierr = VecSet (filter_0_, 1.0);
+        ierr = VecDuplicate (filter_0_, &one);
+        ierr = VecSet (one, 1.0);
     } else {
         filter_0_ = nullptr;
     }
 }
 
-PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point) {
+PetscErrorCode Obs::setDefaultFilter (Vec data, int time_point, ScalarType thr) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     ScalarType *filter_ptr, *data_ptr;
+ 
     ScalarType th =0;
     if (time_point==0){
         if (not two_snapshot_) {ierr = tuMSGwarn("Error: Cannot apply Obs(T=0), not a two snapshot scenario."); CHKERRQ(ierr); }
+        if (thr > 0) threshold_0_ = thr;
         ierr = VecGetArray (filter_0_, &filter_ptr);                                CHKERRQ (ierr);
         th = threshold_0_;
     } else {
+        if (thr > 0) threshold_1_ = thr;
         ierr = VecGetArray (filter_1_, &filter_ptr);                                CHKERRQ (ierr);
         th = threshold_1_;
     }
@@ -68,27 +73,36 @@ PetscErrorCode Obs::setCustomFilter (Vec custom_filter, int time_point) {
     PetscFunctionReturn (ierr);
 }
 
-PetscErrorCode Obs::apply(Vec y, Vec x, int time_point) {
+PetscErrorCode Obs::apply(Vec y, Vec x, int time_point, bool complement) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
+    if (complement) {tuMSGstd(" applying complement obs op:  I-O ");}
     if (time_point==0){
         if (not two_snapshot_) {ierr = tuMSGwarn("Error: Cannot apply Obs(T=0), not a two snapshot scenario."); CHKERRQ(ierr); }
+        if (complement) {ierr = VecScale(filter_0_, -1 ); CHKERRQ(ierr); VecAXPY (filter_0_, 1, one); CHKERRQ(ierr);}
         ierr = VecPointwiseMult (y, x, filter_0_);                                  CHKERRQ (ierr);
+        if (complement) { VecAXPY (filter_0_, -1, one); CHKERRQ(ierr); ierr = VecScale(filter_0_, -1); CHKERRQ(ierr);}
     } else {
+        if (complement) {ierr = VecScale(filter_1_, -1 ); CHKERRQ(ierr); VecAXPY (filter_1_, 1, one); CHKERRQ(ierr);}
         ierr = VecPointwiseMult (y, x, filter_1_);                                  CHKERRQ (ierr);
+        if (complement) { VecAXPY (filter_1_, -1, one); CHKERRQ(ierr); ierr = VecScale(filter_1_, -1); CHKERRQ(ierr);}
     }
     PetscFunctionReturn (ierr);
 }
 
 
-PetscErrorCode Obs::applyT(Vec y, Vec x, int time_point) {
+PetscErrorCode Obs::applyT(Vec y, Vec x, int time_point, bool complement) {
     PetscFunctionBegin;
     PetscErrorCode ierr;
     if (time_point==0){
         if (not two_snapshot_) {ierr = tuMSGwarn("Error: Cannot apply Obs(T=0), not a two snapshot scenario."); CHKERRQ(ierr); }
+        if (complement) {ierr = VecScale(filter_0_, -1 ); CHKERRQ(ierr); VecAXPY (filter_0_, 1, one); CHKERRQ(ierr);}
         ierr = VecPointwiseMult (y, x, filter_0_);                                  CHKERRQ (ierr);
+        if (complement) { VecAXPY (filter_0_, -1, one); CHKERRQ(ierr); ierr = VecScale(filter_0_, -1); CHKERRQ(ierr);}
     } else {
+        if (complement) {ierr = VecScale(filter_1_, -1 ); CHKERRQ(ierr); VecAXPY (filter_1_, 1, one); CHKERRQ(ierr);}
         ierr = VecPointwiseMult (y, x, filter_1_);                                  CHKERRQ (ierr);
+        if (complement) { VecAXPY (filter_1_, -1, one); CHKERRQ(ierr); ierr = VecScale(filter_1_, -1); CHKERRQ(ierr);}
     }
     PetscFunctionReturn (ierr);
 }
@@ -96,5 +110,5 @@ PetscErrorCode Obs::applyT(Vec y, Vec x, int time_point) {
 Obs::~Obs () {
     PetscErrorCode ierr;
     ierr = VecDestroy (&filter_1_);
-    if (two_snapshot_) {ierr = VecDestroy (&filter_0_);}
+    if (two_snapshot_) {VecDestroy (&filter_0_); VecDestroy(&one);}
 }

@@ -144,6 +144,7 @@ def getTumorRunCmd(params):
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
     smooth_f = 1.5
+    smooth_f_c0 = 1
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -348,6 +349,8 @@ def getTumorRunCmd(params):
     elif create_synthetic == 1:
         print ('Default synthetic fac = {} used'.format(fac))
     # ---
+    if 'smooth_f_c0' in params:
+        smooth_f_c0 = params['smooth_f_c0']
     if 'smooth_f' in params:
         smooth_f = params['smooth_f']
     else:
@@ -537,7 +540,12 @@ def getTumorRunCmd(params):
     if "velocity_x3_p" in params:
         velocity_x3_path_p = params['velocity_x3_p']
 
+    if "obs_thres" in params:
+        obs_thres = params['obs_thres']
+    if "obs_thres_0" in params:
+        obs_thres_0 = params['obs_thres_0']
     
+
     if "nt_inv" in params:
         nt_inv = params['nt_inv']
     if "dt_inv" in params: 
@@ -626,6 +634,7 @@ def getTumorRunCmd(params):
     " -init_tumor_path " + init_tumor_path + \
     " -model " + str(model) + \
     " -smooth " + str(smooth_f) + \
+    " -smooth_c0 " + str(smooth_f_c0) + \
     " -observation_threshold " + str(obs_thres) + \
     " -observation_threshold_0 " + str(obs_thres_0) + \
     " -k_gm_wm " + str(k_gm_wm) + \
