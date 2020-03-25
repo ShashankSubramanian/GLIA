@@ -117,7 +117,8 @@ def create_label_maps(atlas_image_path, patient_image_path, results_path, atlas_
     patient_mat_img[patient_seg == 5] = 1
     writeNII(patient_mat_img, results_path + "/patient_gm.nii.gz", ref_image=nii)
     patient_mat_img = 0 * patient_seg
-    patient_mat_img[np.logical_or(np.logical_or(patient_seg == 6, patient_seg == 8), patient_seg == 4)] = 1
+    patient_mat_img[(np.logical_or(patient_seg == 6, patient_seg == 8))] = 1
+#    patient_mat_img[np.logical_or(np.logical_or(patient_seg == 6, patient_seg == 8), patient_seg == 4)] = 1
     writeNII(patient_mat_img, results_path + "/patient_wm.nii.gz", ref_image=nii)
     ### masking file
     patient_mat_img = 0 * patient_seg + 1
@@ -130,7 +131,8 @@ def register(claire_bin_path, results_path, atlas_name, bash_filename):
     cmd = "ibrun " + claire_bin_path + "/claire -mrc 3 " + results_path + "/" + atlas_name + "_vt.nii.gz " + results_path + "/" + atlas_name \
                 + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz "\
                 + "-mtc 3 " + results_path + "/patient_vt.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
-                + "-nx 256 -train binary -jbound 1e-1 -regnorm h1s-div -opttol 5e-2 -maxit 50 -krylovmaxit 50 -velocity -detdefgrad -deffield -defmap -residual -x "\
+                + "-mask " + results_path + "/patient_mask.nii.gz " \
+                + "-nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 5e-2 -maxit 50 -krylovmaxit 50 -velocity -detdefgrad -deffield -defmap -residual -x "\
                 + results_path + "/"\
                 + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " &> " + results_path + "/registration_log.txt";
 #                + "-mask " + results_path + "/patient_mask.nii.gz " \
@@ -205,12 +207,12 @@ if __name__=='__main__':
     tp = args.transport
 
     scripts_path = os.getcwd() + "/.."
-    patient_path = scripts_path + "/../brain_data/t16/t16-m12-seg.nii.gz"
-    map_of_interest = scripts_path + "/../results/rd-inv-t16-m12-c-diag-s3/tumor_inversion/nx256/obs-1.0/c0Recon.nc"
+    patient_path = scripts_path + "/../brain_data/t16/t16-case7-seg.nii.gz"
+    map_of_interest = scripts_path + "/../results/rd-inv-t16-case7/tumor_inversion/nx256/obs-1.0/c0Recon.nc"
 
     ### use the rec phis and ps directly(?)
-    phi_rec = scripts_path + "/../results/rd-inv-t16-m12-c-diag-s3/tumor_inversion/nx256/obs-1.0/phi-mesh-scaled.txt"
-    p_rec = scripts_path + "/../results/rd-inv-t16-m12-c-diag-s3/tumor_inversion/nx256/obs-1.0/p-rec-scaled.txt"
+    phi_rec = scripts_path + "/../results/rd-inv-t16-case7/tumor_inversion/nx256/obs-1.0/phi-mesh-scaled.txt"
+    p_rec = scripts_path + "/../results/rd-inv-t16-case7/tumor_inversion/nx256/obs-1.0/p-rec-scaled.txt"
 
     phix, phiy, phiz = np.loadtxt(phi_rec, comments = ["]", "#"], delimiter=',', skiprows=2, unpack=True);
     p_vec = np.loadtxt(p_rec,  comments = ["]", "#"], skiprows=1);
@@ -221,14 +223,15 @@ if __name__=='__main__':
 
     patient = nib.load(patient_path).get_fdata()
     atlas_path = scripts_path + "/../brain_data/atlas/"
-    results_path = scripts_path + "/../results/reg-t16-m12/"
+    results_path = scripts_path + "/../results/reg-t16-case7/"
     if not os.path.exists(results_path):
         os.makedirs(results_path)
     claire_path = scripts_path + "/../../claire-dev/bingpu/"
     bash_file = create_sbatch_header(results_path, compute_sys = "longhorn")
 
-    #atlases = ["atlas-2", "atlas-4", "atlas-5", "atlas-6"]
-    atlases = ["atlas-2"]
+#    atlases = ["atlas-2", "atlas-4", "atlas-5", "atlas-6"]
+#    atlases = ["atlas-4", "atlas-5", "atlas-6"]
+    atlases = ["atlas-1"]
     for atlas in atlases:
         r_path = results_path + atlas
         if not os.path.exists(r_path):
