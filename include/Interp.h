@@ -168,9 +168,9 @@
 		
 		void gpuInterp3D(
            float* yi,
-           const float* xq1,
-           const float* xq2,
-           const float* xq3,
+           const PetscScalar* xq1,
+           const PetscScalar* xq2,
+           const PetscScalar* xq3,
            float* yo,
            float *tmp1, float* tmp2,
            int*  nx,
@@ -180,7 +180,7 @@
 
 		void gpuInterpVec3D(
            float* yi1, float* yi2, float* yi3,
-           const float* xq1, const float* xq2, const float* xq3,
+           const PetscScalar* xq1, const PetscScalar* xq2, const PetscScalar* xq3,
            float* yo1, float* yo2, float* yo3,
            float *tmp1, float* tmp2,
            int*  nx, cudaTextureObject_t yi_tex, int iporder, float* interp_time);
@@ -202,7 +202,7 @@
 	void interp3_p(Real* reg_grid_vals, int data_dof, int* N_reg, const int N_pts,
 			Real* query_points, Real* query_values);
 
-	void vectorized_interp3_ghost_xyz_p(__restrict Real* reg_grid_vals, int data_dof, const int* __restrict N_reg,
+	void vectorized_interp3_ghost_xyz_p(Real* __restrict reg_grid_vals, int data_dof, const int* __restrict N_reg,
 			const int* __restrict N_reg_g, const int * __restrict isize_g, const int* __restrict istart, const int N_pts,
 			const int g_size, Real* __restrict query_points, Real* __restrict query_values,
 			bool query_values_already_scaled = false);

@@ -1603,7 +1603,7 @@
 
 
 //------------ NO CUDA -----------
-#else
+#elif (!CUDA)
 
   #define _mm256_set_m128(va, vb) \
             _mm256_insertf128_ps(_mm256_castps128_ps256(vb), va, 1)
