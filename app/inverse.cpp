@@ -390,6 +390,11 @@ int main (int argc, char** argv) {
     n_misc->user_cm_[1] = 2 * M_PI / 256 * y_cm;
     n_misc->user_cm_[2] = 2 * M_PI / 256 * x_cm;
 
+    n_misc->user_cms_.clear();
+    n_misc->user_cms_.push_back (n_misc->user_cm_[0]);
+    n_misc->user_cms_.push_back (n_misc->user_cm_[1]);
+    n_misc->user_cms_.push_back (n_misc->user_cm_[2]);
+    n_misc->user_cms_.push_back (1.); // this is the default scaling
     n_misc->interpolation_order_ = interpolation_order;
 
     // Read input parameters (controlled from run script)
