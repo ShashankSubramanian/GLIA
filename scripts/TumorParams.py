@@ -70,28 +70,28 @@ def getTumorRunCmd(params):
     verbosity = 1
     ### Other user parameters which typically stay as default: Change if needed
     ### Flag to create synthetic data
-    create_synthetic = 0
+    create_synthetic = 1
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
-    rho_inv = 12
-    k_inv = 0.01
-    nt_inv = 25
-    dt_inv = 0.04
+    rho_inv = 15
+    k_inv = 0.0
+    nt_inv = 20
+    dt_inv = 0.05
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
-    model = 4
+    model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 10  
-    k_data = 0.025 
-    nt_data = 25
-    dt_data = 0.04
+    rho_data = 12
+    k_data = 0.05 
+    nt_data = 20
+    dt_data = 0.05
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 12E4 
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
-    z_cm = 137
-    y_cm = 169
-    x_cm = 96
+    z_cm = 112
+    y_cm = 136
+    x_cm = 144
 
     ### Testcase: 0: brain single focal synthetic
     ###              1: No-brain constant coefficients
@@ -165,9 +165,9 @@ def getTumorRunCmd(params):
     ### number of line-search attempts
     ls_max_func_evals = 20
     ## lower bound on kappa
-    lower_bound_kappa = 5E-1
+    lower_bound_kappa = 0
     ## upper bound on kappa
-    upper_bound_kappa = 5
+    upper_bound_kappa = 0.1
     ### order of interpolation for SL
     ip_order = 3
 
