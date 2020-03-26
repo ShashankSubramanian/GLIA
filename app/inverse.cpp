@@ -1245,7 +1245,7 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec
     // Smooth the data
     ScalarType sigma_smooth = n_misc->smoothing_factor_ * 2 * M_PI / n_misc->n_[0];
 
-    // ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
+    ierr = spec_ops->weierstrassSmoother (data, data, n_misc, sigma_smooth);
     ScalarType *c0_ptr;
     ScalarType c0_min, c0_max;
     if ((init_tumor_path != NULL) && (init_tumor_path[0] != '\0')) {
