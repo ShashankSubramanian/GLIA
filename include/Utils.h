@@ -370,6 +370,7 @@ class NMisc {
         , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
         , transport_mri_ (false)                // transport T1 image
         , interpolation_order_ (3)              // interpolation order for SL
+        , cross_entropy_loss_ (false)           // implements cross entropy loss instead of L2
                                 {
 
 
@@ -457,6 +458,7 @@ class NMisc {
             writepath_ << "./results/";
         }
 
+        bool cross_entropy_loss_;
         ScalarType ic_max_;
         int predict_flag_;
         int pre_reacdiff_solve_;

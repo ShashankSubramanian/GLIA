@@ -82,8 +82,8 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 12
-    k_data = 0.05 
+    rho_data = 8
+    k_data = 0.025 
     nt_data = 20
     dt_data = 0.05
     ### Mass effect parameters -- only used if model is {4,5}
@@ -109,7 +109,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1
+    smooth_f = 1.5
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -159,17 +159,19 @@ def getTumorRunCmd(params):
     ### Krylov max iterations
     max_krylov_iter = 1
     ### Relative gradient tolerance
-    grad_tol = 1E-3
+    grad_tol = 1E-5
     ### Forward solver time order of accuracy
     accuracy_order = 2
     ### number of line-search attempts
-    ls_max_func_evals = 20
+    ls_max_func_evals = 30
     ## lower bound on kappa
     lower_bound_kappa = 0
     ## upper bound on kappa
     upper_bound_kappa = 0.1
     ### order of interpolation for SL
     ip_order = 3
+    ### flag to implement cross entropy loss
+    ce_loss = 1
 
     ### TUMOR PARAMETERS SET END
 
@@ -541,13 +543,14 @@ def getTumorRunCmd(params):
     " -prediction " + str(predict_flag) + \
     " -forward " + str(forward_flag) + \
     " -ip_order " + str(ip_order) + \
+    " -ce_loss " + str(ce_loss) + \
     " -order " + str(accuracy_order) + \
     " -verbosity " + str(verbosity) + \
     " -forcing_factor " + str(forcing_factor) + \
     " -kappa_lb " + str(lower_bound_kappa) + \
     " -kappa_ub " + str(upper_bound_kappa) + \
     " -mri_path " + mri_path + \
-    " -tao_blmvm_mat_lmvm_num_vecs 5 -tao_blmvm_mat_lmvm_scale_type scalar" + \
+    " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal" + \
     " -tumor_tao_ls_max_funcs " + str(ls_max_func_evals) + " "
 
     # -tao_test_hessian -tao_test_hessian_view

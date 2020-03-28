@@ -182,7 +182,7 @@ int main (int argc, char** argv) {
 
     ScalarType klb = -1.0;
     ScalarType kub = -1.0;
-
+    int ce_loss = -1;
     int predict_flag = 0;
     int pre_reacdiff_solve = 0;
     int order_of_accuracy = -1;
@@ -269,6 +269,7 @@ int main (int argc, char** argv) {
 
 
     PetscOptionsInt ("-ip_order", "interpolation order for SL", "", interpolation_order, &interpolation_order, NULL);
+    PetscOptionsInt ("-ce_loss", "cross entropy loss flag", "", ce_loss, &ce_loss, NULL);
 
     // bool flag = PETSC_FALSE;
     // PetscOptionsGetRealArray(NULL,NULL, "-data_comp_weights", data_comp_weights, &ncomp, &flag);
@@ -469,6 +470,10 @@ int main (int argc, char** argv) {
 
     if (opttolgrad != -1.0) {
         n_misc->opttolgrad_ = opttolgrad;
+    }
+
+    if (ce_loss == 1) {
+        n_misc->cross_entropy_loss_ = true;
     }
 
     if (klb != -1.0) n_misc->k_lb_ = klb;
@@ -1834,6 +1839,26 @@ PetscErrorCode generateSyntheticData (Vec &c_0, Vec &c_t, Vec &p_rec, std::share
         ierr = solver_interface->solveForward (c_t, c_0, &species);
     } else {
         ierr = solver_interface->solveForward (c_t, c_0);
+    }
+
+    ScalarType *c_ptr;
+    if (n_misc->cross_entropy_loss_) {
+        // clip and smooth
+        ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);
+        ierr = VecMin (c_t, NULL, &min);                                      CHKERRQ (ierr);
+        if (min < 0) {
+            ierr = vecGetArray(c_t, &c_ptr);    CHKERRQ(ierr);
+            #ifdef CUDA
+                clipVectorCuda (c_ptr, n_misc->n_local_);
+                clipVectorAboveCuda (c_ptr, n_misc->n_local_);
+            #else
+                for (int i = 0; i < n_misc->n_local_; i++) {
+                    c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];
+                    c_ptr[i] = (c_ptr[i] > 1.) ? 1. : c_ptr[i];
+                }
+            #endif
+            ierr = vecRestoreArray(c_t, &c_ptr);    CHKERRQ(ierr);
+        }
     }
 
     ierr = VecMax (c_t, NULL, &max);                                      CHKERRQ (ierr);

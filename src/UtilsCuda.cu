@@ -609,6 +609,17 @@ __global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr
     }
 }
 
+__global__ void computeCrossEntropy(ScalarType *ce_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps) {
+    int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+    if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2])
+        ce_ptr[i] = -(d_ptr[i] * log(c_ptr[i] + eps) + (1 - d_ptr[i]) * log(1 - c_ptr[i] + eps));
+}
+
+__global__ void computeCrossEntropyAdjointIC(ScalarType *a_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps) {
+    int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+    if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2])
+        a_ptr[i] = (d_ptr[i] / (c_ptr[i] + eps) - (1 - d_ptr[i]) / (1 - c_ptr[i] + eps));
+}
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz) {
 	int n_th_x = N_THREADS_X;
 	int n_th_y = N_THREADS_Y;
@@ -940,8 +951,34 @@ void computeTumorSegmentationCuda (ScalarType *bg_ptr, ScalarType *gm_ptr, Scala
 	cudaCheckKernelError ();
 }
 
+void computeCrossEntropyCuda(ScalarType *ce_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz) {
+    int n_th = N_THREADS;
+    computeCrossEntropy<<<(sz + n_th - 1)/n_th, n_th>>>(ce_ptr, d_ptr, c_ptr, eps);
+    cudaDeviceSynchronize();
+    cudaCheckKernelError();
+}
+
+void computeCrossEntropyAdjointICCuda(ScalarType *a_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz) {
+    int n_th = N_THREADS;
+    computeCrossEntropyAdjointIC<<<(sz + n_th - 1)/n_th, n_th>>>(a_ptr, d_ptr, c_ptr, eps);
+    cudaDeviceSynchronize();
+    cudaCheckKernelError();
+}
 
 // others
+
+void vecSumCuda(ScalarType *f, ScalarType *sum, int64_t sz) {
+	// use thrust for reduction
+	try {
+		thrust::device_ptr<ScalarType> f_thrust;
+		f_thrust = thrust::device_pointer_cast (f);
+		(*sum) = thrust::reduce (f_thrust, f_thrust + sz);
+	} catch (thrust::system_error &e) {
+		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
+	}
+
+	cudaDeviceSynchronize();
+}
 __global__ void copyDoubleToFloat(float *dst, double *src, int64_t sz) {
     int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -976,29 +1013,3 @@ void copyFloatToDoubleCuda (double *dst, float *src, int64_t sz) {
     cudaDeviceSynchronize();
     cudaCheckKernelError();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

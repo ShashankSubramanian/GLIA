@@ -4313,7 +4313,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
     PetscReal minstep;
-    minstep = std::pow (2.0, 18.0);
+    minstep = std::pow (2.0, 30.0);
     minstep = 1.0 / minstep;
     itctx_->optsettings_->ls_minstep = minstep;
 

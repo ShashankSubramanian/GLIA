@@ -179,7 +179,10 @@ PetscErrorCode TumorSolverInterface::initialize (
     // create pde and derivative operators
     if (n_misc->model_ == 1) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
-        derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
+        if (n_misc->cross_entropy_loss_)
+            derivative_operators_ = std::make_shared<DerivativeOperatorsKL> (pde_operators_, n_misc, tumor_);
+        else
+            derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc, tumor_);
     }
     if (n_misc->model_ == 2) {
         pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc, spec_ops);
@@ -312,7 +315,10 @@ PetscErrorCode TumorSolverInterface::setParams (
     if(model_changed) {
         switch (n_misc_->model_) {
             case 1: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
-                    derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
+                    if (n_misc_->cross_entropy_loss_)
+                        derivative_operators_ = std::make_shared<DerivativeOperatorsKL> (pde_operators_, n_misc_, tumor_);
+                    else
+                        derivative_operators_ = std::make_shared<DerivativeOperatorsRD> (pde_operators_, n_misc_, tumor_);
                     break;
             case 2: pde_operators_ = std::make_shared<PdeOperatorsRD> (tumor_, n_misc_, spec_ops_);
                     derivative_operators_ = std::make_shared<DerivativeOperatorsPos> (pde_operators_, n_misc_, tumor_);

@@ -143,6 +143,11 @@ void clipVectorAboveCuda (ScalarType *x_ptr, int64_t sz);
 void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, int64_t sz);
 void computeTumorSegmentationCuda (ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr, int64_t sz);
 
+void computeCrossEntropyCuda(ScalarType *ce_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz);
+void computeCrossEntropyAdjointICCuda(ScalarType *a_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz);
+
+
+void vecSumCuda(ScalarType *f, ScalarType *sum, int64_t sz);
 void copyDoubleToFloatCuda (float *dst, double *src, int64_t sz);
 void copyFloatToDoubleCuda (double *dst, float *src, int64_t sz);
 #endif
