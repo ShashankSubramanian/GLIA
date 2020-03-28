@@ -936,10 +936,6 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective (PetscReal *J, Vec x, Ve
 
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
-    ScalarType mx, mn;
-    VecMax(tumor_->c_t_, NULL, &mx);
-    VecMin(tumor_->c_t_, NULL, &mn);
-    std::cout << "tumor max and min: " << mx << " " << mn << std::endl;
     // cross entropy obj is -(dlog(c) + (1-d)*log(1-c))
     ScalarType eps = eps_;
     *J = 0;
@@ -1265,10 +1261,6 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient (PetscReal *J
     // solve state
     ierr = tumor_->phi_->apply (tumor_->c_0_, x);                   CHKERRQ (ierr);
     ierr = pde_operators_->solveState (0);
-    ScalarType mx, mn;
-    VecMax(tumor_->c_t_, NULL, &mx);
-    VecMin(tumor_->c_t_, NULL, &mn);
-    std::cout << "tumor max and min: " << mx << " " << mn << std::endl;
     // cross entropy obj is -(dlog(c) + (1-d)*log(1-c))
     ScalarType eps = eps_;
     *J = 0;
