@@ -611,14 +611,20 @@ __global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr
 
 __global__ void computeCrossEntropy(ScalarType *ce_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps) {
     int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
-    if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2])
-        ce_ptr[i] = -(d_ptr[i] * log(c_ptr[i] + eps) + (1 - d_ptr[i]) * log(1 - c_ptr[i] + eps));
+    if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+        c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
+        c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
+        ce_ptr[i] = -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
+    }
 }
 
 __global__ void computeCrossEntropyAdjointIC(ScalarType *a_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps) {
     int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
-    if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2])
-        a_ptr[i] = (d_ptr[i] / (c_ptr[i] + eps) - (1 - d_ptr[i]) / (1 - c_ptr[i] + eps));
+    if (i < isize_cuda[0] * isize_cuda[1] * isize_cuda[2]) {
+        c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
+        c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
+        a_ptr[i] = (d_ptr[i] / (c_ptr[i]) - (1 - d_ptr[i]) / (1 - c_ptr[i]));
+    }
 }
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz) {
 	int n_th_x = N_THREADS_X;

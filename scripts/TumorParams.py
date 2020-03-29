@@ -74,18 +74,18 @@ def getTumorRunCmd(params):
     ### Inversion tumor parameters  -- Tumor is inverted with these parameters: Use k_inv=0 if diffusivity is being inverted
     rho_inv = 15
     k_inv = 0.0
-    nt_inv = 20
-    dt_inv = 0.05
+    nt_inv = 25
+    dt_inv = 0.04
 
     ### tumor regularization type -- L1, L1c, L2, L2b  : L1c is cosamp
     reg_type = "L1c"
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data = 0.025 
-    nt_data = 20
-    dt_data = 0.05
+    rho_data = 10
+    k_data = 0.025
+    nt_data = 25
+    dt_data = 0.04
     ### Mass effect parameters -- only used if model is {4,5}
     forcing_factor = 12E4 
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
@@ -98,7 +98,7 @@ def getTumorRunCmd(params):
     ###              2: No-brain sinusoidal coefficients
     ###              3: brain multifocal synthetic tumor with nearby ground truths
     ##               4: brain multifocal synthetic tumor with far away ground truths
-    tumor_testcase = 0
+    tumor_testcase = 3
 
     multilevel         = 0;
     inject_solution    = 0;
@@ -109,7 +109,7 @@ def getTumorRunCmd(params):
     ### r_gm_wm ratio
     r_gm_wm = 0.0
     ### Smoothing factor: Number of voxels to smooth material properties and basis functions
-    smooth_f = 1.5
+    smooth_f = 1
     ### Interpolation flag   -- Flag to solve an interpolation problem (find parameterization of the data) only
     interp_flag = 0
     ### Solve for reaction/diffusin flag -- Flag to solve only for reaction diffusion, assumes c(0) to be read in
@@ -171,7 +171,7 @@ def getTumorRunCmd(params):
     ### order of interpolation for SL
     ip_order = 3
     ### flag to implement cross entropy loss
-    ce_loss = 1
+    ce_loss = 0
 
     ### TUMOR PARAMETERS SET END
 

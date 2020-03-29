@@ -947,8 +947,11 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective (PetscReal *J, Vec x, Ve
         computeCrossEntropyCuda(ce_ptr, d_ptr, c_ptr, eps, n_misc_->n_local_);
         vecSumCuda(ce_ptr, J, n_misc_->n_local_); 
     #else
-        for (int i = 0; i < n_misc_->n_local_; i++) 
-            (*J) += -(d_ptr[i] * log(c_ptr[i] + eps) + (1 - d_ptr[i]) * log(1 - c_ptr[i] + eps));
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
+            c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
+            (*J) += -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
+        }
     #endif
     ierr = vecRestoreArray(tumor_->c_t_, &c_ptr);                   CHKERRQ(ierr);
     ierr = vecRestoreArray(data, &d_ptr);                           CHKERRQ(ierr);
@@ -1047,8 +1050,11 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient (Vec dJ, Vec x, Vec data)
     #ifdef CUDA
         computeCrossEntropyAdjointICCuda(a_ptr, d_ptr, c_ptr, eps, n_misc_->n_local_);
     #else
-        for (int i = 0; i < n_misc_->n_local_; i++) 
-            a_ptr[i] = (d_ptr[i] / (c_ptr[i] + eps) - (1 - d_ptr[i]) / (1 - c_ptr[i] + eps));
+        for (int i = 0; i < n_misc_->n_local_; i++) {
+            c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
+            c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
+            a_ptr[i] = (d_ptr[i] / (c_ptr[i]) - (1 - d_ptr[i]) / (1 - c_ptr[i]));
+        }
     #endif
     ierr = vecRestoreArray(tumor_->c_t_, &c_ptr);                   CHKERRQ(ierr);
     ierr = vecRestoreArray(data, &d_ptr);                           CHKERRQ(ierr);
@@ -1275,8 +1281,10 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient (PetscReal *J
         computeCrossEntropyAdjointICCuda(a_ptr, d_ptr, c_ptr, eps, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) { 
-            (*J) += -(d_ptr[i] * log(c_ptr[i] + eps) + (1 - d_ptr[i]) * log(1 - c_ptr[i] + eps));
-            a_ptr[i] = (d_ptr[i] / (c_ptr[i] + eps) - (1 - d_ptr[i]) / (1 - c_ptr[i] + eps));
+            c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
+            c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
+            (*J) += -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
+            a_ptr[i] = (d_ptr[i] / (c_ptr[i]) - (1 - d_ptr[i]) / (1 - c_ptr[i]));
         }
     #endif
     ierr = vecRestoreArray(temp_, &ce_ptr);                         CHKERRQ(ierr);

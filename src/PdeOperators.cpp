@@ -293,8 +293,8 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
         }
     }
 
-    if(n_misc_->cross_entropy_loss_)
-        ierr = enforcePositivity (tumor_->c_t_, n_misc_);
+//    if(n_misc_->cross_entropy_loss_)
+//        ierr = enforcePositivity (tumor_->c_t_, n_misc_);
 
     std::stringstream s;
     if (n_misc_->verbosity_ >= 3) {
