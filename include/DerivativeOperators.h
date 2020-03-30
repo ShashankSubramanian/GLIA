@@ -73,7 +73,7 @@ class DerivativeOperatorsKL : public DerivativeOperators {
 				std::shared_ptr<Tumor> tumor)
 			 : DerivativeOperators (pde_operators, n_misc, tumor) {
 				 // tuMSGstd (" ----- Setting reaction-diffusion derivative operators --------");
-				 eps_ = 1E3*PETSC_MACHINE_EPSILON;
+				 eps_ = 1E-2;
 			 }
 
         ScalarType eps_;

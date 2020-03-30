@@ -1091,10 +1091,10 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     //near
     if (n_misc->testcase_ == BRAINNEARMF) {
-        cm[0] = 2 * M_PI / 256 * 102;//82  //Z
-        cm[1] = 2 * M_PI / 256 * 134;//64  //Y
-        cm[2] = 2 * M_PI / 256 * 162;//52  //X
-
+        cm[0] = 2 * M_PI / 128 * 56;//82  //Z
+        cm[1] = 2 * M_PI / 128 * 68;//64  //Y
+        cm[2] = 2 * M_PI / 128 * 72;//52  //X
+ 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
         n_misc->user_cms_.push_back (cm[2]);
@@ -1103,10 +1103,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
 
     // far
     if (n_misc->testcase_ == BRAINFARMF) {
-        cm[0] = 2 * M_PI / 256 * 112;//82  //Z
-        cm[1] = 2 * M_PI / 256 * 128;//64  //Y
-        cm[2] = 2 * M_PI / 256 * 94;//52  //X
-
+        cm[0] = 2 * M_PI / 128 * 60;//82  //Z
+        cm[1] = 2 * M_PI / 128 * 44;//64  //Y
+        cm[2] = 2 * M_PI / 128 * 76;//52  //X
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
@@ -1143,9 +1142,9 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     }
     // far
     if (n_misc->testcase_ == BRAINFARMF) {
-        cm[0] = 2 * M_PI / 256 * 176;//82  //Z
-        cm[1] = 2 * M_PI / 256 * 94;//64  //Y
-        cm[2] = 2 * M_PI / 256 * 118;//52  //X
+        cm[0] = 2 * M_PI / 128 * 72;//82
+        cm[1] = 2 * M_PI / 128 * 80;//64
+        cm[2] = 2 * M_PI / 128 * 76;//52 
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);

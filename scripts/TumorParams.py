@@ -82,7 +82,7 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 10
+    rho_data = 8
     k_data = 0.025
     nt_data = 25
     dt_data = 0.04
@@ -98,7 +98,7 @@ def getTumorRunCmd(params):
     ###              2: No-brain sinusoidal coefficients
     ###              3: brain multifocal synthetic tumor with nearby ground truths
     ##               4: brain multifocal synthetic tumor with far away ground truths
-    tumor_testcase = 3
+    tumor_testcase = 4
 
     multilevel         = 0;
     inject_solution    = 0;
@@ -163,7 +163,7 @@ def getTumorRunCmd(params):
     ### Forward solver time order of accuracy
     accuracy_order = 2
     ### number of line-search attempts
-    ls_max_func_evals = 30
+    ls_max_func_evals = 18
     ## lower bound on kappa
     lower_bound_kappa = 0
     ## upper bound on kappa
@@ -171,7 +171,7 @@ def getTumorRunCmd(params):
     ### order of interpolation for SL
     ip_order = 3
     ### flag to implement cross entropy loss
-    ce_loss = 0
+    ce_loss = 1
 
     ### TUMOR PARAMETERS SET END
 
