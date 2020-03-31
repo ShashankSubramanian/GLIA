@@ -82,8 +82,8 @@ def getTumorRunCmd(params):
     ### Model type: 1: RD, 2: RD + pos, 3: RD + full objective, 4: Mass effect
     model = 1
     ### Synthetic data parameters  -- Tumor is grown with these parameters
-    rho_data = 8
-    k_data = 0.025
+    rho_data = 12
+    k_data = 0.05
     nt_data = 25
     dt_data = 0.04
     ### Mass effect parameters -- only used if model is {4,5}
@@ -98,7 +98,7 @@ def getTumorRunCmd(params):
     ###              2: No-brain sinusoidal coefficients
     ###              3: brain multifocal synthetic tumor with nearby ground truths
     ##               4: brain multifocal synthetic tumor with far away ground truths
-    tumor_testcase = 4
+    tumor_testcase = 0
 
     multilevel         = 0;
     inject_solution    = 0;

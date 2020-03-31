@@ -9,7 +9,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 tumor_dir = scripts_path + '/../'
 params = {}
 params['code_path'] = tumor_dir
-params['results_path'] = tumor_dir + '/results/l0-tc1-check-eps1e-5-sm/'
+params['results_path'] = tumor_dir + '/results/check-/'
 params['compute_sys'] = 'frontera'
 #### tumor data
 #params['data_path'] = tumor_dir + '/results/Image12-case6/c_final.nc'
@@ -87,7 +87,7 @@ if not err:  # No error in tumor input parameters
         "#SBATCH -p " + queue + "\n" + \
         "#SBATCH -N " + str(N) + "\n" + \
         "#SBATCH -n " + str(n) + "\n" + \
-        "#SBATCH -t 24:00:00\n" + \
+        "#SBATCH -t 04:00:00\n" + \
         "source ~/.bashrc\n" + \
         "export OMP_NUM_THREADS=1\n")
     submit_file.write(run_str)

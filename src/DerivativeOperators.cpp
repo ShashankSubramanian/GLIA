@@ -945,7 +945,12 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective (PetscReal *J, Vec x, Ve
     ierr = vecGetArray(temp_, &ce_ptr);                         CHKERRQ(ierr);
     #ifdef CUDA
         computeCrossEntropyCuda(ce_ptr, d_ptr, c_ptr, eps, n_misc_->n_local_);
-        vecSumCuda(ce_ptr, J, n_misc_->n_local_); 
+        //vecSumCuda(ce_ptr, J, n_misc_->n_local_); 
+        cublasStatus_t status;
+        cublasHandle_t handle;
+        PetscCUBLASGetHandle (&handle);
+        status = cublasSum (handle, n_misc_->n_local_, ce_ptr, 1, J);
+        cublasCheckError (status);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) {
             c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
@@ -1277,7 +1282,12 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient (PetscReal *J
     ierr = vecGetArray(temp_, &ce_ptr);                         CHKERRQ(ierr);
     #ifdef CUDA
         computeCrossEntropyCuda(ce_ptr, d_ptr, c_ptr, eps, n_misc_->n_local_);
-        vecSumCuda(ce_ptr, J, n_misc_->n_local_); 
+        //vecSumCuda(ce_ptr, J, n_misc_->n_local_); 
+        cublasStatus_t status;
+        cublasHandle_t handle;
+        PetscCUBLASGetHandle (&handle);
+        status = cublasSum (handle, n_misc_->n_local_, ce_ptr, 1, J);
+        cublasCheckError (status);
         computeCrossEntropyAdjointICCuda(a_ptr, d_ptr, c_ptr, eps, n_misc_->n_local_);
     #else
         for (int i = 0; i < n_misc_->n_local_; i++) { 

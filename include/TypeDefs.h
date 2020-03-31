@@ -30,6 +30,7 @@ using ScalarType = PetscReal;
         #define cuComplexMultiply cuCmulf
         #define cublasAXPY cublasSaxpy
         #define cublasScale cublasSscal
+        #define cublasSum cublasSasum
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2c_gpuf
         #define accfft_cleanup accfft_cleanup_gpuf
         #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpuf
@@ -52,6 +53,7 @@ using ScalarType = PetscReal;
         #define cuComplexMultiply cuCmul
         #define cublasAXPY cublasDaxpy
         #define cublasScale cublasDscal
+        #define cublasSum cublasDasum
         #define fft_local_size_dft_r2c accfft_local_size_dft_r2c_gpu
         #define accfft_cleanup accfft_cleanup_gpu
         #define fft_plan_dft_3d_r2c accfft_plan_dft_3d_r2c_gpu
