@@ -2,9 +2,9 @@
 
 CODEDIR=/scratch/05027/shas1693/pglistr_tumor/
 REGCODEDIR=/scratch/05027/shas1693/claire-dev/
-RES=$CODEDIR/results/rd-inv-beta0/
+RES=$CODEDIR/results/rd-ce-/
 mkdir -p ${RES}
-python3  run_gridcont.py -patient_path $CODEDIR/brain_data/jakob/masseffect-8E4.nii.gz               \
+python3  run_gridcont.py -patient_path $CODEDIR/brain_data/ce_test/Brats18_TCIA03_257_1_seg_tu_aff2jakob.nii.gz            \
                       -atlas_path     $CODEDIR/brain_data/jakob/jakob.nii.gz \
                       -cluster maverick2 \
                       --use_patient_segmentation                                  \
