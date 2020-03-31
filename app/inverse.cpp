@@ -1246,7 +1246,7 @@ PetscErrorCode readData (Vec &data, Vec &support_data, Vec &data_components, Vec
     if(read_data_comp_data && read_support_data_nc) {
       ierr = VecCreate (PETSC_COMM_WORLD, &data_components);                       CHKERRQ (ierr);
       ierr = VecSetSizes (data_components, n_misc->n_local_, n_misc->n_global_);   CHKERRQ (ierr);
-      ierr = VecSetFromOptions (data_components);                                  CHKERRQ (ierr);
+      ierr = setupVec (data_components);                                           CHKERRQ (ierr);
       ierr = VecSet (data_components, 0.);                                         CHKERRQ (ierr);
       dataIn (data_components, n_misc, data_comp_path);
     }

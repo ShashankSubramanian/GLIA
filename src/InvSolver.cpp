@@ -508,9 +508,9 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     /* === Add Noise === */
     Vec noise; ScalarType *noise_ptr;
     ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                  CHKERRQ(ierr);
-    ierr = setupVec (noise);                                                      CHKERRQ (ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_); CHKERRQ(ierr);
-    ierr = VecSetFromOptions(noise);                                              CHKERRQ(ierr);
+//    ierr = VecSetFromOptions(noise);                                              CHKERRQ(ierr);
+    ierr = setupVec (noise);                                                      CHKERRQ (ierr);
     ierr = VecSetRandom(noise, NULL);                                             CHKERRQ(ierr);
     ierr = VecGetArray (noise, &noise_ptr);                                       CHKERRQ(ierr);
     ierr = VecGetArray (data_, &d_ptr);                                           CHKERRQ(ierr);
@@ -808,9 +808,9 @@ PetscErrorCode InvSolver::solveForMassEffect () {
 
     /* === Add Noise === */
     ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                CHKERRQ(ierr);
-    ierr = setupVec  (noise);                                                   CHKERRQ (ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);CHKERRQ(ierr);
-    ierr = VecSetFromOptions(noise);                                            CHKERRQ(ierr);
+//    ierr = VecSetFromOptions(noise);                                            CHKERRQ(ierr);
+    ierr = setupVec  (noise);                                                   CHKERRQ (ierr);
     ierr = VecSetRandom(noise, NULL);                                           CHKERRQ(ierr);
     ierr = VecGetArray (noise, &noise_ptr);                                     CHKERRQ(ierr);
     ierr = VecGetArray (data_, &d_ptr);                                         CHKERRQ(ierr);
@@ -980,9 +980,9 @@ PetscErrorCode InvSolver::solve () {
 
     /* === Add Noise === */
     ierr = VecCreate (PETSC_COMM_WORLD, &noise);                                CHKERRQ(ierr);
-    ierr = setupVec  (noise);                                                   CHKERRQ (ierr);
     ierr = VecSetSizes(noise, itctx_->n_misc_->n_local_, itctx_->n_misc_->n_global_);CHKERRQ(ierr);
-    ierr = VecSetFromOptions(noise);                                            CHKERRQ(ierr);
+    ierr = setupVec  (noise);                                                   CHKERRQ (ierr);
+//    ierr = VecSetFromOptions(noise);                                            CHKERRQ(ierr);
     ierr = VecSetRandom(noise, NULL);                                           CHKERRQ(ierr);
     ierr = VecGetArray (noise, &noise_ptr);                                     CHKERRQ(ierr);
     ierr = VecGetArray (data_, &d_ptr);                                         CHKERRQ(ierr);

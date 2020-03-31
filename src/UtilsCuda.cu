@@ -764,14 +764,19 @@ void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType si
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 
+        cublasStatus_t status;
+        cublasHandle_t handle;
+        PetscCUBLASGetHandle (&handle);
+        status = cublasSum (handle, sz[0]*sz[1]*sz[2], f, 1, sum);
+        cublasCheckError (status);
 	// use thrust for reduction
-	try {
-		thrust::device_ptr<ScalarType> f_thrust;
-		f_thrust = thrust::device_pointer_cast (f);
-		(*sum) = thrust::reduce (f_thrust, f_thrust + (sz[0] * sz[1] * sz[2]));
-	} catch (thrust::system_error &e) {
-		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
-	}
+//	try {
+//		thrust::device_ptr<ScalarType> f_thrust;
+//		f_thrust = thrust::device_pointer_cast (f);
+//		(*sum) = thrust::reduce (f_thrust, f_thrust + (sz[0] * sz[1] * sz[2]));
+//	} catch (thrust::system_error &e) {
+//		std::cerr << "Thrust reduce error: " << e.what() << std::endl;
+//	}
 
 	cudaDeviceSynchronize();
 }

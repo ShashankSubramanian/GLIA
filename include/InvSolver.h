@@ -11,7 +11,8 @@ struct InterpolationContext {
         PetscErrorCode ierr = 0;
         ierr = VecCreate (PETSC_COMM_WORLD, &temp_);
         ierr = VecSetSizes (temp_, n_misc->n_local_, n_misc->n_global_);
-        ierr = VecSetFromOptions (temp_);
+        ierr = setupVec(temp_);
+//        ierr = VecSetFromOptions (temp_);
         ierr = VecSet (temp_, 0);
     }
     std::shared_ptr<Tumor> tumor_;
