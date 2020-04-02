@@ -163,7 +163,7 @@ def getTumorRunCmd(params):
     ### Forward solver time order of accuracy
     accuracy_order = 2
     ### number of line-search attempts
-    ls_max_func_evals = 18
+    ls_max_func_evals = 10
     ## lower bound on kappa
     lower_bound_kappa = 0
     ## upper bound on kappa
@@ -171,7 +171,7 @@ def getTumorRunCmd(params):
     ### order of interpolation for SL
     ip_order = 3
     ### flag to implement cross entropy loss
-    ce_loss = 1
+    ce_loss = 0
 
     ### TUMOR PARAMETERS SET END
 
