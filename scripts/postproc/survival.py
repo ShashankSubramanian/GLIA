@@ -42,6 +42,35 @@ import xgboost as xgb
 from xgboost import XGBClassifier
 
 
+
+from statsmodels.regression.linear_model import OLS
+from statsmodels.tools.tools import add_constant
+
+def variance_inflation_factors(exog_df):
+    '''
+    Parameters
+    ----------
+    exog_df : dataframe, (nobs, k_vars)
+        design matrix with all explanatory variables, as for example used in
+        regression.
+
+    Returns
+    -------
+    vif : Series
+        variance inflation factors
+    '''
+    print("columns: {}".format(exog_df.columns))
+    exog_df = add_constant(exog_df)
+    vifs = pd.Series(
+        [1 / (1. - OLS(exog_df[col].values,
+                       exog_df.loc[:, exog_df.columns != col].values).fit().rsquared)
+         for col in exog_df],
+        index=exog_df.columns,
+        name='VIF'
+    )
+    return vifs
+
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -163,6 +192,7 @@ def read_data(dir, level, file):
             except:
                 print("failed to add {}".format(BID))
                 FAILED_TO_ADD.append(BID)
+                continue;
             patient_data['BID'] = BID;
             survival_row = survival_data.loc[survival_data['BraTS18ID'] == BID]
             if not survival_row.empty:
@@ -180,7 +210,7 @@ def read_data(dir, level, file):
             else:
                 brats_data = brats_data.append(patient_data, ignore_index=True, sort=True);
 
-        brats_data.to_csv(os.path.join(dir, "features_"+str(level)+".csv"))
+        brats_data.to_csv(os.path.join(dir, "features_"+str(level)+"_combined.csv"))
         print("\nCould not add the following brains:\n", FAILED_TO_ADD);
 
     # read brats data
@@ -215,6 +245,7 @@ def clean_data(brats_data, max_l2c1error = 0.8, filter_GTR=True):
     dat_filtered_out = dat_out;
 
     # 1. add ratio statistics
+    brats_data['vol(TC)/vol(ED)']         = brats_data['vol(TC)_a'].astype('float') / brats_data['vol(ED)_a'].astype('float');
     brats_data['vol(EN)/vol(TC)']         = brats_data['vol(EN)_a'].astype('float') / brats_data['vol(TC)_a'].astype('float');
     brats_data['vol(TC)/rho']             = brats_data['vol(TC)_a'].astype('float') / brats_data['rho-inv'].astype('float');
     brats_data['vol(ED)/k']               = brats_data['vol(ED)_a'].astype('float') / brats_data['k-inv'].astype('float');
@@ -257,6 +288,13 @@ def clean_data(brats_data, max_l2c1error = 0.8, filter_GTR=True):
         brats_survival = brats_survival.loc[brats_survival['resection_status'] ==  'GTR']
         dat_out["filter-reason"] = "no GTR"
         dat_filtered_out = pd.concat([dat_filtered_out, dat_out], axis=0)
+
+        nbshort = len(brats_survival.loc[brats_survival['survival_class'] ==  0])
+        nbmid   = len(brats_survival.loc[brats_survival['survival_class'] ==  1])
+        nblong  = len(brats_survival.loc[brats_survival['survival_class'] ==  2])
+        sum     = nbshort + nbmid + nblong
+        for i in range(1,4):
+            print("work dataset of length %d/%d. short: %d, mid: %d, long: %d" % (len(brats_survival),len(brats_survival),nbshort,nbmid,nblong))
     else:
         brats_survival['resection_status[0]'] = brats_survival['resection_status'].apply(lambda x: np.array([0]) if pd.isna(x) else np.array([0]) if x == 'STR' else np.array([1]) );
         brats_survival['resection_status[1]'] = brats_survival['resection_status'].apply(lambda x: np.array([0]) if pd.isna(x) else np.array([1]) if x == 'STR' else np.array([0]) );
@@ -326,6 +364,7 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
 
     cols = []
     cols_p = []
+    cols_r = []
     # features used for brain clustering
     if 'image_based' in type and purpose == 'clustering':
         cols.append('vol(TC)_r');                  # ib.01 TC rel. volume
@@ -339,13 +378,20 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
         cols.append('n_comps');                    # number of components with rel. mass larger 1E-3
     # image based features used for survival prediciton
     if  'image_based' in type and purpose == 'prediction':
+
+        # cols_r.append('resection_status');
         # ### TMI19 Image Based a)
         cols.append('vol(TC)_r');                   # ib.01 TC rel. volume
         cols.append('vol(ED)_r');                   # ib.03 ED rel. volume
         cols.append('age');                         # ib.07 patient age
+        # cols.append('vol(TC)/vol(ED)');
         cols.append('vol(EN)/vol(TC)');
         # ### TMI19 Age Based b)
         # cols.append('age');                         # ib.07 patient age
+
+
+        # cols.append('resection_status');
+        # cols_r.append('resection_status');
 
         pass;
         # cols.append('vol(TC)_r');                   # ib.01 TC rel. volume
@@ -357,8 +403,8 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
         # cols.append('age');                         # ib.07 patient age
         # # cols.append('int{c(0)}/int{c(1)}');
         # cols.append('vol(EN)/vol(TC)');
-        # # cols.append('resection_status[0]');
-        # # cols.append('resection_status[1]');
+        # cols.append('resection_status[0]');
+        # cols.append('resection_status[1]');
         # # cols.append('resection_status');          # ib.08 resection status TODO
         # # cols_p.append('cm(NEC|_#c) (#c=0,apsace)')  # ib.09 center of mass of NE of largest TC component, in a-space
         # # cols.append('vol(TC|_#c)_r(#c=0)')          # ib.10 vol(TC) in comp #0 rel. to toatal vol(TC)
@@ -409,6 +455,14 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
     # brats_data['vol(NEC|_#c)_r(#c=2)'] = brats_data['vol(NEC|_#c)_r(#c=2)'].apply(lambda x: -1 if pd.isna(x) else x);
 
     # process columns that cannot be interprete directly
+    if len(cols_r) > 0:
+        for col in cols_r:
+            brats_data[col+'[0]'] = brats_data[col].apply(lambda x: -1 if pd.isna(x) or 'no' in x else 1 if 'GTR' in x else 0 if 'STR' in x else 100);
+            # brats_data[col+'[0]'] = brats_data[col].apply(lambda x: -1 if pd.isna(x) or 'NA' in x else 1 if 'GTR' in x else 0);
+            # brats_data[col+'[1]'] = brats_data[col].apply(lambda x: -1 if pd.isna(x) or 'NA' in x else 1 if 'STR' in x else 0);
+            # cols.extend([col+'[0]', col+'[1]'])
+            cols.extend([col+'[0]'])
+
     if len(cols_p) > 0:
         for col in cols_p:
             print("preprocessing column", col)
@@ -444,7 +498,7 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
 
     brats_data['is_na'] = brats_data[cc].isnull().apply(lambda x: any(x), axis=1)
     # brats_data = brats_data.loc[brats_data['is_na']]
-    # print(tabulate(brats_data[cols], headers='keys', tablefmt='psql'))
+    print(tabulate(brats_data[cols], headers='keys', tablefmt='psql'))
     dat_out             = brats_data.loc[brats_data['is_na'] == True]
     brats_data          = brats_data.loc[brats_data['is_na'] == False]
     print("discarding {} samples".format(len(dat_out)))
@@ -473,6 +527,63 @@ def get_feature_subset(brats_data, type, purpose, estimator='classifier'):
     # Y = np.ravel(brats_data[['survival_binary']].values).astype('int');
     if estimator == 'regressor':
         Y = np.ravel(brats_data[['survival(days)']].values).astype('float');
+
+    vif = variance_inflation_factors(brats_data[cc])
+    print("VIF [vals]: {}".format(vif.values))
+
+    # from statsmodels.stats.outliers_influence import variance_inflation_factor
+    # from statsmodels.tools.tools import add_constant
+    print(X.shape)
+    print(np.corrcoef(X.T))
+    # vif = pd.DataFrame()
+    # vif["VIF Factor"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+    # vif["features"] = cols
+    # print("VIF: {}".format(oi.variance_inflation_factor(X, 0)));
+
+    ### ==================================================
+    data = brats_data.loc[:,cc]
+    corr_pearson  = data.corr(method='pearson')
+
+    # generate mask for the upper triangle
+    mask = np.zeros_like(corr_pearson, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = True
+    # matplotlib figure
+    # f, ax = plt.subplots(figsize=(11, 9))
+    # generate custom diverging colormap
+    cmap = sns.diverging_palette(10, 220, sep=80, n=7)
+    # sns.diverging_palette(145, 280, s=85, l=25, n=7)
+    # sns.diverging_palette(220, 10, as_cmap=True)
+
+    # draw the heatmap with the mask and correct aspect ratio
+
+    fig = plt.figure(figsize=(5,5))
+    grid = plt.GridSpec(1, 1, wspace=0.2, hspace=0.7)
+    ax1 = plt.subplot(grid[0,0])
+    ax1.set_title("Pearson Correlation Coeff.")
+    sns.heatmap(corr_pearson, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax1)
+    # ax2 = plt.subplot(grid[0,0])
+    # ax2.set_title("Kendall Correlation Coeff.")
+    # sns.heatmap(corr_kendall, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
+                # square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax2)
+    # ax3 = plt.subplot(grid[0,1])
+    # ax3.set_title("Spearman Correlation Coeff.")
+    # sns.heatmap(corr_spearman, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
+                # square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, ax=ax3)
+
+    sns.despine(fig, top=True, bottom=True, left=True, right=True, trim=True)
+    sns.despine(offset=5, trim=True)
+    ax1.set_yticklabels(['$vol(TC)$', '$vol(ED)$', 'age', '$\\frac{vol(EN)}{vol(TC)}$', '$\\frac{\\rho_w}{\\kappa_w}$', '$\\frac{vol(TC)}{\\rho_w}$', '$\\frac{vol(ED)}{\\kappa_w}$'])
+    ax1.set_xticklabels(['$vol(TC)$', '$vol(ED)$', 'age', '$\\frac{vol(EN)}{vol(TC)}$', '$\\frac{\\rho_w}{\\kappa_w}$', '$\\frac{vol(TC)}{\\rho_w}$', '$\\frac{vol(ED)}{\\kappa_w}$'])
+    for tick in ax1.get_xticklabels():
+        tick.set_rotation(45)
+    # sns.despine()
+    plt.tight_layout()
+    plt.show()
+    ### ==================================================
+
+
+
     return X, Y, cols;
 
 def feature_selection(clf, feature_list):
@@ -778,9 +889,10 @@ if __name__=='__main__':
         print(bcolors.OKBLUE, "predicting survival using {} samples and {} features".format(*X_ib.shape),bcolors.ENDC)
         print(len(brats_survival), X_ib.shape)
 
-        X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0, test_size=0.25)
+        X_train, X_test, y_train, y_test = train_test_split(X_ib, Y_ib, random_state = 0, test_size=0.2)
 
         # print("TEST SPLIT: ", X_test[:,-1])
+        print("TEST SPLIT: ", y_test)
         # print("TRAIN SPLIT: ", X_train[:,-1])
 
         X_ib_n , X_ib_n_test, d = preprocess_features(X_train, X_test, normalize=False);

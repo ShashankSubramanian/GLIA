@@ -675,7 +675,9 @@ if __name__=='__main__':
         # matplotlib figure
         # f, ax = plt.subplots(figsize=(11, 9))
         # generate custom diverging colormap
-        cmap = sns.diverging_palette(220, 10, as_cmap=True)
+        cmap = sns.diverging_palette(10, 220, sep=80, n=7)
+        # sns.diverging_palette(145, 280, s=85, l=25, n=7)
+        # sns.diverging_palette(220, 10, as_cmap=True)
         # draw the heatmap with the mask and correct aspect ratio
 
         fig = plt.figure(figsize=(17,5))

@@ -616,7 +616,8 @@ def plot_frequencies(dir, long_df, df, muse_map, label_map):
 ###
 ### ------------------------------------------------------------------------ ###
 def print_table(brats_data):
-    BIDs = ['Brats18_CBICA_ASG_1', 'Brats18_CBICA_AQZ_1', 'Brats18_TCIA03_257_1','Brats18_CBICA_AQP_1', 'Brats18_CBICA_AQO_1', 'Brats18_2013_2_1', 'Brats18_TCIA05_277_1', 'Brats18_TCIA03_296_1', 'Brats18_TCIA02_606_1', 'Brats18_TCIA01_180_1', 'Brats18_CBICA_ASN_1', 'Brats18_CBICA_AXO_1', 'Brats18_TCIA02_314_1', 'Brats18_TCIA02_135_1', 'Brats18_2013_12_1']
+    # BIDs = ['Brats18_CBICA_ASG_1', 'Brats18_CBICA_AQZ_1', 'Brats18_TCIA03_257_1','Brats18_CBICA_AQP_1', 'Brats18_CBICA_AQO_1', 'Brats18_2013_2_1', 'Brats18_TCIA05_277_1', 'Brats18_TCIA03_296_1', 'Brats18_TCIA02_606_1', 'Brats18_TCIA01_180_1', 'Brats18_CBICA_ASN_1', 'Brats18_CBICA_AXO_1', 'Brats18_TCIA02_314_1', 'Brats18_TCIA02_135_1', 'Brats18_2013_12_1']
+    BIDs = ['Brats18_CBICA_ASN_1', 'Brats18_CBICA_AXO_1',  'Brats18_TCIA02_314_1', 'Brats18_TCIA02_606_1', 'Brats18_TCIA03_257_1', 'Brats18_TCIA03_296_1', 'Brats18_TCIA05_277_1']
     table =   "{:28} & ".format('BraTS ID') \
             + "{:15} & ".format('$\\rho_w$') \
             + "{:15} & ".format('$\\kappa_w$') \
@@ -698,7 +699,8 @@ if __name__=='__main__':
 
     ANALYZE_FREQ = False;
     PLOT_STATS   = False;
-    PRINT_TABLE  = False;
+    PRINT_TABLE  = True;
+
 
 
     # LABELS_ATLAS_REV = {v:k for k,v in LABELS_ATLAS.items()}
@@ -715,6 +717,11 @@ if __name__=='__main__':
     brats_data, weights = read_data(args.f);
     brats_clustering, brats_survival = clean_data(brats_data, filter_GTR=False);
 
+
+    if PRINT_TABLE:
+        print_table(brats_data);
+        exit(0)
+
     # label_dict = atlas_label_mapping.to_dict()
     # LABELS_ATLAS = {}
     # for i in range(len(atlas_label_mapping)):
@@ -726,8 +733,7 @@ if __name__=='__main__':
     accumulate_frequencies(dir, freq_mapping1, atlas_label_mapping, LABELS_ATLAS)
     plot_frequencies(dir, freq_mapping1, freq_mapping2, atlas_label_mapping, LABELS_ATLAS)
 
-    if PRINT_TABLE:
-        print_table(brats_data);
+
 
     if ANALYZE_FREQ:
         df, df_long = analyze_frequenzies(dir, brats_survival, LABELS_ATLAS);
