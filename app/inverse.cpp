@@ -66,7 +66,7 @@ struct MData {
         ierr = VecCopy(wm, wm_);    CHKERRQ (ierr);
         ierr = VecCopy(csf, csf_);  CHKERRQ (ierr);
         ierr = VecCopy(glm, glm_);  CHKERRQ (ierr);
-        PetscFunctionReturn(ierr);        
+        PetscFunctionReturn(ierr);
     }
 
     ~MData() {
@@ -612,7 +612,6 @@ int main (int argc, char** argv) {
     solver_interface->getInvSolver()->getOptSettings ()->gist_maxit = n_misc->gist_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->krylov_maxit = n_misc->krylov_maxit_;
     solver_interface->getInvSolver()->getOptSettings ()->opttolgrad = n_misc->opttolgrad_;
-
     solver_interface->getInvSolver()->getOptSettings ()->verbosity = n_misc->verbosity_;
 
     bool read_atlas = true;   // Set from run script outside
@@ -695,8 +694,8 @@ int main (int argc, char** argv) {
             n_misc->invert_mass_effect_ = 1;
             // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
             m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_glm_path);         // reads patient data
-            ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data 
-            ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed 
+            ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data
+            ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed
         }
         ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
         n_misc->rho_ = rho_inv;
@@ -862,7 +861,7 @@ int main (int argc, char** argv) {
                 ierr = tumor->mat_prop_->resetValues ();                       CHKERRQ (ierr);
                 ierr = tumor->rho_->setValues (n_misc->rho_, n_misc->r_gm_wm_ratio_, n_misc->r_glm_wm_ratio_, tumor->mat_prop_, n_misc);
                 ierr = tumor->k_->setValues (n_misc->k_, n_misc->k_gm_wm_ratio_, n_misc->k_glm_wm_ratio_, tumor->mat_prop_, n_misc);
-                ierr = tumor->velocity_->set(0.);  
+                ierr = tumor->velocity_->set(0.);
             } else if (solve_rho_k_only_flag) {
                 if (!warmstart_p) {ss << " Error: c(0) needs to be set, read in p and Gaussians. exiting solver..."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear(); exit(1);}
                 ierr = solver_interface->solveInverseReacDiff (p_rec, data, nullptr);     // solve tumor inversion only for rho and k, read in c(0)
@@ -930,7 +929,7 @@ int main (int argc, char** argv) {
                 ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
             }
             if (mri_path != NULL && mri_path[0] != '\0')
-                n_misc->transport_mri_ = true; 
+                n_misc->transport_mri_ = true;
             ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, data, c_0, solver_interface, n_misc, mri_path, init_tumor_path);
             ss << " l2-error in reconstruction: " << l2_rel_error; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
             ss << " --------------  RECONST P -----------------";  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -1094,7 +1093,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
         cm[0] = 2 * M_PI / 128 * 56;//82  //Z
         cm[1] = 2 * M_PI / 128 * 68;//64  //Y
         cm[2] = 2 * M_PI / 128 * 72;//52  //X
- 
+
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
         n_misc->user_cms_.push_back (cm[2]);
@@ -1144,7 +1143,7 @@ PetscErrorCode createMFData (Vec &c_0, Vec &c_t, Vec &p_rec, std::shared_ptr<Tum
     if (n_misc->testcase_ == BRAINFARMF) {
         cm[0] = 2 * M_PI / 128 * 72;//82
         cm[1] = 2 * M_PI / 128 * 80;//64
-        cm[2] = 2 * M_PI / 128 * 76;//52 
+        cm[2] = 2 * M_PI / 128 * 76;//52
 
         n_misc->user_cms_.push_back (cm[0]);
         n_misc->user_cms_.push_back (cm[1]);
@@ -1329,7 +1328,7 @@ PetscErrorCode readAtlas (Vec &wm, Vec &gm, Vec &glm, Vec &csf, Vec &bg, std::sh
 
     if (n_misc->model_ >= 4) {
         // mass-effect included
-        dataIn (glm, n_misc, glm_path); 
+        dataIn (glm, n_misc, glm_path);
         ierr = spec_ops->weierstrassSmoother (glm, glm, n_misc, sigma_smooth);
     }
 
@@ -1497,7 +1496,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     if (n_misc->writeOutput_)
         dataOut (c_rec_0, n_misc, "c0Recon.nc");
 
-    
+
     if (n_misc->transport_mri_) {
         if (solver_interface->getTumor()->mat_prop_->mri_ == nullptr) {
             ierr = VecDuplicate (c_rec_0, &solver_interface->getTumor()->mat_prop_->mri_);              CHKERRQ (ierr);
@@ -1507,7 +1506,7 @@ PetscErrorCode computeError (ScalarType &error_norm, ScalarType &error_norm_c0, 
     ierr = solver_interface->solveForward (c_rec, c_rec_0);
 
     if (n_misc->model_ >= 4 && n_misc->writeOutput_) {
-        // output healthy cells too    
+        // output healthy cells too
         ierr = solver_interface->getTumor()->computeSegmentation ();                                    CHKERRQ (ierr);
         ss.str(std::string()); ss.clear();
         ss << "seg_rec_final.nc";
