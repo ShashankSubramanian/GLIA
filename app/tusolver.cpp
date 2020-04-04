@@ -90,10 +90,12 @@ int main(int argc, char **argv) {
       PetscFunctionReturn(ierr);
   }
 
-  openFiles();
-  solver->initialize();
-  solver->run();
-  solver->finalize();
+  ierr = openFiles(); CHKERRQ(ierr); // opens all txt output files on one core only
+  // ensures data for specific solver is read and code is set up for running mode
+  ierr = solver->initialize(); CHKERRQ(ierr);
+  ierr = solver->run(); CHKERRQ(ierr);
+  // compute errors, segmentations, other measures of interest, and shutdown solver
+  ierr = solver->finalize(); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }

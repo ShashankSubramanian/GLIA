@@ -40,13 +40,23 @@ class Solver {
   private:
     PetscErrorCode readAtlas();
     PetscErrorCode readData();
+    PetscErrorCode readDiffusionFiberTensor(); // TODO(K)
     PetscErrorCode readVelocity();
-    PetscErrorCode createSynthetic();
+    PetscErrorCode readUserCMs(); // TODO(K)
+    PetscErrorCode createSynthetic(); // TODO(K)
 
     std::shared_ptr<Parameters> params_;
     std::shared_ptr<TumorSolverInterface> solver_interface_;
     std::shared_ptr<SpectralOperators> spec_ops_;
     std::shared_ptr<Tumor> tumor_;
+
+    bool custom_obs_;
+    bool warmstart_p_;
+    bool synthetic_;
+
+    ScalarType smooth_fac_data_; // TODO(K)
+
+    std::vector<int> user_cms_; // TODO(K)
 
     Vec wm_;
     Vec gm_;
@@ -61,7 +71,7 @@ class Solver {
     Vec obs_filter_;
 
     Vec p_rec_;
-    VecField v_;
+    VecField velocity_;
 };
 
 class ForwardSolver : public Solver {
@@ -83,7 +93,6 @@ class ForwardSolver : public Solver {
       if(tmp_ != nullptr) VecDestroy(&tmp_);
       if(data_t1_ != nullptr) VecDestroy(&data_t1_);
       if(data_t0_ != nullptr) VecDestroy(&data_t0_);
-
     }
 };
 

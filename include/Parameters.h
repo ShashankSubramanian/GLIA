@@ -39,23 +39,35 @@ struct Grid {
   // TODO
 };
 
+
 struct FilePaths {
   public:
     FilePaths() :
     wm_(), gm_(), csf_(), ve_(), glm_(), data_t1_(), data_t0_(),
-    data_support_(), data_comps(), obs_filter_()
+    data_support_(), data_comps(), obs_filter_(),
+    velocity_x_1(), velocity_x_2(), velocity_x_3(),
+    pvec_()
     {}
 
+    // material properties
     std::string wm_;
     std::string gm_;
     std::string csf_;
     std::string ve_;
     std::string glm_;
+    // data
     std::string data_t1_;
     std::string data_t0_;
     std::string data_support_;
     std::string data_comps_;
     std::string obs_filter_;
+    // velocity
+    std::string velocity_x1_;
+    std::string velocity_x2_;
+    std::string velocity_x3_;
+    // warmstart solution
+    std::string pvec_;
+    std::string phi_;
 };
 
 class Parameters {
@@ -79,6 +91,12 @@ class Parameters {
     std::shared_ptr<TumorParameters> tu_;
     std::shared_ptr<FilePaths> path_;
     std::shared_ptr<Grid> grid_;
+
+
+    ScalarType obs_threshold_0_;
+    ScalarType obs_threshold_1_;
+
+    bool relative_obs_threshold_;
 };
 
 #endif
