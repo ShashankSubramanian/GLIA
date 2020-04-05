@@ -15,6 +15,7 @@ Solver::Solver(std::shared_ptr<SpectralOperators> spec_ops)
   csf_(nullptr),
   ve_(nullptr),
   glm_(nullptr),
+  mri_(nullptr),
   tmp_(nullptr),
   data_t1_(nullptr),
   data_t0_(nullptr),
@@ -34,57 +35,103 @@ Solver::Solver(std::shared_ptr<SpectralOperators> spec_ops)
 PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  std::stringstream;
 
-  // set parameters, populate to optimizer
+  // === set parameters, populate to optimizer
   params_ = params;
   ierr = solver_interface_->setOptimizerSettings(params_->opt_); CHKERRQ (ierr);
-  // create tmp vector according to distributed grid
+  // === create tmp vector according to distributed grid
   ierr = VecCreate(PETSC_COMM_WORLD, &tmp_); CHKERRQ (ierr);
   ierr = VecSetSizes(tmp_, params_->grid_->nl_, params_->grid_->ng_); CHKERRQ (ierr);
   ierr = setupVec(tmp_); CHKERRQ (ierr);
   ierr = VecSet(tmp_, 0.0); CHKERRQ (ierr);
-  // create p_rec vector according to unknowns inverted for
+  // === create p_rec vector according to unknowns inverted for
   int np = params_->tu_->np_;
   int nk = (params_->tu_->diffusivity_inversion_) ? params_->tu_->nk_ : 0;
   ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &p_rec_); CHKERRQ (ierr);
   ierr = setupVec (p_rec_, SEQ); CHKERRQ (ierr);
 
-  // read  healthy segmentation wm, gm, csf, (ve) for simulation
-  ierr = readAtlas(params_); CHKERRQ(ierr);
-  ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, glm_, csf_, nullptr); // TODO(K): can we get rid of bg?
-
-  int fwd_temp = params_->forward_flag_;
-  if(synthetic_) {
-    // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = readUserCMs(); CHKERRQ(ierr); // TODO(K): implement
-    ierr = generateSyntheticData (); CHKERRQ(ierr);  // TODO(K): implement
-    data_support_ = data_t1_;
-  } else {
-    // read in target data (t1 and/or t0); observation operator
-    ierr = readData(); CHKERRQ(ierr);
-  }
-  // reset forward flag so that time-history can be stored now if solver is in inverse-mode
-  params_->forward_flag_ = fwd_temp;
-
-
   warmstart_p_ = !params_->path_->pvec_.empty();
   custom_obs_ = !params_->path_->obs_filter_.empty();
   synthetic_ = params_->syn_flag_;
+  has_dt0_ = params_->two_time_points_ || !params_->path_->data_t0_.empty();
 
-  // error handling for some configuration inconsistencies
-  std::stringstream;
-  if (warmstart_p  && params_->path_->phi_.empty()) {
+  // === error handling for some configuration inconsistencies
+  if (warmstart_p_  && params_->path_->phi_.empty()) {
     ss << " ERROR: Initial guess for p is given but no coordinates for phi. Exiting. "; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     exit(0);
   }
-  if (params_->inject_coarse_sol_ && (!warmstart_p || params_->path_->phi_.empty())) {
+  if (params_->inject_coarse_sol_ && (!warmstart_p_ || params_->path_->phi_.empty())) {
     ss << " ERROR: Trying to inject coarse solution, but p/phi not specified. Exiting. "; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     exit(-1);
   }
 
+  // === read brain: healthy segmentation wm, gm, csf, (ve) for simulation
+  ierr = readAtlas(params_); CHKERRQ(ierr);
+
+  // === read in user given velocity
+  ierr = readVelocity(); CHKERRQ(ierr);
+
+  // === advect healthy material properties with read in velocity, if given
+  if (params_->pre_adv_time_ > 0 && velocity_ != nullptr) {
+    ss << " pre-advecting material properties with velocity to time t="<<params_->pre_adv_time_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    if(!params_->path_->mri_.empty()) {
+      ierr = VecDuplicate (data_t1_, &mri_); CHKERRQ (ierr);
+      dataIn (mri_, params_, params_->path_->mri_);
+    }
+    ierr = solver_interface_->getPdeOperators()->preAdvection(wm_, gm_, csf_, mri_, params_->pre_adv_time_); CHKERRQ(ierr);
+	}
+
+  ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, glm_, csf_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
+  ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, glm_, csf_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
+
+  // === read data: generate synthetic or read real
+  if(synthetic_) {
+    int fwd_temp = params_->forward_flag_; // temporarily disable time_history
+    // data t1 and data t0 is generated synthetically using user given cm and tumor model
+    ierr = readUserCMs(); CHKERRQ(ierr); // TODO(K): implement
+    ierr = generateSyntheticData(); CHKERRQ(ierr);  // TODO(K): implement
+    data_support_ = data_t1_;
+    params_->forward_flag_ = fwd_temp; // restore mode, i.e., allow inverse solver to store time_history
+  } else {
+    // read in target data (t1 and/or t0); observation operator
+    ierr = readData(); CHKERRQ(ierr);
+  }
+
+  // === set observation operator
+  if(custom_obs_) {
+    ierr = tumor_->obs_->setCustomFilter (obs_filter_, 1);
+    ss << " Setting custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  } else {
+    ierr = tumor_->obs_->setDefaultFilter (data_t1_, 1, params_->obs_threshold_1_); CHKERRQ(ierr);
+    if(has_dt0_) {ierr = tumor_->obs_->setDefaultFilter (data_t0_, 0, params_->obs_threshold_0_); CHKERRQ(ierr);}
+    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  }
+
+  // === apply observation operator to data
+  ierr = tumor_->obs_->apply (data_t1_, data_t1_), 1; CHKERRQ (ierr);
+  ierr = tumor_->obs_->apply (data_support_, data_support_, 1); CHKERRQ (ierr);
+  if(has_dt0_) {ierr = tumor_->obs_->apply (data_t0_, data_t0_, 0); CHKERRQ (ierr);}
+
+
   #ifdef CUDA
     cudaPrintDeviceMemory ();
   #endif
+
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode Solver::run() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+
+  ss << " Inversion with tumor parameters: rho = " << params_->tu_->rho_ << " k = " << params_->tu_->k_ << " dt = " << params_->tu_->dt_ << " Nt = " << params_->tu_->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ss << " Results in: " << params_->path_->writepath_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   PetscFunctionReturn(ierr);
 }
@@ -271,6 +318,17 @@ PetscErrorCode Solver::createSynthetic() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
+  // save parameters
+  ScalarType rho_temp = params_->tu_->rho_,
+             k_temp = params_->tu_->k_,
+             dt_temp = params_->tu_->dt_;
+  int nt_temp = params_->tu_->nt_;
+  // set to synthetic parameters
+  params_->tu_->rho_ = params_->tu_->rho_data_;
+  params_->tu_->k_ = params_->tu_->k_data_;
+  params_->tu_->dt_ = params_->tu_->dt_data_;
+  params_->tu_->nt_ = params_->tu_->nt_data_;
+
   // TODO(K): implement synthetic data generation
 
   // if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
@@ -307,10 +365,15 @@ PetscErrorCode Solver::createSynthetic() {
   //     ss << " ground truth phi and p written to file "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // }
 
+
+  // restore parameters
+  params_->tu_->rho_ = rho_temp;
+  params_->tu_->k_ = k_temp;
+  params_->tu_->dt_ = dt_temp;
+  params_->tu_->nt_ = nt_temp;
+
   PetscFunctionReturn(ierr);
 }
-
-
 
 
 /* #### ------------------------------------------------------------------- #### */
@@ -320,14 +383,12 @@ PetscErrorCode Solver::createSynthetic() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode ForwardSolver::initialize(std::shared_ptr<Parameters> params) {
+PetscErrorCode ForwardSolver::run(std::shared_ptr<Parameters> params) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-
-  // set and populate parameters; read material properties; read data
-  Solver::initialize(params);  CHKERRQ(ierr);
-
-
+  // no-op
+  std::stringstream ss;
+  ss << " Forward solve completed. Exiting."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   PetscFunctionReturn(ierr);
 }
 
@@ -341,14 +402,41 @@ PetscErrorCode ForwardSolver::initialize(std::shared_ptr<Parameters> params) {
 PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<Parameters> params) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  std::stringstream ss;
 
   // set and populate parameters; read material properties; read data
   Solver::initialize(params);  CHKERRQ(ierr);
 
+  // === set Gaussians
+  if(inject_coarse_sol_) {
+    ss << " Error: injecting coarse level solution is not supported for L2 inversion. Ignoring input."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  }
+  if(warmstart_p_) {
+    ss << " Solver warmstart using p and Gaussian centers"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    std::string file_p(p_vec_path);
+    std::string file_cm(gaussian_cm_path);
+    ierr = tumor->phi_->setGaussians (params_->path_->phi_); CHKERRQ (ierr); // overwrites with custom phis
+    ierr = tumor->phi_->setValues (tumor_->mat_prop_); CHKERRQ (ierr);
+    ierr = readPVec(&p_rec_, n_misc->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, params_->path_->p_vec_); CHKERRQ (ierr);
+  } else {
+
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseL2Solver::run(std::shared_ptr<Parameters> params) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  Solver::run();  CHKERRQ(ierr);
 
 
   PetscFunctionReturn(ierr);
 }
+
 
 
 /* #### ------------------------------------------------------------------- #### */
@@ -361,9 +449,30 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<Parameters> params) {
 PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<Parameters> params) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  std::stringstream ss;
 
   // set and populate parameters; read material properties; read data
   Solver::initialize(params);  CHKERRQ(ierr);
+
+  // read connected components; set sparsity level
+  if(!params_->path_->data_comps_data_.empty()) {
+    readConCompDat(tumor_->phi_->component_weights_, tumor_->phi_->component_centers_, params_->path_->data_comps_data_);
+    int nnc = 0; for (auto w : tumor_->phi_->component_weights_) if (w >= 1E-3) nnc++; // number of significant components
+    ss << " Setting sparsity level to "<< params_->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << params_->sparsity_level_ << " x " << nnc <<" + " << (tumor_->phi_->component_weights_.size() - nnc) << " = " <<  params_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    params_->sparsity_level_ =  params_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc) ;
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseL1Solver::run(std::shared_ptr<Parameters> params) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  Solver::run();  CHKERRQ(ierr);
+
 
 
   PetscFunctionReturn(ierr);
@@ -403,6 +512,15 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<Parameters> p
   // set and populate parameters; read material properties; read data
   Solver::initialize(params);
 
+  // TODO(K): read mass effect data
+  // std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
+  // if (n_misc->model_ == 4) {
+  //     n_misc->invert_mass_effect_ = 1;
+  //     // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
+  //     m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_glm_path);         // reads patient data
+  //     ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data
+  //     ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed
+  // }
 
   PetscFunctionReturn(ierr);
 }

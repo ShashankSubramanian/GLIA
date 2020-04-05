@@ -44,9 +44,10 @@ struct FilePaths {
   public:
     FilePaths() :
     wm_(), gm_(), csf_(), ve_(), glm_(), data_t1_(), data_t0_(),
-    data_support_(), data_comps(), obs_filter_(),
+    data_support_(), data_comps(), data_comps_data_(), obs_filter_(), mri_(),
     velocity_x_1(), velocity_x_2(), velocity_x_3(),
-    pvec_()
+    pvec_(), phi_(),
+    writepath_(), readpath_()
     {}
 
     // material properties
@@ -60,7 +61,9 @@ struct FilePaths {
     std::string data_t0_;
     std::string data_support_;
     std::string data_comps_;
+    std::string data_comps_data_;
     std::string obs_filter_;
+    std::string mri_;
     // velocity
     std::string velocity_x1_;
     std::string velocity_x2_;
@@ -68,11 +71,17 @@ struct FilePaths {
     // warmstart solution
     std::string pvec_;
     std::string phi_;
+
+    std::string writepath_;
+    std::string readpath_;
 };
 
 class Parameters {
   public:
     Parameters() :
+      obs_threshold_0_(-1),
+      obs_threshold_1_(-1),
+      pre_adv_time_(-1),
       opt_(),
       tu_(),
       path_(),
@@ -84,19 +93,26 @@ class Parameters {
     grid_ = std::make_shared<Grid>();
     }
 
+    inline int get_nk() {return tu_->diffusivity_inversion_ ? params_->tu_->nk_ : 0;}
+    inline int get_nr() {return tu_->reaction_inversion_ ? params_->tu_->nr_ : 0;} 
+
     virtual ~Parameters() {}
 
   private:
+    ScalarType obs_threshold_0_;
+    ScalarType obs_threshold_1_;
+    ScalarType pre_adv_time_;
+
+    bool relative_obs_threshold_;
+    bool inject_coarse_sol_;
+    bool two_time_points_;
+
+    int sparsity_level_;
+
     std::shared_ptr<OptimizerSettings> opt_;
     std::shared_ptr<TumorParameters> tu_;
     std::shared_ptr<FilePaths> path_;
     std::shared_ptr<Grid> grid_;
-
-
-    ScalarType obs_threshold_0_;
-    ScalarType obs_threshold_1_;
-
-    bool relative_obs_threshold_;
 };
 
 #endif

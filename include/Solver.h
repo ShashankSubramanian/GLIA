@@ -53,6 +53,7 @@ class Solver {
     bool custom_obs_;
     bool warmstart_p_;
     bool synthetic_;
+    bool has_dt0_;
 
     ScalarType smooth_fac_data_; // TODO(K)
 
@@ -63,6 +64,7 @@ class Solver {
     Vec csf_;
     Vec ve_;
     Vec glm_;
+    Vec mri_;
     Vec tmp_;
     Vec data_t1_;
     Vec data_t0_;
@@ -90,9 +92,14 @@ class ForwardSolver : public Solver {
       if(csf_ != nullptr) VecDestroy(&csf_);
       if(glm_ != nullptr) VecDestroy(&glm_);
       if(ve_ != nullptr) VecDestroy(&ve_);
+      if(mri_ != nullptr) VecDestroy(&mri_);
       if(tmp_ != nullptr) VecDestroy(&tmp_);
       if(data_t1_ != nullptr) VecDestroy(&data_t1_);
       if(data_t0_ != nullptr) VecDestroy(&data_t0_);
+      if(data_support_ != nullptr) VecDestroy(&data_support_);
+      if(data_comps_ != nullptr) VecDestroy(&data_comps_);
+      if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
+      if(p_rec_ != nullptr) VecDestroy(&p_rec_);
     }
 };
 
