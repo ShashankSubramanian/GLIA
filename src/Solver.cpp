@@ -26,7 +26,6 @@ Solver::Solver(std::shared_ptr<SpectralOperators> spec_ops)
 
   solver_interface_ = std::make_shared<TumorSolverInterface>(params_, spec_ops, nullptr, nullptr);
   tumor_ = std::shared_ptr<Tumor> tumor = solver_interface->getTumor();
-  EventRegistry::initialize();
 }
 
 
@@ -136,6 +135,94 @@ PetscErrorCode Solver::run() {
   PetscFunctionReturn(ierr);
 }
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode Solver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+
+  // TODO(K) implement below:
+  // ierr = VecNorm (p_rec, NORM_2, &prec_norm);                            CHKERRQ (ierr);
+  // ss << " reconstructed p norm: " << prec_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // if (n_misc->diffusivity_inversion_ && !n_misc->reaction_inversion_) {
+  //     ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+  //     ss << " k1: " << (n_misc->nk_ > 0 ? prec_ptr[n_misc->np_] : 0);     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  //     ss << " k2: " << (n_misc->nk_ > 1 ? prec_ptr[n_misc->np_ + 1] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  //     ss << " k3: " << (n_misc->nk_ > 2 ? prec_ptr[n_misc->np_ + 2] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  //     ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+  // }
+  // if (mri_path != NULL && mri_path[0] != '\0')
+  //     n_misc->transport_mri_ = true;
+  // ierr = computeError (l2_rel_error, error_norm_c0, p_rec, data_nonoise, data, c_0, solver_interface, n_misc, mri_path, init_tumor_path);
+  // ss << " l2-error in reconstruction: " << l2_rel_error; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // ss << " --------------  RECONST P -----------------";  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // if (procid == 0) {
+  //     ierr = VecView (p_rec, PETSC_VIEWER_STDOUT_SELF);                   CHKERRQ (ierr);
+  // }
+  // ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  //
+  // ierr = computeSegmentation(tumor, n_misc, spec_ops);      // Writes segmentation with c0 and c1
+  //
+  // std::stringstream sstm;
+  // sstm << n_misc->writepath_ .str().c_str() << "reconP.dat";
+  // std::ofstream ofile;
+  //
+  // //write reconstructed p into text file
+  // if (procid == 0) {
+  //     ofile.open (sstm.str().c_str());
+  //     ierr = VecGetArray (p_rec, &prec_ptr);                             CHKERRQ (ierr);
+  //     int np = n_misc->np_;
+  //     int nk = (n_misc->diffusivity_inversion_) ? n_misc->nk_ : 0;
+  //     for (int i = 0; i < np + nk; i++)
+  //         ofile << prec_ptr[i] << std::endl;
+  //     ierr = VecRestoreArray (p_rec, &prec_ptr);                         CHKERRQ (ierr);
+  //     ofile.close ();
+  // }
+  //
+  // // write p to bin file
+  // std::string fname = n_misc->writepath_ .str() + "p-final.bin";
+  // writeBIN(p_rec, fname);
+
+
+
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode Solver::predict() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+
+  // TODO(K) implement below: (or better according to alzh branch)
+
+  // if (n_misc->predict_flag_) {
+  //     ss << " predicting future tumor growth..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  //     // predict tumor growth using inverted parameter values
+  //     // set dt and nt to synthetic values to ensure best accuracy
+  //     n_misc->dt_ = dt_data;
+  //     n_misc->nt_ = (int) (1.5 / dt_data);
+  //     // reset time history
+  //     ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
+  //     // apply IC to tumor c0
+  //     ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
+  //     // reaction and diffusion coefficient already set correctly at the end of the
+  //     // optimizer
+  //     ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
+  //                                                                  // pde_operators->c_
+  //     // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
+  //     dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
+  //     dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
+  //     dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
+  //
+  //     ss << " prediction complete for t = 1.2 and t = 1.5"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // }
+
+  PetscFunctionReturn(ierr);
+}
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -376,6 +463,40 @@ PetscErrorCode Solver::createSynthetic() {
 }
 
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode Solver::initializeGaussians() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  ss << " Initialize Gaussian basis functions."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  if(warmstart_p_) {
+    ss << "  .. solver warmstart: using p_vec and Gaussians from file."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ierr = tumor->phi_->setGaussians (params_->path_->phi_); CHKERRQ (ierr); // overwrites with custom phis
+    ierr = tumor->phi_->setValues (tumor_->mat_prop_); CHKERRQ (ierr);
+    ierr = readPVec(&p_rec_, n_misc->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, params_->path_->p_vec_); CHKERRQ (ierr);
+  } else {
+    if (!params_->path_->data_support_data_.empty()) { // read Gaussian centers and comp labels from txt file
+      ss << "  .. reading Gaussian centers and component data from file."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      ierr = tumor->phi_->setGaussians (params_->path_->data_support_data_, true); CHKERRQ (ierr);
+    } else if(!params_->path_->data_support_.empty()) { // read Gaussian centers and comp labels from nc files
+      ss << "  .. reading Gaussian centers from .nc image file."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      ierr = tumor->phi_->setGaussians (data_support_); CHKERRQ (ierr);
+    } else {
+      ss << " Error: Cannot set Gaussians: expecting user input data -support_data_path *.nc or *.txt. Exiting."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      exit(1);
+    }
+    // set phi values and re-initialize p_vec
+    ierr = tumor_->phi_->setValues (tumor_->mat_prop_); CHKERRQ (ierr);
+    if (p_rec_ != nullptr) {ierr = VecDestroy (&p_rec_); CHKERRQ (ierr); p_rec_ = nullptr;}
+    ierr = VecCreateSeq (PETSC_COMM_SELF, n_misc->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ (ierr); // TODO(K): check size: do we need nk or nk+nr?
+    ierr = setupVec (p_rec_, SEQ); CHKERRQ (ierr);
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
+
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                   ForwardSolver                   ======== #### */
 /* #### ------------------------------------------------------------------- #### */
@@ -383,7 +504,7 @@ PetscErrorCode Solver::createSynthetic() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode ForwardSolver::run(std::shared_ptr<Parameters> params) {
+PetscErrorCode ForwardSolver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   // no-op
@@ -411,28 +532,36 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<Parameters> params) {
   if(inject_coarse_sol_) {
     ss << " Error: injecting coarse level solution is not supported for L2 inversion. Ignoring input."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
-  if(warmstart_p_) {
-    ss << " Solver warmstart using p and Gaussian centers"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    std::string file_p(p_vec_path);
-    std::string file_cm(gaussian_cm_path);
-    ierr = tumor->phi_->setGaussians (params_->path_->phi_); CHKERRQ (ierr); // overwrites with custom phis
-    ierr = tumor->phi_->setValues (tumor_->mat_prop_); CHKERRQ (ierr);
-    ierr = readPVec(&p_rec_, n_misc->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, params_->path_->p_vec_); CHKERRQ (ierr);
-  } else {
-
+  ierr = initializeGaussians(); CHKERRQ(ierr);
+  ierr = solver_interface_->setParams (p_rec_, nullptr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  if (!warmstart_p_) {
+      ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+      ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
   }
-
   PetscFunctionReturn(ierr);
 }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseL2Solver::run(std::shared_ptr<Parameters> params) {
+PetscErrorCode InverseL2Solver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
+  ierr = tuMSGwarn(" Beginning Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
   Solver::run();  CHKERRQ(ierr);
+  ierr = solver_interface_->solveInverse(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
 
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseL2Solver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
 
   PetscFunctionReturn(ierr);
 }
@@ -462,18 +591,83 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<Parameters> params) {
     params_->sparsity_level_ =  params_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc) ;
   }
 
+  // === set Gaussians
+  if(!warmstart_p_) { // set component labels
+    if(!params_->path_->data_comps_.empty()) {
+      ss << "  Setting component data from .nc image file."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      tumor_->phi_->setLabels (data_comps_); CHKERRQ (ierr);
+    }
+  }
+
+  // === inject coarse level solution
+  if(!inject_coarse_sol_) {
+    ierr = initializeGaussians(); CHKERRQ(ierr);
+  } else {
+    ss << " Injecting coarse level solution (adopting p_vec and Gaussians)."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    Vec coarse_sol = nullptr;
+    int np_save = n_misc->np_, np_coarse = 0; // save np, since overwritten in read function
+    std::vector<ScalarType> coarse_sol_centers;
+    ierr = readPhiMesh(coarse_sol_centers, params_, params_->path_->phi_, false); CHKERRQ (ierr);
+    ierr = readPVec(&coarse_sol, params_->tu_->np_ + params_->get_nk() + params_->get_nk(), params_->tu_->np_, params_->path_->pvec_); CHKERRQ (ierr);
+    np_coarse = params_->tu_->np_;
+    params_->tu_->np_ = np_save; // reset to correct value
+    // find coarse centers in centers_ of current Phi
+    int xc, yc, zc, xf, yf, zf;
+    ScalarType *xf_ptr, *xc_ptr;
+    ScalarType hx =  2.0 * M_PI / n_misc->n_[0];
+    ScalarType hy =  2.0 * M_PI / n_misc->n_[1];
+    ScalarType hz =  2.0 * M_PI / n_misc->n_[2];
+    ierr = VecGetArray(p_rec_, &xf_ptr); CHKERRQ (ierr);
+    ierr = VecGetArray(coarse_sol, &xc_ptr); CHKERRQ (ierr);
+    for (int j = 0; j < np_coarse; ++j) {
+      for (int i = 0; i < n_misc->np_; ++i) {
+        xc = (int)std::round(coarse_sol_centers[3*j + 0]/hx);
+        yc = (int)std::round(coarse_sol_centers[3*j + 1]/hy);
+        zc = (int)std::round(coarse_sol_centers[3*j + 2]/hz);
+        xf = (int)std::round(tumor->phi_->centers_[3*i + 0]/hx);
+        yf = (int)std::round(tumor->phi_->centers_[3*i + 1]/hy);
+        zf = (int)std::round(tumor->phi_->centers_[3*i + 2]/hz);
+        if(xc == xf && yc == yf && zc == zf) {
+          xf_ptr[i] = 2 * xc_ptr[j]; // set initial guess (times 2 since sigma is halfed in every level)
+          params_->support_.push_back(i); // add to support
+        }
+      }
+    }
+    ierr = VecRestoreArray (p_rec_, &xf_ptr); CHKERRQ (ierr);
+    ierr = VecRestoreArray (coarse_sol, &xc_ptr); CHKERRQ (ierr);
+    if (coarse_sol != nullptr) {ierr = VecDestroy(&coarse_sol); CHKERRQ(ierr); coarse_sol = nullptr;}
+  }
+
+  ierr = solver_interface_->setParams (p_rec_, nullptr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  if (!warmstart_p_) {
+      ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+      ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
+  }
+
   PetscFunctionReturn(ierr);
 }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseL1Solver::run(std::shared_ptr<Parameters> params) {
+PetscErrorCode InverseL1Solver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
+  ierr = tuMSGwarn(" Beginning Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   Solver::run();  CHKERRQ(ierr);
+  ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
 
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseL1Solver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
 
   PetscFunctionReturn(ierr);
 }
@@ -493,6 +687,37 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Parame
   // set and populate parameters; read material properties; read data
   Solver::initialize(params);
 
+  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  ierr = solver_interface_->setParams (p_rec_, nullptr);
+  ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseReactionDiffusionSolver::run() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+
+  ierr = tuMSGwarn(" Beginning Reaction/Diffusion Inversion."); CHKERRQ(ierr);
+  if (!warmstart_p && params_->path_->data_t0_.empty()) {
+    ss << " Error: c(0) needs to be set, read in p and Gaussians. Exiting."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    exit(1);
+  }
+  ierr = solver_interface_->solveInverseReacDiff (p_rec_, data_t1_, nullptr);
+
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseReactionDiffusionSolver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
 
   PetscFunctionReturn(ierr);
 }
@@ -522,6 +747,47 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<Parameters> p
   //     ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed
   // }
 
+
+  ierr = solver_interface_->setParams (p_rec_, nullptr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  if (!warmstart_p_) {
+      ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+      ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseMassEffectSolver::run() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  if(has_dt0_) {
+      ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
+  } else {
+      ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
+  }
+
+  ierr = tuMSGwarn(" Beginning Mass Effect Inversion."); CHKERRQ(ierr);
+  ierr = solver_interface_->solveInverseMassEffect (&gamma_, data_t0_, nullptr);
+
+  // Reset mat-props and diffusion and reaction operators, tumor IC does not change
+  ierr = tumor_->mat_prop_->resetValues ();  CHKERRQ (ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->velocity_->set(0.);
+
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseMassEffectSolver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
   PetscFunctionReturn(ierr);
 }
 
@@ -540,6 +806,13 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<Parameters>
   Solver::initialize(params);
 
 
+  ierr = solver_interface_->setParams (p_rec_, nullptr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  if (!warmstart_p_) {
+      ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+      ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
+  }
   PetscFunctionReturn(ierr);
 }
 
@@ -557,6 +830,11 @@ PetscErrorCode TestSuite::initialize(std::shared_ptr<Parameters> params) {
 
   Solver::initialize(params);
 
+  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  ierr = solver_interface_->setParams (p_rec_, nullptr);
+  ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
   PetscFunctionReturn(ierr);
 }

@@ -14,6 +14,9 @@
  - in _Solver.cpp_: apply low frequency noise; add to createSynthetic
  - in _Solver.cpp_: implement readUserCM
  - generate sinusoidal: do we need this? <-- move to test suite
+ - inverse.cpp:840-844: no idea what this is good for, not implemented
+ - inverse.cpp:877-891: not implemented; outparams not implemented
+ - inverse.cpp: 893-920: wL2 norm, not implemented, dropped this section
 
 ---
 

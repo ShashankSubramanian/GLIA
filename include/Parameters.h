@@ -44,8 +44,8 @@ struct FilePaths {
   public:
     FilePaths() :
     wm_(), gm_(), csf_(), ve_(), glm_(), data_t1_(), data_t0_(),
-    data_support_(), data_comps(), data_comps_data_(), obs_filter_(), mri_(),
-    velocity_x_1(), velocity_x_2(), velocity_x_3(),
+    data_support_(), data_support_data_(), data_comps(), data_comps_data_(),
+    obs_filter_(), mri_(), velocity_x_1(), velocity_x_2(), velocity_x_3(),
     pvec_(), phi_(),
     writepath_(), readpath_()
     {}
@@ -60,6 +60,7 @@ struct FilePaths {
     std::string data_t1_;
     std::string data_t0_;
     std::string data_support_;
+    std::string data_support_data_;
     std::string data_comps_;
     std::string data_comps_data_;
     std::string obs_filter_;
@@ -94,7 +95,7 @@ class Parameters {
     }
 
     inline int get_nk() {return tu_->diffusivity_inversion_ ? params_->tu_->nk_ : 0;}
-    inline int get_nr() {return tu_->reaction_inversion_ ? params_->tu_->nr_ : 0;} 
+    inline int get_nr() {return tu_->reaction_inversion_ ? params_->tu_->nr_ : 0;}
 
     virtual ~Parameters() {}
 

@@ -37,13 +37,15 @@ class Solver {
 
     virtual ~Solver() {}
 
-  private:
-    PetscErrorCode readAtlas();
-    PetscErrorCode readData();
-    PetscErrorCode readDiffusionFiberTensor(); // TODO(K)
-    PetscErrorCode readVelocity();
-    PetscErrorCode readUserCMs(); // TODO(K)
-    PetscErrorCode createSynthetic(); // TODO(K)
+  protected:
+    virtual PetscErrorCode readAtlas();
+    virtual PetscErrorCode readData();
+    virtual PetscErrorCode readDiffusionFiberTensor(); // TODO(K) implement.
+    virtual PetscErrorCode readVelocity();
+    virtual PetscErrorCode readUserCMs(); // TODO(K) implement.
+    virtual PetscErrorCode createSynthetic(); // TODO(K) implement.
+    virtual PetscErrorCode initializeGaussians();
+    virtual PetscErrorCode predict(); // TODO(K) implement.
 
     std::shared_ptr<Parameters> params_;
     std::shared_ptr<TumorSolverInterface> solver_interface_;
@@ -153,6 +155,9 @@ class InverseMassEffectSolver : public Solver {
     virtual PetscErrorCode run ();
 
     virtual ~InverseMassEffectSolver () {}
+
+  private:
+    ScalarType gamma_;
 };
 
 class InverseMultiSpeciesSolver : public Solver {

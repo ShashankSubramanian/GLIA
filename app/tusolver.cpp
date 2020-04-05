@@ -9,9 +9,14 @@
 enum RunMode = {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, INVERSE_MS, TEST};
 
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
 void openFiles(std::shared_ptr<Parameters> params) {
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   std::stringstream ss;
-  ss.str(std::string()); ss.clear();
+
   if (params->verbosity_ >= 2) {
       if (procid == 0) {
           ss << params->writepath_.str().c_str() << "x_it.dat";
@@ -24,6 +29,22 @@ void openFiles(std::shared_ptr<Parameters> params) {
           params->outfile_grad_ << std::setprecision(16)<<std::scientific;
           params->outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
       }
+  }
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+void closeFiles(std::shared_ptr<Parameters> params) {
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  std::stringstream ss;
+
+  if (procid == 0 && params_->verbosity_ >= 2) {
+      params_->outfile_sol_.close();
+      params_->outfile_grad_.close();
+      params_->outfile_glob_grad_.close();
   }
 }
 
@@ -45,6 +66,10 @@ int main(int argc, char **argv) {
   accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
   int isize[3], osize[3], istart[3], ostart[3];
 
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
   std::shared_ptr<SpectralOperators> spec_ops;
   #if defined(CUDA) && !defined(MPICUDA)
       spec_ops = std::make_shared<SpectralOperators> (CUFFT);
@@ -61,6 +86,9 @@ int main(int argc, char **argv) {
 
   // TODO(K) parse config file and populate into parameters; also set run_mode
   // TODO(K) params->opt_settings_ have to be populated in arg parse
+
+
+  EventRegistry::initialize();
 
   std::unique_ptr<Solver> solver;
   switch(run_mode) {
@@ -90,12 +118,24 @@ int main(int argc, char **argv) {
       PetscFunctionReturn(ierr);
   }
 
-  ierr = openFiles(); CHKERRQ(ierr); // opens all txt output files on one core only
+  openFiles(); // opens all txt output files on one core only
   // ensures data for specific solver is read and code is set up for running mode
   ierr = solver->initialize(); CHKERRQ(ierr);
   ierr = solver->run(); CHKERRQ(ierr);
   // compute errors, segmentations, other measures of interest, and shutdown solver
   ierr = solver->finalize(); CHKERRQ(ierr);
+
+  closeFiles();
+
+  #ifdef CUDA
+      cudaPrintDeviceMemory();
+  #endif
+  EventRegistry::finalize ();
+  if (procid == 0) {
+      EventRegistry r;
+      r.print ();
+      r.print ("EventsTimings.log", true);
+  }
 
   PetscFunctionReturn(ierr);
 }
