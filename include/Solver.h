@@ -42,8 +42,7 @@ class Solver {
     virtual PetscErrorCode readData();
     virtual PetscErrorCode readDiffusionFiberTensor(); // TODO(K) implement.
     virtual PetscErrorCode readVelocity();
-    virtual PetscErrorCode readUserCMs(); // TODO(K) implement.
-    virtual PetscErrorCode createSynthetic(); // TODO(K) implement.
+    virtual PetscErrorCode createSynthetic();
     virtual PetscErrorCode initializeGaussians();
     virtual PetscErrorCode predict(); // TODO(K) implement.
 

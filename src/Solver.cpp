@@ -88,7 +88,6 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params) {
   if(synthetic_) {
     int fwd_temp = params_->forward_flag_; // temporarily disable time_history
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = readUserCMs(); CHKERRQ(ierr); // TODO(K): implement
     ierr = generateSyntheticData(); CHKERRQ(ierr);  // TODO(K): implement
     data_support_ = data_t1_;
     params_->forward_flag_ = fwd_temp; // restore mode, i.e., allow inverse solver to store time_history
@@ -197,30 +196,65 @@ PetscErrorCode Solver::predict() {
   PetscFunctionBegin;
   std::stringstream ss;
 
-  // TODO(K) implement below: (or better according to alzh branch)
+  if(params_->pred_->enabled_) {
+    ss << " Predicting future tumor growth..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    if(params_->time_history_off_) {
+      params_->tu_->dt_ = params_->pred_->dt_;
+      // set c(0)
+      if (params_->use_c0_) {ierr = VecCopy(data_t0, tumor_->c_0_); CHKERRQ(ierr);}
+      else                  {ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);}
 
-  // if (n_misc->predict_flag_) {
-  //     ss << " predicting future tumor growth..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  //     // predict tumor growth using inverted parameter values
-  //     // set dt and nt to synthetic values to ensure best accuracy
-  //     n_misc->dt_ = dt_data;
-  //     n_misc->nt_ = (int) (1.5 / dt_data);
-  //     // reset time history
-  //     ierr = solver_interface->getPdeOperators()->resizeTimeHistory (n_misc);
-  //     // apply IC to tumor c0
-  //     ierr = tumor->phi_->apply (tumor->c_0_, p_rec);
-  //     // reaction and diffusion coefficient already set correctly at the end of the
-  //     // optimizer
-  //     ierr = solver_interface->getPdeOperators()->solveState (0);  // time histroy is stored in
-  //                                                                  // pde_operators->c_
-  //     // Write out t = 1.2 and t = 1.5 -- hard coded for now. TODO: make it a user parameter(?)
-  //     dataOut (solver_interface->getPdeOperators()->c_[(int) (1.2 / dt_data)], n_misc, "cPrediction_[t=1.2].nc");
-  //     dataOut (solver_interface->getPdeOperators()->c_[(int) (1.5 / dt_data)], n_misc, "cPrediction_[t=1.5].nc");
-  //     dataOut (solver_interface->getPdeOperators()->c_[(int) (1.0 / dt_data)], n_misc, "cPrediction_[t=1.0].nc");
-  //
-  //     ss << " prediction complete for t = 1.2 and t = 1.5"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  // }
+      // predict tumor growth at different (user defined) times
+      for(int i = 0; i < params_->pred_->t_pred_.size(); ++i) {
+        params_->tu_->nt_ = (int) (params_->pred_->t_pred_[i] / params_->pred_->dt_); // number of time steps
+        // if different brain to perform prediction is given, read in and reset atlas
+        if(params_->pred_->wm_path.size() >= i && !params_->pred_->wm_path_[i].empty()) {
+          params_->path_wm_ = params_->pred_->wm_path_[i];
+          params_->path_gm_ = params_->pred_->gm_path_[i];
+          params_->path_csf_ = params_->pred_->csf_path_[i];
+          ierr = tuMSGstd(" .. reading in atlas brain to perform prediction."); CHKERRQ(ierr);
+          ierr = readAtlas(); CHKERRQ(ierr);
+          ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, nullptr, csf_, nullptr); // TODO(K) is this safe, giving nullptr?
+          ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, nullptr, csf_, nullptr); CHKERRQ(ierr);
+        } else {
+          ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
+        }
+        ierr = solver_interface_->getPdeOperators()->solveState (0); CHKERRQ(ierr); // forward solve
+        ss << "c_pred_at_[t=" << params_->pred_->t_pred_[i] <<"]";
+        dataOut (tumor_->c_t_, params_, ss.str()+params_->path_->ext_); ss.str(""); ss.clear();
+        ss << " .. prediction complete for t = "<<params_->pred_->t_pred_[i]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
+        // if given: compute error to ground truth at predicted time
+        if(!params_->pred_->true_data_path_[i].empty()) {
+          Vec true_dat_t1;
+          ScalarType obs_c_norm, obs_data_norm, data_norm;
+          ierr = VecDuplicate(data_t1_, &true_dat_t1); CHKERRQ (ierr);
+          dataIn(true_dat_t1, params_, params_->pred_->true_data_path_[i]);
+          ierr = VecNorm(true_dat_t1, NORM_2, &data_norm); CHKERRQ (ierr);
+          // error everywhere
+          ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ (ierr);
+          ierr = VecAXPY(tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
+          ss << "res_at_[t=" << params_->pred_->t_pred_[i] <<"]";
+          dataOut(tmp_, params_, ss.str()+params_->path_->ext_); ss.str(""); ss.clear();
+          ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
+          obs_c_norm /= data_norm;
+          ss << " .. rel. l2-error (everywhere) (T=" << params_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+          // error at observation points
+          ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ (ierr);
+          ierr = tumor_->obs_->apply (tmp_, tmp_); CHKERRQ (ierr);
+          ierr = tumor_->obs_->apply (true_dat_t1, true_dat_t1); CHKERRQ (ierr);
+          ierr = VecNorm (true_dat_t1, NORM_2, &obs_data_norm); CHKERRQ (ierr);
+          ierr = VecAXPY (tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
+          ss << "res_obs_at_[t=" << params_->pred_->t_pred_[i] <<"]";
+          dataOut (tmp_, params_, ss.str()+params_->path_->ext_); ss.str(""); ss.clear();
+          ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
+          obs_c_norm /= obs_data_norm;
+          ss << " .. rel. l2-error (at observation points) (T=" << params_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+          if(true_dat_t1 != nullptr) {ierr = VecDestroy (&true_dat_t1); CHKERRQ (ierr);}
+        }
+      }
+    }
+  }
   PetscFunctionReturn(ierr);
 }
 
@@ -386,17 +420,6 @@ PetscErrorCode Solver::readDiffusionFiberTensor() {
   PetscFunctionReturn(ierr);
 }
 
-// ### ______________________________________________________________________ ___
-// ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode Solver::readUserCMs() {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-
-  // TODO(K): implement reading in of different user cms, write out p_vec/phi file,
-  //          and create c(0); store in data_t0_
-
-  PetscFunctionReturn(ierr);
-}
 
 
 // ### ______________________________________________________________________ ___
@@ -404,6 +427,11 @@ PetscErrorCode Solver::readUserCMs() {
 PetscErrorCode Solver::createSynthetic() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  std::stringstream ss;
 
   // save parameters
   ScalarType rho_temp = params_->tu_->rho_,
@@ -416,13 +444,65 @@ PetscErrorCode Solver::createSynthetic() {
   params_->tu_->dt_ = params_->tu_->dt_data_;
   params_->tu_->nt_ = params_->tu_->nt_data_;
 
-  // TODO(K): implement synthetic data generation
+  ScalarType sigma_smooth = 2.0 * M_PI / n_misc->n_[0];
+  ierr = VecCreateSeq (PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ (ierr);
+  ierr = setupVec (p_rec_, SEQ); CHKERRQ (ierr);
 
-  // if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
-  //     ierr = createMFData (c_0, data, p_rec, solver_interface, n_misc, mri_path);
-  // } else {
-  //     ierr = generateSyntheticData (c_0, data, p_rec, solver_interface, n_misc, spec_ops, init_tumor_path, mri_path);
-  // }
+  // allocate t1 and t0 data:
+  if(data_t1_ == nullptr) {ierr = VecDuplicate (tmp_, &data_t1_); CHKERRQ (ierr);}
+  if(data_t0_ == nullptr) {ierr = VecDuplicate (tmp_, &data_t0_); CHKERRQ (ierr);}
+  ierr = VecSet (data_t0_, 0.); CHKERRQ (ierr);
+
+  std::array<ScalarType, 3> cm_tmp;
+  ScalarType scale = 1; int count = 0 ;
+  // insert user defined tumor foci
+  for(auto& cm : params_->syn_->user_cms_) {
+    count++;
+    ierr = VecSet (tmp_, 0.); CHKERRQ (ierr);
+    cm_tmp[0] = (2 * M_PI / 256 * cm[0]);
+    cm_tmp[1] = (2 * M_PI / 256 * cm[1]);
+    cm_tmp[2] = (2 * M_PI / 256 * cm[2]);
+    scale = (cm[3] < 0) ? 1 : cm[3]; // p activation stored in last entry
+
+    ierr = tumor_->phi_->setGaussians (cm_tmp, params_->tu_->phi_sigma_, params_->tu_->phi_spacing_factor_, params_->tu_->np_);
+    ierr = tumor_->phi_->setValues (tumor_->mat_prop_);
+    ierr = tumor_->setTrueP (params_, scale);
+    ss << " --------------  SYNTHETIC TRUE P (CM"<<count<<") -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    if (procid == 0) { ierr = VecView (tumor_->p_true_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+    ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ierr = tumor_->phi_->apply (tmp_, tumor_->p_true_); CHKERRQ (ierr);
+    ierr = VecAXPY (data_t0_, 1.0, tmp_); CHKERRQ (ierr);
+    ss << "p-syn-sm"<<count;
+    writeCheckpoint(tumor_->p_true_, tumor_->phi_, params_->path_->writepath_, ss.str()); ss.str(""); ss.clear();
+  }
+
+  ScalarType max, min;
+  ierr = VecMax(data_t0_, NULL, &max); CHKERRQ (ierr);
+  ierr = VecMin(data_t0_, NULL, &min); CHKERRQ (ierr);
+
+  #ifdef POSITIVITY
+      ierr = enforcePositivity (data_t0_, params_);
+  #endif
+  if (params_->write_output_) {
+      ierr = dataOut(data_t0_, n_misc, "c0_true_syn.nc"); CHKERRQ (ierr);
+  }
+  ierr = VecMax(data_t0_, NULL, &max); CHKERRQ (ierr);
+  ierr = VecMin(data_t0_, NULL, &min); CHKERRQ (ierr);
+  ss << " Synthetic data c(0) max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+  if (params_->model_ == 5) {
+      std::map<std::string, Vec> species;
+      ierr = solver_interface_->solveForward (data_t1_, data_t0_, &species); CHKERRQ (ierr);
+  } else {
+      ierr = solver_interface->solveForward (data_t1_, data_t0_); CHKERRQ (ierr);
+  }
+  ierr = VecMax(data_t1_, NULL, &max); CHKERRQ (ierr);
+  ierr = VecMin(data_t1_, NULL, &min); CHKERRQ (ierr);
+  ss << " Synthetic data c(1) max and min (before observation) : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  if (params_->write_output_) {
+    dataOut (c_t, n_misc, "c1_true_syn_before_observation.nc");
+  }
+
 
   // TODO(K): implement low frequency noise
 
@@ -439,7 +519,7 @@ PetscErrorCode Solver::createSynthetic() {
   //     rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
   //     ss << " low frequency relative error = " << rel_noise_err_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   //
-  //     // if (n_misc->writeOutput_)
+  //     // if (params_->write_output_)
   //     //     dataOut (data, n_misc, "dataNoise.nc");
   //
   //     if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
@@ -451,7 +531,6 @@ PetscErrorCode Solver::createSynthetic() {
   //     writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), "forward");
   //     ss << " ground truth phi and p written to file "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // }
-
 
   // restore parameters
   params_->tu_->rho_ = rho_temp;

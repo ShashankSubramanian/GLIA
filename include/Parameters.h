@@ -43,11 +43,11 @@ struct Grid {
 struct FilePaths {
   public:
     FilePaths() :
-    wm_(), gm_(), csf_(), ve_(), glm_(), data_t1_(), data_t0_(),
-    data_support_(), data_support_data_(), data_comps(), data_comps_data_(),
-    obs_filter_(), mri_(), velocity_x_1(), velocity_x_2(), velocity_x_3(),
-    pvec_(), phi_(),
-    writepath_(), readpath_()
+      wm_(), gm_(), csf_(), ve_(), glm_(), data_t1_(), data_t0_(),
+      data_support_(), data_support_data_(), data_comps(), data_comps_data_(),
+      obs_filter_(), mri_(), velocity_x_1(), velocity_x_2(), velocity_x_3(),
+      pvec_(), phi_(),
+      writepath_(), readpath_(), ext_(".nc")
     {}
 
     // material properties
@@ -72,9 +72,50 @@ struct FilePaths {
     // warmstart solution
     std::string pvec_;
     std::string phi_;
-
+    // io paths
     std::string writepath_;
     std::string readpath_;
+    // .nc or nifty output
+    std::string ext_; // extension ".nc" or ".nii.gz"
+};
+
+
+struct SyntheticData {
+public:
+  SyntheticData() :
+    rho_(10),
+    k_(1E-2),
+    dt_(0.01),
+    nt_(100),
+    user_cms_()
+  {}
+
+  ScalarType rho_;
+  ScalarType k_;
+  ScalarType dt_;
+  int nt_;
+  std::vector< std::array<ScalarType, 4> > user_cms_;
+};
+
+struct Prediction {
+public:
+  Prediction() :
+    enabled_(false),
+    dt_(0.01),
+    t_pred_(),
+    true_data_path_(),
+    wm_path_(),
+    gm_path_(),
+    csf_path_()
+  {}
+
+  bool enabled_;
+  ScalarType dt_;
+  std::vector< ScalarType > t_pred_;
+  std::vector< std::string > true_data_path_;
+  std::vector< std::string > wm_path_;
+  std::vector< std::string > gm_path_;
+  std::vector< std::string > csf_path_;
 };
 
 class Parameters {
@@ -86,12 +127,16 @@ class Parameters {
       opt_(),
       tu_(),
       path_(),
-      grid_() {
+      grid_(),
+      syn(),
+      pred_() {
 
     opt_ = std::make_shared<OptimizerSettings>();
     tu_ = std::make_shared<TumorParameters>();
     path_ = std::make_shared<FilePaths>();
     grid_ = std::make_shared<Grid>();
+    syn_ = std::make_shared<SyntheticData>();
+    pred_ = std::make_shared<Prediction>();
     }
 
     inline int get_nk() {return tu_->diffusivity_inversion_ ? params_->tu_->nk_ : 0;}
@@ -107,13 +152,19 @@ class Parameters {
     bool relative_obs_threshold_;
     bool inject_coarse_sol_;
     bool two_time_points_;
+    bool time_history_off_;
+    bool use_c0_; // use c(0) directly, never use phi*p
+    bool write_output_;
 
     int sparsity_level_;
+    int model_;
 
     std::shared_ptr<OptimizerSettings> opt_;
     std::shared_ptr<TumorParameters> tu_;
     std::shared_ptr<FilePaths> path_;
     std::shared_ptr<Grid> grid_;
+    std::shared_ptr<SyntheticData> syn_;
+    std::shared_ptr<Prediction> pred_;
 };
 
 #endif
