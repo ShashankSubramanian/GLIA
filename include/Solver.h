@@ -4,6 +4,8 @@
  *  Copyright (C) 2017-2020, The University of Texas at Austin
  *  This file is part of the SIBIA library.
  *
+ *  Authors: Klaudius Scheufele, Shashank Subramanian
+ *
  *  SIBIA is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -44,7 +46,8 @@ class Solver {
     virtual PetscErrorCode readVelocity();
     virtual PetscErrorCode createSynthetic();
     virtual PetscErrorCode initializeGaussians();
-    virtual PetscErrorCode predict(); // TODO(K) implement.
+    virtual PetscErrorCode predict();
+    virtual PetscErrorCode computeSegmentation(Vec, std::string);
 
     std::shared_ptr<Parameters> params_;
     std::shared_ptr<TumorSolverInterface> solver_interface_;
@@ -55,10 +58,6 @@ class Solver {
     bool warmstart_p_;
     bool synthetic_;
     bool has_dt0_;
-
-    ScalarType smooth_fac_data_; // TODO(K)
-
-    std::vector<int> user_cms_; // TODO(K)
 
     Vec wm_;
     Vec gm_;

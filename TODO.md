@@ -4,13 +4,9 @@
 ### inverse.cpp/Solver.cpp
 
 **todo: (implement)**
- - in _Solver.cpp_: read data for all solvers, initialize all solvers
- - in _Solver.cpp_: implement run and finalize methods (compute error)
  - in _tusolver.cpp_: config file; parse config file; populate to parameters
  - in _Solver.cpp_: implement read in mass effect data; healthy patient etc; complete ME initialize
  - in _Solver.cpp_: implement read in alzh data
- - in _Solver.cpp_: implement compute error <-- move to finalize
- - in _Solver.cpp_: implement compute segmentation <-- move to finalize
  - in _Solver.cpp_: implement apply low frequency noise <-- add to createSynthetic
 
 **unclear: (dropped)**
@@ -20,6 +16,7 @@
  - inverse.cpp:877-891: not implemented; outparams not implemented
  - inverse.cpp: 893-920: wL2 norm, not implemented, dropped this section
  - generateSyntheticData: why is c(0) read in in 'generateSynthetic'? I'm dropping this; reading in is done in readData.
+ - inverse.cpp:1603-1718: error for p (plus some weighted error) I have dropped this
 
 ---
 
