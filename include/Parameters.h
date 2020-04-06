@@ -45,12 +45,15 @@ public:
     fseqtype (SLFS),
     newtonsolver (QUASINEWTON),
     linesearch (MT),
-    regularization_norm (L2),
+    regularization_norm (L1c),
     reset_tao (false),
     cosamp_stage (0),
     lmvm_set_hessian (false),
     diffusivity_inversion(true),
     reaction_inversion(false),
+    pre_reacdiff_solve_(false),
+    cross_entropy_loss_(false),
+    invert_mass_effect_(false),
     verbosity (3),
     k_lb (1E-3),
     k_ub (1
@@ -78,6 +81,9 @@ public:
   bool   reset_tao;            /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
   bool   diffusivity_inversion;/// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
   bool   reaction_inversion;   /// @brief if true, we also invert for rho
+  bool   pre_reacdiff_solve_;  /// @brief if true, CoSaMp L1 inversion scheme perfroms reaction/diffusion solve before {p,k} inversion
+  bool   cross_entropy_loss_;  /// @brief cross-entropy is used instead of L2 loss
+  bool   invert_mass_effect_;  /// @brief if true invert for mass-effect parameters {rho,k,gamma}
   ScalarType k_lb;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
   ScalarType k_ub;             /// @brief upper bound on kappa
 };
@@ -290,8 +296,16 @@ class Parameters {
     bool two_time_points_;
     bool time_history_off_;
     bool use_c0_; // use c(0) directly, never use phi*p
-    bool write_output_;
 
+    // performance settings
+    bool write_output_;
+    bool phi_store_;
+    bool adjoint_store_;
+    bool prune_components_;
+
+    bool forward_flag_;
+
+    int verbosity_;
     int sparsity_level_;
     int model_;
 

@@ -32,8 +32,9 @@
 ---
 
 ### Obs.h/Obs.cpp
-- implement two time points from alzh solver
+- implement two time points from alzh solver; add time point to apply in all files
 
+---
 
 ### IO.h/IO.cpp
 - change dataOut to take params_ as argument and std::string instead of char*

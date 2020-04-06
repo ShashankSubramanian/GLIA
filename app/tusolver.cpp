@@ -23,6 +23,9 @@
 
 
 // system includes
+#include <iostream>
+#include <fstream>
+#include <algorithm>
 
 #include "Utils.h"
 #include "Parameters.h"
@@ -31,6 +34,7 @@
 
 enum RunMode = {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, INVERSE_MS, TEST};
 
+RunMode run_mode = FORWARD; // global variable
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -71,6 +75,35 @@ void closeFiles(std::shared_ptr<Parameters> params) {
   }
 }
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+void setParameter(std::string name, std::string value, std:shared_ptr<Parameters> params) {
+  if(name == "solver") {
+    if(value == "sparse_til") {
+      run_mode = INVERSE_L1;
+      params_->opt_->regularization_norm_ = L1c;
+      params_->opt_->diffusivity_inversion_ = true;
+      params_->opt_->reaction_inversion = true;
+      params_->opt_->pre_reacdiff_solve = true;
+    }
+    if(value == "nonsparse_til")      {
+      run_mode = IINVERSE_L2;
+      params_->opt_->regularization_norm_ = L2;
+      params_->opt_->diffusivity_inversion_ = true;
+      params_->opt_->reaction_inversion = false;
+      params_->opt_->pre_reacdiff_solve = false;
+    }
+    if(value == "reaction_diffusion") {
+      run_mode = INVERSE_RD;
+      params_->opt_->diffusivity_inversion_ = true;
+      params_->opt_->reaction_inversion = true;
+    }
+    if(value == "mass_effec")         {run_mode = INVERSE_ME;  params_->opt_->invert_mass_effect_ = true;}
+    if(value == "multi_species")      {run_mode = INVERSE_MS;}
+    if(value == "forward")            {run_mode = FORWARD;     params_->forward_flag_ = true;}
+  }
+}
+
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -93,26 +126,57 @@ int main(int argc, char **argv) {
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
 
+  std::stringstream ss;
+  std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
+
+  // === parse config file, set parameters
+  std::string config;
+  for(int i = 1; i < argc; ++i) {
+    if(std::string(argv[i]) == "-config") config = std::string(argv[i]);
+  }
+  std::ifstream config_file (config);
+  if (config_file.is_open()) {
+      std::string line;
+      while(getline(config_file, line)){
+          line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
+          if(line[0] == '#' || line.empty())  // skip empy lines and comments
+              continue;
+          if (line.find("#") != std::string::npos) { // allow comments after values
+            line = line.substr(0, line.find("#"));
+          }
+          auto delimiter_pos = line.find("=");
+          auto name = line.substr(0, delimiter_pos);
+          auto value = line.substr(delimiter_pos + 1);
+          // std::cout << name << " " << value << '\n';
+          setParameter(name, value, params);
+      }
+
+  }
+  else {
+    ierr = tuMSGwarn("No config file given. Terminating Solver."); CHKERRQ(ierr);
+    exit(0);
+  }
+
+
+  // TODO(K) parse config file and populate into parameters; also set run_mode
+  // TODO(K) params->opt_settings_ have to be populated in arg parse
+
+
+  // === create distributed compute grid
   std::shared_ptr<SpectralOperators> spec_ops;
   #if defined(CUDA) && !defined(MPICUDA)
       spec_ops = std::make_shared<SpectralOperators> (CUFFT);
   #else
       spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
   #endif
-  spec_ops->setup (n, isize, istart, osize, ostart, c_comm);
+  ierr = spec_ops->setup(n, isize, istart, osize, ostart, c_comm); CHKERRQ(ierr);
   int64_t alloc_max = spec_ops->alloc_max_;
   fft_plan *plan = spec_ops->plan_;
-
-  RunMode run_mode = FORWARD;
-  std::stringstream ss;
-  std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
-
-  // TODO(K) parse config file and populate into parameters; also set run_mode
-  // TODO(K) params->opt_settings_ have to be populated in arg parse
-
+  params->createGrid(n, isize, osize, istart, ostart, plan, c_comm, c_dims);
 
   EventRegistry::initialize();
 
+  // === initialize solvers
   std::unique_ptr<Solver> solver;
   switch(run_mode) {
     case FORWARD:
