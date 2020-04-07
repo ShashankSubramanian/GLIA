@@ -171,7 +171,7 @@ def getTumorRunCmd(params):
     ### order of interpolation for SL
     ip_order = 3
     ### flag to implement cross entropy loss
-    ce_loss = 0
+    ce_loss = 1
 
     ### TUMOR PARAMETERS SET END
 

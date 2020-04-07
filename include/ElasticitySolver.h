@@ -97,4 +97,9 @@ PetscErrorCode operatorVariableCoefficients (Mat A, Vec x, Vec y);
 PetscErrorCode operatorCreateVecsElas (Mat A, Vec *left, Vec *right);
 PetscErrorCode elasticitySolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr);
 
+// Cuda helpers
+void initElasticityCudaConstants(int *n, int *ostart);
+void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
+void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz);
+void computeTumorLameCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *c_ptr, ScalarType mu_tumor, ScalarType lam_tumor, int64_t sz);
 #endif

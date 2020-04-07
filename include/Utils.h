@@ -27,6 +27,9 @@
 #include <map>
 #include "EventTimings.hpp"
 #include <pnetcdf.h>
+#ifdef NIFTIIO
+  #include "nifti1_io.h"
+#endif
 #include "TypeDefs.h"
 
 #ifdef CUDA
@@ -456,7 +459,46 @@ class NMisc {
             //Read and write paths
             readpath_ << "./brain_data/" << n_[0] <<"/";
             writepath_ << "./results/";
+
+            // gather all isizes to isize_gathered_ : needed for nifti I/O which is serial: only zero 
+            // contains the values.
+            int rank, nprocs;
+            MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+            MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
+            if (rank == 0) {
+              isize_gathered_ = new int[3*nprocs];
+              isize_offset_ = new int[nprocs];
+              isize_send_ = new int[nprocs];
+              istart_gathered_ = new int[3*nprocs];
+            }
+
+            MPI_Gather(&isize_[0], 3, MPI_INT, isize_gathered_, 3, MPI_INT, 0, PETSC_COMM_WORLD);
+            MPI_Gather(&istart_[0], 3, MPI_INT, istart_gathered_, 3, MPI_INT, 0, PETSC_COMM_WORLD);
+            int offset = 0;
+            if (rank == 0) {
+                for (int i = 0; i < nprocs; i++) {
+                isize_send_[i] = 1;
+                for (int j = 0; j < 3; j++) {
+                  isize_send_[i] *= isize_gathered_[3*i + j];
+                }
+                isize_offset_[i] = offset;
+                offset += isize_send_[i];
+              }
+            }
+
+            #ifdef NIFTIIO
+              nifti_ref_image_ = NULL;
+            #endif
         }
+
+        #ifdef NIFTIIO
+          nifti_image* nifti_ref_image_;
+        #endif
+
+        int *isize_gathered_;  // needed for nifti I/O
+        int *istart_gathered_;
+        int *isize_send_;
+        int *isize_offset_;
 
         bool cross_entropy_loss_;
         ScalarType ic_max_;
@@ -582,6 +624,22 @@ class NMisc {
         // multispecies
         int num_species_;
         ScalarType ox_source_, ox_consumption_, alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
+
+        ~NMisc() {
+          int rank;
+          MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+          if (rank == 0) {
+            delete[] isize_send_;
+            delete[] isize_gathered_;
+            delete[] istart_gathered_;
+            delete[] isize_offset_;
+          }
+
+          #ifdef NIFTIIO
+            if (nifti_ref_image_ != NULL)
+              nifti_image_free(nifti_ref_image_);
+          #endif
+        }
 };
 
 PetscErrorCode vecGetArray (Vec x, ScalarType **x_ptr);
@@ -664,6 +722,10 @@ void write_pnetcdf(const std::string &filename,
            float            *localData);
 
 //Read/Write function prototypes
+#ifdef NIFTIIO
+template<typename T> PetscErrorCode readNifti(nifti_image* image, ScalarType *data_global, std::shared_ptr<NMisc> n_misc);
+PetscErrorCode writeNifti(nifti_image** image, ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char* fname);
+#endif
 PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataIn (Vec A, std::shared_ptr<NMisc> n_misc, const char *fname);
 PetscErrorCode dataOut (ScalarType *A, std::shared_ptr<NMisc> n_misc, const char *fname);

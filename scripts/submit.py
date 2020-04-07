@@ -12,33 +12,33 @@ params['code_path'] = tumor_dir
 params['results_path'] = tumor_dir + '/results/check/'
 params['compute_sys'] = 'frontera'
 #### tumor data
-#params['data_path'] = tumor_dir + '/results/Image12-case6/c_final.nc'
+#params['data_path'] = tumor_dir + '/results/t16-case6/c_final.nc'
 #### atlas
-#params['gm_path'] = tumor_dir + "/brain_data/Image12/256/Image12_gm.nc" 
-#params['wm_path'] = tumor_dir + "/brain_data/Image12/256/Image12_wm.nc" 
-#params['glm_path'] = tumor_dir + "/brain_data/Image12/256/Image12_csf.nc" 
-#params['csf_path'] = tumor_dir + "/brain_data/Image12/256/Image12_vt.nc"
+#params['gm_path'] = tumor_dir + "/brain_data/t16/256/t16_gm.nc" 
+#params['wm_path'] = tumor_dir + "/brain_data/t16/256/t16_wm.nc" 
+#params['glm_path'] = tumor_dir + "/brain_data/t16/256/t16_csf.nc" 
+#params['csf_path'] = tumor_dir + "/brain_data/t16/256/t16_vt.nc"
 #
-##params['gm_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/atlas-6_gm.nc"
-##params['wm_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/atlas-6_wm.nc"
-##params['glm_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/atlas-6_csf.nc"
-##params['csf_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/atlas-6_vt.nc"
+##params['gm_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/atlas-6_gm.nc"
+##params['wm_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/atlas-6_wm.nc"
+##params['glm_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/atlas-6_csf.nc"
+##params['csf_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/atlas-6_vt.nc"
 #
 #### input p and phi-cm (needed for mass-effect inversion)
-##params['gaussian_cm_path'] = tumor_dir + "/results/Image12-case6/phi-mesh-forward.txt"
-##params['pvec_path'] = tumor_dir + "/results/Image12-case6/p-rec-forward.txt"
-#params['gaussian_cm_path'] = tumor_dir + "/results/rd-inv-Image12-case6/tumor_inversion/nx256/obs-1.0/phi-mesh-scaled.txt"
-#params['pvec_path'] = tumor_dir + "/results/rd-inv-Image12-case6/tumor_inversion/nx256/obs-1.0/p-rec-scaled.txt"
-##params['gaussian_cm_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/phi-mesh-scaled-transported.txt"
-##params['pvec_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/p-rec-scaled-transported.txt"
-##params['init_tumor_path'] = tumor_dir + "/results/reg-Image12-case6-mask/atlas-6/c0Recon_transported.nc"
+##params['gaussian_cm_path'] = tumor_dir + "/results/t16-case6/phi-mesh-forward.txt"
+##params['pvec_path'] = tumor_dir + "/results/t16-case6/p-rec-forward.txt"
+#params['gaussian_cm_path'] = tumor_dir + "/results/rd-inv-t16-case6/tumor_inversion/nx256/obs-1.0/phi-mesh-scaled.txt"
+#params['pvec_path'] = tumor_dir + "/results/rd-inv-t16-case6/tumor_inversion/nx256/obs-1.0/p-rec-scaled.txt"
+##params['gaussian_cm_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/phi-mesh-scaled-transported.txt"
+##params['pvec_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/p-rec-scaled-transported.txt"
+##params['init_tumor_path'] = tumor_dir + "/results/reg-t16-case6-mask/atlas-6/c0Recon_transported.nc"
 #### data to patient
-#params['p_gm_path'] = tumor_dir + "/results/Image12-case6/gm_final.nc"
-#params['p_wm_path'] = tumor_dir + "/results/Image12-case6/wm_final.nc"
-#params['p_csf_path'] = tumor_dir + "/results/Image12-case6/vt_final.nc"
-#params['p_glm_path'] = tumor_dir + "/results/Image12-case6/csf_final.nc"
+#params['p_gm_path'] = tumor_dir + "/results/t16-case6/gm_final.nc"
+#params['p_wm_path'] = tumor_dir + "/results/t16-case6/wm_final.nc"
+#params['p_csf_path'] = tumor_dir + "/results/t16-case6/vt_final.nc"
+#params['p_glm_path'] = tumor_dir + "/results/t16-case6/csf_final.nc"
 #### data to MRI of atlas ~ if needed
-#params['mri_path'] = tumor_dir + "/brain_data/Image12/t1.nc"
+#params['mri_path'] = tumor_dir + "/brain_data/t16/t1.nc"
 
 if params['compute_sys'] == 'rebels':
     queue = 'rebels'

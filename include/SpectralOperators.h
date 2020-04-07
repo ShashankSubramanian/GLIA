@@ -35,5 +35,10 @@ class SpectralOperators {
 		~SpectralOperators ();
 };
 
+void initSpecOpsCudaConstants(int *n, int *istart, int *ostart);
+void multiplyXWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
+void multiplyYWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
+void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
+void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz);
 
 #endif

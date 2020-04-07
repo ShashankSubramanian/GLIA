@@ -13,6 +13,7 @@ ElasticitySolver::ElasticitySolver (std::shared_ptr<NMisc> n_misc, std::shared_p
         cudaMalloc ((void**)&ctx_->ux_hat_, n_misc->accfft_alloc_max_);
         cudaMalloc ((void**)&ctx_->uy_hat_, n_misc->accfft_alloc_max_);
         cudaMalloc ((void**)&ctx_->uz_hat_, n_misc->accfft_alloc_max_);
+        initElasticityCudaConstants(n_misc->n_, n_misc->ostart_);
     #else
         ctx_->fx_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);
         ctx_->fy_hat_ = (ComplexType*) accfft_alloc (n_misc->accfft_alloc_max_);

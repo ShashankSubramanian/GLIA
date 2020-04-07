@@ -109,45 +109,15 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
   return 0;
 }
 
+void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
 void vecMaxCuda (ScalarType *x, int *loc, ScalarType *val, int sz);
-
+void vecSumCuda(ScalarType *f, ScalarType *sum, int64_t sz);
 void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz);
-void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType sigma, int *sz);
 void hadamardComplexProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz);
 void hadamardComplexProductCuda (CudaComplexType *y, ScalarType *x, int *sz);
-void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz);
-void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, 
-                              CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
-void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
-void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int64_t sz, int linearized);
-void multiplyXWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
-void multiplyYWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
-void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz);
-void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz);
-void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr,
-                                       ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *sz);
-void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz);
 void setCoordsCuda (ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int *sz);
-void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt, int64_t sz);
-void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz);
-void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres, int64_t sz);
-void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz);
-void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
-            ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption, int64_t sz);
-void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz);
-void computeTumorLameCuda (ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *c_ptr, ScalarType mu_tumor, ScalarType lam_tumor, int64_t sz);
 void clipVectorCuda (ScalarType *x_ptr, int64_t sz);
-void initializeGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
-void truncateGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
 void clipVectorAboveCuda (ScalarType *x_ptr, int64_t sz);
-void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, int64_t sz);
-void computeTumorSegmentationCuda (ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr, int64_t sz);
-
-void computeCrossEntropyCuda(ScalarType *ce_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz);
-void computeCrossEntropyAdjointICCuda(ScalarType *a_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz);
-
-
-void vecSumCuda(ScalarType *f, ScalarType *sum, int64_t sz);
 void copyDoubleToFloatCuda (float *dst, double *src, int64_t sz);
 void copyFloatToDoubleCuda (double *dst, float *src, int64_t sz);
 #endif

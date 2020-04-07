@@ -47,5 +47,9 @@ class Phi {
 		~Phi ();
 };
 
+//Cuda helpers
+void initPhiCudaConstants(int *n, int *istart);
+void initializeGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
+void truncateGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int* sz);
 
 #endif

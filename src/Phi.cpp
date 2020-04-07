@@ -27,6 +27,10 @@ Phi::Phi (std::shared_ptr<NMisc> n_misc,  std::shared_ptr<SpectralOperators> spe
     labels_ = nullptr;
     // by default one component
     component_weights_.push_back (1.);
+
+    #ifdef CUDA
+        initPhiCudaConstants(n_misc->n_, n_misc->istart_);
+    #endif
 }
 
 PetscErrorCode Phi::setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType sigma, ScalarType spacing_factor, int np) {

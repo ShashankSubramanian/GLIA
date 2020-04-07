@@ -28,6 +28,9 @@ void SpectralOperators::setup (int *n, int *isize, int *istart, int *osize, int 
 
         // define constants for the gpu
         initCudaConstants (isize, osize, istart, ostart, n);
+        // spec-ops
+        initSpecOpsCudaConstants(n, istart, ostart);
+        
     #else
         d1_ptr_ = (ScalarType*) accfft_alloc (alloc_max_);
         x_hat_ = (ComplexType*) accfft_alloc (alloc_max_);

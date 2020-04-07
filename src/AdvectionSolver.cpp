@@ -12,6 +12,9 @@ AdvectionSolver::AdvectionSolver (std::shared_ptr<NMisc> n_misc, std::shared_ptr
     ctx_->temp_.resize (3);
     for (int i = 0; i < 3; i++)
     	ctx_->temp_[i] = tumor->work_[11 - i]; 	// Choose some tumor work vector
+    #ifdef CUDA
+        initAdvectionCudaConstants(n_misc->n_, n_misc->istart_, n_misc->ostart_);
+    #endif
 
     ctx_->velocity_ = tumor->velocity_;
     advection_mode_ = 1;    // 1 -- mass conservation

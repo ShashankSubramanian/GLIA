@@ -65,9 +65,9 @@ PetscErrorCode ReacCoef::setValues (ScalarType rho_scale, ScalarType r_gm_wm_rat
     if (smooth_flag_)
         this->smooth (n_misc);
 
-    if (n_misc->writeOutput_) {
-        dataOut (rho_vec_, n_misc, "rho.nc");
-    }
+//    if (n_misc->writeOutput_) {
+//        dataOut (rho_vec_, n_misc, "rho.nc");
+//    }
 
     PetscFunctionReturn (ierr);
 }

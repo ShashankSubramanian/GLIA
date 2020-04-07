@@ -137,4 +137,13 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
 		}
 };
 
+// Cuda helpers
+void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *sum_ptr, ScalarType *scale_gm_ptr, ScalarType *scale_wm_ptr, ScalarType dt, int64_t sz);
+void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz);
+void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres, int64_t sz);
+void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz);
+void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr, ScalarType *m_ptr, ScalarType *al_ptr, ScalarType *bet_ptr, ScalarType *h_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *ox_ptr,
+            ScalarType * di_ptr, ScalarType dt, ScalarType death_rate, ScalarType ox_source, ScalarType ox_consumption, int64_t sz);
+void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int64_t sz, int linearized);
+void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, int64_t sz);
 #endif

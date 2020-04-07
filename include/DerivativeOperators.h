@@ -210,4 +210,7 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
 };
 
 
+// Cuda helpers
+void computeCrossEntropyCuda(ScalarType *ce_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz);
+void computeCrossEntropyAdjointICCuda(ScalarType *a_ptr, ScalarType *d_ptr, ScalarType *c_ptr, ScalarType eps, int64_t sz);
 #endif

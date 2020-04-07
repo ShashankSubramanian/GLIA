@@ -64,7 +64,7 @@ vars.Add(PathVariable("builddir", "Directory holding build files.", "build", Pat
 vars.Add(EnumVariable('build', 'Build type, either release or debug', "debug", allowed_values=('release', 'debug')))
 vars.Add("compiler", "Compiler to use.", "mpicxx")
 vars.Add("platform", "Specify platform.", "local")
-vars.Add(BoolVariable("use_nii", "enable/disable nifti.", False))
+vars.Add(BoolVariable("niftiio", "enable/disable nifti.", False))
 vars.Add(BoolVariable("gpu", "Enables build for GPU support.", False))
 vars.Add(BoolVariable("multi_gpu", "Enables build for multi-GPU support.", False))
 vars.Add(BoolVariable("single_precision", "Enables single precision computation.", False))
@@ -165,11 +165,8 @@ if env["single_precision"] == True:
 if env["multi_gpu"] == True:
     env.Append(CCFLAGS = ['-DMPICUDA'])
 
-# enforce positivity in diffusion inversion for ks
-# env.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
-
-# print centers of phi's to file
-# env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
+if env["niftiio"] == True:
+    env.Append(CCFLAGS = ['-DNIFTIIO'])
 
 # avx
 if env["platform"] != "frontera":
@@ -207,8 +204,21 @@ PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
 env.Append(CPPPATH = [os.path.join( PNETCDF_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( PNETCDF_DIR, "lib")])
 uniqueCheckLib(conf, "pnetcdf")
-# registration with pnetcdf
-env.Append(CPPDEFINES = ['-DREG_HAS_PNETCDF'])
+
+# ====== NIFTI ======
+if env["niftiio"] == True:
+    NIFTI_DIR = checkset_var("NIFTI_DIR", "")
+    env.Append(CPPPATH = [os.path.join( NIFTI_DIR, "include/nifti")])
+    env.Append(LIBPATH = [os.path.join( NIFTI_DIR, "lib")])
+    uniqueCheckLib(conf, "niftiio")
+    uniqueCheckLib(conf, "nifticdf")
+    uniqueCheckLib(conf, "znz")
+
+    # ====== ZLIB ======
+    ZLIB_DIR = checkset_var("ZLIB_DIR", "")
+    env.Append(CPPPATH = [os.path.join( ZLIB_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( ZLIB_DIR, "lib")])
+    uniqueCheckLib(conf, "libz")
 
 # ====== FFTW =========
 FFTW_DIR = checkset_var("FFTW_DIR", "")

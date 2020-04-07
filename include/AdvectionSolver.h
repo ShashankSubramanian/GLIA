@@ -108,4 +108,8 @@ PetscErrorCode operatorAdvEuler (Mat A, Vec x, Vec y);
 PetscErrorCode operatorCreateVecsEuler (Mat A, Vec *left, Vec *right);
 PetscErrorCode advSolverKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr);
 
+// Cuda helper functions
+void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz);
+void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *sz);
+void initAdvectionCudaConstants(int *n, int *istart, int *ostart);
 #endif

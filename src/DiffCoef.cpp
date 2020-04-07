@@ -20,6 +20,7 @@ DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOpera
     // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
     temp_ = new Vec[8];
     #ifdef CUDA 
+      initDiffCoefCudaConstants(n_misc->n_, n_misc->ostart_);
       cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
       cudaMalloc ((void**) &work_cuda_, 7 * sizeof(ScalarType));
     #else 
@@ -145,9 +146,9 @@ PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio
         ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
     }
 
-    if (n_misc->writeOutput_) {
-        dataOut (kxx_, n_misc, "kxx.nc");
-    }
+//    if (n_misc->writeOutput_) {
+//        dataOut (kxx_, n_misc, "kxx.nc");
+//    }
 
     //Average diff coeff values for preconditioner for diffusion solve
     ierr = VecSum (kxx_, &kxx_avg_);                             CHKERRQ (ierr);
