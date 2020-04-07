@@ -108,6 +108,7 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
       p->opt_->diffusivity_inversion_ = true;
       p->opt_->reaction_inversion = true;
       p->opt_->pre_reacdiff_solve = true;
+      return;
     }
     if(value == "nonsparse_til") {
       run_mode = IINVERSE_L2;
@@ -115,76 +116,81 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
       p->opt_->diffusivity_inversion_ = true;
       p->opt_->reaction_inversion = false;
       p->opt_->pre_reacdiff_solve = false;
+      return;
     }
     if(value == "reaction_diffusion") {
       run_mode = INVERSE_RD;
       p->opt_->diffusivity_inversion_ = true;
       p->opt_->reaction_inversion = true;
+      return;
     }
     if(value == "mass_effec") {
       run_mode = INVERSE_ME;
       p->opt_->invert_mass_effect_ = true;
+      return;
     }
     if(value == "multi_species") {
       run_mode = INVERSE_MS;
+      return;
     }
     if(value == "forward") {
       run_mode = FORWARD;
       p->time_history_off_ = true;
+      return;
     }
 
     // parse all other parameters
     // ### inversion scheme
-    if (value == "invert_diff") {p->opt_->diffusivity_inversion_ = std::stoi(value) > 0;}
-    if (value == "invert_reac") {p->opt_->reaction_inversion_ = std::stoi(value) > 0;}
-    if (value == "multilevel") {p->tu_->multilevel_ = std::stoi(value) > 0;}
-    if (value == "inject_solution") {a->inject_solution_ = std::stoi(value) > 0;}
-    if (value == "pre_reacdiff_solve") {p->opt_->pre_reacdiff_solve_ = std::stoi(value) > 0;}
-    if (value == "verbosity") {p->tu_->verbosity_ = std::stoi(value);}
+    if (value == "invert_diff") {p->opt_->diffusivity_inversion_ = std::stoi(value) > 0; return;}
+    if (value == "invert_reac") {p->opt_->reaction_inversion_ = std::stoi(value) > 0; return;}
+    if (value == "multilevel") {p->tu_->multilevel_ = std::stoi(value) > 0; return;}
+    if (value == "inject_solution") {a->inject_solution_ = std::stoi(value) > 0; return;}
+    if (value == "pre_reacdiff_solve") {p->opt_->pre_reacdiff_solve_ = std::stoi(value) > 0; return;}
+    if (value == "verbosity") {p->tu_->verbosity_ = std::stoi(value); return;}
     // ### optimizer
-    if (value == "newton_solver") {p->opt_->newton_solver_ = (value == "GN") ? 0 : 1;}
-    if (value == "line_search") {p->opt_->linesearch_ = (value == "armijo") ? 0 : 1;}
-    if (value == "ce_loss") {p->opt_->cross_entropy_loss_ = std::stoi(value) > 0;}
-    if (value == "regularization") {p->tu_->regularization_norm_ = (value == "L1") ? 0 : 1;}
-    if (value == "beta_p") {p->tu_->beta_ = std::stod(value);}
-    if (value == "opttol_grad") {p->opt_->opttolgrad_ = std::stod(value);}
-    if (value == "newton_maxit") {p->opt_->newton_maxit_ = std::stoi(value);}
-    if (value == "krylov_maxit") {p->opt_->krylov_maxit_ = std::stoi(value);}
-    if (value == "gist_maxit") {p->opt_->gist_maxit_ = std::stoi(value);}
-    if (value == "kappa_lb") {p->opt_->k_lb_ = std::stod(value);}
-    if (value == "kappa_ub") {p->opt_->k_ub_ = std::stod(value);}
-    if (value == "rho_lb") {p->opt_->rho_lb_ = std::stod(value);}
-    if (value == "rho_ub") {p->opt_->rho_ub_ = std::stod(value);}
-    if (value == "gamma_ub_") {p->opt_->gamma_ub_ = std::stod(value);}
-    if (value == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value);}
-    if (value == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type = value;}
-    if (value == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist = std::stoi(value);}
-    if (value == "ls_max_func_evals") {p->opt_->ls_max_func_evals = std::stoi(value);}
+    if (value == "newton_solver") {p->opt_->newton_solver_ = (value == "GN") ? 0 : 1; return;}
+    if (value == "line_search") {p->opt_->linesearch_ = (value == "armijo") ? 0 : 1; return;}
+    if (value == "ce_loss") {p->opt_->cross_entropy_loss_ = std::stoi(value) > 0; return;}
+    if (value == "regularization") {p->tu_->regularization_norm_ = (value == "L1") ? 0 : 1; return;}
+    if (value == "beta_p") {p->tu_->beta_ = std::stod(value); return;}
+    if (value == "opttol_grad") {p->opt_->opttolgrad_ = std::stod(value); return;}
+    if (value == "newton_maxit") {p->opt_->newton_maxit_ = std::stoi(value); return;}
+    if (value == "krylov_maxit") {p->opt_->krylov_maxit_ = std::stoi(value); return;}
+    if (value == "gist_maxit") {p->opt_->gist_maxit_ = std::stoi(value); return;}
+    if (value == "kappa_lb") {p->opt_->k_lb_ = std::stod(value); return;}
+    if (value == "kappa_ub") {p->opt_->k_ub_ = std::stod(value); return;}
+    if (value == "rho_lb") {p->opt_->rho_lb_ = std::stod(value); return;}
+    if (value == "rho_ub") {p->opt_->rho_ub_ = std::stod(value); return;}
+    if (value == "gamma_ub_") {p->opt_->gamma_ub_ = std::stod(value); return;}
+    if (value == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value); return;}
+    if (value == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type = value; return;}
+    if (value == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist = std::stoi(value); return;}
+    if (value == "ls_max_func_evals") {p->opt_->ls_max_func_evals = std::stoi(value); return;}
     // ### forward solver
-    if (value == "model") {p->tu_->model_ = std::stoi(value);}
-    if (value == "init_rho") {p->tu_->rho_ = std::stod(value);}
-    if (value == "init_k") {p->tu_->k_ = std::stod(value);}
-    if (value == "init_gamma") {p->tu_->forcing_factor_ = std::stod(value);}
-    if (value == "nt_inv") {p->tu_->nt_ = std::stoi(value);}
-    if (value == "dt_inv") {p->tu_->dt_ = std::stod(value);}
-    if (value == "k_gm_wm") {p->tu_->k_gm_wm_ratio_ = std::stod(value);}
-    if (value == "r_gm_wm") {p->tu_->r_gm_wm_ratio_ = std::stod(value);}
+    if (value == "model") {p->tu_->model_ = std::stoi(value); return;}
+    if (value == "init_rho") {p->tu_->rho_ = std::stod(value); return;}
+    if (value == "init_k") {p->tu_->k_ = std::stod(value); return;}
+    if (value == "init_gamma") {p->tu_->forcing_factor_ = std::stod(value); return;}
+    if (value == "nt_inv") {p->tu_->nt_ = std::stoi(value); return;}
+    if (value == "dt_inv") {p->tu_->dt_ = std::stod(value); return;}
+    if (value == "k_gm_wm") {p->tu_->k_gm_wm_ratio_ = std::stod(value); return;}
+    if (value == "r_gm_wm") {p->tu_->r_gm_wm_ratio_ = std::stod(value); return;}
     // ### data
-    if (value == "smoothing_factor") {p->tu_->smoothing_factor_ = std::stod(value);}
-    if (value == "smoothing_factor_data") {p->tu_->smoothing_factor_data_ = std::stod(value);}
-    if (value == "obs_threshold_1") {p->tu_->obs_threshold_1_ = std::stod(value);}
-    if (value == "obs_threshold_0") {p->tu_->obs_threshold_0_ = std::stod(value);}
-    if (value == "obs_threshold_rel") {p->tu_->relative_obs_threshold_ = std::stoi(value) > 0;}
+    if (value == "smoothing_factor") {p->tu_->smoothing_factor_ = std::stod(value); return;}
+    if (value == "smoothing_factor_data") {p->tu_->smoothing_factor_data_ = std::stod(value); return;}
+    if (value == "obs_threshold_1") {p->tu_->obs_threshold_1_ = std::stod(value); return;}
+    if (value == "obs_threshold_0") {p->tu_->obs_threshold_0_ = std::stod(value); return;}
+    if (value == "obs_threshold_rel") {p->tu_->relative_obs_threshold_ = std::stoi(value) > 0; return;}
     // ### initial condition
-    if (value == "sparsity_level") {p->tu_->sparsity_level_ = std::stoi(value);}
-    if (value == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value);}
-    if (value == "number_gaussians") {p->tu_->np_ = std::stoi(value);}
-    if (value == "sigma_factor") {p->tu_->phi_sigma_ = std::stod(value); p->tu_->phi_sigma_data_driven_ = std::stod(value);}
-    if (value == "sigma_spacing") {p->tu_->phi_spacing_factor_ = std::stod(value);}
-    if (value == "threshold_data_driven") {p->tu_->data_threshold_ = std::stod(value);}
-    if (value == "gaussian_volume_fraction") {p->tu_->gaussian_vol_frac_ = std::stod(value);}
+    if (value == "sparsity_level") {p->tu_->sparsity_level_ = std::stoi(value); return;}
+    if (value == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value); return;}
+    if (value == "number_gaussians") {p->tu_->np_ = std::stoi(value); return;}
+    if (value == "sigma_factor") {p->tu_->phi_sigma_ = std::stod(value); p->tu_->phi_sigma_data_driven_ = std::stod(value); return;}
+    if (value == "sigma_spacing") {p->tu_->phi_spacing_factor_ = std::stod(value); return;}
+    if (value == "threshold_data_driven") {p->tu_->data_threshold_ = std::stod(value); return;}
+    if (value == "gaussian_volume_fraction") {p->tu_->gaussian_vol_frac_ = std::stod(value); return;}
     // ### prediction
-    if (value == "prediction") {a->pred_->enabled_ = std::stoi(value) > 0;}
+    if (value == "prediction") {a->pred_->enabled_ = std::stoi(value) > 0; return;}
     if (value == "pred_times") {
       std::string v = value.substr(line.find("[")+1);
       value = v.substr(0, line.find("]"));
@@ -196,43 +202,44 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
         comma_pos = value.find(",");
       }
       a->pred_->t_pred_.push_back(std::stod(value));
+       return;
     }
-    if (value == "dt_pred") {a->pred_->dt_ = std::stod(value);}
+    if (value == "dt_pred") {a->pred_->dt_ = std::stod(value); return;}
     // ### synthetic data
-    if (value == "syn_flag") {a->syn_->enabled_ = std::stoi(value) > 0;}
+    if (value == "syn_flag") {a->syn_->enabled_ = std::stoi(value) > 0; return;}
     // TODO(K) user CMs
-    if (value == "rho_data") {a->syn_->rho_ = std::stod(value);}
-    if (value == "k_data") {a->syn_->k_ = std::stod(value);}
-    if (value == "gamma_data") {a->syn_->forcing_factor_ = std::stod(value);}
-    if (value == "nt_data") {a->syn_->nt_ = std::stoi(value);}
-    if (value == "dt_data") {a->syn_->dt_ = std::stod(value);}
-    if (value == "testcase") {a->syn_->testcase_ = std::stod(value);}
+    if (value == "rho_data") {a->syn_->rho_ = std::stod(value); return;}
+    if (value == "k_data") {a->syn_->k_ = std::stod(value); return;}
+    if (value == "gamma_data") {a->syn_->forcing_factor_ = std::stod(value); return;}
+    if (value == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
+    if (value == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
+    if (value == "testcase") {a->syn_->testcase_ = std::stod(value); return;}
     // ### paths
-    if (value == "output_dir") {p->writepath_ = value;}
-    if (value == "d1_path") {a->path_->data_t1_ = value;}
-    if (value == "d0_path") {a->path_->data_t0_ = value;}
-    if (value == "a_seg_path") {a->path_->seg_ = value;}
-    if (value == "a_wm_path") {a->path_->wm_ = value;}
-    if (value == "a_gm_path") {a->path_->gm_ = value;}
-    if (value == "a_csf_path") {a->path_->csf_ = value;}
-    if (value == "a_glm_path") {a->path_->glm_ = value;}
-    if (value == "a_ve_path") {a->path_->ve_ = value;}
-    if (value == "p_seg_path") {a->path_->p_seg_ = value;}
-    if (value == "p_wm_path") {a->path_->p_wm_ = value;}
-    if (value == "p_gm_path") {a->path_->p_gm_ = value;}
-    if (value == "p_csf_path") {a->path_->p_csf_ = value;}
-    if (value == "p_glm_path") {a->path_->p_glm_ = value;}
-    if (value == "p_ve_path") {a->path_->p_ve_ = value;}
-    if (value == "mri_path") {a->path_->mri_ = value;}
-    if (value == "obs_mask_path") {a->path_->obs_filter_ = value;}
-    if (value == "support_data_path") {a->path_->data_support_ = value;} // TODO(K) .nc vs. dat.
-    if (value == "gaussian_cm_path") {a->path_->phi_ = value;}
-    if (value == "pvec_path") {a->path_->pvec_ = value;}
-    if (value == "data_comp_path") {a->path_->data_comps_ = value;}
-    if (value == "data_comp_data_path") {a->path_->data_comps_data_ = value;}
-    if (value == "velocity_x1") {a->path_->velocity_x1_ = value;}
-    if (value == "velocity_x2") {a->path_->velocity_x2_ = value;}
-    if (value == "velocity_x3") {a->path_->velocity_x3_ = value;}
+    if (value == "output_dir") {p->writepath_ = value; return;}
+    if (value == "d1_path") {a->path_->data_t1_ = value; return;}
+    if (value == "d0_path") {a->path_->data_t0_ = value; return;}
+    if (value == "a_seg_path") {a->path_->seg_ = value; return;}
+    if (value == "a_wm_path") {a->path_->wm_ = value; return;}
+    if (value == "a_gm_path") {a->path_->gm_ = value; return;}
+    if (value == "a_csf_path") {a->path_->csf_ = value; return;}
+    if (value == "a_glm_path") {a->path_->glm_ = value; return;}
+    if (value == "a_ve_path") {a->path_->ve_ = value; return;}
+    if (value == "p_seg_path") {a->path_->p_seg_ = value; return;}
+    if (value == "p_wm_path") {a->path_->p_wm_ = value; return;}
+    if (value == "p_gm_path") {a->path_->p_gm_ = value; return;}
+    if (value == "p_csf_path") {a->path_->p_csf_ = value; return;}
+    if (value == "p_glm_path") {a->path_->p_glm_ = value; return;}
+    if (value == "p_ve_path") {a->path_->p_ve_ = value; return;}
+    if (value == "mri_path") {a->path_->mri_ = value; return;}
+    if (value == "obs_mask_path") {a->path_->obs_filter_ = value; return;}
+    if (value == "support_data_path") {a->path_->data_support_ = value; return;} // TODO(K) .nc vs. dat.
+    if (value == "gaussian_cm_path") {a->path_->phi_ = value; return;}
+    if (value == "pvec_path") {a->path_->pvec_ = value; return;}
+    if (value == "data_comp_path") {a->path_->data_comps_ = value; return;}
+    if (value == "data_comp_data_path") {a->path_->data_comps_data_ = value; return;}
+    if (value == "velocity_x1") {a->path_->velocity_x1_ = value; return;}
+    if (value == "velocity_x2") {a->path_->velocity_x2_ = value; return;}
+    if (value == "velocity_x3") {a->path_->velocity_x3_ = value; return;}
   }
 }
 
