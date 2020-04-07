@@ -38,3 +38,7 @@
 
 ### IO.h/IO.cpp
 - change dataOut to take params_ as argument and std::string instead of char*
+
+---
+### PdeOperators
+- change forward_flag to time_history_off_

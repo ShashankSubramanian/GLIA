@@ -76,7 +76,7 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params) {
   warmstart_p_ = !params_->path_->pvec_.empty();
   custom_obs_ = !params_->path_->obs_filter_.empty();
   synthetic_ = params_->syn_flag_;
-  has_dt0_ = params_->two_time_points_ || !params_->path_->data_t0_.empty();
+  has_dt0_ = params_->tu_->two_time_points_ || !params_->path_->data_t0_.empty();
 
   // === error handling for some configuration inconsistencies
   if (warmstart_p_  && params_->path_->phi_.empty()) {
@@ -109,11 +109,11 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params) {
 
   // === read data: generate synthetic or read real
   if(synthetic_) {
-    int fwd_temp = params_->forward_flag_; // temporarily disable time_history
+    int fwd_temp = params_->tu_->tu_->time_history_off_; // temporarily disable time_history
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
     ierr = generateSyntheticData(); CHKERRQ(ierr);
     data_support_ = data_t1_;
-    params_->forward_flag_ = fwd_temp; // restore mode, i.e., allow inverse solver to store time_history
+    params_->tu_->tu_->time_history_off_ = fwd_temp; // restore mode, i.e., allow inverse solver to store time_history
   } else {
     // read in target data (t1 and/or t0); observation operator
     ierr = readData(); CHKERRQ(ierr);
@@ -124,8 +124,8 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params) {
     ierr = tumor_->obs_->setCustomFilter (obs_filter_, 1);
     ss << " Setting custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   } else {
-    ierr = tumor_->obs_->setDefaultFilter (data_t1_, 1, params_->obs_threshold_1_); CHKERRQ(ierr);
-    if(has_dt0_) {ierr = tumor_->obs_->setDefaultFilter (data_t0_, 0, params_->obs_threshold_0_); CHKERRQ(ierr);}
+    ierr = tumor_->obs_->setDefaultFilter (data_t1_, 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    if(has_dt0_) {ierr = tumor_->obs_->setDefaultFilter (data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);}
     ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
@@ -152,7 +152,7 @@ PetscErrorCode Solver::run() {
   std::stringstream ss;
 
   ss << " Inversion with tumor parameters: rho = " << params_->tu_->rho_ << " k = " << params_->tu_->k_ << " dt = " << params_->tu_->dt_ << " Nt = " << params_->tu_->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  ss << " Results in: " << params_->path_->writepath_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ss << " Results in: " << params_->tu_->writepath_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   PetscFunctionReturn(ierr);
 }
@@ -178,7 +178,7 @@ PetscErrorCode Solver::finalize() {
       ss << " k3: " << (params_->tu_->nk_ > 2 ? prec_ptr[params_->tu_->np_ + 2] : 0); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
       ierr = VecRestoreArray(p_rec_, &prec_ptr); CHKERRQ (ierr);
   }
-  params_->aux_->transport_mri_ = !params_->path_->mri_.empty()
+  params_->tu_->transport_mri_ = !params_->path_->mri_.empty()
 
   ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);
   // === segmentation
@@ -191,11 +191,11 @@ PetscErrorCode Solver::finalize() {
   #ifdef POSITIVITY
       ierr = enforcePositivity (tumor_->c_0_, n_misc);
   #endif
-  if (params_->write_output_) {
-      dataOut(tumor_->c_0_, params_, "c0_rec" + params_->path_->ext_);
+  if (params_->tu_->write_output_) {
+      dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_);
   }
 
-  if(params_->aux_->transport_mri_) {
+  if(params_->tu_->transport_mri_) {
     if (mri_ == nullptr) {
       ierr = VecDuplicate (tmp_, &mri_); CHKERRQ (ierr);
       ierr = dataIn (mri_, params_, params_->path_->mri_); CHKERRQ (ierr);
@@ -208,8 +208,8 @@ PetscErrorCode Solver::finalize() {
   ierr = VecMax(tmp_, NULL, &max); CHKERRQ (ierr);
   ierr = VecMin(tmp_, NULL, &min); CHKERRQ (ierr);
   ss << " Reconstructed c(1) max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  if (params_->write_output_)
-      dataOut (tmp_, params_, "c1_rec" + params_->path_->ext_);
+  if (params_->tu_->write_output_)
+      dataOut (tmp_, params_, "c1_rec" + params_->tu_->ext_);
 
   // copy c(1)
   ScalarType data_norm, error_norm, error_norm_0;
@@ -248,7 +248,7 @@ PetscErrorCode Solver::finalize() {
   // write file
   if (procid == 0) {
     std::ofstream opfile;
-    opfile.open (params_->path_->writepath_ + "reconstruction_info.dat");
+    opfile.open (params_->tu_->writepath_ + "reconstruction_info.dat");
     opfile << "rho k c1_rel c0_rel \n";
     opfile << params_->tu_->rho_ << " " <<  params_->tu_->k_ << " " << error_norm << " "
            << error_norm_0 << std::endl;
@@ -276,11 +276,11 @@ PetscErrorCode Solver::predict() {
 
   if(params_->pred_->enabled_) {
     ss << " Predicting future tumor growth..."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    if(params_->time_history_off_) {
+    if(tu_->time_history_off_) {
       params_->tu_->dt_ = params_->pred_->dt_;
       // set c(0)
-      if (params_->use_c0_) {ierr = VecCopy(data_t0, tumor_->c_0_); CHKERRQ(ierr);}
-      else                  {ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);}
+      if (params_->tu_->use_c0_) {ierr = VecCopy(data_t0, tumor_->c_0_); CHKERRQ(ierr);}
+      else                       {ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);}
 
       // predict tumor growth at different (user defined) times
       for(int i = 0; i < params_->pred_->t_pred_.size(); ++i) {
@@ -299,7 +299,7 @@ PetscErrorCode Solver::predict() {
         }
         ierr = solver_interface_->getPdeOperators()->solveState (0); CHKERRQ(ierr); // forward solve
         ss << "c_pred_at_[t=" << params_->pred_->t_pred_[i] <<"]";
-        dataOut (tumor_->c_t_, params_, ss.str()+params_->path_->ext_); ss.str(""); ss.clear();
+        dataOut (tumor_->c_t_, params_, ss.str()+params_->tu_->ext_); ss.str(""); ss.clear();
         ss << " .. prediction complete for t = "<<params_->pred_->t_pred_[i]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         // if given: compute error to ground truth at predicted time
@@ -313,7 +313,7 @@ PetscErrorCode Solver::predict() {
           ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ (ierr);
           ierr = VecAXPY(tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
           ss << "res_at_[t=" << params_->pred_->t_pred_[i] <<"]";
-          dataOut(tmp_, params_, ss.str()+params_->path_->ext_); ss.str(""); ss.clear();
+          dataOut(tmp_, params_, ss.str()+params_->tu_->ext_); ss.str(""); ss.clear();
           ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
           obs_c_norm /= data_norm;
           ss << " .. rel. l2-error (everywhere) (T=" << params_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -324,7 +324,7 @@ PetscErrorCode Solver::predict() {
           ierr = VecNorm (true_dat_t1, NORM_2, &obs_data_norm); CHKERRQ (ierr);
           ierr = VecAXPY (tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
           ss << "res_obs_at_[t=" << params_->pred_->t_pred_[i] <<"]";
-          dataOut (tmp_, params_, ss.str()+params_->path_->ext_); ss.str(""); ss.clear();
+          dataOut (tmp_, params_, ss.str()+params_->tu_->ext_); ss.str(""); ss.clear();
           ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
           obs_c_norm /= obs_data_norm;
           ss << " .. rel. l2-error (at observation points) (T=" << params_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -366,7 +366,7 @@ PetscErrorCode Solver::readAtlas() {
     }
   }
   // mass effect
-  if(!params_->path_->glm_.empty() && params_->model_ >= 4) {
+  if(!params_->path_->glm_.empty() && params_->tu_->model >= 4) {
       ierr = VecDuplicate(tmp_, &glm_); CHKERRQ (ierr);
       dataIn (glm_, params_, params_->path_->glm_);
   }
@@ -388,21 +388,21 @@ PetscErrorCode Solver::readData() {
 
   std::stringstream ss;
   ScalarType sigma_smooth = params_->smoothing_factor_ * 2 * M_PI / params_->grid_->n_[0];
-  ScalarType sig_data = params_->smooth_fac_data_ * 2 * M_PI / params->grid->n_[0];
+  ScalarType sig_data = params_->tu_->smoothing_factor_data_ * 2 * M_PI / params->grid->n_[0];
   ScalarType min, max;
 
   if(!params_->path_->data_t1_.empty()) {
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ (ierr);
     dataIn (data_t1_, params_, params_->path_->data_t1_);
-    if(params_->smooth_fac_data_ > 0) {
+    if(params_->tu_->smoothing_factor_data_ > 0) {
       ierr = spec_ops->weierstrassSmoother (data_t1_, data_t1_, params_, sig_data); CHKERRQ (ierr);
-      ss << " smoothing c(1) with factor: "<<params_->smooth_fac_data_<<", and sigma: "<<sig_data; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      ss << " smoothing c(1) with factor: "<<params_->tu_->smoothing_factor_data_<<", and sigma: "<<sig_data; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
     // make obs threshold relaltive
-    if(params_->relative_obs_threshold_) {
+    if(params_->tu_->relative_obs_threshold_) {
       ierr = VecMax (data_t1_, NULL, &max); CHKERRQ (ierr);
-      params_->obs_threshold_1_ *= max;
-      ss << " Changing observation threshold for d_1 to thr_1: "<<params_->obs_threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      params_->tu_->obs_threshold_1_ *= max;
+      ss << " Changing observation threshold for d_1 to thr_1: "<<params_->tu_->obs_threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
   }
   bool read_supp;
@@ -445,9 +445,9 @@ PetscErrorCode Solver::readData() {
     }
     // smooth a little bit because sometimes registration outputs have high gradients
     if(data_t0_ != nullptr) {
-      if(params_->smooth_fac_data_ > 0) {
+      if(params_->tu_->smoothing_factor_data_ > 0) {
         ierr = spec_ops->weierstrassSmoother (data_t0_, data_t0_, params_, sig_data); CHKERRQ (ierr);
-        ss << " smoothing c(1) with factor: "<<params_->smooth_fac_data_<<", and sigma: "<<sig_data; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << " smoothing c(1) with factor: "<<params_->tu_->smoothing_factor_data_<<", and sigma: "<<sig_data; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
       }
     }
     ierr = VecMax (data_t0_, NULL, &max); CHKERRQ (ierr);
@@ -455,9 +455,9 @@ PetscErrorCode Solver::readData() {
     ierr = dataOut (data_t0_, params, "c0True.nc"); CHKERRQ (ierr);
 
     // make obs threshold relaltive
-    if(params_->relative_obs_threshold_) {
-      params_->obs_threshold_0_ *= max;
-      ss << " Changing observation threshold for d_0 to thr_0: "<<params_->obs_threshold_0_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    if(params_->tu_->relative_obs_threshold_) {
+      params_->tu_->obs_threshold_0_ *= max;
+      ss << " Changing observation threshold for d_0 to thr_0: "<<params_->tu_->obs_threshold_0_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     }
   } else {
       ierr = VecSet(data_t0_, 0.);        CHKERRQ (ierr);
@@ -550,7 +550,7 @@ PetscErrorCode Solver::createSynthetic() {
     ierr = tumor_->phi_->apply (tmp_, tumor_->p_true_); CHKERRQ (ierr);
     ierr = VecAXPY (data_t0_, 1.0, tmp_); CHKERRQ (ierr);
     ss << "p-syn-sm"<<count;
-    writeCheckpoint(tumor_->p_true_, tumor_->phi_, params_->path_->writepath_, ss.str()); ss.str(""); ss.clear();
+    writeCheckpoint(tumor_->p_true_, tumor_->phi_, params_->tu_->writepath_, ss.str()); ss.str(""); ss.clear();
   }
 
   ScalarType max, min;
@@ -560,14 +560,14 @@ PetscErrorCode Solver::createSynthetic() {
   #ifdef POSITIVITY
       ierr = enforcePositivity (data_t0_, params_);
   #endif
-  if (params_->write_output_) {
+  if (params_->tu_->write_output_) {
       ierr = dataOut(data_t0_, n_misc, "c0_true_syn.nc"); CHKERRQ (ierr);
   }
   ierr = VecMax(data_t0_, NULL, &max); CHKERRQ (ierr);
   ierr = VecMin(data_t0_, NULL, &min); CHKERRQ (ierr);
   ss << " Synthetic data c(0) max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
-  if (params_->model_ == 5) {
+  if (params_->tu_->model == 5) {
       std::map<std::string, Vec> species;
       ierr = solver_interface_->solveForward (data_t1_, data_t0_, &species); CHKERRQ (ierr);
   } else {
@@ -576,7 +576,7 @@ PetscErrorCode Solver::createSynthetic() {
   ierr = VecMax(data_t1_, NULL, &max); CHKERRQ (ierr);
   ierr = VecMin(data_t1_, NULL, &min); CHKERRQ (ierr);
   ss << " Synthetic data c(1) max and min (before observation) : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  if (params_->write_output_) {
+  if (params_->tu_->write_output_) {
     dataOut (c_t, n_misc, "c1_true_syn_before_observation.nc");
   }
 
@@ -596,13 +596,13 @@ PetscErrorCode Solver::createSynthetic() {
   //     rel_noise_err_norm = noise_err_norm / rel_noise_err_norm;
   //     ss << " low frequency relative error = " << rel_noise_err_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   //
-  //     // if (params_->write_output_)
+  //     // if (params_->tu_->write_output_)
   //     //     dataOut (data, n_misc, "dataNoise.nc");
   //
   //     if (temp != nullptr) {ierr = VecDestroy (&temp);          CHKERRQ (ierr); temp = nullptr;}
 
   // ss << " data generated with parameters: rho = " << n_misc->rho_ << " k = " << n_misc->k_ << " dt = " << n_misc->dt_ << " Nt = " << n_misc->nt_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  // if (n_misc->model_ >= 4) {
+  // if (n_misc->tu_->model >= 4) {
   //     ss << " mass-effect forcing factor used = " << n_misc->forcing_factor_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   //     // write out p and phi so that they can be used if needed
   //     writeCheckpoint(tumor->p_true_, tumor->phi_, n_misc->writepath_.str(), "forward");
@@ -696,8 +696,8 @@ PetscErrorCode Solver::computeSegmentation(Vec c, std::string name) {
     ierr = VecRestoreArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
     ierr = VecRestoreArray(c, &c_ptr); CHKERRQ(ierr);
 
-    if (n_misc->write_output_) {
-        dataOut (tmp_, params_, "name" + params_->path_->ext_);
+    if (n_misc->tu_->write_output_) {
+        dataOut (tmp_, params_, "name" + params_->tu_->ext_);
     }
     PetscFunctionReturn (ierr);
 }
@@ -798,8 +798,8 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<Parameters> params) {
   if(!params_->path_->data_comps_data_.empty()) {
     readConCompDat(tumor_->phi_->component_weights_, tumor_->phi_->component_centers_, params_->path_->data_comps_data_);
     int nnc = 0; for (auto w : tumor_->phi_->component_weights_) if (w >= 1E-3) nnc++; // number of significant components
-    ss << " Setting sparsity level to "<< params_->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << params_->sparsity_level_ << " x " << nnc <<" + " << (tumor_->phi_->component_weights_.size() - nnc) << " = " <<  params_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    params_->sparsity_level_ =  params_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc) ;
+    ss << " Setting sparsity level to "<< params_->tu_->sparsity_level_<< " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << params_->tu_->sparsity_level_ << " x " << nnc <<" + " << (tumor_->phi_->component_weights_.size() - nnc) << " = " <<  params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    params_->tu_->sparsity_level_ =  params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc) ;
   }
 
   // === set Gaussians
@@ -958,7 +958,7 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<Parameters> p
 
   // TODO(K): read mass effect data
   // std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
-  // if (n_misc->model_ == 4) {
+  // if (n_misc->tu_->model == 4) {
   //     n_misc->invert_mass_effect_ = 1;
   //     // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
   //     m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_glm_path);         // reads patient data
@@ -1007,32 +1007,32 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   ierr = tuMSGwarn(" Finalizing Mass Effect Inversion."); CHKERRQ(ierr);
   ierr = Solver::finalize(); CHKERRQ(ierr);
 
-  if (params_->write_output_) {
+  if (params_->tu_->write_output_) {
       ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); //TODO(K) why does tumor have computeSegmentation? should we always call that one?
       ss.str(std::string()); ss.clear();
       ss << "seg_rec_final";
-      dataOut (tumor_->seg_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "c_rec_final";
-      dataOut (tumro_->c_t_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "vt_rec_final";
-      dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "csf_rec_final";
-      dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "wm_rec_final";
-      dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "gm_rec_final";
-      dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       Vec mag = nullptr;
       ierr = solver_interface_->getPdeOperators()->getModelSpecificVector(&mag);
       ierr = tumor_->displacement_->computeMagnitude(mag);
       ss << "displacement_rec_final";
-      dataOut (mag, params_, ss.str() + params_->path_->ext_);
+      dataOut (mag, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ScalarType mag_norm, mm;
       ierr = VecNorm (mag, NORM_2, &mag_norm); CHKERRQ (ierr);
@@ -1042,7 +1042,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
       ss.str(std::string()); ss.clear();
       if (tumor_->mat_prop_->mri_ != nullptr) {
           ss << "mri_rec_final";
-          dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->path_->ext_); ss.str(std::string()); ss.clear();
+          dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); ss.str(std::string()); ss.clear();
       }
   }
 
@@ -1100,32 +1100,32 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
   ierr = tuMSGwarn(" Finalizing Multi Species Inversion."); CHKERRQ(ierr);
   ierr = Solver::finalize(); CHKERRQ(ierr);
 
-  if (params_->write_output_) {
+  if (params_->tu_->write_output_) {
       ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); //TODO(K) why does tumor have computeSegmentation? should we always call that one?
       ss.str(std::string()); ss.clear();
       ss << "seg_rec_final";
-      dataOut (tumor_->seg_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "c_rec_final";
-      dataOut (tumro_->c_t_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "vt_rec_final";
-      dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "csf_rec_final";
-      dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "wm_rec_final";
-      dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ss << "gm_rec_final";
-      dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->path_->ext_);
+      dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       Vec mag = nullptr;
       ierr = solver_interface_->getPdeOperators()->getModelSpecificVector(&mag);
       ierr = tumor_->displacement_->computeMagnitude(mag);
       ss << "displacement_rec_final";
-      dataOut (mag, params_, ss.str() + params_->path_->ext_);
+      dataOut (mag, params_, ss.str() + params_->tu_->ext_);
       ss.str(std::string()); ss.clear();
       ScalarType mag_norm, mm;
       ierr = VecNorm (mag, NORM_2, &mag_norm); CHKERRQ (ierr);
@@ -1135,7 +1135,7 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
       ss.str(std::string()); ss.clear();
       if (tumor_->mat_prop_->mri_ != nullptr) {
           ss << "mri_rec_final";
-          dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->path_->ext_); ss.str(std::string()); ss.clear();
+          dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); ss.str(std::string()); ss.clear();
       }
   }
 

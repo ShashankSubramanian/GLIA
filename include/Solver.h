@@ -58,6 +58,7 @@ class Solver {
     bool warmstart_p_;
     bool synthetic_;
     bool has_dt0_;
+    bool inject_coarse_sol_;
 
     Vec wm_;
     Vec gm_;

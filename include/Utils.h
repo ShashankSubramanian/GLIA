@@ -347,7 +347,7 @@ class NMisc {
         , E_tumor_ (8000)                       // Young's modulus of tumor
         , E_csf_ (100)                          // Young's modulus of CSF
         , screen_low_ (1E-2)                    // low screening coefficient
-        , screen_high_ (1E2)                    // high screening 
+        , screen_high_ (1E2)                    // high screening
         , forcing_factor_ (1E5)                 // mass effect forcing factor (1E5 for casebrats; 6E4 for SRI atlas)
         , forward_flag_ (0)                     // Flag to perform only forward solve - saves memory
         , prune_components_ (1)                 // prunes L2 solution based on components
@@ -370,7 +370,7 @@ class NMisc {
         , beta_0_ (0.01)                        // conversion btw inv and proliferative
         , alpha_0_ (0.1)                       // conversion btw inv and proliferative
         , invasive_threshold_ (0.001)           // invasive threshold for edema
-        , use_tanh_scaling_ (true)              // tanh scaling for mass-effect 
+        , use_tanh_scaling_ (true)              // tanh scaling for mass-effect
         , transport_mri_ (false)                // transport T1 image
         , interpolation_order_ (3)              // interpolation order for SL
         , cross_entropy_loss_ (false)           // implements cross entropy loss instead of L2
@@ -460,7 +460,7 @@ class NMisc {
             readpath_ << "./brain_data/" << n_[0] <<"/";
             writepath_ << "./results/";
 
-            // gather all isizes to isize_gathered_ : needed for nifti I/O which is serial: only zero 
+            // gather all isizes to isize_gathered_ : needed for nifti I/O which is serial: only zero
             // contains the values.
             int rank, nprocs;
             MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
