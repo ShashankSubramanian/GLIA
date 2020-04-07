@@ -42,3 +42,8 @@
 ---
 ### PdeOperators
 - change forward_flag to time_history_off_
+
+---
+### Invsolver
+- OptimizerSettings members have a trailing underscore now.
+- changed newtonsolver to newton_solver_
