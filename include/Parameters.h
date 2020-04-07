@@ -493,18 +493,14 @@ class Parameters {
       opt_ = std::make_shared<OptimizerSettings>();
       optf_ = std::make_shared<OptimizerFeedback>();
       tu_ = std::make_shared<TumorParameters>();
-      path_ = std::make_shared<FilePaths>();
-      syn_ = std::make_shared<SyntheticData>();
-      pred_ = std::make_shared<Prediction>();
-
-      path_->readpath_ = "./brain_data/" << grid_->n_[0] <<"/";
-      path_->writepath_ = "./results/";
     }
 
     // initialize distributed grid
     createGrid(int *n, int *isize, int *osize, int *istart, int *ostart,
           fft_plan *plan, MPI_Comm c_comm, int *c_dims) {
       grid_ = std::make_shared<Grid>(n, isize, osize, istart, ostart, plan, c_comm, c_dims);
+      tu_->readpath_ = "./brain_data/" << grid_->n_[0] <<"/";
+      tu_->writepath_ = "./results/";
     }
     inline int get_nk() {return tu_->diffusivity_inversion_ ? params_->tu_->nk_ : 0;}
     inline int get_nr() {return tu_->reaction_inversion_ ? params_->tu_->nr_ : 0;}

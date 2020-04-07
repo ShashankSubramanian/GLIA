@@ -77,30 +77,42 @@ void closeFiles(std::shared_ptr<Parameters> params) {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-void setParameter(std::string name, std::string value, std:shared_ptr<Parameters> params) {
+void setParameter(std::string name, std::string value, std:shared_ptr<Parameters> p, std::shared_ptr<ApplicationSettings> a) {
   if(name == "solver") {
+    // quick set all neccessary parameters to support minimal config files
     if(value == "sparse_til") {
       run_mode = INVERSE_L1;
-      params_->opt_->regularization_norm_ = L1c;
-      params_->opt_->diffusivity_inversion_ = true;
-      params_->opt_->reaction_inversion = true;
-      params_->opt_->pre_reacdiff_solve = true;
+      p->opt_->regularization_norm_ = L1c;
+      p->opt_->diffusivity_inversion_ = true;
+      p->opt_->reaction_inversion = true;
+      p->opt_->pre_reacdiff_solve = true;
     }
-    if(value == "nonsparse_til")      {
+    if(value == "nonsparse_til") {
       run_mode = IINVERSE_L2;
-      params_->opt_->regularization_norm_ = L2;
-      params_->opt_->diffusivity_inversion_ = true;
-      params_->opt_->reaction_inversion = false;
-      params_->opt_->pre_reacdiff_solve = false;
+      p->opt_->regularization_norm_ = L2;
+      p->opt_->diffusivity_inversion_ = true;
+      p->opt_->reaction_inversion = false;
+      p->opt_->pre_reacdiff_solve = false;
     }
     if(value == "reaction_diffusion") {
       run_mode = INVERSE_RD;
-      params_->opt_->diffusivity_inversion_ = true;
-      params_->opt_->reaction_inversion = true;
+      p->opt_->diffusivity_inversion_ = true;
+      p->opt_->reaction_inversion = true;
     }
-    if(value == "mass_effec")         {run_mode = INVERSE_ME;  params_->opt_->invert_mass_effect_ = true;}
-    if(value == "multi_species")      {run_mode = INVERSE_MS;}
-    if(value == "forward")            {run_mode = FORWARD;     params_->forward_flag_ = true;}
+    if(value == "mass_effec") {
+      run_mode = INVERSE_ME;
+      p->opt_->invert_mass_effect_ = true;
+    }
+    if(value == "multi_species") {
+      run_mode = INVERSE_MS;
+    }
+    if(value == "forward") {
+      run_mode = FORWARD;
+      p->time_history_off_ = true;
+    }
+
+    // parse all other parameters
+    if (value == "") {}
   }
 }
 
@@ -128,6 +140,7 @@ int main(int argc, char **argv) {
 
   std::stringstream ss;
   std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
+  std::shared_ptr<ApplicationSettings> app_settings = std::make_shared<ApplicationSettings>();
 
   // === parse config file, set parameters
   std::string config;
@@ -148,7 +161,7 @@ int main(int argc, char **argv) {
           auto name = line.substr(0, delimiter_pos);
           auto value = line.substr(delimiter_pos + 1);
           // std::cout << name << " " << value << '\n';
-          setParameter(name, value, params);
+          setParameter(name, value, params, app_settings);
       }
 
   }
