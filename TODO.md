@@ -46,3 +46,8 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ---
 ### PdeOperators
 - change forward_flag to time_history_off_
+
+---
+### Invsolver
+- OptimizerSettings members have a trailing underscore now.
+- changed newtonsolver to newton_solver_
