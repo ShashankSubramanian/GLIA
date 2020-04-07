@@ -26,6 +26,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <stdlib.h>
 
 #include "Utils.h"
 #include "Parameters.h"
@@ -75,6 +76,27 @@ void closeFiles(std::shared_ptr<Parameters> params) {
   }
 }
 
+PetscErrorCode initializeGrid(n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  int[3] N = {n, n, n};
+  int[3] isize;
+  int[3] istart;
+  int[3] osize;
+  int[3] ostart;
+  int c_dims[2] = {0};
+  MPI_Comm c_comm;
+
+  accfft_init();
+  accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
+  ierr = spec_ops->setup(N, isize, istart, osize, ostart, c_comm); CHKERRQ(ierr);
+  int64_t alloc_max = spec_ops->alloc_max_;
+  fft_plan *plan = spec_ops->plan_;
+  params->createGrid(N, isize, osize, istart, ostart, plan, c_comm, c_dims);
+  PetscFunctionReturn(ierr);
+}
+
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 void setParameter(std::string name, std::string value, std:shared_ptr<Parameters> p, std::shared_ptr<ApplicationSettings> a) {
@@ -112,7 +134,7 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     }
 
     // parse all other parameters
-    if (value == "") {}
+    if (value == "nx") {p->grid}
   }
 }
 
@@ -128,12 +150,6 @@ int main(int argc, char **argv) {
 
   ierr = PetscInitialize(&argc, &argv, reinterpret_cast<char*>(NULL), reinterpret_cast<char*>(NULL)); CHKERRQ(ierr);
 
-  accfft_init();
-  MPI_Comm c_comm;
-  int c_dims[2] = { 0 };
-  accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
-  int isize[3], osize[3], istart[3], ostart[3];
-
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
@@ -142,11 +158,22 @@ int main(int argc, char **argv) {
   std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
   std::shared_ptr<ApplicationSettings> app_settings = std::make_shared<ApplicationSettings>();
 
-  // === parse config file, set parameters
+
+  // === create distributed compute grid
+  std::shared_ptr<SpectralOperators> spec_ops;
+  #if defined(CUDA) && !defined(MPICUDA)
+      spec_ops = std::make_shared<SpectralOperators> (CUFFT);
+  #else
+      spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
+  #endif
+
+  // === config file
   std::string config;
   for(int i = 1; i < argc; ++i) {
     if(std::string(argv[i]) == "-config") config = std::string(argv[i]);
   }
+
+  // === parse config file, set parameters
   std::ifstream config_file (config);
   if (config_file.is_open()) {
       std::string line;
@@ -160,10 +187,11 @@ int main(int argc, char **argv) {
           auto delimiter_pos = line.find("=");
           auto name = line.substr(0, delimiter_pos);
           auto value = line.substr(delimiter_pos + 1);
-          // std::cout << name << " " << value << '\n';
+          if(name == "n") {
+            ierr = initializeGrid(std::stoi(value), params, spec_ops) CHKERRQ(ierr);
+          }
           setParameter(name, value, params, app_settings);
       }
-
   }
   else {
     ierr = tuMSGwarn("No config file given. Terminating Solver."); CHKERRQ(ierr);
@@ -175,17 +203,6 @@ int main(int argc, char **argv) {
   // TODO(K) params->opt_settings_ have to be populated in arg parse
 
 
-  // === create distributed compute grid
-  std::shared_ptr<SpectralOperators> spec_ops;
-  #if defined(CUDA) && !defined(MPICUDA)
-      spec_ops = std::make_shared<SpectralOperators> (CUFFT);
-  #else
-      spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
-  #endif
-  ierr = spec_ops->setup(n, isize, istart, osize, ostart, c_comm); CHKERRQ(ierr);
-  int64_t alloc_max = spec_ops->alloc_max_;
-  fft_plan *plan = spec_ops->plan_;
-  params->createGrid(n, isize, osize, istart, ostart, plan, c_comm, c_dims);
 
   EventRegistry::initialize();
 
@@ -220,7 +237,7 @@ int main(int argc, char **argv) {
 
   openFiles(); // opens all txt output files on one core only
   // ensures data for specific solver is read and code is set up for running mode
-  ierr = solver->initialize(); CHKERRQ(ierr);
+  ierr = solver->initialize(params_, app_settings); CHKERRQ(ierr);
   ierr = solver->run(); CHKERRQ(ierr);
   // compute errors, segmentations, other measures of interest, and shutdown solver
   ierr = solver->finalize(); CHKERRQ(ierr);

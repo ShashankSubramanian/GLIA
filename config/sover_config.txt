@@ -4,9 +4,7 @@
 
 
 ### grid
-nx=256
-ny=256
-nz=256
+n=256
 
 ### inversion scheme
 solver=sparse_til

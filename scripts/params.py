@@ -29,9 +29,7 @@ def write_config(set_params, run):
         r[key] = value;
 
     ### grid
-    p['nx'] = 256                         # grid resolution in each dimension
-    p['ny'] = 256
-    p['nz'] = 256
+    p['n'] = 256                         # grid resolution in each dimension
 
     ### inversion scheme
     p['solver'] = 'sparse_til'          # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
@@ -111,13 +109,13 @@ def write_config(set_params, run):
                                         # 4: brain multifocal synthetic tumor with far away ground truths
     ### paths
     p['output_dir'] = r['code_path'] + '/results/';
-    p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['nx']) +'/cpl/c1p.nc'
+    p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
     p['d0_path'] = ""                   # path to initial condition for tumor
     p['a_seg'] = ""                     # paths to atlas material properties
-    p['a_wm_path'] = r['code_path'] + '/brain_data/' + str(p['nx']) +'/white_matter.nc'
-    p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['nx']) +'/gray_matter.nc'
-    p['a_csf_path'] = r['code_path'] + '/brain_data/' + str(p['nx']) +'/csf.nc'
-    p['a_glm_path'] = r['code_path'] + '/brain_data/' + str(p['nx']) +'/glial_matter.nc'
+    p['a_wm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/white_matter.nc'
+    p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/gray_matter.nc'
+    p['a_csf_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/csf.nc'
+    p['a_glm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/glial_matter.nc'
     p['a_ve_path'] = ""
     p['p_seg'] = ""                     # paths to patient material properties for mass effect
     p['p_wm_path'] = ""
@@ -160,9 +158,7 @@ def write_config(set_params, run):
         f.write("\n");
         f.write("\n");
         f.write("### grid" + "\n");
-        f.write("nx=" + str(p['nx']) + "\n");
-        f.write("ny=" + str(p['ny']) + "\n");
-        f.write("nz=" + str(p['nz']) + "\n");
+        f.write("n=" + str(p['n']) + "\n");
 
         f.write("\n");
         f.write("### inversion scheme" + "\n");
