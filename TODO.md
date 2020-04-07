@@ -11,6 +11,9 @@
 
  (S):
  - add l1 p relative error
+ - remove computeSegmentation ffrom _Solver.cpp_ and use it from tumor class
+ - add mass effect data to Parameters, config, and to the inverse solver in _Solver.cpp_
+ - Maybe bg can be dropped if lame-coefficients are initialized with its value:  modify _ElastictiySolver.cpp_
 
 **unclear: (dropped)**
  - in _Solver.cpp_: createSynthetic: I dropped generation of MF data; this should be implemented as test in the test suite, since hard coded coordinates; you can also define coordinates in a p.txt and phi.txt file, store the min a test/ dir, and read them in (with hard coded path);
@@ -31,7 +34,8 @@
 
 ### MatProb.h
 - can we get rid of bg? clarify what glm is used for; I also introduced ve;
-No, bg is needed for lame parameters in the bg (which is a hard stiff material). The alternative is to drop it and compute bg everytime elasticity solver is called. I suggest we keep it unless there is a memory issue.
+No, bg is needed for lame parameters in the bg (which is a hard stiff material). The alternative is to drop it and compute bg everytime elasticity solver is called. I suggest we keep it there for now.
+(S) remove bg later by re-initializing all lame coefficients
 
 ---
 
