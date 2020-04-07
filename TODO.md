@@ -55,3 +55,5 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ### Invsolver
 - OptimizerSettings members have a trailing underscore now.
 - changed newtonsolver to newton_solver_
+- moved flag_reaction_inv_ from n_misc to opt
+- introduced params (in opt) 'ls_max_func_evals', 'lbfgs_vectors_', 'lbfgs_scale_hist', 'lbfgs_scale_type'; we should set those parameters directly in the code.

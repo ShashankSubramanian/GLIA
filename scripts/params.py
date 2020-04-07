@@ -46,7 +46,7 @@ def write_config(set_params, run):
     p['ce_loss'] = 0                    # cross-entropy or L2 loss
     p['regularization'] = "L1c"         # L2, L1c,
     p['beta_p'] = 1E-4                  # regularization parameter
-    p['rel_grad_tol'] = 1E-5            # relative gradient tolerance
+    p['opttol_grad'] = 1E-5            # relative gradient tolerance
     p['newton_maxit'] = 50              # number of iterations for optimizer
     p['krylov_maxit'] = 1               # if GN: number krylov iterations
     p['gist_maxit'] = 2                 # number iterations for L1 CoSaMp solver
@@ -54,6 +54,7 @@ def write_config(set_params, run):
     p['kappa_ub'] = 1.0                 # upper bound kappa
     p['rho_lb'] = 0                     # lower bound rho
     p['rho_ub'] = 15                    # upper bound rho
+    p['gamma_ub'] = 15                  # upper bound gamma
     p['lbfgs_vectors'] = 10             # number of vectors for lbfgs update
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
@@ -75,7 +76,7 @@ def write_config(set_params, run):
 
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
-    p['smooth_data'] = 1                # 0: no smoothing
+    p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
@@ -111,13 +112,13 @@ def write_config(set_params, run):
     p['output_dir'] = r['code_path'] + '/results/';
     p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
     p['d0_path'] = ""                   # path to initial condition for tumor
-    p['a_seg'] = ""                     # paths to atlas material properties
+    p['a_seg_path'] = ""                # paths to atlas material properties
     p['a_wm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/white_matter.nc'
     p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/gray_matter.nc'
     p['a_csf_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/csf.nc'
     p['a_glm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/glial_matter.nc'
     p['a_ve_path'] = ""
-    p['p_seg'] = ""                     # paths to patient material properties for mass effect
+    p['p_seg_path'] = ""                 # paths to patient material properties for mass effect
     p['p_wm_path'] = ""
     p['p_gm_path'] = ""
     p['p_csf_path'] = ""
@@ -177,7 +178,7 @@ def write_config(set_params, run):
         f.write("ce_loss=" + str(p['ce_loss']) + "\n");
         f.write("regularization=" + str(p['regularization']) + "\n");
         f.write("beta_p=" + str(p['beta_p']) + "\n");
-        f.write("rel_grad_tol=" + str(p['rel_grad_tol']) + "\n");
+        f.write("opttol_grad=" + str(p['opttol_grad']) + "\n");
         f.write("newton_maxit=" + str(p['newton_maxit']) + "\n");
         f.write("krylov_maxit=" + str(p['krylov_maxit']) + "\n");
         f.write("gist_maxit=" + str(p['gist_maxit']) + "\n");
@@ -185,6 +186,7 @@ def write_config(set_params, run):
         f.write("kappa_ub=" + str(p['kappa_ub']) + "\n");
         f.write("rho_lb=" + str(p['rho_lb']) + "\n");
         f.write("rho_ub=" + str(p['rho_ub']) + "\n");
+        f.write("gamma_ub=" + str(p['gamma_ub']) + "\n");
         f.write("lbfgs_vectors=" + str(p['lbfgs_vectors']) + "\n");
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
@@ -209,7 +211,7 @@ def write_config(set_params, run):
         f.write("\n");
         f.write("### data" + "\n");
         f.write("smoothing_factor=" + str(p['smoothing_factor']) + "\n");
-        f.write("smooth_data=" + str(p['smooth_data']) + "\n");
+        f.write("smoothing_factor_data=" + str(p['smoothing_factor_data']) + "\n");
         f.write("obs_threshold_1=" + str(p['obs_threshold_1']) + "\n");
         f.write("obs_threshold_0=" + str(p['obs_threshold_0']) + "\n");
         f.write("obs_threshold_rel=" + str(p['obs_threshold_rel']) + "\n");
@@ -246,13 +248,13 @@ def write_config(set_params, run):
         f.write("output_dir=" + str(p['output_dir']) + "\n");
         f.write("d1_path=" + str(p['d1_path']) + "\n");
         f.write("d0_path=" + str(p['d0_path']) + "\n");
-        f.write("a_seg=" + str(p['a_seg']) + "\n");
+        f.write("a_seg_path=" + str(p['a_seg_path']) + "\n");
         f.write("a_wm_path=" + str(p['a_wm_path']) + "\n");
         f.write("a_gm_path=" + str(p['a_gm_path']) + "\n");
         f.write("a_csf_path=" + str(p['a_csf_path']) + "\n");
         f.write("a_glm_path=" + str(p['a_glm_path']) + "\n");
         f.write("a_ve_path=" + str(p['a_ve_path']) + "\n");
-        f.write("p_seg=" + str(p['p_seg']) + "\n");
+        f.write("p_seg_path=" + str(p['p_seg_path']) + "\n");
         f.write("p_wm_path=" + str(p['p_wm_path']) + "\n");
         f.write("p_csf_path=" + str(p['p_csf_path']) + "\n");
         f.write("p_glm_path=" + str(p['p_glm_path']) + "\n");

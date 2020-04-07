@@ -38,7 +38,6 @@ struct OptimizerSettings {
 public:
   OptimizerSettings ()
   :
-    beta_ (0E-3),
     opttolgrad_ (1E-3),
     ftol_ (1E-3),
     ls_minstep_ (1E-9),
@@ -53,13 +52,17 @@ public:
     fseqtype_ (SLFS),
     newton_solver_ (QUASINEWTON),
     linesearch_ (MT),
-    regularization_norm_ (L1c),
     verbosity_ (3),
     reset_tao_ (false),
     cosamp_stage_ (0),
+    ls_max_func_evals(10),
+    lbfgs_vectors_(10),
+    lbfgs_scale_hist(5),
+    lbfgs_scale_type("diagonal"),
     lmvm_set_hessian_ (false),
     diffusivity_inversion_(true),
     reaction_inversion_(false),
+    flag_reaction_inv_ (false),
     pre_reacdiff_solve_(false),
     cross_entropy_loss_(false),
     invert_mass_effect_(false),
@@ -71,7 +74,6 @@ public:
     rho_ub_(15)
   {}
 
-  ScalarType beta_;             /// @brief regularization parameter
   ScalarType opttolgrad_;       /// @brief l2 gradient tolerance for optimization
   ScalarType ftol_;             /// @brief l1 function and solution tolerance
   ScalarType ls_minstep_;       /// @brief minimum step length of linesearch
@@ -86,13 +88,17 @@ public:
   int fseqtype_;                /// @brief type of forcing sequence (quadratic, superlinear)
   int newton_solver_;           /// @brief type of newton slver (0=GN, 1=QN, 2=GN/QN)
   int linesearch_;              /// @brief type of line-search used (0=armijo, 1=mt)
-  int regularization_norm_;     /// @brief defines the type of regularization (L1, L2, or weighted-L2)
   int verbosity_;               /// @brief controls verbosity of solver
   int cosamp_stage_;            /// @brief indicates stage of cosamp solver for warmstart
+  int ls_max_func_evals;        /// @brief maximum number of allowed ls steps per newton iteration
+  int lbfgs_vectors_;           /// @brief number of vectors used in lbfgs update
+  int lbfgs_scale_hist;         /// @brief number of vectors used for initial guess of inverse hessian
+  std::string lbfgs_scale_type; /// @brief initial guess for lbfgs inverse hessian
   bool lmvm_set_hessian_;       /// @brief if true lmvm initial hessian ist set as matvec routine
   bool reset_tao_;              /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
   bool diffusivity_inversion_;  /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
   bool reaction_inversion_;     /// @brief if true, we also invert for rho
+  bool flag_reaction_inv_;      /// @brief internal flag to enable reaction/diffusion methods in InvSolver
   bool pre_reacdiff_solve_;     /// @brief if true, CoSaMp L1 inversion scheme perfroms reaction/diffusion solve before {p,k} inversion
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
   bool invert_mass_effect_;     /// @brief if true invert for mass-effect parameters {rho,k,gamma}
@@ -222,19 +228,19 @@ public:
   , readpath_()
   , ext_(".nc")
   // other (should be deleted) ===========
-  , ic_max_ (0)                            // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
-  , predict_flag_ (0)                      // Flag to perform future tumor growth prediction after inversion
-  , forward_flag_ (0)                      // Flag to perform only forward solve - saves memory
-  , testcase_ (testcase)                   // Testcases
-  , lambda_ (1e5)                          // Regularization parameter for L1
-  , low_freq_noise_scale_ (0.25)           // Low freq noise scale
-  , noise_scale_(0.0)                      // Noise scale
-  , nk_fixed_ (true)                       // if true, nk cannot be changed anymore
-  , lambda_continuation_ (true)            // bool for parameter continuation
-  , target_sparsity_ (0.99)                // target sparsity for L1 continuation
-  , diffusivity_inversion_ (false)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
-  , reaction_inversion_ (false)            // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
-  , flag_reaction_inv_ (false)             // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
+  // , ic_max_ (0)                            // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
+  // , predict_flag_ (0)                      // Flag to perform future tumor growth prediction after inversion
+  // , forward_flag_ (0)                      // Flag to perform only forward solve - saves memory
+  // , testcase_ (testcase)                   // Testcases
+  // , lambda_ (1e5)                          // Regularization parameter for L1
+  // , low_freq_noise_scale_ (0.25)           // Low freq noise scale
+  // , noise_scale_(0.0)                      // Noise scale
+  // , nk_fixed_ (true)                       // if true, nk cannot be changed anymore
+  // , lambda_continuation_ (true)            // bool for parameter continuation
+  // , target_sparsity_ (0.99)                // target sparsity for L1 continuation
+  // , diffusivity_inversion_ (false)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
+  // , reaction_inversion_ (false)            // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
+  // , flag_reaction_inv_ (false)             // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
   // other (moved to OptimizerSettings)
   // , newton_solver_ (QUASINEWTON)          // Newton solver type
   // , linesearch_ (MT)                      // Line-search type
@@ -278,8 +284,8 @@ public:
 
   // tumor models
   int model_;
-  int regularization_norm_; // TODO(K) should this go to opt? currently duplicate
-  ScalarType beta_;         // TODO(K) should this go to opt?
+  int regularization_norm_;
+  ScalarType beta_;
 
   // inversion
   int np_;
@@ -374,19 +380,19 @@ public:
   #endif
 
   // TODO(K) REMOVE ?
-  ScalarType ic_max_;          // ?
-  int predict_flag_;           // Solver
-  int forward_flag_ // removed by time_history_off_ (search/replace)
-  int testcase_;               // synthetic
-  ScalarType lambda_;          // old L1 solver
-  ScalarType low_freq_noise_scale_; // synthetic
-  ScalarType noise_scale_;     // synthetic
-  bool nk_fixed_;
-  bool lambda_continuation_;   // old L1 solver
-  ScalarType target_sparsity_; // old L1 solver
-  bool diffusivity_inversion_; // is it sufficient to have it in opt?
-  bool reaction_inversion_;    // is it sufficient to have it in opt?
-  bool flag_reaction_inv_;     // what is this?
+  // ScalarType ic_max_;          // ?
+  // int predict_flag_;           // Solver
+  // int forward_flag_ // removed by time_history_off_ (search/replace)
+  // int testcase_;               // synthetic
+  // ScalarType lambda_;          // old L1 solver
+  // ScalarType low_freq_noise_scale_; // synthetic
+  // ScalarType noise_scale_;     // synthetic
+  // bool nk_fixed_;
+  // bool lambda_continuation_;   // old L1 solver
+  // ScalarType target_sparsity_; // old L1 solver
+  // bool diffusivity_inversion_; // is it sufficient to have it in opt?
+  // bool reaction_inversion_;    // is it sufficient to have it in opt?
+  // bool flag_reaction_inv_;     // what is this?
 };
 
 
@@ -502,8 +508,8 @@ class Parameters {
       tu_->readpath_ = "./brain_data/" << grid_->n_[0] <<"/";
       tu_->writepath_ = "./results/";
     }
-    inline int get_nk() {return tu_->diffusivity_inversion_ ? params_->tu_->nk_ : 0;}
-    inline int get_nr() {return tu_->reaction_inversion_ ? params_->tu_->nr_ : 0;}
+    inline int get_nk() {return opt_->diffusivity_inversion_ ? tu_->nk_ : 0;}
+    inline int get_nr() {return opt_->reaction_inversion_ ? tu_->nr_ : 0;}
 
     virtual ~Parameters() {}
 
@@ -528,12 +534,20 @@ struct FilePaths {
       pvec_(), phi_()
     {}
 
-    // material properties
+    // material properties atlas
+    std::string seg_;
     std::string wm_;
     std::string gm_;
     std::string csf_;
     std::string ve_;
     std::string glm_;
+    // material properties patient
+    std::string p_seg_;
+    std::string p_wm_;
+    std::string p_gm_;
+    std::string p_csf_;
+    std::string p_ve_;
+    std::string p_glm_;
     // data
     std::string data_t1_;
     std::string data_t0_;
@@ -557,18 +571,24 @@ struct FilePaths {
 struct SyntheticData {
 public:
   SyntheticData() :
+    enabled_(false),
     rho_(10),
     k_(1E-2),
+    forcing_factor_(1E5)
     dt_(0.01),
     nt_(100),
+    testcase_(0),
     pre_adv_time_(-1),
     user_cms_()
   {}
 
+  bool enabled_;
   ScalarType rho_;
   ScalarType k_;
+  ScalarType forcing_factor_;
   ScalarType dt_;
   int nt_;
+  int testcase_:
   ScalarType pre_adv_time_;
   std::vector< std::array<ScalarType, 4> > user_cms_;
 };
@@ -597,7 +617,10 @@ public:
 /// @brief only used in Solver for setup and tests
 class ApplicationSettings {
   public:
-    Parameters() :
+    Parameters()
+    :
+      inject_solution_(false),
+      gaussian_selection_mode_(1),
       path_(),
       syn(),
       pred_() {
@@ -608,6 +631,10 @@ class ApplicationSettings {
     }
 
     virtual ~ApplicationSettings() {}
+
+    bool inject_solution_;
+    int gaussian_selection_mode_;
+
 
     std::shared_ptr<FilePaths> path_;
     std::shared_ptr<SyntheticData> syn_;
