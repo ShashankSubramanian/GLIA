@@ -23,7 +23,7 @@
  - inverse.cpp: 893-920: wL2 norm, not implemented, dropped this section: (S) agreed
  - generateSyntheticData: why is c(0) read in in generateSynthetic? Im dropping this; reading in is done in readData: (S) no reason. agreed
  - inverse.cpp:1603-1718: error for p (plus some weighted error) I have dropped this: (S) this is needed. the weighted error can be dropped. I will add this.
-
+ - test
 ---
 
  ### Parameters.h
@@ -50,6 +50,7 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 - change dataOut to take params_ as argument and std::string instead of char*
 
 ---
+
 ### PdeOperators
 - change forward_flag to time_history_off_: (S): [done]
 - (S) n_misc --> params changes: also change for CUDA routines: [done]
