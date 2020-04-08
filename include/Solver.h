@@ -41,7 +41,21 @@ class Solver {
     virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run() = 0;
 
-    virtual ~Solver() {}
+    virtual ~Solver() {
+      if(wm_ != nullptr) VecDestroy(&wm_);
+      if(gm_ != nullptr) VecDestroy(&gm_);
+      if(vt_ != nullptr) VecDestroy(&vt_);
+      if(csf_ != nullptr) VecDestroy(&csf_);
+      if(mri_ != nullptr) VecDestroy(&mri_);
+      if(tmp_ != nullptr) VecDestroy(&tmp_);
+      if(data_t1_ != nullptr) VecDestroy(&data_t1_);
+      if(data_t0_ != nullptr) VecDestroy(&data_t0_);
+      if(data_support_ != nullptr) VecDestroy(&data_support_);
+      if(data_comps_ != nullptr) VecDestroy(&data_comps_);
+      if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
+      if(p_rec_ != nullptr) VecDestroy(&p_rec_);
+      // if(velocity_ != nullptr) // TODO(K): delete VecField
+    }
 
   protected:
     virtual PetscErrorCode readAtlas();
@@ -51,7 +65,6 @@ class Solver {
     virtual PetscErrorCode createSynthetic();
     virtual PetscErrorCode initializeGaussians();
     virtual PetscErrorCode predict();
-    virtual PetscErrorCode computeSegmentation(Vec, std::string);
 
     std::shared_ptr<Parameters> params_;
     std::shared_ptr<ApplicationSettings> app_settings_;
@@ -89,20 +102,7 @@ class ForwardSolver : public Solver {
     virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
-    virtual ~ForwardSolver() {
-      if(wm_ != nullptr) VecDestroy(&wm_);
-      if(gm_ != nullptr) VecDestroy(&gm_);
-      if(vt_ != nullptr) VecDestroy(&vt_);
-      if(csf_ != nullptr) VecDestroy(&csf_);
-      if(mri_ != nullptr) VecDestroy(&mri_);
-      if(tmp_ != nullptr) VecDestroy(&tmp_);
-      if(data_t1_ != nullptr) VecDestroy(&data_t1_);
-      if(data_t0_ != nullptr) VecDestroy(&data_t0_);
-      if(data_support_ != nullptr) VecDestroy(&data_support_);
-      if(data_comps_ != nullptr) VecDestroy(&data_comps_);
-      if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
-      if(p_rec_ != nullptr) VecDestroy(&p_rec_);
-    }
+    virtual ~ForwardSolver() {}
 };
 
 class InverseL2Solver : public Solver {
@@ -154,10 +154,21 @@ class InverseMassEffectSolver : public Solver {
     virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run ();
 
-    virtual ~InverseMassEffectSolver () {}
+    PetscErrorCode readPatient();
+
+    virtual ~InverseMassEffectSolver () {
+      if(p_wm_ != nullptr) VecDestroy(&p_wm_);
+      if(p_gm_ != nullptr) VecDestroy(&p_gm_);
+      if(p_vt_ != nullptr) VecDestroy(&p_vt_);
+      if(p_csf_ != nullptr) VecDestroy(&p_csf_);
+    }
 
   private:
     ScalarType gamma_;
+    Vec p_wm_;
+    Vec p_gm_;
+    Vec p_vt_;
+    Vec p_csf_;
 };
 
 class MultiSpeciesSolver : public Solver {

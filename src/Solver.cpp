@@ -281,7 +281,7 @@ PetscErrorCode Solver::predict() {
         }
         ierr = solver_interface_->getPdeOperators()->solveState (0); CHKERRQ(ierr); // forward solve
         ss << "c_pred_at_[t=" << app_settings_->pred_->t_pred_[i] <<"]";
-        ierr = dataOut (tumor_->c_t_, params_, ss.str()+params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
+        ierr = dataOut (tumor_->c_t_, params_, ss.str() + params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
         ss << " .. prediction complete for t = "<<app_settings_->pred_->t_pred_[i]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         // if given: compute error to ground truth at predicted time
@@ -295,7 +295,7 @@ PetscErrorCode Solver::predict() {
           ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ (ierr);
           ierr = VecAXPY(tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
           ss << "res_at_[t=" << app_settings_->pred_->t_pred_[i] <<"]";
-          ierr = dataOut(tmp_, params_, ss.str()+params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
+          ierr = dataOut(tmp_, params_, ss.str() + params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
           ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
           obs_c_norm /= data_norm;
           ss << " .. rel. l2-error (everywhere) (T=" << app_settings_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -451,6 +451,7 @@ PetscErrorCode Solver::readVelocity() {
   PetscFunctionBegin;
 
   if(app_settings_->path_->velocity_x1_) {
+    // TODO(K) readVecFiled not implemented, copy from alzh branch
     ierr = readVecField(tumor_->velocity_.get(), app_settings_->path_->velocity_x1_, app_settings_->path_->velocity_x2_, app_settings_->path_->velocity_x3_, params_); CHKERRQ(ierr);
     ierr = tumor_->velocity_->scale(-1); CHKERRQ(ierr);
     Vec mag; ierr = VecDuplicate (data_t1_, &mag); CHKERRQ(ierr);
@@ -626,7 +627,7 @@ PetscErrorCode Solver::initializeGaussians() {
     // set phi values and re-initialize p_vec
     ierr = tumor_->phi_->setValues (tumor_->mat_prop_); CHKERRQ (ierr);
     if (p_rec_ != nullptr) {ierr = VecDestroy (&p_rec_); CHKERRQ (ierr); p_rec_ = nullptr;}
-    ierr = VecCreateSeq (PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ (ierr); // TODO(K): check size: do we need nk or nk+nr?
+    ierr = VecCreateSeq (PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ (ierr);
     ierr = setupVec (p_rec_, SEQ); CHKERRQ (ierr);
   }
 
@@ -898,21 +899,17 @@ PetscErrorCode InverseReactionDiffusionSolver::finalize() {
 PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-
   ierr = tuMSGwarn(" Initializing Mass Effect Inversion."); CHKERRQ(ierr);
+
   // set and populate parameters; read material properties; read data
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
-  // TODO(K): read mass effect data
-  // std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
-  // if (n_misc->tu_->model == 4) {
-  //     n_misc->invert_mass_effect_ = 1;
-  //     // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->csf_);  // copies synthetic data to m_data
-  //     m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_csf_path);         // reads patient data
-  //     ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->csf_);   // sets derivative ops data
-  //     ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed
-  // }
-
+  // read mass effect patient data
+  ierr = readPatient(); CHKERRQ(ierr);       // read patient material properties
+  params_->opt_->invert_mass_effect_ = true; // enable mass effect inversion in optimizer
+  // set patient material properties
+  ierr = solver_interface_->setMassEffectData(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);  // TODO(K) Why was this call in inverse.cpp with twice csf_ instead of csf_ and vt_?
+  // ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);       // TODO(K) I think this is not needed, double check with S
 
   ierr = solver_interface_->setParams (p_rec_, nullptr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -996,6 +993,45 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   PetscFunctionReturn(ierr);
 }
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseMassEffectSolver::readPatient() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  ScalarType sigma_smooth = params_->smoothing_factor_ * 2 * M_PI / params_->n_[0];
+
+  if(!app_settings_->path_->p_seg_.empty()) {
+    ierr = dataIn (tmp_, params_, app_settings_->path_->p_seg_); CHKERRQ(ierr);
+    // TODO(K): populate to wm, gm, csf, ve
+  } else {
+    if(!app_settings_->path_->p_wm_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_wm_); CHKERRQ (ierr);
+      ierr = dataIn (p_wm_, params_, app_settings_->path_->p_wm_); CHKERRQ(ierr);
+    }
+    if(!app_settings_->path_->p_gm_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_gm_); CHKERRQ (ierr);
+      ierr = dataIn (p_gm_, params_, app_settings_->path_->p_gm_); CHKERRQ(ierr);
+    }
+    if(!app_settings_->path_->p_vt_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_vt_); CHKERRQ (ierr);
+      ierr = dataIn (p_vt_, params_, app_settings_->path_->p_vt_); CHKERRQ(ierr);
+    }
+    if(!app_settings_->path_->p_csf_.empty()) {
+        ierr = VecDuplicate(tmp_, &p_csf_); CHKERRQ (ierr);
+        ierr = dataIn (p_csf_, params_, app_settings_->path_->p_csf_); CHKERRQ(ierr);
+    }
+  }
+  // smooth
+  if (p_gm_  != nullptr) {ierr = spec_ops->weierstrassSmoother (p_gm_, p_gm_, params_, sigma_smooth); CHKERRQ (ierr);}
+  if (p_wm_  != nullptr) {ierr = spec_ops->weierstrassSmoother (p_wm_, p_wm_, params_, sigma_smooth); CHKERRQ (ierr);}
+  if (p_vt_  != nullptr) {ierr = spec_ops->weierstrassSmoother (p_vt_, p_vt_, params_, sigma_smooth); CHKERRQ (ierr);}
+  if (p_csf_ != nullptr) {ierr = spec_ops->weierstrassSmoother (p_csf_, p_csf_, params_, sigma_smooth); CHKERRQ(ierr);}
+
+  PetscFunctionReturn(ierr);
+}
+
+
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========             MultiSpeciesSolver             ======== #### */
@@ -1007,18 +1043,15 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
 PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  ierr = tuMSGwarn(" Initializing Multi Species Forward Solver."); CHKERRQ(ierr);
 
-  ierr = tuMSGwarn(" Initializing Multi Species Inversion."); CHKERRQ(ierr);
+  params->tu_->time_history_off_ = true;
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
+  // ierr = solver_interface_->setParams (p_rec_, nullptr);
+  // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
-  ierr = solver_interface_->setParams (p_rec_, nullptr);
-  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  if (!warmstart_p_) {
-      ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-      ierr = solver_interface_->setInitialGuess (0.); CHKERRQ(ierr);
-  }
   PetscFunctionReturn(ierr);
 }
 
@@ -1032,7 +1065,7 @@ PetscErrorCode MultiSpeciesSolver::run() {
   if(has_dt0_) {ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
   } else       {ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);}
 
-  ierr = tuMSGwarn(" Beginning Multi Species Inversion."); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" Beginning Multi Species Forward Solve."); CHKERRQ(ierr);
   // TODO(K): call multi species inverse solver
 
   PetscFunctionReturn(ierr);
@@ -1044,7 +1077,7 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
-  ierr = tuMSGwarn(" Finalizing Multi Species Inversion."); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" Finalizing Multi Species Forward Solve."); CHKERRQ(ierr);
   ierr = Solver::finalize(); CHKERRQ(ierr);
 
   if (params_->tu_->write_output_) {
