@@ -1,68 +1,63 @@
 #include "DiffCoef.h"
 
-DiffCoef::DiffCoef (std::shared_ptr<NMisc> n_misc, std::shared_ptr<SpectralOperators> spec_ops) : spec_ops_ (spec_ops),
-  k_scale_(1E-2)
-, k_gm_wm_ratio_(1.0 / 5.0)
-, k_glm_wm_ratio_(3.0 / 5.0)
-, smooth_flag_(0)
-, filter_avg_ (0.0) {
-    PetscErrorCode ierr;
-    ierr = VecCreate (PETSC_COMM_WORLD, &kxx_);
-    ierr = VecSetSizes (kxx_, n_misc->n_local_, n_misc->n_global_);
-    ierr = setupVec (kxx_);
+DiffCoef::DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops)
+    : spec_ops_(spec_ops), k_scale_(1E-2), k_gm_wm_ratio_(1.0 / 5.0), k_glm_wm_ratio_(3.0 / 5.0), smooth_flag_(0), filter_avg_(0.0) {
+  PetscErrorCode ierr;
+  ierr = VecCreate(PETSC_COMM_WORLD, &kxx_);
+  ierr = VecSetSizes(kxx_, params->grid_->n_local_, params->grid_->n_global_);
+  ierr = setupVec(kxx_);
 
-    ierr = VecDuplicate (kxx_, &kxy_);
-    ierr = VecDuplicate (kxx_, &kxz_);
-    ierr = VecDuplicate (kxx_, &kyy_);
-    ierr = VecDuplicate (kxx_, &kyz_);
-    ierr = VecDuplicate (kxx_, &kzz_);
+  ierr = VecDuplicate(kxx_, &kxy_);
+  ierr = VecDuplicate(kxx_, &kxz_);
+  ierr = VecDuplicate(kxx_, &kyy_);
+  ierr = VecDuplicate(kxx_, &kyz_);
+  ierr = VecDuplicate(kxx_, &kzz_);
 
-    // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
-    temp_ = new Vec[8];
-    #ifdef CUDA 
-      initDiffCoefCudaConstants(n_misc->n_, n_misc->ostart_);
-      cudaMalloc ((void**) &temp_accfft_, n_misc->accfft_alloc_max_);
-      cudaMalloc ((void**) &work_cuda_, 7 * sizeof(ScalarType));
-    #else 
-      temp_accfft_ = (ScalarType *) accfft_alloc (n_misc->accfft_alloc_max_);
-    #endif
+  // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
+  temp_ = new Vec[8];
+#ifdef CUDA
+  initDiffCoefCudaConstants(params->grid_->n_, params->grid_->ostart_);
+  cudaMalloc((void **)&temp_accfft_, params->grid_->accfft_alloc_max_);
+  cudaMalloc((void **)&work_cuda_, 7 * sizeof(ScalarType));
+#else
+  temp_accfft_ = (ScalarType *)accfft_alloc(params->grid_->accfft_alloc_max_);
+#endif
 
+  ierr = VecSet(kxx_, 0);
+  ierr = VecSet(kxy_, 0);
+  ierr = VecSet(kxz_, 0);
+  ierr = VecSet(kyy_, 0);
+  ierr = VecSet(kyz_, 0);
+  ierr = VecSet(kzz_, 0);
 
-    ierr = VecSet (kxx_ , 0);
-    ierr = VecSet (kxy_ , 0);
-    ierr = VecSet (kxz_ , 0);
-    ierr = VecSet (kyy_ , 0);
-    ierr = VecSet (kyz_ , 0);
-    ierr = VecSet (kzz_ , 0);
-
-    kxx_avg_ = kxy_avg_ = kxz_avg_ = kyy_avg_ = kyz_avg_ = kzz_avg_ = 0.0;
+  kxx_avg_ = kxy_avg_ = kxz_avg_ = kyy_avg_ = kyz_avg_ = kzz_avg_ = 0.0;
 }
 
-PetscErrorCode DiffCoef::setWorkVecs(Vec * workvecs) {
+PetscErrorCode DiffCoef::setWorkVecs(Vec *workvecs) {
   PetscErrorCode ierr;
-  for (int i = 0; i < 8; ++i){
+  for (int i = 0; i < 8; ++i) {
     temp_[i] = workvecs[i];
   }
-  PetscFunctionReturn (ierr);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::setSecondaryCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode DiffCoef::setSecondaryCoefficients(ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params) {
   PetscFunctionBegin;
   PetscErrorCode ierr;
 
   /* temp_[7] holds \sum m_i \times \k_tilde_i */
-  ierr = VecCopy (mat_prop->wm_, temp_[7]);     CHKERRQ (ierr);
-  ierr = VecScale (temp_[7], k1);               CHKERRQ (ierr);
-  k2 = (n_misc->nk_ == 1) ? n_misc->k_gm_wm_ratio_ * k1 : k2;
-  k3 = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ * k1 : k3;
+  ierr = VecCopy(mat_prop->wm_, temp_[7]); CHKERRQ(ierr);
+  ierr = VecScale(temp_[7], k1); CHKERRQ(ierr);
+  k2 = (params->tu_->nk_ == 1) ? params->tu_->k_gm_wm_ratio_ * k1 : k2;
+  k3 = (params->tu_->nk_ == 1) ? params->tu_->k_glm_wm_ratio_ * k1 : k3;
 
-  ierr = VecAXPY (temp_[7], k2, mat_prop->gm_);   CHKERRQ (ierr);
-  ierr = VecAXPY (temp_[7], k3, mat_prop->glm_);  CHKERRQ (ierr);  
+  ierr = VecAXPY(temp_[7], k2, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[7], k3, mat_prop->glm_); CHKERRQ(ierr);
 
-  PetscFunctionReturn (ierr);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode DiffCoef::updateIsotropicCoefficients(ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params) {
   PetscFunctionBegin;
   PetscErrorCode ierr;
 
@@ -70,302 +65,256 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients (ScalarType k1, ScalarType 
   /*       k_2 = dk_dm_gm  = k_scale * k_gm_wm_ratio_;        GM              */
   /*       k_3 = dk_dm_glm = k_scale * k_glm_wm_ratio_;       GLM             */
   // compute new ratios
-  k_scale_        = k1;
-  k_gm_wm_ratio_  = (n_misc->nk_ == 1) ? n_misc->k_gm_wm_ratio_ : k2 / k1;    // if we want to invert for just one parameter (a.k.a diffusivity in WM), then
-                                                                              // provide user with option to control the diffusivity in others from n_misc
-  k_glm_wm_ratio_ = (n_misc->nk_ == 1) ? n_misc->k_glm_wm_ratio_ : k3 / k1;   // glm is always zero. TODO:  take it out in new iterations of the solver
+  k_scale_ = k1;
+  k_gm_wm_ratio_ = (params->tu_->nk_ == 1) ? params->tu_->k_gm_wm_ratio_ : k2 / k1;    // if we want to invert for just one parameter (a.k.a diffusivity in WM), then
+                                                                                       // provide user with option to control the diffusivity in others from params
+  k_glm_wm_ratio_ = (params->tu_->nk_ == 1) ? params->tu_->k_glm_wm_ratio_ : k3 / k1;  // glm is always zero. TODO:  take it out in new iterations of the solver
   // and set the values
-  ierr = setValues (k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, n_misc);
-  PetscFunctionReturn (ierr);
+  ierr = setValues(k_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, params);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::setValues (ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<NMisc> n_misc) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr;
-    k_scale_ = k_scale;
-    k_gm_wm_ratio_  = k_gm_wm_ratio;
-    k_glm_wm_ratio_ = k_glm_wm_ratio;
-    n_misc->k_gm_wm_ratio_  = k_gm_wm_ratio_;    // update values in n_misc
-    n_misc->k_glm_wm_ratio_ = k_glm_wm_ratio_;
-    n_misc->k_              = k_scale_;
+PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+  k_scale_ = k_scale;
+  k_gm_wm_ratio_ = k_gm_wm_ratio;
+  k_glm_wm_ratio_ = k_glm_wm_ratio;
+  params->tu_->k_gm_wm_ratio_ = k_gm_wm_ratio_;  // update values in params
+  params->tu_->k_glm_wm_ratio_ = k_glm_wm_ratio_;
+  params->tu_->k_ = k_scale_;
 
-    ScalarType dk_dm_gm  = k_scale * k_gm_wm_ratio_;        //GM
-    ScalarType dk_dm_wm  = k_scale;                         //WM
-    ScalarType dk_dm_glm = k_scale * k_glm_wm_ratio_;       //GLM
-    // if ratios <= 0, only diffuse in white matter
-    dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
-    dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
+  ScalarType dk_dm_gm = k_scale * k_gm_wm_ratio_;    // GM
+  ScalarType dk_dm_wm = k_scale;                     // WM
+  ScalarType dk_dm_glm = k_scale * k_glm_wm_ratio_;  // GLM
+  // if ratios <= 0, only diffuse in white matter
+  dk_dm_gm = (dk_dm_gm <= 0) ? 0.0 : dk_dm_gm;
+  dk_dm_glm = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
 
+  ierr = VecSet(kxx_, 0.0); CHKERRQ(ierr);
+  ierr = VecAXPY(kxx_, dk_dm_gm, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxx_, dk_dm_wm, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxx_, dk_dm_glm, mat_prop->glm_); CHKERRQ(ierr);
 
-    if (n_misc->testcase_ != BRAIN && n_misc->testcase_ != BRAINNEARMF && n_misc->testcase_ != BRAINFARMF) {
-        ScalarType *kxx_ptr, *kyy_ptr, *kzz_ptr;
-        ierr = VecGetArray (kxx_, &kxx_ptr);                     CHKERRQ (ierr);
-        ierr = VecGetArray (kyy_, &kyy_ptr);                     CHKERRQ (ierr);
-        ierr = VecGetArray (kzz_, &kzz_ptr);                     CHKERRQ (ierr);
-        int64_t X, Y, Z, index;
-        ScalarType amp;
-        if (n_misc->testcase_ == CONSTCOEF)
-            amp = 0.0;
-        else if (n_misc->testcase_ == SINECOEF)
-            amp = std::min ((ScalarType)1.0, k_scale_);
+  ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
+  ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
 
-        ScalarType freq = 4.0;
-        for (int x = 0; x < n_misc->isize_[0]; x++) {
-            for (int y = 0; y < n_misc->isize_[1]; y++) {
-                for (int z = 0; z < n_misc->isize_[2]; z++) {
-                    X = n_misc->istart_[0] + x;
-                    Y = n_misc->istart_[1] + y;
-                    Z = n_misc->istart_[2] + z;
+  // Average diff coeff values for preconditioner for diffusion solve
+  ierr = VecSum(kxx_, &kxx_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kxy_, &kxy_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kxz_, &kxz_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kyy_, &kyy_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kyz_, &kyz_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kzz_, &kzz_avg_); CHKERRQ(ierr);
+  ierr = VecSum(mat_prop->filter_, &filter_avg_); CHKERRQ(ierr);
 
-                    index = x * n_misc->isize_[1] * n_misc->isize_[2] + y * n_misc->isize_[2] + z;
+  kxx_avg_ *= 1.0 / filter_avg_;
+  kxy_avg_ *= 1.0 / filter_avg_;
+  kxz_avg_ *= 1.0 / filter_avg_;
+  kyy_avg_ *= 1.0 / filter_avg_;
+  kyz_avg_ *= 1.0 / filter_avg_;
+  kzz_avg_ *= 1.0 / filter_avg_;
 
-                    kxx_ptr[index] = k_scale + amp * sin (freq * 2.0 * M_PI / n_misc->n_[0] * X)
-                                                   * sin (freq * 2.0 * M_PI / n_misc->n_[1] * Y)
-                                                   * sin (freq * 2.0 * M_PI / n_misc->n_[2] * Z);
+#ifdef CUDA
+  cudaMemcpy(&work_cuda_[1], &kxx_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[2], &kxy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[3], &kxz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[4], &kyz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[5], &kyy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[6], &kzz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+#endif
 
-                    // kxx_ptr[index] = 1E-2 + 0.5 * sin (2.0 * M_PI / n_misc->n_[0] * X) * cos (2.0 * M_PI / n_misc->n_[1] * Y)
-                    //                             + 0.5 + 1E-3 * (1 - 0.5 * sin (2.0 * M_PI / n_misc->n_[0] * X) * cos (2.0 * M_PI / n_misc->n_[1] * Y)
-                    //                                     + 0.5);
+  if (smooth_flag_) {
+    ierr = this->smooth(params); CHKERRQ(ierr);
+  }
 
-                    kyy_ptr[index] = kxx_ptr[index];
-                    kzz_ptr[index] = kxx_ptr[index];
-                }
-            }
-        }
-        ierr = VecRestoreArray (kxx_, &kxx_ptr);                 CHKERRQ (ierr);
-        ierr = VecRestoreArray (kyy_, &kyy_ptr);                 CHKERRQ (ierr);
-        ierr = VecRestoreArray (kzz_, &kzz_ptr);                 CHKERRQ (ierr);
-    }
-    else {
-        ierr = VecSet  (kxx_, 0.0);                              CHKERRQ (ierr);
-        ierr = VecAXPY (kxx_, dk_dm_gm, mat_prop->gm_);          CHKERRQ (ierr);
-        ierr = VecAXPY (kxx_, dk_dm_wm, mat_prop->wm_);          CHKERRQ (ierr);
-        ierr = VecAXPY (kxx_, dk_dm_glm, mat_prop->glm_);        CHKERRQ (ierr);
-
-        ierr = VecCopy (kxx_, kyy_);                             CHKERRQ (ierr);
-        ierr = VecCopy (kxx_, kzz_);                             CHKERRQ (ierr);
-    }
-
-//    if (n_misc->writeOutput_) {
-//        dataOut (kxx_, n_misc, "kxx.nc");
-//    }
-
-    //Average diff coeff values for preconditioner for diffusion solve
-    ierr = VecSum (kxx_, &kxx_avg_);                             CHKERRQ (ierr);
-    ierr = VecSum (kxy_, &kxy_avg_);                             CHKERRQ (ierr);
-    ierr = VecSum (kxz_, &kxz_avg_);                             CHKERRQ (ierr);
-    ierr = VecSum (kyy_, &kyy_avg_);                             CHKERRQ (ierr);
-    ierr = VecSum (kyz_, &kyz_avg_);                             CHKERRQ (ierr);
-    ierr = VecSum (kzz_, &kzz_avg_);                             CHKERRQ (ierr);
-    ierr = VecSum (mat_prop->filter_, &filter_avg_);             CHKERRQ (ierr);
-
-    kxx_avg_ *= 1.0 / filter_avg_;
-    kxy_avg_ *= 1.0 / filter_avg_;
-    kxz_avg_ *= 1.0 / filter_avg_;
-    kyy_avg_ *= 1.0 / filter_avg_;
-    kyz_avg_ *= 1.0 / filter_avg_;
-    kzz_avg_ *= 1.0 / filter_avg_;
-
-    #ifdef CUDA
-        cudaMemcpy (&work_cuda_[1], &kxx_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[2], &kxy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[3], &kxz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[4], &kyz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[5], &kyy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
-        cudaMemcpy (&work_cuda_[6], &kzz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
-    #endif
-
-    if (smooth_flag_) {
-        ierr = this->smooth (n_misc); CHKERRQ (ierr);
-    }
-
-    PetscFunctionReturn (ierr);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::smooth (std::shared_ptr<NMisc> n_misc) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr;
-    ScalarType sigma = 2.0 * M_PI / n_misc->n_[0];
-    
+PetscErrorCode DiffCoef::smooth(std::shared_ptr<Parameters> params) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+  ScalarType sigma = 2.0 * M_PI / params->grid_->n_[0];
 
-    ierr = spec_ops_->weierstrassSmoother (kxx_, kxx_, n_misc, sigma);
-    ierr = spec_ops_->weierstrassSmoother (kxy_, kxy_, n_misc, sigma);
-    ierr = spec_ops_->weierstrassSmoother (kxz_, kxz_, n_misc, sigma);
-    ierr = spec_ops_->weierstrassSmoother (kyy_, kyy_, n_misc, sigma);
-    ierr = spec_ops_->weierstrassSmoother (kyz_, kyz_, n_misc, sigma);
-    ierr = spec_ops_->weierstrassSmoother (kzz_, kzz_, n_misc, sigma);
+  ierr = spec_ops_->weierstrassSmoother(kxx_, kxx_, params, sigma);
+  ierr = spec_ops_->weierstrassSmoother(kxy_, kxy_, params, sigma);
+  ierr = spec_ops_->weierstrassSmoother(kxz_, kxz_, params, sigma);
+  ierr = spec_ops_->weierstrassSmoother(kyy_, kyy_, params, sigma);
+  ierr = spec_ops_->weierstrassSmoother(kyz_, kyz_, params, sigma);
+  ierr = spec_ops_->weierstrassSmoother(kzz_, kzz_, params, sigma);
 
-
-    PetscFunctionReturn (ierr);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::applyK (Vec x, Vec y, Vec z) {
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-diff-coeff-apply-K");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+PetscErrorCode DiffCoef::applyK(Vec x, Vec y, Vec z) {
+  PetscErrorCode ierr = 0;
+  Event e("tumor-diff-coeff-apply-K");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
 
-    for (int i = 1; i < 4; i++) {
-        ierr = VecSet (temp_[i] , 0);                            CHKERRQ (ierr);
-    }
+  for (int i = 1; i < 4; i++) {
+    ierr = VecSet(temp_[i], 0); CHKERRQ(ierr);
+  }
 
-    //X
-    ierr = VecPointwiseMult (temp_[0], kxx_, x);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[1], 1.0, temp_[0]);                    CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[0], kxy_, y);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[1], 1.0, temp_[0]);                    CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[0], kxz_, z);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[1], 1.0, temp_[0]);                    CHKERRQ (ierr);
+  // X
+  ierr = VecPointwiseMult(temp_[0], kxx_, x); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[1], 1.0, temp_[0]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[0], kxy_, y); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[1], 1.0, temp_[0]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[0], kxz_, z); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[1], 1.0, temp_[0]); CHKERRQ(ierr);
 
-    //Y
-    ierr = VecPointwiseMult (temp_[0], kxy_, x);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[2], 1.0, temp_[0]);                    CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[0], kyy_, y);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[2], 1.0, temp_[0]);                    CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[0], kyz_, z);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[2], 1.0, temp_[0]);                    CHKERRQ (ierr);
+  // Y
+  ierr = VecPointwiseMult(temp_[0], kxy_, x); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[2], 1.0, temp_[0]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[0], kyy_, y); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[2], 1.0, temp_[0]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[0], kyz_, z); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[2], 1.0, temp_[0]); CHKERRQ(ierr);
 
-    //Z
-    ierr = VecPointwiseMult (temp_[0], kxz_, x);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[3], 1.0, temp_[0]);                    CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[0], kyz_, y);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[3], 1.0, temp_[0]);                    CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[0], kzz_, z);                 CHKERRQ (ierr);
-    ierr = VecAXPY (temp_[3], 1.0, temp_[0]);                    CHKERRQ (ierr);
+  // Z
+  ierr = VecPointwiseMult(temp_[0], kxz_, x); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[3], 1.0, temp_[0]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[0], kyz_, y); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[3], 1.0, temp_[0]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[0], kzz_, z); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[3], 1.0, temp_[0]); CHKERRQ(ierr);
 
-    self_exec_time += MPI_Wtime();
-    //accumulateTimers (t, t, self_exec_time);
-    t[5] = self_exec_time;
-    e.addTimings (t);
-    e.stop ();
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
 
-    PetscFunctionReturn (ierr);
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::applyD (Vec dc, Vec c) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-diff-coeff-apply-D");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+PetscErrorCode DiffCoef::applyD(Vec dc, Vec c) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e("tumor-diff-coeff-apply-D");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
 
-    std::bitset<3> XYZ;
-    XYZ[0] = 1;
-    XYZ[1] = 1;
-    XYZ[2] = 1;
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
 
-    ierr = spec_ops_->computeGradient (temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
-    ierr = applyK (temp_[4], temp_[5], temp_[6]);
-    ierr = spec_ops_->computeDivergence (dc, temp_[1], temp_[2], temp_[3], t.data());
+  ierr = spec_ops_->computeGradient(temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
+  ierr = applyK(temp_[4], temp_[5], temp_[6]);
+  ierr = spec_ops_->computeDivergence(dc, temp_[1], temp_[2], temp_[3], t.data());
 
-    self_exec_time += MPI_Wtime();
-    //accumulateTimers (t, t, self_exec_time);
-    t[5] = self_exec_time;
-    e.addTimings (t);
-    e.stop ();
-    PetscFunctionReturn (ierr);
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs (Vec dc, Vec c) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    Event e ("tumor-diff-coeff-apply-D");
-    std::array<double, 7> t = {0};
-    double self_exec_time = -MPI_Wtime ();
+PetscErrorCode DiffCoef::applyDWithSecondaryCoeffs(Vec dc, Vec c) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e("tumor-diff-coeff-apply-D");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
 
-    std::bitset<3> XYZ;
-    XYZ[0] = 1;
-    XYZ[1] = 1;
-    XYZ[2] = 1;
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
 
-    /* NOTE: temp_[7] is unused anywhere else within solveState - this is important else
-       we have to reset temp_[7] everytime */
+  /* NOTE: temp_[7] is unused anywhere else within solveState - this is important else
+     we have to reset temp_[7] everytime */
 
-    spec_ops_->computeGradient (temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
-    ierr = VecPointwiseMult (temp_[1], temp_[7], temp_[4]);                 CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[2], temp_[7], temp_[5]);                 CHKERRQ (ierr);
-    ierr = VecPointwiseMult (temp_[3], temp_[7], temp_[6]);                 CHKERRQ (ierr);
-    spec_ops_->computeDivergence (dc, temp_[1], temp_[2], temp_[3], t.data());
+  spec_ops_->computeGradient(temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
+  ierr = VecPointwiseMult(temp_[1], temp_[7], temp_[4]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[2], temp_[7], temp_[5]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[3], temp_[7], temp_[6]); CHKERRQ(ierr);
+  spec_ops_->computeDivergence(dc, temp_[1], temp_[2], temp_[3], t.data());
 
-    self_exec_time += MPI_Wtime();
-    //accumulateTimers (t, t, self_exec_time);
-    t[5] = self_exec_time;
-    e.addTimings (t);
-    e.stop ();
-    PetscFunctionReturn (ierr);
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
 }
-
 
 // TODO: only correct for isotropic diffusion
 // TODO: assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T
 PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, fft_plan *plan) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  Event e ("tumor-diff-coeff-apply-dKdm-gradc-gradp");
+  Event e("tumor-diff-coeff-apply-dKdm-gradc-gradp");
   std::array<double, 7> t = {0};
-  double self_exec_time = -MPI_Wtime ();
+  double self_exec_time = -MPI_Wtime();
 
-  std::bitset<3> XYZ; XYZ[0] = 1; XYZ[1] = 1; XYZ[2] = 1;
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
   // clear work fields
   for (int i = 1; i < 7; i++) {
-      ierr = VecSet (temp_[i] , 0);                              CHKERRQ (ierr);
+    ierr = VecSet(temp_[i], 0); CHKERRQ(ierr);
   }
   // compute gradient of state variable c(t)
-  spec_ops_->computeGradient (temp_[1], temp_[2], temp_[3], c, &XYZ, t.data());
+  spec_ops_->computeGradient(temp_[1], temp_[2], temp_[3], c, &XYZ, t.data());
   // compute gradient of adjoint variable p(t)
-  spec_ops_->computeGradient (temp_[4], temp_[5], temp_[6], p, &XYZ, t.data());
+  spec_ops_->computeGradient(temp_[4], temp_[5], temp_[6], p, &XYZ, t.data());
   // scalar product (grad c)^T grad \alpha
-  ierr = VecPointwiseMult (temp_[0], temp_[1], temp_[4]);        CHKERRQ (ierr);  // c_x * \alpha_x
-  ierr = VecPointwiseMult (temp_[1], temp_[2], temp_[5]);        CHKERRQ (ierr);  // c_y * \alpha_y
-  ierr = VecAXPY (temp_[0], 1.0,  temp_[1]);                     CHKERRQ (ierr);
-  ierr = VecPointwiseMult (temp_[1], temp_[3], temp_[6]);        CHKERRQ (ierr);  // c_z * \alpha_z
-  ierr = VecAXPY (temp_[0], 1.0,  temp_[1]);                     CHKERRQ (ierr);
+  ierr = VecPointwiseMult(temp_[0], temp_[1], temp_[4]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[1], temp_[2], temp_[5]); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[0], 1.0, temp_[1]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp_[1], temp_[3], temp_[6]); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[0], 1.0, temp_[1]); CHKERRQ(ierr);
 
-  ScalarType dk_dm_gm  = k_scale_ * k_gm_wm_ratio_;        //GM
-  ScalarType dk_dm_wm  = k_scale_;                         //WM
-  ScalarType dk_dm_glm = k_scale_ * k_glm_wm_ratio_;       //GLM
+  ScalarType dk_dm_gm = k_scale_ * k_gm_wm_ratio_;    // GM
+  ScalarType dk_dm_wm = k_scale_;                     // WM
+  ScalarType dk_dm_glm = k_scale_ * k_glm_wm_ratio_;  // GLM
   // if ratios <= 0, only diffuse in white matter
-  dk_dm_gm   = (dk_dm_gm <= 0)  ? 0.0 : dk_dm_gm;
-  dk_dm_glm  = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
+  dk_dm_gm = (dk_dm_gm <= 0) ? 0.0 : dk_dm_gm;
+  dk_dm_glm = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;
   // compute dK/dm * (grad c)^T grad \alpha ..
   // assumes that geometry map has ordered components (WM, GM ,CSF, GLM)^T
-  if(x1 != nullptr) {                                                    // WM
-    ierr = VecSet (x1 , 0.0);                                    CHKERRQ (ierr);
-    ierr = VecAXPY (x1, dk_dm_wm, temp_[0]);                     CHKERRQ (ierr);
+  if (x1 != nullptr) {  // WM
+    ierr = VecSet(x1, 0.0); CHKERRQ(ierr);
+    ierr = VecAXPY(x1, dk_dm_wm, temp_[0]); CHKERRQ(ierr);
   }
-  if(x2 != nullptr) {                                                    // GM
-    ierr = VecSet (x2 , 0.0);                                    CHKERRQ (ierr);
-    ierr = VecAXPY (x2, dk_dm_gm, temp_[0]);                     CHKERRQ (ierr);
+  if (x2 != nullptr) {  // GM
+    ierr = VecSet(x2, 0.0); CHKERRQ(ierr);
+    ierr = VecAXPY(x2, dk_dm_gm, temp_[0]); CHKERRQ(ierr);
   }
-  if(x3 != nullptr) {                                                    // CSF
-    ierr = VecSet (x3 , 0.0);                                    CHKERRQ (ierr);
-    //ierr = VecAXPY (x3, 0, temp_[0]);                     CHKERRQ (ierr);
+  if (x3 != nullptr) {  // CSF
+    ierr = VecSet(x3, 0.0); CHKERRQ(ierr);
+    // ierr = VecAXPY (x3, 0, temp_[0]);                     CHKERRQ (ierr);
   }
-  if(x4 != nullptr) {                                                    // GLM
-    ierr = VecSet (x4 , 0.0);                                    CHKERRQ (ierr);
-    ierr = VecAXPY (x4, dk_dm_glm, temp_[0]);                    CHKERRQ (ierr);
+  if (x4 != nullptr) {  // GLM
+    ierr = VecSet(x4, 0.0); CHKERRQ(ierr);
+    ierr = VecAXPY(x4, dk_dm_glm, temp_[0]); CHKERRQ(ierr);
   }
 
   self_exec_time += MPI_Wtime();
-  //accumulateTimers (t, t, self_exec_time);
+  // accumulateTimers (t, t, self_exec_time);
   t[5] = self_exec_time;
-  e.addTimings (t); e.stop ();
-  PetscFunctionReturn (ierr);
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
 }
 
-DiffCoef::~DiffCoef () {
-    PetscFunctionBegin;
-    PetscErrorCode ierr;
-    ierr = VecDestroy (&kxx_);
-    ierr = VecDestroy (&kxy_);
-    ierr = VecDestroy (&kxz_);
-    ierr = VecDestroy (&kyy_);
-    ierr = VecDestroy (&kyz_);
-    ierr = VecDestroy (&kzz_);
-    delete [] temp_;
-    fft_free (temp_accfft_);
-    #ifdef CUDA 
-      fft_free (work_cuda_);
-    #endif
-
+DiffCoef::~DiffCoef() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+  ierr = VecDestroy(&kxx_);
+  ierr = VecDestroy(&kxy_);
+  ierr = VecDestroy(&kxz_);
+  ierr = VecDestroy(&kyy_);
+  ierr = VecDestroy(&kyz_);
+  ierr = VecDestroy(&kzz_);
+  delete[] temp_;
+  fft_free(temp_accfft_);
+#ifdef CUDA
+  fft_free(work_cuda_);
+#endif
 }

@@ -1,4 +1,3 @@
-}
 #include "DiffSolver.h"
 
 #include "petsc/private/kspimpl.h"

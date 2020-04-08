@@ -1,4 +1,3 @@
-}
 #include "AdvectionSolver.h"
 
 AdvectionSolver::AdvectionSolver(std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor, std::shared_ptr<SpectralOperators> spec_ops) : ctx_() {
