@@ -51,8 +51,8 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 
 ---
 ### PdeOperators
-- change forward_flag to time_history_off_
-- (S) n_misc --> params changes: also change for CUDA routines
+- change forward_flag to time_history_off_: (S): [done]
+- (S) n_misc --> params changes: also change for CUDA routines: [done]
 
 --- 
 ### DiffSolver, ElasticitySolver, AdvectionSOlver
