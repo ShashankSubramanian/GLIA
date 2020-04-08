@@ -45,7 +45,8 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ---
 
 ### IO.h/IO.cpp
-- (S) move all IO functions from Utils to IO
+- (S) move all IO functions from Utils to IO: [done]
+- (S) change all  n_misc to params and corresponding parameters to the correct class: grid or tu: [done]
 - change dataOut to take params_ as argument and std::string instead of char*
 
 ---

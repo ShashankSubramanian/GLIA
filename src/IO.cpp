@@ -47,12 +47,12 @@ PetscErrorCode NCERRQ(int cerr) {
 // Function definitions for netcdf and nifti IO
 #ifdef NIFTIIO
 template <typename T>
-PetscErrorCode readNifti(nifti_image *image, ScalarType *data_global, std::shared_ptr<NMisc> n_misc) {
+PetscErrorCode readNifti(nifti_image *image, ScalarType *data_global, std::shared_ptr<Parameters> params) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
   int nprocs;
-  int ng = n_misc->n_global_;
+  int ng = params->grid_->ng_;
   MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
 
   T *data = nullptr;
@@ -66,13 +66,13 @@ PetscErrorCode readNifti(nifti_image *image, ScalarType *data_global, std::share
   int64_t idx = 0;
   int64_t index, x, y, z;
   for (int p = 0; p < nprocs; p++) {
-    for (int i = 0; i < n_misc->isize_gathered_[3 * p + 0]; i++) {
-      for (int j = 0; j < n_misc->isize_gathered_[3 * p + 1]; j++) {
-        for (int k = 0; k < n_misc->isize_gathered_[3 * p + 2]; k++) {
-          x = n_misc->istart_gathered_[3 * p + 0] + i;
-          y = n_misc->istart_gathered_[3 * p + 1] + j;
-          z = n_misc->istart_gathered_[3 * p + 2] + k;
-          index = x * n_misc->n_[1] * n_misc->n_[2] + y * n_misc->n_[2] + z;
+    for (int i = 0; i < params->grid_->isize_gathered_[3 * p + 0]; i++) {
+      for (int j = 0; j < params->grid_->isize_gathered_[3 * p + 1]; j++) {
+        for (int k = 0; k < params->grid_->isize_gathered_[3 * p + 2]; k++) {
+          x = params->grid_->istart_gathered_[3 * p + 0] + i;
+          y = params->grid_->istart_gathered_[3 * p + 1] + j;
+          z = params->grid_->istart_gathered_[3 * p + 2] + k;
+          index = x * params->grid_->n_[1] * params->grid_->n_[2] + y * params->grid_->n_[2] + z;
           data_global[idx++] = static_cast<ScalarType>(data[index]);
         }
       }
@@ -83,7 +83,7 @@ PetscErrorCode readNifti(nifti_image *image, ScalarType *data_global, std::share
 }
 
 
-PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<Parameters> params, const char *fname) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
@@ -106,24 +106,24 @@ PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char
   nx[1] = static_cast<int>(image->ny);
   nx[0] = static_cast<int>(image->nz);
 
-  ierr = myAssert(nx[0] == n_misc->n_[0], "Error: dimension mismatch"); CHKERRQ(ierr);
-  ierr = myAssert(nx[1] == n_misc->n_[1], "Error: dimension mismatch"); CHKERRQ(ierr);
-  ierr = myAssert(nx[2] == n_misc->n_[2], "Error: dimension mismatch"); CHKERRQ(ierr);
+  ierr = myAssert(nx[0] == params->grid_->n_[0], "Error: dimension mismatch"); CHKERRQ(ierr);
+  ierr = myAssert(nx[1] == params->grid_->n_[1], "Error: dimension mismatch"); CHKERRQ(ierr);
+  ierr = myAssert(nx[2] == params->grid_->n_[2], "Error: dimension mismatch"); CHKERRQ(ierr);
 
   // get local size
-  nl = n_misc->n_local_;
-  ng = n_misc->n_global_;
+  nl = params->grid_->nl_;
+  ng = params->grid_->ng_;
 
   ScalarType *data_global = nullptr;
   if (rank == 0) {  // call readNifti only from master rank
     data_global = new ScalarType[ng];
     switch (image->datatype) {
       case NIFTI_TYPE_FLOAT32: {
-        ierr = readNifti<float>(image, data_global, n_misc); CHKERRQ(ierr);
+        ierr = readNifti<float>(image, data_global, params); CHKERRQ(ierr);
         break;
       }
       case NIFTI_TYPE_FLOAT64: {
-        ierr = readNifti<double>(image, data_global, n_misc); CHKERRQ(ierr);
+        ierr = readNifti<double>(image, data_global, params); CHKERRQ(ierr);
         break;
       }
       default: {
@@ -132,10 +132,10 @@ PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char
     }
   }
 
-  MPI_Scatterv(data_global, n_misc->isize_send_, n_misc->isize_offset_, MPIType, p_x, nl, MPIType, 0, PETSC_COMM_WORLD);
+  MPI_Scatterv(data_global, params->grid_->isize_send_, params->grid_->isize_offset_, MPIType, p_x, nl, MPIType, 0, PETSC_COMM_WORLD);
 
   // copy the image header, so we can write out files the same way
-  n_misc->nifti_ref_image_ = nifti_copy_nim_info(image);
+  params->tu_->nifti_ref_image_ = nifti_copy_nim_info(image);
 
   if (image != NULL) {
     nifti_image_free(image);
@@ -146,18 +146,18 @@ PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode writeNifti(nifti_image **image, ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode writeNifti(nifti_image **image, ScalarType *p_x, std::shared_ptr<Parameters> params, const char *fname) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
   int nprocs, rank;
-  int ng = n_misc->n_global_;
-  int nl = n_misc->n_local_;
+  int ng = params->grid_->ng_;
+  int nl = params->grid_->nl_;
   MPI_Comm_size(PETSC_COMM_WORLD, &nprocs);
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
   std::stringstream ss;
-  ss << n_misc->writepath_.str().c_str() << fname;
+  ss << params->tu_->writepath_.str().c_str() << fname;
   std::string fnm = ss.str();
   ScalarType *data_global = nullptr;
   if (rank == 0) {
@@ -175,7 +175,7 @@ PetscErrorCode writeNifti(nifti_image **image, ScalarType *p_x, std::shared_ptr<
   }
 
   // gather all the data onto rank 0
-  MPI_Gatherv(p_x, nl, MPIType, data_global, n_misc->isize_send_, n_misc->isize_offset_, MPIType, 0, PETSC_COMM_WORLD);
+  MPI_Gatherv(p_x, nl, MPIType, data_global, params->grid_->isize_send_, params->grid_->isize_offset_, MPIType, 0, PETSC_COMM_WORLD);
 
   ScalarType *data = nullptr;
   if (rank == 0) {
@@ -183,13 +183,13 @@ PetscErrorCode writeNifti(nifti_image **image, ScalarType *p_x, std::shared_ptr<
     int64_t idx = 0;
     int64_t index, x, y, z;
     for (int p = 0; p < nprocs; p++) {
-      for (int i = 0; i < n_misc->isize_gathered_[3 * p + 0]; i++) {
-        for (int j = 0; j < n_misc->isize_gathered_[3 * p + 1]; j++) {
-          for (int k = 0; k < n_misc->isize_gathered_[3 * p + 2]; k++) {
-            x = n_misc->istart_gathered_[3 * p + 0] + i;
-            y = n_misc->istart_gathered_[3 * p + 1] + j;
-            z = n_misc->istart_gathered_[3 * p + 2] + k;
-            index = x * n_misc->n_[1] * n_misc->n_[2] + y * n_misc->n_[2] + z;
+      for (int i = 0; i < params->grid_->isize_gathered_[3 * p + 0]; i++) {
+        for (int j = 0; j < params->grid_->isize_gathered_[3 * p + 1]; j++) {
+          for (int k = 0; k < params->grid_->isize_gathered_[3 * p + 2]; k++) {
+            x = params->grid_->istart_gathered_[3 * p + 0] + i;
+            y = params->grid_->istart_gathered_[3 * p + 1] + j;
+            z = params->grid_->istart_gathered_[3 * p + 2] + k;
+            index = x * params->grid_->n_[1] * params->grid_->n_[2] + y * params->grid_->n_[2] + z;
             data[index] = static_cast<ScalarType>(data_global[idx++]);
           }
         }
@@ -209,32 +209,32 @@ PetscErrorCode writeNifti(nifti_image **image, ScalarType *p_x, std::shared_ptr<
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, const char *fname) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
   nifti_image *image = NULL;
   int rank;
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-  if (n_misc->nifti_ref_image_ != NULL) {
-    image = nifti_copy_nim_info(n_misc->nifti_ref_image_);
+  if (params->tu_->nifti_ref_image_ != NULL) {
+    image = nifti_copy_nim_info(params->tu_->nifti_ref_image_);
     image->nbyper = sizeof(ScalarType);
     if (rank == 0) image->data = new ScalarType[image->nvox];
   } else {  // create the image
     image = nifti_simple_init_nim();
     image->dim[0] = image->ndim = 5;
-    image->dim[1] = n_misc->n_[2];
-    image->dim[2] = n_misc->n_[1];
-    image->dim[3] = n_misc->n_[0];
-    image->pixdim[1] = static_cast<ScalarType>(n_misc->h_[2]);
-    image->pixdim[2] = static_cast<ScalarType>(n_misc->h_[1]);
-    image->pixdim[3] = static_cast<ScalarType>(n_misc->h_[0]);
+    image->dim[1] = params->grid_->n_[2];
+    image->dim[2] = params->grid_->n_[1];
+    image->dim[3] = params->grid_->n_[0];
+    image->pixdim[1] = static_cast<ScalarType>(params->grid_->h_[2]);
+    image->pixdim[2] = static_cast<ScalarType>(params->grid_->h_[1]);
+    image->pixdim[3] = static_cast<ScalarType>(params->grid_->h_[0]);
     image->dim[4] = image->nt = 1;  // num of time steps
     image->dim[5] = image->nu = 3;  // 3d vector
     image->pixdim[4] = 1;           // temporal size
-    image->pixdim[5] = static_cast<ScalarType>(n_misc->h_[2]);
-    image->pixdim[6] = static_cast<ScalarType>(n_misc->h_[1]);
-    image->pixdim[7] = static_cast<ScalarType>(n_misc->h_[0]);
+    image->pixdim[5] = static_cast<ScalarType>(params->grid_->h_[2]);
+    image->pixdim[6] = static_cast<ScalarType>(params->grid_->h_[1]);
+    image->pixdim[7] = static_cast<ScalarType>(params->grid_->h_[0]);
 
     image->nvox = 1;
     // count total number of voxels
@@ -247,24 +247,24 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
   image->datatype = NIFTI_TYPE_FLOAT64
 #endif
 
-  ierr = writeNifti(&image, p_x, n_misc, fname); CHKERRQ(ierr);
+  ierr = writeNifti(&image, p_x, params, fname); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
 
 #else
-PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<Parameters> params, const char *fname) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // get local sizes
   MPI_Offset istart[3], isize[3];
-  istart[0] = static_cast<MPI_Offset>(n_misc->istart_[0]);
-  istart[1] = static_cast<MPI_Offset>(n_misc->istart_[1]);
-  istart[2] = static_cast<MPI_Offset>(n_misc->istart_[2]);
+  istart[0] = static_cast<MPI_Offset>(params->grid_->istart_[0]);
+  istart[1] = static_cast<MPI_Offset>(params->grid_->istart_[1]);
+  istart[2] = static_cast<MPI_Offset>(params->grid_->istart_[2]);
 
-  isize[0] = static_cast<MPI_Offset>(n_misc->isize_[0]);
-  isize[1] = static_cast<MPI_Offset>(n_misc->isize_[1]);
-  isize[2] = static_cast<MPI_Offset>(n_misc->isize_[2]);
+  isize[0] = static_cast<MPI_Offset>(params->grid_->isize_[0]);
+  isize[1] = static_cast<MPI_Offset>(params->grid_->isize_[1]);
+  isize[2] = static_cast<MPI_Offset>(params->grid_->isize_[2]);
   int ncerr, fileid, ndims, nvars, ngatts, unlimited, varid[1];
   // open file
   ncerr = ncmpi_open(PETSC_COMM_WORLD, fname, NC_NOWRITE, MPI_INFO_NULL, &fileid);
@@ -274,13 +274,13 @@ PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
   ncerr = ncmpi_inq_varid(fileid, "data", &varid[0]);
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
-  ncerr = ncmpi_get_vara_all(fileid, varid[0], istart, isize, p_x, n_misc->n_local_, MPIType);
+  ncerr = ncmpi_get_vara_all(fileid, varid[0], istart, isize, p_x, params->grid_->nl_, MPIType);
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
   ncerr = ncmpi_close(fileid);
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, const char *fname) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int ncerr, mode, dims[3], varid[1], nx[3], iscdf5, fileid;
@@ -290,7 +290,7 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
   bool usecdf5 = false;  // CDF-5 is mandatory for large files (>= 2x10^9 cells)
 
   std::stringstream ss;
-  ss << n_misc->writepath_.str().c_str() << fname;
+  ss << params->tu_->writepath_.str().c_str() << fname;
   ierr = myAssert(p_x != NULL, "null pointer"); CHKERRQ(ierr);
 
   // file creation mode
@@ -301,16 +301,16 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
     mode = NC_CLOBBER | NC_64BIT_OFFSET;
   }
 
-  c_comm = n_misc->c_comm_;
+  c_comm = params->grid_->c_comm_;
 
   // create netcdf file
   ncerr = ncmpi_create(c_comm, ss.str().c_str(), mode, MPI_INFO_NULL, &fileid);
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
 
-  nx[0] = n_misc->n_[0];
-  nx[1] = n_misc->n_[1];
-  nx[2] = n_misc->n_[2];
-  nl = n_misc->n_local_;
+  nx[0] = params->grid_->n_[0];
+  nx[1] = params->grid_->n_[1];
+  nx[2] = params->grid_->n_[2];
+  nl = params->grid_->nl_;
 
   // set size
   ncerr = ncmpi_def_dim(fileid, "x", nx[0], &dims[0]);
@@ -335,13 +335,13 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
 
   // get local sizes
-  istart[0] = static_cast<MPI_Offset>(n_misc->istart_[0]);
-  istart[1] = static_cast<MPI_Offset>(n_misc->istart_[1]);
-  istart[2] = static_cast<MPI_Offset>(n_misc->istart_[2]);
+  istart[0] = static_cast<MPI_Offset>(params->grid_->istart_[0]);
+  istart[1] = static_cast<MPI_Offset>(params->grid_->istart_[1]);
+  istart[2] = static_cast<MPI_Offset>(params->grid_->istart_[2]);
 
-  isize[0] = static_cast<MPI_Offset>(n_misc->isize_[0]);
-  isize[1] = static_cast<MPI_Offset>(n_misc->isize_[1]);
-  isize[2] = static_cast<MPI_Offset>(n_misc->isize_[2]);
+  isize[0] = static_cast<MPI_Offset>(params->grid_->isize_[0]);
+  isize[1] = static_cast<MPI_Offset>(params->grid_->isize_[1]);
+  isize[2] = static_cast<MPI_Offset>(params->grid_->isize_[2]);
 
   ierr = myAssert(nl == isize[0] * isize[1] * isize[2], "size error"); CHKERRQ(ierr);
 
@@ -356,20 +356,20 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<NMisc> n_misc, const cha
 }
 #endif
 
-PetscErrorCode dataIn(Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataIn(Vec A, std::shared_ptr<Parameters> params, const char *fname) {
   ScalarType *a_ptr;
   PetscErrorCode ierr;
   ierr = VecGetArray(A, &a_ptr); CHKERRQ(ierr);
-  dataIn(a_ptr, n_misc, fname);
+  dataIn(a_ptr, params, fname);
   ierr = VecRestoreArray(A, &a_ptr); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode dataOut(Vec A, std::shared_ptr<NMisc> n_misc, const char *fname) {
+PetscErrorCode dataOut(Vec A, std::shared_ptr<Parameters> params, const char *fname) {
   ScalarType *a_ptr;
   PetscErrorCode ierr;
   ierr = VecGetArray(A, &a_ptr); CHKERRQ(ierr);
-  dataOut(a_ptr, n_misc, fname);
+  dataOut(a_ptr, params, fname);
   ierr = VecRestoreArray(A, &a_ptr); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
@@ -426,7 +426,7 @@ PetscErrorCode writeCheckpoint(Vec p, std::shared_ptr<Phi> phi, std::string path
 
 // ### _____________________________________________________________________ ___
 // ### ///////////////// readPhiMesh /////////////////////////////////////// ###
-PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMisc> n_misc, std::string f, bool read_comp_data, std::vector<int> *comps, bool overwrite_sigma) {
+PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<Parameters> params, std::string f, bool read_comp_data, std::vector<int> *comps, bool overwrite_sigma) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int nprocs, procid;
@@ -463,11 +463,11 @@ PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMi
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
     ss.clear();
-    if (n_misc->phi_sigma_data_driven_ != sigma) {
-      ss << " Warning: specified sigma=" << n_misc->phi_sigma_data_driven_ << " != sigma=" << sigma << " (read from file).";
+    if (params->phi_sigma_data_driven_ != sigma) {
+      ss << " Warning: specified sigma=" << params->phi_sigma_data_driven_ << " != sigma=" << sigma << " (read from file).";
       if (overwrite_sigma) {
         ss << " Specified sigma overwritten.";
-        n_misc->phi_sigma_data_driven_ = sigma;
+        params->phi_sigma_data_driven_ = sigma;
       }
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
       ss.str("");
@@ -491,7 +491,7 @@ PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<NMi
       np++;
     }
     file.close();
-    n_misc->np_ = np;
+    params->np_ = np;
     ss << " np=" << np << " centers read ";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");

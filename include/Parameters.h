@@ -318,20 +318,21 @@ public:
   ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
 
   // initial condition (inversion)
-  int sparsity_level_;            // should this go to opt?
-  std::vector<int> support_;      // support of cs guess
+  int sparsity_level_;            // should this go to opt? (S) Yes, because only InvSolver needs this.
+  std::vector<int> support_;      // support of cs guess 
   // initial condition (parametrization)
   int bounding_box_;
   int max_p_location_;
   ScalarType p_scale_;
   // ScalarType p_scale_true_; // TODO(K) this should not be here
-  ScalarType phi_sigma_;       // TODO(K) can we merge these two?
+  ScalarType phi_sigma_;       // TODO(K) can we merge these two? (S) phi_sigma is for synthetic which can be different.
   ScalarType phi_sigma_data_driven_;
   ScalarType phi_spacing_factor_;
   ScalarType data_threshold_;
   ScalarType gaussian_vol_frac_;
   std::array<ScalarType, 3> user_cm_;
-  std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this
+  std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this: (S) You'right, they should be merged: but we need
+                                       // 4 values (last one is the activation)
 
   // data
   ScalarType obs_threshold_0_;
