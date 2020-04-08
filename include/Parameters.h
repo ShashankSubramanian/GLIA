@@ -85,6 +85,7 @@ public:
   ScalarType gamma_ub_;         /// @brief upper bound on gamma
   ScalarType rho_lb_;           /// @brief lower bound on rho
   ScalarType rho_ub_;           /// @brief upper bound on rho
+  std::array<ScalarType, 3> bounds_array_;
 };
 
 struct OptimizerFeedback {
@@ -341,7 +342,6 @@ public:
   bool write_p_checkpoint_;
   TumorStatistics statistics_;
   std::array<double, 7> timers_;
-  std::array<ScalarType, 3> bounds_array_;
   std::fstream outfile_sol_;
   std::fstream outfile_grad_;
   std::fstream outfile_glob_grad_;

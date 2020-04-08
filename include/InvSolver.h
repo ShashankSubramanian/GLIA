@@ -3,26 +3,8 @@
 
 #include <memory>
 #include "DerivativeOperators.h"
-#include "Utils.h"
+#include "Parameters.h"
 
-
-struct InterpolationContext {
-    InterpolationContext (std::shared_ptr<NMisc> n_misc) : n_misc_ (n_misc) {
-        PetscErrorCode ierr = 0;
-        ierr = VecCreate (PETSC_COMM_WORLD, &temp_);
-        ierr = VecSetSizes (temp_, n_misc->n_local_, n_misc->n_global_);
-        ierr = setupVec(temp_);
-//        ierr = VecSetFromOptions (temp_);
-        ierr = VecSet (temp_, 0);
-    }
-    std::shared_ptr<Tumor> tumor_;
-    std::shared_ptr<NMisc> n_misc_;
-    Vec temp_;
-    ~InterpolationContext () {
-        PetscErrorCode ierr = 0;
-        ierr = VecDestroy (&temp_);
-    }
-};
 
 struct CtxCoSaMp {
     int cosamp_stage;               // indicates solver state of CoSaMp function when using warmstart
@@ -110,7 +92,7 @@ struct CtxInv {
     /// @brief required to reset derivative_operators_
     std::shared_ptr<PdeOperators> pde_operators_;
     /// @brief common settings/ parameters
-    std::shared_ptr<NMisc> n_misc_;
+    std::shared_ptr<Parameters> params_;
     /// @brief accumulates all tumor related fields and methods
     std::shared_ptr<Tumor> tumor_;
     /// @brief keeps all the settings, tollerances, maxits for optimization
@@ -151,7 +133,7 @@ struct CtxInv {
     CtxInv ()
     :
       derivative_operators_ ()
-    , n_misc_ ()
+    , params_ ()
     , tumor_ ()
     , data (nullptr)
     , data_gradeval (nullptr)
@@ -163,7 +145,7 @@ struct CtxInv {
         grtol = 1e-12;
         jvalold = 0;
         last_ls_step = 1.0;
-        step_init = 1.0; 
+        step_init = 1.0;
         weights = nullptr;
         c0old = nullptr;
         x_old = nullptr;
@@ -193,13 +175,13 @@ struct CtxInv {
  */
 class InvSolver {
     public :
-        InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <PdeOperators> pde_operators = {}, std::shared_ptr <NMisc> n_misc = {}, std::shared_ptr <Tumor> tumor = {});
-        PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc, std::shared_ptr <Tumor> tumor);
+        InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators = {}, std::shared_ptr <PdeOperators> pde_operators = {}, std::shared_ptr <Parameters> params = {}, std::shared_ptr <Tumor> tumor = {});
+        PetscErrorCode initialize (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <Parameters> params, std::shared_ptr <Tumor> tumor);
         PetscErrorCode allocateTaoObjectsMassEffect (bool initialize_tao = true);
         PetscErrorCode allocateTaoObjects (bool initialize_tao = true);
-        PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<NMisc> n_misc, std::shared_ptr<Tumor> tumor, bool npchanged = false);
+        PetscErrorCode setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor, bool npchanged = false);
         PetscErrorCode resetOperators (Vec p);
-        PetscErrorCode resetTao(std::shared_ptr<NMisc> n_misc);
+        PetscErrorCode resetTao(std::shared_ptr<Parameters> params);
         PetscErrorCode solve ();
         PetscErrorCode solveForMassEffect ();
         PetscErrorCode solveInverseCoSaMp();
@@ -239,13 +221,7 @@ class InvSolver {
             PetscFunctionReturn(0);
         }
 
-        std::vector<ScalarType> getInvOutParams () {
-            return out_params_;
-        }
-
         PetscErrorCode solveInverseReacDiff (Vec x);
-        // solves interpolation with tumor basis phi to fit data
-        PetscErrorCode solveInterpolation (Vec data);
 
         ~InvSolver ();
 
@@ -269,7 +245,6 @@ class InvSolver {
         Tao tao_;
         /// @brief petsc matrix object for hessian matrix
         Mat H_;
-        std::vector<ScalarType> out_params_;
 };
 
 // ============================= non-class methods used for TAO ============================
