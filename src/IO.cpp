@@ -375,6 +375,18 @@ PetscErrorCode dataOut(Vec A, std::shared_ptr<Parameters> params, const char *fn
 }
 
 
+PetscErrorCode readVecField(VecField *v, std::string fnx1, std::string fnx2, std::string fnx3, std::shared_ptr<Parameters> params ) {
+    PetscErrorCode ierr = 0;
+    PetscFunctionBegin;
+
+    ierr = dataIn(&v->x_, params, fnx1.c_str()); CHKERRQ(ierr);
+    ierr = dataIn(&v->y_, params, fnx2.c_str()); CHKERRQ(ierr);
+    ierr = dataIn(&v->z_, params, fnx3.c_str()); CHKERRQ(ierr);
+
+    PetscFunctionReturn(ierr);
+}
+
+
 // Miscellaneous IO for parameters
 
 // ### _____________________________________________________________________ ___

@@ -17,7 +17,9 @@ PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<Parameters> params, const 
 PetscErrorCode dataIn (Vec A, std::shared_ptr<Parameters> params, const char *fname);
 PetscErrorCode dataOut (ScalarType *A, std::shared_ptr<Parameters> params, const char *fname);
 PetscErrorCode dataOut (Vec A, std::shared_ptr<Parameters> params, const char *fname);
-/// @reads in binary vector, serial
+/// @brief reads in vector field of three components
+PetscErrorCode readVecField(VecField *v, std::string fnx1, std::string fnx2, std::string fnx3, std::shared_ptr<Parameters> params );
+/// @brief reads in binary vector, serial
 PetscErrorCode readBIN(Vec* x, int size2, std::string f);
 /// @brief writes out vector im binary format, serial
 PetscErrorCode writeBIN(Vec x, std::string f);
