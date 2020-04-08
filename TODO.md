@@ -71,11 +71,20 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 
 --- 
 ### DiffCoef, ReacCoef
-- (S) n_misc --> params changes
+- (S) n_misc --> params changes: [done]
+- (S) Move sinusoidal setvalues to TestSuite.cpp: [done]
+
+**unclear**
+- Remove glm ratios? tumor never grows or diffuses here
+- can we remove the functions DiffCoef::compute_dKdm_gradc_gradp and ReacCoef::applydRdm? What are they needed for?
 
 ---
 ### Utils.h
 - (S) Move enums to typedefs and remove parameters (except tumor statistics): [done]
+
+---
+### TestSuite.cpp
+- implement tests
 
 ---
 ### Invsolver

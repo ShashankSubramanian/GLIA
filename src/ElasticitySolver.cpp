@@ -1,4 +1,3 @@
-}
 #include <ElasticitySolver.h>
 #include <petsc/private/vecimpl.h>
 
