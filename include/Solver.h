@@ -54,7 +54,6 @@ class Solver {
       if(data_comps_ != nullptr) VecDestroy(&data_comps_);
       if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
       if(p_rec_ != nullptr) VecDestroy(&p_rec_);
-      // if(velocity_ != nullptr) // TODO(K): delete VecField
     }
 
   protected:
@@ -87,9 +86,7 @@ class Solver {
     Vec data_support_;
     Vec data_comps_;
     Vec obs_filter_;
-
     Vec p_rec_;
-    VecField velocity_;
 };
 
 class ForwardSolver : public Solver {
