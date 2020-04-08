@@ -1,6 +1,10 @@
 # TODOS CLEANUP
 ---
 
+### All files
+(S) Format to tab-width 2, CHKERRQ(ierr) to one space after ";" and general \(\) formating
+
+
 ### inverse.cpp/Solver.cpp
 
 **todo: (implement)**
@@ -11,7 +15,7 @@
 
  (S):
  - add l1 p relative error
- - remove computeSegmentation ffrom _Solver.cpp_ and use it from tumor class
+ - remove computeSegmentation ffrom _Solver.cpp_ and use it from tumor class [K done]
  - add mass effect data to Parameters, config, and to the inverse solver in _Solver.cpp_
  - Maybe bg can be dropped if lame-coefficients are initialized with its value:  modify _ElastictiySolver.cpp_
 
@@ -57,7 +61,7 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 
 --- 
 ### DiffSolver, ElasticitySolver, AdvectionSOlver
-- (S) n_misc --> params changes: also change for CUDA routines
+- (S) n_misc --> params changes: also change for CUDA routines: Diffsolver done, AdvectionSolver done
 
 ---
 ### Utils.h
