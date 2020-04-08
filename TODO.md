@@ -61,9 +61,17 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 - change forward_flag to time_history_off_: (S): [done]
 - (S) n_misc --> params changes: also change for CUDA routines: [done]
 
+**unclear**
+- (S) move reaction solve to a new file ReactionSolver? I think this is more consistent even though it's an analytic solve and doesn't really need a new class
+
 --- 
 ### DiffSolver, ElasticitySolver, AdvectionSOlver
-- (S) n_misc --> params changes: also change for CUDA routines: Diffsolver done, AdvectionSolver done
+- (S) n_misc --> params changes: also change for CUDA routines: [done]
+- (S) Rename DiffSolver to DiffusionSolver for consistency
+
+--- 
+### DiffCoef, ReacCoef
+- (S) n_misc --> params changes
 
 ---
 ### Utils.h
