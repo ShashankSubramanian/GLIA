@@ -60,6 +60,7 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ### PdeOperators
 - change forward_flag to time_history_off_: (S): [done]
 - (S) n_misc --> params changes: also change for CUDA routines: [done]
+- (S) csf -> vt
 
 **unclear**
 - (S) move reaction solve to a new file ReactionSolver? I think this is more consistent even though it's an analytic solve and doesn't really need a new class
@@ -73,10 +74,16 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ### DiffCoef, ReacCoef
 - (S) n_misc --> params changes: [done]
 - (S) Move sinusoidal setvalues to TestSuite.cpp: [done]
+- (S) csf -> vt
 
 **unclear**
 - Remove glm ratios? tumor never grows or diffuses here
 - can we remove the functions DiffCoef::compute_dKdm_gradc_gradp and ReacCoef::applydRdm? What are they needed for?
+
+--- 
+### MatProp
+- (S) n_misc --> params changes: [done]
+- (S) csf -> vt
 
 --- 
 ### Tumor
