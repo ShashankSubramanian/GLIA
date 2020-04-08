@@ -4,11 +4,11 @@ Tumor class
 #ifndef TUMOR_H_
 #define TUMOR_H_
 
-#include "DiffCoef.h"
 #include "MatProp.h"
+#include "DiffCoef.h"
+#include "ReacCoef.h"
 #include "Obs.h"
 #include "Phi.h"
-#include "ReacCoef.h"
 
 class Tumor {
  public:
