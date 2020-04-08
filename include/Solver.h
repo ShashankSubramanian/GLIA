@@ -35,10 +35,10 @@
 
 class Solver {
   public:
-    Solver(std::shared_ptr<SpectralOperators> spec_ops);
+    Solver();
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run() = 0;
 
     virtual ~Solver() {}
@@ -81,12 +81,12 @@ class Solver {
 
 class ForwardSolver : public Solver {
   public:
-    ForwardSolver(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    ForwardSolver()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
     virtual ~ForwardSolver() {
@@ -107,12 +107,12 @@ class ForwardSolver : public Solver {
 
 class InverseL2Solver : public Solver {
   public:
-    InverseL2Solver(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    InverseL2Solver()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
     virtual ~InverseL2Solver();
@@ -120,12 +120,12 @@ class InverseL2Solver : public Solver {
 
 class InverseL1Solver : public Solver {
   public:
-    InverseL1Solver(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    InverseL1Solver()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
     virtual ~InverseL1Solver();
@@ -133,12 +133,12 @@ class InverseL1Solver : public Solver {
 
 class InverseReactionDiffusionSolver : public Solver {
   public:
-    InverseReactionDiffusionSolver(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    InverseReactionDiffusionSolver()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
     virtual ~InverseReactionDiffusionSolver();
@@ -146,12 +146,12 @@ class InverseReactionDiffusionSolver : public Solver {
 
 class InverseMassEffectSolver : public Solver {
   public:
-    InverseMassEffectSolver(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    InverseMassEffectSolver()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize ();
-    virtual PetscErrorCode initialize (std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run ();
 
     virtual ~InverseMassEffectSolver () {}
@@ -160,28 +160,28 @@ class InverseMassEffectSolver : public Solver {
     ScalarType gamma_;
 };
 
-class InverseMultiSpeciesSolver : public Solver {
+class MultiSpeciesSolver : public Solver {
   public:
-    InverseMassEffectSolver(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    InverseMassEffectSolver()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
-    virtual ~InverseMultiSpeciesSolver() {}
+    virtual ~MultiSpeciesSolver() {}
 };
 
 
 class TestSuite : public Solver {
   public:
-    TestSuite(std::shared_ptr<SpectralOperators> spec_ops)
-    : Solver(spec_ops)
+    TestSuite()
+    : Solver()
     {}
 
     virtual PetscErrorCode finalize();
-    virtual PetscErrorCode initialize(std::shared_ptr<Parameters> params, , std::shared_ptr<ApplicationSettings> app_settings);
+    virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
     virtual PetscErrorCode run();
 
     virtual ~TestSuite() {}

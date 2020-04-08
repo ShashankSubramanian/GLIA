@@ -11,11 +11,11 @@
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-Solver::Solver(std::shared_ptr<SpectralOperators> spec_ops)
+Solver::Solver()
 :
   params_(nullptr),
   solver_interface_(nullptr),
-  spec_ops_(spec_ops),
+  spec_ops_(nullptr),
   tumor_(nullptr),
   custom_obs_(false),
   warmstart_p_(false),
@@ -30,23 +30,24 @@ Solver::Solver(std::shared_ptr<SpectralOperators> spec_ops)
   data_support_(nullptr),
   data_comps_(nullptr),
   obs_filter_(nullptr),
-  velocity_(nullptr) {
-
-  solver_interface_ = std::make_shared<TumorSolverInterface>(params_, spec_ops, nullptr, nullptr);
-  tumor_ = std::shared_ptr<Tumor> tumor = solver_interface->getTumor();
-}
+  velocity_(nullptr)
+  { }
 
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   std::stringstream;
 
-  // === set parameters, populate to optimizer
+  // === set parameters, initialize solver interface
+  spec_ops_ = spec_ops;
   params_ = params;
   app_settings_ = app_settings;
+  solver_interface_ = std::make_shared<TumorSolverInterface>(params_, spec_ops_, nullptr, nullptr);
+  tumor_ = std::shared_ptr<Tumor> tumor = solver_interface->getTumor();
+  // populate params to optimizer
   ierr = solver_interface_->setOptimizerSettings(params_->opt_); CHKERRQ (ierr);
   // === create tmp vector according to distributed grid
   ierr = VecCreate(PETSC_COMM_WORLD, &tmp_); CHKERRQ (ierr);
@@ -89,16 +90,16 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params, std::share
     ierr = solver_interface_->getPdeOperators()->preAdvection(wm_, gm_, vt_, mri_, app_settings_->syn_->pre_adv_time_); CHKERRQ(ierr);
 	}
 
-  ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
-  ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
+  ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
+  ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
 
   // === read data: generate synthetic or read real
   if(app_settings_->syn_->enabled_) {
-    int fwd_temp = params_->tu_->tu_->time_history_off_; // temporarily disable time_history
+    int fwd_temp = params_->tu_->time_history_off_; // temporarily disable time_history
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
     ierr = generateSyntheticData(); CHKERRQ(ierr);
     data_support_ = data_t1_;
-    params_->tu_->tu_->time_history_off_ = fwd_temp; // restore mode, i.e., allow inverse solver to store time_history
+    params_->tu_->time_history_off_ = fwd_temp; // restore mode, i.e., allow inverse solver to store time_history
   } else {
     // read in target data (t1 and/or t0); observation operator
     ierr = readData(); CHKERRQ(ierr);
@@ -278,7 +279,7 @@ PetscErrorCode Solver::predict() {
           params_->path_vt_ = app_settings_->pred_->vt_path_[i];
           ierr = tuMSGstd(" .. reading in atlas brain to perform prediction."); CHKERRQ(ierr);
           ierr = readAtlas(); CHKERRQ(ierr);
-          ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, csf_, vt_, nullptr); // TODO(K) is this safe, giving nullptr?
+          ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, csf_, vt_, nullptr);
           ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
         } else {
           ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
@@ -691,6 +692,23 @@ PetscErrorCode Solver::initializeGaussians() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode ForwardSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+
+  ierr = tuMSGwarn(" Initializing Forward Solver."); CHKERRQ(ierr);
+  // switch off time history
+  params->tu_->time_history_off_;
+  ierr = tuMSGstd(" .. switching off time history."); CHKERRQ(ierr);
+  // set and populate parameters; read material properties; read data
+  Solver::initialize(spec_ops, params, app_settings);  CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode ForwardSolver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
@@ -707,14 +725,14 @@ PetscErrorCode ForwardSolver::run() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   std::stringstream ss;
 
   ierr = tuMSGwarn(" Initializing Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  Solver::initialize(params, app_settings);  CHKERRQ(ierr);
+  Solver::initialize(spec_ops, params, app_settings);  CHKERRQ(ierr);
 
   // === set Gaussians
   if(app_settings_->inject_solution_) {
@@ -766,14 +784,14 @@ PetscErrorCode InverseL2Solver::finalize() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   std::stringstream ss;
 
   ierr = tuMSGwarn(" Initializing Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  Solver::initialize(params, app_settings);  CHKERRQ(ierr);
+  Solver::initialize(spec_ops, params, app_settings);  CHKERRQ(ierr);
 
   // read connected components; set sparsity level
   if(!app_settings_->path_->data_comps_data_.empty()) {
@@ -875,13 +893,13 @@ PetscErrorCode InverseL1Solver::finalize() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Initializing Reaction/Diffusion Inversion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  Solver::initialize(params, app_settings);
+  Solver::initialize(spec_ops, params, app_settings);
 
   ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   ierr = solver_interface_->setParams (p_rec_, nullptr);
@@ -929,13 +947,13 @@ PetscErrorCode InverseReactionDiffusionSolver::finalize() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Initializing Mass Effect Inversion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  Solver::initialize(params, app_settings);
+  Solver::initialize(spec_ops, params, app_settings);
 
   // TODO(K): read mass effect data
   // std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
@@ -1032,18 +1050,18 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
 
 
 /* #### ------------------------------------------------------------------- #### */
-/* #### ========             InverseMultiSpeciesSolver             ======== #### */
+/* #### ========             MultiSpeciesSolver             ======== #### */
 /* #### ------------------------------------------------------------------- #### */
 
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Initializing Multi Species Inversion."); CHKERRQ(ierr);
-  Solver::initialize(params, app_settings);
+  Solver::initialize(spec_ops, params, app_settings);
 
 
   ierr = solver_interface_->setParams (p_rec_, nullptr);
@@ -1059,7 +1077,7 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<Parameters>
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMultiSpeciesSolver::run() {
+PetscErrorCode MultiSpeciesSolver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
@@ -1074,7 +1092,7 @@ PetscErrorCode InverseMultiSpeciesSolver::run() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMultiSpeciesSolver::finalize() {
+PetscErrorCode MultiSpeciesSolver::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
@@ -1132,11 +1150,11 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TestSuite::initialize(std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
-  Solver::initialize(params, app_settings);
+  Solver::initialize(spec_ops, params, app_settings);
 
   ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   ierr = solver_interface_->setParams (p_rec_, nullptr);

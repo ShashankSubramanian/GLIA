@@ -305,25 +305,25 @@ int main(int argc, char **argv) {
   std::unique_ptr<Solver> solver;
   switch(run_mode) {
     case FORWARD:
-      solve = std::make_unique<ForwardSolver>(spec_ops);
+      solve = std::make_unique<ForwardSolver>();
       break;
     case INVERSE_L2:
-      solve = std::make_unique<InverseL2Solver>(spec_ops);
+      solve = std::make_unique<InverseL2Solver>();
       break;
     case INVERSE_L1:
-      solve = std::make_unique<InverseL1Solver>(spec_ops);
+      solve = std::make_unique<InverseL1Solver>();
       break;
     case INVERSE_RD:
-      solve = std::make_unique<InverseReactionDiffusionSolver>(spec_ops);
+      solve = std::make_unique<InverseReactionDiffusionSolver>();
       break;
     case INVERSE_ME:
-      solve = std::unique_ptr<InverseMassEffectSolver>(spec_ops);
+      solve = std::unique_ptr<InverseMassEffectSolver>();
       break;
     case INVERSE_MS:
-      solve = std::make_unique<InverseMultiSpeciesSolver>(spec_ops);
+      solve = std::make_unique<MultiSpeciesSolver>();
       break;
     case TEST:
-      solve = std::make_unique<TestSuite>(spec_ops);
+      solve = std::make_unique<TestSuite>();
       break;
     default:
       ierr = cplMSGwarn("Configuration invalid: solver mode not recognized. Exiting."); CHKERRQ(ierr);
@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
 
   openFiles(); // opens all txt output files on one core only
   // ensures data for specific solver is read and code is set up for running mode
-  ierr = solver->initialize(params_, app_settings); CHKERRQ(ierr);
+  ierr = solver->initialize(spec_ops, params_, app_settings); CHKERRQ(ierr);
   ierr = solver->run(); CHKERRQ(ierr);
   // compute errors, segmentations, other measures of interest, and shutdown solver
   ierr = solver->finalize(); CHKERRQ(ierr);
