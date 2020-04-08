@@ -58,6 +58,9 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ### DiffSolver, ElasticitySolver, AdvectionSOlver
 - (S) n_misc --> params changes: also change for CUDA routines
 
+---
+### Utils.h
+- (S) Move enums to typedefs and remove parameters (except tumor statistics): [done]
 
 ---
 ### Invsolver
