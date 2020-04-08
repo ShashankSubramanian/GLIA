@@ -1,17 +1,21 @@
 /**
- *  SIBIA (Scalable Biophysics-Based Image Analysis)
+ *  NAME_OF_THE_CODE
  *
  *  Copyright (C) 2017-2020, The University of Texas at Austin
- *  This file is part of the SIBIA library.
+ *  This file is part of the NAME_OF_THE_CODE framework.
  *
- *  Authors: Klaudius Scheufele, Shashank Subramanian
+ *  Main Contributers:    Shashank Subramanian
+ *                        Klaudius Scheufele
  *
- *  SIBIA is free software: you can redistribute it and/or modify
+ *  Further Contributers: Naveen Himthani
+ *                        George Biros
+ *
+ *  NAME_OF_THE_CODE is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  SIBIA is distributed in the hope that it will be useful,
+ *  NAME_OF_THE_CODE is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  *  GNU General Public License for more details.

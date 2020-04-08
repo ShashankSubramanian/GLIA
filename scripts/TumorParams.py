@@ -87,7 +87,7 @@ def getTumorRunCmd(params):
     nt_data = 25
     dt_data = 0.04
     ### Mass effect parameters -- only used if model is {4,5}
-    forcing_factor = 12E4 
+    forcing_factor = 12E4
     ### Tumor location -- grid coordinates in 256^3 (x,y,z) according to paraview coordinate system and accfft
     z_cm = 112
     y_cm = 136

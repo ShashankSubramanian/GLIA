@@ -1,25 +1,12 @@
-/**
- *  SIBIA (Scalable Biophysics-Based Image Analysis)
- *
- *  Copyright (C) 2017-2020, The University of Texas at Austin
- *  This file is part of the SIBIA library.
- *
- *  Authors: Klaudius Scheufele, Shashank Subramanian
- *
- *  SIBIA is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  SIBIA is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see the LICENSE file.
- *
- **/
+
+#include <stdlib.h>
+#include <vector>
+#include <memory>
+#include <iostream>
+
+#include "Utils.h"
+#include "Solver.h"
+#include "TumorSolverInterface.h"
 
 
 // ### ______________________________________________________________________ ___
@@ -98,7 +85,7 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params, std::share
     ss << " pre-advecting material properties with velocity to time t="<<app_settings_->syn_->pre_adv_time_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     if(!app_settings_->path_->mri_.empty()) {
       ierr = VecDuplicate (data_t1_, &mri_); CHKERRQ (ierr);
-      dataIn (mri_, params_, app_settings_->path_->mri_);
+      ierr = dataIn (mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
     }
     ierr = solver_interface_->getPdeOperators()->preAdvection(wm_, gm_, csf_, mri_, app_settings_->syn_->pre_adv_time_); CHKERRQ(ierr);
 	}
@@ -181,8 +168,9 @@ PetscErrorCode Solver::finalize() {
 
   ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);
   // === segmentation
-  ierr = computeSegmentation(tumor_->c_0_, "seg_c0"); CHKERRQ(ierr);
-  ierr = computeSegmentation(tumor_->c_t_, "seg_c1"); CHKERRQ(ierr);
+  ierr = tumor_->computeSegmentation (); CHKERRQ (ierr);
+  ss << "seg_rec_final";
+  ierr = dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
 
   // === compute errors
   ScalarType* c0_ptr;
@@ -191,7 +179,7 @@ PetscErrorCode Solver::finalize() {
       ierr = enforcePositivity (tumor_->c_0_, n_misc);
   #endif
   if (params_->tu_->write_output_) {
-      dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_);
+      ierr = dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_); CHKERRQ(ierr);
   }
 
   if(params_->tu_->transport_mri_) {
@@ -208,7 +196,7 @@ PetscErrorCode Solver::finalize() {
   ierr = VecMin(tmp_, NULL, &min); CHKERRQ (ierr);
   ss << " Reconstructed c(1) max and min : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   if (params_->tu_->write_output_)
-      dataOut (tmp_, params_, "c1_rec" + params_->tu_->ext_);
+      ierr = dataOut (tmp_, params_, "c1_rec" + params_->tu_->ext_); CHKERRQ(ierr);
 
   // copy c(1)
   ScalarType data_norm, error_norm, error_norm_0;
@@ -298,7 +286,7 @@ PetscErrorCode Solver::predict() {
         }
         ierr = solver_interface_->getPdeOperators()->solveState (0); CHKERRQ(ierr); // forward solve
         ss << "c_pred_at_[t=" << app_settings_->pred_->t_pred_[i] <<"]";
-        dataOut (tumor_->c_t_, params_, ss.str()+params_->tu_->ext_); ss.str(""); ss.clear();
+        ierr = dataOut (tumor_->c_t_, params_, ss.str()+params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
         ss << " .. prediction complete for t = "<<app_settings_->pred_->t_pred_[i]; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         // if given: compute error to ground truth at predicted time
@@ -306,13 +294,13 @@ PetscErrorCode Solver::predict() {
           Vec true_dat_t1;
           ScalarType obs_c_norm, obs_data_norm, data_norm;
           ierr = VecDuplicate(data_t1_, &true_dat_t1); CHKERRQ (ierr);
-          dataIn(true_dat_t1, params_, app_settings_->pred_->true_data_path_[i]);
+          ierr = dataIn(true_dat_t1, params_, app_settings_->pred_->true_data_path_[i]); CHKERRQ(ierr);
           ierr = VecNorm(true_dat_t1, NORM_2, &data_norm); CHKERRQ (ierr);
           // error everywhere
           ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ (ierr);
           ierr = VecAXPY(tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
           ss << "res_at_[t=" << app_settings_->pred_->t_pred_[i] <<"]";
-          dataOut(tmp_, params_, ss.str()+params_->tu_->ext_); ss.str(""); ss.clear();
+          ierr = dataOut(tmp_, params_, ss.str()+params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
           ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
           obs_c_norm /= data_norm;
           ss << " .. rel. l2-error (everywhere) (T=" << app_settings_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -323,7 +311,7 @@ PetscErrorCode Solver::predict() {
           ierr = VecNorm (true_dat_t1, NORM_2, &obs_data_norm); CHKERRQ (ierr);
           ierr = VecAXPY (tmp_, -1.0, true_dat_t1); CHKERRQ (ierr);
           ss << "res_obs_at_[t=" << app_settings_->pred_->t_pred_[i] <<"]";
-          dataOut (tmp_, params_, ss.str()+params_->tu_->ext_); ss.str(""); ss.clear();
+          ierr = dataOut (tmp_, params_, ss.str()+params_->tu_->ext_);  CHKERRQ(ierr); ss.str(""); ss.clear();
           ierr = VecNorm (tmp_, NORM_2, &obs_c_norm); CHKERRQ (ierr);
           obs_c_norm /= obs_data_norm;
           ss << " .. rel. l2-error (at observation points) (T=" << app_settings_->pred_->t_pred_[i] << ") : " << obs_c_norm; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -344,30 +332,30 @@ PetscErrorCode Solver::readAtlas() {
   ScalarType sigma_smooth = params_->smoothing_factor_ * 2 * M_PI / params_->n_[0];
 
   if(!app_settings_->path_->seg_.empty()) {
-    dataIn (tmp_, params_, app_settings_->path_->seg_);
+    ierr = dataIn (tmp_, params_, app_settings_->path_->seg_); CHKERRQ(ierr);
     // TODO(K): populate to wm, gm, csf, ve
   } else {
     if(!app_settings_->path_->wm_.empty()) {
       ierr = VecDuplicate(tmp_, &wm_); CHKERRQ (ierr);
-      dataIn (wm_, params_, app_settings_->path_->wm_);
+      ierr = dataIn (wm_, params_, app_settings_->path_->wm_); CHKERRQ(ierr);
     }
     if(!app_settings_->path_->gm_.empty()) {
       ierr = VecDuplicate(tmp_, &gm_); CHKERRQ (ierr);
-      dataIn (gm_, params_, app_settings_->path_->gm_);
+      ierr = dataIn (gm_, params_, app_settings_->path_->gm_); CHKERRQ(ierr);
     }
     if(!app_settings_->path_->csf_.empty()) {
       ierr = VecDuplicate(tmp_, &csf_); CHKERRQ (ierr);
-      dataIn (csf_, params_, app_settings_->path_->csf_);
+      ierr = dataIn (csf_, params_, app_settings_->path_->csf_); CHKERRQ(ierr);
     }
     if(!app_settings_->path_->ve_.empty()) {
       ierr = VecDuplicate(tmp_, &ve_); CHKERRQ (ierr);
-      dataIn (ve_, params_, app_settings_->path_->ve_);
+      ierr = dataIn (ve_, params_, app_settings_->path_->ve_); CHKERRQ(ierr);
     }
   }
   // mass effect
   if(!app_settings_->path_->glm_.empty() && params_->tu_->model >= 4) {
       ierr = VecDuplicate(tmp_, &glm_); CHKERRQ (ierr);
-      dataIn (glm_, params_, app_settings_->path_->glm_);
+      ierr = dataIn (glm_, params_, app_settings_->path_->glm_); CHKERRQ(ierr);
   }
   // smooth
   if (gm_  != nullptr) {ierr = spec_ops->weierstrassSmoother (gm_, gm_, params_, sigma_smooth); CHKERRQ (ierr);}
@@ -392,7 +380,7 @@ PetscErrorCode Solver::readData() {
 
   if(!app_settings_->path_->data_t1_.empty()) {
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ (ierr);
-    dataIn (data_t1_, params_, app_settings_->path_->data_t1_);
+    ierr = dataIn (data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
     if(params_->tu_->smoothing_factor_data_ > 0) {
       ierr = spec_ops->weierstrassSmoother (data_t1_, data_t1_, params_, sig_data); CHKERRQ (ierr);
       ss << " smoothing c(1) with factor: "<<params_->tu_->smoothing_factor_data_<<", and sigma: "<<sig_data; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -411,25 +399,25 @@ PetscErrorCode Solver::readData() {
     read_supp = (strcmp(ext.c_str(),".nc") == 0) || (strcmp(ext.c_str(),".nii.gz") == 0); // file ends with *.nc or *.nii.gz?
     if(read_supp) {
       ierr = VecDuplicate(tmp_, &data_support_); CHKERRQ (ierr);
-      dataIn (data_support_, params_, app_settings_->path_->data_support_);
+      ierr = dataIn (data_support_, params_, app_settings_->path_->data_support_); CHKERRQ(ierr);
     }
   } else {
     data_support_ = data_t1_;
   }
   if(read_supp && !app_settings_->path_->data_comps_.empty()) {
     ierr = VecDuplicate(tmp_, &data_comps_); CHKERRQ (ierr);
-    dataIn (data_comps_, params_, app_settings_->path_->data_comps_);
+    ierr = dataIn (data_comps_, params_, app_settings_->path_->data_comps_); CHKERRQ(ierr);
   }
   if(!app_settings_->path_->obs_filter_.empty()) {
     ierr = VecDuplicate(tmp_, &obs_filter_); CHKERRQ (ierr);
-    dataIn (obs_filter_, params_, app_settings_->path_->obs_filter_);
+    ierr = dataIn (obs_filter_, params_, app_settings_->path_->obs_filter_); CHKERRQ(ierr);
     ss << " Reading custom observation mask"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
 
   ScalarType *ptr;
   if(!app_settings_->path_->data_t0_.empty()) {
     ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ (ierr);
-    dataIn (data_t0_, params_, app_settings_->path_->data_t0_);
+    ierr = dataIn (data_t0_, params_, app_settings_->path_->data_t0_); CHKERRQ(ierr);
     ierr = VecMin(data_t0_, NULL, &min); CHKERRQ (ierr);
     if (min < 0) {
       ss << " tumor init is aliased with min " << min << "; clipping and smoothing..."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -477,7 +465,7 @@ PetscErrorCode Solver::readVelocity() {
     ierr = tumor_->velocity_->scale(-1); CHKERRQ(ierr);
     Vec mag; ierr = VecDuplicate (data_t1_, &mag); CHKERRQ(ierr);
     ierr = tumor->velocity_->computeMagnitude(mag); CHKERRQ(ierr);
-    dataOut (mag, params_, "velocity_mag.nc");
+    ierr = dataOut (mag, params_, "velocity_mag.nc"); CHKERRQ(ierr);
     ScalarType vnorm;
     ierr = VecNorm(mag, NORM_2, &vnorm); CHKERRQ(ierr);
     std::Stringstream ss;
@@ -576,7 +564,7 @@ PetscErrorCode Solver::createSynthetic() {
   ierr = VecMin(data_t1_, NULL, &min); CHKERRQ (ierr);
   ss << " Synthetic data c(1) max and min (before observation) : " << max << " " << min; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   if (params_->tu_->write_output_) {
-    dataOut (c_t, n_misc, "c1_true_syn_before_observation.nc");
+    ierr = dataOut (c_t, n_misc, "c1_true_syn_before_observation.nc"); CHKERRQ(ierr);
   }
 
 
@@ -651,55 +639,55 @@ PetscErrorCode Solver::initializeGaussians() {
   PetscFunctionReturn(ierr);
 }
 
-
-// ### ______________________________________________________________________ ___
-// ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode Solver::computeSegmentation(Vec c, std::string name) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    ScalarType sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
-
-    // compute max of gm, wm, csf, bg, tumor
-    std::vector<ScalarType> v;
-    std::vector<ScalarType>::iterator max_component;
-    ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *max_ptr;
-    ierr = VecSet(tmp_, 0); CHKERRQ(ierr);
-    ierr = VecGetArray(tumor_->mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
-    ierr = VecGetArray(tumor_->mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
-    ierr = VecGetArray(tumor_->mat_prop_->wm_, &wm_ptr); CHKERRQ(ierr);
-    ierr = VecGetArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
-    ierr = VecGetArray(c, &c_ptr); CHKERRQ(ierr);
-    ierr = VecGetArray(tmp_, &max_ptr); CHKERRQ(ierr);
-
-    // segmentation for c(0)
-    for(int i = 0; i < params_->grid_->nl_; i++) {
-        // arase material properties in regions of tumor
-        bg_ptr[i]  = bg_ptr[i]  * (1 - c_ptr[i]);
-        wm_ptr[i]  = wm_ptr[i]  * (1 - c_ptr[i]);
-        csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
-        gm_ptr[i]  = gm_ptr[i]  * (1 - c_ptr[i]);
-        v.push_back(bg_ptr[i]);
-        v.push_back(gm_ptr[i]);
-        v.push_back(wm_ptr[i]);
-        v.push_back(csf_ptr[i]);
-        v.push_back(c_ptr[i]);
-        max_component = std::max_element(v.begin(), v.end());
-        max_ptr[i] = std::distance(v.begin(), max_component);
-        v.clear();
-    }
-    // ierr = spec_ops->weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
-    ierr = VecRestoreArray(tmp_, &max_ptr); CHKERRQ(ierr);
-    ierr = VecRestoreArray(tumor_->mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
-    ierr = VecRestoreArray(tumor_->mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
-    ierr = VecRestoreArray(tumor_->mat_prop_->wm_, &wm_ptr); CHKERRQ(ierr);
-    ierr = VecRestoreArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
-    ierr = VecRestoreArray(c, &c_ptr); CHKERRQ(ierr);
-
-    if (n_misc->tu_->write_output_) {
-        dataOut (tmp_, params_, "name" + params_->tu_->ext_);
-    }
-    PetscFunctionReturn (ierr);
-}
+//
+// // ### ______________________________________________________________________ ___
+// // ### ////////////////////////////////////////////////////////////////////// ###
+// PetscErrorCode Solver::computeSegmentation(Vec c, std::string name) {
+//     PetscFunctionBegin;
+//     PetscErrorCode ierr = 0;
+//     ScalarType sigma_smooth = 1.5 * M_PI / n_misc->n_[0];
+//
+//     // compute max of gm, wm, csf, bg, tumor
+//     std::vector<ScalarType> v;
+//     std::vector<ScalarType>::iterator max_component;
+//     ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *max_ptr;
+//     ierr = VecSet(tmp_, 0); CHKERRQ(ierr);
+//     ierr = VecGetArray(tumor_->mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
+//     ierr = VecGetArray(tumor_->mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
+//     ierr = VecGetArray(tumor_->mat_prop_->wm_, &wm_ptr); CHKERRQ(ierr);
+//     ierr = VecGetArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
+//     ierr = VecGetArray(c, &c_ptr); CHKERRQ(ierr);
+//     ierr = VecGetArray(tmp_, &max_ptr); CHKERRQ(ierr);
+//
+//     // segmentation for c(0)
+//     for(int i = 0; i < params_->grid_->nl_; i++) {
+//         // arase material properties in regions of tumor
+//         bg_ptr[i]  = bg_ptr[i]  * (1 - c_ptr[i]);
+//         wm_ptr[i]  = wm_ptr[i]  * (1 - c_ptr[i]);
+//         csf_ptr[i] = csf_ptr[i] * (1 - c_ptr[i]);
+//         gm_ptr[i]  = gm_ptr[i]  * (1 - c_ptr[i]);
+//         v.push_back(bg_ptr[i]);
+//         v.push_back(gm_ptr[i]);
+//         v.push_back(wm_ptr[i]);
+//         v.push_back(csf_ptr[i]);
+//         v.push_back(c_ptr[i]);
+//         max_component = std::max_element(v.begin(), v.end());
+//         max_ptr[i] = std::distance(v.begin(), max_component);
+//         v.clear();
+//     }
+//     // ierr = spec_ops->weierstrassSmoother (max_ptr, max_ptr, n_misc, sigma_smooth);
+//     ierr = VecRestoreArray(tmp_, &max_ptr); CHKERRQ(ierr);
+//     ierr = VecRestoreArray(tumor_->mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
+//     ierr = VecRestoreArray(tumor_->mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
+//     ierr = VecRestoreArray(tumor_->mat_prop_->wm_, &wm_ptr); CHKERRQ(ierr);
+//     ierr = VecRestoreArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
+//     ierr = VecRestoreArray(c, &c_ptr); CHKERRQ(ierr);
+//
+//     if (n_misc->tu_->write_output_) {
+//         dataOut (tmp_, params_, "name" + params_->tu_->ext_);
+//     }
+//     PetscFunctionReturn (ierr);
+// }
 
 
 /* #### ------------------------------------------------------------------- #### */
@@ -1007,31 +995,31 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   ierr = Solver::finalize(); CHKERRQ(ierr);
 
   if (params_->tu_->write_output_) {
-      ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); //TODO(K) why does tumor have computeSegmentation? should we always call that one?
+      ierr = tumor_->computeSegmentation (); CHKERRQ (ierr);
       ss.str(std::string()); ss.clear();
       ss << "seg_rec_final";
-      dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "c_rec_final";
-      dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "vt_rec_final";
-      dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "csf_rec_final";
-      dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "wm_rec_final";
-      dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "gm_rec_final";
-      dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       Vec mag = nullptr;
       ierr = solver_interface_->getPdeOperators()->getModelSpecificVector(&mag);
       ierr = tumor_->displacement_->computeMagnitude(mag);
       ss << "displacement_rec_final";
-      dataOut (mag, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ScalarType mag_norm, mm;
       ierr = VecNorm (mag, NORM_2, &mag_norm); CHKERRQ (ierr);
@@ -1041,7 +1029,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
       ss.str(std::string()); ss.clear();
       if (tumor_->mat_prop_->mri_ != nullptr) {
           ss << "mri_rec_final";
-          dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); ss.str(std::string()); ss.clear();
+          ierr = dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
       }
   }
 
@@ -1103,28 +1091,28 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
       ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); //TODO(K) why does tumor have computeSegmentation? should we always call that one?
       ss.str(std::string()); ss.clear();
       ss << "seg_rec_final";
-      dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "c_rec_final";
-      dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "vt_rec_final";
-      dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "csf_rec_final";
-      dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "wm_rec_final";
-      dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "gm_rec_final";
-      dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       Vec mag = nullptr;
       ierr = solver_interface_->getPdeOperators()->getModelSpecificVector(&mag);
       ierr = tumor_->displacement_->computeMagnitude(mag);
       ss << "displacement_rec_final";
-      dataOut (mag, params_, ss.str() + params_->tu_->ext_);
+      ierr = dataOut (mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ScalarType mag_norm, mm;
       ierr = VecNorm (mag, NORM_2, &mag_norm); CHKERRQ (ierr);
@@ -1134,7 +1122,7 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
       ss.str(std::string()); ss.clear();
       if (tumor_->mat_prop_->mri_ != nullptr) {
           ss << "mri_rec_final";
-          dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); ss.str(std::string()); ss.clear();
+          ierr = dataOut (tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
       }
   }
 
