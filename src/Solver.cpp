@@ -1088,7 +1088,7 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
   ierr = Solver::finalize(); CHKERRQ(ierr);
 
   if (params_->tu_->write_output_) {
-      ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); //TODO(K) why does tumor have computeSegmentation? should we always call that one?
+      ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); 
       ss.str(std::string()); ss.clear();
       ss << "seg_rec_final";
       ierr = dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);

@@ -302,13 +302,13 @@ public:
   int max_p_location_;
   ScalarType p_scale_;
   // ScalarType p_scale_true_; // TODO(K) this should not be here
-  ScalarType phi_sigma_;       // TODO(K) can we merge these two?
+  ScalarType phi_sigma_;       // TODO(K) can we merge these two? <-- get rid of it
   ScalarType phi_sigma_data_driven_;
   ScalarType phi_spacing_factor_;
   ScalarType data_threshold_;
   ScalarType gaussian_vol_frac_;
   std::array<ScalarType, 3> user_cm_;
-  std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this
+  // std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this <-- remove it
 
   // data
   ScalarType obs_threshold_0_;
