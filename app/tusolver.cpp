@@ -233,6 +233,11 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     if (name == "velocity_x1") {a->path_->velocity_x1_ = value; return;}
     if (name == "velocity_x2") {a->path_->velocity_x2_ = value; return;}
     if (name == "velocity_x3") {a->path_->velocity_x3_ = value; return;}
+    // ### performance
+    if (name == "time_history_off") {p->tu_->time_history_off_ = std::stoi(value) > 0; return;}
+    if (name == "store_phi") {p->tu_->phi_store_ = std::stoi(value) > 0; return;}
+    if (name == "store_adjoint") {p->tu_->adjoint_store_ = std::stoi(value) > 0; return;}
+    if (name == "write_output") {p->tu_->write_output_ = std::stoi(value) > 0; return;}
   }
 }
 

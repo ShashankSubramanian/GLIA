@@ -133,6 +133,11 @@ def write_config(set_params, run):
     p['velocity_x2'] = ""
     p['velocity_x3'] = ""
 
+    ### performance
+    p['time_history_off'] = 0           # 1: do not allocate time history (only works with forward solver or FD inversion)
+    p['store_phi']        = 0           # 1: store every Gaussian as 3d image
+    p['store_adjoint']    = 1           # 1: store adjoint time history
+    p['write_output']     = 1           # 1: write .nc and .nii.gz output
 
     #############################################################################
     #############################################################################
@@ -268,6 +273,13 @@ def write_config(set_params, run):
         f.write("velocity_x1=" + str(p['velocity_x1']) + "\n");
         f.write("velocity_x2=" + str(p['velocity_x2']) + "\n");
         f.write("velocity_x3=" + str(p['velocity_x3']) + "\n");
+
+        f.write("\n");
+        f.write("### performance" + "\n");
+        f.write("time_history_off=" + str(p['time_history_off']) + "\n");
+        f.write("store_phi=" + str(p['store_phi']) + "\n");
+        f.write("store_adjoint=" + str(p['store_adjoint']) + "\n");
+        f.write("write_output=" + str(p['write_output']) + "\n");
 
     ibman = ""
     if 'ibrun_man' in r and r['ibrun_man']:
