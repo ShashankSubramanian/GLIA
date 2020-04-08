@@ -32,10 +32,6 @@
 
 ---
 
-### EVERYWHERE:
-- replace: glm --> csf, and csf --> ve
-- disable ifdef POSITIVITY
-
 ### MatProb.h
 - can we get rid of bg? clarify what glm is used for; I also introduced ve;
 No, bg is needed for lame parameters in the bg (which is a hard stiff material). The alternative is to drop it and compute bg everytime elasticity solver is called. I suggest we keep it there for now.
@@ -49,15 +45,22 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ---
 
 ### IO.h/IO.cpp
+- (S) move all IO functions from Utils to IO: [done]
+- (S) change all  n_misc to params and corresponding parameters to the correct class: grid or tu: [done]
 - change dataOut to take params_ as argument and std::string instead of char*
 
 ---
 ### PdeOperators
-- change forward_flag to time_history_off_
+- change forward_flag to time_history_off_: (S): [done]
+- (S) n_misc --> params changes: also change for CUDA routines: [done]
+
+--- 
+### DiffSolver, ElasticitySolver, AdvectionSOlver
+- (S) n_misc --> params changes: also change for CUDA routines
 
 ---
-### Tumor:
-- remove tumor_->p_true_; also remove functions setTrueP();
+### Utils.h
+- (S) Move enums to typedefs and remove parameters (except tumor statistics): [done]
 
 ---
 ### Invsolver
