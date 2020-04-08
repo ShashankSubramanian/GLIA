@@ -507,7 +507,7 @@ class Parameters {
 struct FilePaths {
   public:
     FilePaths() :
-      wm_(), gm_(), csf_(), ve_(), glm_(), data_t1_(), data_t0_(),
+      wm_(), gm_(), vt_(), csf_(), data_t1_(), data_t0_(),
       data_support_(), data_support_data_(), data_comps(), data_comps_data_(),
       obs_filter_(), mri_(), velocity_x_1(), velocity_x_2(), velocity_x_3(),
       pvec_(), phi_()
@@ -517,16 +517,14 @@ struct FilePaths {
     std::string seg_;
     std::string wm_;
     std::string gm_;
+    std::string vt_;
     std::string csf_;
-    std::string ve_;
-    std::string glm_;
     // material properties patient
     std::string p_seg_;
     std::string p_wm_;
     std::string p_gm_;
+    std::string p_vt_;
     std::string p_csf_;
-    std::string p_ve_;
-    std::string p_glm_;
     // data
     std::string data_t1_;
     std::string data_t0_;
@@ -581,6 +579,7 @@ public:
     true_data_path_(),
     wm_path_(),
     gm_path_(),
+    vt_path_(),
     csf_path_()
   {}
 
@@ -591,6 +590,7 @@ public:
   std::vector< std::string > true_data_path_;
   std::vector< std::string > wm_path_;
   std::vector< std::string > gm_path_;
+  std::vector< std::string > vt_path_;
   std::vector< std::string > csf_path_;
 };
 

@@ -21,9 +21,8 @@ Solver::Solver(std::shared_ptr<SpectralOperators> spec_ops)
   warmstart_p_(false),
   wm_(nullptr),
   gm_(nullptr),
+  vt_(nullptr),
   csf_(nullptr),
-  ve_(nullptr),
-  glm_(nullptr),
   mri_(nullptr),
   tmp_(nullptr),
   data_t1_(nullptr),
@@ -87,11 +86,11 @@ PetscErrorCode Solver::initialize(std::shared_ptr<Parameters> params, std::share
       ierr = VecDuplicate (data_t1_, &mri_); CHKERRQ (ierr);
       ierr = dataIn (mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
     }
-    ierr = solver_interface_->getPdeOperators()->preAdvection(wm_, gm_, csf_, mri_, app_settings_->syn_->pre_adv_time_); CHKERRQ(ierr);
+    ierr = solver_interface_->getPdeOperators()->preAdvection(wm_, gm_, vt_, mri_, app_settings_->syn_->pre_adv_time_); CHKERRQ(ierr);
 	}
 
-  ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, glm_, csf_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
-  ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, glm_, csf_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
+  ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
+  ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr); // TODO(K): can we get rid of bg?
 
   // === read data: generate synthetic or read real
   if(app_settings_->syn_->enabled_) {
@@ -276,11 +275,11 @@ PetscErrorCode Solver::predict() {
         if(app_settings_->pred_->wm_path.size() >= i && !app_settings_->pred_->wm_path_[i].empty()) {
           params_->path_wm_ = app_settings_->pred_->wm_path_[i];
           params_->path_gm_ = app_settings_->pred_->gm_path_[i];
-          params_->path_csf_ = app_settings_->pred_->csf_path_[i];
+          params_->path_vt_ = app_settings_->pred_->vt_path_[i];
           ierr = tuMSGstd(" .. reading in atlas brain to perform prediction."); CHKERRQ(ierr);
           ierr = readAtlas(); CHKERRQ(ierr);
-          ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, nullptr, csf_, nullptr); // TODO(K) is this safe, giving nullptr?
-          ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, nullptr, csf_, nullptr); CHKERRQ(ierr);
+          ierr = solver_interface_->updateTumorCoefficients (wm_, gm_, csf_, vt_, nullptr); // TODO(K) is this safe, giving nullptr?
+          ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
         } else {
           ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
         }
@@ -343,26 +342,21 @@ PetscErrorCode Solver::readAtlas() {
       ierr = VecDuplicate(tmp_, &gm_); CHKERRQ (ierr);
       ierr = dataIn (gm_, params_, app_settings_->path_->gm_); CHKERRQ(ierr);
     }
+    if(!app_settings_->path_->vt_.empty()) {
+      ierr = VecDuplicate(tmp_, &vt_); CHKERRQ (ierr);
+      ierr = dataIn (vt_, params_, app_settings_->path_->vt_); CHKERRQ(ierr);
+    }
+    // if(params_->tu_->model >= 4)
     if(!app_settings_->path_->csf_.empty()) {
-      ierr = VecDuplicate(tmp_, &csf_); CHKERRQ (ierr);
-      ierr = dataIn (csf_, params_, app_settings_->path_->csf_); CHKERRQ(ierr);
+        ierr = VecDuplicate(tmp_, &csf_); CHKERRQ (ierr);
+        ierr = dataIn (csf_, params_, app_settings_->path_->csf_); CHKERRQ(ierr);
     }
-    if(!app_settings_->path_->ve_.empty()) {
-      ierr = VecDuplicate(tmp_, &ve_); CHKERRQ (ierr);
-      ierr = dataIn (ve_, params_, app_settings_->path_->ve_); CHKERRQ(ierr);
-    }
-  }
-  // mass effect
-  if(!app_settings_->path_->glm_.empty() && params_->tu_->model >= 4) {
-      ierr = VecDuplicate(tmp_, &glm_); CHKERRQ (ierr);
-      ierr = dataIn (glm_, params_, app_settings_->path_->glm_); CHKERRQ(ierr);
   }
   // smooth
   if (gm_  != nullptr) {ierr = spec_ops->weierstrassSmoother (gm_, gm_, params_, sigma_smooth); CHKERRQ (ierr);}
   if (wm_  != nullptr) {ierr = spec_ops->weierstrassSmoother (wm_, wm_, params_, sigma_smooth); CHKERRQ (ierr);}
-  if (csf_ != nullptr) {ierr = spec_ops->weierstrassSmoother (csf_, csf_, params_, sigma_smooth); CHKERRQ (ierr);}
-  if (ve_  != nullptr) {ierr = spec_ops->weierstrassSmoother (ve_, ve_, params_, sigma_smooth); CHKERRQ (ierr);}
-  if (glm_ != nullptr) {ierr = spec_ops->weierstrassSmoother (glm_, glm_, params_, sigma_smooth); CHKERRQ(ierr);}
+  if (vt_  != nullptr) {ierr = spec_ops->weierstrassSmoother (vt_, vt_, params_, sigma_smooth); CHKERRQ (ierr);}
+  if (csf_ != nullptr) {ierr = spec_ops->weierstrassSmoother (csf_, csf_, params_, sigma_smooth); CHKERRQ(ierr);}
 
   PetscFunctionReturn(ierr);
 }
@@ -947,9 +941,9 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<Parameters> p
   // std::shared_ptr<MData> m_data = std::make_shared<MData> (data, n_misc, spec_ops);
   // if (n_misc->tu_->model == 4) {
   //     n_misc->invert_mass_effect_ = 1;
-  //     // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->glm_);  // copies synthetic data to m_data
-  //     m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_glm_path);         // reads patient data
-  //     ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->glm_);   // sets derivative ops data
+  //     // m_data->readData(tumor->mat_prop_->gm_, tumor->mat_prop_->wm_, tumor->mat_prop_->csf_, tumor->mat_prop_->csf_);  // copies synthetic data to m_data
+  //     m_data->readData(p_gm_path, p_wm_path, p_csf_path, p_csf_path);         // reads patient data
+  //     ierr = solver_interface->setMassEffectData(m_data->gm_, m_data->wm_, m_data->csf_, m_data->csf_);   // sets derivative ops data
   //     ierr = solver_interface->updateTumorCoefficients(wm, gm, glm, csf, bg);                            // reset matprop to undeformed
   // }
 
@@ -1004,10 +998,10 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
       ierr = dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "vt_rec_final";
-      ierr = dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+      ierr = dataOut (tumor_->mat_prop_->vt_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "csf_rec_final";
-      ierr = dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+      ierr = dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "wm_rec_final";
       ierr = dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
@@ -1088,7 +1082,7 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
   ierr = Solver::finalize(); CHKERRQ(ierr);
 
   if (params_->tu_->write_output_) {
-      ierr = tumor_->computeSegmentation (); CHKERRQ (ierr); 
+      ierr = tumor_->computeSegmentation (); CHKERRQ (ierr);
       ss.str(std::string()); ss.clear();
       ss << "seg_rec_final";
       ierr = dataOut (tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
@@ -1097,10 +1091,10 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
       ierr = dataOut (tumro_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "vt_rec_final";
-      ierr = dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+      ierr = dataOut (tumor_->mat_prop_->vt_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "csf_rec_final";
-      ierr = dataOut (tumor_->mat_prop_->glm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+      ierr = dataOut (tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str(std::string()); ss.clear();
       ss << "wm_rec_final";
       ierr = dataOut (tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);

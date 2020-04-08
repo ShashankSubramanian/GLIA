@@ -65,9 +65,8 @@ class Solver {
 
     Vec wm_;
     Vec gm_;
+    Vec vt_;
     Vec csf_;
-    Vec ve_;
-    Vec glm_;
     Vec mri_;
     Vec tmp_;
     Vec data_t1_;
@@ -93,9 +92,8 @@ class ForwardSolver : public Solver {
     virtual ~ForwardSolver() {
       if(wm_ != nullptr) VecDestroy(&wm_);
       if(gm_ != nullptr) VecDestroy(&gm_);
+      if(vt_ != nullptr) VecDestroy(&vt_);
       if(csf_ != nullptr) VecDestroy(&csf_);
-      if(glm_ != nullptr) VecDestroy(&glm_);
-      if(ve_ != nullptr) VecDestroy(&ve_);
       if(mri_ != nullptr) VecDestroy(&mri_);
       if(tmp_ != nullptr) VecDestroy(&tmp_);
       if(data_t1_ != nullptr) VecDestroy(&data_t1_);
