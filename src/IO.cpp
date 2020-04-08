@@ -530,19 +530,10 @@ PetscErrorCode readPVec(Vec *x, int size, int np, std::string f) {
   }
 
   // if not nullptr, clear memory
-  if (*x != nullptr) {
-    ierr = VecDestroy(x); CHKERRQ(ierr);
-    *x = nullptr;
-  }
-// create vec
-#ifdef SERIAL
+  if (*x != nullptr) { ierr = VecDestroy(x); CHKERRQ(ierr); *x = nullptr;}
+
   ierr = VecCreateSeq(PETSC_COMM_SELF, size, &(*x)); CHKERRQ(ierr);
   ierr = setupVec(*x, SEQ); CHKERRQ(ierr);
-#else
-  ierr = VecCreate(PETSC_COMM_WORLD, &(*x)); CHKERRQ(ierr);
-  ierr = VecSetSizes(*x, PETSC_DECIDE, size); CHKERRQ(ierr);
-  ierr = setupVec(*x); CHKERRQ(ierr);
-#endif
   ierr = VecSet(*x, 0.); CHKERRQ(ierr);
 
   // read pvec from file
@@ -806,4 +797,3 @@ bool fileExists(const std::string &filename) {
   struct stat buffer;
   return (stat(filename.c_str(), &buffer) == 0);
 }
-
