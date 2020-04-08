@@ -118,19 +118,22 @@ def write_config(set_params, run):
     p['a_csf_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/csf.nc'
     p['a_glm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/glial_matter.nc'
     p['a_ve_path'] = ""
-    p['p_seg_path'] = ""                 # paths to patient material properties for mass effect
+    p['p_seg_path'] = ""                # [optional] paths to patient material properties for mass effect
     p['p_wm_path'] = ""
     p['p_gm_path'] = ""
     p['p_csf_path'] = ""
     p['p_glm_path'] = ""
     p['p_ve_path'] = ""
-    p['mri_path'] = ""                  # path to mri
-    p['obs_mask_path'] = ""             # path to custom obs mask, default: none
-    p['support_data_path'] = ""         # path to data for support, default: none, (target data for inversion is used)
-    p['gaussian_cm_path'] = ""          # path to file with Gaussian support centers, default: none, (generate Gaussians based on target data)
-    p['pvec_path'] = ""                 # path to initial guess p vector (if none, use zero)
-    p['data_comp_path'] = ""            # path to label image of connected components of target data
-    p['data_comp_data_path'] = ""       # path to .dat file for connected components of target data
+    p['mri_path'] = ""                  # [optional] path to mri
+    p['obs_mask_path'] = ""             # [optional] path to custom obs mask, default: none
+    p['support_data_path'] = ""         # [optional] path to data for support, default: none, (target data for inversion is used)
+    p['gaussian_cm_path'] = ""          # [optional] path to file with Gaussian support centers, default: none, (generate Gaussians based on target data)
+    p['pvec_path'] = ""                 # [optional] path to initial guess p vector (if none, use zero)
+    p['data_comp_path'] = ""            # [optional] path to label image of connected components of target data
+    p['data_comp_data_path'] = ""       # [optional] path to .dat file for connected components of target data
+    p['velocity_x1'] = ""               # [optional] path to velocity for meterial transport
+    p['velocity_x2'] = ""
+    p['velocity_x3'] = ""
 
 
     #############################################################################
@@ -266,6 +269,9 @@ def write_config(set_params, run):
         f.write("pvec_path=" + str(p['pvec_path']) + "\n");
         f.write("data_comp_path=" + str(p['data_comp_path']) + "\n");
         f.write("data_comp_data_path=" + str(p['data_comp_data_path']) + "\n");
+        f.write("velocity_x1=" + str(p['velocity_x1']) + "\n");
+        f.write("velocity_x2=" + str(p['velocity_x2']) + "\n");
+        f.write("velocity_x3=" + str(p['velocity_x3']) + "\n");
 
     ibman = ""
     if 'ibrun_man' in r and r['ibrun_man']:

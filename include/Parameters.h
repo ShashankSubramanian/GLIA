@@ -318,21 +318,20 @@ public:
   ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
 
   // initial condition (inversion)
-  int sparsity_level_;            // should this go to opt? (S) Yes, because only InvSolver needs this.
-  std::vector<int> support_;      // support of cs guess 
+  int sparsity_level_;            // should this go to opt?
+  std::vector<int> support_;      // support of cs guess
   // initial condition (parametrization)
   int bounding_box_;
   int max_p_location_;
   ScalarType p_scale_;
   // ScalarType p_scale_true_; // TODO(K) this should not be here
-  ScalarType phi_sigma_;       // TODO(K) can we merge these two? (S) phi_sigma is for synthetic which can be different.
+  ScalarType phi_sigma_;       // TODO(K) can we merge these two?
   ScalarType phi_sigma_data_driven_;
   ScalarType phi_spacing_factor_;
   ScalarType data_threshold_;
   ScalarType gaussian_vol_frac_;
   std::array<ScalarType, 3> user_cm_;
-  std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this: (S) You'right, they should be merged: but we need
-                                       // 4 values (last one is the activation)
+  std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this
 
   // data
   ScalarType obs_threshold_0_;
@@ -500,6 +499,7 @@ class Parameters {
       opt_ = std::make_shared<OptimizerSettings>();
       optf_ = std::make_shared<OptimizerFeedback>();
       tu_ = std::make_shared<TumorParameters>();
+      // grid is initialized once n is known
     }
 
     // initialize distributed grid
@@ -514,6 +514,7 @@ class Parameters {
 
     virtual ~Parameters() {}
 
+    // attributes
     std::shared_ptr<OptimizerSettings> opt_;
     std::shared_ptr<OptimizerFeedback> optf_;
     std::shared_ptr<TumorParameters> tu_;
@@ -565,7 +566,6 @@ struct FilePaths {
     // warmstart solution
     std::string pvec_;
     std::string phi_;
-
 };
 
 
@@ -583,6 +583,7 @@ public:
     user_cms_()
   {}
 
+  // attributes
   bool enabled_;
   ScalarType rho_;
   ScalarType k_;
@@ -606,6 +607,7 @@ public:
     csf_path_()
   {}
 
+  // attributes
   bool enabled_;
   ScalarType dt_;
   std::vector< ScalarType > t_pred_;
@@ -633,10 +635,9 @@ class ApplicationSettings {
 
     virtual ~ApplicationSettings() {}
 
+    // attributes
     bool inject_solution_;
     int gaussian_selection_mode_;
-
-
     std::shared_ptr<FilePaths> path_;
     std::shared_ptr<SyntheticData> syn_;
     std::shared_ptr<Prediction> pred_;
