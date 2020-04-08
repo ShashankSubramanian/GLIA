@@ -3,7 +3,6 @@
 #define DIFFSOLVER_H_
 
 #include "DiffCoef.h"
-#include "Parameters.h"
 #include "SpectralOperators.h"
 
 struct Ctx {
