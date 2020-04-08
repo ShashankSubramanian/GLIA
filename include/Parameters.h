@@ -486,7 +486,8 @@ class Parameters {
       tu_->readpath_ = "./brain_data/" << grid_->n_[0] <<"/";
       tu_->writepath_ = "./results/";
     }
-    inline int get_nk() {return opt_->diffusivity_inversion_ ? tu_->nk_ : 0;}
+    // inline int get_nk() {return opt_->diffusivity_inversion_ ? tu_->nk_ : 0;}
+    inline int get_nk() {return (opt_->diffusivity_inversion_ || opt_->reaction_inversion_) ? tu_->nk_ : 0;} // TODO is this correct always? I think yes bc we never invert for rho and not for k
     inline int get_nr() {return opt_->reaction_inversion_ ? tu_->nr_ : 0;}
 
     virtual ~Parameters() {}

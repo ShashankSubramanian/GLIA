@@ -47,8 +47,6 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
   app_settings_ = app_settings;
   solver_interface_ = std::make_shared<TumorSolverInterface>(params_, spec_ops_, nullptr, nullptr);
   tumor_ = std::shared_ptr<Tumor> tumor = solver_interface->getTumor();
-  // populate params to optimizer
-  ierr = solver_interface_->setOptimizerSettings(params_->opt_); CHKERRQ (ierr);
   // === create tmp vector according to distributed grid
   ierr = VecCreate(PETSC_COMM_WORLD, &tmp_); CHKERRQ (ierr);
   ierr = VecSetSizes(tmp_, params_->grid_->nl_, params_->grid_->ng_); CHKERRQ (ierr);
