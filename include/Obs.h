@@ -1,9 +1,7 @@
 #ifndef OBS_H_
 #define OBS_H_
 
-#include "Utils.h"
-#include <mpi.h>
-#include <omp.h>
+#include "Parameters.h"
 
 class Obs {
 	public:
