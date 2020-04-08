@@ -217,14 +217,12 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     if (name == "a_wm_path") {a->path_->wm_ = value; return;}
     if (name == "a_gm_path") {a->path_->gm_ = value; return;}
     if (name == "a_csf_path") {a->path_->csf_ = value; return;}
-    if (name == "a_glm_path") {a->path_->glm_ = value; return;}
-    if (name == "a_ve_path") {a->path_->ve_ = value; return;}
+    if (name == "a_vt_path") {a->path_->vt_ = value; return;}
     if (name == "p_seg_path") {a->path_->p_seg_ = value; return;}
     if (name == "p_wm_path") {a->path_->p_wm_ = value; return;}
     if (name == "p_gm_path") {a->path_->p_gm_ = value; return;}
     if (name == "p_csf_path") {a->path_->p_csf_ = value; return;}
-    if (name == "p_glm_path") {a->path_->p_glm_ = value; return;}
-    if (name == "p_ve_path") {a->path_->p_ve_ = value; return;}
+    if (name == "p_vt_path") {a->path_->p_vt_ = value; return;}
     if (name == "mri_path") {a->path_->mri_ = value; return;}
     if (name == "obs_mask_path") {a->path_->obs_filter_ = value; return;}
     if (name == "support_data_path") {a->path_->data_support_ = value; return;} // TODO(K) .nc vs. dat.
