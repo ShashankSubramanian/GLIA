@@ -1,4 +1,3 @@
-#endif
 #ifndef DIFFSOLVER_H_
 #define DIFFSOLVER_H_
 
