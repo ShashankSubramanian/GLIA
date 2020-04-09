@@ -5,12 +5,13 @@
 #include <algorithm>
 #include <stdlib.h>
 
-#include "Utils.h"
+//#include "Utils.h"
 #include "Parameters.h"
-#include "TumorSolverInterface.h"
+#include "SpectralOperators.h"
+//#include "TumorSolverInterface.h"
 
 
-enum RunMode = {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, INVERSE_MS, TEST};
+enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, TEST};
 
 RunMode run_mode = FORWARD; // global variable
 
@@ -22,17 +23,17 @@ void openFiles(std::shared_ptr<Parameters> params) {
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   std::stringstream ss;
 
-  if (params->verbosity_ >= 2) {
+  if (params->tu_->verbosity_ >= 2) {
       if (procid == 0) {
-          ss << params->writepath_.str().c_str() << "x_it.dat";
-          params->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-          ss << params->writepath_.str().c_str() << "g_it.dat";
-          params->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-          ss << params->writepath_.str().c_str() << "glob_g_it.dat";
-          params->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
-          params->outfile_sol_ << std::setprecision(16)<<std::scientific;
-          params->outfile_grad_ << std::setprecision(16)<<std::scientific;
-          params->outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
+          ss << params->tu_->writepath_ << "x_it.dat";
+          params->tu_->outfile_sol_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+          ss << params->tu_->writepath_ << "g_it.dat";
+          params->tu_->outfile_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+          ss << params->tu_->writepath_ << "glob_g_it.dat";
+          params->tu_->outfile_glob_grad_.open(ss.str().c_str(), std::ios_base::out); ss.str(std::string()); ss.clear();
+          params->tu_->outfile_sol_ << std::setprecision(16)<<std::scientific;
+          params->tu_->outfile_grad_ << std::setprecision(16)<<std::scientific;
+          params->tu_->outfile_glob_grad_ << std::setprecision(16)<<std::scientific;
       }
   }
 }
@@ -46,28 +47,28 @@ void closeFiles(std::shared_ptr<Parameters> params) {
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   std::stringstream ss;
 
-  if (procid == 0 && params_->verbosity_ >= 2) {
-      params_->outfile_sol_.close();
-      params_->outfile_grad_.close();
-      params_->outfile_glob_grad_.close();
+  if (procid == 0 && params->tu_->verbosity_ >= 2) {
+      params->tu_->outfile_sol_.close();
+      params->tu_->outfile_grad_.close();
+      params->tu_->outfile_glob_grad_.close();
   }
 }
 
-PetscErrorCode initializeGrid(n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) {
+PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
-  int[3] N = {n, n, n};
-  int[3] isize;
-  int[3] istart;
-  int[3] osize;
-  int[3] ostart;
+  int N[3] = {n, n, n};
+  int isize[3];
+  int istart[3];
+  int osize[3];
+  int ostart[3];
   int c_dims[2] = {0};
   MPI_Comm c_comm;
 
   accfft_init();
   accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
-  ierr = spec_ops->setup(N, isize, istart, osize, ostart, c_comm); CHKERRQ(ierr);
+  spec_ops->setup(N, isize, istart, osize, ostart, c_comm);
   int64_t alloc_max = spec_ops->alloc_max_;
   fft_plan *plan = spec_ops->plan_;
   params->createGrid(N, isize, osize, istart, ostart, plan, c_comm, c_dims);
@@ -76,29 +77,29 @@ PetscErrorCode initializeGrid(n, std::shared_ptr<Parameters> params, std::shared
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-void setParameter(std::string name, std::string value, std:shared_ptr<Parameters> p, std::shared_ptr<ApplicationSettings> a) {
+void setParameter(std::string name, std::string value, std::shared_ptr<Parameters> p, std::shared_ptr<ApplicationSettings> a) {
   if(name == "solver") {
     // quick set all neccessary parameters to support minimal config files
     if(value == "sparse_til") {
       run_mode = INVERSE_L1;
-      p->opt_->regularization_norm_ = L1c;
+      p->opt_->regularization_norm_ = 1;    // TODO(K) set regularization norm to L1
       p->opt_->diffusivity_inversion_ = true;
-      p->opt_->reaction_inversion = true;
-      p->opt_->pre_reacdiff_solve = true;
+      p->opt_->reaction_inversion_ = true;
+      p->opt_->pre_reacdiff_solve_ = true;
       return;
     }
     if(value == "nonsparse_til") {
-      run_mode = IINVERSE_L2;
+      run_mode = INVERSE_L2;
       p->opt_->regularization_norm_ = L2;
       p->opt_->diffusivity_inversion_ = true;
-      p->opt_->reaction_inversion = false;
-      p->opt_->pre_reacdiff_solve = false;
+      p->opt_->reaction_inversion_ = false;
+      p->opt_->pre_reacdiff_solve_ = false;
       return;
     }
     if(value == "reaction_diffusion") {
       run_mode = INVERSE_RD;
       p->opt_->diffusivity_inversion_ = true;
-      p->opt_->reaction_inversion = true;
+      p->opt_->reaction_inversion_ = true;
       return;
     }
     if(value == "mass_effec") {
@@ -107,12 +108,12 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
       return;
     }
     if(value == "multi_species") {
-      run_mode = INVERSE_MS;
+      run_mode = MULTI_SPECIES;
       return;
     }
     if(value == "forward") {
       run_mode = FORWARD;
-      p->time_history_off_ = true;
+      p->tu_->time_history_off_ = true;
       return;
     }
 
@@ -128,7 +129,7 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     if (name == "newton_solver") {p->opt_->newton_solver_ = (value == "GN") ? 0 : 1; return;}
     if (name == "line_search") {p->opt_->linesearch_ = (value == "armijo") ? 0 : 1; return;}
     if (name == "ce_loss") {p->opt_->cross_entropy_loss_ = std::stoi(value) > 0; return;}
-    if (name == "regularization") {p->tu_->regularization_norm_ = (value == "L1") ? 0 : 1; return;}
+    if (name == "regularization") {p->opt_->regularization_norm_ = (value == "L1") ? 0 : 1; return;}
     if (name == "beta_p") {p->opt_->beta_ = std::stod(value); return;}
     if (name == "opttol_grad") {p->opt_->opttolgrad_ = std::stod(value); return;}
     if (name == "newton_maxit") {p->opt_->newton_maxit_ = std::stoi(value); return;}
@@ -169,8 +170,8 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     // ### prediction
     if (name == "prediction") {a->pred_->enabled_ = std::stoi(value) > 0; return;}
     if (name == "pred_times") {
-      std::string v = value.substr(line.find("[")+1);
-      value = v.substr(0, line.find("]"));
+      std::string v = value.substr(value.find("[")+1);
+      value = v.substr(0, value.find("]"));
       size_t pos_loop = 0, pos = 0;
       while ((pos_loop = value.find(",")) != std::string::npos) {
         v = value.substr(0, pos_loop);
@@ -210,7 +211,8 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
     if (name == "testcase") {a->syn_->testcase_ = std::stod(value); return;}
     // ### paths
-    if (name == "output_dir") {p->writepath_ = value; return;}
+    if (name == "output_dir") {p->tu_->writepath_ = value; return;}
+    if (name == "input_dir") {p->tu_->readpath_ = value; return;}
     if (name == "d1_path") {a->path_->data_t1_ = value; return;}
     if (name == "d0_path") {a->path_->data_t0_ = value; return;}
     if (name == "a_seg_path") {a->path_->seg_ = value; return;}
@@ -292,7 +294,7 @@ int main(int argc, char **argv) {
           auto value = line.substr(delimiter_pos + 1);
           // initialize grid first
           if(name == "n") {
-            ierr = initializeGrid(std::stoi(value), params, spec_ops) CHKERRQ(ierr);
+            ierr = initializeGrid(std::stoi(value), params, spec_ops); CHKERRQ(ierr);
           } else {
             setParameter(name, value, params, app_settings);
           }
@@ -305,7 +307,7 @@ int main(int argc, char **argv) {
 
 
   EventRegistry::initialize();
-
+/*
   // === initialize solvers
   std::unique_ptr<Solver> solver;
   switch(run_mode) {
@@ -324,7 +326,7 @@ int main(int argc, char **argv) {
     case INVERSE_ME:
       solve = std::unique_ptr<InverseMassEffectSolver>();
       break;
-    case INVERSE_MS:
+    case MULTI_SPECIES:
       solve = std::make_unique<MultiSpeciesSolver>();
       break;
     case TEST:
@@ -343,7 +345,7 @@ int main(int argc, char **argv) {
   ierr = solver->finalize(); CHKERRQ(ierr);
 
   closeFiles();
-
+*/
   #ifdef CUDA
       cudaPrintDeviceMemory();
   #endif

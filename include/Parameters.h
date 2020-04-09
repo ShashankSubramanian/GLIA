@@ -3,6 +3,7 @@
 #define PARAMETERS_H_
 
 #include <stdlib.h>
+#include "TypeDefs.h"
 #include "Utils.h"
 
 
@@ -16,6 +17,7 @@ public:
   OptimizerSettings ()
   :
     beta_(1E-4),
+    regularization_norm_(0),
     opttolgrad_ (1E-3),
     ftol_ (1E-3),
     ls_minstep_ (1E-9),
@@ -52,6 +54,7 @@ public:
     rho_ub_(15)
   {}
   ScalarType beta_;
+  ScalarType regularization_norm_;
   ScalarType opttolgrad_;       /// @brief l2 gradient tolerance for optimization
   ScalarType ftol_;             /// @brief l1 function and solution tolerance
   ScalarType ls_minstep_;       /// @brief minimum step length of linesearch
@@ -131,8 +134,6 @@ public:
                                           // 3: modified objective
                                           // 4: mass effect
                                           // 5: multi-species
-  , regularization_norm_(L2b)             // defines the tumor regularization norm, L1, L2, or weighted L2
-  , beta_ (0e-3)                          // Regularization parameter
   , np_ (1)                               // Number of gaussians for bounding box
   , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
   , nr_ (1)                               // number of rho_i that we like to invert for (1-3)
@@ -262,8 +263,6 @@ public:
 
   // tumor models
   int model_;
-  int regularization_norm_;
-  ScalarType beta_;
 
   // inversion
   int np_;
@@ -379,9 +378,8 @@ public:
 
 struct Grid {
 public:
-  Grid (int *n, int *isize, int *osize, int *istart, int *ostart,
-        fft_plan *plan, MPI_Comm c_comm, int *c_dims)
-  {
+  Grid (int *n, int *isize, int *osize, int *istart, int *ostart, 
+        fft_plan *plan, MPI_Comm c_comm, int *c_dims) {
     memcpy (n_, n, 3 * sizeof(int));
     memcpy (c_dims_, c_dims, 2 * sizeof(int));
     memcpy (isize_, isize, 3 * sizeof(int));
@@ -436,16 +434,18 @@ public:
     }
   }
 
-  int[3] n_;
-  int[3] h_;
-  int[3] isize_;
-  int[3] osize_;
-  int[3] istart_;
-  int[3] ostart_;
-  int[3] c_dims_;
+  int n_[3];
+  int isize_[3];
+  int osize_[3];
+  int istart_[3];
+  int ostart_[3];
+  int c_dims_[3];
+  ScalarType h_[3];
   int nl_;
   int64_t ng_;
   int64_t accfft_alloc_max_;
+  fft_plan *plan_;
+  MPI_Comm c_comm_;
   ScalarType lebesgue_measure_;
 
   int *isize_gathered_;  // needed for nifti I/O
@@ -462,16 +462,10 @@ public:
 class Parameters {
   public:
     Parameters() :
-      obs_threshold_0_(-1),
-      obs_threshold_1_(-1),
-      smooth_fac_data_(1.5),
       opt_(),
       optf_(),
       tu_(),
-      path_(),
-      grid_(),
-      syn(),
-      pred_() {
+      grid_() {
 
       opt_ = std::make_shared<OptimizerSettings>();
       optf_ = std::make_shared<OptimizerFeedback>();
@@ -480,11 +474,9 @@ class Parameters {
     }
 
     // initialize distributed grid
-    createGrid(int *n, int *isize, int *osize, int *istart, int *ostart,
+    void createGrid(int *n, int *isize, int *osize, int *istart, int *ostart,
           fft_plan *plan, MPI_Comm c_comm, int *c_dims) {
       grid_ = std::make_shared<Grid>(n, isize, osize, istart, ostart, plan, c_comm, c_dims);
-      tu_->readpath_ = "./brain_data/" << grid_->n_[0] <<"/";
-      tu_->writepath_ = "./results/";
     }
     // inline int get_nk() {return opt_->diffusivity_inversion_ ? tu_->nk_ : 0;}
     inline int get_nk() {return (opt_->diffusivity_inversion_ || opt_->reaction_inversion_) ? tu_->nk_ : 0;} // TODO is this correct always? I think yes bc we never invert for rho and not for k
@@ -492,11 +484,11 @@ class Parameters {
 
     virtual ~Parameters() {}
 
-    // attributes
-    std::shared_ptr<OptimizerSettings> opt_;
-    std::shared_ptr<OptimizerFeedback> optf_;
-    std::shared_ptr<TumorParameters> tu_;
-    std::shared_ptr<Grid> grid_;
+    // parameter structs
+    std::shared_ptr<OptimizerSettings> opt_;  // optimizer settings
+    std::shared_ptr<OptimizerFeedback> optf_; // optimizer feedback
+    std::shared_ptr<TumorParameters> tu_;     // tumor parameters
+    std::shared_ptr<Grid> grid_;              // computationl grid
 };
 
 
@@ -508,9 +500,11 @@ class Parameters {
 struct FilePaths {
   public:
     FilePaths() :
-      wm_(), gm_(), vt_(), csf_(), data_t1_(), data_t0_(),
-      data_support_(), data_support_data_(), data_comps(), data_comps_data_(),
-      obs_filter_(), mri_(), velocity_x_1(), velocity_x_2(), velocity_x_3(),
+      seg_(), wm_(), gm_(), vt_(), csf_(), 
+      p_seg_(), p_wm_(), p_gm_(), p_vt_(), p_csf_(), 
+      data_t1_(), data_t0_(), data_support_(), data_support_data_(), 
+      data_comps_(), data_comps_data_(), obs_filter_(), mri_(), 
+      velocity_x1_(), velocity_x2_(), velocity_x3_(),
       pvec_(), phi_()
     {}
 
@@ -551,7 +545,7 @@ public:
     enabled_(false),
     rho_(10),
     k_(1E-2),
-    forcing_factor_(1E5)
+    forcing_factor_(1E5),
     dt_(0.01),
     nt_(100),
     testcase_(0),
@@ -566,7 +560,7 @@ public:
   ScalarType forcing_factor_;
   ScalarType dt_;
   int nt_;
-  int testcase_:
+  int testcase_;
   ScalarType pre_adv_time_;
   std::vector< std::array<ScalarType, 4> > user_cms_;
 };
@@ -598,12 +592,12 @@ public:
 /// @brief only used in Solver for setup and tests
 class ApplicationSettings {
   public:
-    Parameters()
+    ApplicationSettings()
     :
       inject_solution_(false),
       gaussian_selection_mode_(1),
       path_(),
-      syn(),
+      syn_(),
       pred_() {
 
       path_ = std::make_shared<FilePaths>();

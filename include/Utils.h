@@ -140,18 +140,19 @@ struct LSCtx {
 };
 
 
-PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
-PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
+//PetscErrorCode enforcePositivity (Vec c, std::shared_ptr<NMisc> n_misc);
+//PetscErrorCode checkClipping (Vec c, std::shared_ptr<NMisc> n_misc);
 
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))
+/*
 PetscErrorCode geometricCoupling(
   Vec m1_wm, Vec m1_gm, Vec m1_csf, Vec m1_glm, Vec m1_bg,
   Vec m0_wm, Vec m0_gm, Vec m0_csf, Vec m0_glm, Vec m0_bg,
   Vec c1, std::shared_ptr<NMisc> nmisc);
 
-/** @brief computes difference xi = m_data - m_geo
- *  - function assumes that on input, xi = m_geo * (1-c(1))
- */
+// @brief computes difference xi = m_data - m_geo
+//  - function assumes that on input, xi = m_geo * (1-c(1))
+///
 PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm,
 	Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg,
 	Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
@@ -162,7 +163,7 @@ PetscErrorCode computeDifference(ScalarType *sqrdl2norm,
 	Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg,
 	Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg,
 	Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg);
-
+*/
 
 /* helper methods for print out to console */
 PetscErrorCode tuMSG(std::string msg, int size = 111);
