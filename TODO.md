@@ -67,12 +67,6 @@
 
 --- 
 ### DerivativeOperators
-- n_misc --> params changes: [done]
-- remove L1, wL2 everywhere: [done]
-
----
-### TaoL1Solver
-- Delete: make sure InvSolve does not use this
 
 --- 
 ### MatProp
@@ -83,7 +77,6 @@
 
 ---
 ### TumorSolverInterface
-- (S) Make sure tumor::setTruP is not used
 
 ---
 ### Utils
