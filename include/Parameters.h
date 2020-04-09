@@ -167,7 +167,7 @@ public:
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.6)                     // hypoxia threshold
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
-  , support()                             // // support of compressive sampling guess
+  , support_()                             // // support of compressive sampling guess
   , bounding_box_ (0)                     // Flag to set bounding box for gaussians
   , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion
   , p_scale_ (0.0)                        // Scaling factor for initial guess
@@ -178,7 +178,6 @@ public:
   , data_threshold_ (0.05)                // Data threshold to set custom gaussians
   , gaussian_vol_frac_ (0.0)              // Volume fraction of gaussians to set custom basis functions
   , user_cm_()
-  , user_cms_()
   , obs_threshold_0_ (0.0)                 // Observation threshold for data at time t=0
   , obs_threshold_1_ (0.0)                 // Observation threshold for data at time t=1
   , relative_obs_threshold_(false)         // if true, observation threshold is relative to max concentration
@@ -241,10 +240,10 @@ public:
     user_cm_[0] = 2 * M_PI / 128 * 64;//63  //Z
     user_cm_[1] = 2 * M_PI / 128 * 38;//82  //Y
     user_cm_[2] = 2 * M_PI / 128 * 56;//48  //X
-    user_cms_.push_back (user_cm_[0]);
-    user_cms_.push_back (user_cm_[1]);
-    user_cms_.push_back (user_cm_[2]);
-    user_cms_.push_back (1.); // this is the default scaling
+    // user_cms_.push_back (user_cm_[0]);
+    // user_cms_.push_back (user_cm_[1]);
+    // user_cms_.push_back (user_cm_[2]);
+    // user_cms_.push_back (1.); // this is the default scaling
 
     for(int i=0; i < 7; ++i)
         timers_[i] = 0;
