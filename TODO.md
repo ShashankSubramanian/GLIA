@@ -80,7 +80,7 @@
 
 ---
 ### Utils
-- (S) Some functions depend on NMisc --> move these elsewhere
+- GeometricCoupling() etc are opt related. Move to obj deriv ops source
 
 ---
 ### TestSuite
@@ -99,5 +99,7 @@
 ---
 
 ### Invsolver
+- (S): change checkClipping to printVecBounds and use it for c(1) bounds also
+- (S): remove LSCtx if ever used
  - we need to restructure, possibly difide into several files, make a folder optimizers/ and files ReactionDiffusionInversion, MassEffectInversion, SparseTILInversion, NonSparseTILInversion?, have a superclass Optimizer for shared things?
  - use params 'ls_max_func_evals', 'lbfgs_vectors_', 'lbfgs_scale_hist', 'lbfgs_scale_type'to set petsc settings

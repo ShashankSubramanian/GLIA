@@ -231,13 +231,6 @@ PetscErrorCode PdeOperatorsRD::solveState(int linearized) {
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
 
-  // enforce positivity : hack
-  if (!linearized) {
-#ifdef POSITIVITY
-    ierr = enforcePositivity(tumor_->c_0_, params_);
-#endif
-  }
-
   ierr = VecCopy(tumor_->c_0_, tumor_->c_t_); CHKERRQ(ierr);
   if (linearized == 0 && !params_->tu_->time_history_off_) {
     ierr = VecCopy(tumor_->c_t_, c_[0]); CHKERRQ(ierr);
@@ -282,12 +275,7 @@ PetscErrorCode PdeOperatorsRD::solveState(int linearized) {
       }
       ierr = reaction(linearized, i);
     }
-    // enforce positivity : hack
-    if (!linearized) {
-#ifdef POSITIVITY
-      ierr = enforcePositivity(tumor_->c_t_, params_);
-#endif
-    }
+
     // Copy current conc to use for the adjoint equation
     if (linearized == 0 && !params_->tu_->time_history_off_) {
       ierr = VecCopy(tumor_->c_t_, c_[i + 1]); CHKERRQ(ierr);
@@ -937,42 +925,6 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
   t[5] = self_exec_time;
   e.addTimings(t);
   e.stop();
-  PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode enforcePositivity(Vec c, std::shared_ptr<Parameters> params) {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
-  ScalarType *c_ptr;
-  ierr = VecGetArray(c, &c_ptr); CHKERRQ(ierr);
-  for (int i = 0; i < params->grid_->nl_; i++) {
-    c_ptr[i] = (c_ptr[i] < 0.0) ? 0.0 : c_ptr[i];
-    c_ptr[i] = (c_ptr[i] > 1.0) ? 1.0 : c_ptr[i];
-  }
-  ierr = VecRestoreArray(c, &c_ptr); CHKERRQ(ierr);
-  PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode checkClipping(Vec c, std::shared_ptr<Parameters> params) {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
-  std::stringstream s;
-  ScalarType max, min;
-  ierr = VecMax(c, NULL, &max); CHKERRQ(ierr);
-  ierr = VecMin(c, NULL, &min); CHKERRQ(ierr);
-  ScalarType tol = 0.;
-  s << " ---------- tumor c(0) bounds: max = " << max << ", min = " << min << " ----------- ";
-  ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
-  s.str("");
-  s.clear();
-  if (max > 1 || min < tol) {
-#ifdef POSITIVITY
-    s << " ---------- warning: tumor c(0) is clipped! max = " << max << ", min = " << min << " ----------- ";
-    ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
-    s.str("");
-    s.clear();
-#endif
-  }
   PetscFunctionReturn(ierr);
 }
 

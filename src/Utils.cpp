@@ -1,7 +1,5 @@
 #include "Utils.h"
 
-#include "Phi.h"
-
 VecField::VecField(int nl, int ng) {
   PetscErrorCode ierr = 0;
   ierr = VecCreate(PETSC_COMM_WORLD, &x_);
@@ -272,6 +270,21 @@ static bool isLittleEndian() {
   uint16_t number = 0x1;
   uint8_t *numPtr = (uint8_t *)&number;
   return (numPtr[0] == 1);
+}
+
+PetscErrorCode printVecBounds(Vec c) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  std::stringstream s;
+  ScalarType max, min;
+  ierr = VecMax(c, NULL, &max); CHKERRQ(ierr);
+  ierr = VecMin(c, NULL, &min); CHKERRQ(ierr);
+  ScalarType tol = 0.;
+  s << " ---------- bounds: max = " << max << ", min = " << min << " ----------- ";
+  ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+  s.str("");
+  s.clear();
+  PetscFunctionReturn(ierr);
 }
 
 
