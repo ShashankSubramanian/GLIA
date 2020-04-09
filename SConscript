@@ -10,8 +10,7 @@ sourcesTHIRDPARTY = [
 ]
 
 sourcesDrivers = [
-    Glob('app/forward.cpp'),
-    Glob('app/inverse.cpp')
+    Glob('app/tusolver.cpp')
 ]
 
 sourcesAllNoMain = [
