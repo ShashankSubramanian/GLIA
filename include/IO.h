@@ -3,6 +3,8 @@
 
 #include "Parameters.h"
 
+class Phi; // forward declaration for phi mesh I/O
+
 //pnetcdf error handling
 PetscErrorCode NCERRQ (int cerr);
 PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file);
