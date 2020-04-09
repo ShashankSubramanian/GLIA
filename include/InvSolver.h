@@ -95,10 +95,6 @@ struct CtxInv {
     std::shared_ptr<Parameters> params_;
     /// @brief accumulates all tumor related fields and methods
     std::shared_ptr<Tumor> tumor_;
-    /// @brief keeps all the settings, tollerances, maxits for optimization
-    std::shared_ptr<OptimizerSettings>  optsettings_;
-    /// @brief keeps all the information that is feedbacked to the calling routine
-    std::shared_ptr<OptimizerFeedback> optfeedback_;
     /// @brief context for CoSaMp L1 solver
     std::shared_ptr<CtxCoSaMp> cosamp_;
 
@@ -199,8 +195,6 @@ class InvSolver {
         void updateReferenceGradient (bool b) {if (itctx_ != nullptr) itctx_->update_reference_gradient = b;}
         void setOptFeedback (std::shared_ptr<OptimizerFeedback> optfeed) {optfeedback_ = optfeed; itctx_->optfeedback_ = optfeed;}
         // getter functions
-        std::shared_ptr<OptimizerSettings> getOptSettings () {return optsettings_;}
-        std::shared_ptr<OptimizerFeedback> getOptFeedback () {return optfeedback_;}
         std::shared_ptr<CtxInv> getInverseSolverContext() {return itctx_;}
         bool isInitialized () {return initialized_;}
         Vec getPrec () {return xrec_;}

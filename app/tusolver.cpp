@@ -129,7 +129,7 @@ void setParameter(std::string name, std::string value, std:shared_ptr<Parameters
     if (name == "line_search") {p->opt_->linesearch_ = (value == "armijo") ? 0 : 1; return;}
     if (name == "ce_loss") {p->opt_->cross_entropy_loss_ = std::stoi(value) > 0; return;}
     if (name == "regularization") {p->tu_->regularization_norm_ = (value == "L1") ? 0 : 1; return;}
-    if (name == "beta_p") {p->tu_->beta_ = std::stod(value); return;}
+    if (name == "beta_p") {p->opt_->beta_ = std::stod(value); return;}
     if (name == "opttol_grad") {p->opt_->opttolgrad_ = std::stod(value); return;}
     if (name == "newton_maxit") {p->opt_->newton_maxit_ = std::stoi(value); return;}
     if (name == "krylov_maxit") {p->opt_->krylov_maxit_ = std::stoi(value); return;}

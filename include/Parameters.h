@@ -15,6 +15,7 @@ struct OptimizerSettings {
 public:
   OptimizerSettings ()
   :
+    beta_(1E-4),
     opttolgrad_ (1E-3),
     ftol_ (1E-3),
     ls_minstep_ (1E-9),
@@ -50,7 +51,7 @@ public:
     rho_lb_(1),
     rho_ub_(15)
   {}
-
+  ScalarType beta_;
   ScalarType opttolgrad_;       /// @brief l2 gradient tolerance for optimization
   ScalarType ftol_;             /// @brief l1 function and solution tolerance
   ScalarType ls_minstep_;       /// @brief minimum step length of linesearch
@@ -92,30 +93,30 @@ struct OptimizerFeedback {
 public:
   OptimizerFeedback ()
   :
-    nb_newton_it (-1),
-    nb_krylov_it (-1),
-    nb_matvecs(-1),
-    nb_objevals(-1),
-    nb_gradevals(-1),
-    solverstatus (),
-    gradnorm (0.),
-    gradnorm0 (0.),
-    j0 (0.),
-    jval(0.),
-    converged (false)
+    nb_newton_it_(-1),
+    nb_krylov_it_(-1),
+    nb_matvecs_(-1),
+    nb_objevals_(-1),
+    nb_gradevals_(-1),
+    solverstatus_(),
+    gradnorm_(0.),
+    gradnorm0_(0.),
+    j0_(0.),
+    jval_(0.),
+    converged_(false)
   {}
 
-  int nb_newton_it;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
-  int nb_krylov_it;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
-  int nb_matvecs;              /// @brief stores the number of required (accumulated) matvecs per tumor solve
-  int nb_objevals;             /// @brief stores the number of required (accumulated) objective function evaluations per tumor solve
-  int nb_gradevals;            /// @brief stores the number of required (accumulated) gradient evaluations per tumor solve
-  std::string solverstatus;    /// @brief gives information about the termination reason of inverse tumor TAO solver
-  ScalarType gradnorm;         /// @brief final gradient norm
-  ScalarType gradnorm0;        /// @brief norm of initial gradient (with p = intial guess)
-  ScalarType j0;               /// @brief initial objective : needed for L1 convergence tests
-  ScalarType jval;             /// @brief orbjective function value
-  bool converged;              /// @brief true if solver converged within bounds
+  int nb_newton_it_;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
+  int nb_krylov_it_;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
+  int nb_matvecs_;              /// @brief stores the number of required (accumulated) matvecs per tumor solve
+  int nb_objevals_;             /// @brief stores the number of required (accumulated) objective function evaluations per tumor solve
+  int nb_gradevals_;            /// @brief stores the number of required (accumulated) gradient evaluations per tumor solve
+  std::string solverstatus_;    /// @brief gives information about the termination reason of inverse tumor TAO solver
+  ScalarType gradnorm_;         /// @brief final gradient norm
+  ScalarType gradnorm0_;        /// @brief norm of initial gradient (with p = intial guess)
+  ScalarType j0_;               /// @brief initial objective : needed for L1 convergence tests
+  ScalarType jval_;             /// @brief orbjective function value
+  bool converged_;              /// @brief true if solver converged within bounds
 };
 
 
