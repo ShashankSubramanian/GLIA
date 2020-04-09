@@ -90,6 +90,14 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 - can we remove the functions DiffCoef::compute_dKdm_gradc_gradp and ReacCoef::applydRdm? What are they needed for?
 
 --- 
+### DerivativeOperators
+- n_misc --> params changes
+
+---
+### TaoL1Solver
+- Delete: make sure InvSolve does not use this
+
+--- 
 ### MatProp
 - (S) n_misc --> params changes: [done]
 - (S) csf -> vt
@@ -108,6 +116,7 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 ---
 ### Utils.h
 - (S) Move enums to typedefs and remove parameters (except tumor statistics): [done]
+- (S) Some functions depend on NMisc --> move these elsewhere
 
 ---
 ### TestSuite.cpp
