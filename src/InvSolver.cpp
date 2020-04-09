@@ -119,13 +119,13 @@ PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
     int nk = (itctx_->params_opt_->diffusivity_inversion_) ?  itctx_->params_->tu_->nk_ : 0;
     int nr = 0;
 
-    if (itctx_->params_->tu_->regularization_norm_ == L1) { //Register new Tao solver and initialize variables for parameter continuation
+    if (itctx_->params_->opt_->regularization_norm_ == L1) { //Register new Tao solver and initialize variables for parameter continuation
       ierr = TaoRegister ("tao_L1", TaoCreate_ISTA);                              CHKERRQ (ierr);
       // itctx_->lam_right = itctx_->params_->tu_->lambda_; // TODO(K): remove, remove entire L1
       itctx_->lam_left = 0;
     }
 
-    if (itctx_->params_->tu_->regularization_norm_ == wL2) {
+    if (itctx_->params_->opt_->regularization_norm_ == wL2) {
     if (itctx_->weights != nullptr) {ierr = VecDestroy(&itctx_->weights); CHKERRQ(ierr); itctx_->weights = nullptr;}
     ierr = VecDuplicate (itctx_->tumor_->p_, &itctx_->weights);                 CHKERRQ (ierr);
     }
@@ -385,9 +385,9 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     TU_assert (data_gradeval_ != nullptr, "InvSolver::solveInverseReacDiff (): requires non-null input data for gradient evaluation.");
     TU_assert (xrec_ != nullptr,          "InvSolver::solveInverseReacDiff (): requires non-null p_rec vector to be set");
 
-    PetscReal beta_p = itctx_->params_->tu_->beta_;     // set beta to zero here as the params are rho and kappa
+    PetscReal beta_p = itctx_->params_->opt_->beta_;     // set beta to zero here as the params are rho and kappa
     itctx_->params_->opt_->flag_reaction_inv_ = true;    // enables derivative operators to compute the gradient w.r.t rho
-    itctx_->params_->tu_->beta_ = 0.;
+    itctx_->params_->opt_->beta_ = 0.;
     PetscReal *d_ptr, *x_in_ptr, *x_ptr, *ub_ptr, *lb_ptr, *x_full_ptr;
     PetscReal d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0., max, min, xdiff;
     PetscReal upper_bound_kappa, lower_bound_kappa, minstep;
@@ -608,7 +608,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     itctx_->data                       = data_;
     itctx_->data_gradeval              = data_gradeval_;
     itctx_->params_->tu_->statistics_.reset();
-    ss << " tumor regularization = "<< itctx_->params_->tu_->beta_ << " type: " << itctx_->params_->tu_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    ss << " tumor regularization = "<< itctx_->params_->opt_->beta_ << " type: " << itctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
     double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
     // ====== solve ======
@@ -647,7 +647,7 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec x_in) {
     itctx_->params_->tu_->statistics_.reset();
 
     tao_is_reset_ = false;
-    itctx_->params_->tu_->beta_ = beta_p;              // restore beta value
+    itctx_->params_->opt_->beta_ = beta_p;              // restore beta value
     itctx_->params_->opt_->flag_reaction_inv_ = false;  // disables derivative operators to compute the gradient w.r.t rho
 
     // get diffusivity and reaction
@@ -756,7 +756,7 @@ PetscErrorCode InvSolver::solveForMassEffect () {
         ierr = TaoSetHessianRoutine (tao_, H_, H_, matfreeHessian, (void *) itctx_.get());  CHKERRQ(ierr);
     }
 
-    s << " using tumor regularization = "<< itctx_->params_->tu_->beta_ << " type: " << itctx_->params_->tu_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    s << " using tumor regularization = "<< itctx_->params_->opt_->beta_ << " type: " << itctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     if (itctx_->params_->tu_->verbosity_ >= 2) { itctx_->params_->tu_->outfile_sol_  << "\n ## ----- ##" << std::endl << std::flush; itctx_->params_->tu_->outfile_grad_ << "\n ## ----- ## "<< std::endl << std::flush; }
     //Gradient check begin
     //    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
@@ -890,8 +890,8 @@ PetscErrorCode InvSolver::solve () {
     }
 
     // if weighted L2 solve, set the weights
-    if (itctx_->params_->tu_->regularization_norm_ == wL2) {
-        itctx_->params_->tu_->beta_ = 1.;
+    if (itctx_->params_->opt_->regularization_norm_ == wL2) {
+        itctx_->params_->opt_->beta_ = 1.;
         ierr = VecGetArray (itctx_->tumor_->p_, &p_ptr);                        CHKERRQ (ierr);
         ierr = VecSet (itctx_->weights, 0.0);                                   CHKERRQ (ierr);
         ierr = VecGetArray (itctx_->weights, &w_ptr);                           CHKERRQ (ierr);
@@ -916,7 +916,7 @@ PetscErrorCode InvSolver::solve () {
         }
     }
 
-    s << " using tumor regularization = "<< itctx_->params_->tu_->beta_ << " type: " << itctx_->params_->tu_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+    s << " using tumor regularization = "<< itctx_->params_->opt_->beta_ << " type: " << itctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
     if (itctx_->params_->tu_->verbosity_ >= 2) { itctx_->params_->tu_->outfile_sol_  << "\n ## ----- ##" << std::endl << std::flush; itctx_->params_->tu_->outfile_grad_ << "\n ## ----- ## "<< std::endl << std::flush; }
     //Gradient check begin
     //    ierr = itctx_->derivative_operators_->checkGradient (itctx_->tumor_->p_, itctx_->data);
@@ -1061,9 +1061,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             ierr = VecCopy        (itctx_->cosamp_->x_full, itctx_->cosamp_->x_full_prev);                       CHKERRQ (ierr);
 
             // compute reference value for  objective
-            beta_store = itctx_->params_->tu_->beta_; itctx_->params_->tu_->beta_ = 0.; // set beta to zero for gradient thresholding
+            beta_store = itctx_->params_->opt_->beta_; itctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
             ierr = getObjectiveAndGradient (itctx_->cosamp_->x_full, &itctx_->cosamp_->J_ref, itctx_->cosamp_->g);CHKERRQ (ierr);
-            itctx_->params_->tu_->beta_ = beta_store;
+            itctx_->params_->opt_->beta_ = beta_store;
             ierr = VecNorm (itctx_->cosamp_->g, NORM_2, &itctx_->cosamp_->g_norm);                                CHKERRQ (ierr);
             itctx_->cosamp_->J = itctx_->cosamp_->J_ref;
 
@@ -1217,9 +1217,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
             /* === convergence check === */
             itctx_->cosamp_->J_prev = itctx_->cosamp_->J;
             // compute objective (only mismatch term)
-            beta_store = itctx_->params_->tu_->beta_; itctx_->params_->tu_->beta_ = 0.; // set beta to zero for gradient thresholding
+            beta_store = itctx_->params_->opt_->beta_; itctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
             ierr = getObjectiveAndGradient (itctx_->cosamp_->x_full, &itctx_->cosamp_->J, itctx_->cosamp_->g);   CHKERRQ (ierr);
-            itctx_->params_->tu_->beta_ = beta_store;
+            itctx_->params_->opt_->beta_ = beta_store;
             ierr = VecNorm (itctx_->cosamp_->x_full, NORM_INFINITY, &norm);                                      CHKERRQ (ierr);
             ierr = VecAXPY (itctx_->cosamp_->work, -1.0, itctx_->cosamp_->x_full_prev);  /* holds x_L1 */        CHKERRQ (ierr);
             ierr = VecNorm (itctx_->cosamp_->work, NORM_INFINITY, &norm_rel);            /*norm change in sol */ CHKERRQ (ierr);
@@ -1428,9 +1428,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = VecCopy        (x_L1, x_L1_old);                                       CHKERRQ (ierr);
 
     // compute reference value for  objective
-    beta_store = itctx_->params_->tu_->beta_; itctx_->params_->tu_->beta_ = 0.; // set beta to zero for gradient thresholding
+    beta_store = itctx_->params_->opt_->beta_; itctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
     ierr = getObjectiveAndGradient (x_L1, &J_ref, g);                             CHKERRQ (ierr);
-    itctx_->params_->tu_->beta_ = beta_store;
+    itctx_->params_->opt_->beta_ = beta_store;
     ierr = VecNorm (g, NORM_2, &norm_g);                                          CHKERRQ (ierr);
     J = J_ref;
 
@@ -1552,9 +1552,9 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
         J_old = J;
 
         // compute objective (only mismatch term)
-        beta_store = itctx_->params_->tu_->beta_; itctx_->params_->tu_->beta_ = 0.; // set beta to zero for gradient thresholding
+        beta_store = itctx_->params_->opt_->beta_; itctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
         ierr = getObjectiveAndGradient (x_L1, &J, g);                             CHKERRQ (ierr);
-        itctx_->params_->tu_->beta_ = beta_store;
+        itctx_->params_->opt_->beta_ = beta_store;
         ierr = VecNorm (x_L1, NORM_INFINITY, &norm);                              CHKERRQ (ierr);
         ierr = VecAXPY (temp, -1.0, x_L1_old);            /* holds x_L1 */        CHKERRQ (ierr);
         ierr = VecNorm (temp, NORM_INFINITY, &norm_rel);  /*norm change in sol */ CHKERRQ (ierr);
@@ -4172,7 +4172,7 @@ PetscErrorCode InvSolver::setTaoOptionsMassEffect (Tao tao, CtxInv *ctx) {
     }
     ierr = tuMSGstd(msg); CHKERRQ(ierr);
     // set tolerances
-    // if (itctx_->params_->tu_->regularization_norm_ == wL2) ctx->params_->opt_->opttolgrad_ = 1e-6;
+    // if (itctx_->params_->opt_->regularization_norm_ == wL2) ctx->params_->opt_->opttolgrad_ = 1e-6;
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
         ierr = TaoSetTolerances (tao, ctx->params_->opt_->gatol_, ctx->params_->opt_->grtol_, ctx->params_->opt_->opttolgrad_); CHKERRQ(ierr);
     #else
@@ -4225,7 +4225,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     minstep = 1.0 / minstep;
     itctx_->params_->opt_->ls_minstep_ = minstep;
 
-    if (itctx_->params_->tu_->regularization_norm_ == L1) {
+    if (itctx_->params_->opt_->regularization_norm_ == L1) {
       ierr = TaoSetType (tao, "tao_L1");   CHKERRQ (ierr);
       TaoLineSearch ls;
       ierr = TaoGetLineSearch(tao_, &ls);                                          CHKERRQ (ierr);
@@ -4283,7 +4283,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     // set the routine to evaluate the objective and compute the gradient
     ierr = TaoSetObjectiveAndGradientRoutine (tao, evaluateObjectiveFunctionAndGradient, (void*) ctx);  CHKERRQ(ierr);
     // set monitor function
-    if (itctx_->params_->tu_->regularization_norm_ == L1) {
+    if (itctx_->params_->opt_->regularization_norm_ == L1) {
       ierr = TaoSetMonitor (tao, optimizationMonitorL1, (void *) ctx, NULL);        CHKERRQ(ierr);
     }
     else {
@@ -4361,13 +4361,13 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     }
     ierr = tuMSGstd(msg); CHKERRQ(ierr);
     // set tolerances
-    // if (itctx_->params_->tu_->regularization_norm_ == wL2) ctx->params_->opt_->opttolgrad_ = 1e-6;
+    // if (itctx_->params_->opt_->regularization_norm_ == wL2) ctx->params_->opt_->opttolgrad_ = 1e-6;
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
         ierr = TaoSetTolerances (tao, ctx->params_->opt_->gatol_, ctx->params_->opt_->grtol_, ctx->params_->opt_->opttolgrad_); CHKERRQ(ierr);
     #else
         ierr = TaoSetTolerances (tao, 1E-12, 1E-12, ctx->params_->opt_->gatol_, ctx->params_->opt_->grtol_, ctx->params_->opt_->opttolgrad_); CHKERRQ(ierr);
     #endif
-    if (itctx_->params_->tu_->regularization_norm_ == L1) {
+    if (itctx_->params_->opt_->regularization_norm_ == L1) {
       ierr = TaoSetMaximumIterations (tao, ctx->params_->opt_->gist_maxit_); CHKERRQ(ierr);
     }
     else {
@@ -4378,7 +4378,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
     //   ierr = TaoSetMaximumIterations (tao, 200); CHKERRQ(ierr);
     // }
 
-    if (itctx_->params_->tu_->regularization_norm_ == L1) {
+    if (itctx_->params_->opt_->regularization_norm_ == L1) {
       ierr = TaoSetConvergenceTest (tao, checkConvergenceFun, ctx);                  CHKERRQ(ierr);
     }
     else {
@@ -4386,7 +4386,7 @@ PetscErrorCode InvSolver::setTaoOptions (Tao tao, CtxInv *ctx) {
       // ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx);              CHKERRQ(ierr);
     }
 
-    if (!itctx_->params_->tu_->regularization_norm_ == L1) {  //Set other preferences for standard tao solvers
+    if (!itctx_->params_->opt_->regularization_norm_ == L1) {  //Set other preferences for standard tao solvers
       // set linesearch (only for Gauss-Newton, lmvm uses more-thuente type line-search automatically)
       ierr = TaoGetLineSearch (tao, &linesearch);                                   CHKERRQ(ierr);
       linesearch->stepmin = minstep;
