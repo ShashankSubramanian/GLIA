@@ -537,9 +537,6 @@ PetscErrorCode Solver::createSynthetic() {
   ierr = VecMax(data_t0_, NULL, &max); CHKERRQ (ierr);
   ierr = VecMin(data_t0_, NULL, &min); CHKERRQ (ierr);
 
-  #ifdef POSITIVITY
-      ierr = enforcePositivity (data_t0_, params_);
-  #endif
   if (params_->tu_->write_output_) {
       ierr = dataOut(data_t0_, params_, "c0_true_syn" + params_->tu_->ext_); CHKERRQ (ierr);
   }
