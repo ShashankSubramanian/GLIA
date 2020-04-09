@@ -75,6 +75,11 @@ No, bg is needed for lame parameters in the bg (which is a hard stiff material).
 - (S) n_misc --> params changes: [done]
 
 --- 
+### Phi
+- (S) n_misc --> params changes: [done]
+- (S) remove SERIAL macro: [done]
+
+--- 
 ### DiffCoef, ReacCoef
 - (S) n_misc --> params changes: [done]
 - (S) Move sinusoidal setvalues to TestSuite.cpp: [done]
