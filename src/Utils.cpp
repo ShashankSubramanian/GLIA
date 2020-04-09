@@ -272,7 +272,7 @@ static bool isLittleEndian() {
   return (numPtr[0] == 1);
 }
 
-PetscErrorCode printVecBounds(Vec c) {
+PetscErrorCode printVecBounds(Vec c, str::string str) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   std::stringstream s;
@@ -280,7 +280,7 @@ PetscErrorCode printVecBounds(Vec c) {
   ierr = VecMax(c, NULL, &max); CHKERRQ(ierr);
   ierr = VecMin(c, NULL, &min); CHKERRQ(ierr);
   ScalarType tol = 0.;
-  s << " ---------- bounds: max = " << max << ", min = " << min << " ----------- ";
+  s << " ---------- " << str << " bounds: max = " << max << ", min = " << min << " ----------- ";
   ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   s.str("");
   s.clear();
@@ -289,8 +289,7 @@ PetscErrorCode printVecBounds(Vec c) {
 
 
 /// @brief computes difference diff = x - y
-PetscErrorCode computeDifference(ScalarType *sqrdl2norm, Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg, Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg, Vec y_wm, Vec y_gm,
-                                 Vec y_csf, Vec y_glm, Vec y_bg) {
+PetscErrorCode computeDifference(ScalarType *sqrdl2norm, Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg, Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg, Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg) {
   PetscErrorCode ierr;
   PetscFunctionBegin;
   ScalarType mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
@@ -318,8 +317,7 @@ PetscErrorCode computeDifference(ScalarType *sqrdl2norm, Vec diff_wm, Vec diff_g
 
 /** @brief computes difference xi = m_data - m_geo
  *  - function assumes that on input, xi = m_geo * (1-c(1))   */
-PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm, Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg, Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg,
-                                        Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg) {
+PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm, Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg, Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg, Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg) {
   PetscErrorCode ierr;
   PetscFunctionBegin;
   ScalarType mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;

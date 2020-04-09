@@ -128,7 +128,7 @@ PetscErrorCode vecMax(Vec x, PetscInt *p, PetscReal *val);
 PetscErrorCode vecSign(Vec x);                            // signum of petsc vector
 PetscErrorCode vecSparsity(Vec x, ScalarType &sparsity);  // Hoyer measure for sparsity of vector
 PetscErrorCode setupVec(Vec x, int type = MPI);
-PetscErrorCode printVecBounds(Vec c);
+PetscErrorCode printVecBounds(Vec c, std::string str = "c");
 
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))
 PetscErrorCode geometricCoupling(Vec m1_wm, Vec m1_gm, Vec m1_csf, Vec m1_glm, Vec m1_bg, Vec m0_wm, Vec m0_gm, Vec m0_csf, Vec m0_glm, Vec m0_bg, Vec c1, std::shared_ptr<NMisc> nmisc);
