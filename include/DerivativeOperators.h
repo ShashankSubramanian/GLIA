@@ -107,11 +107,11 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
   PetscErrorCode evaluateHessian(Vec y, Vec x);
 
   PetscErrorCode computeMisfitBrain(PetscReal *J);
-  PetscErrorCode setMaterialProperties(Vec gm, Vec wm, Vec csf, Vec glm) {
+  PetscErrorCode setMaterialProperties(Vec gm, Vec wm, Vec vt, Vec csf) {
     gm_ = gm;
     wm_ = wm;
+    vt_ = vt;
     csf_ = csf;
-    glm_ = glm;
     PetscFunctionReturn(0);
   }
 
@@ -121,7 +121,7 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
   ~DerivativeOperatorsMassEffect() { VecDestroy(&delta_); }
 
  private:
-  Vec gm_, wm_, csf_, glm_;
+  Vec gm_, wm_, vt_, csf_;
 };
 
 class DerivativeOperatorsRDObj : public DerivativeOperators {

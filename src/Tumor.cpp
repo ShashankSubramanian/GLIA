@@ -63,7 +63,7 @@ PetscErrorCode Tumor::initialize(Vec p, std::shared_ptr<Parameters> params, std:
   } else
     mat_prop_ = mat_prop;
   ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
-  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_csf_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = VecDuplicate(p, &p_); CHKERRQ(ierr);
   ierr = VecDuplicate(p, &weights_); CHKERRQ(ierr);
   ierr = VecCopy(p, p_); CHKERRQ(ierr);
@@ -96,7 +96,7 @@ PetscErrorCode Tumor::setParams(Vec p, std::shared_ptr<Parameters> params, bool 
   ierr = VecCopy(p, p_); CHKERRQ(ierr);
   // set new values
   ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
-  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_csf_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = phi_->setValues(mat_prop_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
@@ -115,7 +115,7 @@ PetscErrorCode Tumor::computeForce(Vec c1) {
   XYZ[2] = 1;
 
   ScalarType *c_ptr, *fx_ptr, *fy_ptr, *fz_ptr;
-  ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];  // smooth because c might be too sharp at csf boundaries
+  ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];  // smooth because c might be too sharp at vt boundaries
 
   ierr = VecCopy(c1, work_[0]); CHKERRQ(ierr);
   ierr = spec_ops_->weierstrassSmoother(work_[0], work_[0], params_, sigma_smooth); CHKERRQ(ierr);
@@ -173,20 +173,20 @@ PetscErrorCode Tumor::computeSegmentation() {
   PetscErrorCode ierr = 0;
 
   ierr = VecSet(seg_, 0); CHKERRQ(ierr);
-  // compute seg_ of gm, wm, csf, bg, tumor
+  // compute seg_ of gm, wm, vt, bg, tumor
   std::vector<ScalarType> v;
   std::vector<ScalarType>::iterator seg_component;
-  ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *csf_ptr, *c_ptr, *glm_ptr, *seg_ptr, *p_ptr, *n_ptr, *ed_ptr;
+  ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *vt_ptr, *c_ptr, *csf_ptr, *seg_ptr, *p_ptr, *n_ptr, *ed_ptr;
   ierr = vecGetArray(mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(mat_prop_->wm_, &wm_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(mat_prop_->vt_, &vt_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
-  ierr = vecGetArray(mat_prop_->glm_, &glm_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(seg_, &seg_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(c_t_, &c_ptr); CHKERRQ(ierr);
 
 #ifdef CUDA
-  computeTumorSegmentationCuda(bg_ptr, gm_ptr, wm_ptr, csf_ptr, glm_ptr, c_ptr, seg_ptr, params_->grid_->nl_);
+  computeTumorSegmentationCuda(bg_ptr, gm_ptr, wm_ptr, vt_ptr, csf_ptr, c_ptr, seg_ptr, params_->grid_->nl_);
 #else
   //     ierr = VecGetArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr); CHKERRQ(ierr);
   //     ierr = VecGetArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr); CHKERRQ(ierr);
@@ -198,8 +198,8 @@ PetscErrorCode Tumor::computeSegmentation() {
   //         v.push_back (ed_ptr[i]);
   //         v.push_back (wm_ptr[i]);
   //         v.push_back (gm_ptr[i]);
+  //         v.push_back (vt_ptr[i]);
   //         v.push_back (csf_ptr[i]);
-  //         v.push_back (glm_ptr[i]);
 
   //         seg_component = std::max_element (v.begin(), v.end());
   //         seg_ptr[i] = std::distance (v.begin(), seg_component);
@@ -213,8 +213,8 @@ PetscErrorCode Tumor::computeSegmentation() {
     v.push_back(c_ptr[i]);
     v.push_back(wm_ptr[i]);
     v.push_back(gm_ptr[i]);
+    v.push_back(vt_ptr[i]);
     v.push_back(csf_ptr[i]);
-    v.push_back(glm_ptr[i]);
 
     seg_component = std::max_element(v.begin(), v.end());
     seg_ptr[i] = std::distance(v.begin(), seg_component);
@@ -227,8 +227,8 @@ PetscErrorCode Tumor::computeSegmentation() {
   ierr = vecRestoreArray(mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(mat_prop_->wm_, &wm_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(mat_prop_->vt_, &vt_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
-  ierr = vecRestoreArray(mat_prop_->glm_, &glm_ptr); CHKERRQ(ierr);
   //     ierr = VecRestoreArray (species_["proliferative"], &p_ptr);       CHKERRQ(ierr); CHKERRQ(ierr);
   //     ierr = VecRestoreArray (species_["necrotic"], &n_ptr);            CHKERRQ(ierr); CHKERRQ(ierr);
   // } else {

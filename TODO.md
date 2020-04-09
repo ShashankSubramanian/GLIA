@@ -40,7 +40,6 @@
 ---
 
 ### PdeOperators
-- (S) csf -> vt
 
 **unclear**
 - (S) move reaction solve to a new file ReactionSolver? I think this is more consistent even though it's an analytic solve and doesn't really need a new class, K: New class is fine. I'd say new file ReacSolver.h/cpp, then a new folder pde_solvers, and
@@ -59,7 +58,6 @@
 
 --- 
 ### DiffCoef, ReacCoef
-- (S) csf -> vt
 
 **unclear**
 - Remove glm ratios? tumor never grows or diffuses here K: yes let's remove
@@ -70,7 +68,6 @@
 
 --- 
 ### MatProp
-- (S) csf -> vt
 
 --- 
 ### Tumor

@@ -601,7 +601,7 @@ PetscErrorCode TumorSolverInterface::setOptimizerSettings(std::shared_ptr<Optimi
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::setMassEffectData(Vec gm, Vec wm, Vec csf, Vec glm) {
+PetscErrorCode TumorSolverInterface::setMassEffectData(Vec gm, Vec wm, Vec vt, Vec csf) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   if (!initialized_) {
@@ -617,11 +617,11 @@ PetscErrorCode TumorSolverInterface::setMassEffectData(Vec gm, Vec wm, Vec csf, 
   if (csf == nullptr) {
     ierr = tuMSGwarn("Warning: (setMassEffectData) Vector csf is nullptr."); CHKERRQ(ierr);
   }
-  if (glm == nullptr) {
-    ierr = tuMSGwarn("Warning: (setMassEffectData) Vector glm is nullptr."); CHKERRQ(ierr);
+  if (vt == nullptr) {
+    ierr = tuMSGwarn("Warning: (setMassEffectData) Vector vt is nullptr."); CHKERRQ(ierr);
   }
 
-  return derivative_operators_->setMaterialProperties(gm, wm, csf, glm);
+  return derivative_operators_->setMaterialProperties(gm, wm, vt, csf);
 }
 
 // ### ______________________________________________________________________ ___
@@ -842,7 +842,7 @@ PetscErrorCode TumorSolverInterface::writeNetCDF(Vec A, std::string filename) {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec glm, Vec csf, Vec bg) {
+PetscErrorCode TumorSolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   TU_assert(initialized_, "TumorSolverInterface::updateTumorCoefficients(): TumorSolverInterface needs to be initialized.") if (!initialized_) {
@@ -855,11 +855,11 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec
   if (gm == nullptr) {
     ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector gm is nullptr."); CHKERRQ(ierr);
   }
+  if (vt == nullptr) {
+    ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector vt is nullptr."); CHKERRQ(ierr);
+  }
   if (csf == nullptr) {
     ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector csf is nullptr."); CHKERRQ(ierr);
-  }
-  if (glm == nullptr) {
-    ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector glm is nullptr."); CHKERRQ(ierr);
   }
   // timing
   Event e("update-tumor-coefficients");
@@ -867,7 +867,7 @@ PetscErrorCode TumorSolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec
   double self_exec_time = -MPI_Wtime();
   std::stringstream s;
 
-  ierr = tumor_->mat_prop_->setValuesCustom(gm, wm, glm, csf, bg, params_); CHKERRQ(ierr);
+  ierr = tumor_->mat_prop_->setValuesCustom(gm, wm, csf, vt, bg, params_); CHKERRQ(ierr);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
   ierr = tumor_->phi_->setValues(tumor_->mat_prop_); CHKERRQ(ierr);

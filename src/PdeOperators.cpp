@@ -571,45 +571,13 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients(Vec seg, st
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  // ScalarType *seg_ptr, *rho_ptr, *k_ptr;
-  // ierr = VecSet (tumor_->rho_->rho_vec_, 0.);                 CHKERRQ (ierr);
-  // ierr = VecSet (tumor_->k_->kxx_, 0.);                       CHKERRQ (ierr);
-
-  // ierr = VecGetArray (seg, &seg_ptr);                         CHKERRQ (ierr);
-  // ierr = VecGetArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-  // // ierr = VecGetArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
-
-  // for (int i = 0; i < params_->grid_->nl_; i++) {
-  //     if (std::abs(seg_ptr[i] - 1) < 1E-3 || std::abs(seg_ptr[i] - 2) < 1E-3) {
-  //         // 1 is tumor, 2 is wm
-  //         rho_ptr[i] = params_->tu_->rho_;
-  //         // k_ptr[i] = params_->tu_->k_;
-  //     }
-  // }
-
-  // ierr = VecRestoreArray (seg, &seg_ptr);                         CHKERRQ (ierr);
-  // ierr = VecRestoreArray (tumor_->rho_->rho_vec_, &rho_ptr);      CHKERRQ (ierr);
-  // // ierr = VecRestoreArray (tumor_->k_->kxx_, &k_ptr);              CHKERRQ (ierr);
-
-  // // smooth them now
-  // ScalarType sigma_smooth = params_->tu_->smoothing_factor_ * 2 * M_PI / params_->grid_->n_[0];
-  // ierr = spec_ops_->weierstrassSmoother (tumor_->rho_->rho_vec_, tumor_->rho_->rho_vec_, params_, sigma_smooth);
-  // // ierr = spec_ops_->weierstrassSmoother (tumor_->k_->kxx_, tumor_->k_->kxx_, params_, sigma_smooth);
-
-  // // copy kxx to other directions
-  // // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kyy_);            CHKERRQ (ierr);
-  // // ierr = VecCopy (tumor_->k_->kxx_, tumor_->k_->kzz_);            CHKERRQ (ierr);
-
-  // // ignore the avg for now since it won't change much and the preconditioner does not have much effect on
-  // // the diffusion solver
-
-  ScalarType *bg_ptr, *gm_ptr, *csf_ptr, *vt_ptr, *rho_ptr, *k_ptr;
+  ScalarType *bg_ptr, *gm_ptr, *vt_ptr, *csf_ptr, *rho_ptr, *k_ptr;
   ierr = vecGetArray(tumor_->rho_->rho_vec_, &rho_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->k_->kxx_, &k_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
-  ierr = vecGetArray(tumor_->mat_prop_->csf_, &vt_ptr); CHKERRQ(ierr);
-  ierr = vecGetArray(tumor_->mat_prop_->glm_, &csf_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(tumor_->mat_prop_->vt_, &vt_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
 
   ScalarType temp = 1.;
 #ifdef CUDA
@@ -627,8 +595,8 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients(Vec seg, st
   ierr = vecRestoreArray(tumor_->k_->kxx_, &k_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(tumor_->mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(tumor_->mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
-  ierr = vecRestoreArray(tumor_->mat_prop_->csf_, &vt_ptr); CHKERRQ(ierr);
-  ierr = vecRestoreArray(tumor_->mat_prop_->glm_, &csf_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(tumor_->mat_prop_->vt_, &vt_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
 
   // copy kxx to other directions
   ierr = VecCopy(tumor_->k_->kxx_, tumor_->k_->kyy_); CHKERRQ(ierr);
@@ -770,11 +738,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
         ss.str(std::string());
         ss.clear();
         ss << "vt_t[" << i << "].nc";
-        dataOut(tumor_->mat_prop_->csf_, params_, ss.str().c_str());
+        dataOut(tumor_->mat_prop_->vt_, params_, ss.str().c_str());
         ss.str(std::string());
         ss.clear();
         ss << "csf_t[" << i << "].nc";
-        dataOut(tumor_->mat_prop_->glm_, params_, ss.str().c_str());
+        dataOut(tumor_->mat_prop_->csf_, params_, ss.str().c_str());
         ss.str(std::string());
         ss.clear();
         ss << "wm_t[" << i << "].nc";
@@ -802,9 +770,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
     adv_solver_->trajectoryIsComputed_ = false;
     ierr = adv_solver_->solve(tumor_->mat_prop_->gm_, tumor_->velocity_, dt); CHKERRQ(ierr);
     ierr = adv_solver_->solve(tumor_->mat_prop_->wm_, tumor_->velocity_, dt); CHKERRQ(ierr);
-    adv_solver_->advection_mode_ = 2;  // pure advection for csf
+    adv_solver_->advection_mode_ = 2;  // pure advection for vt
+    ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
     ierr = adv_solver_->solve(tumor_->mat_prop_->csf_, tumor_->velocity_, dt); CHKERRQ(ierr);
-    ierr = adv_solver_->solve(tumor_->mat_prop_->glm_, tumor_->velocity_, dt); CHKERRQ(ierr);
     adv_solver_->advection_mode_ = 1;  // reset to mass conservation
     ierr = adv_solver_->solve(tumor_->c_t_, tumor_->velocity_, dt); CHKERRQ(ierr);
 
@@ -884,11 +852,11 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
     ss.str(std::string());
     ss.clear();
     ss << "vt_final.nc";
-    dataOut(tumor_->mat_prop_->csf_, params_, ss.str().c_str());
+    dataOut(tumor_->mat_prop_->vt_, params_, ss.str().c_str());
     ss.str(std::string());
     ss.clear();
     ss << "csf_final.nc";
-    dataOut(tumor_->mat_prop_->glm_, params_, ss.str().c_str());
+    dataOut(tumor_->mat_prop_->csf_, params_, ss.str().c_str());
     ss.str(std::string());
     ss.clear();
     ss << "wm_final.nc";
@@ -1317,11 +1285,11 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
         ss.str(std::string());
         ss.clear();
         ss << "vt_t[" << i << "].nc";
-        dataOut(tumor_->mat_prop_->csf_, params_, ss.str().c_str());
+        dataOut(tumor_->mat_prop_->vt_, params_, ss.str().c_str());
         ss.str(std::string());
         ss.clear();
         ss << "csf_t[" << i << "].nc";
-        dataOut(tumor_->mat_prop_->glm_, params_, ss.str().c_str());
+        dataOut(tumor_->mat_prop_->csf_, params_, ss.str().c_str());
         ss.str(std::string());
         ss.clear();
         ss << "wm_t[" << i << "].nc";
@@ -1351,9 +1319,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       adv_solver_->trajectoryIsComputed_ = false;
       ierr = adv_solver_->solve(tumor_->mat_prop_->gm_, tumor_->velocity_, dt); CHKERRQ(ierr);
       ierr = adv_solver_->solve(tumor_->mat_prop_->wm_, tumor_->velocity_, dt); CHKERRQ(ierr);
-      adv_solver_->advection_mode_ = 2;  // pure advection for csf
+      adv_solver_->advection_mode_ = 2;  // pure advection for vt
+      ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
       ierr = adv_solver_->solve(tumor_->mat_prop_->csf_, tumor_->velocity_, dt); CHKERRQ(ierr);
-      ierr = adv_solver_->solve(tumor_->mat_prop_->glm_, tumor_->velocity_, dt); CHKERRQ(ierr);
       adv_solver_->advection_mode_ = 1;  // reset to mass conservation
       ierr = adv_solver_->solve(tumor_->species_["proliferative"], tumor_->velocity_, dt); CHKERRQ(ierr);
       ierr = adv_solver_->solve(tumor_->species_["infiltrative"], tumor_->velocity_, dt); CHKERRQ(ierr);

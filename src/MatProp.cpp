@@ -7,8 +7,8 @@ MatProp::MatProp(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOpe
   ierr = setupVec(gm_);
 
   ierr = VecDuplicate(gm_, &wm_);
+  ierr = VecDuplicate(gm_, &vt_);
   ierr = VecDuplicate(gm_, &csf_);
-  ierr = VecDuplicate(gm_, &glm_);
   ierr = VecDuplicate(gm_, &bg_);
   ierr = VecDuplicate(gm_, &filter_);
 
@@ -23,8 +23,8 @@ PetscErrorCode MatProp::setValues(std::shared_ptr<Parameters> params) {
 
   ierr = VecSet(gm_, 0); CHKERRQ(ierr);
   ierr = VecSet(wm_, 1); CHKERRQ(ierr);
+  ierr = VecSet(vt_, 0); CHKERRQ(ierr);
   ierr = VecSet(csf_, 0); CHKERRQ(ierr);
-  ierr = VecSet(glm_, 0); CHKERRQ(ierr);
   ierr = VecSet(bg_, 0); CHKERRQ(ierr);
   ierr = VecSet(filter_, 1); CHKERRQ(ierr);
 
@@ -35,42 +35,42 @@ PetscErrorCode MatProp::clipHealthyTissues() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // clip at zero
-  ScalarType *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr;
+  ScalarType *gm_ptr, *wm_ptr, *vt_ptr, *csf_ptr;
   ierr = vecGetArray(gm_, &gm_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(wm_, &wm_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(vt_, &vt_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(csf_, &csf_ptr); CHKERRQ(ierr);
-  ierr = vecGetArray(glm_, &glm_ptr); CHKERRQ(ierr);
 
 #ifdef CUDA
   clipVectorCuda(gm_ptr, params_->grid_->nl_);
   clipVectorCuda(wm_ptr, params_->grid_->nl_);
-  clipVectorCuda(glm_ptr, params_->grid_->nl_);
   clipVectorCuda(csf_ptr, params_->grid_->nl_);
+  clipVectorCuda(vt_ptr, params_->grid_->nl_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) {
     gm_ptr[i] = (gm_ptr[i] <= 0.) ? 0. : gm_ptr[i];
     wm_ptr[i] = (wm_ptr[i] <= 0.) ? 0. : wm_ptr[i];
+    vt_ptr[i] = (vt_ptr[i] <= 0.) ? 0. : vt_ptr[i];
     csf_ptr[i] = (csf_ptr[i] <= 0.) ? 0. : csf_ptr[i];
-    glm_ptr[i] = (glm_ptr[i] <= 0.) ? 0. : glm_ptr[i];
   }
 #endif
 
   ierr = vecRestoreArray(gm_, &gm_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(wm_, &wm_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(vt_, &vt_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(csf_, &csf_ptr); CHKERRQ(ierr);
-  ierr = vecRestoreArray(glm_, &glm_ptr); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode MatProp::setAtlas(Vec gm, Vec wm, Vec glm, Vec csf, Vec bg) {
+PetscErrorCode MatProp::setAtlas(Vec gm, Vec wm, Vec csf, Vec vt, Vec bg) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
   gm_0_ = gm;
   wm_0_ = wm;
+  vt_0_ = vt;
   csf_0_ = csf;
-  glm_0_ = glm;
 
   PetscFunctionReturn(ierr);
 }
@@ -81,20 +81,20 @@ PetscErrorCode MatProp::resetValues() {
 
   ierr = VecCopy(gm_0_, gm_); CHKERRQ(ierr);
   ierr = VecCopy(wm_0_, wm_); CHKERRQ(ierr);
+  ierr = VecCopy(vt_0_, vt_); CHKERRQ(ierr);
   ierr = VecCopy(csf_0_, csf_); CHKERRQ(ierr);
-  ierr = VecCopy(glm_0_, glm_); CHKERRQ(ierr);
 
   // Set bg prob as 1 - sum
   ierr = VecWAXPY(bg_, 1., gm_, wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(bg_, 1., vt_); CHKERRQ(ierr);
   ierr = VecAXPY(bg_, 1., csf_); CHKERRQ(ierr);
-  ierr = VecAXPY(bg_, 1., glm_); CHKERRQ(ierr);
   ierr = VecShift(bg_, -1.0); CHKERRQ(ierr);
   ierr = VecScale(bg_, -1.0); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec glm, Vec csf, Vec bg, std::shared_ptr<Parameters> params) {
+PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec csf, Vec vt, Vec bg, std::shared_ptr<Parameters> params) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
@@ -108,15 +108,15 @@ PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec glm, Vec csf, Vec bg
   } else {
     ierr = VecSet(gm_, 0.0); CHKERRQ(ierr);
   }
+  if (vt != nullptr) {
+    ierr = VecCopy(vt, vt_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(vt_, 0.0); CHKERRQ(ierr);
+  }
   if (csf != nullptr) {
     ierr = VecCopy(csf, csf_); CHKERRQ(ierr);
   } else {
     ierr = VecSet(csf_, 0.0); CHKERRQ(ierr);
-  }
-  if (glm != nullptr) {
-    ierr = VecCopy(glm, glm_); CHKERRQ(ierr);
-  } else {
-    ierr = VecSet(glm_, 0.0); CHKERRQ(ierr);
   }
   if (bg != nullptr) {
     ierr = VecCopy(bg, bg_); CHKERRQ(ierr);
@@ -128,21 +128,21 @@ PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec glm, Vec csf, Vec bg
   ierr = clipHealthyTissues(); CHKERRQ(ierr);
   // Set bg prob as 1 - sum
   ierr = VecWAXPY(bg_, 1., gm_, wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(bg_, 1., vt_); CHKERRQ(ierr);
   ierr = VecAXPY(bg_, 1., csf_); CHKERRQ(ierr);
-  ierr = VecAXPY(bg_, 1., glm_); CHKERRQ(ierr);
   ierr = VecShift(bg_, -1.0); CHKERRQ(ierr);
   ierr = VecScale(bg_, -1.0); CHKERRQ(ierr);
 
-  ScalarType *gm_ptr, *wm_ptr, *csf_ptr, *glm_ptr, *filter_ptr, *bg_ptr;
+  ScalarType *gm_ptr, *wm_ptr, *vt_ptr, *csf_ptr, *filter_ptr, *bg_ptr;
   ierr = VecGetArray(gm_, &gm_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(wm_, &wm_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(vt_, &vt_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(csf_, &csf_ptr); CHKERRQ(ierr);
-  ierr = VecGetArray(glm_, &glm_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(filter_, &filter_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(bg_, &bg_ptr); CHKERRQ(ierr);
 
   for (int i = 0; i < params->grid_->nl_; i++) {
-    if ((wm_ptr[i] > 0.1 || gm_ptr[i] > 0.1) && csf_ptr[i] < 0.8)
+    if ((wm_ptr[i] > 0.1 || gm_ptr[i] > 0.1) && vt_ptr[i] < 0.8)
       filter_ptr[i] = 1.0;
     else
       filter_ptr[i] = 0.0;
@@ -151,15 +151,15 @@ PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec glm, Vec csf, Vec bg
   if (params->write_output_) {
     dataOut(gm_ptr, params, "gm.nc");
     dataOut(wm_ptr, params, "wm.nc");
+    dataOut(vt_ptr, params, "vt.nc");
     dataOut(csf_ptr, params, "csf.nc");
-    dataOut(glm_ptr, params, "glm.nc");
     dataOut(bg_ptr, params, "bg.nc");
   }
 
   ierr = VecRestoreArray(gm_, &gm_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(wm_, &wm_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(vt_, &vt_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(csf_, &csf_ptr); CHKERRQ(ierr);
-  ierr = VecRestoreArray(glm_, &glm_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(filter_, &filter_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(bg_, &bg_ptr); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
@@ -206,8 +206,8 @@ MatProp::~MatProp() {
   PetscErrorCode ierr;
   ierr = VecDestroy(&gm_);
   ierr = VecDestroy(&wm_);
+  ierr = VecDestroy(&vt_);
   ierr = VecDestroy(&csf_);
-  ierr = VecDestroy(&glm_);
   ierr = VecDestroy(&bg_);
   ierr = VecDestroy(&filter_);
 

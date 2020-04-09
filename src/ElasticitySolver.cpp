@@ -401,18 +401,18 @@ PetscErrorCode VariableLinearElasticitySolver::computeMaterialProperties() {
   ierr = VecAXPY(ctx->mu_, mu_bg, tumor->mat_prop_->bg_); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->mu_, mu_healthy, tumor->mat_prop_->wm_); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->mu_, mu_healthy, tumor->mat_prop_->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(ctx->mu_, mu_csf, tumor->mat_prop_->vt_); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->mu_, mu_csf, tumor->mat_prop_->csf_); CHKERRQ(ierr);
-  ierr = VecAXPY(ctx->mu_, mu_csf, tumor->mat_prop_->glm_); CHKERRQ(ierr);
 
   ierr = VecSet(ctx->lam_, 0.); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->lam_, lam_bg, tumor->mat_prop_->bg_); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->lam_, lam_healthy, tumor->mat_prop_->wm_); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->lam_, lam_healthy, tumor->mat_prop_->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(ctx->lam_, lam_csf, tumor->mat_prop_->vt_); CHKERRQ(ierr);
   ierr = VecAXPY(ctx->lam_, lam_csf, tumor->mat_prop_->csf_); CHKERRQ(ierr);
-  ierr = VecAXPY(ctx->lam_, lam_csf, tumor->mat_prop_->glm_); CHKERRQ(ierr);
 
   // set the tumor
-  ScalarType *bg_ptr, *wm_ptr, *gm_ptr, *csf_ptr, *c_ptr, *mu_ptr, *screen_ptr, *lam_ptr;
+  ScalarType *bg_ptr, *wm_ptr, *gm_ptr, *c_ptr, *mu_ptr, *screen_ptr, *lam_ptr;
   ierr = vecGetArray(ctx->screen_, &screen_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(ctx->mu_, &mu_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(ctx->lam_, &lam_ptr); CHKERRQ(ierr);
