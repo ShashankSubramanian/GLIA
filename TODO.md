@@ -5,6 +5,19 @@
  - (S) Format to tab-width 2, CHKERRQ(ierr) to one space after ";" and general \(\) formating
  - (K) add time point to observation operator
 
+
+### External functionality:
+ - we need to discuss how to handle this. SIBIA is not compatible with current code anyways. I think, if used, sibia has to be restructured, and fittet to new tumor code. That said, some of the legacy functinality should be dropped (which is clearly
+   outdated and only supported bc of SIBIA) but I think not all of it should be deleted. This is my suggestion:
+ - delete old L1 solver and all related functions
+ - keep modified objective, keep functions which compute moving-atlas contributions, but maybe move them into one combined file
+ ---
+
+### Interface:
+ - TumorSolverInterface: we need to discuss if we need the setParams here still, since now the setup of the solver is nice and clean and could also be called from outside, that is: the new interface could be Solver instead of TumorSolverInterface. We
+   could even get rid of the latter, since it is confusing and no added abstraction. Let's discuss.
+---
+
 ### inverse/Solver
 
 **todo: (implement)**
@@ -91,6 +104,6 @@
   - c. me inversion, compare rho, kappa, gamma
 ---
 
-
 ### Invsolver
-- use params 'ls_max_func_evals', 'lbfgs_vectors_', 'lbfgs_scale_hist', 'lbfgs_scale_type'to set petsc settings
+ - we need to restructure, possibly difide into several files, make a folder optimizers/ and files ReactionDiffusionInversion, MassEffectInversion, SparseTILInversion, NonSparseTILInversion?, have a superclass Optimizer for shared things?
+ - use params 'ls_max_func_evals', 'lbfgs_vectors_', 'lbfgs_scale_hist', 'lbfgs_scale_type'to set petsc settings
