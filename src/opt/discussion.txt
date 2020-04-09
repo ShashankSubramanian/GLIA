@@ -1,0 +1,16 @@
+0. create a directory opt/
+
+Then, we have two options:
+
+1. Inheritance based approach:
+  * class Optimizer, classes TILOptimizer, RDOptimizer, MEOptimizer, SparseTILOptimizer derive from super class
+  * each of them has methods initialize(), allocateTaoObjects(), setTaoOptions(), solve()
+  * each of them has non class methods in their files for evaluateObjective(), evaluateGradient(), evaluateObjectiveAndGradient(), optimizationMonitor(), convergenceGrad(), etc.. plus if applicable Hessian methods
+  * each of them defines the # of DOFs it inverts for (we can discuss whether or not it makes sense to combine RD and ME in this regard)
+  * since SparseTILOptimizer needs RDOptimizer::solve and TILOptimizer::solve, it has to have these two solvers as members.
+
+2. Composition based approach:
+  * class Optimizer, files   TILOptimizer, RDOptimizer, MEOptimizer, SparseTILOptimizer
+  * we put the corresponding methods for initialization and inversion in the files, also non-class methods
+  * all of the special Optimizer files are included in Optimizer
+  * Optimizer has functions solveTIL(), solveSparseTIL(), solveRD(), solveME()
