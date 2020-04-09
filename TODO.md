@@ -67,7 +67,8 @@
 
 --- 
 ### DerivativeOperators
-- n_misc --> params changes
+- n_misc --> params changes: [done]
+- remove L1, wL2 everywhere: [done]
 
 ---
 ### TaoL1Solver

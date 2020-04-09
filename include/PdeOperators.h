@@ -1,11 +1,10 @@
 #ifndef PDEOPERATORS_H_
 #define PDEOPERATORS_H_
 
+#include "SpectralOperators.h"
 #include "AdvectionSolver.h"
 #include "DiffSolver.h"
 #include "ElasticitySolver.h"
-#include "Parameters.h"
-#include "SpectralOperators.h"
 #include "Tumor.h"
 
 class PdeOperators {
