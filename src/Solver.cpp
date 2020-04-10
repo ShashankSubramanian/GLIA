@@ -803,6 +803,13 @@ PetscErrorCode ForwardSolver::run() {
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode ForwardSolver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  
+  PetscFunctionReturn(ierr);
+}
+
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                   InverseL2Solver                 ======== #### */
 /* #### ------------------------------------------------------------------- #### */
@@ -1322,5 +1329,19 @@ PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode TestSuite::run() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode TestSuite::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  
   PetscFunctionReturn(ierr);
 }
