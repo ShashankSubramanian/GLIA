@@ -631,15 +631,7 @@ PetscErrorCode Solver::createSynthetic() {
 
     // set p_rec_ according to user centers
     ScalarType *p_ptr;
-    int center = (int)std::floor(params_->tu_->np_ / 2.);
-    ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-    ierr = VecGetArray(p_rec_, &p_ptr); CHKERRQ(ierr);
-    if (params_->tu_->np_ == 1) {
-      p_ptr[0] = scale;
-    } else {
-      p_ptr[center] = scale;
-    }
-    ierr = VecRestoreArray(p_rec_, &p_ptr); CHKERRQ(ierr);
+    ierr = VecSet(p_rec_, scale); CHKERRQ(ierr);
     CHKERRQ(ierr); CHKERRQ(ierr);
     // ss << " --------------  Synthetic p_vec (using cm"<<count<<") -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     // ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
@@ -784,6 +776,7 @@ PetscErrorCode ForwardSolver::initialize(std::shared_ptr<SpectralOperators> spec
   params->tu_->time_history_off_;
   ierr = tuMSGstd(" .. switching off time history."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
+  params->tu_->np_ = 1;
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);

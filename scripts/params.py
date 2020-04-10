@@ -32,12 +32,12 @@ def write_config(set_params, run):
     p['n'] = 256                         # grid resolution in each dimension
 
     ### inversion scheme
-    p['solver'] = 'sparse_til'          # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
+    p['solver'] = 'forward'          # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
     p['invert_diff'] = 1                # enable diffusion inversion
     p['invert_reac'] = 1                # enable reaction inversion
-    p['multilevel'] = 1                 # rescale p activations according to Gaussian width on each level
-    p['inject_solution'] = 1            # use coarse level solution as warm-start
-    p['pre_reacdiff_solve'] = 1         # reaction/diffusion solver before sparse til solve
+    p['multilevel'] = 0                 # rescale p activations according to Gaussian width on each level
+    p['inject_solution'] = 0            # use coarse level solution as warm-start
+    p['pre_reacdiff_solve'] = 0         # reaction/diffusion solver before sparse til solve
     p['verbosity'] = 1                  # various levels of output density
 
     ### optimizer
@@ -96,13 +96,13 @@ def write_config(set_params, run):
     p['dt_pred'] = 0.01                 # time step size for prediction
 
     ### synthetic data
-    p['syn_flag'] = 0                   # create synthetic data
+    p['syn_flag'] = 1                   # create synthetic data
     p['user_cms'] = [(112,136,144,1)]   # arbitrary number of TILs (x,y,z,scale) with activation scale
     p['rho_data'] = 12                  # tumor parameters for synthetic data
     p['k_data'] = 0.05
     p['gamma_data'] = 12E4
-    p['nt_data'] = 100
-    p['dt_data'] = 0.01
+    p['nt_data'] = 25
+    p['dt_data'] = 0.04
     p['testcase'] = 0                   # 0: brain single focal synthetic
                                         # 1: No-brain constant coefficients
                                         # 2: No-brain sinusoidal coefficients
@@ -134,7 +134,7 @@ def write_config(set_params, run):
     p['velocity_x3'] = ""
 
     ### performance
-    p['time_history_off'] = 0           # 1: do not allocate time history (only works with forward solver or FD inversion)
+    p['time_history_off'] = 1           # 1: do not allocate time history (only works with forward solver or FD inversion)
     p['store_phi']        = 0           # 1: store every Gaussian as 3d image
     p['store_adjoint']    = 1           # 1: store adjoint time history
     p['write_output']     = 1           # 1: write .nc and .nii.gz output
@@ -158,7 +158,7 @@ def write_config(set_params, run):
 
 
     # write config file
-    with open(os.path.join(p['output_dir'], "sover_config.txt"), "w") as f:
+    with open(os.path.join(p['output_dir'], "solver_config.txt"), "w") as f:
         f.write("#\n");
         f.write("#### Tumor Solver Configuration File ###\n");
         f.write("#### ------------------------------- ###\n");
@@ -294,9 +294,10 @@ def write_config(set_params, run):
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
-    run_str = cmd + r['code_path'] + "/build/last/inverse -nx "
-    for key, value in p.items():
-        run_str += " -" + str(key) + " " + str(value) + " ";
+    run_str = cmd + r['code_path'] + "/build/last/tusolver "
+    run_str += " -config " + p['output_dir'] + "/solver_config.txt"
+#    for key, value in p.items():
+#        run_str += " -" + str(key) + " " + str(value) + " ";
 
     return run_str
 
@@ -311,10 +312,10 @@ if __name__=='__main__':
     params = {}
     run = {}
 
-    # params['output_dir'] = os.path.join(code_dir, 'results/check/');
-    params['output_dir'] = os.path.join(code_dir, 'config/');
+    params['output_dir'] = os.path.join(code_dir, 'results/check/');
+    # params['output_dir'] = os.path.join(code_dir, 'config/');
     run['code_path'] = code_dir
-    run['compute_sys'] = 'frontera'
+    run['compute_sys'] = 'rebels'
 
     if run['compute_sys'] == 'rebels':
         run['queue'] = 'rebels'

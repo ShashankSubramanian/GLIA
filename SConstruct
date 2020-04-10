@@ -312,7 +312,7 @@ symlink = env.Command(
 
 # Default(staticlib, bin, symlink)
 #Default(bininv, solib, symlink)
-Default(bininv, staticlib, symlink)
+Default(bininv, symlink)
 # Default(bininv, symlink)
 AlwaysBuild(symlink)
 
