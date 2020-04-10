@@ -5,10 +5,10 @@
 #include <algorithm>
 #include <stdlib.h>
 
-//#include "Utils.h"
+#include "Utils.h"
 #include "Parameters.h"
 #include "SpectralOperators.h"
-//#include "TumorSolverInterface.h"
+#include "TumorSolverInterface.h"
 
 
 enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, TEST};
@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
 
 
   EventRegistry::initialize();
-/*
+
   // === initialize solvers
   std::unique_ptr<Solver> solver;
   switch(run_mode) {
@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
   ierr = solver->finalize(); CHKERRQ(ierr);
 
   closeFiles();
-*/
+
   #ifdef CUDA
       cudaPrintDeviceMemory();
   #endif
