@@ -109,7 +109,7 @@ class InverseL2Solver : public Solver {
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
   virtual PetscErrorCode run();
 
-  virtual ~InverseL2Solver();
+  virtual ~InverseL2Solver() {}
 };
 
 class InverseL1Solver : public Solver {
@@ -120,7 +120,7 @@ class InverseL1Solver : public Solver {
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
   virtual PetscErrorCode run();
 
-  virtual ~InverseL1Solver();
+  virtual ~InverseL1Solver() {}
 };
 
 class InverseReactionDiffusionSolver : public Solver {
@@ -131,7 +131,7 @@ class InverseReactionDiffusionSolver : public Solver {
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
   virtual PetscErrorCode run();
 
-  virtual ~InverseReactionDiffusionSolver();
+  virtual ~InverseReactionDiffusionSolver() {}
 };
 
 class InverseMassEffectSolver : public Solver {

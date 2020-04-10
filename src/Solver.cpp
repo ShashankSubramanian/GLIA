@@ -334,9 +334,9 @@ PetscErrorCode Solver::predict() {
         params_->tu_->nt_ = (int)(app_settings_->pred_->t_pred_[i] / app_settings_->pred_->dt_);  // number of time steps
         // if different brain to perform prediction is given, read in and reset atlas
         if (app_settings_->pred_->wm_path_.size() >= i && !app_settings_->pred_->wm_path_[i].empty()) {
-          params_->path_wm_ = app_settings_->pred_->wm_path_[i];
-          params_->path_gm_ = app_settings_->pred_->gm_path_[i];
-          params_->path_vt_ = app_settings_->pred_->vt_path_[i];
+          app_settings_->path_->wm_ = app_settings_->pred_->wm_path_[i];
+          app_settings_->path_->gm_ = app_settings_->pred_->gm_path_[i];
+          app_settings_->path_->vt_ = app_settings_->pred_->vt_path_[i];
           ierr = tuMSGstd(" .. reading in atlas brain to perform prediction."); CHKERRQ(ierr);
           ierr = readAtlas(); CHKERRQ(ierr);
           ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);
@@ -556,7 +556,7 @@ PetscErrorCode Solver::readVelocity() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
-  if (app_settings_->path_->velocity_x1_) {
+  if (!app_settings_->path_->velocity_x1_.empty()) {
     // TODO(K) readVecFiled not implemented, copy from alzh branch
     ierr = readVecField(tumor_->velocity_.get(), app_settings_->path_->velocity_x1_, app_settings_->path_->velocity_x2_, app_settings_->path_->velocity_x3_, params_); CHKERRQ(ierr);
     ierr = tumor_->velocity_->scale(-1); CHKERRQ(ierr);
@@ -600,10 +600,10 @@ PetscErrorCode Solver::createSynthetic() {
   ScalarType rho_temp = params_->tu_->rho_, k_temp = params_->tu_->k_, dt_temp = params_->tu_->dt_;
   int nt_temp = params_->tu_->nt_;
   // set to synthetic parameters
-  params_->tu_->rho_ = params_->tu_->rho_data_;
-  params_->tu_->k_ = params_->tu_->k_data_;
-  params_->tu_->dt_ = params_->tu_->dt_data_;
-  params_->tu_->nt_ = params_->tu_->nt_data_;
+  params_->tu_->rho_ = app_settings_->syn_->rho_;
+  params_->tu_->k_ = app_settings_->syn_->k_;
+  params_->tu_->dt_ = app_settings_->syn_->dt_;
+  params_->tu_->nt_ = app_settings_->syn_->nt_;
 
   // allocate t1 and t0 data:
   if (data_t1_ == nullptr) {
@@ -643,10 +643,10 @@ PetscErrorCode Solver::createSynthetic() {
     CHKERRQ(ierr); CHKERRQ(ierr);
     // ss << " --------------  Synthetic p_vec (using cm"<<count<<") -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     // ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    ierr = tumor_->phi_->apply(tmp_, tumor_->p_rec_); CHKERRQ(ierr);
+    ierr = tumor_->phi_->apply(tmp_, p_rec_); CHKERRQ(ierr);
     ierr = VecAXPY(data_t0_, 1.0, tmp_); CHKERRQ(ierr);
     ss << "p-syn-sm" << count;
-    writeCheckpoint(tumor_->p_rec_, tumor_->phi_, params_->tu_->writepath_, ss.str());
+    writeCheckpoint(p_rec_, tumor_->phi_, params_->tu_->writepath_, ss.str());
     ss.str("");
     ss.clear();
   }
@@ -734,7 +734,7 @@ PetscErrorCode Solver::initializeGaussians() {
     ss.clear();
     ierr = tumor_->phi_->setGaussians(app_settings_->path_->phi_); CHKERRQ(ierr);
     ierr = tumor_->phi_->setValues(tumor_->mat_prop_); CHKERRQ(ierr);
-    ierr = readPVec(&p_rec_, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, app_settings_->path_->p_vec_); CHKERRQ(ierr);
+    ierr = readPVec(&p_rec_, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, app_settings_->path_->pvec_); CHKERRQ(ierr);
   } else {
     if (!app_settings_->path_->data_support_data_.empty()) {  // read Gaussian centers and comp labels from txt file
       ss << "  .. reading Gaussian centers and component data from file.";
@@ -934,7 +934,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
         zf = (int)std::round(tumor_->phi_->centers_[3 * i + 2] / hz);
         if (xc == xf && yc == yf && zc == zf) {
           xf_ptr[i] = 2 * xc_ptr[j];       // set initial guess (times 2 since sigma is halfed in every level)
-          params_->support_.push_back(i);  // add to support
+          params_->tu_->support_.push_back(i);  // add to support
         }
       }
     }
@@ -1013,7 +1013,7 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
   std::stringstream ss;
 
   ierr = tuMSGwarn(" Beginning Reaction/Diffusion Inversion."); CHKERRQ(ierr);
-  if (!warmstart_p && app_settings_->path_->data_t0_.empty()) {
+  if (!warmstart_p_ && app_settings_->path_->data_t0_.empty()) {
     ss << " Error: c(0) needs to be set, read in p and Gaussians. Exiting.";
     ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
     ss.str("");

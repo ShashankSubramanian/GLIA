@@ -2,7 +2,7 @@
 
 sourcesPGLISTR = [
     f for f in Glob('./src/*.cpp')
-    #if '*.cpp' not in f.path
+    #if 'opt/' not in f.path
 ]
 
 sourcesTHIRDPARTY = [
