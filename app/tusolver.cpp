@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "Utils.h"
+#include "Solver.h"
 #include "Parameters.h"
 #include "SpectralOperators.h"
 #include "TumorSolverInterface.h"
@@ -309,42 +310,42 @@ int main(int argc, char **argv) {
   EventRegistry::initialize();
 
   // === initialize solvers
-  std::unique_ptr<Solver> solver;
+  std::shared_ptr<Solver> solver;
   switch(run_mode) {
     case FORWARD:
-      solve = std::make_unique<ForwardSolver>();
+      solver = std::make_shared<ForwardSolver>();
       break;
     case INVERSE_L2:
-      solve = std::make_unique<InverseL2Solver>();
+      solver = std::make_shared<InverseL2Solver>();
       break;
     case INVERSE_L1:
-      solve = std::make_unique<InverseL1Solver>();
+      solver = std::make_shared<InverseL1Solver>();
       break;
     case INVERSE_RD:
-      solve = std::make_unique<InverseReactionDiffusionSolver>();
+      solver = std::make_shared<InverseReactionDiffusionSolver>();
       break;
     case INVERSE_ME:
-      solve = std::unique_ptr<InverseMassEffectSolver>();
+      solver = std::make_shared<InverseMassEffectSolver>();
       break;
     case MULTI_SPECIES:
-      solve = std::make_unique<MultiSpeciesSolver>();
+      solver = std::make_shared<MultiSpeciesSolver>();
       break;
     case TEST:
-      solve = std::make_unique<TestSuite>();
+      solver = std::make_shared<TestSuite>();
       break;
     default:
-      ierr = cplMSGwarn("Configuration invalid: solver mode not recognized. Exiting."); CHKERRQ(ierr);
+      ierr = tuMSGwarn("Configuration invalid: solver mode not recognized. Exiting."); CHKERRQ(ierr);
       PetscFunctionReturn(ierr);
   }
 
-  openFiles(); // opens all txt output files on one core only
+  openFiles(params); // opens all txt output files on one core only
   // ensures data for specific solver is read and code is set up for running mode
-  ierr = solver->initialize(spec_ops, params_, app_settings); CHKERRQ(ierr);
+  ierr = solver->initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   ierr = solver->run(); CHKERRQ(ierr);
   // compute errors, segmentations, other measures of interest, and shutdown solver
   ierr = solver->finalize(); CHKERRQ(ierr);
 
-  closeFiles();
+  closeFiles(params);
 
   #ifdef CUDA
       cudaPrintDeviceMemory();
