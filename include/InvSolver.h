@@ -110,6 +110,7 @@ struct CtxInv {
   std::shared_ptr<PdeOperators> pde_operators_;
   /// @brief common settings/ parameters
   std::shared_ptr<Parameters> params_;
+  std::shared_ptr<OptimizerFeedback> optfeedback_;
   /// @brief accumulates all tumor related fields and methods
   std::shared_ptr<Tumor> tumor_;
   /// @brief context for CoSaMp L1 solver

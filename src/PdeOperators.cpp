@@ -431,7 +431,7 @@ PetscErrorCode PdeOperatorsRD::computeTumorContributionRegistration(Vec q1, Vec 
 
     // compute x = k_bar * (grad c)^T grad \alpha, where k_bar = dK / dm
     ierr = tumor_->k_->compute_dKdm_gradc_gradp((q1 != nullptr) ? tumor_->work_[8] : nullptr, (q2 != nullptr) ? tumor_->work_[9] : nullptr, (q3 != nullptr) ? tumor_->work_[10] : nullptr,
-                                                (q4 != nullptr) ? tumor_->work_[11] : nullptr, c_[i], p_[i], params_->tu_->plan_); CHKERRQ(ierr);
+                                                (q4 != nullptr) ? tumor_->work_[11] : nullptr, c_[i], p_[i], params_->grid_->plan_); CHKERRQ(ierr);
 
     // compute y = c(1-c) * \alpha
     ierr = VecGetArray(c_[i], &c_ptr); CHKERRQ(ierr);

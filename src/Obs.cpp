@@ -2,7 +2,7 @@
 
 Obs::Obs(std::shared_ptr<Parameters> params) : params_(params) {
   PetscErrorCode ierr;
-  two_snapshot_ = params->tu_->two_snapshot_;
+  two_snapshot_ = params->tu_->two_time_points_;
   threshold_1_ = params->tu_->obs_threshold_1_;
   threshold_0_ = params->tu_->obs_threshold_0_;
   ierr = VecCreate(PETSC_COMM_WORLD, &filter_1_);

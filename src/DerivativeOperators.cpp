@@ -2,6 +2,167 @@
 
 #include <petsc/private/vecimpl.h>
 
+/* obj helpers */
+
+/// @brief computes difference diff = x - y
+PetscErrorCode computeDifference(ScalarType *sqrdl2norm, Vec diff_wm, Vec diff_gm, Vec diff_csf, Vec diff_glm, Vec diff_bg, Vec x_wm, Vec x_gm, Vec x_csf, Vec x_glm, Vec x_bg, Vec y_wm, Vec y_gm, Vec y_csf, Vec y_glm, Vec y_bg) {
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ScalarType mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+  // diff = x - y
+  if (x_wm != nullptr) {
+    ierr = VecWAXPY(diff_wm, -1.0, y_wm, x_wm); CHKERRQ(ierr);
+    ierr = VecDot(diff_wm, diff_wm, &mis_wm); CHKERRQ(ierr);
+  }
+  if (x_gm != nullptr) {
+    ierr = VecWAXPY(diff_gm, -1.0, y_gm, x_gm); CHKERRQ(ierr);
+    ierr = VecDot(diff_gm, diff_gm, &mis_gm); CHKERRQ(ierr);
+  }
+  if (x_csf != nullptr) {
+    ierr = VecWAXPY(diff_csf, -1.0, y_csf, x_csf); CHKERRQ(ierr);
+    ierr = VecDot(diff_csf, diff_csf, &mis_csf); CHKERRQ(ierr);
+  }
+  if (x_glm != nullptr) {
+    ierr = VecWAXPY(diff_glm, -1.0, y_glm, x_glm); CHKERRQ(ierr);
+    ierr = VecDot(diff_glm, diff_glm, &mis_glm); CHKERRQ(ierr);
+  }
+  *sqrdl2norm = mis_wm + mis_gm + mis_csf + mis_glm;
+  // PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
+  PetscFunctionReturn(ierr);
+}
+
+
+/** @brief computes difference xi = m_data - m_geo
+ *  - function assumes that on input, xi = m_geo * (1-c(1))   */
+PetscErrorCode geometricCouplingAdjoint(ScalarType *sqrdl2norm, Vec xi_wm, Vec xi_gm, Vec xi_csf, Vec xi_glm, Vec xi_bg, Vec m_geo_wm, Vec m_geo_gm, Vec m_geo_csf, Vec m_geo_glm, Vec m_geo_bg, Vec m_data_wm, Vec m_data_gm, Vec m_data_csf, Vec m_data_glm, Vec m_data_bg) {
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ScalarType mis_wm = 0, mis_gm = 0, mis_csf = 0, mis_glm = 0;
+  if (m_geo_wm != nullptr) {
+    ierr = VecAXPY(xi_wm, -1.0, m_data_wm); CHKERRQ(ierr);
+    ierr = VecScale(xi_wm, -1.0); CHKERRQ(ierr);
+    ierr = VecDot(xi_wm, xi_wm, &mis_wm); CHKERRQ(ierr);
+  }
+  if (m_geo_gm != nullptr) {
+    ierr = VecAXPY(xi_gm, -1.0, m_data_gm); CHKERRQ(ierr);
+    ierr = VecScale(xi_gm, -1.0); CHKERRQ(ierr);
+    ierr = VecDot(xi_gm, xi_gm, &mis_gm); CHKERRQ(ierr);
+  }
+  if (m_geo_csf != nullptr) {
+    ierr = VecAXPY(xi_csf, -1.0, m_data_csf); CHKERRQ(ierr);
+    ierr = VecScale(xi_csf, -1.0); CHKERRQ(ierr);
+    ierr = VecDot(xi_csf, xi_csf, &mis_csf); CHKERRQ(ierr);
+  }
+  if (m_geo_glm != nullptr) {
+    ierr = VecAXPY(xi_glm, -1.0, m_data_glm); CHKERRQ(ierr);
+    ierr = VecScale(xi_glm, -1.0); CHKERRQ(ierr);
+    ierr = VecDot(xi_glm, xi_glm, &mis_glm); CHKERRQ(ierr);
+  }
+  *sqrdl2norm = mis_wm + mis_gm + mis_csf + mis_glm;
+  // PetscPrintf(PETSC_COMM_WORLD," geometricCouplingAdjoint mis(WM): %1.6e, mis(GM): %1.6e, mis(CSF): %1.6e, mis(GLM): %1.6e, \n", 0.5*mis_wm, 0.5*mis_gm, 0.5* mis_csf, 0.5*mis_glm);
+  PetscFunctionReturn(ierr);
+}
+
+/// @brief computes geometric tumor coupling m1 = m0(1-c(1))
+PetscErrorCode geometricCoupling(Vec m1_wm, Vec m1_gm, Vec m1_csf, Vec m1_glm, Vec m1_bg, Vec m0_wm, Vec m0_gm, Vec m0_csf, Vec m0_glm, Vec m0_bg, Vec c1, std::shared_ptr<Parameters> nmisc) {
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ScalarType *ptr_wm, *ptr_gm, *ptr_csf, *ptr_glm, *ptr_bg, *ptr_tu;
+  ScalarType *ptr_m1_wm, *ptr_m1_gm, *ptr_m1_csf, *ptr_m1_glm, *ptr_m1_bg;
+  ScalarType sum = 0;
+  if (m0_wm != nullptr) {
+    ierr = VecGetArray(m0_wm, &ptr_wm); CHKERRQ(ierr);
+  }
+  if (m0_gm != nullptr) {
+    ierr = VecGetArray(m0_gm, &ptr_gm); CHKERRQ(ierr);
+  }
+  if (m0_csf != nullptr) {
+    ierr = VecGetArray(m0_csf, &ptr_csf); CHKERRQ(ierr);
+  }
+  if (m0_glm != nullptr) {
+    ierr = VecGetArray(m0_glm, &ptr_glm); CHKERRQ(ierr);
+  }
+  if (m0_bg != nullptr) {
+    ierr = VecGetArray(m0_bg, &ptr_bg); CHKERRQ(ierr);
+  }
+  if (m1_wm != nullptr) {
+    ierr = VecGetArray(m1_wm, &ptr_m1_wm); CHKERRQ(ierr);
+  }
+  if (m1_gm != nullptr) {
+    ierr = VecGetArray(m1_gm, &ptr_m1_gm); CHKERRQ(ierr);
+  }
+  if (m1_csf != nullptr) {
+    ierr = VecGetArray(m1_csf, &ptr_m1_csf); CHKERRQ(ierr);
+  }
+  if (m1_glm != nullptr) {
+    ierr = VecGetArray(m1_glm, &ptr_m1_glm); CHKERRQ(ierr);
+  }
+  if (m1_bg != nullptr) {
+    ierr = VecGetArray(m1_bg, &ptr_m1_bg); CHKERRQ(ierr);
+  }
+  if (c1 != nullptr) {
+    ierr = VecGetArray(c1, &ptr_tu); CHKERRQ(ierr);
+  }
+  // m = m0(1-c(1))
+  for (PetscInt j = 0; j < nmisc->grid_->nl_; j++) {
+    sum = 0;
+    if (m0_gm != nullptr) {
+      ptr_m1_gm[j] = ptr_gm[j] * (1 - ptr_tu[j]);
+      sum += ptr_m1_gm[j];
+    }
+    if (m0_csf != nullptr) {
+      ptr_m1_csf[j] = ptr_csf[j] * (1 - ptr_tu[j]);
+      sum += ptr_m1_csf[j];
+    }
+    if (m0_glm != nullptr) {
+      ptr_m1_glm[j] = ptr_glm[j] * (1 - ptr_tu[j]);
+      sum += ptr_m1_glm[j];
+    }
+    if (m0_bg != nullptr) {
+      ptr_m1_bg[j] = ptr_bg[j] * (1 - ptr_tu[j]);
+      sum += ptr_m1_bg[j];
+    }
+    if (m0_wm != nullptr) {
+      ptr_m1_wm[j] = 1. - (sum + ptr_tu[j]);
+    }
+  }
+  if (m0_wm != nullptr) {
+    ierr = VecRestoreArray(m0_wm, &ptr_wm); CHKERRQ(ierr);
+  }
+  if (m0_gm != nullptr) {
+    ierr = VecRestoreArray(m0_gm, &ptr_gm); CHKERRQ(ierr);
+  }
+  if (m0_csf != nullptr) {
+    ierr = VecRestoreArray(m0_csf, &ptr_csf); CHKERRQ(ierr);
+  }
+  if (m0_glm != nullptr) {
+    ierr = VecRestoreArray(m0_glm, &ptr_glm); CHKERRQ(ierr);
+  }
+  if (m0_bg != nullptr) {
+    ierr = VecRestoreArray(m0_bg, &ptr_bg); CHKERRQ(ierr);
+  }
+  if (m1_wm != nullptr) {
+    ierr = VecRestoreArray(m1_wm, &ptr_m1_wm); CHKERRQ(ierr);
+  }
+  if (m1_gm != nullptr) {
+    ierr = VecRestoreArray(m1_gm, &ptr_m1_gm); CHKERRQ(ierr);
+  }
+  if (m1_csf != nullptr) {
+    ierr = VecRestoreArray(m1_csf, &ptr_m1_csf); CHKERRQ(ierr);
+  }
+  if (m1_glm != nullptr) {
+    ierr = VecRestoreArray(m1_glm, &ptr_m1_glm); CHKERRQ(ierr);
+  }
+  if (m1_bg != nullptr) {
+    ierr = VecRestoreArray(m1_bg, &ptr_m1_bg); CHKERRQ(ierr);
+  }
+  if (c1 != nullptr) {
+    ierr = VecRestoreArray(c1, &ptr_tu); CHKERRQ(ierr);
+  }
+  // go home
+  PetscFunctionReturn(ierr);
+}
+
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========         RESET (CHANGE SIZE OF WORK VECTORS)       ======== #### */
 /* #### ------------------------------------------------------------------- #### */
@@ -297,7 +458,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, Vec data) 
       x_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + 2] *= params_->grid_->lebesgue_measure_;
     }
     ierr = VecRestoreArray(dJ, &x_ptr); CHKERRQ(ierr);
@@ -345,7 +506,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, Vec data) 
     }
 
     if (params_->tu_->nr_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] *= params_->grid_->lebesgue_measure_;
     }
 
@@ -552,7 +713,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
       x_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + 2] *= params_->grid_->lebesgue_measure_;
     }
     ierr = VecRestoreArray(dJ, &x_ptr); CHKERRQ(ierr);
@@ -600,7 +761,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
     }
 
     if (params_->tu_->nr_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] *= params_->grid_->lebesgue_measure_;
     }
 
@@ -708,7 +869,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian(Vec y, Vec x) {
       y_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &y_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &y_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
       y_ptr[params_->tu_->np_ + 2] *= params_->grid_->lebesgue_measure_;
     }
     ierr = VecRestoreArray(y, &y_ptr); CHKERRQ(ierr);
@@ -794,7 +955,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian(Vec y, Vec x) {
       y_ptr[params_->tu_->np_ + 1] += temp_scalar;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &temp_scalar); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &temp_scalar); CHKERRQ(ierr);
       temp_scalar *= params_->grid_->lebesgue_measure_;
       y_ptr[params_->tu_->np_ + 2] += temp_scalar;
     }
@@ -925,6 +1086,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, Vec
   ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
 
   /*Regularization term*/
+  PetscReal reg;
   if (params_->opt_->regularization_norm_ == L2) {  // In tumor space, so scale norm by lebesque measure
     ierr = VecDot(tumor_->c_0_, tumor_->c_0_, &reg); CHKERRQ(ierr);
     reg *= 0.5 * params_->opt_->beta_;
@@ -1106,7 +1268,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, Vec data) 
       x_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + 2] *= params_->grid_->lebesgue_measure_;
     }
     ierr = VecRestoreArray(dJ, &x_ptr); CHKERRQ(ierr);
@@ -1154,7 +1316,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, Vec data) 
     }
 
     if (params_->tu_->nr_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] *= params_->grid_->lebesgue_measure_;
     }
 
@@ -1374,7 +1536,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
       x_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + 2] *= params_->grid_->lebesgue_measure_;
     }
     ierr = VecRestoreArray(dJ, &x_ptr); CHKERRQ(ierr);
@@ -1422,7 +1584,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
     }
 
     if (params_->tu_->nr_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2]); CHKERRQ(ierr);
       x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] *= params_->grid_->lebesgue_measure_;
     }
 
@@ -1536,7 +1698,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateHessian(Vec y, Vec x) {
       y_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &y_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &y_ptr[params_->tu_->np_ + 2]); CHKERRQ(ierr);
       y_ptr[params_->tu_->np_ + 2] *= params_->grid_->lebesgue_measure_;
     }
     ierr = VecRestoreArray(y, &y_ptr); CHKERRQ(ierr);
@@ -1622,7 +1784,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateHessian(Vec y, Vec x) {
       y_ptr[params_->tu_->np_ + 1] += temp_scalar;
     }
     if (params_->tu_->nk_ > 2) {
-      ierr = VecDot(tumor_->mat_prop_->glm_, temp_, &temp_scalar); CHKERRQ(ierr);
+      ierr = VecDot(tumor_->mat_prop_->csf_, temp_, &temp_scalar); CHKERRQ(ierr);
       temp_scalar *= params_->grid_->lebesgue_measure_;
       y_ptr[params_->tu_->np_ + 2] += temp_scalar;
     }
@@ -1898,13 +2060,13 @@ PetscErrorCode DerivativeOperatorsMassEffect::computeMisfitBrain(PetscReal *J) {
   ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
   *J += ms;
 
-  ierr = VecCopy(tumor_->mat_prop_->csf_, temp_); CHKERRQ(ierr);
-  ierr = VecAXPY(temp_, -1.0, csf_); CHKERRQ(ierr);
+  ierr = VecCopy(tumor_->mat_prop_->vt_, temp_); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_, -1.0, vt_); CHKERRQ(ierr);
   ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
   *J += ms;
 
-  ierr = VecCopy(tumor_->mat_prop_->glm_, temp_); CHKERRQ(ierr);
-  ierr = VecAXPY(temp_, -1.0, glm_); CHKERRQ(ierr);
+  ierr = VecCopy(tumor_->mat_prop_->csf_, temp_); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_, -1.0, csf_); CHKERRQ(ierr);
   ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
   *J += ms;
 
@@ -2313,3 +2475,4 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, Vec data) {
 
   PetscFunctionReturn(ierr);
 }
+

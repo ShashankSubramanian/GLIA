@@ -106,7 +106,7 @@ PetscErrorCode InvSolver::allocateTaoObjects(bool initialize_tao) {
   PetscErrorCode ierr = 0;
 
   int np = itctx_->params_->tu_->np_;
-  int nk = (itctx_->params_opt_->diffusivity_inversion_) ? itctx_->params_->tu_->nk_ : 0;
+  int nk = (itctx_->params->opt_->diffusivity_inversion_) ? itctx_->params_->tu_->nk_ : 0;
   int nr = 0;
 
   // allocate memory for xrec_

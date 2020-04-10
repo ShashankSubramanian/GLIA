@@ -148,7 +148,7 @@ PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec csf, Vec vt, Vec bg,
       filter_ptr[i] = 0.0;
   }
 
-  if (params->write_output_) {
+  if (params->tu_->write_output_) {
     dataOut(gm_ptr, params, "gm.nc");
     dataOut(wm_ptr, params, "wm.nc");
     dataOut(vt_ptr, params, "vt.nc");

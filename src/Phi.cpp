@@ -130,7 +130,7 @@ PetscErrorCode Phi::setValues(std::shared_ptr<MatProp> mat_prop) {
       ierr = VecAXPY(all_phis, 1.0, phi_vec_[i]); CHKERRQ(ierr);
     }
 
-    if (params_->tu_->writeOutput_) {
+    if (params_->tu_->write_output_) {
       dataOut(all_phis, params_, "phiGrid.nc");
     }
     ierr = VecDestroy(&all_phis); CHKERRQ(ierr);

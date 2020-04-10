@@ -63,9 +63,8 @@ PetscErrorCode Tumor::initialize(Vec p, std::shared_ptr<Parameters> params, std:
   } else
     mat_prop_ = mat_prop;
   ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
-  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_csf_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = VecDuplicate(p, &p_); CHKERRQ(ierr);
-  ierr = VecDuplicate(p, &weights_); CHKERRQ(ierr);
   ierr = VecCopy(p, p_); CHKERRQ(ierr);
 
   if (phi == nullptr) {
@@ -87,16 +86,12 @@ PetscErrorCode Tumor::setParams(Vec p, std::shared_ptr<Parameters> params, bool 
     if (p_ != nullptr) {
       ierr = VecDestroy(&p_); CHKERRQ(ierr);
     }
-    if (weights_ != nullptr) {
-      ierr = VecDestroy(&weights_); CHKERRQ(ierr);
-    }
     ierr = VecDuplicate(p, &p_); CHKERRQ(ierr);
-    ierr = VecDuplicate(p, &weights_); CHKERRQ(ierr);
   }
   ierr = VecCopy(p, p_); CHKERRQ(ierr);
   // set new values
   ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
-  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_csf_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = phi_->setValues(mat_prop_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);

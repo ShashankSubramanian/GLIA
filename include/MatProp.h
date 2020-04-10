@@ -2,6 +2,7 @@
 #define MATPROP_H_
 
 #include "Parameters.h"
+#include "IO.h"
 #include "SpectralOperators.h"
 
 class MatProp {

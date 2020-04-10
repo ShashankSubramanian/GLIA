@@ -1,4 +1,5 @@
 #include "IO.h"
+#include "Phi.h"
 
 
 // Error handling for IO
@@ -157,7 +158,7 @@ PetscErrorCode writeNifti(nifti_image **image, ScalarType *p_x, std::shared_ptr<
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
   std::stringstream ss;
-  ss << params->tu_->writepath_.str().c_str() << fname;
+  ss << params->tu_->writepath_ << fname;
   std::string fnm = ss.str();
   ScalarType *data_global = nullptr;
   if (rank == 0) {
@@ -290,7 +291,7 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, cons
   bool usecdf5 = false;  // CDF-5 is mandatory for large files (>= 2x10^9 cells)
 
   std::stringstream ss;
-  ss << params->tu_->writepath_.str().c_str() << fname;
+  ss << params->tu_->writepath_ << fname;
   ierr = myAssert(p_x != NULL, "null pointer"); CHKERRQ(ierr);
 
   // file creation mode
@@ -379,9 +380,9 @@ PetscErrorCode readVecField(VecField *v, std::string fnx1, std::string fnx2, std
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
 
-    ierr = dataIn(&v->x_, params, fnx1.c_str()); CHKERRQ(ierr);
-    ierr = dataIn(&v->y_, params, fnx2.c_str()); CHKERRQ(ierr);
-    ierr = dataIn(&v->z_, params, fnx3.c_str()); CHKERRQ(ierr);
+    ierr = dataIn(v->x_, params, fnx1.c_str()); CHKERRQ(ierr);
+    ierr = dataIn(v->y_, params, fnx2.c_str()); CHKERRQ(ierr);
+    ierr = dataIn(v->z_, params, fnx3.c_str()); CHKERRQ(ierr);
 
     PetscFunctionReturn(ierr);
 }
@@ -475,11 +476,11 @@ PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<Par
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
     ss.clear();
-    if (params->phi_sigma_data_driven_ != sigma) {
-      ss << " Warning: specified sigma=" << params->phi_sigma_data_driven_ << " != sigma=" << sigma << " (read from file).";
+    if (params->tu_->phi_sigma_data_driven_ != sigma) {
+      ss << " Warning: specified sigma=" << params->tu_->phi_sigma_data_driven_ << " != sigma=" << sigma << " (read from file).";
       if (overwrite_sigma) {
         ss << " Specified sigma overwritten.";
-        params->phi_sigma_data_driven_ = sigma;
+        params->tu_->phi_sigma_data_driven_ = sigma;
       }
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
       ss.str("");
@@ -503,7 +504,7 @@ PetscErrorCode readPhiMesh(std::vector<ScalarType> &centers, std::shared_ptr<Par
       np++;
     }
     file.close();
-    params->np_ = np;
+    params->tu_->np_ = np;
     ss << " np=" << np << " centers read ";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");

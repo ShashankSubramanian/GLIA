@@ -13,7 +13,7 @@ enum { GAUSSNEWTON = 0, QUASINEWTON = 1 };
 enum { ARMIJO = 0, MT = 1 };
 enum { L2 = 0, L2b = 1, L1 = 2 };
 enum { INIT = 0, PRE_RD = 1, COSAMP_L1_INIT = 3, COSAMP_L1_THRES_GRAD = 4, COSAMP_L1_SOLVE_SUBSPACE = 5, COSAMP_L1_THRES_SOL = 6, FINAL_L2 = 7, POST_RD = 8, FINALIZE = 9 };
-enum { SEQ = 0, MPI = 1 };
+enum { SEQ = 0, MPIVEC = 1 };
 enum { ACCFFT = 0, CUFFT = 1 };
 
 // datatypes and function aliases

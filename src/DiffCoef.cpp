@@ -4,7 +4,7 @@ DiffCoef::DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralO
     : spec_ops_(spec_ops), k_scale_(1E-2), k_gm_wm_ratio_(1.0 / 5.0), k_glm_wm_ratio_(3.0 / 5.0), smooth_flag_(0), filter_avg_(0.0) {
   PetscErrorCode ierr;
   ierr = VecCreate(PETSC_COMM_WORLD, &kxx_);
-  ierr = VecSetSizes(kxx_, params->grid_->n_local_, params->grid_->n_global_);
+  ierr = VecSetSizes(kxx_, params->grid_->nl_, params->grid_->ng_);
   ierr = setupVec(kxx_);
 
   ierr = VecDuplicate(kxx_, &kxy_);
@@ -52,7 +52,7 @@ PetscErrorCode DiffCoef::setSecondaryCoefficients(ScalarType k1, ScalarType k2, 
   k3 = (params->tu_->nk_ == 1) ? params->tu_->k_glm_wm_ratio_ * k1 : k3;
 
   ierr = VecAXPY(temp_[7], k2, mat_prop->gm_); CHKERRQ(ierr);
-  ierr = VecAXPY(temp_[7], k3, mat_prop->glm_); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_[7], k3, mat_prop->csf_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -94,7 +94,7 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType k_gm_wm_ratio,
   ierr = VecSet(kxx_, 0.0); CHKERRQ(ierr);
   ierr = VecAXPY(kxx_, dk_dm_gm, mat_prop->gm_); CHKERRQ(ierr);
   ierr = VecAXPY(kxx_, dk_dm_wm, mat_prop->wm_); CHKERRQ(ierr);
-  ierr = VecAXPY(kxx_, dk_dm_glm, mat_prop->glm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxx_, dk_dm_glm, mat_prop->csf_); CHKERRQ(ierr);
 
   ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
   ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);

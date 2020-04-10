@@ -1,7 +1,7 @@
 # This is file Sconscript
 
 sourcesPGLISTR = [
-    #f for f in Glob('./src/*.cpp')
+    f for f in Glob('./src/*.cpp')
     #if '*.cpp' not in f.path
 ]
 
