@@ -17,7 +17,9 @@ PetscErrorCode myAssert(bool condition, std::string msg);
 #endif
 PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<Parameters> params, const char *fname);
 PetscErrorCode dataIn (Vec A, std::shared_ptr<Parameters> params, const char *fname);
+PetscErrorCode dataIn (Vec A, std::shared_ptr<Parameters> params, std::string fname);
 PetscErrorCode dataOut (ScalarType *A, std::shared_ptr<Parameters> params, const char *fname);
+PetscErrorCode dataOut (Vec A, std::shared_ptr<Parameters> params, std::string fname);
 PetscErrorCode dataOut (Vec A, std::shared_ptr<Parameters> params, const char *fname);
 /// @brief reads in vector field of three components
 PetscErrorCode readVecField(VecField *v, std::string fnx1, std::string fnx2, std::string fnx3, std::shared_ptr<Parameters> params );

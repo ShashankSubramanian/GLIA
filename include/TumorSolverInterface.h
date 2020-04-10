@@ -123,7 +123,7 @@ class TumorSolverInterface {
 
   //  ---------  getter functions -------------
   bool isInitialized() { return initialized_; }
-  int getNumberGaussians() { return n_misc_->np_; }
+  int getNumberGaussians() { return params_->tu_->np_; }
   std::shared_ptr<Tumor> getTumor() { return tumor_; }
   std::shared_ptr<CtxInv> getITctx() { return inv_solver_->getInverseSolverContext(); }      // TODO(K): remove?
   std::shared_ptr<OptimizerFeedback> getOptFeedback() { return inv_solver_->optfeedback_; }  // TODO(K): remove?

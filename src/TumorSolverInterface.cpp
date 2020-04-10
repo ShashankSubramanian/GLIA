@@ -143,7 +143,7 @@ PetscErrorCode TumorSolverInterface::initialize(std::shared_ptr<Parameters> para
   }
   if (params_->tu_->model_ == 2) {
     pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops);
-    derivative_operators_ = std::make_shared<DerivativeOperatorsPos>(pde_operators_, params_, tumor_);
+    derivative_operators_ = std::make_shared<DerivativeOperatorsRD>(pde_operators_, params_, tumor_);
   }
   if (params_->tu_->model_ == 3) {
     pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops);
@@ -234,7 +234,7 @@ PetscErrorCode TumorSolverInterface::setParams(Vec p, std::shared_ptr<TumorParam
         break;
       case 2:
         pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
-        derivative_operators_ = std::make_shared<DerivativeOperatorsPos>(pde_operators_, params_, tumor_);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsRD>(pde_operators_, params_, tumor_);
         break;
       case 3:
         pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
@@ -478,7 +478,7 @@ PetscErrorCode TumorSolverInterface::solveInverse(Vec prec, Vec data, Vec data_g
   ierr = inv_solver_->solve(); CHKERRQ(ierr);
   // pass the reconstructed p vector to the caller (deep copy)
   ierr = VecCopy(inv_solver_->getPrec(), prec); CHKERRQ(ierr);
-  ierr = inv_solver_->updateReferenceGradient(false); CHKERRQ(ierr);
+  inv_solver_->updateReferenceGradient(false);
 
   // timing
   self_exec_time += MPI_Wtime();
@@ -580,7 +580,7 @@ PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, Vec p, Vec data_gra
 PetscErrorCode TumorSolverInterface::setOptimizerFeedback(std::shared_ptr<OptimizerFeedback> optfeed) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  params_->optf_ = opt_feedback;
+  params_->optf_ = optfeed;
   inv_solver_->setOptFeedback(optfeed);
   PetscFunctionReturn(ierr);
 }
@@ -817,7 +817,7 @@ PetscErrorCode TumorSolverInterface::setInitialGuess(ScalarType d) {
 PetscErrorCode TumorSolverInterface::smooth(Vec x, ScalarType num_voxels) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  ScalarType sigma_smooth = num_voxels * 2.0 * M_PI / params_->grid_->->n_[0];
+  ScalarType sigma_smooth = num_voxels * 2.0 * M_PI / params_->grid_->n_[0];
   ierr = spec_ops_->weierstrassSmoother(x, x, params_, sigma_smooth); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }

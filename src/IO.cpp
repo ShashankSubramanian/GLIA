@@ -357,6 +357,15 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, cons
 }
 #endif
 
+PetscErrorCode dataIn(Vec A, std::shared_ptr<Parameters> params, std::string fname) {
+  ScalarType *a_ptr;
+  PetscErrorCode ierr;
+  ierr = VecGetArray(A, &a_ptr); CHKERRQ(ierr);
+  dataIn(a_ptr, params, fname.c_str());
+  ierr = VecRestoreArray(A, &a_ptr); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode dataIn(Vec A, std::shared_ptr<Parameters> params, const char *fname) {
   ScalarType *a_ptr;
   PetscErrorCode ierr;
@@ -371,6 +380,15 @@ PetscErrorCode dataOut(Vec A, std::shared_ptr<Parameters> params, const char *fn
   PetscErrorCode ierr;
   ierr = VecGetArray(A, &a_ptr); CHKERRQ(ierr);
   dataOut(a_ptr, params, fname);
+  ierr = VecRestoreArray(A, &a_ptr); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode dataOut(Vec A, std::shared_ptr<Parameters> params, std::string fname) {
+  ScalarType *a_ptr;
+  PetscErrorCode ierr;
+  ierr = VecGetArray(A, &a_ptr); CHKERRQ(ierr);
+  dataOut(a_ptr, params, fname.c_str());
   ierr = VecRestoreArray(A, &a_ptr); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }

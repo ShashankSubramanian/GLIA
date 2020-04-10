@@ -1,6 +1,7 @@
 #ifndef INVSOLVER_H_
 #define INVSOLVER_H_
 
+#include <petsctao.h>
 #include "DerivativeOperators.h"
 
 struct CtxCoSaMp {
@@ -51,22 +52,14 @@ struct CtxCoSaMp {
   PetscErrorCode initialize(Vec p) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
-    ierr = VecDuplicate(p, &g);
-    CHKERRQ(ierr);
-    ierr = VecDuplicate(p, &x_full);
-    CHKERRQ(ierr);
-    ierr = VecDuplicate(p, &x_full_prev);
-    CHKERRQ(ierr);
-    ierr = VecDuplicate(p, &work);
-    CHKERRQ(ierr);
-    ierr = VecSet(g, 0.0);
-    CHKERRQ(ierr);
-    ierr = VecSet(x_full_prev, 0.0);
-    CHKERRQ(ierr);
-    ierr = VecSet(work, 0.0);
-    CHKERRQ(ierr);
-    ierr = VecCopy(p, x_full);
-    CHKERRQ(ierr);
+    ierr = VecDuplicate(p, &g); CHKERRQ(ierr);
+    ierr = VecDuplicate(p, &x_full); CHKERRQ(ierr);
+    ierr = VecDuplicate(p, &x_full_prev); CHKERRQ(ierr);
+    ierr = VecDuplicate(p, &work); CHKERRQ(ierr);
+    ierr = VecSet(g, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(x_full_prev, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(work, 0.0); CHKERRQ(ierr);
+    ierr = VecCopy(p, x_full); CHKERRQ(ierr);
     initialized = true;
     PetscFunctionReturn(ierr);
   }
@@ -111,6 +104,7 @@ struct CtxInv {
   /// @brief common settings/ parameters
   std::shared_ptr<Parameters> params_;
   std::shared_ptr<OptimizerFeedback> optfeedback_;
+  std::shared_ptr<OptimizerSettings> optsettings_;
   /// @brief accumulates all tumor related fields and methods
   std::shared_ptr<Tumor> tumor_;
   /// @brief context for CoSaMp L1 solver
@@ -220,6 +214,10 @@ class InvSolver {
   void setOptFeedback(std::shared_ptr<OptimizerFeedback> optfeed) {
     optfeedback_ = optfeed;
     itctx_->optfeedback_ = optfeed;
+  }
+  void setOptSettings(std::shared_ptr<OptimizerSettings> opts) {
+    optsettings_ = opts;
+    itctx_->optsettings_ = opts;
   }
   // getter functions
   std::shared_ptr<CtxInv> getInverseSolverContext() { return itctx_; }
