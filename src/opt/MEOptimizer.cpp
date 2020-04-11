@@ -1,6 +1,6 @@
-#include "SparseTILOptimizer.h"
+#include "MEOptimizer.h"
 
-SparseTILOptimizer::initialize(
+MEOptimizer::initialize(
   std::shared_ptr<DerivativeOperators> derivative_operators,
   std::shared_ptr <PdeOperators> pde_operators,
   std::shared_ptr <Parameters> params,
@@ -11,15 +11,14 @@ SparseTILOptimizer::initialize(
 
     // initialize super class
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
-    // number of dofs = {p, kappa, rho}
-    n_inv_ = params_->tu_->np_ + params_->get_nk() + params_->get_nr();
+    // number of dofs = {rho, kappa, gamma}
+    n_inv_ = params_->get_nr() +  params_->get_nk() + 1;
+
+    // TODO(K): implement functinality of:
+    // ierr = allocateTaoObjectsMassEffect(); CHKERRQ(ierr);
 
     // allocate TaoObjects
     // setTaoOptions
-
-    // initialize sub solvers
-    til_opt_->initialize(derivative_operators, pde_operators, params, tumor);
-    rd_opt_->initialize(derivative_operators, pde_operators, params, tumor);
 
     PetscFunctionReturn(ierr);
 }

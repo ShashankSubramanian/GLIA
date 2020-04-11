@@ -83,7 +83,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
     // quick set all neccessary parameters to support minimal config files
     if(value == "sparse_til") {
       run_mode = INVERSE_L1;
-      p->opt_->regularization_norm_ = 1;    // TODO(K) set regularization norm to L1
+      p->opt_->regularization_norm_ = L1;    // TODO(K) set regularization norm to L1
       p->opt_->diffusivity_inversion_ = true;
       p->opt_->reaction_inversion_ = true;
       p->opt_->pre_reacdiff_solve_ = true;
@@ -130,7 +130,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "newton_solver") {p->opt_->newton_solver_ = (value == "GN") ? 0 : 1; return;}
   if (name == "line_search") {p->opt_->linesearch_ = (value == "armijo") ? 0 : 1; return;}
   if (name == "ce_loss") {p->opt_->cross_entropy_loss_ = std::stoi(value) > 0; return;}
-  if (name == "regularization") {p->opt_->regularization_norm_ = (value == "L1") ? 0 : 1; return;}
+  if (name == "regularization") {p->opt_->regularization_norm_ = (value == "L1") ? L1 : L2; return;}
   if (name == "beta_p") {p->opt_->beta_ = std::stod(value); return;}
   if (name == "opttol_grad") {p->opt_->opttolgrad_ = std::stod(value); return;}
   if (name == "newton_maxit") {p->opt_->newton_maxit_ = std::stoi(value); return;}
@@ -201,7 +201,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
       pos = cm_str.find(",");
       z_ = cm_str.substr(0, pos);
       s_ = cm_str.substr(pos+1);
-      std::array<ScalarType, 4> user_cm = { static_cast<ScalarType>(std::stod(x_)), static_cast<ScalarType>(std::stod(y_)), 
+      std::array<ScalarType, 4> user_cm = { static_cast<ScalarType>(std::stod(x_)), static_cast<ScalarType>(std::stod(y_)),
                                             static_cast<ScalarType>(std::stod(z_)), static_cast<ScalarType>(std::stod(s_)) };
       a->syn_->user_cms_.push_back(user_cm);
       value.erase(0, pos_loop+1);
@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
 
   ierr = PetscInitialize(&argc, &argv, reinterpret_cast<char*>(NULL), reinterpret_cast<char*>(NULL)); CHKERRQ(ierr);
 
-  { // begin local scope for all shared pointers (all MPI/PETSC finalize should be out of this scope to allow for 
+  { // begin local scope for all shared pointers (all MPI/PETSC finalize should be out of this scope to allow for
     // safe destruction of all petsc vectors
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);

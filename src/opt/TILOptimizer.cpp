@@ -11,15 +11,12 @@ SparseTILOptimizer::initialize(
 
     // initialize super class
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
-    // number of dofs = {p, kappa, rho}
-    n_inv_ = params_->tu_->np_ + params_->get_nk() + params_->get_nr();
+    // number of dofs = {p, kappa}
+    n_inv_ = params_->tu_->np_ +  params_->get_nk();
 
     // allocate TaoObjects
     // setTaoOptions
 
-    // initialize sub solvers
-    til_opt_->initialize(derivative_operators, pde_operators, params, tumor);
-    rd_opt_->initialize(derivative_operators, pde_operators, params, tumor);
 
     PetscFunctionReturn(ierr);
 }
