@@ -6,6 +6,9 @@
 """
 import os
 
+
+ ### ________________________________________________________________________ ___
+ ### //////////////////////////////////////////////////////////////////////// ###
 def write_config(set_params, run):
     """ 'set_params' is a dictionary which can be populated
          with user values for compulsory tumor parameters.
@@ -15,7 +18,6 @@ def write_config(set_params, run):
 
     #############################################################################
     #############################################################################
-    #
     #### Tumoer Solver Parameters  ###
     #### ------------------------- ###
 
@@ -28,25 +30,32 @@ def write_config(set_params, run):
     for key, value in run.items():
         r[key] = value;
 
-    ### grid
-    p['n'] = 256                         # grid resolution in each dimension
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
+    # any changes to the defaults defined below, are to be defined in the dicts  #
+    # 'set_params', and 'run', which are passed to this routine. Do not modify   #
+    # the defaults!                                                              #
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
 
+
+    ### grid
+    p['n'] = 256                        # grid resolution in each dimension
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### inversion scheme
-    p['solver'] = 'forward'          # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
+    p['solver'] = 'forward'             # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
     p['invert_diff'] = 1                # enable diffusion inversion
     p['invert_reac'] = 1                # enable reaction inversion
     p['multilevel'] = 0                 # rescale p activations according to Gaussian width on each level
     p['inject_solution'] = 0            # use coarse level solution as warm-start
     p['pre_reacdiff_solve'] = 0         # reaction/diffusion solver before sparse til solve
     p['verbosity'] = 3                  # various levels of output density
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### optimizer
     p['newton_solver'] = "QN"           # GN, QN
     p['line_search'] = "armijo"         # 'armijo' : armijo conditions; 'mt' : more-thuene (wolfe conditions)
     p['ce_loss'] = 0                    # cross-entropy or L2 loss
     p['regularization'] = "L1c"         # L2, L1c,
     p['beta_p'] = 1E-4                  # regularization parameter
-    p['opttol_grad'] = 1E-5            # relative gradient tolerance
+    p['opttol_grad'] = 1E-5             # relative gradient tolerance
     p['newton_maxit'] = 50              # number of iterations for optimizer
     p['krylov_maxit'] = 1               # if GN: number krylov iterations
     p['gist_maxit'] = 2                 # number iterations for L1 CoSaMp solver
@@ -59,11 +68,11 @@ def write_config(set_params, run):
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
     p['ls_max_func_evals'] = 10         # number of max line-search attempts
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### forward solver
     p['accuracy_order'] = 2             # time order accuracy
     p['ip_order']       = 3             # interpolation accuracy for semi-langrangian
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### tumor params
     p['model'] = 4                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
     p['init_rho'] = 8                   # initial guess rho (reaction in wm)
@@ -73,41 +82,42 @@ def write_config(set_params, run):
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm'] = 0.0                  # rho ratio gm/wm (if zero, rho=0 in gm)
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
     p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### initial condition
     p['sparsity_level'] = 5             # target sparsity of recovered IC in sparse_til solver
     p['gaussian_selection_mode'] = 1    # 0: grid-based; 1: based on target data
-    p['number_gaussians'] = 64          # only used if selection mode = 0
+    p['number_gaussians'] = 1           # only used if selection mode = 0
     p['sigma_factor'] = 1               # kernel width of Gaussians
     p['sigma_spacing'] = 2              # spacing of Gaussians
     p['threshold_data_driven'] = 0.1    # threshold of cell density in data considered for Gaussian support
     p['gaussian_volume_fraction'] = 0.9 # place Gaussian only if volume fraction of Gaussian lays within tumor
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### prediction
     p['prediction'] = 1                 # enable prediction
     p['pred_times'] = [1.0, 1.2, 1.5]   # times for prediction
     p['dt_pred'] = 0.01                 # time step size for prediction
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### synthetic data
     p['syn_flag'] = 1                   # create synthetic data
-    p['user_cms'] = [(137,169,96,1)]   # arbitrary number of TILs (x,y,z,scale) with activation scale
+    p['user_cms'] = [(137,169,96,1)]    # arbitrary number of TILs (x,y,z,scale) with activation scale
     p['rho_data'] = 10                  # tumor parameters for synthetic data
     p['k_data'] = 0.025
     p['gamma_data'] = 12E4
-    p['nt_data'] = 25
-    p['dt_data'] = 0.04
+    p['nt_data'] = 100
+    p['dt_data'] = 0.01
     p['testcase'] = 0                   # 0: brain single focal synthetic
                                         # 1: No-brain constant coefficients
                                         # 2: No-brain sinusoidal coefficients
                                         # 3: brain multifocal synthetic tumor with nearby ground truths
                                         # 4: brain multifocal synthetic tumor with far away ground truths
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### paths
     p['output_dir'] = r['code_path'] + '/results/';
     p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
@@ -132,7 +142,7 @@ def write_config(set_params, run):
     p['velocity_x1'] = ""               # [optional] path to velocity for meterial transport
     p['velocity_x2'] = ""
     p['velocity_x3'] = ""
-
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### performance
     p['time_history_off'] = 1           # 1: do not allocate time history (only works with forward solver or FD inversion)
     p['store_phi']        = 0           # 1: store every Gaussian as 3d image
@@ -302,54 +312,58 @@ def write_config(set_params, run):
     return run_str
 
 
-if __name__=='__main__':
+
+
+ ### ________________________________________________________________________ ___
+ ### //////////////////////////////////////////////////////////////////////// ###
+def submit(submit_job = True, tu_params, run_params):
+    """ creates config file and submits job """
     import subprocess
     scripts_path = os.path.dirname(os.path.realpath(__file__))
-
-    submit = False;
-
     code_dir = scripts_path + '/../'
     params = {}
     run = {}
 
-    ### change any defaults 
-    params['output_dir'] = os.path.join(code_dir, 'results/check-me/');
-    # params['output_dir'] = os.path.join(code_dir, 'config/');
-#    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc" 
-#    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc" 
-#    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc" 
-#    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
-#
-    run['code_path'] = code_dir
-    run['compute_sys'] = 'rebels'
+    if 'code_path' not in run_params:
+        run_params['code_path'] = code_dir
+    if 'compute_sys' not in run_params:
+        run_params['compute_sys'] = 'rebels'
+    if 'queue' not in run_params:
+        if run_params['compute_sys'] == 'rebels':
+            run_params['queue'] = 'rebels'
+        elif run_params['compute_sys'] == 'stampede2':
+            run_params['queue'] = 'skx-normal'
+        elif run_params['compute_sys'] == 'maverick2':
+            run_params['queue'] = 'gtx'
+        elif run_params['compute_sys'] == 'frontera':
+            run_params['queue'] = 'normal'
+        else:
+            run_params['queue'] = 'normal'
+    if 'nodes' not in run_params:
+        if run_params['compute_sys'] == 'rebels':
+            run_params['nodes'] = 1
+        elif run_params['compute_sys'] == 'stampede2':
+            run_params['nodes'] = 3
+        elif run_params['compute_sys'] == 'maverick2':
+            run_params['nodes'] = 1
+        elif run_params['compute_sys'] == 'frontera':
+            run_params['nodes'] = 1
+        else:
+            run_params['nodes'] = 1
+    if 'mpi_taks' not in run_params:
+        if run_params['compute_sys'] == 'rebels':
+            run_params['mpi_taks'] = 20
+        elif run_params['compute_sys'] == 'stampede2':
+            run_params['mpi_taks'] = 64
+        elif run_params['compute_sys'] == 'maverick2':
+            run_params['mpi_taks'] = 1
+        elif run_params['compute_sys'] == 'frontera':
+            run_params['mpi_taks'] = 64
+        else:
+            run_params['mpi_taks'] = 1
 
-    if run['compute_sys'] == 'rebels':
-        run['queue'] = 'rebels'
-        run['nodes'] = 1
-        run['mpi_taks'] = 20
-    elif run['compute_sys'] == 'stampede2':
-        run['queue'] = 'skx-normal'
-        run['nodes'] = 3
-        run['mpi_taks'] = 64
-    elif run['compute_sys'] == 'frontera':
-        run['queue'] = 'v100'
-        run['nodes'] = 1
-        run['mpi_taks'] = 1
-    elif run['compute_sys'] == 'maverick2':
-        run['queue'] = 'gtx'
-        run['nodes'] = 1
-        run['mpi_taks'] = 1
-    elif run['compute_sys'] == 'hazelhen':
-        run['nodes'] = 3
-        run['mpi_taks'] = 64
-    else:
-        run['queue'] = 'normal'
-        run['nodes'] = 1
-        run['mpi_taks'] = 1
+    run_str = write_config(run_params, run_params)
 
-    run_str = write_config(params, run)
-
-    # if not err:
     if True:
         print('No errors, submitting jobfile\n')
         fname = scripts_path + '/job.sh'
@@ -377,7 +391,7 @@ if __name__=='__main__':
         submit_file.close()
 
         ### submit jobfile
-        if submit:
+        if submit_job:
             if run['compute_sys'] == 'hazelhen':
                 subprocess.call(['qsub', fname])
             else:
@@ -386,6 +400,38 @@ if __name__=='__main__':
         print('Errors, no job submitted\n')
 
 
+
+ ### ________________________________________________________________________ ___
+ ### //////////////////////////////////////////////////////////////////////// ###
+if __name__=='__main__':
+    import subprocess
+    scripts_path = os.path.dirname(os.path.realpath(__file__))
+
+    submit = False;
+
+    code_dir = scripts_path + '/../'
+    params = {}
+    run = {}
+
+    ### change any defaults
+    params['output_dir'] = os.path.join(code_dir, 'results/check-me/');
+    # params['output_dir'] = os.path.join(code_dir, 'config/');
+#    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc"
+#    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc"
+#    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
+#    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
+#
+    run['code_path'] = code_dir
+    run['compute_sys'] = 'rebels'
+
+    submit(submit, params, run);
+
+
+
+## ===============================================================================================+
+## ===============================================================================================+
+## ===============================================================================================+
+## ===============================================================================================+
 
     # + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
     # " -multilevel " + str(multilevel) + \
