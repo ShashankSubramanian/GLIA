@@ -47,7 +47,7 @@ def write_config(set_params, run):
     p['multilevel'] = 0                 # rescale p activations according to Gaussian width on each level
     p['inject_solution'] = 0            # use coarse level solution as warm-start
     p['pre_reacdiff_solve'] = 0         # reaction/diffusion solver before sparse til solve
-    p['verbosity'] = 3                  # various levels of output density
+    p['verbosity'] = 1                  # various levels of output density
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### optimizer
     p['newton_solver'] = "QN"           # GN, QN
@@ -74,7 +74,7 @@ def write_config(set_params, run):
     p['ip_order']       = 3             # interpolation accuracy for semi-langrangian
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### tumor params
-    p['model'] = 4                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
+    p['model'] = 1                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
     p['init_rho'] = 8                   # initial guess rho (reaction in wm)
     p['init_k'] = 1E-2                  # initial guess kappa (diffusivity in wm)
     p['init_gamma'] = 12E4              # initial guess (forcing factor for mass effect)
@@ -416,19 +416,8 @@ if __name__=='__main__':
     code_dir = scripts_path + '/../'
     params = {}
     run = {}
-
-    ### change any defaults
-    params['output_dir'] = os.path.join(code_dir, 'results/check-me/');
-    # params['output_dir'] = os.path.join(code_dir, 'config/');
-### TODO(S): move these to run_fwd.py
-#    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc"
-#    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc"
-#    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
-#    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
-#    params['mri_path'] = code_dir + "/brain_data/t16/t1.nc"
-#
+    params['output_dir'] = os.path.join(code_dir, 'config/');
     run['code_path'] = code_dir
-    run['compute_sys'] = 'longhorn'
 
     submit(params, run, submit_job);
 
