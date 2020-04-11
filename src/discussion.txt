@@ -1,3 +1,26 @@
+
+
+### A. Misc ###
+
+ 0. rename Cuda --> cuda
+ 1. create directory utils, move Utils, IO, Interp to utils
+
+### B. MaterialProperties ###
+
+0. create directory mat/
+1. DiffCoeff --> DiffusionCoefficient, ReacCoeff --> ReactionCoefficient
+2. move MaterialProperties, DiffusionCoefficient, ReactionCoefficient, Phi to mat/
+
+
+### C. PdeSolvers ###
+
+0. create directory pde/
+1. DiffSolver --> DiffusionSolver, also create ReactionSolver
+2. move DiffusionSolver, ReactionSOlver, ElasticitySolver, AdvectionSolver to pde/
+
+
+### D. Optimizer ###
+
 0. create a directory opt/
 
 Then, we have two options:
