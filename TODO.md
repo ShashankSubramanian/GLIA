@@ -41,8 +41,7 @@
 ---
 
 ### PdeOperators
-
-**unclear**
+- K: implement preAdvection
 - (S) move reaction solve to a new file ReactionSolver? I think this is more consistent even though it's an analytic solve and doesn't really need a new class, K: New class is fine. I'd say new file ReacSolver.h/cpp, then a new folder pde_solvers, and
   put all forward solvers there.
  
@@ -89,7 +88,6 @@
 - II. Forward (non-const coeff; read in sample brain; all tests 64^3, nifty)
   - a. forward solver me test
   - b. forward solver ms test
-  - c. l2 inversion test
 - III. Inverse:
   - a. l2 inverse, compare error c1, c0, kappa, p
   - b. l1 inverse, compare error c1, c0, TIL, rho, kappa, gamma
