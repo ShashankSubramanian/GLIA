@@ -88,7 +88,7 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
     ss.str("");
     ss.clear();
     if (!app_settings_->path_->mri_.empty()) {
-      ierr = VecDuplicate(data_t1_, &mri_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &mri_); CHKERRQ(ierr);
       ierr = dataIn(mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
     }
     // TODO(K): pde-operators has no preAdvection
@@ -96,7 +96,7 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
   } else if (params_->tu_->transport_mri_) {
     // the forward solve will transport the mri if mass effect is enabled
     if (mri_ == nullptr) {
-      ierr = VecDuplicate(data_t1_, &mri_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &mri_); CHKERRQ(ierr);
       ierr = dataIn(mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
       if (tumor_->mat_prop_->mri_ == nullptr) {
         tumor_->mat_prop_->mri_ = mri_;

@@ -210,8 +210,4 @@ MatProp::~MatProp() {
   ierr = VecDestroy(&csf_);
   ierr = VecDestroy(&bg_);
   ierr = VecDestroy(&filter_);
-
-  if (mri_ != nullptr) {
-    ierr = VecDestroy(&mri_);
-  }
 }

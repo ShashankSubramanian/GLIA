@@ -420,10 +420,12 @@ if __name__=='__main__':
     ### change any defaults
     params['output_dir'] = os.path.join(code_dir, 'results/check-me/');
     # params['output_dir'] = os.path.join(code_dir, 'config/');
-    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc"
-    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc"
-    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
-    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
+### TODO(S): move these to run_fwd.py
+#    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc"
+#    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc"
+#    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
+#    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
+#    params['mri_path'] = code_dir + "/brain_data/t16/t1.nc"
 #
     run['code_path'] = code_dir
     run['compute_sys'] = 'longhorn'

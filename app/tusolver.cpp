@@ -258,6 +258,8 @@ int main(int argc, char **argv) {
 
   ierr = PetscInitialize(&argc, &argv, reinterpret_cast<char*>(NULL), reinterpret_cast<char*>(NULL)); CHKERRQ(ierr);
 
+  { // begin local scope for all shared pointers (all MPI/PETSC finalize should be out of this scope to allow for 
+    // safe destruction of all petsc vectors
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
@@ -364,6 +366,7 @@ int main(int argc, char **argv) {
       r.print("EventsTimings.log", true);
   }
 
+  } // shared_ptrs scope end
   ierr = PetscFinalize();
   PetscFunctionReturn(ierr);
 }
