@@ -375,7 +375,7 @@ def submit(tu_params, run_params, submit_job = True):
         if run_params['compute_sys'] == 'hazelhen':
             submit_file.write("#!/bin/bash\n" + \
             "#PBS -N ITP\n" + \
-            "#PBS -l nodes="+str(run['nodes'])+":ppn=24 \n" + \
+            "#PBS -l nodes="+str(run_params['nodes'])+":ppn=24 \n" + \
             "#PBS -l walltime=01:00:00 \n" + \
             "#PBS -m e\n" + \
             "#PBS -M kscheufele@austin.utexas.edu\n\n" + \
@@ -396,7 +396,7 @@ def submit(tu_params, run_params, submit_job = True):
 
         ### submit jobfile
         if submit_job:
-            if run['compute_sys'] == 'hazelhen':
+            if run_params['compute_sys'] == 'hazelhen':
                 subprocess.call(['qsub', fname])
             else:
                 subprocess.call(['sbatch', fname])
