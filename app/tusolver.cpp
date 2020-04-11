@@ -265,6 +265,11 @@ int main(int argc, char **argv) {
   std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
   std::shared_ptr<ApplicationSettings> app_settings = std::make_shared<ApplicationSettings>();
 
+  // verbose
+  ierr = tuMSGstd (""); CHKERRQ (ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###"); CHKERRQ (ierr);
+  ierr = tuMSG("###                                         TUMOR INVERSION SOLVER                                        ###"); CHKERRQ (ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###"); CHKERRQ (ierr);
 
   // === create distributed compute grid
   std::shared_ptr<SpectralOperators> spec_ops;
@@ -354,8 +359,8 @@ int main(int argc, char **argv) {
   EventRegistry::finalize ();
   if (procid == 0) {
       EventRegistry r;
-      r.print ();
-      r.print ("EventsTimings.log", true);
+      r.print();
+      r.print("EventsTimings.log", true);
   }
 
   PetscFunctionReturn(ierr);

@@ -23,6 +23,7 @@ Solver::Solver()
       tmp_(nullptr),
       data_t1_(nullptr),
       data_t0_(nullptr),
+      p_rec_(nullptr),
       data_support_(nullptr),
       data_comps_(nullptr),
       obs_filter_(nullptr),
@@ -33,8 +34,12 @@ Solver::Solver()
 PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  
   std::stringstream ss;
-
+  ss << "    grid size: " << params->grid_->n_[0] << "x" << params->grid_->n_[1] << "x" << params->grid_->n_[2];
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); 
+  ss.str(""); ss.clear();
+  
   // === set parameters, initialize solver interface
   spec_ops_ = spec_ops;
   params_ = params;
@@ -84,10 +89,19 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
     ss.clear();
     if (!app_settings_->path_->mri_.empty()) {
       ierr = VecDuplicate(data_t1_, &mri_); CHKERRQ(ierr);
-      ierr = dataIn(mri_, params_, app_settings_->path_->mri_.c_str()); CHKERRQ(ierr);
+      ierr = dataIn(mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
     }
-    // TODO: pde-operators has no preAdvection
+    // TODO(K): pde-operators has no preAdvection
     // ierr = solver_interface_->getPdeOperators()->preAdvection(wm_, gm_, vt_, mri_, app_settings_->syn_->pre_adv_time_); CHKERRQ(ierr);
+  } else if (params_->tu_->transport_mri_) {
+    // the forward solve will transport the mri if mass effect is enabled
+    if (mri_ == nullptr) {
+      ierr = VecDuplicate(data_t1_, &mri_); CHKERRQ(ierr);
+      ierr = dataIn(mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
+      if (tumor_->mat_prop_->mri_ == nullptr) {
+        tumor_->mat_prop_->mri_ = mri_;
+      }
+    }
   }
 
   ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
@@ -605,6 +619,9 @@ PetscErrorCode Solver::createSynthetic() {
   params_->tu_->dt_ = app_settings_->syn_->dt_;
   params_->tu_->nt_ = app_settings_->syn_->nt_;
 
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+
   // allocate t1 and t0 data:
   if (data_t1_ == nullptr) {
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
@@ -630,9 +647,7 @@ PetscErrorCode Solver::createSynthetic() {
     ierr = tumor_->phi_->setValues(tumor_->mat_prop_);
 
     // set p_rec_ according to user centers
-    ScalarType *p_ptr;
     ierr = VecSet(p_rec_, scale); CHKERRQ(ierr);
-    CHKERRQ(ierr); CHKERRQ(ierr);
     // ss << " --------------  Synthetic p_vec (using cm"<<count<<") -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     // ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tumor_->phi_->apply(tmp_, p_rec_); CHKERRQ(ierr);
@@ -644,9 +659,6 @@ PetscErrorCode Solver::createSynthetic() {
   }
 
   ScalarType max, min;
-  ierr = VecMax(data_t0_, NULL, &max); CHKERRQ(ierr);
-  ierr = VecMin(data_t0_, NULL, &min); CHKERRQ(ierr);
-
   if (params_->tu_->write_output_) {
     ierr = dataOut(data_t0_, params_, "c0_true_syn" + params_->tu_->ext_); CHKERRQ(ierr);
   }
@@ -777,6 +789,8 @@ PetscErrorCode ForwardSolver::initialize(std::shared_ptr<SpectralOperators> spec
   ierr = tuMSGstd(" .. switching off time history."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
   params->tu_->np_ = 1;
+  // transport mri if needed
+  params->tu_->transport_mri_ = !app_settings->path_->mri_.empty();
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);

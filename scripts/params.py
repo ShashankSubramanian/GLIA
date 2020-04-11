@@ -38,7 +38,7 @@ def write_config(set_params, run):
     p['multilevel'] = 0                 # rescale p activations according to Gaussian width on each level
     p['inject_solution'] = 0            # use coarse level solution as warm-start
     p['pre_reacdiff_solve'] = 0         # reaction/diffusion solver before sparse til solve
-    p['verbosity'] = 1                  # various levels of output density
+    p['verbosity'] = 3                  # various levels of output density
 
     ### optimizer
     p['newton_solver'] = "QN"           # GN, QN
@@ -65,7 +65,7 @@ def write_config(set_params, run):
     p['ip_order']       = 3             # interpolation accuracy for semi-langrangian
 
     ### tumor params
-    p['model'] = 1                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
+    p['model'] = 4                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
     p['init_rho'] = 8                   # initial guess rho (reaction in wm)
     p['init_k'] = 1E-2                  # initial guess kappa (diffusivity in wm)
     p['init_gamma'] = 12E4              # initial guess (forcing factor for mass effect)
@@ -97,9 +97,9 @@ def write_config(set_params, run):
 
     ### synthetic data
     p['syn_flag'] = 1                   # create synthetic data
-    p['user_cms'] = [(112,136,144,1)]   # arbitrary number of TILs (x,y,z,scale) with activation scale
-    p['rho_data'] = 12                  # tumor parameters for synthetic data
-    p['k_data'] = 0.05
+    p['user_cms'] = [(137,169,96,1)]   # arbitrary number of TILs (x,y,z,scale) with activation scale
+    p['rho_data'] = 10                  # tumor parameters for synthetic data
+    p['k_data'] = 0.025
     p['gamma_data'] = 12E4
     p['nt_data'] = 25
     p['dt_data'] = 0.04
@@ -312,8 +312,14 @@ if __name__=='__main__':
     params = {}
     run = {}
 
-    params['output_dir'] = os.path.join(code_dir, 'results/check/');
+    ### change any defaults 
+    params['output_dir'] = os.path.join(code_dir, 'results/check-me/');
     # params['output_dir'] = os.path.join(code_dir, 'config/');
+#    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc" 
+#    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc" 
+#    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc" 
+#    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
+#
     run['code_path'] = code_dir
     run['compute_sys'] = 'rebels'
 

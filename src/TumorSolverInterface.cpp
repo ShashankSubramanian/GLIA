@@ -242,7 +242,7 @@ PetscErrorCode TumorSolverInterface::setParams(Vec p, std::shared_ptr<TumorParam
         break;
       case 4:
         pde_operators_ = std::make_shared<PdeOperatorsMassEffect>(tumor_, params_, spec_ops_);
-        derivative_operators_ = std::make_shared<DerivativeOperatorsRD>(pde_operators_, params_, tumor_);
+        derivative_operators_ = std::make_shared<DerivativeOperatorsMassEffect>(pde_operators_, params_, tumor_);
         break;
       default:
         break;

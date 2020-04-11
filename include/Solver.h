@@ -50,10 +50,11 @@ class Solver {
     if (tmp_ != nullptr) VecDestroy(&tmp_);
     if (data_t1_ != nullptr) VecDestroy(&data_t1_);
     if (data_t0_ != nullptr) VecDestroy(&data_t0_);
-    if (data_support_ != nullptr) VecDestroy(&data_support_);
+    // if (data_support_ != nullptr) VecDestroy(&data_support_); // this is only a ptr
     if (data_comps_ != nullptr) VecDestroy(&data_comps_);
     if (obs_filter_ != nullptr) VecDestroy(&obs_filter_);
     if (p_rec_ != nullptr) VecDestroy(&p_rec_);
+    if (velocity_ != nullptr) VecDestroy(&velocity_);
   }
 
  protected:
