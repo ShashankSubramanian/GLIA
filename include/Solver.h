@@ -51,11 +51,12 @@ class Solver {
     if(data_t1_ != nullptr) VecDestroy(&data_t1_);
     if(data_t0_ != nullptr) VecDestroy(&data_t0_);
     if(!app_settings_->syn_->enabled_ && !app_settings_->path_->data_support_.empty()) {
-        if(data_support_ != nullptr) VecDestroy(&data_support_);}
+      if(data_support_ != nullptr) VecDestroy(&data_support_);
+    }
     if(data_comps_ != nullptr) VecDestroy(&data_comps_);
     if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
     if(p_rec_ != nullptr) VecDestroy(&p_rec_);
-    if velocity_ != nullptr) VecDestroy(&velocity_);
+    if(velocity_ != nullptr) VecDestroy(&velocity_);
   }
 
  protected:

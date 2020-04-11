@@ -424,6 +424,7 @@ public:
   }
 
   ~Grid() {
+    MPI_Comm_free(&c_comm_);
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     if (rank == 0) {

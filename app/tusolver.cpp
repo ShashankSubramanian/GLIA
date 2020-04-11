@@ -364,5 +364,6 @@ int main(int argc, char **argv) {
       r.print("EventsTimings.log", true);
   }
 
+  ierr = PetscFinalize();
   PetscFunctionReturn(ierr);
 }

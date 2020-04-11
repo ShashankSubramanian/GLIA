@@ -2,11 +2,11 @@
 
 void SpectralOperators::setup(int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm) {
   alloc_max_ = fft_local_size_dft_r2c(n, isize, istart, osize, ostart, c_comm);
-  isize_ = isize;
-  istart_ = istart;
-  osize_ = osize;
-  ostart_ = ostart;
-  n_ = n;
+  memcpy(n_, n, 3 * sizeof(int));
+  memcpy(isize_, isize, 3 * sizeof(int));
+  memcpy(osize_, osize, 3 * sizeof(int));
+  memcpy(istart_, istart, 3 * sizeof(int));
+  memcpy(ostart_, ostart, 3 * sizeof(int));
 
 #ifdef CUDA
   cufftResult cufft_status;

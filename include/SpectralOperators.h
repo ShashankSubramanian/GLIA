@@ -8,8 +8,12 @@ class SpectralOperators {
   SpectralOperators(int fft_mode = ACCFFT) { fft_mode_ = fft_mode; }
 
   int fft_mode_;
-  int *isize_, *istart_, *osize_, *ostart_, *n_;
   fft_plan *plan_;
+  int n_[3];
+  int isize_[3];
+  int osize_[3];
+  int istart_[3];
+  int ostart_[3];
 
 #ifdef CUDA
   cufftHandle plan_r2c_;

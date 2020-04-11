@@ -710,6 +710,13 @@ PetscErrorCode Solver::createSynthetic() {
   //     writeCheckpoint(tumor->p_rec_, tumor->phi_, n_misc->writepath_.str(), "forward"); CHKERRQ(ierr);
   //     ss << " ground truth phi and p written to file "; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // }
+  ss << " Synthetic data solve parameters: r = " << params_->tu_->rho_ << ", k = " << params_->tu_->k_;
+  if (params_->tu_->model_ >= 4)
+    ss << ", g = " << params_->tu_->forcing_factor_;
+  ss << ", nt = " << params_->tu_->nt_;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+  ss.str("");
+  ss.clear();
 
   // restore parameters
   params_->tu_->rho_ = rho_temp;

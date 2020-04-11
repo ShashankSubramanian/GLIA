@@ -33,7 +33,7 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     # any changes to the defaults defined below, are to be defined in the dicts  #
     # 'set_params', and 'run', which are passed to this routine. Do not modify   #
-    # the defaults!                                                              #
+    # the defaults                                                               #
     # ------------------------------ DO NOT TOUCH ------------------------------ #
 
 
@@ -110,8 +110,8 @@ def write_config(set_params, run):
     p['rho_data'] = 10                  # tumor parameters for synthetic data
     p['k_data'] = 0.025
     p['gamma_data'] = 12E4
-    p['nt_data'] = 100
-    p['dt_data'] = 0.01
+    p['nt_data'] = 25
+    p['dt_data'] = 0.04
     p['testcase'] = 0                   # 0: brain single focal synthetic
                                         # 1: No-brain constant coefficients
                                         # 2: No-brain sinusoidal coefficients
@@ -300,7 +300,7 @@ def write_config(set_params, run):
         if r['mpi_tasks'] < 24:
             ppn = r['mpi_tasks'];
         cmd = cmd + "aprun -n " + str(r['mpi_tasks']) + " -N " + str(ppn) + " ";
-    elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2']:
+    elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
         cmd = cmd + "ibrun " + ibman;
     else:
         cmd = cmd + "mpirun ";
@@ -316,13 +316,11 @@ def write_config(set_params, run):
 
  ### ________________________________________________________________________ ___
  ### //////////////////////////////////////////////////////////////////////// ###
-def submit(submit_job = True, tu_params, run_params):
+def submit(tu_params, run_params, submit_job = True):
     """ creates config file and submits job """
     import subprocess
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     code_dir = scripts_path + '/../'
-    params = {}
-    run = {}
 
     if 'code_path' not in run_params:
         run_params['code_path'] = code_dir
@@ -333,6 +331,8 @@ def submit(submit_job = True, tu_params, run_params):
             run_params['queue'] = 'rebels'
         elif run_params['compute_sys'] == 'stampede2':
             run_params['queue'] = 'skx-normal'
+        elif run_params['compute_sys'] == 'longhorn':
+            run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
@@ -344,6 +344,8 @@ def submit(submit_job = True, tu_params, run_params):
             run_params['nodes'] = 1
         elif run_params['compute_sys'] == 'stampede2':
             run_params['nodes'] = 3
+        elif run_params['compute_sys'] == 'longhorn':
+            run_params['nodes'] = 1
         elif run_params['compute_sys'] == 'maverick2':
             run_params['nodes'] = 1
         elif run_params['compute_sys'] == 'frontera':
@@ -355,20 +357,22 @@ def submit(submit_job = True, tu_params, run_params):
             run_params['mpi_taks'] = 20
         elif run_params['compute_sys'] == 'stampede2':
             run_params['mpi_taks'] = 64
+        elif run_params['compute_sys'] == 'longhorn':
+            run_params['mpi_taks'] = 1
         elif run_params['compute_sys'] == 'maverick2':
             run_params['mpi_taks'] = 1
         elif run_params['compute_sys'] == 'frontera':
             run_params['mpi_taks'] = 64
         else:
             run_params['mpi_taks'] = 1
-
-    run_str = write_config(run_params, run_params)
+    
+    run_str = write_config(tu_params, run_params)
 
     if True:
         print('No errors, submitting jobfile\n')
         fname = scripts_path + '/job.sh'
         submit_file = open(fname, 'w+')
-        if run['compute_sys'] == 'hazelhen':
+        if run_params['compute_sys'] == 'hazelhen':
             submit_file.write("#!/bin/bash\n" + \
             "#PBS -N ITP\n" + \
             "#PBS -l nodes="+str(run['nodes'])+":ppn=24 \n" + \
@@ -380,11 +384,11 @@ def submit(submit_job = True, tu_params, run_params):
         else:
             submit_file.write ("#!/bin/bash\n" + \
             "#SBATCH -J tuinv\n" + \
-            "#SBATCH -o " + params['output_dir'] + "/log\n" + \
-            "#SBATCH -p " + str(run['queue']) + "\n" + \
-            "#SBATCH -N " + str(run['nodes']) + "\n" + \
-            "#SBATCH -n " + str(run['mpi_taks']) + "\n" + \
-            "#SBATCH -t 06:00:00\n" + \
+            "#SBATCH -o " + tu_params['output_dir'] + "/log\n" + \
+            "#SBATCH -p " + str(run_params['queue']) + "\n" + \
+            "#SBATCH -N " + str(run_params['nodes']) + "\n" + \
+            "#SBATCH -n " + str(run_params['mpi_taks']) + "\n" + \
+            "#SBATCH -t 00:30:00\n" + \
             "source ~/.bashrc\n" + \
             "export OMP_NUM_THREADS=1\n")
         submit_file.write(run_str)
@@ -407,7 +411,7 @@ if __name__=='__main__':
     import subprocess
     scripts_path = os.path.dirname(os.path.realpath(__file__))
 
-    submit = False;
+    submit_job = False;
 
     code_dir = scripts_path + '/../'
     params = {}
@@ -416,15 +420,15 @@ if __name__=='__main__':
     ### change any defaults
     params['output_dir'] = os.path.join(code_dir, 'results/check-me/');
     # params['output_dir'] = os.path.join(code_dir, 'config/');
-#    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc"
-#    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc"
-#    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
-#    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
+    params['a_gm_path'] = code_dir + "/brain_data/t16/256/t16_gm.nc"
+    params['a_wm_path'] = code_dir + "/brain_data/t16/256/t16_wm.nc"
+    params['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
+    params['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
 #
     run['code_path'] = code_dir
-    run['compute_sys'] = 'rebels'
+    run['compute_sys'] = 'longhorn'
 
-    submit(submit, params, run);
+    submit(params, run, submit_job);
 
 
 
@@ -432,70 +436,3 @@ if __name__=='__main__':
 ## ===============================================================================================+
 ## ===============================================================================================+
 ## ===============================================================================================+
-
-    # + str(N) + " -ny " + str(N) + " -nz " + str(N) + " -beta " + str(beta) + \
-    # " -multilevel " + str(multilevel) + \
-    # " -inject_solution " + str(inject_solution) + \
-    # " -pre_reacdiff_solve " + str(pre_reacdiff_solve) + \
-    # " -rho_inversion " + str(rho_inv) + " -k_inversion " + str(k_inv) + " -nt_inversion " + str(nt_inv) + " -dt_inversion " + str(dt_inv) + \
-    # " -rho_data " + str(rho_data) + " -k_data " + str(k_data) + " -nt_data " + str(nt_data) + " -dt_data " + str(dt_data) + \
-    # " -regularization " + reg_type + " -interpolation " + str(interp_flag) + " -diffusivity_inversion " + str(diffusivity_flag) + " -reaction_inversion " + str(reaction_flag) + \
-    # " -basis_type " + str(basis_type) + " -number_gaussians " + str(np) + " -sigma_factor " + str(fac) + " -sigma_spacing " + str(space) + \
-    # " -testcase " + str(tumor_testcase) + \
-    # " -solve_rho_k " + str(solve_rho_k) + \
-    # " -gaussian_volume_fraction " + str(gvf) +  \
-    # " -lambda_continuation " + str(lam_cont) +  \
-    # " -target_sparsity " + str(target_spars) +  \
-    # " -sparsity_level " + str(sparsity_lvl) +  \
-    # " -threshold_data_driven " + str(data_thres) +  \
-    # " -sigma_data_driven " + str(dd_fac) + \
-    # " -output_dir " + output_dir + \
-    # " -newton_solver " + solvertype + \
-    # " -line_search "   + linesearchtype + \
-    # " -newton_maxit " + str(newton_maxit) + \
-    # " -gist_maxit " + str(gist_maxit) + \
-    # " -krylov_maxit " + str(max_krylov_iter) + \
-    # " -rel_grad_tol " + str(grad_tol) + \
-    # " -syn_flag " + str(create_synthetic) + \
-    # " -data_path " + p['d1_path'] + \
-    # " -gm_path " + p['gm_path'] + \
-    # " -wm_path " + p['wm_path'] + \
-    # " -csf_path " + p['csf_path'] + \
-    # " -glm_path " + p['glm_path'] + \
-    # " -p_gm_path " + p_gm_path + \
-    # " -p_wm_path " + p_wm_path + \
-    # " -p_csf_path " + p_csf_path + \
-    # " -p_glm_path " + p_glm_path + \
-    # " -z_cm " + str(z_cm) + \
-    # " -y_cm " + str(y_cm) + \
-    # " -x_cm " + str(x_cm) + \
-    # " -obs_mask_path " + obs_mask_path + \
-    # " -support_data_path " + support_data_path + \
-    # " -gaussian_cm_path " + gaussian_cm_path + \
-    # " -pvec_path " + pvec_path + \
-    # " -data_comp_path " + data_comp_path + \
-    # " -data_comp_dat_path " + data_comp_dat_path + \
-    # " -init_tumor_path " + init_tumor_path + \
-    # " -model " + str(model) + \
-    # " -smooth " + str(smooth_f) + \
-    # " -observation_threshold " + str(obs_thres) + \
-    # " -k_gm_wm " + str(k_gm_wm) + \
-    # " -r_gm_wm " + str(r_gm_wm) + \
-    # " -low_freq_noise " + str(noise_scale) + \
-    # " -prediction " + str(predict_flag) + \
-    # " -forward " + str(forward_flag) + \
-    # " -ip_order " + str(ip_order) + \
-    # " -ce_loss " + str(ce_loss) + \
-    # " -order " + str(accuracy_order) + \
-    # " -verbosity " + str(verbosity) + \
-    # " -forcing_factor " + str(forcing_factor) + \
-    # " -kappa_lb " + str(lower_bound_kappa) + \
-    # " -kappa_ub " + str(upper_bound_kappa) + \
-    # " -mri_path " + mri_path + \
-    # " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal" + \
-    # " -tumor_tao_ls_max_funcs " + str(p['ls_max_func_evals']) + " "
-
-    # -tao_test_hessian -tao_test_hessian_view
-    # " -tao_lmm_vectors 50 -tao_lmm_scale_type broyden -tao_lmm_scalar_history 5 -tao_lmm_rescale_type scalar -tao_lmm_rescale_history 5 " + \
-    # " -tao_bqnls_mat_lmvm_num_vecs 50 -tao_bqnls_mat_lmvm_scale_type diagonal " + \
-    # " -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal " + \
