@@ -42,19 +42,21 @@ class Solver {
   virtual PetscErrorCode run();
 
   virtual ~Solver() {
-    if (wm_ != nullptr) VecDestroy(&wm_);
-    if (gm_ != nullptr) VecDestroy(&gm_);
-    if (vt_ != nullptr) VecDestroy(&vt_);
-    if (csf_ != nullptr) VecDestroy(&csf_);
-    if (mri_ != nullptr) VecDestroy(&mri_);
-    if (tmp_ != nullptr) VecDestroy(&tmp_);
-    if (data_t1_ != nullptr) VecDestroy(&data_t1_);
-    if (data_t0_ != nullptr) VecDestroy(&data_t0_);
-    // if (data_support_ != nullptr) VecDestroy(&data_support_); // this is only a ptr
-    if (data_comps_ != nullptr) VecDestroy(&data_comps_);
-    if (obs_filter_ != nullptr) VecDestroy(&obs_filter_);
-    if (p_rec_ != nullptr) VecDestroy(&p_rec_);
-    if (velocity_ != nullptr) VecDestroy(&velocity_);
+    if(wm_ != nullptr) VecDestroy(&wm_);
+    if(gm_ != nullptr) VecDestroy(&gm_);
+    if(vt_ != nullptr) VecDestroy(&vt_);
+    if(csf_ != nullptr) VecDestroy(&csf_);
+    if(mri_ != nullptr) VecDestroy(&mri_);
+    if(tmp_ != nullptr) VecDestroy(&tmp_);
+    if(data_t1_ != nullptr) VecDestroy(&data_t1_);
+    if(data_t0_ != nullptr) VecDestroy(&data_t0_);
+    if(!app_settings_->syn_->enabled_ && !app_settings_->path_->data_support_.empty()) {
+        if(data_support_ != nullptr) VecDestroy(&data_support_);
+    }
+    if(data_comps_ != nullptr) VecDestroy(&data_comps_);
+    if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
+    if(p_rec_ != nullptr) VecDestroy(&p_rec_);
+    if velocity_ != nullptr) VecDestroy(&velocity_);
   }
 
  protected:
