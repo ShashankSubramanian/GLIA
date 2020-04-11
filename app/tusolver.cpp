@@ -201,7 +201,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
       pos = cm_str.find(",");
       z_ = cm_str.substr(0, pos);
       s_ = cm_str.substr(pos+1);
-      std::array<ScalarType, 4> user_cm = { std::stod(x_), std::stod(y_), std::stod(z_), std::stod(s_) };
+      std::array<ScalarType, 4> user_cm = { static_cast<ScalarType>(std::stod(x_)), static_cast<ScalarType>(std::stod(y_)), 
+                                            static_cast<ScalarType>(std::stod(z_)), static_cast<ScalarType>(std::stod(s_)) };
       a->syn_->user_cms_.push_back(user_cm);
       value.erase(0, pos_loop+1);
     }
