@@ -11,119 +11,119 @@
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <Parameters> params, std::shared_ptr <Tumor> tumor)
-:
-  initialized_(false),
-  tao_is_reset_(true),
-  data_(),
-  ctx_() {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    tao_      = nullptr;
-    H_        = nullptr;
-    xrec_     = nullptr;
-    xrec_rd_ = nullptr;
-    if( derivative_operators != nullptr && pde_operators !=nullptr && params != nullptr && tumor != nullptr) {
-        initialize (derivative_operators, pde_operators, params, tumor);
-    }
-}
+// InvSolver::InvSolver (std::shared_ptr <DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <Parameters> params, std::shared_ptr <Tumor> tumor)
+// :
+//   initialized_(false),
+//   tao_is_reset_(true),
+//   data_(),
+//   ctx_() {
+//     PetscFunctionBegin;
+//     PetscErrorCode ierr = 0;
+//     tao_      = nullptr;
+//     H_        = nullptr;
+//     xrec_     = nullptr;
+//     xrec_rd_ = nullptr;
+//     if( derivative_operators != nullptr && pde_operators !=nullptr && params != nullptr && tumor != nullptr) {
+//         initialize (derivative_operators, pde_operators, params, tumor);
+//     }
+// }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    if (initialized_)
-        PetscFunctionReturn (ierr);
-    ctx_ = std::make_shared<CtxInv> ();
-    ctx_->derivative_operators_ = derivative_operators;
-    ctx_->pde_operators_ = pde_operators;
-    ctx_->params_ = params;
-    ctx_->tumor_ = tumor;
-
-    if (params->opt_->invert_mass_effect_) {
-        ierr = allocateTaoObjectsMassEffect(); CHKERRQ(ierr);
-    } else {
-        // allocate memory for H, x_rec and TAO
-        ierr = allocateTaoObjects(); CHKERRQ(ierr);
-    }
-
-
-    initialized_ = true;
-    PetscFunctionReturn (ierr);
-}
-
-// ### ______________________________________________________________________ ___
-// ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-
-    // For mass-effect; invert for rho, kappa, and gamma
-    int n_inv = 3;
-    ScalarType *xrec_ptr;
-    // allocate memory for xrec_
-    ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv, &xrec_);          CHKERRQ (ierr);
-    ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
-    ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);
-    ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
-    xrec_ptr[0] = 1; xrec_ptr[1] = 6; xrec_ptr[2] = 0.5;
-    // xrec_ptr[0] = 0.4; xrec_ptr[1] = 0.08;
-    ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
-
-    // set up routine to compute the hessian matrix vector product
-    if (H_ == nullptr) {
-      ierr = MatCreateShell (PETSC_COMM_SELF, n_inv, n_inv, n_inv, n_inv, (void*) ctx_.get(), &H_); CHKERRQ(ierr);
-    }
-    // create TAO solver object
-    if ( tao_ == nullptr && initialize_tao) {
-      ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
-    }
-
-    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);         CHKERRQ(ierr);
-    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
-        ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsMassEffect);
-    #endif
-    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
-
-    PetscFunctionReturn (ierr);
-}
+// PetscErrorCode InvSolver::initialize (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) {
+//     PetscFunctionBegin;
+//     PetscErrorCode ierr = 0;
+//     if (initialized_)
+//         PetscFunctionReturn (ierr);
+//     ctx_ = std::make_shared<CtxInv> ();
+//     ctx_->derivative_operators_ = derivative_operators;
+//     ctx_->pde_operators_ = pde_operators;
+//     ctx_->params_ = params;
+//     ctx_->tumor_ = tumor;
+//
+//     if (params->opt_->invert_mass_effect_) {
+//         ierr = allocateTaoObjectsMassEffect(); CHKERRQ(ierr);
+//     } else {
+//         // allocate memory for H, x_rec and TAO
+//         ierr = allocateTaoObjects(); CHKERRQ(ierr);
+//     }
+//
+//
+//     initialized_ = true;
+//     PetscFunctionReturn (ierr);
+// }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
+// PetscErrorCode InvSolver::allocateTaoObjectsMassEffect (bool initialize_tao) {
+//     PetscFunctionBegin;
+//     PetscErrorCode ierr = 0;
+//
+//     // For mass-effect; invert for rho, kappa, and gamma
+//     int n_inv = 3;
+//     ScalarType *xrec_ptr;
+//     // allocate memory for xrec_
+//     ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv, &xrec_);          CHKERRQ (ierr);
+//     ierr = setupVec (xrec_, SEQ);                                  CHKERRQ (ierr);
+//     ierr = VecSet (xrec_, 0.0);                                    CHKERRQ (ierr);
+//     ierr = VecGetArray (xrec_, &xrec_ptr);                         CHKERRQ (ierr);
+//     xrec_ptr[0] = 1; xrec_ptr[1] = 6; xrec_ptr[2] = 0.5;
+//     // xrec_ptr[0] = 0.4; xrec_ptr[1] = 0.08;
+//     ierr = VecRestoreArray (xrec_, &xrec_ptr);                     CHKERRQ (ierr);
+//
+//     // set up routine to compute the hessian matrix vector product
+//     if (H_ == nullptr) {
+//       ierr = MatCreateShell (PETSC_COMM_SELF, n_inv, n_inv, n_inv, n_inv, (void*) ctx_.get(), &H_); CHKERRQ(ierr);
+//     }
+//     // create TAO solver object
+//     if ( tao_ == nullptr && initialize_tao) {
+//       ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
+//     }
+//
+//     ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);         CHKERRQ(ierr);
+//     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
+//         ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsMassEffect);
+//     #endif
+//     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
+//
+//     PetscFunctionReturn (ierr);
+// }
 
-  int np = ctx_->params_->tu_->np_;
-  int nk = (ctx_->params_opt_->diffusivity_inversion_) ?  ctx_->params_->tu_->nk_ : 0;
-  int nr = 0;
-
-  // allocate memory for xrec_
-  ierr = VecDuplicate (ctx_->tumor_->p_, &xrec_);                         CHKERRQ(ierr);
-  // set up routine to compute the hessian matrix vector product
-  if (H_ == nullptr) {
-    ierr = MatCreateShell (PETSC_COMM_SELF, np + nk + nr, np + nk + nr, np + nk + nr, np + nk + nr, (void*) ctx_.get(), &H_); CHKERRQ(ierr);
-  }
-  // create TAO solver object
-  if ( tao_ == nullptr && initialize_tao) {
-    ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
-  }
-  ierr = VecSet (xrec_, 0.0);                                                   CHKERRQ(ierr);
-
-  // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
-  if ((ctx_->params_->opt_->newton_solver_ == QUASINEWTON) && ctx_->params_->opt_->lmvm_set_hessian_) {
-    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
-    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
-    // if tao's nls (gauss-newton) method is used, define hessian matvec
-  }
-  else {
-    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);         CHKERRQ(ierr);
-    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
-  }
-
-  PetscFunctionReturn (ierr);
-}
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+// PetscErrorCode InvSolver::allocateTaoObjects (bool initialize_tao) {
+//   PetscFunctionBegin;
+//   PetscErrorCode ierr = 0;
+//
+//   int np = ctx_->params_->tu_->np_;
+//   int nk = (ctx_->params_opt_->diffusivity_inversion_) ?  ctx_->params_->tu_->nk_ : 0;
+//   int nr = 0;
+//
+//   // allocate memory for xrec_
+//   ierr = VecDuplicate (ctx_->tumor_->p_, &xrec_);                         CHKERRQ(ierr);
+//   // set up routine to compute the hessian matrix vector product
+//   if (H_ == nullptr) {
+//     ierr = MatCreateShell (PETSC_COMM_SELF, np + nk + nr, np + nk + nr, np + nk + nr, np + nk + nr, (void*) ctx_.get(), &H_); CHKERRQ(ierr);
+//   }
+//   // create TAO solver object
+//   if ( tao_ == nullptr && initialize_tao) {
+//     ierr = TaoCreate (PETSC_COMM_SELF, &tao_); tao_is_reset_ = true;  // triggers setTaoOptions
+//   }
+//   ierr = VecSet (xrec_, 0.0);                                                   CHKERRQ(ierr);
+//
+//   // if tao's lmvm (l-bfgs) method is used and the initial hessian approximation is explicitly set
+//   if ((ctx_->params_->opt_->newton_solver_ == QUASINEWTON) && ctx_->params_->opt_->lmvm_set_hessian_) {
+//     ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))constApxHessianMatVec); CHKERRQ(ierr);
+//     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
+//     // if tao's nls (gauss-newton) method is used, define hessian matvec
+//   }
+//   else {
+//     ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec);         CHKERRQ(ierr);
+//     ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE);                                 CHKERRQ(ierr);
+//   }
+//
+//   PetscFunctionReturn (ierr);
+// }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -141,33 +141,33 @@ PetscErrorCode InvSolver::resetTao (std::shared_ptr<Parameters> params) {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor, bool npchanged) {
-    PetscFunctionBegin;
-    PetscErrorCode ierr = 0;
-    ctx_->derivative_operators_ = derivative_operators;
-    ctx_->pde_operators_ = pde_operators;
-    ctx_->params_ = params;
-    ctx_->tumor_ = tumor;
-    // re-allocate memory
-    if (npchanged && !params->opt_->invert_mass_effect_){                              // re-allocate memory for xrec_
-      // allocate memory for H, x_rec and TAO
-      ctx_->x_old = nullptr; // Will be set accordingly in the solver
-      if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
-      if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
-      ierr = allocateTaoObjects (false); CHKERRQ(ierr);
-    }
-
-    if (params->opt_->invert_mass_effect_) {
-        // allocate memory for H, x_rec and TAO
-      ctx_->x_old = nullptr; // Will be set accordingly in the solver
-      if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
-      if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
-      ierr = allocateTaoObjectsMassEffect (false); CHKERRQ(ierr);
-    }
-
-    tao_is_reset_ = true;                        // triggers setTaoOptions
-    PetscFunctionReturn (ierr);
-}
+// PetscErrorCode InvSolver::setParams (std::shared_ptr<DerivativeOperators> derivative_operators, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor, bool npchanged) {
+//     PetscFunctionBegin;
+//     PetscErrorCode ierr = 0;
+//     ctx_->derivative_operators_ = derivative_operators;
+//     ctx_->pde_operators_ = pde_operators;
+//     ctx_->params_ = params;
+//     ctx_->tumor_ = tumor;
+//     // re-allocate memory
+//     if (npchanged && !params->opt_->invert_mass_effect_){                              // re-allocate memory for xrec_
+//       // allocate memory for H, x_rec and TAO
+//       ctx_->x_old = nullptr; // Will be set accordingly in the solver
+//       if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
+//       if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
+//       ierr = allocateTaoObjects (false); CHKERRQ(ierr);
+//     }
+//
+//     if (params->opt_->invert_mass_effect_) {
+//         // allocate memory for H, x_rec and TAO
+//       ctx_->x_old = nullptr; // Will be set accordingly in the solver
+//       if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
+//       if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
+//       ierr = allocateTaoObjectsMassEffect (false); CHKERRQ(ierr);
+//     }
+//
+//     tao_is_reset_ = true;                        // triggers setTaoOptions
+//     PetscFunctionReturn (ierr);
+// }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###

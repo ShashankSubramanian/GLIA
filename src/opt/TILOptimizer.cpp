@@ -8,15 +8,14 @@ SparseTILOptimizer::initialize(
 
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
+    std::stringstream ss;
 
-    // initialize super class
-    ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
     // number of dofs = {p, kappa}
     n_inv_ = params_->tu_->np_ +  params_->get_nk();
-
-    // allocate TaoObjects
-    // setTaoOptions
-
+    ss << " Initializing TIL optimizer with = " << n_inv_ << " = " << params_->tu_->np_ << " + " << params_->get_nk() << " dofs.";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    // initialize super class
+    ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
 
     PetscFunctionReturn(ierr);
 }
