@@ -5,19 +5,19 @@ import subprocess
 ###############
 r = {}
 p = {}
-submit_job = True;
+submit_job = False;
 
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
 
 ############### === define parameters
-p['output_dir'] 		= os.path.join(code_dir, 'results/forward/');   		# results path
-p['d1_path'] 			= r['code_path'] + '/brain_data/256/cpl/c1p.nc'			# tumor data path
-p['a_wm_path'] 			= r['code_path'] + '/brain_data/256/white_matter.nc'	# healthy patient path
-p['a_gm_path'] 			= r['code_path'] + '/brain_data/256/gray_matter.nc'
+p['output_dir'] 		= os.path.join(code_dir, 'results/inverse/');   		# results path
+p['d1_path'] 			= code_dir + '/brain_data/256/cpl/c1p.nc'			# tumor data path
+p['a_wm_path'] 			= code_dir + '/brain_data/256/white_matter.nc'	# healthy patient path
+p['a_gm_path'] 			= code_dir + '/brain_data/256/gray_matter.nc'
 p['a_csf_path'] 		= ""
-p['a_vt_path'] 			= r['code_path'] + '/brain_data/256/csf.nc'
+p['a_vt_path'] 			= code_dir + '/brain_data/256/csf.nc'
 p['p_wm_path'] 			= ""													# patient brain data path
 p['p_gm_path'] 			= ""
 p['p_csf_path'] 		= ""
@@ -54,3 +54,5 @@ r['compute_sys'] 		= 'rebels'         			# TACC systems are: maverick2, frontera
 
 ###############=== write config to write_path and submit job
 par.submit(p, r, submit_job);
+
+### -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal -tumor_tao_ls_max_funcs 10

@@ -150,12 +150,6 @@ env.Append(LINKFLAGS = ["-fopenmp"])
 # ====== preprocessor defines, #ifdefs ========
 env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
-# enforce positivity inside tumor forward solve
-# env.Append(CCFLAGS = ['-DPOSITIVITY'])
-
-# inversion vector p is serial, not distributed
-env.Append(CCFLAGS = ['-DSERIAL'])
-
 if env["gpu"] == True:
     env.Append(CCFLAGS = ['-DCUDA'])
 

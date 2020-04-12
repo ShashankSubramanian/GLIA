@@ -109,11 +109,9 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
 
   // === read data: generate synthetic or read real
   if (app_settings_->syn_->enabled_) {
-    int fwd_temp = params_->tu_->time_history_off_;  // temporarily disable time_history
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
     ierr = createSynthetic(); CHKERRQ(ierr);
     data_support_ = data_t1_;
-    params_->tu_->time_history_off_ = fwd_temp;  // restore mode, i.e., allow inverse solver to store time_history
   } else {
     // read in target data (t1 and/or t0); observation operator
     ierr = readData(); CHKERRQ(ierr);

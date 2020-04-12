@@ -26,8 +26,7 @@
 
  (S):
  - add l1 p relative error
- - remove computeSegmentation ffrom _Solver.cpp_ and use it from tumor class [K done]
- - add mass effect data to Parameters, config, and to the inverse solver in _Solver.cpp_
+ - @K what is the point of fwd_temp before createSynthetic()?
  - Maybe bg can be dropped if lame-coefficients are initialized with its value:  modify _ElastictiySolver.cpp_
 
 **unclear: (dropped)**
@@ -38,6 +37,7 @@
 
 ### IO
 - change dataOut to take params_ as argument and std::string instead of char*
+- why do we need writeBIN?
 ---
 
 ### PdeOperators
