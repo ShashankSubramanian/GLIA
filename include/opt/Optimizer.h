@@ -85,6 +85,8 @@ public :
   , ctx_(nullptr)
   , tao_(nullptr)
   , xrec_(nullptr)
+  , xin_(nullptr)
+  , xout_(nullptr)
   , H_(nullptr) {}
 
   virtual PetscErrorCode initialize (
@@ -97,8 +99,9 @@ public :
   virtual PetscErrorCode allocateTaoObjects();
 
   // TODO(K) implement; should contain setTaoOptionsMassEffect
-  virtual PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
+  virtual PetscErrorCode setTaoOptions();
   virtual PetscErrorCode reset(Vec p);
+  virtual PetscErrorCode resetTao();
 
   // TODO(K) implement
   virtual PetscErrorCode solve();
@@ -110,28 +113,30 @@ public :
             // std::shared_ptr<Parameters> params,
             // std::shared_ptr<Tumor> tumor, bool npchanged = false);
 
-  // setter
-  void setData (Vec d) {data_ = d;}
-  initialized() {return initialized_;}
 
-  // TODO(K) implement destructor
+  virtual PetscErrorCode setInitialGuess(Vec x_init);
+  virtual PetscErrorCode setVariableBounds();
+  PetscErrorCode setData (Vec d) {data_ = d;}
+  bool initialized() {return initialized_;}
+
+  // TODO(K) implement destructor, need to destroy vecs
   virtual ~Optimizer();
 
-  // inline PetscErrorCode evaluateGradient (Vec x, Vec dJ) {
-  //     PetscFunctionBegin; PetscErrorCode ierr = 0;
-  //     ierr = ctx_->derivative_operators_->evaluateGradient (dJ, x, data_);
-  //     PetscFunctionReturn(0);
-  // }
-  // inline PetscErrorCode evaluateObjective (Vec x, PetscReal *J) {
-  //     PetscFunctionBegin; PetscErrorCode ierr = 0;
-  //     ierr = ctx_->derivative_operators_->evaluateObjective (J, x, data_);
-  //     PetscFunctionReturn(0);
-  // }
-  // inline PetscErrorCode evaluateObjectiveAndGradient (Vec x, PetscReal *J, Vec dJ) {
-  //     PetscFunctionBegin; PetscErrorCode ierr = 0;
-  //     ierr = ctx_->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, data_);
-  //     PetscFunctionReturn(0);
-  // }
+  inline PetscErrorCode evaluateGradient (Vec x, Vec dJ) {
+      PetscFunctionBegin; PetscErrorCode ierr = 0;
+      ierr = ctx_->derivative_operators_->evaluateGradient (dJ, x, data_);
+      PetscFunctionReturn(0);
+  }
+  inline PetscErrorCode evaluateObjective (Vec x, PetscReal *J) {
+      PetscFunctionBegin; PetscErrorCode ierr = 0;
+      ierr = ctx_->derivative_operators_->evaluateObjective (J, x, data_);
+      PetscFunctionReturn(0);
+  }
+  inline PetscErrorCode evaluateObjectiveAndGradient (Vec x, PetscReal *J, Vec dJ) {
+      PetscFunctionBegin; PetscErrorCode ierr = 0;
+      ierr = ctx_->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, data_);
+      PetscFunctionReturn(0);
+  }
 
 protected:
   std::shared_ptr<CtxInv> ctx_;
@@ -141,9 +146,14 @@ protected:
   int n_inv;
   Vec data_;            // TODO(K) at the end: check if needed
   Vec xrec_;
-  // Vec xrec_rd_;      // TODO(K) we only need one
+  Vec xin_;
+  Vec xout_;
+
   Tao tao_;
   Mat H_;               // TODO(K) at the end: check if needed
 };
+
+// === non-class methods
+PetscErrorCode operatorCreateVecs(Mat A, Vec *left, Vec *right);
 
 #endif

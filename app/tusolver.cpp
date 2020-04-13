@@ -122,7 +122,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   // ### inversion scheme
   if (name == "invert_diff") {p->opt_->diffusivity_inversion_ = std::stoi(value) > 0; return;}
   if (name == "invert_reac") {p->opt_->reaction_inversion_ = std::stoi(value) > 0; return;}
-  if (name == "multilevel") {p->tu_->multilevel_ = std::stoi(value) > 0; return;}
+  if (name == "multilevel") {p->opt_->multilevel_ = std::stoi(value) > 0; p->opt_->rescale_init_cond_ = true; return;}
   if (name == "inject_solution") {a->inject_solution_ = std::stoi(value) > 0; return;}
   if (name == "pre_reacdiff_solve") {p->opt_->pre_reacdiff_solve_ = std::stoi(value) > 0; return;}
   if (name == "verbosity") {p->tu_->verbosity_ = std::stoi(value); return;}

@@ -18,11 +18,18 @@ public :
             std::shared_ptr <Tumor> tumor);
 
   virtual PetscErrorCode allocateTaoObjects();
-  virtual PetscErrorCode setTaoOptions(Tao tao, CtxInv* ctx);
+  virtual PetscErrorCode setTaoOptions();
   virtual PetscErrorCode reset(Vec p);
   virtual PetscErrorCode solve();
 
+  virtual PetscErrorCode setInitialGuess(Vec x_init);
+  virtual PetscErrorCode setVariableBounds();
   virtual ~MEOptimizer(); // TODO(K) implement destructor
+
+private:
+  ScalarType k_init_;
+  ScalarType rho_init_;
+  ScalarType gamma_init_;
 };
 
 #endif
@@ -31,5 +38,3 @@ public :
 // convergence
 PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr);
 PetscErrorCode checkConvergenceGradObjMassEffect (Tao tao, void *ptr);
-// misc
-PetscErrorCode operatorCreateVecsMassEffect (Mat A, Vec *left, Vec *right); // TODO(K) needed?

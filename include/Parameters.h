@@ -20,7 +20,7 @@ public:
     regularization_norm_(0),
     opttolgrad_ (1E-3),
     ftol_ (1E-3),
-    ls_minstep_ (1E-9),
+    ls_minstep_ (PETSC_MACHINE_EPSILON),
     gtolbound_ (0.8),
     grtol_ (1E-5),
     gatol_ (1E-4),
@@ -37,18 +37,22 @@ public:
     cosamp_stage_ (0),
     ls_max_func_evals(10),
     lbfgs_vectors_(10),
-    lbfgs_scale_hist(5),
-    lbfgs_scale_type("diagonal"),
+    lbfgs_scale_hist_(5),
+    lbfgs_scale_type_("diagonal"),
     lmvm_set_hessian_ (false),
     diffusivity_inversion_(true),
     reaction_inversion_(false),
     flag_reaction_inv_ (false),
     pre_reacdiff_solve_(false),
+    rescale_init_cond_(false),
+    estimate_rho_init_guess_(false),
+    multilevel_(false),
     cross_entropy_loss_(false),
     invert_mass_effect_(false),
     prune_components_(true),
     k_lb_ (1E-3),
     k_ub_ (1),
+    gamma_lb_(0),
     gamma_ub_(15),
     rho_lb_(1),
     rho_ub_(15)
@@ -73,19 +77,22 @@ public:
   int cosamp_stage_;            /// @brief indicates stage of cosamp solver for warmstart
   int ls_max_func_evals;        /// @brief maximum number of allowed ls steps per newton iteration
   int lbfgs_vectors_;           /// @brief number of vectors used in lbfgs update
-  int lbfgs_scale_hist;         /// @brief number of vectors used for initial guess of inverse hessian
-  std::string lbfgs_scale_type; /// @brief initial guess for lbfgs inverse hessian
+  int lbfgs_scale_hist_;        /// @brief number of vectors used for initial guess of inverse hessian
+  std::string lbfgs_scale_type_;/// @brief initial guess for lbfgs inverse hessian
   bool lmvm_set_hessian_;       /// @brief if true lmvm initial hessian ist set as matvec routine
   bool reset_tao_;              /// @brief if true TAO is destroyed and re-created for every new inversion solve, if not, old structures are kept.
   bool diffusivity_inversion_;  /// @brief if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
   bool reaction_inversion_;     /// @brief if true, we also invert for rho
   bool flag_reaction_inv_;      /// @brief internal flag to enable reaction/diffusion methods in InvSolver
   bool pre_reacdiff_solve_;     /// @brief if true, CoSaMp L1 inversion scheme perfroms reaction/diffusion solve before {p,k} inversion
+  bool rescale_init_cond_;      /// @brief if true, TIL is rescaled to 1
+  bool multilevel_;             /// @brief if true, INT_Omega phi(x) dx = const across levels
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
   bool invert_mass_effect_;     /// @brief if true invert for mass-effect parameters {rho,k,gamma}
   bool prune_components_;       /// @brief prunes L2 solution based on components
   ScalarType k_lb_;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
   ScalarType k_ub_;             /// @brief upper bound on kappa
+  ScalarType gamma_lb_;         /// @brief lower bound on gamma
   ScalarType gamma_ub_;         /// @brief upper bound on gamma
   ScalarType rho_lb_;           /// @brief lower bound on rho
   ScalarType rho_ub_;           /// @brief upper bound on rho
@@ -108,6 +115,15 @@ public:
     jval_(0.),
     converged_(false)
   {}
+  reset() {
+    converged_ = false;
+    nb_newton_it_ = 0;
+    nb_krylov_it_ = 0;
+    solverstatus_ = "";
+    nb_matvecs_ = 0;
+    nb_objevals_ = 0;
+    nb_gradevals_ = 0;
+  }
 
   int nb_newton_it_;            /// @brief stores the number of required Newton iterations for the last inverse tumor solve
   int nb_krylov_it_;            /// @brief stores the number of required (accumulated) Krylov iterations for the last inverse tumor solve
@@ -195,7 +211,6 @@ public:
   , exp_shift_ (10.0)                      // Parameter for positivity shift
   , penalty_ (1E-4)                        // Parameter for positivity objective function
   , beta_changed_ (false)                  // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
-  , multilevel_ (0)                        // scales INT_Omega phi(x) dx = const across levels
   , transport_mri_ (false)                 // transport T1 image
   , verbosity_ (1)                         // Print flag for optimization routines
   , write_p_checkpoint_(true)              // if true, p vector and corresponding Gaussian centers are written to file at certain checkpoints
@@ -378,7 +393,7 @@ public:
 
 struct Grid {
 public:
-  Grid (int *n, int *isize, int *osize, int *istart, int *ostart, 
+  Grid (int *n, int *isize, int *osize, int *istart, int *ostart,
         fft_plan *plan, MPI_Comm c_comm, int *c_dims) {
     memcpy (n_, n, 3 * sizeof(int));
     memcpy (c_dims_, c_dims, 2 * sizeof(int));
@@ -501,10 +516,10 @@ class Parameters {
 struct FilePaths {
   public:
     FilePaths() :
-      seg_(), wm_(), gm_(), vt_(), csf_(), 
-      p_seg_(), p_wm_(), p_gm_(), p_vt_(), p_csf_(), 
-      data_t1_(), data_t0_(), data_support_(), data_support_data_(), 
-      data_comps_(), data_comps_data_(), obs_filter_(), mri_(), 
+      seg_(), wm_(), gm_(), vt_(), csf_(),
+      p_seg_(), p_wm_(), p_gm_(), p_vt_(), p_csf_(),
+      data_t1_(), data_t0_(), data_support_(), data_support_data_(),
+      data_comps_(), data_comps_data_(), obs_filter_(), mri_(),
       velocity_x1_(), velocity_x2_(), velocity_x3_(),
       pvec_(), phi_()
     {}

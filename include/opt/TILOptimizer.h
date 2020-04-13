@@ -22,7 +22,12 @@ public :
   virtual PetscErrorCode reset(Vec p);
   virtual PetscErrorCode solve();
 
+  virtual PetscErrorCode setInitialGuess(Vec x_init);
+  virtual PetscErrorCode setVariableBounds();
   virtual ~TILOptimizer(); // TODO(K) implement destructor
+
+private:
+  ScalarType k_init_;
 };
 
 #endif

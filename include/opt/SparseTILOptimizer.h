@@ -109,6 +109,8 @@ public :
   virtual PetscErrorCode reset(Vec p);
   virtual PetscErrorCode solve();
 
+  virtual PetscErrorCode setInitialGuess(Vec x_init);
+  virtual PetscErrorCode setVariableBounds();
   virtual ~SparseTILOptimizerstd(); // TODO(K) implement destructor
 
 private:
@@ -120,5 +122,9 @@ private:
   std::shared_ptr<CtxCoSaMp> cosamp_;   // cosamp soler context
   std::shared_ptr<Optimizer> til_opt_;  // TIL optimizer
   std::shared_ptr<Optimizer> rd_opt_;   // RD optimizer
+
+private:
+  ScalarType k_init_;
+  ScalarType rho_init_;
 };
 #endif
