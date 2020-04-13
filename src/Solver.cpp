@@ -52,7 +52,8 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
   ierr = setupVec(tmp_); CHKERRQ(ierr);
   ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
   // === create p_rec vector according to unknowns inverted for
-  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
+//  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
 
   warmstart_p_ = !app_settings_->path_->pvec_.empty();
@@ -777,7 +778,8 @@ PetscErrorCode Solver::initializeGaussians() {
       ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
       p_rec_ = nullptr;
     }
-    ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
+//    ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ(ierr);
     ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
   }
 
