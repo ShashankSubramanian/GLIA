@@ -109,11 +109,9 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
 
   // === read data: generate synthetic or read real
   if (app_settings_->syn_->enabled_) {
-    int fwd_temp = params_->tu_->time_history_off_;  // temporarily disable time_history
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
     ierr = createSynthetic(); CHKERRQ(ierr);
     data_support_ = data_t1_;
-    params_->tu_->time_history_off_ = fwd_temp;  // restore mode, i.e., allow inverse solver to store time_history
   } else {
     // read in target data (t1 and/or t0); observation operator
     ierr = readData(); CHKERRQ(ierr);
@@ -759,6 +757,13 @@ PetscErrorCode Solver::initializeGaussians() {
       ss.str("");
       ss.clear();
       ierr = tumor_->phi_->setGaussians(data_support_); CHKERRQ(ierr);
+    } else if (app_settings_->syn_->enabled_) {
+      // synthetic data generation in data_t1_
+      ss << "  .. setting Gaussians with synthetic data.";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+      ierr = tumor_->phi_->setGaussians(data_t1_); CHKERRQ(ierr);
     } else {
       ss << " Error: Cannot set Gaussians: expecting user input data -support_data_path *.nc or *.txt. Exiting.";
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);

@@ -885,7 +885,7 @@ PetscErrorCode InvSolver::solve() {
   PetscScalar d_norm = 0., d_errorl2norm = 0., d_errorInfnorm = 0.;
   PetscScalar *d_ptr, *noise_ptr, *p_ptr, *w_ptr;
   TaoConvergedReason reason;
-  Vec noise;
+  Vec noise = nullptr;
 
   if (itctx_->params_->tu_->write_output_) {
     dataOut(data_, itctx_->params_, "data.nc");
@@ -4442,7 +4442,7 @@ PetscErrorCode InvSolver::setTaoOptions(Tao tao, CtxInv *ctx) {
   ierr = TaoSetFromOptions(tao); CHKERRQ(ierr);
   /* === set the KSP Krylov solver settings === */
   KSP ksp = PETSC_NULL;
-  if (itctx_->optsettings_->newton_solver_ == QUASINEWTON)  {
+  if (itctx_->params_->opt_->newton_solver_ == QUASINEWTON)  {
     // if (use_intial_hessian_lmvm_) {
     //   // get the ksp of H0 initial matrix
     //   ierr = TaoLMVMGetH0KSP(tao, &ksp);                                        CHKERRQ(ierr);
@@ -4459,7 +4459,7 @@ PetscErrorCode InvSolver::setTaoOptions(Tao tao, CtxInv *ctx) {
     if (ksp != PETSC_NULL) {
         ierr = KSPSetOptionsPrefix(ksp, "hessian_");                            CHKERRQ(ierr);
         // set default tolerance to 1E-6
-        ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx->optsettings_->krylov_maxit_); CHKERRQ(ierr);
+        ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx->params_->opt_->krylov_maxit_); CHKERRQ(ierr);
         // to use Eisenstat/Walker convergence crit.
         KSPSetPreSolve (ksp, preKrylovSolve, ctx);                              CHKERRQ(ierr);
         ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx, 0);                    CHKERRQ(ierr);

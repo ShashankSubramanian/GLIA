@@ -26,8 +26,7 @@
 
  (S):
  - add l1 p relative error
- - remove computeSegmentation ffrom _Solver.cpp_ and use it from tumor class [K done]
- - add mass effect data to Parameters, config, and to the inverse solver in _Solver.cpp_
+ - @K what is the point of fwd_temp before createSynthetic()?
  - Maybe bg can be dropped if lame-coefficients are initialized with its value:  modify _ElastictiySolver.cpp_
 
 **unclear: (dropped)**
@@ -38,6 +37,7 @@
 
 ### IO
 - change dataOut to take params_ as argument and std::string instead of char*
+- why do we need writeBIN?
 ---
 
 ### PdeOperators
@@ -97,3 +97,4 @@
 ### Invsolver
  - we need to restructure, possibly difide into several files, make a folder optimizers/ and files ReactionDiffusionInversion, MassEffectInversion, SparseTILInversion, NonSparseTILInversion?, have a superclass Optimizer for shared things?
  - use params 'ls_max_func_evals', 'lbfgs_vectors_', 'lbfgs_scale_hist', 'lbfgs_scale_type'to set petsc settings
+ - why does itctx have optsetting_ etC?

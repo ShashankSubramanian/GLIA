@@ -53,7 +53,7 @@ def write_config(set_params, run):
     p['newton_solver'] = "QN"           # GN, QN
     p['line_search'] = "armijo"         # 'armijo' : armijo conditions; 'mt' : more-thuene (wolfe conditions)
     p['ce_loss'] = 0                    # cross-entropy or L2 loss
-    p['regularization'] = "L1c"         # L2, L1c,
+    p['regularization'] = "L1"          # L2, L1
     p['beta_p'] = 1E-4                  # regularization parameter
     p['opttol_grad'] = 1E-5             # relative gradient tolerance
     p['newton_maxit'] = 50              # number of iterations for optimizer
