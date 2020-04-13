@@ -757,6 +757,13 @@ PetscErrorCode Solver::initializeGaussians() {
       ss.str("");
       ss.clear();
       ierr = tumor_->phi_->setGaussians(data_support_); CHKERRQ(ierr);
+    } else if (app_settings_->syn_->enabled_) {
+      // synthetic data generation in data_t1_
+      ss << "  .. setting Gaussians with synthetic data.";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+      ierr = tumor_->phi_->setGaussians(data_t1_); CHKERRQ(ierr);
     } else {
       ss << " Error: Cannot set Gaussians: expecting user input data -support_data_path *.nc or *.txt. Exiting.";
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
