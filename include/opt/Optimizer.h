@@ -95,29 +95,18 @@ public :
             std::shared_ptr <Parameters> params,
             std::shared_ptr <Tumor> tumor);
 
-  //TODO(K) implement, should contain allocateTaoObjectsMassEffect
-  virtual PetscErrorCode allocateTaoObjects();
+  virtual PetscErrorCode solve();
 
-  // TODO(K) implement; should contain setTaoOptionsMassEffect
+  virtual PetscErrorCode allocateTaoObjects();
   virtual PetscErrorCode setTaoOptions();
   virtual PetscErrorCode reset(Vec p);
   virtual PetscErrorCode resetTao();
-
-  // TODO(K) implement
-  virtual PetscErrorCode solve();
-  // PetscErrorCode resetTao(std::shared_ptr<Parameters> params); //TODO(K) do we need reset TAO?
-  // PetscErrorCode resetOperators (Vec p); // TODO(K) do we need this? I think cosamp needs it
-  // PetscErrorCode setParams (             // TODO(K) do we need this, I think no!
-            // std::shared_ptr<DerivativeOperators> derivative_operators,
-            // std::shared_ptr <PdeOperators> pde_operators,
-            // std::shared_ptr<Parameters> params,
-            // std::shared_ptr<Tumor> tumor, bool npchanged = false);
-
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);
   virtual PetscErrorCode setVariableBounds();
   PetscErrorCode setData (Vec d) {data_ = d;}
   bool initialized() {return initialized_;}
+  Vec getSolution() {return xout_;}
 
   // TODO(K) implement destructor, need to destroy vecs
   virtual ~Optimizer();

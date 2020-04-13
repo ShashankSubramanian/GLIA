@@ -125,6 +125,19 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   PetscFunctionReturn(ierr);
 }
 
+
+/* ------------------------------------------------------------------- */
+/*
+ RDOptimizer::solve - solves tumor inversion for rho and kappa, given c(0)
+ Input Parameters:
+ .  none (assumes that setInitialGuess(x_init) has been called)
+ Output Parameters:
+ .  none (implicitly writes solution in xrec_ and xout_ = TIL + xrec_)
+ Assumptions:
+ .  RDOptimizer::setInitialGuess(x_init) has been called, x_init sets TIL
+ .  observation operator is set
+ .  data for objective and gradient is set (InvSolver::setData(Vec d))
+ */
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode RDOptimizer::solve() {
@@ -133,9 +146,10 @@ PetscErrorCode RDOptimizer::solve() {
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-  TU_assert (initialized_, "RDOptimizer(): InvSolver needs to be initialized.")
-  TU_assert (data_ != nullptr, "RDOptimizer(): requires non-null input data for inversion.");
-  TU_assert (xrec_ != nullptr, "RDOptimizer(): requires non-null xrec_ vector to be set");
+  TU_assert (initialized_, "RDOptimizer needs to be initialized.")
+  TU_assert (data_ != nullptr, "RDOptimizer requires non-null input data for inversion.");
+  TU_assert (xrec_ != nullptr, "RDOptimizer requires non-null xrec_ vector to be set.");
+  TU_assert (xin_ != nullptr, "RDOptimizer requires non-null xin_ vector to be set.");
 
   ierr = tuMSGstd (""); CHKERRQ (ierr);
   ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
@@ -157,6 +171,11 @@ PetscErrorCode RDOptimizer::solve() {
   ierr = VecDuplicate(xin_, &ctx_->x_old); CHKERRQ(ierr);
   ierr = VecCopy(xin_, ctx_->x_old); CHKERRQ(ierr);
 
+  // set tao options
+  if (tao_reset_) {
+    tuMSGstd(" Seting tao options for RD optimizer."); CHKERRQ(ierr);
+    ierr = setTaoOptions(); CHKERRQ(ierr);
+  }
   // === initial guess
   PetscReal *xin_ptr, *xout_ptr, *x_ptr; int in_size;
   ierr = VecGetSize(xin_, &in_size); CHKERRQ(ierr);
@@ -260,7 +279,7 @@ PetscErrorCode RDOptimizer::solve() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode RDOptimizer::setVariableBounds() { // TODO(K) check if correct
+PetscErrorCode RDOptimizer::setVariableBounds() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ierr = tuMSGstd(" .. setting variable bounds for {kappa, rho}."); CHKERRQ(ierr);
