@@ -7,6 +7,7 @@
 #include "Parameters.h"
 #include "DerivativeOperators.h"
 #include "PdeOperators.h"
+#include "TaoInterface.h"
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -97,7 +98,7 @@ PetscErrorCode Optimizer::reset(Vec p) {
   ierr = ctx_->tumor_->setParams (p, ctx_->params_, true); CHKERRQ (ierr);
   // reset derivative operators, re-size vectors
   ierr = ctx_->derivative_operators_->reset(p, ctx_->pde_operators_, ctx_->params_, ctx_->tumor_); CHKERRQ(ierr);
-  if (ctx_->x_old != nullptr) {ierr = VecDestroy(&ctx_->x_old); CHKERRQ(ierr); ctx_->x_old = nullptr;}
+  if (ctx_->x_old != nullptr) {ierr = VecDestroy(&ctx_->x_old); CHKERRQ(ierr); ctx_->x_old = nullptr;} // TODO(K): destroy or nullptr?
   // ctx_->x_old = nullptr; // re-allocate memory
   ierr = resetTao(); CHKERRQ(ierr);
   PetscFunctionReturn (ierr);

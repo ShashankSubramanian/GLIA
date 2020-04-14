@@ -112,8 +112,30 @@ PetscErrorCode SparseTILOptimizer::prolongateSubspace (Vec x_full, Vec *x_restri
 PetscErrorCode SparseTILOptimizer::solve() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  std::stringstream ss;
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  TU_assert (initialized_, "MEOptimizer needs to be initialized.")
+  TU_assert (data_->dt1() != nullptr, "MEOptimizer requires non-null input data for inversion.");
+  TU_assert (xrec_ != nullptr, "MEOptimizer requires non-null xrec_ vector to be set.");
+  TU_assert (xin_ != nullptr, "MEOptimizer requires non-null xin_ vector to be set.");
 
+  std::stringstream ss;
+  ierr = tuMSGstd (""); CHKERRQ (ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+  ierr = tuMSG("###                                Sparse TIL + RD Inversion                                              ###");CHKERRQ (ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+
+  // DOFs
+  int nk = ctx_->params_->tu_->nk_;
+  int nr = ctx_->params_->tu_->nr_;
+  TU_assert(n_inv_ == nr + nk + 1, "MEOptimizer: n_inv is inconsistent.");
+
+  // TODO(K) implement
+
+  // // initial guess
+  // ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
+  //
   // ctx_->params_->opt_->estimate_rho_init_guess_ = !(ctx_->params_->opt_->multilevel_ && ctx_->params_->grid_->n_[0] > 64);
 
   PetscFunctionReturn(ierr);

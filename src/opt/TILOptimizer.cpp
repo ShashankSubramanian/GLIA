@@ -111,7 +111,7 @@ PetscErrorCode TILOptimizer::solve() {
   // DOFs
   int nk = ctx_->params_->tu_->nk_;
   int np = ctx_->params_->tu_->np_;
-  TU_assert(n_inv_ == np + nk, "TILOptimizer(): n_inv is inconsistent.");
+  TU_assert(n_inv_ == np + nk, "TILOptimizer: n_inv is inconsistent.");
 
   // initial guess
   ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
@@ -119,17 +119,24 @@ PetscErrorCode TILOptimizer::solve() {
   // initialize inverse tumor context TODO(K) check if all of those are needed
   if (ctx_->c0_old == nullptr) {
     ierr = VecDuplicate (data_->dt1(), &ctx_->c0_old); CHKERRQ(ierr);
-    ierr = VecSet (ctx_->c0_old, 0.0); CHKERRQ(ierr);
   }
+  ierr = VecSet (ctx_->c0_old, 0.0); CHKERRQ(ierr);
   if (ctx_->tmp == nullptr) {
     ierr = VecDuplicate (data_->dt1(), &ctx_->tmp); CHKERRQ(ierr);
     ierr = VecSet (ctx_->tmp, 0.0); CHKERRQ(ierr);
   }
-  if (ctx_->x_old == nullptr)  {
-    ierr = VecDuplicate (ctx_->tumor_->p_, &ctx_->x_old); CHKERRQ (ierr);
-    ierr = VecCopy (ctx_->tumor_->p_, ctx_->x_old); CHKERRQ (ierr);
+
+  // TODO(K) I've changed this from tumor_->p_ to xrec_
+  if (ctx_->x_old != nullptr) {
+    ierr = VecDestroy (&ctx_->x_old);  CHKERRQ (ierr);
+    ctx_->x_old = nullptr;
   }
-  ierr = VecSet (ctx_->c0_old, 0.0); CHKERRQ(ierr);
+  ierr = VecDuplicate(xrec_, &ctx_->x_old); CHKERRQ(ierr);
+  ierr = VecCopy(xrec_, ctx_->x_old); CHKERRQ(ierr);
+  // if (ctx_->x_old == nullptr)  {
+    // ierr = VecDuplicate (xrec_, &ctx_->x_old); CHKERRQ (ierr);
+    // ierr = VecCopy (xrec_, ctx_->x_old); CHKERRQ (ierr);
+  // }
 
   // reset feedback variables, reset data
   ctx_->update_reference_gradient_hessian_ksp = true;
@@ -144,10 +151,10 @@ PetscErrorCode TILOptimizer::solve() {
 
   // set tao options
   if (tao_reset_) {
-    // ctx_->update_reference_gradient = true;   // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
-    // ctx_->update_reference_objective = true;  // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
     tuMSGstd(" Setting tao options for TIL optimizer."); CHKERRQ(ierr);
     ierr = setTaoOptions(); CHKERRQ(ierr);
+    // ctx_->update_reference_gradient = true;   // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
+    // ctx_->update_reference_objective = true;  // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
   }
   ss << " using tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   if (ctx_->params_->tu_->verbosity_ >= 2) { ctx_->params_->tu_->outfile_sol_  << "\n ## ----- ##" << std::endl << std::flush; ctx_->params_->tu_->outfile_grad_ << "\n ## ----- ## "<< std::endl << std::flush; }
@@ -196,7 +203,6 @@ PetscErrorCode TILOptimizer::solve() {
 }
 
 
-
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode TILOptimizer::setVariableBounds() {
@@ -237,10 +243,7 @@ PetscErrorCode TILOptimizer::setTaoOptions() {
   PetscErrorCode ierr = 0;
 
   ierr = Optimizer::setTaoOptions(tao_, ctx_); CHKERRQ(ierr);
-
-
   ierr = TaoSetConvergenceTest (tao_, checkConvergenceGrad, (void *) ctx_); CHKERRQ(ierr);
-
 
   PetscFunctionReturn(ierr);
 }

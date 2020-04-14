@@ -160,7 +160,7 @@ PetscErrorCode RDOptimizer::solve() {
   int nk = ctx_->params_->tu_->nk_;
   int nr = ctx_->params_->tu_->nr_;
   int np = ctx_->params_->tu_->np_;
-  TU_assert(n_inv_ == nk + nr, "RDOptimizer(): n_inv is inconsistent.");
+  TU_assert(n_inv_ == nk + nr, "RDOptimizer: n_inv is inconsistent.");
 
   // no regularization, since only {rho, kappa} inversion
   PetscReal beta_p = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.;
@@ -168,8 +168,16 @@ PetscErrorCode RDOptimizer::solve() {
   ctx_->params_->opt_->flag_reaction_inv_ = true;
 
   // store full solution vec TODO(K) do we need this?
-  ierr = VecDuplicate(xin_, &ctx_->x_old); CHKERRQ(ierr);
-  ierr = VecCopy(xin_, ctx_->x_old); CHKERRQ(ierr);
+  // ierr = VecDuplicate(xin_, &ctx_->x_old); CHKERRQ(ierr);
+  // ierr = VecCopy(xin_, ctx_->x_old); CHKERRQ(ierr);
+
+  // TODO(K): I've changed this to have length of xrec_ (nk+nr), so cannot be used to store full solution;
+  if (ctx_->x_old != nullptr) {
+    ierr = VecDestroy (&ctx_->x_old); CHKERRQ(ierr);
+    ctx_->x_old = nullptr;
+  }
+  ierr = VecDuplicate(xrec_, &ctx_->x_old); CHKERRQ(ierr);
+  ierr = VecCopy(xrec_, ctx_->x_old); CHKERRQ(ierr);
 
   // set tao options
   if (tao_reset_) {

@@ -5,6 +5,7 @@
 #include <memory>
 #include "DerivativeOperators.h"
 #include "Parameters.h"
+#include "TaoInterface.h"
 
 
 
@@ -147,7 +148,7 @@ protected:
   Mat H_;
 };
 
-// === non-class methods
-PetscErrorCode operatorCreateVecs(Mat A, Vec *left, Vec *right);
+// // === non-class methods
+// PetscErrorCode operatorCreateVecs(Mat A, Vec *left, Vec *right);
 
 #endif
