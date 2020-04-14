@@ -628,16 +628,10 @@ PetscErrorCode readBIN(Vec *x, int size, std::string f) {
     ierr = VecDestroy(x); CHKERRQ(ierr);
     *x = nullptr;
   }
-#ifdef SERIAL
   ierr = VecCreateSeq(PETSC_COMM_SELF, size, &(*x)); CHKERRQ(ierr);
   ierr = setupVec(*x, SEQ); CHKERRQ(ierr);
   ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
-#else
-  ierr = VecCreate(PETSC_COMM_WORLD, &(*x)); CHKERRQ(ierr);
-  ierr = VecSetSizes(*x, PETSC_DECIDE, size); CHKERRQ(ierr);
-  ierr = setupVec(*x); CHKERRQ(ierr);
-  ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_READ, &viewer); CHKERRQ(ierr);
-#endif
+
   TU_assert(viewer != NULL, "could not read binary file");
   ierr = PetscViewerBinarySetFlowControl(viewer, 2); CHKERRQ(ierr);
   ierr = VecLoad(*x, viewer); CHKERRQ(ierr);
@@ -662,11 +656,7 @@ PetscErrorCode writeBIN(Vec x, std::string f) {
   PetscFunctionBegin;
   TU_assert(x != nullptr, "null pointer");
   TU_assert(!f.empty(), "filename not set");
-#ifdef SERIAL
   ierr = PetscViewerBinaryOpen(PETSC_COMM_SELF, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
-#else
-  ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, f.c_str(), FILE_MODE_WRITE, &viewer); CHKERRQ(ierr);
-#endif
   TU_assert(viewer != nullptr, "could not write binary file");
   ierr = VecView(x, viewer); CHKERRQ(ierr);
   // clean up

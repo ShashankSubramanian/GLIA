@@ -267,6 +267,7 @@ PetscErrorCode InvSolver::restrictSubspace(Vec *x_restricted, Vec x_full, std::s
   itctx->tumor_->phi_->modifyCenters(itctx->params_->tu_->support_);
   // resets the phis and other operators, x_restricted is copied into tumor->p_ and is used as init cond for
   // the L2 solver (needs to be done in every iteration, since location of basis functions updated)
+  ierr = resetOperators (*x_restricted); CHKERRQ (ierr); 
 
   PetscFunctionReturn(ierr);
 }
@@ -299,6 +300,7 @@ PetscErrorCode InvSolver::prolongateSubspace(Vec x_full, Vec *x_restricted, std:
   itctx->params_->tu_->np_ = np_full;  /* reset to full space         */
   itctx->tumor_->phi_->resetCenters(); /* reset all the basis centers */
   if (reset_operators) {
+    ierr = resetOperators (x_full); CHKERRQ (ierr);
   }
   /* destroy, size will change   */
   if (*x_restricted != nullptr) {
@@ -431,10 +433,12 @@ PetscErrorCode InvSolver::solveInverseReacDiff(Vec x_in) {
   // TODO: x_old here is used to store the full solution vector and not old guess. (Maybe change to new vector to avoid confusion?)
   // re-allocate
   ierr = VecDuplicate(x_in, &itctx_->x_old); CHKERRQ(ierr);
+  ierr = VecCopy(x_in,  itctx_->x_old); CHKERRQ (ierr);
   ierr = VecDuplicate(x_in, &xrec_); CHKERRQ(ierr);
   ierr = VecSet(xrec_, 0.0); CHKERRQ(ierr);
   ierr = TaoCreate(PETSC_COMM_SELF, &tao_); CHKERRQ(ierr);
   ierr = TaoSetType(tao_, "blmvm"); CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, x_sz, &xrec_rd_); CHKERRQ (ierr);
   ierr = setupVec(xrec_rd_, SEQ); CHKERRQ(ierr);
   ierr = VecSet(xrec_rd_, 0.); CHKERRQ(ierr);
   ierr = MatCreateShell(PETSC_COMM_SELF, np + nk, np + nk, np + nk, np + nk, (void *)itctx_.get(), &H_); CHKERRQ(ierr);
@@ -1074,6 +1078,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
           itctx_->params_->opt_->newton_maxit_ = itctx_->cosamp_->maxit_newton;
           // == solve ==
           ierr = solveInverseReacDiff(itctx_->cosamp_->x_sub); /* with current guess as init cond. */
+          ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub); CHKERRQ (ierr); 
           // == prolongate ==
           ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ(ierr);
         }
@@ -1383,6 +1388,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
       itctx_->update_reference_objective = (itctx_->cosamp_->nits < itctx_->cosamp_->inexact_nits);
       // == solve ==
       ierr = solve(); /* L2 solver    */
+      ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub); CHKERRQ (ierr); 
       ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###"); CHKERRQ(ierr);
       ierr = tuMSGstd(""); CHKERRQ(ierr);
       // print phi's to file
@@ -1483,6 +1489,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
         itctx_->cosamp_->cosamp_stage = POST_RD;
         itctx_->params_->opt_->newton_maxit_ = itctx_->cosamp_->maxit_newton;
         // == solve ==
+        ierr = solveInverseReacDiff (itctx_->cosamp_->x_sub); CHKERRQ (ierr);                             
+        ierr = VecCopy (getPrec(), itctx_->cosamp_->x_sub); CHKERRQ (ierr); 
         // update full space solution
         ierr = prolongateSubspace(itctx_->cosamp_->x_full, &itctx_->cosamp_->x_sub, itctx_, np_full); CHKERRQ(ierr);
       } else {
@@ -1549,6 +1557,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   ierr = VecDuplicate(itctx_->tumor_->p_, &x_L1_old); CHKERRQ(ierr);
   ierr = VecDuplicate(itctx_->tumor_->p_, &temp); CHKERRQ(ierr);
   ierr = VecSet(g, 0); CHKERRQ(ierr);
+  ierr = VecCopy (itctx_->tumor_->p_, x_L1); CHKERRQ (ierr);
   ierr = VecSet(x_L1_old, 0); CHKERRQ(ierr);
   ierr = VecSet(temp, 0); CHKERRQ(ierr);
 
@@ -1560,7 +1569,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
       ierr = restrictSubspace(&x_L2, x_L1, itctx_, true); CHKERRQ(ierr);
       // solve
       itctx_->cosamp_->cosamp_stage = PRE_RD;
-      ierr = solveInverseReacDiff(x_L2); /* with current guess as init cond. */
+      ierr = solveInverseReacDiff (x_L2); CHKERRQ(ierr);                                                              
+      ierr = VecCopy (getPrec(), x_L2); CHKERRQ (ierr);
       // update full space solution
       ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full); CHKERRQ(ierr);
     }
@@ -1729,7 +1739,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     }
     ierr = VecRestoreArray(x_L1, &x_L1_ptr); CHKERRQ(ierr);
     ierr = VecRestoreArray(temp, &temp_ptr); CHKERRQ(ierr);
-
+    ierr = VecCopy (x_L1, itctx_->tumor_->p_); CHKERRQ (ierr);
     // print initial guess to file
     if (itctx_->params_->tu_->write_output_) {
       ss << "c0guess_csitr-" << its << ".nc";
@@ -1751,6 +1761,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = getObjectiveAndGradient(x_L1, &J, g); CHKERRQ(ierr);
     itctx_->params_->opt_->beta_ = beta_store;
     ierr = VecNorm(x_L1, NORM_INFINITY, &norm); CHKERRQ(ierr);
+    ierr = VecAXPY (temp, -1.0, x_L1_old); CHKERRQ (ierr);                                                         
+    ierr = VecNorm (temp, NORM_INFINITY, &norm_rel); CHKERRQ (ierr);
     ierr = VecNorm(g, NORM_2, &norm_g); CHKERRQ(ierr);
     // solver status
     ierr = tuMSGstd(""); CHKERRQ(ierr);
@@ -1793,7 +1805,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
   itctx_->update_reference_gradient = true;
   itctx_->update_reference_objective = true;
   ierr = solve(); /* L2 solver    */
-
+  ierr = VecCopy (getPrec(), x_L2); CHKERRQ (ierr);
   // print vec
   if (procid == 0 && itctx_->params_->tu_->verbosity_ >= 4) {
     ierr = VecView(x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
@@ -1843,7 +1855,8 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
     ierr = restrictSubspace(&x_L2, x_L1, itctx_, true); CHKERRQ(ierr);
     // solve
     itctx_->cosamp_->cosamp_stage = POST_RD;
-    ierr = solveInverseReacDiff(x_L2); /* with current guess as init cond. */
+    ierr = solveInverseReacDiff(x_L2); CHKERRQ(ierr);
+    ierr = VecCopy (getPrec(), x_L2); CHKERRQ(ierr);
     // update full space solution
     ierr = prolongateSubspace(x_L1, &x_L2, itctx_, np_full); CHKERRQ(ierr);
   }
@@ -4420,7 +4433,6 @@ PetscErrorCode InvSolver::setTaoOptions(Tao tao, CtxInv *ctx) {
     tuMSGstd(" using line-search type: more-thuene");
   }
 
-  //}
   ierr = TaoLineSearchSetOptionsPrefix(linesearch, "tumor_"); CHKERRQ(ierr);
 
   std::stringstream s;
