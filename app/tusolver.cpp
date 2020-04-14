@@ -116,13 +116,17 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
     }
     if(value == "forward") {
       run_mode = FORWARD;
-      p->tu_->time_history_off_ = true;
+      p->tu_->time_history_off_ = true;  // @K: wont this be reset from the params?
       return;
     }
     if(value == "test-forward") {
       run_mode = TEST;
       test_case = FORWARDTEST;
-      p->tu_->time_history_off_ = true;
+      return;
+    }
+    if(value == "test-inverse") {
+      run_mode = TEST;
+      test_case = INVERSETEST;
       return;
     }
   }
