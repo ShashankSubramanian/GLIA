@@ -16,8 +16,6 @@ Optimizer::~Optimizer() {
   if(xrec_ != nullptr) VecDestroy (&xrec_);
   if(xin_  != nullptr) VecDestroy(&xin_);
   if(xout_ != nullptr) VecDestroy(&xout_);
-  // TODO(K): xrec_rd?
-  // TODO(K): data_?
 }
 
 // ### ______________________________________________________________________ ___

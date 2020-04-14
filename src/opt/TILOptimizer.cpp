@@ -98,7 +98,7 @@ PetscErrorCode TILOptimizer::solve() {
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   TU_assert (initialized_, "TILOptimizer needs to be initialized.")
-  TU_assert (data_ != nullptr, "TILOptimizer requires non-null input data for inversion.");
+  TU_assert (data_->dt1() != nullptr, "TILOptimizer requires non-null input data for inversion.");
   TU_assert (xrec_ != nullptr, "TILOptimizer requires non-null xrec_ vector to be set.");
   TU_assert (xin_ != nullptr, "TILOptimizer requires non-null xin_ vector to be set.");
 
@@ -118,11 +118,11 @@ PetscErrorCode TILOptimizer::solve() {
 
   // initialize inverse tumor context TODO(K) check if all of those are needed
   if (ctx_->c0_old == nullptr) {
-    ierr = VecDuplicate (data_, &ctx_->c0_old); CHKERRQ(ierr);
+    ierr = VecDuplicate (data_->dt1(), &ctx_->c0_old); CHKERRQ(ierr);
     ierr = VecSet (ctx_->c0_old, 0.0); CHKERRQ(ierr);
   }
   if (ctx_->tmp == nullptr) {
-    ierr = VecDuplicate (data_, &ctx_->tmp); CHKERRQ(ierr);
+    ierr = VecDuplicate (data_->dt1(), &ctx_->tmp); CHKERRQ(ierr);
     ierr = VecSet (ctx_->tmp, 0.0); CHKERRQ(ierr);
   }
   if (ctx_->x_old == nullptr)  {
@@ -135,7 +135,7 @@ PetscErrorCode TILOptimizer::solve() {
   ctx_->update_reference_gradient_hessian_ksp = true;
   ctx_->params_->tu_->statistics_.reset();
   ctx_->params_->optf_->reset();
-  ctx_->data = data_; // TODO(K) remove?
+  ctx_->data = data_;
 
   // reset tao, if we want virgin TAO for every inverse solve
   if (ctx_->params_->opt_->reset_tao_) {

@@ -104,7 +104,7 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
       ierr = ctx_->derivative_operators_->pde_operators_->solveState(0); CHKERRQ(ierr);// solve state with guess reaction and inverted diffusivity
       ierr = ctx_->tumor_->obs_->apply(ctx_->derivative_operators_->temp_, ctx_->tumor_->c_t_, 1); CHKERRQ (ierr);
       // mismatch between data and c
-      ierr = VecAXPY(ctx_->derivative_operators_->temp_, -1.0, data_); CHKERRQ (ierr); // Oc(1) - d
+      ierr = VecAXPY(ctx_->derivative_operators_->temp_, -1.0, data_->dt1()); CHKERRQ (ierr); // Oc(1) - d
       ierr = VecNorm(ctx_->derivative_operators_->temp_, NORM_2, &norm); CHKERRQ (ierr);
       if (norm < min_norm) {min_norm = norm; idx = i;}
     }
@@ -147,7 +147,7 @@ PetscErrorCode RDOptimizer::solve() {
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   TU_assert (initialized_, "RDOptimizer needs to be initialized.")
-  TU_assert (data_ != nullptr, "RDOptimizer requires non-null input data for inversion.");
+  TU_assert (data_->dt1() != nullptr, "RDOptimizer requires non-null input data for inversion.");
   TU_assert (xrec_ != nullptr, "RDOptimizer requires non-null xrec_ vector to be set.");
   TU_assert (xin_ != nullptr, "RDOptimizer requires non-null xin_ vector to be set.");
 
@@ -173,7 +173,7 @@ PetscErrorCode RDOptimizer::solve() {
 
   // set tao options
   if (tao_reset_) {
-    tuMSGstd(" Seting tao options for RD optimizer."); CHKERRQ(ierr);
+    tuMSGstd(" Setting tao options for RD optimizer."); CHKERRQ(ierr);
     ierr = setTaoOptions(); CHKERRQ(ierr);
   }
   // === initial guess
@@ -198,8 +198,7 @@ PetscErrorCode RDOptimizer::solve() {
   ctx_->update_reference_gradient_hessian_ksp = true;
   ctx_->params_->optf_->reset();
   ctx_->params_->tu_->statistics_.reset();
-
-  ctx_->data = data_; // TODO(K) remove?
+  ctx_->data = data_;
   ss << " tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   // === solve

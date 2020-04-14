@@ -91,6 +91,7 @@ class Solver {
   Vec obs_filter_;
   Vec p_rec_;
   Vec velocity_;
+  std::shared_ptr<Data> data_;
 };
 
 class ForwardSolver : public Solver {

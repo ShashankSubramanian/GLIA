@@ -81,28 +81,28 @@ class TumorSolverInterface {
   PetscErrorCode solveForward(Vec c1, Vec c0);
   PetscErrorCode solveForward(Vec c1, Vec c0, std::map<std::string, Vec>* species);
 
-  PetscErrorCode solveInverseMassEffect(ScalarType* xrec, Vec data, Vec data_gradeval = {});
+  PetscErrorCode solveInverseMassEffect(ScalarType* xrec, std::shared_ptr<Data> data);
 
   /** @brief: Solves the inverse tumor problem using Tao, given target concentration
    *
    *  @param Vec d1     - tumor inverse target data
    *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
    */
-  PetscErrorCode solveInverse(Vec prec, Vec d1, Vec d1g = {});
+  PetscErrorCode solveInverse(Vec prec, std::shared_ptr<Data> d1);
 
   /** @brief: Solves only for rho and k, given a (scaled betwenn [0,1]) c(0) initial condition
    *
    *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
    *  @param Vec d1     - tumor inverse target data
    */
-  PetscErrorCode solveInverseReacDiff(Vec prec, Vec d1, Vec d1g = {});
+  PetscErrorCode solveInverseReacDiff(Vec prec, std::shared_ptr<Data> d1);
 
   /** @brief: Solves the L1 optimization problem using compressive sampling methods
    *
    *  @param Vec p_rec, - reconstructed parameters for initial condition  c_rec = \Phi p_rec
    *  @param Vec d1     - tumor inverse target data
    */
-  PetscErrorCode solveInverseCoSaMp(Vec prec, Vec d1, Vec d1g = {});
+  PetscErrorCode solveInverseCoSaMp(Vec prec, std::shared_ptr<Data> d1);
 
   PetscErrorCode resetTaoSolver();
 
@@ -112,7 +112,7 @@ class TumorSolverInterface {
   PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec glm, Vec csf, Vec bg);
 
   /// @brief: evaluates gradient for given control variable p and data
-  PetscErrorCode computeGradient(Vec dJ, Vec p, Vec data_gradeval);
+  PetscErrorCode computeGradient(Vec dJ, std::shared_ptr<Data> d1);
 
   /** @brief: computes effect of varying/moving material properties, i.e.,
    *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt

@@ -312,7 +312,7 @@ PetscErrorCode TumorSolverInterface::solveForward(Vec c1, Vec c0, std::map<std::
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::solveInverseCoSaMp(Vec prec, Vec data, Vec data_gradeval) {
+PetscErrorCode TumorSolverInterface::solveInverseCoSaMp(Vec prec, std::shared_ptr<Data> data) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int procid, nprocs;
@@ -342,17 +342,17 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp(Vec prec, Vec data, Vec 
 
   // set target data for inversion (just sets the vector, no deep copy)
   inv_solver_->setData(data);
-  if (data_gradeval == nullptr) data_gradeval = data;
-  inv_solver_->setDataGradient(data_gradeval);
+  // if (data_gradeval == nullptr) data_gradeval = data;
+  // inv_solver_->setDataGradient(data_gradeval);
 
   // count the number of observed voxels
   if (params_->tu_->verbosity_ > 2) {
     int sum = 0, global_sum = 0;
     ScalarType *pixel_ptr;
-    ierr = VecGetArray(data, &pixel_ptr); CHKERRQ(ierr);
+    ierr = VecGetArray(data->dt1(), &pixel_ptr); CHKERRQ(ierr);
     for (int i = 0; i < params_->grid_->nl_; i++)
       if (pixel_ptr[i] > params_->tu_->obs_threshold_1_) sum++;
-    ierr = VecRestoreArray(data, &pixel_ptr); CHKERRQ(ierr);
+    ierr = VecRestoreArray(data->dt1(), &pixel_ptr); CHKERRQ(ierr);
     MPI_Reduce(&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
     ss << " number of observed voxels: " << global_sum;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
@@ -376,7 +376,7 @@ PetscErrorCode TumorSolverInterface::solveInverseCoSaMp(Vec prec, Vec data, Vec 
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::solveInverseMassEffect(ScalarType *xrec, Vec data, Vec data_gradeval) {
+PetscErrorCode TumorSolverInterface::solveInverseMassEffect(ScalarType *xrec, std::shared_ptr<Data> data) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   std::stringstream ss;
@@ -400,17 +400,17 @@ PetscErrorCode TumorSolverInterface::solveInverseMassEffect(ScalarType *xrec, Ve
 
   // set target data for inversion (just sets the vector, no deep copy)
   inv_solver_->setData(data);
-  if (data_gradeval == nullptr) data_gradeval = data;
-  inv_solver_->setDataGradient(data_gradeval);
+  // if (data_gradeval == nullptr) data_gradeval = data;
+  // inv_solver_->setDataGradient(data_gradeval);
 
   // count the number of observed voxels
   if (params_->tu_->verbosity_ > 2) {
     int sum = 0, global_sum = 0;
     ScalarType *pixel_ptr;
-    ierr = VecGetArray(data, &pixel_ptr); CHKERRQ(ierr);
+    ierr = VecGetArray(data->dt1(), &pixel_ptr); CHKERRQ(ierr);
     for (int i = 0; i < params_->grid_->nl_; i++)
       if (pixel_ptr[i] > params_->tu_->obs_threshold_1_) sum++;
-    ierr = VecRestoreArray(data, &pixel_ptr); CHKERRQ(ierr);
+    ierr = VecRestoreArray(data->dt1(), &pixel_ptr); CHKERRQ(ierr);
     MPI_Reduce(&sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, PETSC_COMM_WORLD);
     ss << " number of observed voxels: " << global_sum;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
@@ -435,7 +435,7 @@ PetscErrorCode TumorSolverInterface::solveInverseMassEffect(ScalarType *xrec, Ve
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::solveInverse(Vec prec, Vec data, Vec data_gradeval) {
+PetscErrorCode TumorSolverInterface::solveInverse(Vec prec, std::shared_ptr<Data> data) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int procid, nprocs;
@@ -473,8 +473,8 @@ PetscErrorCode TumorSolverInterface::solveInverse(Vec prec, Vec data, Vec data_g
 
   // set target data for inversion (just sets the vector, no deep copy) and solve
   inv_solver_->setData(data);
-  if (data_gradeval == nullptr) data_gradeval = data;
-  inv_solver_->setDataGradient(data_gradeval);
+  // if (data_gradeval == nullptr) data_gradeval = data;
+  // inv_solver_->setDataGradient(data_gradeval);
   ierr = inv_solver_->solve(); CHKERRQ(ierr);
   // pass the reconstructed p vector to the caller (deep copy)
   ierr = VecCopy(inv_solver_->getPrec(), prec); CHKERRQ(ierr);
@@ -490,7 +490,7 @@ PetscErrorCode TumorSolverInterface::solveInverse(Vec prec, Vec data, Vec data_g
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec data, Vec data_gradeval) {
+PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, std::shared_ptr<Data> data) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   int procid, nprocs;
@@ -527,8 +527,8 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec data, Ve
 
   // set target data for inversion (just sets the vector, no deep copy) and solve
   inv_solver_->setData(data);
-  if (data_gradeval == nullptr) data_gradeval = data;
-  inv_solver_->setDataGradient(data_gradeval);
+  // if (data_gradeval == nullptr) data_gradeval = data;
+  // inv_solver_->setDataGradient(data_gradeval);
 
   ierr = resetTaoSolver(); CHKERRQ(ierr);
   ierr = setParams(prec, nullptr); CHKERRQ(ierr);
@@ -544,8 +544,8 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec data, Ve
     ierr = tuMSG("### rho/kappa inversion with scaled L2 solution guess ###"); CHKERRQ(ierr);
     ierr = tuMSGstd("### ------------------------------------------------- ###"); CHKERRQ(ierr);
     inv_solver_->setData(data);
-    if (data_gradeval == nullptr) data_gradeval = data;
-    inv_solver_->setDataGradient(data_gradeval);
+    // if (data_gradeval == nullptr) data_gradeval = data;
+    // inv_solver_->setDataGradient(data_gradeval);
     ierr = inv_solver_->solveInverseReacDiff(prec); CHKERRQ(ierr);
     ierr = VecCopy(inv_solver_->getPrec(), prec); CHKERRQ(ierr);
   } else {
@@ -562,7 +562,7 @@ PetscErrorCode TumorSolverInterface::solveInverseReacDiff(Vec prec, Vec data, Ve
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, Vec p, Vec data_gradeval) {
+PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, std::shared_ptr<Data> p) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   if (!initialized_) {
@@ -571,7 +571,7 @@ PetscErrorCode TumorSolverInterface::computeGradient(Vec dJ, Vec p, Vec data_gra
   }
   // TODO[SETTING]: set tumor regularization weight
   // compute gradient for given data 'data_gradeval' and control variable 'p'
-  ierr = derivative_operators_->evaluateGradient(dJ, p, data_gradeval); CHKERRQ(ierr);
+  ierr = derivative_operators_->evaluateGradient(dJ, p, p); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 

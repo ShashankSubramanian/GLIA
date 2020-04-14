@@ -160,6 +160,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "obs_threshold_1") {p->tu_->obs_threshold_1_ = std::stod(value); return;}
   if (name == "obs_threshold_0") {p->tu_->obs_threshold_0_ = std::stod(value); return;}
   if (name == "obs_threshold_rel") {p->tu_->relative_obs_threshold_ = std::stoi(value) > 0; return;}
+  if (name == "two_time_points_") {p->tu_->two_time_points_ = std::stoi(value) > 0; return;}
   // ### initial condition
   if (name == "sparsity_level") {p->tu_->sparsity_level_ = std::stoi(value); return;}
   if (name == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value); return;}

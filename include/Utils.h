@@ -94,6 +94,34 @@ struct TumorStatistics {
 };
 
 
+struct Data {
+    Vec t1;
+    Vec t0;
+    bool two_snapshot;
+
+public:
+    Data() :
+    t1(nullptr),
+    t0(nullptr),
+    two_snapshot(false)
+    {}
+    void set(Vec dt1, Vec dt0){
+        t1 = dt1;
+        if (dt0 != nullptr) {
+            t0 = dt0; two_snapshot = true;
+        }
+    }
+    void setT1(Vec dt1) {
+        t1 = dt1;
+    }
+    void setT0(Vec dt0) {
+        t0 = dt0;
+        two_snapshot = true;
+    }
+    Vec dt1() {return t1;}
+    Vec dt0() {return (two_snapshot) ? t0 : nullptr;}
+};
+
 /* Encapsulates vector fields with 3 components */
 class VecField {
  public:

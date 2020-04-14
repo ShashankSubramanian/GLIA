@@ -24,7 +24,7 @@ public:
     Vec tmp;
     Vec c0_old;    // previous initial condition \Phi p^k-1
     Vec x_old;     // previous solution
-    Vec data;      // data for tumor inversion
+    std::shared_ptr<Data> data; // data for tumor inversion
 
     std::vector<std::string> convergence_message; // convergence message
 
@@ -53,18 +53,18 @@ public:
     , c0_old(nullptr)
     , x_old(nullptr)
     , data(nullptr)
-    , derivative_operators_ ()
-    , params_ ()
-    , tumor_ ()
-    , data (nullptr)
-    , convergence_message ()
+    , derivative_operators_()
+    , params_()
+    , tumor_()
+    , data(nullptr)
+    , convergence_message()
     , optctx_(nullptr)
     {}
 
     ~CtxInv () {
-        if (x_old != nullptr) { VecDestroy (&x_old); x_old = nullptr;}
-        if (c0_old != nullptr) { VecDestroy (&c0_old); c0_old = nullptr;}
-        if (tmp != nullptr) { VecDestroy (&tmp); tmp = nullptr;}
+        if (x_old  != nullptr) {VecDestroy(&x_old); x_old = nullptr;}
+        if (c0_old != nullptr) {VecDestroy(&c0_old); c0_old = nullptr;}
+        if (tmp    != nullptr) {VecDestroy(&tmp); tmp = nullptr;}
     }
 };
 
@@ -104,7 +104,12 @@ public :
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);
   virtual PetscErrorCode setVariableBounds();
-  PetscErrorCode setData (Vec d) {data_ = d;}
+
+  PetscErrorCode setData(std::shared_ptr<Data> d) {data_ = d;}
+  PetscErrorCode setData(Vec d1, Vec d0={}) {data_->set(d1, d0);}
+  PetscErrorCode setDataT1(Vec d1) {data_->setT1(d1);}
+  PetscErrorCode setDataT0(Vec d0) {data_->setT1(d0);}
+
   bool initialized() {return initialized_;}
   Vec getSolution() {return xout_;}
 
@@ -133,13 +138,13 @@ protected:
   bool tao_reset_;   // TODO(K) at the end: check if needed
 
   int n_inv;
-  Vec data_;            // TODO(K) at the end: check if needed
+  std::shared_ptr<Data> data_;
   Vec xrec_;
   Vec xin_;
   Vec xout_;
 
   Tao tao_;
-  Mat H_;               // TODO(K) at the end: check if needed
+  Mat H_;
 };
 
 // === non-class methods

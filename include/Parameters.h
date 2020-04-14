@@ -47,6 +47,7 @@ public:
     rescale_init_cond_(false),
     estimate_rho_init_guess_(false),
     multilevel_(false),
+    adv_velocity_set_(false),
     cross_entropy_loss_(false),
     invert_mass_effect_(false),
     prune_components_(true),
@@ -87,6 +88,7 @@ public:
   bool pre_reacdiff_solve_;     /// @brief if true, CoSaMp L1 inversion scheme perfroms reaction/diffusion solve before {p,k} inversion
   bool rescale_init_cond_;      /// @brief if true, TIL is rescaled to 1
   bool multilevel_;             /// @brief if true, INT_Omega phi(x) dx = const across levels
+  bool adv_velocity_set_;       /// @brief if true, velocity for explicit advection of material properties is provided
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
   bool invert_mass_effect_;     /// @brief if true invert for mass-effect parameters {rho,k,gamma}
   bool prune_components_;       /// @brief prunes L2 solution based on components

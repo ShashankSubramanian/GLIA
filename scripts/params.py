@@ -89,6 +89,7 @@ def write_config(set_params, run):
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
+    p['two_time_points_'] = 0           # 0: only data at t=1 is provided, 1: data for both t=1 and t=0 is provided
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### initial condition
     p['sparsity_level'] = 5             # target sparsity of recovered IC in sparse_til solver
@@ -231,6 +232,7 @@ def write_config(set_params, run):
         f.write("obs_threshold_1=" + str(p['obs_threshold_1']) + "\n");
         f.write("obs_threshold_0=" + str(p['obs_threshold_0']) + "\n");
         f.write("obs_threshold_rel=" + str(p['obs_threshold_rel']) + "\n");
+        f.write("two_time_points_=" + str(p['two_time_points_']) + "\n");
 
         f.write("\n");
         f.write("### initial condition" + "\n");
@@ -365,7 +367,7 @@ def submit(tu_params, run_params, submit_job = True):
             run_params['mpi_taks'] = 64
         else:
             run_params['mpi_taks'] = 1
-    
+
     run_str = write_config(tu_params, run_params)
 
     if True:

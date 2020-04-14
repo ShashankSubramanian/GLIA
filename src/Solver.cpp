@@ -27,19 +27,20 @@ Solver::Solver()
       data_support_(nullptr),
       data_comps_(nullptr),
       obs_filter_(nullptr),
-      velocity_(nullptr) {}
+      velocity_(nullptr),
+      data_(nullptr) {}
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  
+
   std::stringstream ss;
   ss << "    grid size: " << params->grid_->n_[0] << "x" << params->grid_->n_[1] << "x" << params->grid_->n_[2];
-  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); 
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str(""); ss.clear();
-  
+
   // === set parameters, initialize solver interface
   spec_ops_ = spec_ops;
   params_ = params;
@@ -111,11 +112,12 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
   if (app_settings_->syn_->enabled_) {
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
     ierr = createSynthetic(); CHKERRQ(ierr);
-    data_support_ = data_t1_;
+    data_support_ = data_->dt1();
   } else {
     // read in target data (t1 and/or t0); observation operator
     ierr = readData(); CHKERRQ(ierr);
   }
+  data_->set(data_t1_0, data_t0_);
 
   // === set observation operator
   if (custom_obs_) {
@@ -125,9 +127,9 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
     ss.str("");
     ss.clear();
   } else {
-    ierr = tumor_->obs_->setDefaultFilter(data_t1_, 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
     if (has_dt0_) {
-      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
+      ierr = tumor_->obs_->setDefaultFilter(data_->dt0(), 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
     }
     ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
@@ -140,10 +142,10 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
   }
 
   // === apply observation operator to data
-  ierr = tumor_->obs_->apply(data_t1_, data_t1_), 1; CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1(), 1); CHKERRQ(ierr);
   ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
   if (has_dt0_) {
-    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
+    ierr = tumor_->obs_->apply(data_->dt0(), data_->dt0(), 0); CHKERRQ(ierr);
   }
 
 #ifdef CUDA
@@ -249,8 +251,8 @@ PetscErrorCode Solver::finalize() {
   ierr = VecCopy(tmp_, c1_obs); CHKERRQ(ierr);
 
   // c(1): error everywhere
-  ierr = VecAXPY(tmp_, -1.0, data_t1_); CHKERRQ(ierr);
-  ierr = VecNorm(data_t1_, NORM_2, &data_norm); CHKERRQ(ierr);
+  ierr = VecAXPY(tmp_, -1.0, data_->dt1()); CHKERRQ(ierr);
+  ierr = VecNorm(data_->dt1(), NORM_2, &data_norm); CHKERRQ(ierr);
   ierr = VecNorm(tmp_, NORM_2, &error_norm); CHKERRQ(ierr);
   ss << " t=1: l2-error (everywhere): " << error_norm;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
@@ -264,7 +266,7 @@ PetscErrorCode Solver::finalize() {
 
   // c(1): error at observation points
   ierr = tumor_->obs_->apply(c1_obs, c1_obs, 1); CHKERRQ(ierr);
-  ierr = tumor_->obs_->apply(tmp_, data_t1_, 1); CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(tmp_, data_->dt1(), 1); CHKERRQ(ierr);
   ierr = VecAXPY(c1_obs, -1.0, tmp_); CHKERRQ(ierr);
   ierr = VecNorm(tmp_, NORM_2, &data_norm); CHKERRQ(ierr);
   ierr = VecNorm(c1_obs, NORM_2, &error_norm); CHKERRQ(ierr);
@@ -336,9 +338,9 @@ PetscErrorCode Solver::predict() {
       params_->tu_->dt_ = app_settings_->pred_->dt_;
       // set c(0)
       if (params_->tu_->use_c0_) {
-        ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
+        ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
       } else {
-        ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);
+        ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
       }
 
       // predict tumor growth at different (user defined) times
@@ -370,7 +372,7 @@ PetscErrorCode Solver::predict() {
         if (!app_settings_->pred_->true_data_path_[i].empty()) {
           Vec true_dat_t1;
           ScalarType obs_c_norm, obs_data_norm, data_norm;
-          ierr = VecDuplicate(data_t1_, &true_dat_t1); CHKERRQ(ierr);
+          ierr = VecDuplicate(data_->dt1(), &true_dat_t1); CHKERRQ(ierr);
           ierr = dataIn(true_dat_t1, params_, app_settings_->pred_->true_data_path_[i]); CHKERRQ(ierr);
           ierr = VecNorm(true_dat_t1, NORM_2, &data_norm); CHKERRQ(ierr);
           // error everywhere
@@ -555,10 +557,8 @@ PetscErrorCode Solver::readData() {
       ss.str("");
       ss.clear();
     }
-  } else {
-    ierr = VecSet(data_t0_, 0.); CHKERRQ(ierr);
-  }
-
+  } else {data_t0_ = nullptr;}
+  // else { ierr = VecSet(data_t0_, 0.); CHKERRQ(ierr);} K: there should be no else
   PetscFunctionReturn(ierr);
 }
 
@@ -569,20 +569,18 @@ PetscErrorCode Solver::readVelocity() {
   PetscFunctionBegin;
 
   if (!app_settings_->path_->velocity_x1_.empty()) {
-    // TODO(K) readVecFiled not implemented, copy from alzh branch
     ierr = readVecField(tumor_->velocity_.get(), app_settings_->path_->velocity_x1_, app_settings_->path_->velocity_x2_, app_settings_->path_->velocity_x3_, params_); CHKERRQ(ierr);
     ierr = tumor_->velocity_->scale(-1); CHKERRQ(ierr);
     Vec mag;
-    ierr = VecDuplicate(data_t1_, &mag); CHKERRQ(ierr);
+    ierr = VecDuplicate(data_->dt1(), &mag); CHKERRQ(ierr);
     ierr = tumor_->velocity_->computeMagnitude(mag); CHKERRQ(ierr);
     ierr = dataOut(mag, params_, "velocity_mag.nc"); CHKERRQ(ierr);
     ScalarType vnorm;
     ierr = VecNorm(mag, NORM_2, &vnorm); CHKERRQ(ierr);
     std::stringstream ss;
     ss << " Given velocity read in: norm of velocity magnitude: " << vnorm;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str("");ss.clear();
+    params_->opt_->adv_velocity_set_ = true;
     ierr = VecDestroy(&mag); CHKERRQ(ierr);
   }
   PetscFunctionReturn(ierr);
@@ -763,7 +761,7 @@ PetscErrorCode Solver::initializeGaussians() {
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
       ss.str("");
       ss.clear();
-      ierr = tumor_->phi_->setGaussians(data_t1_); CHKERRQ(ierr);
+      ierr = tumor_->phi_->setGaussians(data_->dt1()); CHKERRQ(ierr);
     } else {
       ss << " Error: Cannot set Gaussians: expecting user input data -support_data_path *.nc or *.txt. Exiting.";
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
@@ -825,7 +823,7 @@ PetscErrorCode ForwardSolver::run() {
 PetscErrorCode ForwardSolver::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  
+
   PetscFunctionReturn(ierr);
 }
 
@@ -870,7 +868,7 @@ PetscErrorCode InverseL2Solver::run() {
 
   ierr = tuMSGwarn(" Beginning Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
-  ierr = solver_interface_->solveInverse(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
+  ierr = solver_interface_->solveInverse(p_rec_, data_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -991,7 +989,7 @@ PetscErrorCode InverseL1Solver::run() {
 
   ierr = tuMSGwarn(" Beginning Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
-  ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
+  ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -1046,7 +1044,7 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
     ss.clear();
     exit(1);
   }
-  ierr = solver_interface_->solveInverseReacDiff(p_rec_, data_t1_, nullptr);
+  ierr = solver_interface_->solveInverseReacDiff(p_rec_, data_);
 
   PetscFunctionReturn(ierr);
 }
@@ -1101,13 +1099,13 @@ PetscErrorCode InverseMassEffectSolver::run() {
   PetscFunctionBegin;
 
   if (has_dt0_) {
-    ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
+    ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
   } else {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
 
   ierr = tuMSGwarn(" Beginning Mass Effect Inversion."); CHKERRQ(ierr);
-  ierr = solver_interface_->solveInverseMassEffect(&gamma_, data_t0_, nullptr);
+  // ierr = solver_interface_->solveInverseMassEffect(&TODO, data_); // TODO(K) was this time t=0 on purpose?
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
@@ -1256,7 +1254,7 @@ PetscErrorCode MultiSpeciesSolver::run() {
   PetscFunctionBegin;
 
   if (has_dt0_) {
-    ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
+    ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
   } else {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
@@ -1354,13 +1352,13 @@ PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops
 PetscErrorCode TestSuite::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  
+
   PetscFunctionReturn(ierr);
 }
 
 PetscErrorCode TestSuite::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  
+
   PetscFunctionReturn(ierr);
 }
