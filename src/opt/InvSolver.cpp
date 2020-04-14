@@ -321,17 +321,17 @@ PetscErrorCode InvSolver::solveInverseReacDiff (Vec xin_) {
     // ierr = VecRestoreArray (xin_, &xin_ptr);                                   CHKERRQ (ierr);
 
     // write out p vector after IC, k inversion (scaled)
-    ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
-    if (ctx_->cosamp_->cosamp_stage == PRE_RD) {
-        ierr = tuMSG    ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
-        ierr = tuMSGstd ("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-        if (procid == 0) { ierr = VecView (xin_, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
-        ierr = tuMSGstd ("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-        if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled-pre-l1"));}
-        ierr = tuMSGstd ("");                                                             CHKERRQ (ierr);
-        ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
-        ierr = tuMSG("###                     (PRE) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
-        ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+    // ierr = tuMSGstd ("");                                                       CHKERRQ (ierr);
+    // if (ctx_->cosamp_->cosamp_stage == PRE_RD) {
+    //     ierr = tuMSG    ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
+    //     ierr = tuMSGstd ("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
+    //     if (procid == 0) { ierr = VecView (xin_, PETSC_VIEWER_STDOUT_SELF);               CHKERRQ (ierr);}
+    //     ierr = tuMSGstd ("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
+    //     if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled-pre-l1"));}
+    //     ierr = tuMSGstd ("");                                                             CHKERRQ (ierr);
+    //     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+    //     ierr = tuMSG("###                     (PRE) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
+    //     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
     } else if (ctx_->cosamp_->cosamp_stage == POST_RD) {
         ierr = tuMSG    ("### scaled L2 sol. w/ incorrect reaction coefficient     ###"); CHKERRQ (ierr);
         ierr = tuMSGstd ("### ---------------------------------------------------- ###"); CHKERRQ (ierr);

@@ -47,10 +47,6 @@ Optimizer::initialize(
 PetscErrorCode Optimizer::allocateTaoObjects() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  if (!initialized_) {
-    ierr = tuMSGwarn("Error: Optimizer not initialized."); CHKERRQ(ierr);
-    PetscFunctionReturn(ierr);
-  }
 
   // allocate memory for xrec_ (n_inv_ is already set in the specialized function)
   ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv_, &xrec_); CHKERRQ (ierr);
@@ -84,7 +80,7 @@ PetscErrorCode Optimizer::resetTao () {
   if (H_    != nullptr) {ierr = MatDestroy (&H_);    CHKERRQ(ierr); H_    = nullptr;}
   if (xrec_ != nullptr) {ierr = VecDestroy (&xrec_); CHKERRQ(ierr); xrec_ = nullptr;}
   // allocate memory for H, x_rec and TAO
-  ierr = allocateTaoObjects (); CHKERRQ(ierr);
+  ierr = allocateTaoObjects(); CHKERRQ(ierr);
   tao_reset_ = true; // triggers setTaoOptions
   PetscFunctionReturn (ierr);
 }

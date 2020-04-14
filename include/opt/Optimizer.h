@@ -26,9 +26,7 @@ public:
     Vec c0_old;    // previous initial condition \Phi p^k-1
     Vec x_old;     // previous solution
     std::shared_ptr<Data> data; // data for tumor inversion
-
     std::vector<std::string> convergence_message; // convergence message
-
     /// @brief evalJ evalDJ, eval D2J
     std::shared_ptr<DerivativeOperators> derivative_operators_;
     /// @brief required to reset derivative_operators_
@@ -38,8 +36,7 @@ public:
     /// @brief accumulates all tumor related fields and methods
     std::shared_ptr<Tumor> tumor_;
     /// @brief context for CoSaMp L1 solver
-    void* optctx_;
-    // std::shared_ptr<CtxCoSaMp> cosamp_; // TODO(K) make void ptr data, only used for sparseTILOptimizer
+    void* cosamp_;
 
     CtxInv ()
     :
@@ -111,6 +108,8 @@ public :
   PetscErrorCode setDataT1(Vec d1) {data_->setT1(d1);}
   PetscErrorCode setDataT0(Vec d0) {data_->setT1(d0);}
 
+  PetscError updateReferenceGradient(bool b) {ctx_->update_reference_gradient = b}
+  PetscError updateReferenceObjective(bool b) {ctx_->update_reference_objective = b}
   bool initialized() {return initialized_;}
   Vec getSolution() {return xout_;}
 
@@ -133,8 +132,9 @@ public :
       PetscFunctionReturn(0);
   }
 
-protected:
   std::shared_ptr<CtxInv> ctx_;
+
+protected:
   bool initialized_;
   bool tao_reset_;   // TODO(K) at the end: check if needed
 
