@@ -60,6 +60,8 @@ class Solver {
   }
 
  protected:
+  virtual PetscErrorCode initializeOperators();
+  virtual PetscErrorCode resetOperators(Vec p, bool ninv_changed=true, bool nt_changed=false);
   virtual PetscErrorCode readAtlas();
   virtual PetscErrorCode readData();
   virtual PetscErrorCode readDiffusionFiberTensor();  // TODO(K) implement.
@@ -70,9 +72,12 @@ class Solver {
 
   std::shared_ptr<Parameters> params_;
   std::shared_ptr<ApplicationSettings> app_settings_;
-  std::shared_ptr<TumorSolverInterface> solver_interface_;
+  // std::shared_ptr<TumorSolverInterface> solver_interface_;
+  std::shared_ptr<DerivativeOperators> derivative_operators_;
+  std::shared_ptr<PdeOperators> pde_operators_;
   std::shared_ptr<SpectralOperators> spec_ops_;
   std::shared_ptr<Tumor> tumor_;
+  std::shared_ptr<Optimizer> optimizer_;
 
   bool custom_obs_;
   bool warmstart_p_;
@@ -164,7 +169,7 @@ class InverseMassEffectSolver : public Solver {
 };
 
 class MultiSpeciesSolver : public Solver {
- public:
+  public:
   MultiSpeciesSolver() : Solver() {}
 
   virtual PetscErrorCode finalize();
@@ -175,7 +180,7 @@ class MultiSpeciesSolver : public Solver {
 };
 
 class TestSuite : public Solver {
- public:
+  public:
   TestSuite() : Solver() {}
 
   virtual PetscErrorCode finalize();
