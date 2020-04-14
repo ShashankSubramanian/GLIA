@@ -6,17 +6,17 @@
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
+TestSuite::TestSuite(Test test) : Solver() {
+  testcase_ = test;
+}
+
 PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
+  std::stringstream ss;
+  ierr = tuMSGwarn(" Initializing for TestSuite."); CHKERRQ(ierr);
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-
-  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-  ierr = solver_interface_->setParams(p_rec_, nullptr);
-  ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
-  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
   PetscFunctionReturn(ierr);
 }
@@ -24,6 +24,27 @@ PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops
 PetscErrorCode TestSuite::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+
+  std::stringstream ss;
+  ierr = tuMSGwarn(" Forward simulator test."); CHKERRQ(ierr);
+
+  // simulator test
+  switch(testcase_) {
+    case DEFAULTTEST: // run all default tests: TODO
+      break;
+    case FORWARDTEST: 
+      ierr = forwardTest(); CHKERRQ(ierr);
+      break;
+    case INVERSETEST: 
+    // ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+    // ierr = solver_interface_->setParams(p_rec_, nullptr);
+    // ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
+    // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+    // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+      break;
+    default:
+      ierr = tuMSGwarn(" Invalid test. Exiting..."); CHKERRQ(ierr);
+  }
   
   PetscFunctionReturn(ierr);
 }
@@ -31,11 +52,26 @@ PetscErrorCode TestSuite::run() {
 PetscErrorCode TestSuite::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+
+  std::stringstream ss;
+  ierr = tuMSGwarn(" Test suite complete."); CHKERRQ(ierr);
   
   PetscFunctionReturn(ierr);
 }
 
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========                SIMULATOR LEVEL TESTS              ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 
+PetscErrorCode TestSuite::forwardTest() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  /* run forward solver */
+  ierr = createSynthetic(); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
 
 
 

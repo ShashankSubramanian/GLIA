@@ -16,6 +16,7 @@
 enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, TEST};
 
 RunMode run_mode = FORWARD; // global variable
+Test test_case = DEFAULTTEST; // global variable
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -115,6 +116,12 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
     }
     if(value == "forward") {
       run_mode = FORWARD;
+      p->tu_->time_history_off_ = true;
+      return;
+    }
+    if(value == "test-forward") {
+      run_mode = TEST;
+      test_case = FORWARDTEST;
       p->tu_->time_history_off_ = true;
       return;
     }
@@ -341,7 +348,7 @@ int main(int argc, char **argv) {
       solver = std::make_shared<MultiSpeciesSolver>();
       break;
     case TEST:
-      solver = std::make_shared<TestSuite>();
+      solver = std::make_shared<TestSuite>(test_case);
       break;
     default:
       ierr = tuMSGwarn("Configuration invalid: solver mode not recognized. Exiting."); CHKERRQ(ierr);
