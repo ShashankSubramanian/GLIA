@@ -572,12 +572,14 @@ PetscErrorCode Solver::createSynthetic() {
 
   // save parameters
   ScalarType rho_temp = params_->tu_->rho_, k_temp = params_->tu_->k_, dt_temp = params_->tu_->dt_;
+  ScalarType forcing_factor_temp = params_->tu_->forcing_factor_;
   int nt_temp = params_->tu_->nt_;
   // set to synthetic parameters
   params_->tu_->rho_ = app_settings_->syn_->rho_;
   params_->tu_->k_ = app_settings_->syn_->k_;
   params_->tu_->dt_ = app_settings_->syn_->dt_;
   params_->tu_->nt_ = app_settings_->syn_->nt_;
+  params_->tu_->forcing_factor_ = app_settings_->syn_->forcing_factor_;
 
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -683,6 +685,7 @@ PetscErrorCode Solver::createSynthetic() {
   params_->tu_->k_ = k_temp;
   params_->tu_->dt_ = dt_temp;
   params_->tu_->nt_ = nt_temp;
+  params_->tu_->forcing_factor_ = forcing_factor_temp;
 
   PetscFunctionReturn(ierr);
 }

@@ -13,7 +13,7 @@ class TestSuite : public Solver {
   /* Unit tests */
   /* Simulator level tests */
   PetscErrorCode forwardTest();
-  PetscErrorCode inverseTest() {}
+  PetscErrorCode inverseTest();
   /* Pdeops tests */
   PetscErrorCode pdeopsTest() {}
   /* Derivops tests */

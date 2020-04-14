@@ -30,7 +30,7 @@ PetscErrorCode TestSuite::run() {
 
   // simulator test
   switch(testcase_) {
-    case DEFAULTTEST: // run all default tests: TODO
+    case DEFAULTTEST: // run any default tests: TODO
       break;
     case FORWARDTEST: 
       ierr = forwardTest(); CHKERRQ(ierr);
@@ -64,6 +64,16 @@ PetscErrorCode TestSuite::finalize() {
 /* #### ------------------------------------------------------------------- #### */
 
 PetscErrorCode TestSuite::forwardTest() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  /* run forward solver */
+  ierr = createSynthetic(); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode TestSuite::inverseTest() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 

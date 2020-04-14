@@ -388,7 +388,7 @@ def submit(tu_params, run_params, submit_job = True):
             "#SBATCH -p " + str(run_params['queue']) + "\n" + \
             "#SBATCH -N " + str(run_params['nodes']) + "\n" + \
             "#SBATCH -n " + str(run_params['mpi_taks']) + "\n" + \
-            "#SBATCH -t 00:30:00\n" + \
+            "#SBATCH -t 02:00:00\n" + \
             "source ~/.bashrc\n" + \
             "export OMP_NUM_THREADS=1\n")
         submit_file.write(run_str)
