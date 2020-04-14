@@ -1332,37 +1332,3 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
   PetscFunctionReturn(ierr);
 }
 
-/* #### ------------------------------------------------------------------- #### */
-/* #### ========                      TestSuite                    ======== #### */
-/* #### ------------------------------------------------------------------- #### */
-
-// ### ______________________________________________________________________ ___
-// ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-
-  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-  ierr = solver_interface_->setParams(p_rec_, nullptr);
-  ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
-  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
-
-  PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode TestSuite::run() {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-  
-  PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode TestSuite::finalize() {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-  
-  PetscFunctionReturn(ierr);
-}
