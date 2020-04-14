@@ -1107,7 +1107,9 @@ PetscErrorCode InverseMassEffectSolver::run() {
   }
 
   ierr = tuMSGwarn(" Beginning Mass Effect Inversion."); CHKERRQ(ierr);
-  // ierr = solver_interface_->solveInverseMassEffect(&TODO, data_); // TODO(K) was this time t=0 on purpose?
+  ierr = optimizer_->setData(data_); CHKERRQ(ierr);        // set data before initial guess
+  ierr = optimizer_->setInitialGuess(TODO); CHKERRQ(ierr);
+  ierr = optimizer_->solve(); CHKERRQ(ierr);
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);

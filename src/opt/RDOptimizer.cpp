@@ -62,6 +62,7 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
 
   // 2. TIL given as parametrization
   } else {
+    TU_assert(in_size == np + nk + nr, "RDOptimizer::setInitialGuess: Size of input vector not correct."); CHKERRQ(ierr);
     ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk + nr, &xin_); CHKERRQ (ierr);
     ierr = setupVec (xin_, SEQ); CHKERRQ (ierr);
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
@@ -84,12 +85,12 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   // === kappa and rho init guess
   ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-  k_init_   = x_ptr[off_in + 0] = x_init[off];               // k1
+  k_init_   = x_ptr[off_in + 0] = x_init[off];               // kappa
   if (nk > 1) x_ptr[off_in + 1] = x_init[off + 1];           // k2
   if (nk > 2) x_ptr[off_in + 2] = x_init[off + 2];           // k3
-  rho_init_ = x_ptr[off_in + nk]     = x_init[off + nk];     // r1
-  if (nk > 1) x_ptr[off_in + nk + 1] = x_init[off + nk + 1]; // r2
-  if (nk > 2) x_ptr[off_in + nk + 2] = x_init[off + nk + 2]; // r3
+  rho_init_ = x_ptr[off_in + nk]     = x_init[off + nk];     // rho
+  if (nr > 1) x_ptr[off_in + nk + 1] = x_init[off + nk + 1]; // r2
+  if (nr > 2) x_ptr[off_in + nk + 2] = x_init[off + nk + 2]; // r3
   ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
 
@@ -110,8 +111,8 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
     }
     ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
     rho_init_ = x_ptr[off_in + nk] = rho_guess[idx]; // r1
-    if (nk > 1) x_ptr[off_in + nk + 1] = 0;          // r2
-    if (nk > 2) x_ptr[off_in + nk + 2] = 0;          // r3
+    if (nr > 1) x_ptr[off_in + nk + 1] = 0;          // r2
+    if (nr > 2) x_ptr[off_in + nk + 2] = 0;          // r3
     ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
     ss << "rho estimated; ";
   }
@@ -171,15 +172,11 @@ PetscErrorCode RDOptimizer::solve() {
   // ierr = VecDuplicate(xin_, &ctx_->x_old); CHKERRQ(ierr);
   // ierr = VecCopy(xin_, ctx_->x_old); CHKERRQ(ierr);
 
-  // TODO(K): I've changed this to have length of xrec_ (nk+nr), so cannot be used to store full solution;
-  if (ctx_->x_old != nullptr) {
-    ierr = VecDestroy (&ctx_->x_old); CHKERRQ(ierr);
-    ctx_->x_old = nullptr;
+  // === reset tao, (if we want virgin tao for every inverse solve)
+  if (ctx_->params_->opt_->reset_tao_) {
+      ierr = resetTao(ctx_->params_); CHKERRQ(ierr);
   }
-  ierr = VecDuplicate(xrec_, &ctx_->x_old); CHKERRQ(ierr);
-  ierr = VecCopy(xrec_, ctx_->x_old); CHKERRQ(ierr);
-
-  // set tao options
+  // === set tao options
   if (tao_reset_) {
     tuMSGstd(" Setting tao options for RD optimizer."); CHKERRQ(ierr);
     ierr = setTaoOptions(); CHKERRQ(ierr);
@@ -188,18 +185,27 @@ PetscErrorCode RDOptimizer::solve() {
   PetscReal *xin_ptr, *xout_ptr, *x_ptr; int in_size;
   ierr = VecGetSize(xin_, &in_size); CHKERRQ(ierr);
   int off = (ctx_->params_->tu_->use_c0_) ? 0 : np;
-  ierr = VecGetArray (xin_, &xin_ptr); CHKERRQ (ierr);
-  ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  ierr = VecGetArray(xin_, &xin_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(xrec_, &x_ptr); CHKERRQ(ierr);
   for(int i = 0; i < n_inv_; ++i)
     x_ptr[i] = xin_ptr[off+i];
-  ierr = VecRestoreArray(xin_, &xin_ptr); CHKERRQ (ierr);
-  ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
-  ierr = tuMSGstd (""); CHKERRQ (ierr);
-  ierr = tuMSG    ("### RD inversion: initial guess  ###"); CHKERRQ (ierr);
-  ierr = tuMSGstd ("### ---------------------------- ###"); CHKERRQ (ierr);
-  if (procid == 0) { ierr = VecView (x_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
-  ierr = tuMSGstd ("### ---------------------------- ###"); CHKERRQ (ierr);
+  ierr = VecRestoreArray(xin_, &xin_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ(ierr);
+  ierr = tuMSGstd(""); CHKERRQ (ierr);
+  ierr = tuMSG   ("### RD inversion: initial guess  ###"); CHKERRQ(ierr);
+  ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
+  if (procid == 0) { ierr = VecView (x_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
+  ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
+
+  // TODO(K): I've changed this to have length of xrec_ (nk+nr), so cannot be used to store full solution;
+  if (ctx_->x_old != nullptr) {
+    ierr = VecDestroy (&ctx_->x_old); CHKERRQ(ierr);
+    ctx_->x_old = nullptr;
+  }
+  ierr = VecDuplicate(xrec_, &ctx_->x_old); CHKERRQ(ierr);
+  ierr = VecCopy(xrec_, ctx_->x_old); CHKERRQ(ierr);
+
 
   ctx_->update_reference_gradient = true; // compute ref gradient
   // reset feedback variables, reset data
@@ -209,19 +215,21 @@ PetscErrorCode RDOptimizer::solve() {
   ctx_->data = data_;
   ss << " tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
-  // === solve
+  /* === solve === */
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
   ierr = TaoSolve (tao_); CHKERRQ(ierr);
   self_exec_time_tuninv += MPI_Wtime();
   MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
+  /* === get solution === */
   Vec sol; PetscReal xdiff;
   ierr = TaoGetSolutionVector(tao_, &sol); CHKERRQ(ierr);
   ierr = VecCopy(sol, xrec_); CHKERRQ(ierr);
 
-  // === display convergence reason and statistics
+  /* === get solution status === */
   ierr = TaoGetConvergedReason(tao_, &reason); CHKERRQ(ierr);
   ierr = TaoGetSolutionStatus(tao_, NULL, &ctx_->params_->optf_->jval_, &ctx_->params_->optf_->gradnorm_, NULL, &xdiff, NULL); CHKERRQ(ierr);
+  // display convergence reason:
   ierr = dispTaoConvReason(reason, ctx_->params_->optf_->nb_krylov_it_->solverstatus_); CHKERRQ(ierr);
   ctx_->params_->optf_->nb_newton_it_--;
   ss << " optimization done: #N-it: " << ctx_->params_->optf_->nb_newton_it_
@@ -257,12 +265,12 @@ PetscErrorCode RDOptimizer::solve() {
   ctx_->params_->tu_->rho_ = x_ptr[nk];
   ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
   PetscReal r1, r2, r3, k1, k2, k3;
-  r1 = ctx_->params_->tu_->rho_;                                                       // equals xin_ptr[np + nk]
-  r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_  : 0;  // equals xin_ptr[np + nk + 1]
-  r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ : 0;  // equals xin_ptr[np + nk + 2]
-  k1 = ctx_->params_->tu_->k_;                                                         // equals xin_ptr[np];
-  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  : 0;  // equals xin_ptr[np+1];
-  k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ : 0;  // equals xin_ptr[np+2];
+  r1 = ctx_->params_->tu_->rho_;
+  r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_  : 0;
+  r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ : 0;
+  k1 = ctx_->params_->tu_->k_;
+  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  : 0;
+  k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ : 0;
   ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
   ierr = ctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
 

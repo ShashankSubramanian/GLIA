@@ -95,7 +95,7 @@ PetscErrorCode Optimizer::reset(Vec p) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // reset tumor_ object, re-size solution vector and copy p into tumor_->p_
-  ierr = ctx_->tumor_->setParams (p, ctx_->params_, true); CHKERRQ (ierr);
+  ierr = ctx_->tumor_->setParams(p, ctx_->params_, true); CHKERRQ (ierr);
   // reset derivative operators, re-size vectors
   ierr = ctx_->derivative_operators_->reset(p, ctx_->pde_operators_, ctx_->params_, ctx_->tumor_); CHKERRQ(ierr);
   if (ctx_->x_old != nullptr) {ierr = VecDestroy(&ctx_->x_old); CHKERRQ(ierr); ctx_->x_old = nullptr;} // TODO(K): destroy or nullptr?

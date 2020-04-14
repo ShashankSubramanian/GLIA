@@ -113,22 +113,33 @@ PetscErrorCode TILOptimizer::solve() {
   int np = ctx_->params_->tu_->np_;
   TU_assert(n_inv_ == np + nk, "TILOptimizer: n_inv is inconsistent.");
 
-  // initial guess
-  ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
+  // === reset tao, (if we want virgin tao for every inverse solve)
+  if (ctx_->params_->opt_->reset_tao_) {
+      ierr = resetTao(ctx_->params_); CHKERRQ(ierr);
+  }
+  // === set tao options
+  if (tao_reset_) {
+    tuMSGstd(" Setting tao options for TIL optimizer."); CHKERRQ(ierr);
+    ierr = setTaoOptions(); CHKERRQ(ierr);
+    // ctx_->update_reference_gradient = true;   // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
+    // ctx_->update_reference_objective = true;  // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
+  }
 
-  // initialize inverse tumor context TODO(K) check if all of those are needed
+  // === initial guess
+  ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
+  ierr = TaoSetInitialVector(tao_, xrec_); CHKERRQ (ierr);
+
+  // === initialize inverse tumor context TODO(K) check if all of those are needed
   if (ctx_->c0_old == nullptr) {
-    ierr = VecDuplicate (data_->dt1(), &ctx_->c0_old); CHKERRQ(ierr);
+    ierr = VecDuplicate(data_->dt1(), &ctx_->c0_old); CHKERRQ(ierr);
   }
   ierr = VecSet (ctx_->c0_old, 0.0); CHKERRQ(ierr);
   if (ctx_->tmp == nullptr) {
-    ierr = VecDuplicate (data_->dt1(), &ctx_->tmp); CHKERRQ(ierr);
-    ierr = VecSet (ctx_->tmp, 0.0); CHKERRQ(ierr);
+    ierr = VecDuplicate(data_->dt1(), &ctx_->tmp); CHKERRQ(ierr);
+    ierr = VecSet(ctx_->tmp, 0.0); CHKERRQ(ierr);
   }
-
-  // TODO(K) I've changed this from tumor_->p_ to xrec_
-  if (ctx_->x_old != nullptr) {
-    ierr = VecDestroy (&ctx_->x_old);  CHKERRQ (ierr);
+  if (ctx_->x_old != nullptr) { // TODO(K) I've changed this from tumor_->p_ to xrec_
+    ierr = VecDestroy(&ctx_->x_old); CHKERRQ (ierr);
     ctx_->x_old = nullptr;
   }
   ierr = VecDuplicate(xrec_, &ctx_->x_old); CHKERRQ(ierr);
@@ -143,19 +154,6 @@ PetscErrorCode TILOptimizer::solve() {
   ctx_->params_->tu_->statistics_.reset();
   ctx_->params_->optf_->reset();
   ctx_->data = data_;
-
-  // reset tao, if we want virgin TAO for every inverse solve
-  if (ctx_->params_->opt_->reset_tao_) {
-      ierr = resetTao(ctx_->params_); CHKERRQ(ierr);
-  }
-
-  // set tao options
-  if (tao_reset_) {
-    tuMSGstd(" Setting tao options for TIL optimizer."); CHKERRQ(ierr);
-    ierr = setTaoOptions(); CHKERRQ(ierr);
-    // ctx_->update_reference_gradient = true;   // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
-    // ctx_->update_reference_objective = true;  // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
-  }
   ss << " using tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   if (ctx_->params_->tu_->verbosity_ >= 2) { ctx_->params_->tu_->outfile_sol_  << "\n ## ----- ##" << std::endl << std::flush; ctx_->params_->tu_->outfile_grad_ << "\n ## ----- ## "<< std::endl << std::flush; }
   //Gradient check begin
@@ -197,6 +195,50 @@ PetscErrorCode TILOptimizer::solve() {
   ctx_->params_->tu_->statistics_.reset();
   ctx_->update_reference_gradient = false;
   tao_reset_ = false;
+
+  // === populate solution to xout_
+  // * {p, gamma, rho, kappa}, if c(0) is given as parametrization
+  // * {gamma, rho, kappa} otherwise
+  ierr = VecCopy(xin_, xout_); CHKERRQ(ierr);
+  ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  ierr = VecGetArray (xout_, &xout_ptr); CHKERRQ (ierr);
+  for(int i = 0; i < n_inv_; ++i)
+    xout_ptr[off + i] = x_ptr[i];
+  ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
+  ierr = VecRestoreArray(xout_, &xout_ptr); CHKERRQ (ierr);
+  if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xout_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("me-out"));}
+
+  // === update diffusivity and reaction in coefficients
+  ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  ctx_->params_->tu_->forcing_factor_ = x_ptr[0]; // gamma
+  ctx_->params_->tu_->rho_ = x_ptr[1];            // rho
+  ctx_->params_->tu_->k_   = x_ptr[1 + nr];       // kappa
+  ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  PetscReal r1, r2, r3, k1, k2, k3;
+  r1 = ctx_->params_->tu_->rho_;
+  r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_  : 0;
+  r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ : 0;
+  k1 = ctx_->params_->tu_->k_;
+  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  : 0;
+  k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ : 0;
+  ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
+  ierr = ctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
+
+  ierr = tuMSG("### ------------------------------------- gamma/rho/kappa solver end ------------------------------------ ###");CHKERRQ (ierr);
+  ierr = tuMSGstd (""); CHKERRQ (ierr);
+  ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
+  ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+  ierr = tuMSG    ("### estimated forcing factor:                         ###"); CHKERRQ (ierr);
+  ss << "    gamma: "<< ctx_->params_->tu_->forcing_factor_;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ierr = tuMSG    ("### estimated reaction coefficients:                  ###"); CHKERRQ (ierr);
+  ss << "    r1: "<< r1 << ", r2: " << r2 << ", r3: "<< r3;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ierr = tuMSG    ("### estimated diffusion coefficients:                 ###"); CHKERRQ (ierr);
+  ss << "    k1: "<< k1 << ", k2: " << k2 << ", k3: "<< k3;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+
   // cleanup
   if (ctx_->x_old != nullptr) {ierr = VecDestroy (&ctx_->x_old);  CHKERRQ (ierr); ctx_->x_old = nullptr;}
   PetscFunctionReturn(ierr);
