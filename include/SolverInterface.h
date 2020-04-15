@@ -46,7 +46,6 @@ class SolverInterface {
   virtual PetscErrorCode initializeOperators();
   virtual PetscErrorCode resetOperators(Vec p, bool ninv_changed=true, bool nt_changed=false);
   virtual PetscErrorCode createSynthetic();
-  virtual PetscErrorCode initializeGaussians();
 
   PetscErrorCode setupData();
   PetscErrorCode readAtlas();
@@ -54,6 +53,7 @@ class SolverInterface {
   PetscErrorCode readVelocity();
   PetscErrorCode readDiffusionFiberTensor();  // TODO(K) implement.
   PetscErrorCode predict();
+  PetscErrorCode initializeGaussians();
   PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg);
 
   std::shared_ptr<Parameters> params_;
