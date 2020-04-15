@@ -23,7 +23,7 @@ sourcesAllNoMainGPU = [
     sourcesPGLISTR,
     sourcesTHIRDPARTY,
     Glob('src/*.cu'),
-    Glob('src/Cuda/*.cu')
+    Glob('src/cuda/*.cu')
 ]
 
 sourcesAll = [
