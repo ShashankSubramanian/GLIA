@@ -3,13 +3,11 @@
 
 ### All files
  - (S) Format to tab-width 2, CHKERRQ(ierr) to one space after ";" and general \(\) formating
- - (K) add time point to observation operator
 
 
 ### External functionality:
  - we need to discuss how to handle this. SIBIA is not compatible with current code anyways. I think, if used, sibia has to be restructured, and fittet to new tumor code. That said, some of the legacy functinality should be dropped (which is clearly
    outdated and only supported bc of SIBIA) but I think not all of it should be deleted. This is my suggestion:
- - delete old L1 solver and all related functions: agreed and done.
  - keep modified objective, keep functions which compute moving-atlas contributions, but maybe move them into one combined file: agreed. will be done after opt/ is complete
  ---
 
@@ -26,7 +24,7 @@
 
  (S):
  - add l1 p relative error
- - @K what is the point of fwd_temp before createSynthetic()?
+ - @K what is the point of fwd_temp before createSynthetic()? that was exactly like this in inverse.cpp, but I think it can be removed.
  - Maybe bg can be dropped if lame-coefficients are initialized with its value:  modify _ElastictiySolver.cpp_
 
 **unclear: (dropped)**
@@ -37,7 +35,7 @@
 
 ### IO
 - change dataOut to take params_ as argument and std::string instead of char*
-- why do we need writeBIN?
+- why do we need writeBIN? we don't need it anymore.
 ---
 
 ### PdeOperators
@@ -48,7 +46,7 @@
 --- 
 ### DiffSolver, ElasticitySolver, AdvectionSolver
 - (S) Rename DiffSolver to DiffusionSolver for consistency. ok
-- move all pde solvers to new folder pde_Solvers
+- move all pde solvers to new folder pde/
 
 --- 
 ### SpectralOperators
