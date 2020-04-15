@@ -56,17 +56,24 @@ struct CtxCoSaMp {
     , x_sub(nullptr)
     {}
 
-    PetscErrorCode initialize(Vec p) {
+    PetscErrorCode initialize(Vec xin, int vec_length) {
         PetscFunctionBegin;
         PetscErrorCode ierr = 0;
-        ierr = VecDuplicate (p, &g);            CHKERRQ (ierr);
-        ierr = VecDuplicate (p, &x_full);       CHKERRQ (ierr);
-        ierr = VecDuplicate (p, &x_full_prev);  CHKERRQ (ierr);
-        ierr = VecDuplicate (p, &work);         CHKERRQ (ierr);
+        ierr = VecCreateSeq (PETSC_COMM_SELF, vec_length, &x_full); CHKERRQ (ierr);
+        ierr = setupVec (x_full, SEQ); CHKERRQ (ierr);
+        ierr = VecDuplicate (x_full, &g);            CHKERRQ (ierr);
+        ierr = VecDuplicate (x_full, &x_full_prev);  CHKERRQ (ierr);
+        ierr = VecDuplicate (x_full, &work);         CHKERRQ (ierr);
         ierr = VecSet       (g, 0.0);           CHKERRQ (ierr);
         ierr = VecSet       (x_full_prev, 0.0); CHKERRQ (ierr);
         ierr = VecSet       (work, 0.0);        CHKERRQ (ierr);
-        ierr = VecCopy      (p, x_full);        CHKERRQ (ierr);
+        ScalarType *xin_ptr, *x_ptr;
+        ierr = VecGetArray(xin, &xin_ptr); CHKERRQ(ierr);
+        ierr = VecGetArray(x_full, &x_ptr); CHKERRQ(ierr);
+        for(int i = 0; i < vec_length; ++i)
+          x_ptr[i] = xin_ptr[i]; // copy p and nk
+        ierr = VecRestoreArray(xin, &xin_ptr); CHKERRQ(ierr);
+        ierr = VecRestoreArray(x_full, &x_ptr); CHKERRQ(ierr);
         initialized = true;
         PetscFunctionReturn(ierr);
     }
@@ -115,6 +122,7 @@ public :
 
 private:
   // local methods
+  PetscErrorCode solve_rs(bool rs); // restart version of solve for incomplete solves
   PetscErrorCode restrictSubspace (Vec *x_restricted, Vec x_full, std::shared_ptr<CtxInv> itctx, bool create_rho_dofs);
   PetscErrorCode prolongateSubspace (Vec x_full, Vec *x_restricted, std::shared_ptr<CtxInv> itctx, int np_full, bool reset_operators);
   PetscErrorCode cosampMonitor(int its, PetscReal J, PetscReal J_rel, PetscReal g_norm, PetscReal p_rel_norm, Vec x_L1);

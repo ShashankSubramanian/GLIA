@@ -256,9 +256,9 @@ PetscErrorCode SparseTILOptimizer::solve() {
       ierr = tuMSGstd(""); CHKERRQ (ierr);
       ierr = tuMSG   ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-      if (procid == 0) { ierr = VecView (xin_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+      if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-      if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled-pre-l1"));}
+      if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled-pre-l1"));}
       ierr = tuMSGstd(""); CHKERRQ (ierr);
       ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
       ierr = tuMSG("###                     (PRE) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
@@ -271,20 +271,18 @@ PetscErrorCode SparseTILOptimizer::solve() {
     }
   }
 
-  // TODO(K): initial guess is set above, can be removed
-  /* //set initial guess for k_inv (possibly != zero)
-  ierr = VecGetArray(x_L1, &x_L1_ptr); CHKERRQ (ierr);
-  if(ctx_->params_->opt_->diffusivity_inversion_) {
-    x_L1_ptr[np_full] = ctx_->params_->tu_->k_;
-  ierr = VecRestoreArray(x_L1, &x_L1_ptr); CHKERRQ (ierr);
-  ierr = VecCopy        (x_L1, x_L1_old); CHKERRQ (ierr);
-  */
-
   /* ------------------------------------------------------------------------ */
   // === (1) L1 CoSaMp solver ===
   // if no inversion for kappa, set coefficients  -- this will not change during the solve
   if(!ctx_->params_->opt_->diffusivity_inversion_) {
     ierr = ctx_->tumor_->k_->setValues (ctx_->params_->tu_->k_, ctx_->params_->tu_->k_gm_wm_ratio_, ctx_->params_->tu_->k_glm_wm_ratio_, ctx_->tumor_->mat_prop_, ctx_->params_);  CHKERRQ (ierr);
+  } else {
+    //set initial guess for k_inv (possibly != zero)
+    ierr = VecGetArray(x_L1, &x_L1_ptr); CHKERRQ (ierr);
+    if(ctx_->params_->opt_->diffusivity_inversion_)
+      x_L1_ptr[np_full] = ctx_->params_->tu_->k_;
+    ierr = VecRestoreArray(x_L1, &x_L1_ptr); CHKERRQ (ierr);
+    ierr = VecCopy        (x_L1, x_L1_old); CHKERRQ (ierr);
   }
   // compute reference value for  objective
   // set beta to zero for gradient thresholding
@@ -367,7 +365,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
       ierr = VecAXPY (all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);
     }
     ss << "phiSupport_csitr-" << its << ".nc";
-    if (ctx_->params_->tu_->write_output__) dataOut (all_phis, ctx_->params_, ss.str().c_str()); ss.str(""); ss.clear();
+    if (ctx_->params_->tu_->write_output_) dataOut (all_phis, ctx_->params_, ss.str().c_str()); ss.str(""); ss.clear();
     if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
     // print vec
     if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) {
@@ -414,7 +412,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = VecRestoreArray (temp, &temp_ptr); CHKERRQ (ierr);
     ierr = VecCopy (x_L1, ctx_->tumor_->p_); CHKERRQ (ierr); // copy initial guess for p
     // print initial guess to file
-    if (ctx_->params_->tu_->write_output__) {
+    if (ctx_->params_->tu_->write_output_) {
       ss << "c0guess_csitr-" << its << ".nc";  dataOut (ctx_->tumor_->c_0_, ctx_->params_, ss.str().c_str()); ss.str(std::string()); ss.clear();
       ss << "c1guess_csitr-" << its << ".nc"; if (ctx_->params_->tu_->verbosity_ >= 4) dataOut (ctx_->tumor_->c_t_, ctx_->params_, ss.str().c_str()); ss.str(std::string()); ss.clear();
     }
@@ -500,9 +498,9 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = tuMSGstd(""); CHKERRQ (ierr);
     ierr = tuMSG   ("### scaled L2 sol. w/ incorrect reaction coefficient     ###"); CHKERRQ (ierr);
     ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-    if (procid == 0) { ierr = VecView (xin_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
     ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled"));}
+    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled"));}
     ierr = tuMSGstd(""); CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
     ierr = tuMSG("###                    (POST) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
@@ -524,7 +522,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     x_ptr[np_full + nk] = ctx_->params_->tu_->rho_;  // copy rho
   ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(x_L1, &x_L1_ptr); CHKERRQ(ierr);
-  ierr = VecCopy (xrec_, xout_); CHKERRQ (ierr);
+  ierr = VecCopy(xrec_, xout_); CHKERRQ (ierr);
 
   // clean-up
   if (g != nullptr) {ierr = VecDestroy(&g); CHKERRQ (ierr); g = nullptr; }
@@ -533,6 +531,419 @@ PetscErrorCode SparseTILOptimizer::solve() {
   if (temp != nullptr) {ierr = VecDestroy(&temp); CHKERRQ (ierr); temp = nullptr;}
 
   PetscFunctionReturn(ierr);
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SparseTILOptimizer::solve_rs() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+  TU_assert (initialized_, "MEOptimizer needs to be initialized.")
+  TU_assert (data_->dt1() != nullptr, "MEOptimizer requires non-null input data for inversion.");
+  TU_assert (xrec_ != nullptr, "MEOptimizer requires non-null xrec_ vector to be set.");
+  TU_assert (xin_ != nullptr, "MEOptimizer requires non-null xin_ vector to be set.");
+
+  std::stringstream ss;
+  ierr = tuMSGstd (""); CHKERRQ (ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+  ierr = tuMSG("###                                Sparse TIL + RD Inversion                                              ###");CHKERRQ (ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+
+  std::vector<int> idx;        // idx list of support after thresholding
+  PetscReal *x_full_ptr, *x_work_ptr, *grad_ptr;
+  PetscReal beta_store, norm_rel, norm;
+  int nnz = 0;
+  bool conv_maxit = false;
+  bool finalize = false, contiterating = true;
+  Vec all_phis;
+
+  // abbrev
+  int np_full = ctx_->cosamp_->np_full;
+
+  ierr = tuMSG(" >> entering inverse CoSaMp"); CHKERRQ(ierr);
+  switch(ctx_->cosamp_->cosamp_stage) {
+    // ================
+    case INIT: {
+      ierr = tuMSG(" >> entering stage INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
+      ctx->params_->tu_->k_ = k_init_;     // set in setInitialGuess, used in restrictSubspace
+      ctx->params_->tu_->rho_ = rho_init_;
+      ctx_->cosamp_->np_full = ctx_->params_->tu_->np_; // store np of unrestricted ansatz space
+      np_full = ctx_->cosamp_->np_full;
+      ctx_->cosamp_->converged_l1 = false;
+      ctx_->cosamp_->converged_l2 = false;
+      ctx_->cosamp_->f_tol = 1E-5;
+      ierr = ctx_->cosamp_->cleanup(); CHKERRQ (ierr);
+      /* allocate vecs and copy initial guess for p */
+      ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
+      ierr = ctx_->cosamp_->initialize(xrec_, np_full + ctx_->params_->get_nk()); CHKERRQ (ierr);
+      // no break; go into next case
+      ctx_->cosamp_->cosamp_stage = PRE_RD;
+      // defines whether or not initial guess for rho should be estimated or taken from input
+      ctx_->params_->opt_->estimate_rho_init_guess_ = !(ctx_->params_->opt_->multilevel_ && ctx_->params_->grid_->n_[0] > 64);
+      ierr = tuMSG(" << leaving stage INIT"); CHKERRQ(ierr);
+    }
+    // ================
+    // this case is executed at once without going back to caller in between
+    case PRE_RD: {
+        /* ------------------------------------------------------------------------ */
+        // ### (0) (pre-)reaction/diffusion inversion ###
+        ierr = tuMSG(" >> entering stage PRE_RD"); CHKERRQ(ierr);
+        if (ctx_->params_->opt_->pre_reacdiff_solve_ && ctx_->params_->grid_->n_[0] > 64) {
+          if (ctx_->params_->opt_->reaction_inversion_) {
+            // == restrict == to new L2 subspace, holding p_i, kappa, and rho
+            ierr = restrictSubspace(&ctx_->cosamp_->x_sub, ctx_->cosamp_->x_full, ctx_, true); CHKERRQ (ierr); // x_sub <-- R(x_full)
+            ctx_->cosamp_->cosamp_stage = PRE_RD;
+            ctx_->params_->opt_->newton_maxit_ = ctx_->cosamp_->maxit_newton;
+            // == solve ==
+            ierr = rd_opt_->setData(data_); CHKERRQ(ierr);
+            ierr = rd_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ (ierr); // with current guess as init cond.
+            ierr = rd_opt_->solve(); CHKERRQ (ierr);
+            ierr = VecCopy(rd_opt_->getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr); // get solution (length: np_r + nk + nr)
+            // == prolongate ==
+            ierr = prolongateSubspace(ctx_->cosamp_->x_full, &ctx_->cosamp_->x_sub, ctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
+          }
+      } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr);}
+        // no break; go into next case
+        ctx_->cosamp_->cosamp_stage = COSAMP_L1_INIT;
+        ierr = tuMSG(" << leaving stage PRE_RD"); CHKERRQ(ierr);
+      }
+    // ================
+    // setting up L1-pahse, computing reference gradeint, and print statistics
+    case COSAMP_L1_INIT: {
+        ierr = tuMSG(" >> entering stage COSAMP_L1_INIT"); CHKERRQ(ierr);
+        // set initial guess for k_inv (possibly != zero)
+        ierr = VecGetArray(ctx_->cosamp_->x_full, &x_full_ptr); CHKERRQ (ierr);
+        if (ctx_->params_->opt_->diffusivity_inversion_) x_full_ptr[np_full] = ctx_->params_->tu_->k_;
+        else { // set diff ops with this guess -- this will not change during the solve
+          ierr = ctx_->tumor_->k_->setValues (ctx_->params_->tu_->k_, ctx_->params_->tu_->k_gm_wm_ratio_, ctx_->params_->tu_->k_glm_wm_ratio_, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
+        }
+        ierr = VecRestoreArray(ctx_->cosamp_->x_full, &x_full_ptr); CHKERRQ (ierr);
+        ierr = VecCopy        (ctx_->cosamp_->x_full, ctx_->cosamp_->x_full_prev); CHKERRQ (ierr);
+
+        // compute reference value for  objective
+        beta_store = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
+        ierr = evaluateObjectiveAndGradient(ctx_->cosamp_->x_full, &ctx_->cosamp_->J_ref, ctx_->cosamp_->g); CHKERRQ (ierr); // length: np_full + nk
+        ctx_->params_->opt_->beta_ = beta_store;
+        ierr = VecNorm (ctx_->cosamp_->g, NORM_2, &ctx_->cosamp_->g_norm); CHKERRQ (ierr);
+        ctx_->cosamp_->J = ctx_->cosamp_->J_ref;
+
+        // print statistics
+        ierr = cosampMonitor(ctx_->cosamp_->its_l1, ctx_->cosamp_->J_ref, 1, ctx_->cosamp_->g_norm, 1, ctx_->cosamp_->x_full); CHKERRQ(ierr);
+        // number of connected components
+        ctx_->tumor_->phi_->num_components_ = ctx_->tumor_->phi_->component_weights_.size ();
+        // output warmstart (injection) support
+        ss << "starting CoSaMP solver with initial support: ["; for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++) ss << ctx_->params_->tu_->support_[i] << " "; ss << "]"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << "component label of initial support : [";         for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++) ss << ctx_->tumor_->phi_->gaussian_labels_[ctx_->params_->tu_->support_[i]] << " "; ss << "]"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+        // no break; go into next case
+        ctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_GRAD;
+        ierr = tuMSG(" << leaving stage COSAMP_L1_INIT"); CHKERRQ(ierr);
+      }
+    // ================
+    // thresholding the gradient, restrict subspace
+    case COSAMP_L1_THRES_GRAD: {
+        ierr = tuMSG(" >> entering stage COSAMP_L1_THRES_GRAD"); CHKERRQ(ierr);
+        ctx_->cosamp_->its_l1++;
+        /* === hard threshold abs gradient === */
+        ierr = VecCopy(ctx_->cosamp_->g, ctx_->cosamp_->work); CHKERRQ (ierr);
+        ierr = VecAbs(ctx_->cosamp_->work); CHKERRQ (ierr);
+        // print gradient to file
+        if (ctx_->params_->tu_->verbosity_ >= 2) {
+          ierr = VecGetArray(ctx_->cosamp_->work, &grad_ptr); CHKERRQ(ierr);
+          for (int i = 0; i < np_full-1; i++) if(procid == 0) ctx_->params_->tu_->outfile_glob_grad_ << grad_ptr[i] << ", ";
+          if(procid == 0)                                     ctx_->params_->tu_->outfile_glob_grad_ << grad_ptr[np_full-1] << ";\n" <<std::endl;
+          ierr = VecRestoreArray(ctx_->cosamp_->work, &grad_ptr); CHKERRQ(ierr);
+        }
+        idx.clear();
+        ierr = hardThreshold(ctx_->cosamp_->work, 2 * ctx_->params_->tu_->sparsity_level_, np_full, idx, ctx_->tumor_->phi_->gaussian_labels_, ctx_->tumor_->phi_->component_weights_, nnz, ctx_->tumor_->phi_->num_components_); CHKERRQ(ierr);
+
+        /* === update support of prev. solution with new support === */
+        ctx_->params_->tu_->support_.insert (ctx_->params_->tu_->support_.end(), idx.begin(), idx.end());
+        // sort and remove duplicates
+        std::sort (ctx_->params_->tu_->support_.begin(), ctx_->params_->tu_->support_.end());
+        ctx_->params_->tu_->support_.erase (std::unique (ctx_->params_->tu_->support_.begin(), ctx_->params_->tu_->support_.end()), ctx_->params_->tu_->support_.end());
+        // print out
+        ss << "support for corrective L2 solve : ["; for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++) ss << ctx_->params_->tu_->support_[i] << " "; ss << "]"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << "component label of support : [";      for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++) ss << ctx_->tumor_->phi_->gaussian_labels_[ctx_->params_->tu_->support_[i]] << " "; ss << "]"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+        // no break; go into next case
+        ctx_->cosamp_->cosamp_stage = COSAMP_L1_SOLVE_SUBSPACE;
+        ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_GRAD"); CHKERRQ(ierr);
+      }
+    // ================
+    // this case may be executed in parts, i.e., going back to caller after inexact_nit Newton iterations
+    case COSAMP_L1_SOLVE_SUBSPACE: {
+        ierr = tuMSG(" >> entering stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr);
+        /* === corrective L2 solver === */
+        ierr = tuMSGstd (""); CHKERRQ (ierr);
+        ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+        ierr = tuMSG("###                                corrective L2 solver in restricted subspace                            ###");CHKERRQ (ierr);
+        ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+
+        // == restrict ==
+        ierr = restrictSubspace(&ctx_->cosamp_->x_sub, ctx_->cosamp_->x_full, ctx_); CHKERRQ (ierr); // x_L2 <-- R(x_L1)
+        // print vec
+        if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) {ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+
+        // solve interpolation
+        // ierr = solveInterpolation (data_);                                   CHKERRQ (ierr);
+
+        ctx_->params_->opt_->newton_maxit_ = ctx_->cosamp_->inexact_nits;
+        // only update reference gradient and referenc objective if this is the first inexact solve for this subspace, otherwise don't
+        til_opt_->updateReferenceGradient(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
+        til_opt_->updateReferenceObjective(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
+        // == solve ==
+        ierr = til_opt_->setData(data_); CHKERRQ(ierr);
+        ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
+        ierr = til_opt_->solve(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
+        ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
+        ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
+        ierr = tuMSGstd (""); CHKERRQ (ierr);
+        ierr = VecCopy (ctx_->cosamp_->x_full, ctx_->cosamp_->x_full_prev); CHKERRQ (ierr);
+        // print support
+        ierr = VecDuplicate (ctx_->tumor_->phi_->phi_vec_[0], &all_phis); CHKERRQ (ierr);
+        ierr = VecSet (all_phis, 0.); CHKERRQ (ierr);
+        for (int i = 0; i < ctx_->params_->tu_->np_; i++) {ierr = VecAXPY (all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
+        ss << "phiSupport_csitr-" << ctx_->cosamp_->its_l1 << ".nc";
+        if (ctx_->params_->tu_->write_output_) dataOut (all_phis, ctx_->params_, ss.str().c_str()); ss.str(""); ss.clear();
+        if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
+        if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) { ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+
+        // == prolongate ==
+        ierr = prolongateSubspace(ctx_->cosamp_->x_full, &ctx_->cosamp_->x_sub, ctx_, np_full); CHKERRQ (ierr); // x_L1 <-- P(x_L2)
+
+        // == convergence test ==
+        // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
+        // if(!ctx_->cosamp_->converged_l2 && !ctx_->cosamp_->converged_l2) {ctx_->cosamp_->nits += ctx_->cosamp_->inexact_nits;}
+        ctx_->cosamp_->nits += ctx_->params_->optf_->nb_newton_it_;
+        conv_maxit = ctx_->cosamp_->nits >= ctx_->cosamp_->maxit_newton;
+        // check if L2 solver converged
+        if(!ctx_->cosamp_->converged_l2 && !ctx_->cosamp_->converged_error_l2 && !conv_maxit) {
+          ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<").";
+          ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
+          ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE");
+          break;
+        } else {
+          // if L2 solver converged
+          if(ctx_->cosamp_->converged_l2)        {ss << "    ... L2 solver converged; its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+          // if L2 solver ran into ls-failure
+          if(ctx_->cosamp_->converged_error_l2)  {ss << "    ... L2 solver terminated (ls-failure); its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+          // if L2 solver hit maxit
+          if(conv_maxit)                           {ss << "    ... L2 solver terminated (maxit); its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+          ctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_SOL;
+          conv_maxit = ctx_->cosamp_->nits = 0;
+          ierr = tuMSG(" << leaving stage COSAMP_L1_SOLVE_SUBSPACE"); CHKERRQ(ierr);
+        }
+      }
+    // ================
+    // thresholding the gradient, restrict subspace
+    case COSAMP_L1_THRES_SOL: {
+        ierr = tuMSG(" >> entering stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr);
+        /* === hard threshold solution to sparsity level === */
+        idx.clear();
+        if (ctx_->params_->opt_->prune_components_) hardThreshold (ctx_->cosamp_->x_full, ctx_->params_->tu_->sparsity_level_, np_full, idx, ctx_->tumor_->phi_->gaussian_labels_, ctx_->tumor_->phi_->component_weights_, nnz, ctx_->tumor_->phi_->num_components_);
+        else                                        hardThreshold (ctx_->cosamp_->x_full, ctx_->params_->tu_->sparsity_level_, np_full, idx, nnz);
+        ctx_->params_->tu_->support_.clear();
+        ctx_->params_->tu_->support_ = idx;
+        // sort and remove duplicates
+        std::sort(ctx_->params_->tu_->support_.begin(), ctx_->params_->tu_->support_.end());
+        ctx_->params_->tu_->support_.erase (std::unique (ctx_->params_->tu_->support_.begin(), ctx_->params_->tu_->support_.end()), ctx_->params_->tu_->support_.end());
+        // print out
+        ss << "support after hard thresholding the solution : ["; for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++) ss << ctx_->params_->tu_->support_[i] << " "; ss << "]"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        ss << "component label of support : ["; for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++) ss << ctx_->tumor_->phi_->gaussian_labels_[ctx_->params_->tu_->support_[i]] << " "; ss << "]"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+
+        // set only support values in x_L1 (rest hard thresholded to zero)
+        ierr = VecCopy (ctx_->cosamp_->x_full, ctx_->cosamp_->work); CHKERRQ (ierr);
+        ierr = VecSet  (ctx_->cosamp_->x_full, 0.0); CHKERRQ (ierr);
+        ierr = VecGetArray (ctx_->cosamp_->work, &x_work_ptr); CHKERRQ (ierr);
+        ierr = VecGetArray (ctx_->cosamp_->x_full, &x_full_ptr); CHKERRQ (ierr);
+        for (int i = 0; i < ctx_->params_->tu_->support_.size(); i++)
+          x_full_ptr[ctx_->params_->tu_->support_[i]] = x_work_ptr[ctx_->params_->tu_->support_[i]];
+        if (ctx_->params_->opt_->diffusivity_inversion_) {
+          x_full_ptr[np_full] = x_work_ptr[np_full];
+          if (ctx_->params_->tu_->nk_ > 1) x_full_ptr[np_full+1] = x_work_ptr[np_full+1];
+          if (ctx_->params_->tu_->nk_ > 2) x_full_ptr[np_full+2] = x_work_ptr[np_full+2];
+        }
+        ierr = VecRestoreArray (ctx_->cosamp_->x_full, &x_full_ptr); CHKERRQ (ierr);
+        ierr = VecRestoreArray (ctx_->cosamp_->work, &x_work_ptr); CHKERRQ (ierr);
+        /* copy initial guess for p */
+        ierr = VecCopy (ctx_->cosamp_->x_full, ctx_->tumor_->p_); CHKERRQ (ierr);
+
+        // print initial guess to file
+        if (ctx_->params_->tu_->write_output_) {
+          ss << "c0guess_csitr-" << ctx_->cosamp_->its_l1 << ".nc";  dataOut (ctx_->tumor_->c_0_, ctx_->params_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+          ss << "c1guess_csitr-" << ctx_->cosamp_->its_l1 << ".nc"; if (ctx_->params_->tu_->verbosity_ >= 4) dataOut (ctx_->tumor_->c_t_, ctx_->params_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+        }
+
+        /* === convergence check === */
+        ctx_->cosamp_->J_prev = ctx_->cosamp_->J;
+        // compute objective (only mismatch term)
+        beta_store = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
+        ierr = evaluateObjectiveAndGradient(ctx_->cosamp_->x_full, &ctx_->cosamp_->J, ctx_->cosamp_->g); CHKERRQ (ierr);
+        ctx_->params_->opt_->beta_ = beta_store;
+        ierr = VecNorm (ctx_->cosamp_->x_full, NORM_INFINITY, &norm); CHKERRQ (ierr);
+        ierr = VecAXPY (ctx_->cosamp_->work, -1.0, ctx_->cosamp_->x_full_prev); CHKERRQ (ierr); /* holds x_L1 */
+        ierr = VecNorm (ctx_->cosamp_->work, NORM_INFINITY, &norm_rel); CHKERRQ (ierr); /*norm change in sol */
+        ierr = VecNorm (ctx_->cosamp_->g, NORM_2, &ctx_->cosamp_->g_norm); CHKERRQ (ierr);
+        // solver status
+        ierr = tuMSGstd (""); CHKERRQ(ierr); ierr = tuMSGstd (""); CHKERRQ(ierr);
+        ierr = tuMSGstd ("--------------------------------------------- L1 solver statistics -------------------------------------------"); CHKERRQ(ierr);
+        ierr = cosampMonitor(ctx_->cosamp_->its_l1, ctx_->cosamp_->J, PetscAbsReal (ctx_->cosamp_->J_prev - ctx_->cosamp_->J) / PetscAbsReal (1 + ctx_->cosamp_->J_ref), ctx_->cosamp_->g_norm, norm_rel / (1 + norm), ctx_->cosamp_->x_full); CHKERRQ(ierr);
+        ierr = tuMSGstd ("--------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
+        ierr = tuMSGstd (""); CHKERRQ(ierr);
+        if (ctx_->cosamp_->its_l1 >= params_->opt_->gist_maxit_) {ierr = tuMSGwarn (" L1 maxiter reached"); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
+        else if (PetscAbsReal (ctx_->cosamp_->J) < 1E-5)       {ierr = tuMSGwarn (" L1 absolute objective tolerance reached."); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
+        else if (PetscAbsReal (ctx_->cosamp_->J_prev - ctx_->cosamp_->J) < ctx_->cosamp_->f_tol * PetscAbsReal (1 + ctx_->cosamp_->J_ref)) {ierr = tuMSGwarn (" L1 relative objective tolerance reached."); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
+        else { ctx_->cosamp_->converged_l1 = false; }  // continue iterating
+
+        ierr = tuMSG(" << leaving stage COSAMP_L1_THRES_SOL"); CHKERRQ(ierr);
+        if(ctx_->cosamp_->converged_l1) {              // no break; go into next case
+          ctx_->cosamp_->cosamp_stage = FINAL_L2;
+        } else{                                          // break; continue iterating
+          ctx_->cosamp_->cosamp_stage = COSAMP_L1_THRES_GRAD; break;
+        }
+      }
+    // ================
+    // this case may be executed in parts, i.e., going back to caller after inexact_nit Newton iterations
+    case FINAL_L2: {
+        ierr = tuMSG(" >> entering stage FINAL_L2"); CHKERRQ(ierr);
+        /* === (3) if converged: corrective L2 solver === */
+        ierr = tuMSGstd (""); CHKERRQ (ierr);
+        ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+        ierr = tuMSG("###                                              final L2 solve                                           ###");CHKERRQ (ierr);
+        ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+
+        ierr = restrictSubspace(&ctx_->cosamp_->x_sub, ctx_->cosamp_->x_full, ctx_); CHKERRQ (ierr); // x_sub <-- R(x_full)
+
+        // print vec
+        if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) { ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+
+        // solve interpolation
+        // ierr = solveInterpolation (data_);                                        CHKERRQ (ierr);
+        ctx_->params_->opt_->newton_maxit_ = ctx_->cosamp_->inexact_nits;
+        // only update reference gradient and referenc objective if this is the first inexact solve for this subspace, otherwise don't
+        til_opt_->updateReferenceGradient(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
+        til_opt_->updateReferenceObjective(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
+        // == solve ==
+        ierr = til_opt_->setData(data_); CHKERRQ(ierr);
+        ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
+        ierr = til_opt_->solve(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
+        ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
+        ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
+        ierr = tuMSGstd (""); CHKERRQ (ierr);
+        // print phi's to file
+        if (ctx_->params_->tu_->write_output_) {
+          ierr = VecDuplicate(ctx_->tumor_->phi_->phi_vec_[0], &all_phis); CHKERRQ (ierr);
+          ierr = VecSet(all_phis, 0.); CHKERRQ (ierr);
+          for (int i = 0; i < ctx_->params_->tu_->np_; i++) {ierr = VecAXPY (all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);}
+          ss << "phiSupportFinal.nc";  {dataOut (all_phis, ctx_->params_, ss.str().c_str());} ss.str(std::string()); ss.clear();
+          ss << "c0FinalGuess.nc";      dataOut (ctx_->tumor_->c_0_, ctx_->params_, ss.str().c_str()); ss.str(std::string()); ss.clear();
+          ss << "c1FinalGuess.nc"; if (ctx_->params_->tu_->verbosity_ >= 4) { dataOut (ctx_->tumor_->c_t_, ctx_->params_, ss.str().c_str()); } ss.str(std::string()); ss.clear();
+          if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
+        }
+        // write out p vector after IC, k inversion (unscaled)
+        if (ctx_->params_->tu_->write_p_checkpoint_) { writeCheckpoint(ctx_->cosamp_->x_sub, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("unscaled"));}
+        if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) { ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+
+        // == convergence test ==
+        // neither gradient sufficiently small nor ls-failure (i.e., inexact_nit hit)
+        // if(!ctx_->cosamp_->converged_l2 && !ctx_->cosamp_->converged_error_l2) {ctx_->cosamp_->nits += ctx_->cosamp_->inexact_nits;}
+        ctx_->cosamp_->nits += ctx_->params_->optf_->nb_newton_it_;
+        conv_maxit = ctx_->cosamp_->nits >= ctx_->cosamp_->maxit_newton;
+
+        // == prolongate ==
+        // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
+        // if inversion for reaction disabled, also reset operators
+        finalize = !ctx_->params_->opt_->reaction_inversion_;
+        contiterating = !ctx_->cosamp_->converged_l2 && !ctx_->cosamp_->converged_error_l2 && !conv_maxit;
+        // TODO(K): not sure if this is correct; check if runtime error
+        ierr = prolongateSubspace(ctx_->cosamp_->x_full, &ctx_->cosamp_->x_sub, ctx_, np_full, (finalize || contiterating)); CHKERRQ (ierr); // x_full <-- P(x_sub)
+
+        // check if L2 solver converged
+        if(contiterating) {
+          ss << "    ... inexact solve terminated (L2 solver not converged, will be continued; its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<").";
+          ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
+          ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
+          break;
+        } else {
+          // if L2 solver converged
+          if(ctx_->cosamp_->converged_l2)        {ss << "    ... L2 solver converged; its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+          // if L2 solver ran into ls-failure
+          if(ctx_->cosamp_->converged_error_l2)  {ss << "    ... L2 solver terminated (ls-failure); its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+          // if L2 solver hit maxit
+          if(conv_maxit)                           {ss << "    ... L2 solver terminated (maxit); its "<< ctx_->cosamp_->nits <<"/"<< ctx_->cosamp_->maxit_newton <<"."; ierr = tuMSG(ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();}
+          ctx_->cosamp_->cosamp_stage = finalize ?  FINALIZE : POST_RD;
+          conv_maxit = ctx_->cosamp_->nits = 0;
+          ierr = tuMSG(" << leaving stage FINAL_L2"); CHKERRQ(ierr); ss.str(""); ss.clear();
+        }
+      }
+    // ================
+    // this case is executed at once without going back to caller in between
+    case POST_RD: {
+        ierr = tuMSG(" >> entering stage POST_RD"); CHKERRQ(ierr);
+        // === (4) reaction/diffusion inversion ===
+        if (ctx_->params_->opt_->reaction_inversion_) {
+          // restrict to new L2 subspace, holding p_i, kappa, and rho
+          ierr = restrictSubspace(&ctx_->cosamp_->x_sub, ctx_->cosamp_->x_full, ctx_, true); CHKERRQ (ierr); // x_sub <-- R(x_full)
+
+          ctx_->cosamp_->cosamp_stage = POST_RD;
+          ctx_->params_->opt_->newton_maxit_ = ctx_->cosamp_->maxit_newton;
+          // == solve ==
+          ierr = rd_opt_->setData(data_); CHKERRQ(ierr);
+          ierr = rd_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ (ierr); // with current guess as init cond.
+
+          ierr = tuMSGstd(""); CHKERRQ (ierr);
+          ierr = tuMSG   ("### scaled L2 sol. w/ incorrect reaction coefficient     ###"); CHKERRQ (ierr);
+          ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
+          if (procid == 0) { ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+          ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
+          if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(ctx_->cosamp_->x_sub, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled"));}
+          ierr = tuMSGstd(""); CHKERRQ (ierr);
+          ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+          ierr = tuMSG("###                    (POST) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
+          ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
+          ierr = rd_opt_->solve(); CHKERRQ (ierr); // solve reaction/diffusion inversion
+          ierr = VecCopy(rd_opt_->getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr); // get solution (length: np_r + nk + nr)
+          // update full space solution
+          ierr = prolongateSubspace(ctx_->cosamp_->x_full, &ctx_->cosamp_->x_sub, ctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
+        } else {ierr = tuMSGstd("    ... skipping stage, reaction diffusion disabled."); CHKERRQ(ierr);}
+
+        // break; go to finalize
+        ctx_->cosamp_->cosamp_stage = FINALIZE;
+        ierr = tuMSG(" << leaving stage POST_RD"); CHKERRQ(ierr);
+        break;
+      }
+  }
+
+  // prolongate (in case we are in a subuspace solve, we still need the solution to be prolongated)
+  // if (ctx_->cosamp_->cosamp_stage != FINALIZE) {
+      // ierr = tuMSG(" >> entering stage FINALIZE"); CHKERRQ(ierr); ss.str(""); ss.clear();
+      // ierr = prolongateSubspace(ctx_->cosamp_->x_full, &ctx_->cosamp_->x_sub, ctx_, np_full); CHKERRQ (ierr); // x_full <-- P(x_sub)
+  // }
+
+  // === populate solution to xout_
+  // TODO should be a copy but not the same length
+  // ierr = VecCopy (ctx_->cosamp_->x_full, xrec_); CHKERRQ (ierr);
+  PetscReal *x_ptr, *xout_ptr;
+  ierr = VecGetArray(xrec_, &xout_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(ctx_->cosamp_->x_full, &xout_ptr); CHKERRQ(ierr);
+  for(int i = 0; i < np_full + ctx->params_->get_nk(); ++i)
+    xout_ptr[i] = xout_ptr[i];                          // copy p and nk
+  if (ctx_->params_->opt_->reaction_inversion_)
+    xout_ptr[np_full + ctx->params_->get_nk()] = ctx_->params_->tu_->rho_;  // copy rho
+  ierr = VecRestoreArray(xrec_, &xout_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(ctx_->cosamp_->x_full, &xout_ptr); CHKERRQ(ierr);
+  ierr = VecCopy(xrec_, xout_); CHKERRQ (ierr);
+
+  // if not in restart mode, call function again
+  if (!rs_mode_active && ctx_->cosamp_->cosamp_stage != FINALIZE) {
+    solve_rs(false);
+  } else {ierr = tuMSG(" << leaving inverse CoSaMp"); CHKERRQ(ierr);}
+  PetscFunctionReturn (ierr);
 }
 
 
