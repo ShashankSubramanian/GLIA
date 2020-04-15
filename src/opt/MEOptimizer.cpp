@@ -210,17 +210,6 @@ PetscErrorCode MEOptimizer::solve() {
   /* === get solution === */
   Vec sol; ierr = TaoGetSolutionVector (tao_, &sol); CHKERRQ(ierr);
   ierr = VecCopy (sol, xrec_); CHKERRQ(ierr);
-  ierr = VecCopy (sol, xout_); CHKERRQ(ierr);
-
-  ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
-  ctx_->params_->tu_->forcing_factor_ = 1E4 * x_ptr[0]; // re-scaling parameter scales
-  ctx_->params_->tu_->rho_ = 1 * x_ptr[1];              // rho
-  ctx_->params_->tu_->k_ = 1E-2 * x_ptr[2];             // kappa
-  ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
-
-  ss << " Forcing factor at final guess = " << ctx_->params_->tu_->forcing_factor_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  ss << " Reaction at final guess       = " << ctx_->params_->tu_->rho_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-  ss << " Diffusivity at final guess    = " << ctx_->params_->tu_->k_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   /* === get termination info === */
   TaoConvergedReason reason;
@@ -229,20 +218,67 @@ PetscErrorCode MEOptimizer::solve() {
   /* === get solution status === */
   PetscScalar xdiff;
   ierr = TaoGetSolutionStatus (tao_, NULL, &ctx_->params_->optf_->jval_, &ctx_->params_->optf_->gradnorm_, NULL, &xdiff, NULL); CHKERRQ(ierr);
-  /* display convergence reason: */
+  // display convergence reason:
   ierr = dispTaoConvReason (reason, ctx_->params_->optf_->solverstatus_); CHKERRQ(ierr);
   ctx_->params_->optf_->nb_newton_it_--;
-  ss << " optimization done: #N-it: " << ctx_->params_->optf_->nb_newton_it_    << ", #K-it: " << ctx_->params_->optf_->nb_krylov_it_
-     << ", #matvec: " << ctx_->params_->optf_->nb_matvecs_    << ", #evalJ: " << ctx_->params_->optf_->nb_objevals_
-     << ", #evaldJ: " << ctx_->params_->optf_->nb_gradevals_  << ", exec time: " << invtime;
+  ss << " optimization done: #N-it: " << ctx_->params_->optf_->nb_newton_it_
+    << ", #K-it: " << ctx_->params_->optf_->nb_krylov_it_
+    << ", #matvec: " << ctx_->params_->optf_->nb_matvecs_
+    << ", #evalJ: " << ctx_->params_->optf_->nb_objevals_
+    << ", #evaldJ: " << ctx_->params_->optf_->nb_gradevals_
+    << ", exec time: " << invtime;
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
-  ierr = tuMSGstd (ss.str()); CHKERRQ(ierr);  ss.str(""); ss.clear();
+  ierr = tuMSGstd (ss.str());                                                                                            CHKERRQ(ierr);  ss.str(""); ss.clear();
   ierr = tuMSGstd ("------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
   ctx_->params_->tu_->statistics_.print();
   ctx_->params_->tu_->statistics_.reset();
-  // only update if triggered from outside, i.e., if new information to the ITP solver is present
   ctx_->update_reference_gradient = false;
   tao_reset_ = false;
+
+  // === populate solution to xout_
+  // * {p, gamma, rho, kappa}, if c(0) is given as parametrization
+  // * {gamma, rho, kappa} otherwise
+  ScalarType *x_ptr, *xout_ptr;
+  ierr = VecCopy(xin_, xout_); CHKERRQ(ierr);
+  ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  ierr = VecGetArray (xout_, &xout_ptr); CHKERRQ (ierr);
+  for(int i = 0; i < n_inv_; ++i)
+    xout_ptr[off + i] = x_ptr[i];
+  ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
+  ierr = VecRestoreArray(xout_, &xout_ptr); CHKERRQ (ierr);
+  if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xout_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("me-out"));}
+
+  // === update diffusivity and reaction in coefficients
+  ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  ctx_->params_->tu_->forcing_factor_ = gamma_scale_ * x_ptr[0]; // gamma   re-scaling parameter scales
+  ctx_->params_->tu_->rho_ = rho_scale_ * x_ptr[1];              // rho
+  ctx_->params_->tu_->k_ = k_scale_ * x_ptr[1 + nr];             // kappa   re-scaling parameter scales
+  ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
+  PetscReal r1, r2, r3, k1, k2, k3;
+  r1 = ctx_->params_->tu_->rho_;
+  r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_  : 0;
+  r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ : 0;
+  k1 = ctx_->params_->tu_->k_;
+  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  : 0;
+  k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ : 0;
+  ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
+  ierr = ctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
+
+  ierr = tuMSG("### ------------------------------------- gamma/rho/kappa solver end ------------------------------------ ###");CHKERRQ (ierr);
+  ierr = tuMSGstd (""); CHKERRQ (ierr);
+  ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
+  ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+  ierr = tuMSG    ("### estimated forcing factor:                         ###"); CHKERRQ (ierr);
+  ss << "    gamma: "<< ctx_->params_->tu_->forcing_factor_;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ierr = tuMSG    ("### estimated reaction coefficients:                  ###"); CHKERRQ (ierr);
+  ss << "    r1: "<< r1 << ", r2: " << r2 << ", r3: "<< r3;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ierr = tuMSG    ("### estimated diffusion coefficients:                 ###"); CHKERRQ (ierr);
+  ss << "    k1: "<< k1 << ", k2: " << k2 << ", k3: "<< k3;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+
   // cleanup
   if (ctx_->x_old != nullptr) {ierr = VecDestroy (&ctx_->x_old);  CHKERRQ(ierr); ctx_->x_old = nullptr;}
   PetscFunctionReturn(ierr);
