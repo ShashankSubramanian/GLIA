@@ -42,6 +42,22 @@ class SolverInterface {
 
   virtual ~SolverInterface();
 
+
+  // timers
+  PetscErrorCode initializeEvent();
+  PetscErrorCode finalizeEvent();
+  // setter
+  PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec bg);
+  PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec bg);
+  PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec bg);
+  PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg);
+  // helpers for cython
+  PetscErrorCode readNetCDF(Vec A, std::string filename);
+  PetscErrorCode writeNetCDF(Vec A, std::string filename);
+  PetscErrorCode smooth(Vec x, ScalarType num_voxels);
+  // helpers for sibia
+  PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q4);
+
  protected:
   virtual PetscErrorCode initializeOperators();
   virtual PetscErrorCode resetOperators(Vec p, bool ninv_changed=true, bool nt_changed=false);
@@ -54,7 +70,6 @@ class SolverInterface {
   PetscErrorCode readDiffusionFiberTensor();  // TODO(K) implement.
   PetscErrorCode predict();
   PetscErrorCode initializeGaussians();
-  PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg);
 
   std::shared_ptr<Parameters> params_;
   std::shared_ptr<ApplicationSettings> app_settings_;

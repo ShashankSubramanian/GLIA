@@ -328,9 +328,6 @@ int main(int argc, char **argv) {
     exit(0);
   }
 
-
-  EventRegistry::initialize();
-
   // === initialize solvers
   std::shared_ptr<Solver> solver;
   switch(run_mode) {
@@ -360,26 +357,26 @@ int main(int argc, char **argv) {
       PetscFunctionReturn(ierr);
   }
 
-  openFiles(params); // opens all txt output files on one core only
+  // timings
+  ierr = solver->initializeEvent(); CHKERRQ(ierr);
+  // opens all txt output files on one core only
+  openFiles(params);
   // ensures data for specific solver is read and code is set up for running mode
   ierr = solver->initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   ierr = solver->run(); CHKERRQ(ierr);
   // compute errors, segmentations, other measures of interest, and shutdown solver
   ierr = solver->finalize(); CHKERRQ(ierr);
-
+  // closes all txt output files on one core only
   closeFiles(params);
-
+  // timings
+  ierr = solver->finalizeEvent(); CHKERRQ(ierr);
+  // memory
   #ifdef CUDA
       cudaPrintDeviceMemory();
   #endif
-  EventRegistry::finalize ();
-  if (procid == 0) {
-      EventRegistry r;
-      r.print();
-      r.print("EventsTimings.log", true);
-  }
-
   } // shared_ptrs scope end
+
+  // shut down
   ierr = PetscFinalize();
   PetscFunctionReturn(ierr);
 }

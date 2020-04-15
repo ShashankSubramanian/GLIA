@@ -37,6 +37,7 @@ PetscErrorCode TumorSolverInterface::finalizeEvent() {
   EventRegistry::finalize();
   if (procid == 0) {
     EventRegistry r;
+    r.print();
     r.print("TumorSolverTimings.log", true);
   }
   PetscFunctionReturn(ierr);

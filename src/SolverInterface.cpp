@@ -889,3 +889,156 @@ PetscErrorCode SolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec csf,
   e.stop();
   PetscFunctionReturn(ierr);
 }
+
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========            Helper Functions for SIBIA             ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec bg) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  if (!initialized_) {
+    ierr = tuMSGwarn("Error: (setDistMeassureSimulationGeoImages) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr);
+    PetscFunctionReturn(ierr);
+  }
+  if (wm == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureSimulationGeoImages) Vector wm is nullptr."); CHKERRQ(ierr);
+  }
+  if (gm == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureSimulationGeoImages) Vector gm is nullptr."); CHKERRQ(ierr);
+  }
+  if (csf == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureSimulationGeoImages) Vector csf is nullptr."); CHKERRQ(ierr);
+  }
+  /** Sets the image vectors for the simulation geometry material properties
+   *  - MOVING PATIENT: mA(0) (= initial helathy atlas)
+   *  - MOVING ATLAS:   mA(1) (= initial helathy patient)
+   */
+  return derivative_operators_->setDistMeassureSimulationGeoImages(wm, gm, csf, nullptr, nullptr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec bg) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  if (!initialized_) {
+    ierr = tuMSGwarn("Error: (setDistMeassureTargetDataImages) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr);
+    PetscFunctionReturn(ierr);
+  }
+  if (wm == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureTargetDataImages) Vector wm is nullptr."); CHKERRQ(ierr);
+  }
+  if (gm == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureTargetDataImages) Vector gm is nullptr."); CHKERRQ(ierr);
+  }
+  if (csf == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureTargetDataImages) Vector csf is nullptr."); CHKERRQ(ierr);
+  }
+  /** Sets the image vectors for the simulation geometry material properties
+  /** Sets the image vectors for the target (patient) geometry material properties
+   *  - MOVING PATIENT: mP(1) (= advected patient)
+   *  - MOVING ATLAS:   mR    (= patient data)
+   */
+  return derivative_operators_->setDistMeassureTargetDataImages(wm, gm, csf, nullptr, nullptr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec bg) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  if (!initialized_) {
+    ierr = tuMSGwarn("Error: (setDistMeassureDiffImages) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr);
+    PetscFunctionReturn(ierr);
+  }
+  if (wm == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureDiffImages) Vector wm is nullptr."); CHKERRQ(ierr);
+  }
+  if (gm == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureDiffImages) Vector gm is nullptr."); CHKERRQ(ierr);
+  }
+  if (csf == nullptr) {
+    ierr = tuMSGwarn("Warning: (setDistMeassureDiffImages) Vector csf is nullptr."); CHKERRQ(ierr);
+  }
+  /** Sets the image vectors for the simulation geometry material properties
+  /** Sets the image vectors for the distance measure difference
+   *  - MOVING PATIENT: || mA(0)(1-c(1)) - mP(1) ||^2
+   *  - MOVING ATLAS:   || mA(1)(1-c(1)) - mR    ||^2
+   */
+  return derivative_operators_->setDistMeassureDiffImages(wm, gm, csf, nullptr, nullptr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::computeTumorContributionRegistration(Vec q1, Vec q2, Vec q4) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  if (pde_operators_ != nullptr) {
+    ierr = pde_operators_->computeTumorContributionRegistration(q1, q2, nullptr, q4); CHKERRQ(ierr);
+  } else {
+    ierr = tuMSGwarn("Error: (in computeTumorContributionRegistration()) PdeOperators not initialized. Exiting .."); CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========            Helper Functions for Cython            ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode TumorSolverInterface::smooth(Vec x, ScalarType num_voxels) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  ScalarType sigma_smooth = num_voxels * 2.0 * M_PI / params_->grid_->n_[0];
+  ierr = spec_ops_->weierstrassSmoother(x, x, params_, sigma_smooth); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode TumorSolverInterface::readNetCDF(Vec A, std::string filename) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  ierr = dataIn(A, params_, filename.c_str()); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode TumorSolverInterface::writeNetCDF(Vec A, std::string filename) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  ierr = dataOut(A, params_, filename.c_str()); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::initializeEvent() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  EventRegistry::initialize();
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::finalizeEvent() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int procid, nprocs;
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+  EventRegistry::finalize();
+  if (procid == 0) {
+    EventRegistry r;
+    r.print();
+    r.print("TumorSolverTimings.log", true);
+  }
+  PetscFunctionReturn(ierr);
+}
