@@ -9,30 +9,16 @@
 #include "Optimizer.h"
 #include "TaoInterface.h"
 
-//
-//
+
 // ### ________________________________________________________________________________________ ___
 // ### //////////////////////////////////////////////////////////////////////////////////////// ###
 // ### ======== //////////////////////  TAO INTERFACE METHODS  /////////////////////// ======== ###
 // ### //////////////////////////////////////////////////////////////////////////////////////// ###
-//
-//
-//
-//
-//
-/* ------------------------------------------------------------------- */
-/*
- evaluateObjectiveFunction - evaluates the objective function J(x).
- Input Parameters:
- .  tao - the Tao context
- .  x   - the input vector
- .  ptr - optional user-defined context, as set by TaoSetFunction()
- Output Parameters:
- .  J    - the newly evaluated function
- */
- // ### ______________________________________________________________________ ___
- // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *ptr) {
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode evaluateObjectiveFunction(Tao tao, Vec x, PetscReal *J, void *ptr) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj-tumor");
@@ -48,19 +34,9 @@ PetscErrorCode evaluateObjectiveFunction (Tao tao, Vec x, PetscReal *J, void *pt
   PetscFunctionReturn (ierr);
 }
 
-/* ------------------------------------------------------------------- */
-/*
- evaluateGradient evaluates the gradient g(m0)
- input parameters:
-  . tao  - the Tao context
-  . x   - input vector p (current estimate for the paramterized initial condition)
-  . ptr  - optional user-defined context
- output parameters:
-  . dJ    - vector containing the newly evaluated gradient
- */
- // ### ______________________________________________________________________ ___
- // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode evaluateGradient(Tao tao, Vec x, Vec dJ, void *ptr) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-grad-tumor");
@@ -88,20 +64,9 @@ PetscErrorCode evaluateGradient (Tao tao, Vec x, Vec dJ, void *ptr) {
   PetscFunctionReturn (ierr);
 }
 
-/* ------------------------------------------------------------------- */
-/*
- evaluateObjectiveFunctionAndGradient - evaluates the function and corresponding gradient
- Input Parameters:
-  . tao - the Tao context
-  . x   - the input vector
-  . ptr - optional user-defined context, as set by TaoSetFunction()
- Output Parameters:
-  . J   - the newly evaluated function
-  . dJ   - the newly evaluated gradient
- */
- // ### ______________________________________________________________________ ___
- // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode evaluateObjectiveFunctionAndGradient(Tao tao, Vec x, PetscReal *J, Vec dJ, void *ptr){
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e ("tao-eval-obj/grad-tumor");
@@ -109,7 +74,6 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
   ierr = VecCopy (x, itctx->derivative_operators_->p_current_); CHKERRQ (ierr);
-
   itctx->params_->optf_->nb_objevals_++;
   itctx->params_->optf_->nb_gradevals_++;
   ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data);
@@ -120,7 +84,6 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
     ierr = VecNorm (dJ, NORM_2, &gnorm); CHKERRQ(ierr);
     s << " norm of gradient ||g||_2 = " << std::scientific << gnorm; ierr = tuMSGstd(s.str()); CHKERRQ(ierr); s.str(""); s.clear();
   }
-
   //ierr = evaluateObjectiveFunction (tao, p, J, ptr); CHKERRQ(ierr);
   //ierr = evaluateGradient (tao, p, dJ, ptr); CHKERRQ(ierr);
   self_exec_time += MPI_Wtime ();
@@ -129,17 +92,141 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient (Tao tao, Vec x, PetscReal *
   PetscFunctionReturn (ierr);
 }
 
-/* #### ------------------------------------------------------------------- #### */
-// #### convergence
 
+/* #### ------------------------------------------------------------------- #### */
+// #### hessian
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode hessianMatVec(Mat A, Vec x, Vec y) {    //y = Ax
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e ("tao-hess-matvec-tumor");
+  std::array<double, 7> t = {0}; double self_exec_time = -MPI_Wtime ();
+  void *ptr;
+  ierr = MatShellGetContext(A, &ptr); CHKERRQ (ierr);
+  CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
+  itctx->params_->optf_->nb_matvecs_++;
+  ierr = itctx->derivative_operators_->evaluateHessian(y, x); CHKERRQ(ierr);
+  if (itctx->params_->tu_->verbosity_ > 1) {
+      PetscPrintf(MPI_COMM_WORLD, " applying hessian done!\n");
+      ScalarType xnorm;
+      ierr = VecNorm (x, NORM_2, &xnorm); CHKERRQ(ierr);
+      PetscPrintf (MPI_COMM_WORLD, " norm of search direction ||x||_2 = %e\n", xnorm);
+  }
+  self_exec_time += MPI_Wtime ();
+  accumulateTimers (itctx->params_->tu_->timers_, t, self_exec_time);
+  e.addTimings (t); e.stop ();
+  PetscFunctionReturn (ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode matfreeHessian(Tao tao, Vec x, Mat H, Mat precH, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    // NO-OP
+    PetscFunctionReturn (ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode preconditionerMatVec(PC pinv, Vec x, Vec pinvx) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    void *ptr;
+    ierr = PCShellGetContext(pinv, &ptr); CHKERRQ(ierr);
+    ierr = applyPreconditioner(ptr, x, pinvx); CHKERRQ(ierr);
+    PetscFunctionReturn (ierr);
+}
 
 /* ------------------------------------------------------------------- */
 /*
- optimizationMonitor    mointors the inverse Gauss-Newton solve
+ Preprocess right hand side and initial condition before entering the
+ krylov subspace method; in the context of numerical optimization this
+ means we preprocess the gradient and the incremental control variable
+
  input parameters:
-  . tao       TAO object
-  . ptr       optional user defined context
+  . KSP ksp       KSP solver object
+  . Vec b         right hand side
+  . Vec x         solution vector
+  . void *ptr     optional user defined context
  */
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode preKrylovSolve(KSP ksp, Vec b, Vec x, void *ptr) {
+    PetscFunctionBegin;
+    PetscErrorCode ierr = 0;
+    PetscReal gnorm = 0., g0norm = 1., reltol, abstol = 0., divtol = 0.;
+    PetscReal uppergradbound, lowergradbound;
+    PetscInt maxit;
+    int nprocs, procid;
+    MPI_Comm_rank (PETSC_COMM_WORLD, &procid);
+    MPI_Comm_size (PETSC_COMM_WORLD, &nprocs);
+
+    CtxInv *itctx = reinterpret_cast<CtxInv*> (ptr);
+    ierr = VecNorm (b, NORM_2, &gnorm); CHKERRQ(ierr);
+    if(itctx->update_reference_gradient_hessian_ksp) { // set initial gradient norm
+        itctx->ksp_gradnorm0 = gnorm;                  // for KSP Hessian solver
+        itctx->update_reference_gradient_hessian_ksp = false;
+    }
+    g0norm = itctx->ksp_gradnorm0; // get reference gradient
+    gnorm /= g0norm;
+    ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit); CHKERRQ(ierr);
+    uppergradbound = 0.5; // assuming quadratic convergence
+    lowergradbound = 1E-10;
+    // user forcing sequence to estimate adequate tolerance for solution of KKT system (Eisenstat-Walker)
+    if (itctx->params_->opt_->fseqtype_ == QDFS) {
+        // assuming quadratic convergence (we do not solver more accurately than 12 digits)
+        reltol = PetscMax(lowergradbound, PetscMin(uppergradbound, gnorm));
+    }
+    else {
+        // assuming superlinear convergence
+        reltol = PetscMax (lowergradbound, PetscMin (uppergradbound, std::sqrt(gnorm)));
+    }
+    // overwrite tolerances with estimate
+    ierr = KSPSetTolerances (ksp, reltol, abstol, divtol, maxit); CHKERRQ(ierr);
+    //if (procid == 0){
+    //    std::cout << " ksp rel-tol (Eisenstat/Walker): " << reltol << ", grad0norm: " << g0norm<<", gnorm/grad0norm: " << gnorm << std::endl;
+    //}
+    PetscFunctionReturn (ierr);
+}
+
+/* #### ------------------------------------------------------------------- #### */
+// #### monitors
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode hessianKSPMonitor (KSP ksp, PetscInt its, PetscReal rnorm, void *ptr) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  std::stringstream s;
+  Vec x; int maxit; PetscScalar divtol, abstol, reltol;
+  ierr = KSPBuildSolution (ksp,NULL,&x);
+  ierr = KSPGetTolerances (ksp, &reltol, &abstol, &divtol, &maxit); CHKERRQ(ierr);
+  CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr); // get user context
+  itctx->params_->optf_->nb_krylov_it_++;         // accumulate number of krylov iterations
+  if (its == 0) {
+   s << std::setw(3)  << " PCG:" << " computing solution of hessian system (tol="
+     << std::scientific << std::setprecision(5) << reltol << ")";
+   ierr = tuMSGstd (s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+  }
+  s << std::setw(3)  << " PCG:" << std::setw(15) << " " << std::setfill('0') << std::setw(3)<< its
+  << "   ||r||_2 = " << std::scientific << std::setprecision(5) << rnorm;
+  ierr = tuMSGstd (s.str()); CHKERRQ(ierr); s.str(""); s.clear();
+
+  // compute extreme singular values
+  // int ksp_itr;
+  // ierr = KSPGetIterationNumber (ksp, &ksp_itr); CHKERRQ (ierr);
+  // ScalarType e_max, e_min;
+  // if (ksp_itr % 10 == 0 || ksp_itr == maxit) {
+  //   ierr = KSPComputeExtremeSingularValues (ksp, &e_max, &e_min); CHKERRQ (ierr);
+  //   s << "Condition number of hessian is: " << e_max / e_min << " | largest singular values is: " << e_max << ", smallest singular values is: " << e_min << std::endl;
+  //   ierr = tuMSGstd (s.str()); CHKERRQ(ierr); s.str (""); s.clear ();
+  // }
+  PetscFunctionReturn (ierr);
+}
+
  // ### ______________________________________________________________________ ___
  // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
@@ -254,17 +341,11 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     PetscFunctionReturn (ierr);
 }
 
+/* #### ------------------------------------------------------------------- #### */
+// #### convergence
 
-/* ------------------------------------------------------------------- */
-/*
- checkConvergenceGrad    checks convergence of the optimizer
-
- input parameters:
-  . Tao tao       Tao solver object
-  . void *ptr     optional user defined context
- */
- // ### ______________________________________________________________________ ___
- // ### ////////////////////////////////////////////////////////////////////// ###
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
@@ -437,14 +518,6 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
   PetscFunctionReturn (ierr);
 }
 
-/* ------------------------------------------------------------------- */
-/*
- checkConvergenceGradObj    checks convergence of the overall Gauss-Newton tumor inversion
-
- input parameters:
-  . Tao tao       Tao solver object
-  . void *ptr     optional user defined context
- */
  // ### ______________________________________________________________________ ___
  // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
@@ -527,12 +600,6 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
   #endif
   // compute theta
   theta = 1.0 + std::abs(ctx->params_->optf_->j0_);
-  // compute norm(\Phi x^k - \Phi x^k-1) and norm(\Phi x^k)
-  // ierr = ctx->tumor_->phi_->apply (ctx->tmp, x); CHKERRQ(ierr);  // comp \Phi x
-  // ierr = VecNorm (ctx->tmp, NORM_2, &normx); CHKERRQ(ierr);  // comp norm \Phi x
-  // ierr = VecAXPY(ctx->c0_old, -1, ctx->tmp); CHKERRQ(ierr);  // comp dx
-  // ierr = VecNorm (ctx->c0_old, NORM_2, &normdx); CHKERRQ(ierr);  // comp norm \Phi dx
-  // ierr = VecCopy(ctx->tmp, ctx->c0_old); CHKERRQ(ierr);  // save \Phi x
   ierr = VecNorm (x, NORM_2, &normx); CHKERRQ(ierr);  // comp norm x
   ierr = VecAXPY (ctx->x_old, -1.0, x); CHKERRQ(ierr);  // comp dx
   ierr = VecNorm (ctx->x_old, NORM_2, &normdx); CHKERRQ(ierr);  // comp norm dx

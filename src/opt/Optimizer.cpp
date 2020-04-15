@@ -251,11 +251,11 @@ PetscErrorCode Optimizer::setTaoOptions() {
         ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx_, 0); CHKERRQ(ierr);
         // ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE); CHKERRQ (ierr);  // To compute the condition number
         ierr = KSPSetFromOptions(ksp); CHKERRQ (ierr);
-        // set preconditioner
-        ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
-        ierr = PCSetType (pc, PCSHELL); CHKERRQ(ierr);
-        ierr = PCShellSetApply(pc, preconditionerMatVec); CHKERRQ(ierr);
-        ierr = PCShellSetContext(pc, ctx_); CHKERRQ(ierr);
+        // set preconditioner (disabled)
+        // ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+        // ierr = PCSetType (pc, PCSHELL); CHKERRQ(ierr);
+        // ierr = PCShellSetApply(pc, preconditionerMatVec); CHKERRQ(ierr);
+        // ierr = PCShellSetContext(pc, ctx_); CHKERRQ(ierr);
     }
   }
   PetscFunctionReturn (ierr);
