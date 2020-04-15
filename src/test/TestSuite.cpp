@@ -31,18 +31,18 @@ PetscErrorCode TestSuite::run() {
   switch(testcase_) {
     case DEFAULTTEST: // run any default tests: TODO
       break;
-    case FORWARDTEST: 
+    case FORWARDTEST:
       ierr = tuMSGwarn(" Forward simulator test."); CHKERRQ(ierr);
       ierr = forwardTest(); CHKERRQ(ierr);
       break;
-    case INVERSETEST: 
+    case INVERSETEST:
       ierr = tuMSGwarn(" Inverse simulator test."); CHKERRQ(ierr);
       ierr = inverseTest(); CHKERRQ(ierr);
       break;
     default:
       ierr = tuMSGwarn(" Invalid test. Exiting..."); CHKERRQ(ierr);
   }
-  
+
   PetscFunctionReturn(ierr);
 }
 
@@ -52,7 +52,7 @@ PetscErrorCode TestSuite::finalize() {
 
   std::stringstream ss;
   ierr = tuMSGwarn(" Test suite complete."); CHKERRQ(ierr);
-  
+
   PetscFunctionReturn(ierr);
 }
 
@@ -77,19 +77,31 @@ PetscErrorCode TestSuite::inverseTest() {
   /* create some data; no observation op */
   ierr = createSynthetic(); CHKERRQ(ierr);
   data_support_ = data_t1_;
+  data_->set(data_t1_, nullptr);
   /* set Gaussians */
   ierr = initializeGaussians(); CHKERRQ(ierr);
   ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-  ierr = solver_interface_->setParams(p_rec_, nullptr);
-  ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
+  // ierr = solver_interface_->setParams(p_rec_, nullptr);
+  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  // ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+
   /* run sparse til solver */
   ierr = tuMSGwarn(" Beginning Test Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
-  // set the reg norm as L2 
+
+  // set the reg norm as L2
   params_->opt_->regularization_norm_ = L2;
-  ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
+  // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
+  optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
+  ierr = optimizer_->setData(data_); CHKERRQ(ierr);
+  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);         // TODO: requires length of np + nk + nr
+  ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+  // ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
+
+  // TODO: compare results
+
   /* finalize with error metrics */
   ierr = tuMSGwarn(" Finalizing Test Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
   ierr = Solver::finalize(); CHKERRQ(ierr);

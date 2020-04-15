@@ -934,7 +934,25 @@ PetscErrorCode InverseL2Solver::run() {
 
   ierr = tuMSGwarn(" Beginning Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
-  ierr = solver_interface_->solveInverse(p_rec_, data_); CHKERRQ(ierr);
+
+  // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
+  // ---------
+  if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
+  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
+  ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  // ---------
+  ScalarType *x_ptr;
+  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
+  if (params_->get_nk() > 0) x_ptr[params_->tu_->np_] = params_->tu_->k_;
+  ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
+
+  ierr = optimizer_->setData(data_); CHKERRQ(ierr); // set data before initial guess
+  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // requires length: np + nk (nk=0 ok)
+  ierr = optimizer_->solve(); CHKERRQ(ierr);
+  ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+
+  // ierr = solver_interface_->solveInverse(p_rec_, data_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -1104,7 +1122,7 @@ PetscErrorCode InverseL1Solver::run() {
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
   optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
   ierr = optimizer_->setData(data_); CHKERRQ(ierr);
-  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // TODO(K): set prec to np + nk + nr again
+  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // requires p_rec_ to be of lengt np + nk + nr
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
@@ -1210,7 +1228,7 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
     ierr = itctx_->tumor_->phi_->apply(data_->dt0(), p_rec); CHKERRQ(ierr);
     params_->tu_->use_c0_ = has_dt0_ = true;
   }
-    // initial guess TODO(K): if read in vector has onzero rho/kappa values, take those
+    // initial guess TODO(K): if read in vector has nonzero rho/kappa values, take those
   Vec x_rd;
   ierr = VecCreateSeq(PETSC_COMM_SELF, params_->get_nk() + params_->get_nr(), &x_rd); CHKERRQ(ierr);
   ierr = setupVec(x_rd, SEQ); CHKERRQ(ierr);
@@ -1288,6 +1306,7 @@ PetscErrorCode InverseMassEffectSolver::run() {
   if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
   ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr() + 1, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   // ---------
   ScalarType *x_ptr;
   int np = params_->tu_->np_;
