@@ -26,8 +26,8 @@ p['model'] = 1                      # 1: reaction-diffuion; 2: alzh, 3: full obj
 p['verbosity'] = 1                  # various levels of output density
 p['syn_flag'] = 1                   # create synthetic data
 p['user_cms'] = [(137,169,96,1)]    # arbitrary number of TILs (x,y,z,scale) with activation scale
-p['rho_data'] = 10                  # tumor parameters for synthetic data
-p['k_data'] = 0.025
+p['rho_data'] = 8                  # tumor parameters for synthetic data
+p['k_data'] = 0.01
 p['gamma_data'] = 12E4
 p['nt_data'] = 25
 p['dt_data'] = 0.04
@@ -40,13 +40,14 @@ p['time_history_off'] 	= 0          				# 1: do not allocate time history (only 
 p['sparsity_level'] 	= 5             			# target sparsity of recovered IC in sparse_til solver
 p['beta_p'] 			= 0E-4                  	# regularization parameter
 p['opttol_grad'] 		= 1E-5             			# relative gradient tolerance
-p['newton_maxit'] 		= 50              			# number of iterations for optimizer
+p['newton_maxit'] 		= 2              			# number of iterations for optimizer
 p['kappa_lb'] 			= 0                   		# lower bound kappa
 p['kappa_ub'] 			= 0.1                 		# upper bound kappa
 p['rho_lb'] 			= 0                     	# lower bound rho
 p['rho_ub'] 			= 15                    	# upper bound rho
 p['gamma_ub'] 			= 15                  		# upper bound gamma
 p['lbfgs_vectors'] 		= 50				        # number of vectors for lbfgs update
+p['ls_max_func_evals']  = 10                        # number of max line-search attempts
 
 ############### === define run configuration
 r['code_path'] = code_dir;
