@@ -27,7 +27,7 @@ PetscErrorCode ForwardSolver::initialize(std::shared_ptr<SpectralOperators> spec
   params->tu_->np_ = 1;
   // transport mri if needed
   params->tu_->transport_mri_ = !app_settings->path_->mri_.empty();
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -76,46 +76,9 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
 
   ierr = tuMSGwarn(" Initializing Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-  // === read data: generate synthetic or read real
-  if (app_settings_->syn_->enabled_) {
-    // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = createSynthetic(); CHKERRQ(ierr);
-    data_support_ = data_t1_;
-  } else {
-    // read in target data (t1 and/or t0); observation operator
-    ierr = readData(); CHKERRQ(ierr);
-  }
-  data_->set(data_t1_0, data_t0_);
-
-  // === set observation operator
-  if (custom_obs_) {
-    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
-    ss << " Setting custom observation mask";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  } else {
-    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
-    if (has_dt0_) {
-      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
-    }
-    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  }
-
-  // === apply observation operator to data
-  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
-  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
-  if (has_dt0_) {
-    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
-  }
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  // reads or generates data, sets and applies observation operator
+  ierr = setupData(); CHKERRQ(ierr);
 
   // === set Gaussians
   if (app_settings_->inject_solution_) {
@@ -147,7 +110,7 @@ PetscErrorCode InverseL2Solver::run() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Beginning Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
-  Solver::run(); CHKERRQ(ierr);
+  SolverInterface::run(); CHKERRQ(ierr);
 
   // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
   // ---------
@@ -178,7 +141,7 @@ PetscErrorCode InverseL2Solver::finalize() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Finalizing Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
-  ierr = Solver::finalize(); CHKERRQ(ierr);
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -196,47 +159,9 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
 
   ierr = tuMSGwarn(" Initializing Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-
-  // === read data: generate synthetic or read real
-  if (app_settings_->syn_->enabled_) {
-    // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = createSynthetic(); CHKERRQ(ierr);
-    data_support_ = data_t1_;
-  } else {
-    // read in target data (t1 and/or t0); observation operator
-    ierr = readData(); CHKERRQ(ierr);
-  }
-  data_->set(data_t1_0, data_t0_);
-
-  // === set observation operator
-  if (custom_obs_) {
-    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
-    ss << " Setting custom observation mask";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  } else {
-    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
-    if (has_dt0_) {
-      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
-    }
-    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  }
-
-  // === apply observation operator to data
-  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
-  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
-  if (has_dt0_) {
-    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
-  }
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  // reads or generates data, sets and applies observation operator
+  ierr = setupData(); CHKERRQ(ierr);
 
   // read connected components; set sparsity level
   if (!app_settings_->path_->data_comps_data_.empty()) {
@@ -329,7 +254,7 @@ PetscErrorCode InverseL1Solver::run() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Beginning Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
-  Solver::run(); CHKERRQ(ierr);
+  SolverInterface::run(); CHKERRQ(ierr);
 
   // set the reg norm as L2
   params_->opt_->regularization_norm_ = L2;
@@ -348,7 +273,7 @@ PetscErrorCode InverseL1Solver::finalize() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Finalizing Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
-  ierr = Solver::finalize(); CHKERRQ(ierr);
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -365,47 +290,9 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Spectr
 
   ierr = tuMSGwarn(" Initializing Reaction/Diffusion Inversion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-
-  // === read data: generate synthetic or read real
-  if (app_settings_->syn_->enabled_) {
-    // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = createSynthetic(); CHKERRQ(ierr);
-    data_support_ = data_t1_;
-  } else {
-    // read in target data (t1 and/or t0); observation operator
-    ierr = readData(); CHKERRQ(ierr);
-  }
-  data_->set(data_t1_0, data_t0_);
-
-  // === set observation operator
-  if (custom_obs_) {
-    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
-    ss << " Setting custom observation mask";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  } else {
-    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
-    if (has_dt0_) {
-      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
-    }
-    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  }
-
-  // === apply observation operator to data
-  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
-  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
-  if (has_dt0_) {
-    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
-  }
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  // reads or generates data, sets and applies observation operator
+  ierr = setupData(); CHKERRQ(ierr);
 
   // === create optimizer
   optimizer_ = std::make_shared<RDOptimizer>();
@@ -468,7 +355,7 @@ PetscErrorCode InverseReactionDiffusionSolver::finalize() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Finalizing Reaction/Diffusion Inversion."); CHKERRQ(ierr);
-  ierr = Solver::finalize(); CHKERRQ(ierr);
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -485,18 +372,18 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   ierr = tuMSGwarn(" Initializing Mass Effect Inversion."); CHKERRQ(ierr);
 
   // set and populate parameters; read material properties; read data
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  // reads or generates data, sets and applies observation operator
+  ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
-  params_->opt_->invert_mass_effect_ = true;  // enable mass effect inversion in optimizer
-
+  // enable mass effect inversion in optimizer
+  params_->opt_->invert_mass_effect_ = true;
   // === create optimizer
   optimizer_ = std::make_shared<MEOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
   // set patient material properties
   ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);
-  // ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);       // TODO(K) I think this is not needed, double check with S
-  // ierr = solver_interface_->setParams(p_rec_, nullptr);
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -547,14 +434,14 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMassEffectSolver::finalize() {
+PetscErrorCode InverseMassEffectSolverInterface::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
   std::stringstream ss;
 
   ierr = tuMSGwarn(" Finalizing Mass Effect Inversion."); CHKERRQ(ierr);
-  ierr = Solver::finalize(); CHKERRQ(ierr);
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   if (params_->tu_->write_output_) {
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
@@ -667,7 +554,7 @@ PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators>
   ierr = tuMSGwarn(" Initializing Multi Species Forward Solver."); CHKERRQ(ierr);
 
   params->tu_->time_history_off_ = true;
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   // ierr = solver_interface_->setParams (p_rec_, nullptr);
@@ -702,7 +589,7 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Finalizing Multi Species Forward Solve."); CHKERRQ(ierr);
-  ierr = Solver::finalize(); CHKERRQ(ierr);
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   std::stringstream ss;
   if (params_->tu_->write_output_) {

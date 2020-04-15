@@ -48,12 +48,13 @@ class SolverInterface {
   virtual PetscErrorCode createSynthetic();
   virtual PetscErrorCode initializeGaussians();
 
-  PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg);
+  PetscErrorCode setupData();
   PetscErrorCode readAtlas();
   PetscErrorCode readData();
   PetscErrorCode readVelocity();
   PetscErrorCode readDiffusionFiberTensor();  // TODO(K) implement.
   PetscErrorCode predict();
+  PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg);
 
   std::shared_ptr<Parameters> params_;
   std::shared_ptr<ApplicationSettings> app_settings_;

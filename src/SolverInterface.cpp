@@ -409,6 +409,51 @@ PetscErrorCode SolverInterface::predict() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SolverInterface::setupData() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  // === read data: generate synthetic or read real
+  if (app_settings_->syn_->enabled_) {
+    // data t1 and data t0 is generated synthetically using user given cm and tumor model
+    ierr = createSynthetic(); CHKERRQ(ierr);
+    data_support_ = data_t1_;
+  } else {
+    // read in target data (t1 and/or t0); observation operator
+    ierr = readData(); CHKERRQ(ierr);
+  }
+  data_->set(data_t1_0, data_t0_);
+  // === set observation operator
+  if (custom_obs_) {
+    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
+    ss << " Setting custom observation mask";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  } else {
+    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    if (has_dt0_) {
+      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
+    }
+    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  }
+  // === apply observation operator to data
+  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
+  if (has_dt0_) {
+    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode SolverInterface::readAtlas() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
