@@ -40,14 +40,8 @@ PetscErrorCode ForwardSolver::run() {
   // no-op
   std::stringstream ss;
   // === read data: generate synthetic or read real
-  if (app_settings_->syn_->enabled_) {
-    // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = createSynthetic(); CHKERRQ(ierr);
-    data_support_ = data_t1_;
-  } else {
-    // read in target data (t1 and/or t0); observation operator
-    ierr = readData(); CHKERRQ(ierr);
-  }
+  // data t1 and data t0 is generated synthetically using user given cm and tumor model
+  ierr = createSynthetic(); CHKERRQ(ierr);
 
   ss << " Forward solve completed. Exiting.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
