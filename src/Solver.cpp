@@ -9,29 +9,29 @@
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 Solver::Solver()
-    : params_(nullptr),
-      // solver_interface_(nullptr),
-      derivative_operators_(nullptr),
-      pde_operators_(nullptr),
-      spec_ops_(nullptr),
-      tumor_(nullptr),
-      custom_obs_(false),
-      warmstart_p_(false),
-      wm_(nullptr),
-      gm_(nullptr),
-      vt_(nullptr),
-      csf_(nullptr),
-      mri_(nullptr),
-      tmp_(nullptr),
-      data_t1_(nullptr),
-      data_t0_(nullptr),
-      p_rec_(nullptr),
-      data_support_(nullptr),
-      data_comps_(nullptr),
-      obs_filter_(nullptr),
-      velocity_(nullptr),
-      data_(nullptr) {}
-
+: params_(nullptr),
+  // solver_interface_(nullptr),
+  derivative_operators_(nullptr),
+  pde_operators_(nullptr),
+  spec_ops_(nullptr),
+  tumor_(nullptr),
+  custom_obs_(false),
+  warmstart_p_(false),
+  wm_(nullptr),
+  gm_(nullptr),
+  vt_(nullptr),
+  csf_(nullptr),
+  mri_(nullptr),
+  tmp_(nullptr),
+  data_t1_(nullptr),
+  data_t0_(nullptr),
+  p_rec_(nullptr),
+  data_support_(nullptr),
+  data_comps_(nullptr),
+  obs_filter_(nullptr),
+  velocity_(nullptr),
+  data_(nullptr)
+{}
 
 
 // ### ______________________________________________________________________ ___
@@ -87,6 +87,39 @@ PetscErrorCode Solver::resetOperators(Vec p, bool ninv_changed, bool nt_changed)
   if(nt_changed) {
     ierr = pde_operators_->reset(params_, tumor_); CHKERRQ(ierr);
   }
+  PetscFunctionReturn(ierr);
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode Solver::updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  if (wm == nullptr) {
+    ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector wm is nullptr."); CHKERRQ(ierr);
+  }
+  if (gm == nullptr) {
+    ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector gm is nullptr."); CHKERRQ(ierr);
+  }
+  if (vt == nullptr) {
+    ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector vt is nullptr."); CHKERRQ(ierr);
+  }
+  if (csf == nullptr) {
+    ierr = tuMSGwarn("Warning: (updateTumorCoefficients) Vector csf is nullptr."); CHKERRQ(ierr);
+  }
+  Event e("update-tumor-coefficients"); // timing
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
+  ierr = tumor_->mat_prop_->setValuesCustom(gm, wm, csf, vt, bg, params_); CHKERRQ(ierr);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+  ierr = tumor_->phi_->setValues(tumor_->mat_prop_); CHKERRQ(ierr);
+  ierr = pde_operators_->diff_solver_->precFactor(); CHKERRQ(ierr);
+  self_exec_time += MPI_Wtime();       // timing
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
   PetscFunctionReturn(ierr);
 }
 
@@ -175,7 +208,7 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
     }
   }
 
-  ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
+  ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
   ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
 
 #ifdef CUDA
@@ -384,7 +417,7 @@ PetscErrorCode Solver::predict() {
           app_settings_->path_->vt_ = app_settings_->pred_->vt_path_[i];
           ierr = tuMSGstd(" .. reading in atlas brain to perform prediction."); CHKERRQ(ierr);
           ierr = readAtlas(); CHKERRQ(ierr);
-          ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);
+          ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);
           ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
         } else {
           ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
@@ -1279,10 +1312,9 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   // === create optimizer
   optimizer_ = std::make_shared<MEOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
-  // set patient material properties TODO(K) implement
-  ierr = solver_interface_->setMassEffectData(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);
-  // ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);       // TODO(K) I think this is not needed, double check with S
-
+  // set patient material properties
+  ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);
+  // ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);       // TODO(K) I think this is not needed, double check with S
   // ierr = solver_interface_->setParams(p_rec_, nullptr);
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -1372,7 +1404,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
     ss.str(std::string());
     ss.clear();
     Vec mag = nullptr;
-    ierr = solver_interface_->getPdeOperators()->getModelSpecificVector(&mag);
+    ierr = pde_operators_->getModelSpecificVector(&mag);
     ierr = tumor_->displacement_->computeMagnitude(mag);
     ss << "displacement_rec_final";
     ierr = dataOut(mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
@@ -1521,7 +1553,7 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
     ss.str(std::string());
     ss.clear();
     Vec mag = nullptr;
-    ierr = solver_interface_->getPdeOperators()->getModelSpecificVector(&mag);
+    ierr = pde_operators_->getModelSpecificVector(&mag);
     ierr = tumor_->displacement_->computeMagnitude(mag);
     ss << "displacement_rec_final";
     ierr = dataOut(mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
