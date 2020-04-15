@@ -1044,6 +1044,8 @@ PetscErrorCode InverseL1Solver::run() {
 
   ierr = tuMSGwarn(" Beginning Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
+  // set the reg norm as L2 
+  params_->opt_->regularization_norm_ = L2;
   ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);

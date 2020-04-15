@@ -87,6 +87,8 @@ PetscErrorCode TestSuite::inverseTest() {
   /* run sparse til solver */
   ierr = tuMSGwarn(" Beginning Test Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
+  // set the reg norm as L2 
+  params_->opt_->regularization_norm_ = L2;
   ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
   /* finalize with error metrics */
   ierr = tuMSGwarn(" Finalizing Test Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
@@ -193,5 +195,5 @@ PetscErrorCode TestSuite::inverseTest() {
 //                 }
 //             }
 //         }
-//         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
+//         ierr = VecRestoreArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
 //     }
