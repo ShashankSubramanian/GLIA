@@ -136,14 +136,12 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
       }
     }
   }
-
+  // update diffusion coefficient, reaction coefficient, phi with material properties
   ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
   ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
-
-#ifdef CUDA
+  #ifdef CUDA
   cudaPrintDeviceMemory();
-#endif
-
+  #endif
   PetscFunctionReturn(ierr);
 }
 
@@ -215,7 +213,7 @@ PetscErrorCode SolverInterface::finalize() {
   if (params_->tu_->write_output_) {
     ierr = dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_); CHKERRQ(ierr);
   }
-
+  // transport mri
   if (params_->tu_->transport_mri_) {
     if (mri_ == nullptr) {
       ierr = VecDuplicate(tmp_, &mri_); CHKERRQ(ierr);
