@@ -23,9 +23,9 @@ class DerivativeOperators {
   Vec ptemp_;
   Vec p_current_;  // Current solution vector in newton iteration
 
-  virtual PetscErrorCode evaluateObjective(PetscReal *J, Vec x, Vec data) = 0;
-  virtual PetscErrorCode evaluateGradient(Vec dJ, Vec x, Vec data) = 0;
-  virtual PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data) { PetscFunctionReturn(0); };
+  virtual PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data) = 0;
+  virtual PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data) = 0;
+  virtual PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data) { PetscFunctionReturn(0); };
   virtual PetscErrorCode evaluateHessian(Vec y, Vec x) = 0;
   virtual PetscErrorCode evaluateConstantHessianApproximation(Vec y, Vec x) { PetscFunctionReturn(0); };
 
@@ -33,8 +33,8 @@ class DerivativeOperators {
   virtual PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) { PetscFunctionReturn(0); }
   virtual PetscErrorCode setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec glm, Vec bg) { PetscFunctionReturn(0); }
   virtual PetscErrorCode setMaterialProperties(Vec gm, Vec wm, Vec csf, Vec glm) { PetscFunctionReturn(0); }
-  virtual PetscErrorCode checkGradient(Vec p, Vec data);
-  virtual PetscErrorCode checkHessian(Vec p, Vec data);
+  virtual PetscErrorCode checkGradient(Vec p, std::shared_ptr<Data> data);
+  virtual PetscErrorCode checkHessian(Vec p, std::shared_ptr<Data> data);
   // reset vector sizes
   virtual PetscErrorCode reset(Vec p, std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor);
 
@@ -60,9 +60,9 @@ class DerivativeOperatorsRD : public DerivativeOperators {
     // tuMSGstd (" ----- Setting reaction-diffusion derivative operators --------");
   }
 
-  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, Vec data);
-  PetscErrorCode evaluateGradient(Vec dJ, Vec x, Vec data);
-  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data);
+  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data);
   PetscErrorCode evaluateHessian(Vec y, Vec x);
   virtual PetscErrorCode evaluateConstantHessianApproximation(Vec y, Vec x);
   // virtual PetscErrorCode reset (Vec p, std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor);
@@ -79,9 +79,9 @@ class DerivativeOperatorsKL : public DerivativeOperators {
   }
 
   ScalarType eps_;
-  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, Vec data);
-  PetscErrorCode evaluateGradient(Vec dJ, Vec x, Vec data);
-  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data);
+  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data);
   PetscErrorCode evaluateHessian(Vec y, Vec x);
   ~DerivativeOperatorsKL() {}
 
@@ -101,9 +101,9 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
 
   Vec delta_;
 
-  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, Vec data);
-  PetscErrorCode evaluateGradient(Vec dJ, Vec x, Vec data);
-  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data);
+  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data);
   PetscErrorCode evaluateHessian(Vec y, Vec x);
 
   PetscErrorCode computeMisfitBrain(PetscReal *J);
@@ -115,7 +115,7 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
     PetscFunctionReturn(0);
   }
 
-  PetscErrorCode checkGradient(Vec p, Vec data);
+  PetscErrorCode checkGradient(Vec p, std::shared_ptr<Data> data);
   virtual PetscErrorCode reset(Vec p, std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor);
 
   ~DerivativeOperatorsMassEffect() { VecDestroy(&delta_); }
@@ -130,9 +130,9 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
     tuMSGstd(" ----- Setting RD derivative operators with modified objective --------");
   }
 
-  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, Vec data);
-  PetscErrorCode evaluateGradient(Vec dJ, Vec x, Vec data);
-  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data);
+  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data);
   PetscErrorCode evaluateHessian(Vec y, Vec x);
 
   /** @brief: Sets the image vectors for the simulation geometry material properties

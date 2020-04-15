@@ -219,13 +219,14 @@ PetscErrorCode DerivativeOperatorsMassEffect::reset(Vec p, std::shared_ptr<PdeOp
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========          STANDARD REACTION DIFFUSION (MP)         ======== #### */
 /* #### ------------------------------------------------------------------- #### */
-PetscErrorCode DerivativeOperatorsRD::evaluateObjective(PetscReal *J, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsRD::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
   ScalarType *x_ptr, k1, k2, k3;
 
   int x_sz;
+  Vec data = data_inv->dt1();
 
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
   int lock_state;
@@ -317,7 +318,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective(PetscReal *J, Vec x, Vec
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ScalarType *x_ptr, *p_ptr;
@@ -332,6 +333,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, Vec data) 
   ScalarType k1, k2, k3;
 
   int x_sz;
+  Vec data = data_inv->dt1();
 
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
   int lock_state;
@@ -528,7 +530,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, Vec data) 
 }
 
 // saves on forward solve
-PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
@@ -543,6 +545,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
   ScalarType *x_ptr, k1, k2, k3;
 
   int x_sz;
+  Vec data = data_inv->dt1();
 
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
   int lock_state;
@@ -1005,7 +1008,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateConstantHessianApproximation(Vec y
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========          KL DIVERGENCE/CROSS ENTROPY REACTION DIFFUSION (MP)         ======== #### */
 /* #### ------------------------------------------------------------------- #### */
-PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
@@ -1019,6 +1022,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, Vec
     x->lock = 0;
   }
 #endif
+  Vec data = data_inv->dt1();
 
   if (params_->opt_->diffusivity_inversion_ || params_->opt_->flag_reaction_inv_) {
     ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
@@ -1118,7 +1122,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, Vec
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ScalarType *x_ptr, *p_ptr;
@@ -1140,6 +1144,8 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, Vec data) 
     x->lock = 0;
   }
 #endif
+
+  Vec data = data_inv->dt1();
 
   if (params_->opt_->diffusivity_inversion_ || params_->opt_->flag_reaction_inv_) {
     ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
@@ -1337,7 +1343,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, Vec data) 
 }
 
 // saves on forward solve
-PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
@@ -1359,6 +1365,8 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
     x->lock = 0;
   }
 #endif
+
+  Vec data = data_inv->dt1();
 
   if (params_->opt_->diffusivity_inversion_ || params_->opt_->flag_reaction_inv_) {  // if solveForParameters is happening always invert for diffusivity
     ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
@@ -1825,13 +1833,15 @@ PetscErrorCode DerivativeOperatorsKL::evaluateHessian(Vec y, Vec x) {
 /* #### ========    REACTION DIFFUSION W/ MODIFIED OBJECTIVE (MP)  ======== #### */
 /* #### ========    REACTION DIFFUSION FOR MOVING ATLAS (MA)       ======== #### */
 /* #### ------------------------------------------------------------------- #### */
-PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective(PetscReal *J, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   TU_assert(data != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
   ScalarType misfit_tu = 0, misfit_brain = 0;
   PetscReal reg = 0;
   params_->tu_->statistics_.nb_obj_evals++;
+
+  Vec data = data_inv->dt1();
 
   // compute c0
   ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
@@ -1872,11 +1882,13 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective(PetscReal *J, Vec x, 
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient(Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ScalarType misfit_brain;
   params_->tu_->statistics_.nb_grad_evals++;
+
+  Vec data = data_inv->dt1();
 
   ScalarType dJ_val = 0, norm_alpha = 0, norm_phiTalpha = 0, norm_phiTphic0 = 0;
   ScalarType norm_adjfinal1 = 0., norm_adjfinal2 = 0., norm_c0 = 0., norm_c1 = 0., norm_d = 0.;
@@ -1978,11 +1990,12 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateGradient(Vec dJ, Vec x, Vec dat
 }
 
 // TODO: implement optimized version
-PetscErrorCode DerivativeOperatorsRDObj::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsRDObj::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
   params_->tu_->statistics_.nb_grad_evals++;
+  Vec data = data_inv->dt1();
   ierr = evaluateObjective(J, x, data); CHKERRQ(ierr);
   ierr = evaluateGradient(dJ, x, data); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
@@ -2073,7 +2086,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::computeMisfitBrain(PetscReal *J) {
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
@@ -2086,6 +2099,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Ve
     x->lock = 0;
   }
 #endif
+
+  Vec data = data_inv->dt1();
 
   std::stringstream s;
   ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
@@ -2142,11 +2157,12 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Ve
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient(Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_grad_evals++;
 
+  Vec data = data_inv->dt1();
   disable_verbose_ = true;
   // Finite difference gradient -- forward for now
   ScalarType h, dx;
@@ -2186,7 +2202,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient(Vec dJ, Vec x, Ve
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
@@ -2196,6 +2212,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient(Petsc
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime();
 
+  Vec data = data_inv->dt1();
   ierr = evaluateObjective(J, x, data); CHKERRQ(ierr);
   // Finite difference gradient -- forward for now
   ScalarType h, dx;
@@ -2264,10 +2281,11 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateHessian(Vec y, Vec x) {
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsMassEffect::checkGradient(Vec x, Vec data) {
+PetscErrorCode DerivativeOperatorsMassEffect::checkGradient(Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
+  Vec data = data_inv->dt1();
   std::stringstream s;
   s << " ----- Gradient check with taylor expansion ----- ";
   ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
@@ -2317,10 +2335,13 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient(Vec x, Vec data) {
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                  BASE CLASS                       ======== #### */
 /* #### ------------------------------------------------------------------- #### */
-PetscErrorCode DerivativeOperators::checkGradient(Vec p, Vec data) {
+PetscErrorCode DerivativeOperators::checkGradient(Vec p, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   std::stringstream s;
+
+  Vec data = data_inv->dt1();
+
   s << " ----- Gradient check with taylor expansion ----- ";
   ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
   s.str("");
@@ -2397,7 +2418,7 @@ PetscErrorCode DerivativeOperators::checkGradient(Vec p, Vec data) {
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperators::checkHessian(Vec p, Vec data) {
+PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int procid, nprocs;
@@ -2405,6 +2426,7 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, Vec data) {
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
   PCOUT << "\n\n----- Hessian check with taylor expansion ----- " << std::endl;
 
+  Vec data = data_inv->dt1();
   ScalarType norm;
   ierr = VecNorm(p, NORM_2, &norm); CHKERRQ(ierr);
 
