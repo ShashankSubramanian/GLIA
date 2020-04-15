@@ -76,7 +76,7 @@ Help(vars.GenerateHelpText(env))
 env.Append(CPPPATH = ['#include'])
 env.Append(CPPPATH = [os.path.join( "3rdparty")])
 env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
-
+env.Append(CPPPATH = [os.path.join('include', 'test')])
 print
 print_options(vars)
 

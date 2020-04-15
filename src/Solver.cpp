@@ -178,46 +178,6 @@ PetscErrorCode Solver::initialize(std::shared_ptr<SpectralOperators> spec_ops, s
   ierr = solver_interface_->updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
   ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
 
-  // === read data: generate synthetic or read real
-  if (app_settings_->syn_->enabled_) {
-    // data t1 and data t0 is generated synthetically using user given cm and tumor model
-    ierr = createSynthetic(); CHKERRQ(ierr);
-    data_support_ = data_->dt1();
-  } else {
-    // read in target data (t1 and/or t0); observation operator
-    ierr = readData(); CHKERRQ(ierr);
-  }
-  data_->set(data_t1_0, data_t0_);
-
-  // === set observation operator
-  if (custom_obs_) {
-    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
-    ss << " Setting custom observation mask";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  } else {
-    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
-    if (has_dt0_) {
-      ierr = tumor_->obs_->setDefaultFilter(data_->dt0(), 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
-    }
-    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-  }
-
-  // === apply observation operator to data
-  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1(), 1); CHKERRQ(ierr);
-  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
-  if (has_dt0_) {
-    ierr = tumor_->obs_->apply(data_->dt0(), data_->dt0(), 0); CHKERRQ(ierr);
-  }
-
 #ifdef CUDA
   cudaPrintDeviceMemory();
 #endif
@@ -679,12 +639,14 @@ PetscErrorCode Solver::createSynthetic() {
 
   // save parameters
   ScalarType rho_temp = params_->tu_->rho_, k_temp = params_->tu_->k_, dt_temp = params_->tu_->dt_;
+  ScalarType forcing_factor_temp = params_->tu_->forcing_factor_;
   int nt_temp = params_->tu_->nt_;
   // set to synthetic parameters
   params_->tu_->rho_ = app_settings_->syn_->rho_;
   params_->tu_->k_ = app_settings_->syn_->k_;
   params_->tu_->dt_ = app_settings_->syn_->dt_;
   params_->tu_->nt_ = app_settings_->syn_->nt_;
+  params_->tu_->forcing_factor_ = app_settings_->syn_->forcing_factor_;
 
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -715,8 +677,6 @@ PetscErrorCode Solver::createSynthetic() {
 
     // set p_rec_ according to user centers
     ierr = VecSet(p_rec_, scale); CHKERRQ(ierr);
-    // ss << " --------------  Synthetic p_vec (using cm"<<count<<") -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
-    // ss << " --------------  -------------- -----------------"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     ierr = tumor_->phi_->apply(tmp_, p_rec_); CHKERRQ(ierr);
     ierr = VecAXPY(data_t0_, 1.0, tmp_); CHKERRQ(ierr);
     ss << "p-syn-sm" << count;
@@ -769,6 +729,7 @@ PetscErrorCode Solver::createSynthetic() {
   params_->tu_->k_ = k_temp;
   params_->tu_->dt_ = dt_temp;
   params_->tu_->nt_ = nt_temp;
+  params_->tu_->forcing_factor_ = forcing_factor_temp;
 
   PetscFunctionReturn(ierr);
 }
@@ -864,6 +825,16 @@ PetscErrorCode ForwardSolver::run() {
   PetscFunctionBegin;
   // no-op
   std::stringstream ss;
+  // === read data: generate synthetic or read real
+  if (app_settings_->syn_->enabled_) {
+    // data t1 and data t0 is generated synthetically using user given cm and tumor model
+    ierr = createSynthetic(); CHKERRQ(ierr);
+    data_support_ = data_t1_;
+  } else {
+    // read in target data (t1 and/or t0); observation operator
+    ierr = readData(); CHKERRQ(ierr);
+  }
+
   ss << " Forward solve completed. Exiting.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
@@ -892,6 +863,45 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = tuMSGwarn(" Initializing Inversion for Non-Sparse TIL, and Diffusion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  // === read data: generate synthetic or read real
+  if (app_settings_->syn_->enabled_) {
+    // data t1 and data t0 is generated synthetically using user given cm and tumor model
+    ierr = createSynthetic(); CHKERRQ(ierr);
+    data_support_ = data_t1_;
+  } else {
+    // read in target data (t1 and/or t0); observation operator
+    ierr = readData(); CHKERRQ(ierr);
+  }
+  data_->set(data_t1_0, data_t0_);
+
+  // === set observation operator
+  if (custom_obs_) {
+    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
+    ss << " Setting custom observation mask";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  } else {
+    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    if (has_dt0_) {
+      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
+    }
+    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  }
+
+  // === apply observation operator to data
+  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
+  if (has_dt0_) {
+    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
+  }
 
   // === set Gaussians
   if (app_settings_->inject_solution_) {
@@ -902,7 +912,7 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
   }
   ierr = initializeGaussians(); CHKERRQ(ierr);
 
-  // create optimizer
+  // === create optimizer
   optimizer_ = std::make_shared<TILOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
 
@@ -955,6 +965,46 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = tuMSGwarn(" Initializing Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+
+  // === read data: generate synthetic or read real
+  if (app_settings_->syn_->enabled_) {
+    // data t1 and data t0 is generated synthetically using user given cm and tumor model
+    ierr = createSynthetic(); CHKERRQ(ierr);
+    data_support_ = data_t1_;
+  } else {
+    // read in target data (t1 and/or t0); observation operator
+    ierr = readData(); CHKERRQ(ierr);
+  }
+  data_->set(data_t1_0, data_t0_);
+
+  // === set observation operator
+  if (custom_obs_) {
+    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
+    ss << " Setting custom observation mask";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  } else {
+    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    if (has_dt0_) {
+      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
+    }
+    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  }
+
+  // === apply observation operator to data
+  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
+  if (has_dt0_) {
+    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
+  }
 
   // read connected components; set sparsity level
   if (!app_settings_->path_->data_comps_data_.empty()) {
@@ -1026,7 +1076,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
     }
   }
 
-  // create optimizer
+  // === create optimizer
   optimizer_ = std::make_shared<SparseTILOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
 
@@ -1049,6 +1099,8 @@ PetscErrorCode InverseL1Solver::run() {
   ierr = tuMSGwarn(" Beginning Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   Solver::run(); CHKERRQ(ierr);
 
+  // set the reg norm as L2
+  params_->opt_->regularization_norm_ = L2;
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
   optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
   ierr = optimizer_->setData(data_); CHKERRQ(ierr);
@@ -1082,7 +1134,48 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Spectr
   ierr = tuMSGwarn(" Initializing Reaction/Diffusion Inversion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
   ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-  // create optimizer
+
+  // === read data: generate synthetic or read real
+  if (app_settings_->syn_->enabled_) {
+    // data t1 and data t0 is generated synthetically using user given cm and tumor model
+    ierr = createSynthetic(); CHKERRQ(ierr);
+    data_support_ = data_t1_;
+  } else {
+    // read in target data (t1 and/or t0); observation operator
+    ierr = readData(); CHKERRQ(ierr);
+  }
+  data_->set(data_t1_0, data_t0_);
+
+  // === set observation operator
+  if (custom_obs_) {
+    ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
+    ss << " Setting custom observation mask";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  } else {
+    ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    if (has_dt0_) {
+      ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
+    }
+    ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    ss << " Setting default observation mask based on input data (d0) and threshold " << tumor_->obs_->threshold_0_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  }
+
+  // === apply observation operator to data
+  ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
+  if (has_dt0_) {
+    ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
+  }
+
+  // === create optimizer
   optimizer_ = std::make_shared<RDOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
 
@@ -1115,7 +1208,7 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
   // set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
     ierr = itctx_->tumor_->phi_->apply(data_->dt0(), p_rec); CHKERRQ(ierr);
-    params_->tu_->use_c0_ = true;
+    params_->tu_->use_c0_ = has_dt0_ = true;
   }
     // initial guess TODO(K): if read in vector has onzero rho/kappa values, take those
   Vec x_rd;
@@ -1165,7 +1258,7 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   ierr = readPatient(); CHKERRQ(ierr);
   params_->opt_->invert_mass_effect_ = true;  // enable mass effect inversion in optimizer
 
-  // create optimizer
+  // === create optimizer
   optimizer_ = std::make_shared<MEOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
   // set patient material properties TODO(K) implement
@@ -1429,42 +1522,6 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
       ss.clear();
     }
   }
-
-  PetscFunctionReturn(ierr);
-}
-
-/* #### ------------------------------------------------------------------- #### */
-/* #### ========                      TestSuite                    ======== #### */
-/* #### ------------------------------------------------------------------- #### */
-
-// ### ______________________________________________________________________ ___
-// ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
-
-  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
-  // ierr = solver_interface_->setParams(p_rec_, nullptr);
-  // ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
-  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
-
-  PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode TestSuite::run() {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-
-  PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode TestSuite::finalize() {
-  PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
 
   PetscFunctionReturn(ierr);
 }

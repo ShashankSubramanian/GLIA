@@ -1,3 +1,129 @@
+#include "TestSuite.h"
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========                      TestSuite                    ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+TestSuite::TestSuite(Test test) : Solver() {
+  testcase_ = test;
+}
+
+PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  std::stringstream ss;
+  ierr = tuMSGwarn(" Initializing for TestSuite."); CHKERRQ(ierr);
+  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode TestSuite::run() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  std::stringstream ss;
+
+  // simulator test
+  switch(testcase_) {
+    case DEFAULTTEST: // run any default tests: TODO
+      break;
+    case FORWARDTEST: 
+      ierr = tuMSGwarn(" Forward simulator test."); CHKERRQ(ierr);
+      ierr = forwardTest(); CHKERRQ(ierr);
+      break;
+    case INVERSETEST: 
+      ierr = tuMSGwarn(" Inverse simulator test."); CHKERRQ(ierr);
+      ierr = inverseTest(); CHKERRQ(ierr);
+      break;
+    default:
+      ierr = tuMSGwarn(" Invalid test. Exiting..."); CHKERRQ(ierr);
+  }
+  
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode TestSuite::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  std::stringstream ss;
+  ierr = tuMSGwarn(" Test suite complete."); CHKERRQ(ierr);
+  
+  PetscFunctionReturn(ierr);
+}
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========                SIMULATOR LEVEL TESTS              ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+
+PetscErrorCode TestSuite::forwardTest() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  /* run forward solver */
+  ierr = createSynthetic(); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode TestSuite::inverseTest() {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  /* create some data; no observation op */
+  ierr = createSynthetic(); CHKERRQ(ierr);
+  data_support_ = data_t1_;
+  /* set Gaussians */
+  ierr = initializeGaussians(); CHKERRQ(ierr);
+  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  ierr = solver_interface_->setParams(p_rec_, nullptr);
+  ierr = solver_interface_->setInitialGuess(0.); CHKERRQ(ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  /* run sparse til solver */
+  ierr = tuMSGwarn(" Beginning Test Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
+  Solver::run(); CHKERRQ(ierr);
+  // set the reg norm as L2 
+  params_->opt_->regularization_norm_ = L2;
+  ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
+  /* finalize with error metrics */
+  ierr = tuMSGwarn(" Finalizing Test Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
+  ierr = Solver::finalize(); CHKERRQ(ierr);
+
+
+  PetscFunctionReturn(ierr);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // TODO (S,K) implement test-suite
 
@@ -69,5 +195,5 @@
 //                 }
 //             }
 //         }
-//         ierr = VecGetArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
+//         ierr = VecRestoreArray (rho_vec_, &rho_vec_ptr);             CHKERRQ (ierr);
 //     }

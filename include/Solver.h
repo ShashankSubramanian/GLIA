@@ -178,16 +178,4 @@ class MultiSpeciesSolver : public Solver {
 
   virtual ~MultiSpeciesSolver() {}
 };
-
-class TestSuite : public Solver {
-  public:
-  TestSuite() : Solver() {}
-
-  virtual PetscErrorCode finalize();
-  virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
-  virtual PetscErrorCode run();
-
-  virtual ~TestSuite() {}
-};
-
 #endif

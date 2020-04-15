@@ -636,7 +636,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
   }
 
   // regularization
-  PetscReal reg;
+  PetscReal reg = 0;
   if (params_->opt_->regularization_norm_ == L2) {
     ierr = VecDot(tumor_->c_0_, tumor_->c_0_, &reg); CHKERRQ(ierr);
     reg *= 0.5 * params_->opt_->beta_;
@@ -1086,7 +1086,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, Vec
   ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
 
   /*Regularization term*/
-  PetscReal reg;
+  PetscReal reg = 0;
   if (params_->opt_->regularization_norm_ == L2) {  // In tumor space, so scale norm by lebesque measure
     ierr = VecDot(tumor_->c_0_, tumor_->c_0_, &reg); CHKERRQ(ierr);
     reg *= 0.5 * params_->opt_->beta_;
@@ -1460,7 +1460,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
   }
 
   // regularization
-  PetscReal reg;
+  PetscReal reg = 0;
   if (params_->opt_->regularization_norm_ == L2) {
     ierr = VecDot(tumor_->c_0_, tumor_->c_0_, &reg); CHKERRQ(ierr);
     reg *= 0.5 * params_->opt_->beta_;
@@ -1830,7 +1830,7 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective(PetscReal *J, Vec x, 
   PetscErrorCode ierr = 0;
   TU_assert(data != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
   ScalarType misfit_tu = 0, misfit_brain = 0;
-  PetscReal reg;
+  PetscReal reg = 0;
   params_->tu_->statistics_.nb_obj_evals++;
 
   // compute c0

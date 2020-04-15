@@ -7,6 +7,7 @@
 
 #include "Utils.h"
 #include "Solver.h"
+#include "TestSuite.h"
 #include "Parameters.h"
 #include "SpectralOperators.h"
 #include "TumorSolverInterface.h"
@@ -15,6 +16,7 @@
 enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, TEST};
 
 RunMode run_mode = FORWARD; // global variable
+Test test_case = DEFAULTTEST; // global variable
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -114,7 +116,17 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
     }
     if(value == "forward") {
       run_mode = FORWARD;
-      p->tu_->time_history_off_ = true;
+      p->tu_->time_history_off_ = true;  // @K: wont this be reset from the params?
+      return;
+    }
+    if(value == "test-forward") {
+      run_mode = TEST;
+      test_case = FORWARDTEST;
+      return;
+    }
+    if(value == "test-inverse") {
+      run_mode = TEST;
+      test_case = INVERSETEST;
       return;
     }
   }
@@ -341,7 +353,7 @@ int main(int argc, char **argv) {
       solver = std::make_shared<MultiSpeciesSolver>();
       break;
     case TEST:
-      solver = std::make_shared<TestSuite>();
+      solver = std::make_shared<TestSuite>(test_case);
       break;
     default:
       ierr = tuMSGwarn("Configuration invalid: solver mode not recognized. Exiting."); CHKERRQ(ierr);
