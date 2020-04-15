@@ -17,14 +17,19 @@ public :
             std::shared_ptr <Parameters> params,
             std::shared_ptr <Tumor> tumor);
 
+  // TODO: is the initialization of xrec_ in allocateTaoObjects necessary?
+  //       will be overwritten by setInitialGuess
   virtual PetscErrorCode allocateTaoObjects();
+  // TODO: revisit if necessary after cleanuop of TaoInterface
   virtual PetscErrorCode setTaoOptions();
-  virtual PetscErrorCode reset(Vec p);
+
   virtual PetscErrorCode solve();
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);
   virtual PetscErrorCode setVariableBounds();
   virtual ~MEOptimizer(); // TODO(K) implement destructor
+
+  // virtual PetscErrorCode resetOperators(Vec p);
 
 private:
   ScalarType k_init_;
@@ -33,8 +38,3 @@ private:
 };
 
 #endif
-
-// === non-class methods
-// convergence
-PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr);
-PetscErrorCode checkConvergenceGradObjMassEffect (Tao tao, void *ptr);

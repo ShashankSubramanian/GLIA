@@ -97,7 +97,7 @@ public :
 
   virtual PetscErrorCode allocateTaoObjects();
   virtual PetscErrorCode setTaoOptions();
-  virtual PetscErrorCode reset(Vec p);
+  virtual PetscErrorCode resetOperators(Vec p);
   virtual PetscErrorCode resetTao();
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);

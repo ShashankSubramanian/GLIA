@@ -1,3 +1,13 @@
+#include <iostream>
+#include <limits>
+
+#include "petsctao.h"
+// #include <petsc/private/vecimpl.h>
+
+#include "DerivativeOperators.h"
+#include "PdeOperators.h"
+#include "Optimizer.h"
+#include "TaoInterface.h"
 #include "RDOptimizer.h"
 
 RDOptimizer::initialize(
@@ -126,19 +136,6 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   PetscFunctionReturn(ierr);
 }
 
-
-/* ------------------------------------------------------------------- */
-/*
- RDOptimizer::solve - solves tumor inversion for rho and kappa, given c(0)
- Input Parameters:
- .  none (assumes that setInitialGuess(x_init) has been called)
- Output Parameters:
- .  none (implicitly writes solution in xrec_ and xout_ = TIL + xrec_)
- Assumptions:
- .  RDOptimizer::setInitialGuess(x_init) has been called, x_init sets TIL
- .  observation operator is set
- .  data for objective and gradient is set (InvSolver::setData(Vec d))
- */
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode RDOptimizer::solve() {
@@ -291,7 +288,6 @@ PetscErrorCode RDOptimizer::solve() {
   PetscFunctionReturn(ierr);
 }
 
-
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode RDOptimizer::setVariableBounds() {
@@ -345,7 +341,6 @@ PetscErrorCode RDOptimizer::setTaoOptions() {
   ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientReacDiff, (void*) ctx_); CHKERRQ (ierr);
   ierr = TaoSetMonitor (tao_, optimizationMonitorReacDiff, (void *) ctx_, NULL); CHKERRQ(ierr);
   ierr = TaoSetConvergenceTest (tao_, checkConvergenceGradReacDiff, ctx_); CHKERRQ(ierr);
-
-
+  // TODO: check if correct
   PetscFunctionReturn(ierr);
 }

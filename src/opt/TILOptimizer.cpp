@@ -1,3 +1,11 @@
+#include <iostream>
+#include <limits>
+
+#include "petsctao.h"
+// #include <petsc/private/vecimpl.h>
+
+#include "Optimizer.h"
+#include "TaoInterface.h"
 #include "TILOptimizer.h"
 
 TILOptimizer::initialize(

@@ -1,3 +1,14 @@
+#include <iostream>
+#include <limits>
+
+#include "petsctao.h"
+// #include <petsc/private/vecimpl.h>
+
+#include "DerivativeOperators.h"
+#include "PdeOperators.h"
+#include "Optimizer.h"
+#include "TaoInterface.h"
+
 //
 //
 // ### ________________________________________________________________________________________ ___

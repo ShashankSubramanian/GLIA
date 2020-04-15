@@ -87,7 +87,7 @@ PetscErrorCode Optimizer::resetTao () {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode Optimizer::reset(Vec p) {
+PetscErrorCode Optimizer::resetOperators(Vec p) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   // reset tumor_ object, re-size solution vector and copy p into tumor_->p_
@@ -223,7 +223,8 @@ PetscErrorCode Optimizer::setTaoOptions() {
   // parse options user has set
   ierr = TaoSetFromOptions (tao_); CHKERRQ(ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ(ierr); // TODO(K) I've changed this from tumor->p_ to xrec_
-  ierr = setVariableBounds(tao_, ctx_); CHKERRQ(ierr);
+  // overloaded function; specialized solvers define their variable bounds
+  ierr = setVariableBounds(); CHKERRQ(ierr);
   ierr = TaoSetMaximumIterations (tao_, ctx_->params_->opt_->newton_maxit_); CHKERRQ(ierr);
 
   ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveFunction, (void*) ctx_); CHKERRQ(ierr);

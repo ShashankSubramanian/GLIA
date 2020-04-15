@@ -2,8 +2,10 @@
 #define SPARSE_TIL_OPTIMIZER_H_
 
 
-#include "Optimizer.h"
 #include "Parameters.h"
+#include "Optimizer.h"
+#include "TILOptimizer.h"
+#include "RDOptimizer.h"
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========          CoSaMp (SparseTIL) Context               ======== #### */
@@ -111,14 +113,17 @@ public :
             std::shared_ptr <Parameters> params,
             std::shared_ptr <Tumor> tumor);
 
-  virtual PetscErrorCode allocateTaoObjects();
-  virtual PetscErrorCode setTaoOptions (Tao tao, CtxInv* ctx);
-  virtual PetscErrorCode reset(Vec p);
+  virtual PetscErrorCode allocateTaoObjects(); // no-op here
+  virtual PetscErrorCode setTaoOptions();      // no-op here
   virtual PetscErrorCode solve();
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);
-  virtual PetscErrorCode setVariableBounds();
-  virtual ~SparseTILOptimizerstd(); // TODO(K) implement destructor
+
+  virtual ~SparseTILOptimizerstd();
+
+  // TODO: Not specialized in this class; I think functions that are not specialized do not need to be declared
+  // virtual PetscErrorCode resetOperators(Vec p);
+  // virtual PetscErrorCode setVariableBounds();
 
 private:
   // local methods

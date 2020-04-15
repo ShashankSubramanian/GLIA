@@ -1,3 +1,11 @@
+#include <iostream>
+#include <limits>
+
+#include "petsctao.h"
+// #include <petsc/private/vecimpl.h>
+
+#include "Optimizer.h"
+#include "TaoInterface.h"
 #include "SparseTILOptimizer.h"
 
 SparseTILOptimizer::initialize(
@@ -23,6 +31,7 @@ SparseTILOptimizer::initialize(
   rd_opt_->initialize(derivative_operators, pde_operators, params, tumor);
   cosamp_ = std::make_shared<CtxCoSaMp>();
   ctx_->cosamp_ = (void*) cosamp_.get();
+  til_opt_->ctx_->cosamp_ = ctx_->cosamp_;
 
   PetscFunctionReturn(ierr);
 }
@@ -32,7 +41,20 @@ SparseTILOptimizer::initialize(
 PetscErrorCode Optimizer::allocateTaoObjects() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  ierr = tuMSGstd(" Sparse TIL optimizer does not allocate tao objects."); CHKERRQ(ierr);
+  // this function is empty since no tao objects should be allocated
+  // this is done in the sub solvers RD and TIL
+  ierr = tuMSGstd(" Sparse TIL optimizer does not allocate tao objects (done in RD and TIL subsolvers)."); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode Optimizer::setTaoOptions() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  // this function is empty since no tao object is allocated and no options are set.
+  // this is done in the sub solvers RD and TIL
+  ierr = tuMSGstd(" Sparse TIL optimizer does not set options for tao (done in RD and TIL subsolvers)."); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 
@@ -73,7 +95,7 @@ PetscErrorCode SparseTILOptimizer::restrictSubspace (Vec *x_restricted, Vec x_fu
   ctx->tumor_->phi_->modifyCenters (ctx->params_->tu_->support_);
   // resets the phis and other operators, x_restricted is copied into tumor->p_ and is used as init cond for
   // the L2 solver (needs to be done in every iteration, since location of basis functions updated)
-  ierr = til_opt_->reset(*x_restricted); CHKERRQ (ierr); // reset phis and other operators
+  ierr = til_opt_->resetOperators(*x_restricted); CHKERRQ (ierr); // reset phis and other operators
 
   PetscFunctionReturn (ierr);
 }
@@ -107,7 +129,7 @@ PetscErrorCode SparseTILOptimizer::prolongateSubspace (Vec x_full, Vec *x_restri
   ctx->params_->tu_->np_ = np_full;    /* reset to full space         */
   ctx->tumor_->phi_->resetCenters ();  /* reset all the basis centers */
   if (reset_operators) {
-    ierr = til_opt_->reset(x_full); CHKERRQ (ierr);} /* reset phis and other ops    */
+    ierr = til_opt_->resetOperators(x_full); CHKERRQ (ierr);} /* reset phis and other ops    */
   /* destroy, size will change   */
   if (*x_restricted != nullptr) {
     ierr = VecDestroy(x_restricted); CHKERRQ (ierr);

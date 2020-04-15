@@ -1,6 +1,9 @@
 #ifndef TAUINTERFACE_H_
 #define TAUINTERFACE_H_
 
+#include "Parameters.h"
+#include "petsctao.h"
+
 // derivative operators
 PetscErrorCode evaluateObjectiveFunction(Tao, Vec, PetscReal*, void*);
 PetscErrorCode evaluateGradient(Tao, Vec, Vec, void*);
