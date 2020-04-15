@@ -2,7 +2,8 @@
 
 sourcesPGLISTR = [
     Glob('./src/*.cpp'),
-    Glob('./src/test/*.cpp')
+    Glob('./src/test/*.cpp'),
+    Glob('./src/opt/*.cpp')
     #if '*.cpp' not in f.path
 ]
 

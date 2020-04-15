@@ -410,6 +410,8 @@ PetscErrorCode SolverInterface::predict() {
 PetscErrorCode SolverInterface::setupData() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  std::stringstream ss;
+
   // === read data: generate synthetic or read real
   if (app_settings_->syn_->enabled_) {
     // data t1 and data t0 is generated synthetically using user given cm and tumor model
@@ -419,7 +421,7 @@ PetscErrorCode SolverInterface::setupData() {
     // read in target data (t1 and/or t0); observation operator
     ierr = readData(); CHKERRQ(ierr);
   }
-  data_->set(data_t1_0, data_t0_);
+  data_->set(data_t1_, data_t0_);
   // === set observation operator
   if (custom_obs_) {
     ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
@@ -706,7 +708,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
     ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
     ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
     ierr = VecCopy(tumor_->c_t_, data_t1_); CHKERRQ(ierr);
-    species = &(tumor_->species_);
+    species = tumor_->species_;
   } else {
     ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
     ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
@@ -808,7 +810,7 @@ PetscErrorCode SolverInterface::initializeOperators() {
   // === initialize pde- and derivative operators
   switch (params_->tu_->model_) {
     case 1: {
-        pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops);
+        pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
         if (params_->opt_->cross_entropy_loss_) {
           derivative_operators_ = std::make_shared<DerivativeOperatorsKL>(pde_operators_, params_, tumor_);
         } else {
@@ -817,25 +819,26 @@ PetscErrorCode SolverInterface::initializeOperators() {
     break;
     }
     case 2: {
-      pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops);
+      pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD>(pde_operators_, params_, tumor_);
       break;
     }
     case 3: {
-      pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops);
+      pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRDObj>(pde_operators_, params_, tumor_);
       break;
     }
     case 4: {
-      pde_operators_ = std::make_shared<PdeOperatorsMassEffect>(tumor_, params_, spec_ops);
+      pde_operators_ = std::make_shared<PdeOperatorsMassEffect>(tumor_, params_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsMassEffect>(pde_operators_, params_, tumor_);
       break;
     }
     case 5: {
-      pde_operators_ = std::make_shared<PdeOperatorsMultiSpecies>(tumor_, params_, spec_ops);
+      pde_operators_ = std::make_shared<PdeOperatorsMultiSpecies>(tumor_, params_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsRD>(pde_operators_, params_, tumor_);
       break;
     }
+  }
   PetscFunctionReturn(ierr);
 }
 
@@ -898,10 +901,6 @@ PetscErrorCode SolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec csf,
 PetscErrorCode SolverInterface::setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec bg) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  if (!initialized_) {
-    ierr = tuMSGwarn("Error: (setDistMeassureSimulationGeoImages) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr);
-    PetscFunctionReturn(ierr);
-  }
   if (wm == nullptr) {
     ierr = tuMSGwarn("Warning: (setDistMeassureSimulationGeoImages) Vector wm is nullptr."); CHKERRQ(ierr);
   }
@@ -923,10 +922,6 @@ PetscErrorCode SolverInterface::setDistMeassureSimulationGeoImages(Vec wm, Vec g
 PetscErrorCode SolverInterface::setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec bg) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  if (!initialized_) {
-    ierr = tuMSGwarn("Error: (setDistMeassureTargetDataImages) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr);
-    PetscFunctionReturn(ierr);
-  }
   if (wm == nullptr) {
     ierr = tuMSGwarn("Warning: (setDistMeassureTargetDataImages) Vector wm is nullptr."); CHKERRQ(ierr);
   }
@@ -949,10 +944,6 @@ PetscErrorCode SolverInterface::setDistMeassureTargetDataImages(Vec wm, Vec gm, 
 PetscErrorCode SolverInterface::setDistMeassureDiffImages(Vec wm, Vec gm, Vec csf, Vec bg) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  if (!initialized_) {
-    ierr = tuMSGwarn("Error: (setDistMeassureDiffImages) TumorSolverInterface needs to be initialized before calling this function. Exiting .."); CHKERRQ(ierr);
-    PetscFunctionReturn(ierr);
-  }
   if (wm == nullptr) {
     ierr = tuMSGwarn("Warning: (setDistMeassureDiffImages) Vector wm is nullptr."); CHKERRQ(ierr);
   }
@@ -989,7 +980,7 @@ PetscErrorCode SolverInterface::computeTumorContributionRegistration(Vec q1, Vec
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::smooth(Vec x, ScalarType num_voxels) {
+PetscErrorCode SolverInterface::smooth(Vec x, ScalarType num_voxels) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ScalarType sigma_smooth = num_voxels * 2.0 * M_PI / params_->grid_->n_[0];
@@ -999,7 +990,7 @@ PetscErrorCode TumorSolverInterface::smooth(Vec x, ScalarType num_voxels) {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::readNetCDF(Vec A, std::string filename) {
+PetscErrorCode SolverInterface::readNetCDF(Vec A, std::string filename) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ierr = dataIn(A, params_, filename.c_str()); CHKERRQ(ierr);
@@ -1008,7 +999,7 @@ PetscErrorCode TumorSolverInterface::readNetCDF(Vec A, std::string filename) {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode TumorSolverInterface::writeNetCDF(Vec A, std::string filename) {
+PetscErrorCode SolverInterface::writeNetCDF(Vec A, std::string filename) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   ierr = dataOut(A, params_, filename.c_str()); CHKERRQ(ierr);

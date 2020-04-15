@@ -87,6 +87,7 @@ public:
   bool flag_reaction_inv_;      /// @brief internal flag to enable reaction/diffusion methods in InvSolver
   bool pre_reacdiff_solve_;     /// @brief if true, CoSaMp L1 inversion scheme perfroms reaction/diffusion solve before {p,k} inversion
   bool rescale_init_cond_;      /// @brief if true, TIL is rescaled to 1
+  bool estimate_rho_init_guess_;/// @brief if true a rough estimate of rho is computed based on given TIL
   bool multilevel_;             /// @brief if true, INT_Omega phi(x) dx = const across levels
   bool adv_velocity_set_;       /// @brief if true, velocity for explicit advection of material properties is provided
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
@@ -117,7 +118,7 @@ public:
     jval_(0.),
     converged_(false)
   {}
-  reset() {
+  void reset() {
     converged_ = false;
     nb_newton_it_ = 0;
     nb_krylov_it_ = 0;

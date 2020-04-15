@@ -21,11 +21,11 @@ Optimizer::~Optimizer() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-Optimizer::initialize(
+PetscErrorCode Optimizer::initialize(
   std::shared_ptr<DerivativeOperators> derivative_operators,
   std::shared_ptr <PdeOperators> pde_operators,
   std::shared_ptr <Parameters> params,
-  std::shared_ptr <Tumor> tumor)) {
+  std::shared_ptr <Tumor> tumor) {
 
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
@@ -106,7 +106,7 @@ PetscErrorCode Optimizer::resetOperators(Vec p) {
 PetscErrorCode Optimizer::setTaoOptions() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  std::Stringstream ss;
+  std::stringstream ss;
   std::string msg;
 
   int procid, nprocs;
@@ -133,13 +133,14 @@ PetscErrorCode Optimizer::setTaoOptions() {
   else if (strcmp(taotype, "blmvm") == 0) {ierr = tuMSGstd(" Quasi-Newton's method BLMVM (line search; bound constraints) selected"); CHKERRQ(ierr);}
   else if (strcmp(taotype, "lmvm") == 0) {ierr = tuMSGstd(" Quasi-Newton's method LMVM (line search; unconstrained) selected"); CHKERRQ(ierr);}
   else if (strcmp(taotype, "tao_blmvm_m") == 0) {ierr = tuMSGstd(" User modified quasi-Newton's method BLMVM (line search; bound constraints) selected"); CHKERRQ(ierr);}
-  else    (strcmp(taotype, "fd_test") == 0) {ierr = tuMSGstd(" Gradient test selected"); CHKERRQ(ierr);}
+  else if (strcmp(taotype, "fd_test") == 0) {ierr = tuMSGstd(" Gradient test selected"); CHKERRQ(ierr);}
+  else {}
 
   ierr = tuMSGstd(" parameters (optimizer):"); CHKERRQ(ierr);
 
   // set line-search method and minstep
   TaoLineSearch linesearch;
-  ierr = TaoGetLineSearch (tao_, &linesearch); CHKERRQ(ierr);
+  ierr = TaoGetLineSearch(tao_, &linesearch); CHKERRQ(ierr);
   linesearch->stepmin = ctx_->params_->opt_->ls_minstep_;
   if (ctx_->params_->opt_->linesearch_ == ARMIJO) {
     ierr = TaoLineSearchSetType (linesearch, "armijo"); CHKERRQ(ierr);
@@ -152,6 +153,7 @@ PetscErrorCode Optimizer::setTaoOptions() {
   ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_"); CHKERRQ(ierr);
 
   // manually set petsc options
+  std::stringstream val;
   PetscBool flag = PETSC_FALSE;
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
   // disable hessian preconditioner
@@ -166,20 +168,26 @@ PetscErrorCode Optimizer::setTaoOptions() {
   // set mat lmvm number fo vectors for quasi-Newton update
   ierr = PetscOptionsHasName (NULL, NULL, "-tao_blmvm_mat_lmvm_num_vecs", &flag); CHKERRQ(ierr);
   if (flag == PETSC_FALSE) {
-    ierr = PetscOptionsSetValue (NULL, "-tao_blmvm_mat_lmvm_num_vecs", ctx_->params_->opt_->lbfgs_vectors_); CHKERRQ(ierr);
+    val << ctx_->params_->opt_->lbfgs_vectors_;
+    ierr = PetscOptionsSetValue (NULL, "-tao_blmvm_mat_lmvm_num_vecs", val.str().c_str()); CHKERRQ(ierr);
+    val.str(""); val.clear();
     ss << " .. using " << ctx_->params_->opt_->lbfgs_vectors_ << " vectors for inverse Hessian update of quasi-Newton method."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   // set mat lmvm type of inverse Hessian initialization
   ierr = PetscOptionsHasName (NULL, NULL, "-tao_blmvm_mat_lmvm_scale_type", &flag); CHKERRQ(ierr);
   if (flag == PETSC_FALSE) {
-    ierr = PetscOptionsSetValue (NULL, "-tao_blmvm_mat_lmvm_scale_type", ctx_->params_->opt_->lbfgs_scale_type_); CHKERRQ(ierr);
+    val << ctx_->params_->opt_->lbfgs_scale_type_;
+    ierr = PetscOptionsSetValue (NULL, "-tao_blmvm_mat_lmvm_scale_type", val.str().c_str()); CHKERRQ(ierr);
+    val.str(""); val.clear();
     ss << " .. setting inverse Hessian initial guess type to: " << ctx_->params_->opt_->lbfgs_scale_type_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   // set max number of line-search function evaluations per Newton step
   ierr = PetscOptionsHasName (NULL, NULL, "-tumor_tao_ls_max_funcs", &flag); CHKERRQ(ierr);
   if (flag == PETSC_FALSE) {
-    ierr = PetscOptionsSetValue (NULL, "-tumor_tao_ls_max_funcs", ctx_->params_->opt_->ls_max_func_evals); CHKERRQ(ierr);
-    ierr = PetscOptionsSetValue (NULL, "-tao_ls_max_funcs", ctx_->params_->opt_->ls_max_func_evals); CHKERRQ(ierr);
+    val <<  ctx_->params_->opt_->ls_max_func_evals;
+    ierr = PetscOptionsSetValue (NULL, "-tumor_tao_ls_max_funcs", val.str().c_str()); CHKERRQ(ierr);
+    ierr = PetscOptionsSetValue (NULL, "-tao_ls_max_funcs", val.str().c_str()); CHKERRQ(ierr);
+    val.str(""); val.clear();
     ss << " .. setting max number of line-search function evaluations to: " << ctx_->params_->opt_->ls_max_func_evals; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   // set tolerances
@@ -197,23 +205,27 @@ PetscErrorCode Optimizer::setTaoOptions() {
   // set mat lmvm number fo vectors for quasi-Newton update
   ierr = PetscOptionsHasName (NULL, "-tao_lmm_vectors", &flag); CHKERRQ(ierr);
   if (flag == PETSC_FALSE) {
-    ierr = PetscOptionsSetValue ("-tao_lmm_vectors", ctx_->params_->opt_->lbfgs_vectors_); CHKERRQ(ierr);
+    val << ctx_->params_->opt_->lbfgs_vectors_;
+    ierr = PetscOptionsSetValue ("-tao_lmm_vectors", val.str().c_str()); CHKERRQ(ierr);
+    val.str(""); val.clear();
     ss << " .. using " << ctx_->params_->opt_->lbfgs_vectors_ << " vectors for inverse Hessian update of quasi-Newton method."; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   // set mat lmvm type of inverse Hessian initialization
   ierr = PetscOptionsHasName (NULL, "-tao_lmm_scale_type", &flag); CHKERRQ(ierr);
   if (flag == PETSC_FALSE) {
     ierr = PetscOptionsSetValue ("-tao_lmm_scale_type", "broyden"); CHKERRQ(ierr);
-    ierr = PetscOptionsSetValue ("-tao_lmm_scalar_history", 5); CHKERRQ(ierr);
+    ierr = PetscOptionsSetValue ("-tao_lmm_scalar_history", "5"); CHKERRQ(ierr);
     ierr = PetscOptionsSetValue ("-tao_lmm_rescale_type", "scalar"); CHKERRQ(ierr);
-    ierr = PetscOptionsSetValue ("-tao_lmm_rescale_history", 5); CHKERRQ(ierr);
+    ierr = PetscOptionsSetValue ("-tao_lmm_rescale_history", "5"); CHKERRQ(ierr);
     ss << " .. setting inverse Hessian initial guess type to: " << ctx_->params_->opt_->lbfgs_scale_type_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   // set max number of line-search function evaluations per Newton step
   ierr = PetscOptionsHasName ("-tumor_tao_ls_max_funcs", &flag); CHKERRQ(ierr);
   if (flag == PETSC_FALSE) {
-    ierr = PetscOptionsSetValue ("-tumor_tao_ls_max_funcs", ctx_->params_->opt_->ls_max_func_evals); CHKERRQ(ierr);
-    ierr = PetscOptionsSetValue ("-tao_ls_max_funcs", ctx_->params_->opt_->ls_max_func_evals); CHKERRQ(ierr);
+    val <<  ctx_->params_->opt_->ls_max_func_evals;
+    ierr = PetscOptionsSetValue ("-tumor_tao_ls_max_funcs", val.str().c_str()); CHKERRQ(ierr);
+    ierr = PetscOptionsSetValue ("-tao_ls_max_funcs", val.str().c_str()); CHKERRQ(ierr);
+    val.str(""); val.clear();
     ss << " .. setting max number of line-search function evaluations to: " << ctx_->params_->opt_->ls_max_func_evals; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   }
   //set tolerances
@@ -227,11 +239,11 @@ PetscErrorCode Optimizer::setTaoOptions() {
   ierr = setVariableBounds(); CHKERRQ(ierr);
   ierr = TaoSetMaximumIterations (tao_, ctx_->params_->opt_->newton_maxit_); CHKERRQ(ierr);
 
-  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveFunction, (void*) ctx_); CHKERRQ(ierr);
-  ierr = TaoSetGradientRoutine (tao_, evaluateGradient, (void*) ctx_); CHKERRQ(ierr);
-  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveFunctionAndGradient, (void*) ctx_); CHKERRQ(ierr);
-  ierr = TaoSetMonitor (tao_, optimizationMonitor, (void *) ctx_, NULL); CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest (tao_, checkConvergenceGrad, ctx_); CHKERRQ(ierr);
+  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveFunction, (void*) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetGradientRoutine (tao_, evaluateGradient, (void*) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveFunctionAndGradient, (void*) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetMonitor (tao_, optimizationMonitor, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
+  ierr = TaoSetConvergenceTest (tao_, checkConvergenceGrad, (void*) ctx_.get()); CHKERRQ(ierr);
   // ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx_); CHKERRQ(ierr);
 
   ierr = tuMSGstd(" tolerances (stopping conditions):"); CHKERRQ(ierr);
@@ -247,8 +259,8 @@ PetscErrorCode Optimizer::setTaoOptions() {
         ierr = KSPSetOptionsPrefix(ksp, "hessian_"); CHKERRQ(ierr);
         ierr = KSPSetTolerances(ksp, 1E-6, PETSC_DEFAULT, PETSC_DEFAULT, ctx_->params_->opt_->krylov_maxit_); CHKERRQ(ierr);
         // use Eisenstat/Walker convergence crit.
-        KSPSetPreSolve (ksp, preKrylovSolve, ctx_); CHKERRQ(ierr);
-        ierr = KSPMonitorSet(ksp, hessianKSPMonitor,ctx_, 0); CHKERRQ(ierr);
+        KSPSetPreSolve (ksp, preKrylovSolve, (void *) ctx_.get()); CHKERRQ(ierr);
+        ierr = KSPMonitorSet(ksp, hessianKSPMonitor, (void *) ctx_.get(), 0); CHKERRQ(ierr);
         // ierr = KSPSetComputeSingularValues(ksp, PETSC_TRUE); CHKERRQ (ierr);  // To compute the condition number
         ierr = KSPSetFromOptions(ksp); CHKERRQ (ierr);
         // set preconditioner (disabled)

@@ -812,7 +812,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateHessian(Vec y, Vec x) {
     ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
     ierr = pde_operators_->solveState(1);
     // Solve incr adj with alpha1_tilde = -OT * O * c1_tilde
-    ierr = tumor_->obs_->apply(temp_, tumor_->c_t_1, 1); CHKERRQ(ierr);
+    ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
     ierr = tumor_->obs_->apply(tumor_->p_t_, temp_, 1); CHKERRQ(ierr);
     ierr = VecScale(tumor_->p_t_, -1.0); CHKERRQ(ierr);
     ierr = pde_operators_->solveAdjoint(2);
@@ -1995,9 +1995,8 @@ PetscErrorCode DerivativeOperatorsRDObj::evaluateObjectiveAndGradient(PetscReal 
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
   params_->tu_->statistics_.nb_grad_evals++;
-  Vec data = data_inv->dt1();
-  ierr = evaluateObjective(J, x, data); CHKERRQ(ierr);
-  ierr = evaluateGradient(dJ, x, data); CHKERRQ(ierr);
+  ierr = evaluateObjective(J, x, data_inv); CHKERRQ(ierr);
+  ierr = evaluateGradient(dJ, x, data_inv); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 
@@ -2169,7 +2168,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient(Vec dJ, Vec x, st
   ScalarType volatile xph;
   PetscReal J_f, J_b;
 
-  ierr = evaluateObjective(&J_b, x, data); CHKERRQ(ierr);
+  ierr = evaluateObjective(&J_b, x, data_inv); CHKERRQ(ierr);
   int sz;
   ScalarType *delta_ptr, *dj_ptr;
   ScalarType const *x_ptr;
@@ -2191,7 +2190,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient(Vec dJ, Vec x, st
     dx = xph - x_ptr[i];
     delta_ptr[i] = xph;
     ierr = VecRestoreArray(delta_, &delta_ptr); CHKERRQ(ierr);
-    ierr = evaluateObjective(&J_f, delta_, data); CHKERRQ(ierr);
+    ierr = evaluateObjective(&J_f, delta_, data_inv); CHKERRQ(ierr);
     dj_ptr[i] = (J_f - J_b) / dx;
     ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
   }
@@ -2213,7 +2212,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient(Petsc
   double self_exec_time = -MPI_Wtime();
 
   Vec data = data_inv->dt1();
-  ierr = evaluateObjective(J, x, data); CHKERRQ(ierr);
+  ierr = evaluateObjective(J, x, data_inv); CHKERRQ(ierr);
   // Finite difference gradient -- forward for now
   ScalarType h, dx;
   ScalarType volatile xph;
@@ -2244,7 +2243,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjectiveAndGradient(Petsc
     dx = xph - x_ptr[i];
     delta_ptr[i] = xph;
     ierr = VecRestoreArray(delta_, &delta_ptr); CHKERRQ(ierr);
-    ierr = evaluateObjective(&J_f, delta_, data); CHKERRQ(ierr);
+    ierr = evaluateObjective(&J_f, delta_, data_inv); CHKERRQ(ierr);
     dj_ptr[i] = (J_f - J_b) / dx;
     ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
   }
@@ -2300,7 +2299,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient(Vec x, std::shared_p
   ierr = VecDuplicate(x, &x_tilde); CHKERRQ(ierr);
   ierr = VecDuplicate(x, &x_new); CHKERRQ(ierr);
 
-  ierr = evaluateObjectiveAndGradient(&J_p, dJ, x, data); CHKERRQ(ierr);
+  ierr = evaluateObjectiveAndGradient(&J_p, dJ, x, data_inv); CHKERRQ(ierr);
 
   PetscRandom rctx;
   ierr = PetscRandomCreate(PETSC_COMM_SELF, &rctx); CHKERRQ(ierr);
@@ -2313,7 +2312,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::checkGradient(Vec x, std::shared_p
   for (int i = 0; i < 10; i++) {
     h[i] = start * std::pow(2, -i);
     ierr = VecWAXPY(x_new, h[i], x_tilde, x); CHKERRQ(ierr);
-    ierr = evaluateObjective(&J, x_new, data);
+    ierr = evaluateObjective(&J, x_new, data_inv);
     ierr = VecDot(dJ, x_tilde, &xg_dot); CHKERRQ(ierr);
     J_taylor = J_p + xg_dot * h[i];
     diff = std::abs(J - J_taylor);
@@ -2389,7 +2388,7 @@ PetscErrorCode DerivativeOperators::checkGradient(Vec p, std::shared_ptr<Data> d
   ierr = VecDuplicate(p, &p_tilde); CHKERRQ(ierr);
   ierr = VecDuplicate(p, &p_new); CHKERRQ(ierr);
 
-  ierr = evaluateObjectiveAndGradient(&J_p, dJ, p, data); CHKERRQ(ierr);
+  ierr = evaluateObjectiveAndGradient(&J_p, dJ, p, data_inv); CHKERRQ(ierr);
 
   PetscRandom rctx;
   ierr = PetscRandomCreate(PETSC_COMM_SELF, &rctx); CHKERRQ(ierr);
@@ -2400,7 +2399,7 @@ PetscErrorCode DerivativeOperators::checkGradient(Vec p, std::shared_ptr<Data> d
   for (int i = 0; i < 6; i++) {
     h[i] = std::pow(10, -i);
     ierr = VecWAXPY(p_new, h[i], p_tilde, p); CHKERRQ(ierr);
-    ierr = evaluateObjective(&J, p_new, data);
+    ierr = evaluateObjective(&J, p_new, data_inv);
     ierr = VecDot(dJ, p_tilde, &xg_dot); CHKERRQ(ierr);
     J_taylor = J_p + xg_dot * h[i];
     diff = std::abs(J - J_taylor);
@@ -2462,7 +2461,7 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> da
   ierr = VecDuplicate(p, &p_tilde); CHKERRQ(ierr);
   ierr = VecDuplicate(p, &p_new); CHKERRQ(ierr);
 
-  ierr = evaluateObjectiveAndGradient(&J_p, dJ, p, data); CHKERRQ(ierr);
+  ierr = evaluateObjectiveAndGradient(&J_p, dJ, p, data_inv); CHKERRQ(ierr);
 
   PetscRandom rctx;
   ierr = PetscRandomCreate(PETSC_COMM_SELF, &rctx); CHKERRQ(ierr);
@@ -2472,7 +2471,7 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> da
   ScalarType hess_term = 0.;
   for (int i = 0; i < 6; i++) {
     ierr = VecWAXPY(p_new, h[i], p_tilde, p); CHKERRQ(ierr);
-    ierr = evaluateObjective(&J, p_new, data);
+    ierr = evaluateObjective(&J, p_new, data_inv);
     ierr = VecDot(dJ, p_tilde, &J_taylor); CHKERRQ(ierr);
     J_taylor *= h[i];
     J_taylor += J_p;

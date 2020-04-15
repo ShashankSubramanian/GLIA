@@ -6,11 +6,11 @@
 #include <stdlib.h>
 
 #include "Utils.h"
-#include "Solver.h"
 #include "TestSuite.h"
 #include "Parameters.h"
 #include "SpectralOperators.h"
-#include "TumorSolverInterface.h"
+#include "SolverInterface.h"
+#include "Solver.h"
 
 
 enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, TEST};

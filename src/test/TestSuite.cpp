@@ -1,12 +1,12 @@
+#include "SolverInterface.h"
 #include "TestSuite.h"
-
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                      TestSuite                    ======== #### */
 /* #### ------------------------------------------------------------------- #### */
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-TestSuite::TestSuite(Test test) : Solver() {
+TestSuite::TestSuite(Test test) : SolverInterface() {
   testcase_ = test;
 }
 
@@ -16,7 +16,7 @@ PetscErrorCode TestSuite::initialize(std::shared_ptr<SpectralOperators> spec_ops
 
   std::stringstream ss;
   ierr = tuMSGwarn(" Initializing for TestSuite."); CHKERRQ(ierr);
-  ierr = Solver::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -89,7 +89,7 @@ PetscErrorCode TestSuite::inverseTest() {
 
   /* run sparse til solver */
   ierr = tuMSGwarn(" Beginning Test Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
-  Solver::run(); CHKERRQ(ierr);
+  SolverInterface::run(); CHKERRQ(ierr);
 
   // set the reg norm as L2
   params_->opt_->regularization_norm_ = L2;
@@ -104,7 +104,7 @@ PetscErrorCode TestSuite::inverseTest() {
 
   /* finalize with error metrics */
   ierr = tuMSGwarn(" Finalizing Test Inversion for Sparse TIL, and Reaction/Diffusion."); CHKERRQ(ierr);
-  ierr = Solver::finalize(); CHKERRQ(ierr);
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
 
   PetscFunctionReturn(ierr);

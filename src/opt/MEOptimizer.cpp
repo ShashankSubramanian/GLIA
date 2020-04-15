@@ -10,18 +10,18 @@
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-MEOptimizer::initialize(
+PetscErrorCode MEOptimizer::initialize(
   std::shared_ptr<DerivativeOperators> derivative_operators,
   std::shared_ptr<PdeOperators> pde_operators,
   std::shared_ptr<Parameters> params,
-  std::shared_ptr<Tumor> tumor)) {
+  std::shared_ptr<Tumor> tumor) {
 
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
     std::stringstream ss;
     // number of dofs = {rho, kappa, gamma}
-    n_inv_ = params_->get_nr() +  params_->get_nk() + 1;
-    ss << " Initializing mass-effect optimizer with = " << n_inv_ << " = " <<  params_->get_nr() << " + " <<  params_->get_nk() << " + 1 dofs.";
+    n_inv_ = params->get_nr() +  params->get_nk() + 1;
+    ss << " Initializing mass-effect optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " + 1 dofs.";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     // initialize super class
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
@@ -63,10 +63,10 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
   ScalarType *init_ptr, *x_ptr;
 
   if(xin_ != nullptr) {ierr = VecDestroy(&xin_); CHKERRQ(ierr);}
-  if(x_out != nullptr) {ierr = VecDestroy(&x_out); CHKERRQ(ierr);}
+  if(xout_ != nullptr) {ierr = VecDestroy(&xout_); CHKERRQ(ierr);}
 
   ss << " Setting initial guess: ";
-  int off = 0; off_in = 0;
+  int off = 0, off_in = 0;
   PetscReal ic_max = 0.;
   // 1. TIL not given as parametrization
   if(ctx_->params_->tu_->use_c0_) {
@@ -74,7 +74,7 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
     ierr = setupVec (xin_, SEQ); CHKERRQ (ierr);
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     // === init TIL
-    ierr = VecCopy(data_->dt0(), itctx_->tumor_->c_0_); CHKERRQ(ierr);
+    ierr = VecCopy(data_->dt0(), ctx_->tumor_->c_0_); CHKERRQ(ierr);
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as d0 (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
@@ -93,7 +93,7 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     ierr = VecCopy(x_init, xin_); CHKERRQ(ierr);
     // === init TIL
-    ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
+    ierr = ctx_->tumor_->phi_->apply (ctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as Phi(p) (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
@@ -103,23 +103,26 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
       ierr = VecRestoreArray (xin_, &x_ptr); CHKERRQ (ierr);
       ss << "rescaled; ";
     }
-    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("til-me"));}
+    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("til-me"));}
     off = off_in = np;
   }
   // === gamma, rho, kappa init guess
   ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-  gamma_init_ = x_ptr[off_in + 0] = x_init[off];                     // gamma
-  rho_init_ = x_ptr[off_in + 1 + 0] = x_init[off + 1 + 0];           // rho
-  if (nr > 1) x_ptr[off_in + 1 + 1] = x_init[off + 1 + 1];           // r2
-  if (nr > 2) x_ptr[off_in + 1 + 2] = x_init[off + 1 + 2];           // r3
-  k_init_   = x_ptr[off_in + 1 + nr + 0] = x_init[off + 1 + nr + 0]; // kappa
-  if (nk > 1) x_ptr[off_in + 1 + nr + 1] = x_init[off + 1 + nr + 1]; // k2
-  if (nk > 2) x_ptr[off_in + 1 + nr + 2] = x_init[off + 1 + nr + 2]; // k3
+  x_ptr[off_in + 0] = init_ptr[off];                                   // gamma
+  gamma_init_ = x_ptr[off_in + 0] = init_ptr[off];
+  x_ptr[off_in + 1 + 0] = init_ptr[off + 1 + 0];                       // rho
+  rho_init_ = x_ptr[off_in + 1 + 0];
+  if (nr > 1) x_ptr[off_in + 1 + 1] = init_ptr[off + 1 + 1];           // r2
+  if (nr > 2) x_ptr[off_in + 1 + 2] = init_ptr[off + 1 + 2];           // r3
+  x_ptr[off_in + 1 + nr + 0] = init_ptr[off + 1 + nr + 0];             // kappa
+  k_init_ = x_ptr[off_in + 1 + nr + 0];
+  if (nk > 1) x_ptr[off_in + 1 + nr + 1] = init_ptr[off + 1 + nr + 1]; // k2
+  if (nk > 2) x_ptr[off_in + 1 + nr + 2] = init_ptr[off + 1 + nr + 2]; // k3
   ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
 
-  ss << " gamma_init ="<<gamma_init_ << " rho_init="<<rho_init_<<"; k_init="<<k_init_<<;
+  ss << " gamma_init ="<<gamma_init_ << " rho_init="<<rho_init_<<"; k_init="<<k_init_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
@@ -150,11 +153,12 @@ PetscErrorCode MEOptimizer::solve() {
   // DOFs
   int nk = ctx_->params_->tu_->nk_;
   int nr = ctx_->params_->tu_->nr_;
+  int np = ctx_->params_->tu_->np_;
   TU_assert(n_inv_ == nr + nk + 1, "MEOptimizer: n_inv is inconsistent.");
 
   // reset tao, if we want virgin TAO for every inverse solve
   if (ctx_->params_->opt_->reset_tao_) {
-      ierr = resetTao(ctx_->params_); CHKERRQ(ierr);
+      ierr = resetTao(); CHKERRQ(ierr);
   }
   // set tao options
   if (tao_reset_) {
@@ -175,7 +179,7 @@ PetscErrorCode MEOptimizer::solve() {
   ierr = tuMSGstd (""); CHKERRQ (ierr);
   ierr = tuMSG    ("### ME inversion: initial guess  ###"); CHKERRQ (ierr);
   ierr = tuMSGstd ("### ---------------------------- ###"); CHKERRQ (ierr);
-  if (procid == 0) { ierr = VecView (x_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+  if (procid == 0) { ierr = VecView (xrec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
   ierr = tuMSGstd ("### ---------------------------- ###"); CHKERRQ (ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
 
@@ -208,7 +212,6 @@ PetscErrorCode MEOptimizer::solve() {
   ierr = VecCopy (sol, xrec_); CHKERRQ(ierr);
   ierr = VecCopy (sol, xout_); CHKERRQ(ierr);
 
-  PetscScalar *x_ptr;
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
   ctx_->params_->tu_->forcing_factor_ = 1E4 * x_ptr[0]; // re-scaling parameter scales
   ctx_->params_->tu_->rho_ = 1 * x_ptr[1];              // rho
@@ -285,13 +288,13 @@ PetscErrorCode MEOptimizer::setTaoOptions() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  ierr = Optimizer::setTaoOptions(tao_, ctx_); CHKERRQ(ierr);
+  ierr = Optimizer::setTaoOptions(); CHKERRQ(ierr);
 
   // TODO(K): Do we need separate methods, double check.
   // set monitor fro mass-effect inversion
-  ierr = TaoSetMonitor(tao_, optimizationMonitorMassEffect, (void *) ctx_, NULL); CHKERRQ(ierr);
+  ierr = TaoSetMonitor(tao_, optimizationMonitorMassEffect, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
   // set convergence test routine
-  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGradMassEffect, (void *) ctx_); CHKERRQ(ierr);
+  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGradObjMassEffect, (void *) ctx_.get()); CHKERRQ(ierr); // TODO: check if correct
   // hessian routine
   ierr = TaoSetHessianRoutine(tao_, H_, H_, matfreeHessian, (void *) ctx_.get()); CHKERRQ(ierr);
 

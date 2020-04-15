@@ -1,7 +1,7 @@
-#include "Solver.h"
+#include "SolverInterface.h"
 enum Test {DEFAULTTEST, FORWARDTEST, INVERSETEST, PDEOPSTEST, DERIVOPSTEST};
 
-class TestSuite : public Solver {
+class TestSuite : public SolverInterface {
  public:
   TestSuite(Test test);
 

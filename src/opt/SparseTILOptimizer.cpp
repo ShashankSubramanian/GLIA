@@ -8,19 +8,19 @@
 #include "TaoInterface.h"
 #include "SparseTILOptimizer.h"
 
-SparseTILOptimizer::initialize(
+PetscErrorCode SparseTILOptimizer::initialize(
   std::shared_ptr<DerivativeOperators> derivative_operators,
   std::shared_ptr <PdeOperators> pde_operators,
   std::shared_ptr <Parameters> params,
-  std::shared_ptr <Tumor> tumor)) {
+  std::shared_ptr <Tumor> tumor) {
 
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  std:stringstream ss;
+  std::stringstream ss;
 
   // number of dofs = {p, kappa, rho}
-  n_inv_ = params_->tu_->np_ + params_->get_nk() + params_->get_nr();
-  ss << " Initializing sparseTIL optimizer with = " << n_inv_ << " = " << params_->tu_->np_ << " + " <<  params_->get_nr() << " + " <<  params_->get_nk() << " dofs.";
+  n_inv_ = params->tu_->np_ + params->get_nk() + params->get_nr();
+  ss << " Initializing sparseTIL optimizer with = " << n_inv_ << " = " << params->tu_->np_ << " + " <<  params->get_nr() << " + " <<  params->get_nk() << " dofs.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 
   // initialize super class
@@ -30,8 +30,8 @@ SparseTILOptimizer::initialize(
   til_opt_->initialize(derivative_operators, pde_operators, params, tumor);
   rd_opt_->initialize(derivative_operators, pde_operators, params, tumor);
   cosamp_ = std::make_shared<CtxCoSaMp>();
-  ctx_->cosamp_ = (void*) cosamp_.get();
-  til_opt_->ctx_->cosamp_ = ctx_->cosamp_;
+  ctx_->cosamp_ = cosamp_;
+  til_opt_->ctx_->cosamp_ = cosamp_;
 
   PetscFunctionReturn(ierr);
 }
@@ -157,10 +157,10 @@ PetscErrorCode SparseTILOptimizer::setInitialGuess(Vec x_init) {
   ScalarType *init_ptr, *x_ptr;
 
   if(xin_ != nullptr) {ierr = VecDestroy(&xin_); CHKERRQ(ierr);}
-  if(x_out != nullptr) {ierr = VecDestroy(&x_out); CHKERRQ(ierr);}
+  if(xout_ != nullptr) {ierr = VecDestroy(&xout_); CHKERRQ(ierr);}
 
   ss << " Setting initial guess: ";
-  int off = 0; off_in = 0;
+  int off = 0, off_in = 0;
   PetscReal ic_max = 0.;
   // 1. TIL not given as parametrization
   if(ctx_->params_->tu_->use_c0_) {
@@ -175,25 +175,27 @@ PetscErrorCode SparseTILOptimizer::setInitialGuess(Vec x_init) {
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     ierr = VecCopy(x_init, xin_); CHKERRQ(ierr);
     // === init TIL
-    ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
+    ierr = ctx_->tumor_->phi_->apply (ctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as Phi(p) (max=" << ic_max<<"); ";
-    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("til-init"));}
+    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("til-init"));}
     off = off_in = np;
   }
   // === kappa and rho init guess
   ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-  k_init_   = x_ptr[off_in + 0] = x_init[off];               // kappa
-  if (nk > 1) x_ptr[off_in + 1] = x_init[off + 1];           // k2
-  if (nk > 2) x_ptr[off_in + 2] = x_init[off + 2];           // k3
-  rho_init_ = x_ptr[off_in + nk]     = x_init[off + nk];     // rho
-  if (nr > 1) x_ptr[off_in + nk + 1] = x_init[off + nk + 1]; // r2
-  if (nr > 2) x_ptr[off_in + nk + 2] = x_init[off + nk + 2]; // r3
+  x_ptr[off_in + 0] = init_ptr[off];                           // kappa
+  k_init_ = x_ptr[off_in + 0];
+  if (nk > 1) x_ptr[off_in + 1] = init_ptr[off + 1];           // k2
+  if (nk > 2) x_ptr[off_in + 2] = init_ptr[off + 2];           // k3
+  x_ptr[off_in + nk] = init_ptr[off + nk];                     // rho
+  rho_init_ = x_ptr[off_in + nk];
+  if (nr > 1) x_ptr[off_in + nk + 1] = init_ptr[off + nk + 1]; // r2
+  if (nr > 2) x_ptr[off_in + nk + 2] = init_ptr[off + nk + 2]; // r3
   ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
 
-  ss << " rho_init="<<rho_init_<<"; k_init="<<k_init_<<;
+  ss << " rho_init="<<rho_init_<<"; k_init="<<k_init_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
@@ -240,7 +242,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   // legacy: cosamp function assumes that xrec is np + nk,
   // so we're creating a new vec with appropriate size
   // TODO: change restric/prolongatSubspace and solver such that full np+nk+nr vec can be used.
-  ierr = VecCreateSeq (PETSC_COMM_SELF, np + nk, &x_L1); CHKERRQ (ierr);
+  ierr = VecCreateSeq (PETSC_COMM_SELF, np_full + nk, &x_L1); CHKERRQ (ierr);
   ierr = setupVec (x_L1, SEQ); CHKERRQ (ierr);
   ierr = VecDuplicate(x_L1, &g); CHKERRQ (ierr);
   ierr = VecDuplicate(x_L1, &x_L1_old); CHKERRQ (ierr);
@@ -254,8 +256,8 @@ PetscErrorCode SparseTILOptimizer::solve() {
 
   // === initial guess
   PetscReal *xin_ptr;
-  ctx->params_->tu_->k_ = k_init_;     // set in setInitialGuess, used in restrictSubspace
-  ctx->params_->tu_->rho_ = rho_init_;
+  ctx_->params_->tu_->k_ = k_init_;     // set in setInitialGuess, used in restrictSubspace
+  ctx_->params_->tu_->rho_ = rho_init_;
   ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
   ierr = VecGetArray(xrec_, &xin_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(x_L1, &x_L1_ptr); CHKERRQ(ierr);
@@ -280,7 +282,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
       if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-      if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled-pre-l1"));}
+      if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("scaled-pre-l1"));}
       ierr = tuMSGstd(""); CHKERRQ (ierr);
       ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
       ierr = tuMSG("###                     (PRE) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
@@ -309,7 +311,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   // compute reference value for  objective
   // set beta to zero for gradient thresholding
   beta_store = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.;
-  ierr = evaluateObjectiveAndGradient(x_L1, &J_ref, g); CHKERRQ (ierr); // length: np_full + nk
+  ierr = evalObjectiveAndGradient(x_L1, &J_ref, g); CHKERRQ (ierr); // length: np_full + nk
   ctx_->params_->opt_->beta_ = beta_store;
   ierr = VecNorm(g, NORM_2, &norm_g); CHKERRQ (ierr);
   J = J_ref;
@@ -374,7 +376,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     til_opt_->updateReferenceObjective(true);
     ierr = til_opt_->setData(data_); CHKERRQ(ierr);
     ierr = til_opt_->setInitialGuess(x_L2); CHKERRQ(ierr);
-    ierr = til_opt_->solve(x_L2); CHKERRQ(ierr);
+    ierr = til_opt_->solve(); CHKERRQ(ierr);
     ierr = VecCopy(getSolution(), x_L2); CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
     ierr = tuMSGstd(""); CHKERRQ (ierr);
@@ -443,7 +445,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     J_old = J;
     // compute objective (only mismatch term)
     beta_store = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.;
-    ierr = evaluateObjectiveAndGradient(x_L1, &J, g); CHKERRQ (ierr); // length: np_full + nk
+    ierr = evalObjectiveAndGradient(x_L1, &J, g); CHKERRQ (ierr); // length: np_full + nk
     ctx_->params_->opt_->beta_ = beta_store;
     ierr = VecNorm(x_L1, NORM_INFINITY, &norm); CHKERRQ (ierr);
     ierr = VecAXPY(temp, -1.0, x_L1_old); CHKERRQ (ierr);             // holds x_L1
@@ -479,7 +481,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   til_opt_->updateReferenceObjective(true);
   ierr = til_opt_->setData(data_); CHKERRQ(ierr);
   ierr = til_opt_->setInitialGuess(x_L2); CHKERRQ(ierr);
-  ierr = til_opt_->solve(x_L2); CHKERRQ(ierr);
+  ierr = til_opt_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(getSolution(), x_L2); CHKERRQ (ierr);
   ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
   ierr = tuMSGstd(""); CHKERRQ (ierr);
@@ -501,7 +503,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   }
   // write out p vector after sparse TIL and kappa inversion (unscaled)
   if (ctx_->params_->tu_->write_p_checkpoint_) {
-    writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("unscaled"));
+    writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("unscaled"));
   }
   // TODO(K): not sure if this is correct; check if runtime error
   // prolongate restricted x_L2 to full x_L1, but do not resize vectors, i.e., call resetOperators
@@ -522,7 +524,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
     if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
     ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled"));}
+    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("scaled"));}
     ierr = tuMSGstd(""); CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
     ierr = tuMSG("###                    (POST) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);
@@ -648,7 +650,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
 
         // compute reference value for  objective
         beta_store = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
-        ierr = evaluateObjectiveAndGradient(ctx_->cosamp_->x_full, &ctx_->cosamp_->J_ref, ctx_->cosamp_->g); CHKERRQ (ierr); // length: np_full + nk
+        ierr = evalObjectiveAndGradient(ctx_->cosamp_->x_full, &ctx_->cosamp_->J_ref, ctx_->cosamp_->g); CHKERRQ (ierr); // length: np_full + nk
         ctx_->params_->opt_->beta_ = beta_store;
         ierr = VecNorm (ctx_->cosamp_->g, NORM_2, &ctx_->cosamp_->g_norm); CHKERRQ (ierr);
         ctx_->cosamp_->J = ctx_->cosamp_->J_ref;
@@ -721,7 +723,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
         // == solve ==
         ierr = til_opt_->setData(data_); CHKERRQ(ierr);
         ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
-        ierr = til_opt_->solve(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
+        ierr = til_opt_->solve(); CHKERRQ(ierr);
         ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
         ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
         ierr = tuMSGstd (""); CHKERRQ (ierr);
@@ -805,7 +807,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
         ctx_->cosamp_->J_prev = ctx_->cosamp_->J;
         // compute objective (only mismatch term)
         beta_store = ctx_->params_->opt_->beta_; ctx_->params_->opt_->beta_ = 0.; // set beta to zero for gradient thresholding
-        ierr = evaluateObjectiveAndGradient(ctx_->cosamp_->x_full, &ctx_->cosamp_->J, ctx_->cosamp_->g); CHKERRQ (ierr);
+        ierr = evalObjectiveAndGradient(ctx_->cosamp_->x_full, &ctx_->cosamp_->J, ctx_->cosamp_->g); CHKERRQ (ierr);
         ctx_->params_->opt_->beta_ = beta_store;
         ierr = VecNorm (ctx_->cosamp_->x_full, NORM_INFINITY, &norm); CHKERRQ (ierr);
         ierr = VecAXPY (ctx_->cosamp_->work, -1.0, ctx_->cosamp_->x_full_prev); CHKERRQ (ierr); /* holds x_L1 */
@@ -853,7 +855,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
         // == solve ==
         ierr = til_opt_->setData(data_); CHKERRQ(ierr);
         ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
-        ierr = til_opt_->solve(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
+        ierr = til_opt_->solve(); CHKERRQ(ierr);
         ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
         ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
         ierr = tuMSGstd (""); CHKERRQ (ierr);
@@ -868,7 +870,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
           if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
         }
         // write out p vector after IC, k inversion (unscaled)
-        if (ctx_->params_->tu_->write_p_checkpoint_) { writeCheckpoint(ctx_->cosamp_->x_sub, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("unscaled"));}
+        if (ctx_->params_->tu_->write_p_checkpoint_) { writeCheckpoint(ctx_->cosamp_->x_sub, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("unscaled"));}
         if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) { ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
 
         // == convergence test ==
@@ -923,7 +925,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
           ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
           if (procid == 0) { ierr = VecView (ctx_->cosamp_->x_sub, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
           ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-          if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(ctx_->cosamp_->x_sub, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("scaled"));}
+          if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(ctx_->cosamp_->x_sub, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("scaled"));}
           ierr = tuMSGstd(""); CHKERRQ (ierr);
           ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
           ierr = tuMSG("###                    (POST) rho/kappa inversion with scaled L2 solution guess                           ###");CHKERRQ (ierr);

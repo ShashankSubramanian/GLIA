@@ -10,19 +10,19 @@
 #include "TaoInterface.h"
 #include "RDOptimizer.h"
 
-RDOptimizer::initialize(
+PetscErrorCode RDOptimizer::initialize(
   std::shared_ptr<DerivativeOperators> derivative_operators,
   std::shared_ptr <PdeOperators> pde_operators,
   std::shared_ptr <Parameters> params,
-  std::shared_ptr <Tumor> tumor)) {
+  std::shared_ptr <Tumor> tumor) {
 
     PetscErrorCode ierr = 0;
     PetscFunctionBegin;
     std::stringstream ss;
 
     // number of dofs = {rho, kappa}
-    n_inv_ = params_->get_nr() +  params_->get_nk();
-    ss << " Initializing reaction/diffusion optimizer with = " << n_inv_ << " = " <<  params_->get_nr() << " + " <<  params_->get_nk() << " dofs.";
+    n_inv_ = params->get_nr() +  params->get_nk();
+    ss << " Initializing reaction/diffusion optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " dofs.";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     // initialize super class
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
@@ -47,10 +47,10 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   ScalarType *init_ptr, *x_ptr;
 
   if(xin_ != nullptr) {ierr = VecDestroy(&xin_); CHKERRQ(ierr);}
-  if(x_out != nullptr) {ierr = VecDestroy(&x_out); CHKERRQ(ierr);}
+  if(xout_ != nullptr) {ierr = VecDestroy(&xout_); CHKERRQ(ierr);}
 
   ss << " Setting initial guess: ";
-  int off = 0; off_in = 0;
+  int off = 0, off_in = 0;
   PetscReal ic_max = 0.;
   // 1. TIL not given as parametrization
   if(ctx_->params_->tu_->use_c0_) {
@@ -58,7 +58,7 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
     ierr = setupVec (xin_, SEQ); CHKERRQ (ierr);
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     // === init TIL
-    ierr = VecCopy(data_->dt0(), itctx_->tumor_->c_0_); CHKERRQ(ierr); // TODO(K) implement data struct
+    ierr = VecCopy(data_->dt0(), ctx_->tumor_->c_0_); CHKERRQ(ierr); // TODO(K) implement data struct
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as d0 (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
@@ -78,7 +78,7 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     ierr = VecCopy(x_init, xin_); CHKERRQ(ierr);
     // === init TIL
-    ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
+    ierr = ctx_->tumor_->phi_->apply (ctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as Phi(p) (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
@@ -89,18 +89,20 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
       ierr = VecRestoreArray (xin_, &x_ptr); CHKERRQ (ierr);
       ss << "rescaled; ";
     }
-    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("til-rd"));}
+    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("til-rd"));}
     off = off_in = np;
   }
   // === kappa and rho init guess
   ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-  k_init_   = x_ptr[off_in + 0] = x_init[off];               // kappa
-  if (nk > 1) x_ptr[off_in + 1] = x_init[off + 1];           // k2
-  if (nk > 2) x_ptr[off_in + 2] = x_init[off + 2];           // k3
-  rho_init_ = x_ptr[off_in + nk]     = x_init[off + nk];     // rho
-  if (nr > 1) x_ptr[off_in + nk + 1] = x_init[off + nk + 1]; // r2
-  if (nr > 2) x_ptr[off_in + nk + 2] = x_init[off + nk + 2]; // r3
+  x_ptr[off_in + 0] = init_ptr[off];                           // kappa
+  k_init_ = x_ptr[off_in + 0];
+  if (nk > 1) x_ptr[off_in + 1] = init_ptr[off + 1];           // k2
+  if (nk > 2) x_ptr[off_in + 2] = init_ptr[off + 2];           // k3
+  x_ptr[off_in + nk] = init_ptr[off + nk];                     // rho 
+  rho_init_ = x_ptr[off_in + nk];
+  if (nr > 1) x_ptr[off_in + nk + 1] = init_ptr[off + nk + 1]; // r2
+  if (nr > 2) x_ptr[off_in + nk + 2] = init_ptr[off + nk + 2]; // r3
   ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
 
@@ -127,7 +129,7 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
     ss << "rho estimated; ";
   }
 
-  ss << " rho_init="<<rho_init_<<"; k_init="<<k_init_<<;
+  ss << " rho_init="<<rho_init_<<"; k_init="<<k_init_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
@@ -149,6 +151,7 @@ PetscErrorCode RDOptimizer::solve() {
   TU_assert (xrec_ != nullptr, "RDOptimizer requires non-null xrec_ vector to be set.");
   TU_assert (xin_ != nullptr, "RDOptimizer requires non-null xin_ vector to be set.");
 
+  std::stringstream ss;
   ierr = tuMSGstd (""); CHKERRQ (ierr);
   ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
   ierr = tuMSG("###                                      rho/kappa inversion                                              ###");CHKERRQ (ierr);
@@ -171,7 +174,7 @@ PetscErrorCode RDOptimizer::solve() {
 
   // === reset tao, (if we want virgin tao for every inverse solve)
   if (ctx_->params_->opt_->reset_tao_) {
-      ierr = resetTao(ctx_->params_); CHKERRQ(ierr);
+      ierr = resetTao(); CHKERRQ(ierr);
   }
   // === set tao options
   if (tao_reset_) {
@@ -191,7 +194,7 @@ PetscErrorCode RDOptimizer::solve() {
   ierr = tuMSGstd(""); CHKERRQ (ierr);
   ierr = tuMSG   ("### RD inversion: initial guess  ###"); CHKERRQ(ierr);
   ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
-  if (procid == 0) { ierr = VecView (x_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
+  if (procid == 0) { ierr = VecView (xrec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
   ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
 
@@ -224,10 +227,11 @@ PetscErrorCode RDOptimizer::solve() {
   ierr = VecCopy(sol, xrec_); CHKERRQ(ierr);
 
   /* === get solution status === */
+  TaoConvergedReason reason;
   ierr = TaoGetConvergedReason(tao_, &reason); CHKERRQ(ierr);
   ierr = TaoGetSolutionStatus(tao_, NULL, &ctx_->params_->optf_->jval_, &ctx_->params_->optf_->gradnorm_, NULL, &xdiff, NULL); CHKERRQ(ierr);
   // display convergence reason:
-  ierr = dispTaoConvReason(reason, ctx_->params_->optf_->nb_krylov_it_->solverstatus_); CHKERRQ(ierr);
+  ierr = dispTaoConvReason(reason, ctx_->params_->optf_->solverstatus_); CHKERRQ(ierr);
   ctx_->params_->optf_->nb_newton_it_--;
   ss << " optimization done: #N-it: " << ctx_->params_->optf_->nb_newton_it_
      << ", #K-it: " << ctx_->params_->optf_->nb_krylov_it_
@@ -254,7 +258,7 @@ PetscErrorCode RDOptimizer::solve() {
     xout_ptr[off + i] = x_ptr[i];
   ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(xout_, &xout_ptr); CHKERRQ (ierr);
-  if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xout_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("rd-out"));}
+  if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xout_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("rd-out"));}
 
   // === update diffusivity and reaction in coefficients
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
@@ -334,13 +338,13 @@ PetscErrorCode RDOptimizer::setTaoOptions() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  ierr = Optimizer::setTaoOptions(tao_, ctx_); CHKERRQ(ierr);
+  ierr = Optimizer::setTaoOptions(); CHKERRQ(ierr);
 
-  ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveReacDiff, (void*) ctx_); CHKERRQ(ierr);
-  ierr = TaoSetGradientRoutine (tao_, evaluateGradientReacDiff, (void*) ctx_); CHKERRQ(ierr);
-  ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveAndGradientReacDiff, (void*) ctx_); CHKERRQ (ierr);
-  ierr = TaoSetMonitor (tao_, optimizationMonitorReacDiff, (void *) ctx_, NULL); CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest (tao_, checkConvergenceGradReacDiff, ctx_); CHKERRQ(ierr);
+  ierr = TaoSetObjectiveRoutine(tao_, evaluateObjectiveReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetGradientRoutine(tao_, evaluateGradientReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetObjectiveAndGradientRoutine(tao_, evaluateObjectiveAndGradientReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetMonitor(tao_, optimizationMonitorReacDiff, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
+  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGradReacDiff, (void *) ctx_.get()); CHKERRQ(ierr);
   // TODO: check if correct
   PetscFunctionReturn(ierr);
 }

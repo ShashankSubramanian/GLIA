@@ -30,6 +30,11 @@
 
 #include "IO.h"
 #include "Parameters.h"
+#include "SpectralOperators.h"
+#include "DerivativeOperators.h"
+#include "PdeOperators.h"
+#include "Optimizer.h"
+#include "Tumor.h"
 #include "Utils.h"
 
 class SolverInterface {

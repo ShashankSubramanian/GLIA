@@ -8,6 +8,7 @@
 #include "TaoInterface.h"
 
 
+struct CtxCoSaMp;
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                Optimizer Context                  ======== #### */
@@ -36,8 +37,8 @@ public:
     /// @brief accumulates all tumor related fields and methods
     std::shared_ptr<Tumor> tumor_;
     /// @brief context for CoSaMp L1 solver
-    void* cosamp_;
-
+    std::shared_ptr<CtxCoSaMp> cosamp_;
+		
     CtxInv ()
     :
       jvalold(0)
@@ -54,9 +55,8 @@ public:
     , derivative_operators_()
     , params_()
     , tumor_()
-    , data(nullptr)
     , convergence_message()
-    , optctx_(nullptr)
+    , cosamp_(nullptr)
     {}
 
     ~CtxInv () {
@@ -77,15 +77,17 @@ public :
 
   Optimizer()
   :
-    initialized_(false),
+    initialized_(false)
   , tao_reset_(true)
+  , n_inv_(0)
   , data_(nullptr)
   , ctx_(nullptr)
   , tao_(nullptr)
   , xrec_(nullptr)
   , xin_(nullptr)
   , xout_(nullptr)
-  , H_(nullptr) {}
+  , H_(nullptr) 
+ {}
 
   virtual PetscErrorCode initialize (
             std::shared_ptr <DerivativeOperators> derivative_operators,
@@ -108,25 +110,25 @@ public :
   PetscErrorCode setDataT1(Vec d1) {data_->setT1(d1);}
   PetscErrorCode setDataT0(Vec d0) {data_->setT1(d0);}
 
-  PetscError updateReferenceGradient(bool b) {ctx_->update_reference_gradient = b}
-  PetscError updateReferenceObjective(bool b) {ctx_->update_reference_objective = b}
+  PetscErrorCode updateReferenceGradient(bool b) {ctx_->update_reference_gradient = b;}
+  PetscErrorCode updateReferenceObjective(bool b) {ctx_->update_reference_objective = b;}
   bool initialized() {return initialized_;}
   Vec getSolution() {return xout_;}
 
   // TODO(K) implement destructor, need to destroy vecs
   virtual ~Optimizer();
 
-  inline PetscErrorCode evaluateGradient (Vec x, Vec dJ) {
+  inline PetscErrorCode evalGradient (Vec x, Vec dJ) {
       PetscFunctionBegin; PetscErrorCode ierr = 0;
       ierr = ctx_->derivative_operators_->evaluateGradient (dJ, x, data_);
       PetscFunctionReturn(0);
   }
-  inline PetscErrorCode evaluateObjective (Vec x, PetscReal *J) {
+  inline PetscErrorCode evalObjective (Vec x, PetscReal *J) {
       PetscFunctionBegin; PetscErrorCode ierr = 0;
       ierr = ctx_->derivative_operators_->evaluateObjective (J, x, data_);
       PetscFunctionReturn(0);
   }
-  inline PetscErrorCode evaluateObjectiveAndGradient (Vec x, PetscReal *J, Vec dJ) {
+  inline PetscErrorCode evalObjectiveAndGradient (Vec x, PetscReal *J, Vec dJ) {
       PetscFunctionBegin; PetscErrorCode ierr = 0;
       ierr = ctx_->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, data_);
       PetscFunctionReturn(0);
@@ -138,7 +140,7 @@ protected:
   bool initialized_;
   bool tao_reset_;   // TODO(K) at the end: check if needed
 
-  int n_inv;
+  int n_inv_;
   std::shared_ptr<Data> data_;
   Vec xrec_;
   Vec xin_;

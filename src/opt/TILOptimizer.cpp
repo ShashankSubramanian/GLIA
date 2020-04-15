@@ -8,19 +8,19 @@
 #include "TaoInterface.h"
 #include "TILOptimizer.h"
 
-TILOptimizer::initialize(
+PetscErrorCode TILOptimizer::initialize(
   std::shared_ptr<DerivativeOperators> derivative_operators,
   std::shared_ptr <PdeOperators> pde_operators,
   std::shared_ptr <Parameters> params,
-  std::shared_ptr <Tumor> tumor)) {
+  std::shared_ptr <Tumor> tumor) {
 
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   std::stringstream ss;
 
   // number of dofs = {p, kappa}
-  n_inv_ = params_->tu_->np_ +  params_->get_nk();
-  ss << " Initializing TIL optimizer with = " << n_inv_ << " = " << params_->tu_->np_ << " + " << params_->get_nk() << " dofs.";
+  n_inv_ = params->tu_->np_ +  params->get_nk();
+  ss << " Initializing TIL optimizer with = " << n_inv_ << " = " << params->tu_->np_ << " + " << params->get_nk() << " dofs.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   // initialize super class
   ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
@@ -46,10 +46,10 @@ PetscErrorCode TILOptimizer::setInitialGuess(Vec x_init) {
   ScalarType *init_ptr, *x_ptr;
 
   if(xin_ != nullptr) {ierr = VecDestroy(&xin_); CHKERRQ(ierr);}
-  if(x_out != nullptr) {ierr = VecDestroy(&x_out); CHKERRQ(ierr);}
+  if(xout_ != nullptr) {ierr = VecDestroy(&xout_); CHKERRQ(ierr);}
 
   ss << " Setting initial guess: ";
-  int off = 0; off_in = 0;
+  int off = 0, off_in = 0;
   PetscReal ic_max = 0.;
   // 1. TIL not given as parametrization
   if(ctx_->params_->tu_->use_c0_) {
@@ -62,7 +62,7 @@ PetscErrorCode TILOptimizer::setInitialGuess(Vec x_init) {
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     ierr = VecCopy(x_init, xin_); CHKERRQ(ierr);
     // === init TIL
-    ierr = itctx_->tumor_->phi_->apply (itctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
+    ierr = ctx_->tumor_->phi_->apply (ctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as Phi(p) (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
@@ -73,21 +73,22 @@ PetscErrorCode TILOptimizer::setInitialGuess(Vec x_init) {
       ierr = VecRestoreArray (xin_, &x_ptr); CHKERRQ (ierr);
       ss << "rescaled; ";
     }
-    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("til-init"));}
+    if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("til-init"));}
     off = off_in = np;
   }
   // === kappa init guess
   if (in_size > np) {
     ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
     ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-    k_init_   = x_ptr[off_in + 0] = x_init[off];               // k1
-    if (nk > 1) x_ptr[off_in + 1] = x_init[off + 1];           // k2
-    if (nk > 2) x_ptr[off_in + 2] = x_init[off + 2];           // k3
+    x_ptr[off_in + 0] = init_ptr[off];                           // k1
+    k_init_ = x_ptr[off_in + 0];
+    if (nk > 1) x_ptr[off_in + 1] = init_ptr[off + 1];           // k2
+    if (nk > 2) x_ptr[off_in + 2] = init_ptr[off + 2];           // k3
     ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
     ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
   }
 
-  ss << "k_init="<<k_init_<<;
+  ss << "k_init="<<k_init_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
@@ -123,14 +124,12 @@ PetscErrorCode TILOptimizer::solve() {
 
   // === reset tao, (if we want virgin tao for every inverse solve)
   if (ctx_->params_->opt_->reset_tao_) {
-      ierr = resetTao(ctx_->params_); CHKERRQ(ierr);
+      ierr = resetTao(); CHKERRQ(ierr);
   }
   // === set tao options
   if (tao_reset_) {
     tuMSGstd(" Setting tao options for TIL optimizer."); CHKERRQ(ierr);
     ierr = setTaoOptions(); CHKERRQ(ierr);
-    // ctx_->update_reference_gradient = true;   // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
-    // ctx_->update_reference_objective = true;  // TODO: K: I commented this; for CoSaMp_RS we don't want to re-compute reference gradient between inexact blocks (if coupled with sibia, the data will change)
   }
 
   // === initial guess
@@ -207,6 +206,7 @@ PetscErrorCode TILOptimizer::solve() {
   // === populate solution to xout_
   // * {p, gamma, rho, kappa}, if c(0) is given as parametrization
   // * {gamma, rho, kappa} otherwise
+  ScalarType *x_ptr, *xout_ptr;
   ierr = VecCopy(xin_, xout_); CHKERRQ(ierr);
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
   ierr = VecGetArray (xout_, &xout_ptr); CHKERRQ (ierr);
@@ -214,7 +214,7 @@ PetscErrorCode TILOptimizer::solve() {
     xout_ptr[off + i] = x_ptr[i];
   ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(xout_, &xout_ptr); CHKERRQ (ierr);
-  if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xout_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_ .str(), std::string("me-out"));}
+  if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xout_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("me-out"));}
 
   // === update diffusivity and reaction in coefficients
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
@@ -292,8 +292,8 @@ PetscErrorCode TILOptimizer::setTaoOptions() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  ierr = Optimizer::setTaoOptions(tao_, ctx_); CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest (tao_, checkConvergenceGrad, (void *) ctx_); CHKERRQ(ierr);
+  ierr = Optimizer::setTaoOptions(); CHKERRQ(ierr);
+  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGrad, (void *) ctx_.get()); CHKERRQ(ierr);t
 
   PetscFunctionReturn(ierr);
 }

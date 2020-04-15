@@ -6,6 +6,11 @@
 #include "Utils.h"
 #include "SolverInterface.h"
 #include "Solver.h"
+#include "Optimizer.h"
+#include "TILOptimizer.h"
+#include "SparseTILOptimizer.h"
+#include "RDOptimizer.h"
+#include "MEOptimizer.h"
 
 
 /* #### ------------------------------------------------------------------- #### */
@@ -85,7 +90,7 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
 
   // === create optimizer
   optimizer_ = std::make_shared<TILOptimizer>();
-  ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
+  ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
   
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -226,7 +231,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
 
   // === create optimizer
   optimizer_ = std::make_shared<SparseTILOptimizer>();
-  ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
+  ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
 
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -286,7 +291,7 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Spectr
 
   // === create optimizer
   optimizer_ = std::make_shared<RDOptimizer>();
-  ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
+  ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
 
   ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
@@ -314,14 +319,14 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
 
   // set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
-    ierr = itctx_->tumor_->phi_->apply(data_->dt0(), p_rec); CHKERRQ(ierr);
+    ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
     params_->tu_->use_c0_ = has_dt0_ = true;
   }
     // initial guess TODO(K): if read in vector has nonzero rho/kappa values, take those
   Vec x_rd;
   ierr = VecCreateSeq(PETSC_COMM_SELF, params_->get_nk() + params_->get_nr(), &x_rd); CHKERRQ(ierr);
   ierr = setupVec(x_rd, SEQ); CHKERRQ(ierr);
-  ierr = Vecset(x_red, 0.0); CHKERRQ(ierr);
+  ierr = VecSet(x_rd, 0.0); CHKERRQ(ierr);
   ScalarType *x_ptr;
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   x_ptr[0] = params_->tu_->k_;
@@ -369,7 +374,7 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   params_->opt_->invert_mass_effect_ = true;
   // === create optimizer
   optimizer_ = std::make_shared<MEOptimizer>();
-  ierr = optimizer_->initialize(derivative_operators_, pde_operators, params_, tumor_); CHKERRQ(ierr);
+  ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
   // set patient material properties
   ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
@@ -422,7 +427,7 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMassEffectSolverInterface::finalize() {
+PetscErrorCode InverseMassEffectSolver::finalize() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
