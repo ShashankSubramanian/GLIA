@@ -206,6 +206,7 @@ PetscErrorCode TILOptimizer::solve() {
   ierr = VecCopy(xrec_, xout_); CHKERRQ(ierr);
 
   // === update diffusivity coefficient
+  ScalarType *x_ptr;
   ierr = VecGetArray(xrec_, &x_ptr); CHKERRQ (ierr);
   ctx_->params_->tu_->k_ =  x_ptr[np];
   ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
@@ -267,7 +268,7 @@ PetscErrorCode TILOptimizer::setTaoOptions() {
   PetscErrorCode ierr = 0;
 
   ierr = Optimizer::setTaoOptions(); CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGrad, (void *) ctx_.get()); CHKERRQ(ierr);t
+  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGrad, (void *) ctx_.get()); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }

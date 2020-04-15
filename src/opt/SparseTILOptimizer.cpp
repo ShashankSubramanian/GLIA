@@ -261,7 +261,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   ierr = VecCopy(xin_, xrec_); CHKERRQ(ierr);
   ierr = VecGetArray(xrec_, &xin_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(x_L1, &x_L1_ptr); CHKERRQ(ierr);
-  for(int i = 0; i < np + nk; ++i)
+  for(int i = 0; i < np_full + nk; ++i)
     x_L1_ptr[i] = xin_ptr[i]; // copy p and nk
   ierr = VecRestoreArray(xrec_, &xin_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(x_L1, &x_L1_ptr); CHKERRQ(ierr);
@@ -457,7 +457,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = cosampMonitor(its, J, PetscAbsReal (J_old - J) / PetscAbsReal (1 + J_ref), norm_g, norm_rel / (1 + norm), x_L1); CHKERRQ(ierr);
     ierr = tuMSGstd("--------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
     ierr = tuMSGstd(""); CHKERRQ(ierr);
-    if (its >= params_->opt_->gist_maxit_) {ierr = tuMSGwarn (" L1 maxiter reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
+    if (its >= ctx_->params_->opt_->gist_maxit_) {ierr = tuMSGwarn (" L1 maxiter reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
     else if (PetscAbsReal (J) < 1E-5)  {ierr = tuMSGwarn (" L1 absolute objective tolerance reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
     else if (PetscAbsReal (J_old - J) < ftol * PetscAbsReal (1 + J_ref)) {ierr = tuMSGwarn (" L1 relative objective tolerance reached."); CHKERRQ(ierr); flag_convergence = 1; break;}
     else { flag_convergence = 0; }  // continue iterating
@@ -490,7 +490,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);
   }
   // print phi's to file
-  if (ctx_->params_->write_output_) {
+  if (ctx_->params_->tu_->write_output_) {
     ierr = VecDuplicate(ctx_->tumor_->phi_->phi_vec_[0], &all_phis); CHKERRQ (ierr);
     ierr = VecSet(all_phis, 0.); CHKERRQ (ierr);
     for (int i = 0; i < ctx_->params_->tu_->np_; i++) {
@@ -560,7 +560,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode SparseTILOptimizer::solve_rs() {
+PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int procid, nprocs;
@@ -593,8 +593,8 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
     // ================
     case INIT: {
       ierr = tuMSG(" >> entering stage INIT"); CHKERRQ(ierr); ss.str(""); ss.clear();
-      ctx->params_->tu_->k_ = k_init_;     // set in setInitialGuess, used in restrictSubspace
-      ctx->params_->tu_->rho_ = rho_init_;
+      ctx_->params_->tu_->k_ = k_init_;     // set in setInitialGuess, used in restrictSubspace
+      ctx_->params_->tu_->rho_ = rho_init_;
       ctx_->cosamp_->np_full = ctx_->params_->tu_->np_; // store np of unrestricted ansatz space
       np_full = ctx_->cosamp_->np_full;
       ctx_->cosamp_->converged_l1 = false;
@@ -819,7 +819,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
         ierr = cosampMonitor(ctx_->cosamp_->its_l1, ctx_->cosamp_->J, PetscAbsReal (ctx_->cosamp_->J_prev - ctx_->cosamp_->J) / PetscAbsReal (1 + ctx_->cosamp_->J_ref), ctx_->cosamp_->g_norm, norm_rel / (1 + norm), ctx_->cosamp_->x_full); CHKERRQ(ierr);
         ierr = tuMSGstd ("--------------------------------------------------------------------------------------------------------------"); CHKERRQ(ierr);
         ierr = tuMSGstd (""); CHKERRQ(ierr);
-        if (ctx_->cosamp_->its_l1 >= params_->opt_->gist_maxit_) {ierr = tuMSGwarn (" L1 maxiter reached"); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
+        if (ctx_->cosamp_->its_l1 >= ctx_->params_->opt_->gist_maxit_) {ierr = tuMSGwarn (" L1 maxiter reached"); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
         else if (PetscAbsReal (ctx_->cosamp_->J) < 1E-5)       {ierr = tuMSGwarn (" L1 absolute objective tolerance reached."); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
         else if (PetscAbsReal (ctx_->cosamp_->J_prev - ctx_->cosamp_->J) < ctx_->cosamp_->f_tol * PetscAbsReal (1 + ctx_->cosamp_->J_ref)) {ierr = tuMSGwarn (" L1 relative objective tolerance reached."); CHKERRQ(ierr); ctx_->cosamp_->converged_l1 = true;}
         else { ctx_->cosamp_->converged_l1 = false; }  // continue iterating
@@ -955,10 +955,10 @@ PetscErrorCode SparseTILOptimizer::solve_rs() {
   PetscReal *x_ptr, *xout_ptr;
   ierr = VecGetArray(xrec_, &xout_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(ctx_->cosamp_->x_full, &xout_ptr); CHKERRQ(ierr);
-  for(int i = 0; i < np_full + ctx->params_->get_nk(); ++i)
+  for(int i = 0; i < np_full + ctx_->params_->get_nk(); ++i)
     xout_ptr[i] = xout_ptr[i];                          // copy p and nk
   if (ctx_->params_->opt_->reaction_inversion_)
-    xout_ptr[np_full + ctx->params_->get_nk()] = ctx_->params_->tu_->rho_;  // copy rho
+    xout_ptr[np_full + ctx_->params_->get_nk()] = ctx_->params_->tu_->rho_;  // copy rho
   ierr = VecRestoreArray(xrec_, &xout_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(ctx_->cosamp_->x_full, &xout_ptr); CHKERRQ(ierr);
   ierr = VecCopy(xrec_, xout_); CHKERRQ (ierr);

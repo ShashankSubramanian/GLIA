@@ -4,6 +4,7 @@
 #include "petsctao.h"
 // #include <petsc/private/vecimpl.h>
 
+#include "Parameters.h"
 #include "DerivativeOperators.h"
 #include "PdeOperators.h"
 #include "Optimizer.h"
@@ -136,7 +137,7 @@ PetscErrorCode preconditionerMatVec(PC pinv, Vec x, Vec pinvx) {
     PetscErrorCode ierr = 0;
     void *ptr;
     ierr = PCShellGetContext(pinv, &ptr); CHKERRQ(ierr);
-    ierr = applyPreconditioner(ptr, x, pinvx); CHKERRQ(ierr);
+    //ierr = applyPreconditioner(ptr, x, pinvx); CHKERRQ(ierr);
     PetscFunctionReturn (ierr);
 }
 
@@ -290,10 +291,10 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
         ierr = evaluateGradient(tao, p0, dJ, (void*) itctx);
         ierr = VecNorm (dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
       }
-      itctx->params_->optf_->gradnorm_0 = norm_gref;
+      itctx->params_->optf_->gradnorm0_ = norm_gref;
       //ctx->gradnorm0 = gnorm;
       itctx->update_reference_gradient = false;
-      s <<" .. updating reference gradient; new norm(g0) = " << itctx->params_->optf_->gradnorm_0;
+      s <<" .. updating reference gradient; new norm(g0) = " << itctx->params_->optf_->gradnorm0_;
       ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
       if (dJ  != nullptr) {VecDestroy (&dJ);  CHKERRQ(ierr);  dJ  = nullptr;}
       if (p0  != nullptr) {VecDestroy (&p0);  CHKERRQ(ierr);  p0  = nullptr;}
@@ -322,7 +323,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     }
     s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
-      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->params_->optf_->gradnorm_0
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->params_->optf_->gradnorm0_
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step;
       if (itctx->params_->opt_->diffusivity_inversion_) {
@@ -402,17 +403,17 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
       ierr = evaluateGradient(tao, p0, dJ, (void*) ctx);
       ierr = VecNorm (dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
     }
-    ctx->params_->optf_->gradnorm_0 = norm_gref;
+    ctx->params_->optf_->gradnorm0_ = norm_gref;
     //ctx->gradnorm0 = gnorm;
     ctx->update_reference_gradient = false;
-    ss <<" .. updating reference gradient; new norm(g0) = " << ctx->params_->optf_->gradnorm_0;
+    ss <<" .. updating reference gradient; new norm(g0) = " << ctx->params_->optf_->gradnorm0_;
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
     if (dJ != nullptr) {ierr = VecDestroy(&dJ); CHKERRQ(ierr); dJ = nullptr;}
     if (p0 != nullptr) {ierr = VecDestroy(&p0); CHKERRQ(ierr); p0 = nullptr;}
   }
   #endif
   // get initial gradient
-  g0norm = ctx->params_->optf_->gradnorm_0;
+  g0norm = ctx->params_->optf_->gradnorm0_;
   g0norm = (g0norm > 0.0) ? g0norm : 1.0;
   ctx->convergence_message.clear();
 
@@ -577,18 +578,18 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     ierr = VecSet (p0, 0.); CHKERRQ(ierr);
     evaluateObjectiveFunctionAndGradient (tao, p0, &ctx->params_->optf_->j0_, dJ, (void*) ctx);
     ierr = VecNorm (dJ, NORM_2, &norm_gref); CHKERRQ(ierr);
-    ctx->params_->optf_->gradnorm_0 = norm_gref;
+    ctx->params_->optf_->gradnorm0_ = norm_gref;
     ss <<" .. updating reference objective; new norm(j0) = " << ctx->params_->optf_->j0_;
     ctx->update_reference_gradient = false;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
-    ss <<" .. updating reference gradient; new norm(g0) = " << ctx->params_->optf_->gradnorm_0;
+    ss <<" .. updating reference gradient; new norm(g0) = " << ctx->params_->optf_->gradnorm0_;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
     if (dJ != nullptr) {ierr = VecDestroy(&dJ); CHKERRQ(ierr); dJ = nullptr;}
     if (p0 != nullptr) {ierr = VecDestroy(&p0); CHKERRQ(ierr); p0 = nullptr;}
   }
   #endif
   // get initial gradient
-  g0norm = ctx->params_->optf_->gradnorm_0;
+  g0norm = ctx->params_->optf_->gradnorm0_;
   g0norm = (g0norm > 0.0) ? g0norm : 1.0;
   // compute tolerances for stopping conditions
   tolj = grtol;

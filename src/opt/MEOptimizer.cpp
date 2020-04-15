@@ -238,7 +238,6 @@ PetscErrorCode MEOptimizer::solve() {
   // === populate solution to xout_
   // * {p, gamma, rho, kappa}, if c(0) is given as parametrization
   // * {gamma, rho, kappa} otherwise
-  ScalarType *x_ptr, *xout_ptr;
   ierr = VecCopy(xin_, xout_); CHKERRQ(ierr);
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
   ierr = VecGetArray (xout_, &xout_ptr); CHKERRQ (ierr);
