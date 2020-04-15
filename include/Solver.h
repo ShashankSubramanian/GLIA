@@ -30,80 +30,12 @@
 
 #include "IO.h"
 #include "Parameters.h"
-#include "TumorSolverInterface.h"
+#include "SolverInterface.h"
 #include "Utils.h"
 
-class Solver {
+class ForwardSolver : public SolverInterface {
  public:
-  Solver();
-
-  virtual PetscErrorCode finalize();
-  virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
-  virtual PetscErrorCode run();
-
-  virtual ~Solver() {
-    if(wm_ != nullptr) VecDestroy(&wm_);
-    if(gm_ != nullptr) VecDestroy(&gm_);
-    if(vt_ != nullptr) VecDestroy(&vt_);
-    if(csf_ != nullptr) VecDestroy(&csf_);
-    if(mri_ != nullptr) VecDestroy(&mri_);
-    if(tmp_ != nullptr) VecDestroy(&tmp_);
-    if(data_t1_ != nullptr) VecDestroy(&data_t1_);
-    if(data_t0_ != nullptr) VecDestroy(&data_t0_);
-    if(!app_settings_->syn_->enabled_ && !app_settings_->path_->data_support_.empty()) {
-      if(data_support_ != nullptr) VecDestroy(&data_support_);
-    }
-    if(data_comps_ != nullptr) VecDestroy(&data_comps_);
-    if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
-    if(p_rec_ != nullptr) VecDestroy(&p_rec_);
-    if(velocity_ != nullptr) VecDestroy(&velocity_);
-  }
-
- protected:
-  virtual PetscErrorCode initializeOperators();
-  virtual PetscErrorCode resetOperators(Vec p, bool ninv_changed=true, bool nt_changed=false);
-  virtual PetscErrorCode createSynthetic();
-  virtual PetscErrorCode initializeGaussians();
-
-  PetscErrorCode updateTumorCoefficients(Vec wm, Vec gm, Vec csf, Vec vt, Vec bg);
-  PetscErrorCode readAtlas();
-  PetscErrorCode readData();
-  PetscErrorCode readVelocity();
-  PetscErrorCode readDiffusionFiberTensor();  // TODO(K) implement.
-  PetscErrorCode predict();
-
-  std::shared_ptr<Parameters> params_;
-  std::shared_ptr<ApplicationSettings> app_settings_;
-  // std::shared_ptr<TumorSolverInterface> solver_interface_;
-  std::shared_ptr<DerivativeOperators> derivative_operators_;
-  std::shared_ptr<PdeOperators> pde_operators_;
-  std::shared_ptr<SpectralOperators> spec_ops_;
-  std::shared_ptr<Tumor> tumor_;
-  std::shared_ptr<Optimizer> optimizer_;
-
-  bool custom_obs_;
-  bool warmstart_p_;
-  bool has_dt0_;
-
-  Vec wm_;
-  Vec gm_;
-  Vec vt_;
-  Vec csf_;
-  Vec mri_;
-  Vec tmp_;
-  Vec data_t1_;
-  Vec data_t0_;
-  Vec data_support_;
-  Vec data_comps_;
-  Vec obs_filter_;
-  Vec p_rec_;
-  Vec velocity_;
-  std::shared_ptr<Data> data_;
-};
-
-class ForwardSolver : public Solver {
- public:
-  ForwardSolver() : Solver() {}
+  ForwardSolver() : SolverInterface() {}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
@@ -112,9 +44,9 @@ class ForwardSolver : public Solver {
   virtual ~ForwardSolver() {}
 };
 
-class InverseL2Solver : public Solver {
+class InverseL2Solver : public SolverInterface {
  public:
-  InverseL2Solver() : Solver() {}
+  InverseL2Solver() : SolverInterface() {}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
@@ -123,9 +55,9 @@ class InverseL2Solver : public Solver {
   virtual ~InverseL2Solver() {}
 };
 
-class InverseL1Solver : public Solver {
+class InverseL1Solver : public SolverInterface {
  public:
-  InverseL1Solver() : Solver() {}
+  InverseL1Solver() : SolverInterface() {}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
@@ -134,9 +66,9 @@ class InverseL1Solver : public Solver {
   virtual ~InverseL1Solver() {}
 };
 
-class InverseReactionDiffusionSolver : public Solver {
+class InverseReactionDiffusionSolver : public SolverInterface {
  public:
-  InverseReactionDiffusionSolver() : Solver() {}
+  InverseReactionDiffusionSolver() : SolverInterface() {}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
@@ -145,9 +77,9 @@ class InverseReactionDiffusionSolver : public Solver {
   virtual ~InverseReactionDiffusionSolver() {}
 };
 
-class InverseMassEffectSolver : public Solver {
+class InverseMassEffectSolver : public SolverInterface {
  public:
-  InverseMassEffectSolver() : Solver() {}
+  InverseMassEffectSolver() : SolverInterface() {}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
@@ -170,9 +102,9 @@ class InverseMassEffectSolver : public Solver {
   Vec p_csf_;
 };
 
-class MultiSpeciesSolver : public Solver {
+class MultiSpeciesSolver : public SolverInterface {
   public:
-  MultiSpeciesSolver() : Solver() {}
+  MultiSpeciesSolver() : SolverInterface() {}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
