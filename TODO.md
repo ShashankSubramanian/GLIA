@@ -3,7 +3,7 @@
 
 ### opt/ todos:
 1.     Non-class methods in TaoInterfaceLandfill need to be revisited, cleaned up, and if possible combined with existing methods in TaoInterface
-2.     In opt/ file includes, member function definitions (virtual vs non-virtual etc need to be fixed and reviewed. I’ll do that
+[done] In opt/ file includes, member function definitions (virtual vs non-virtual etc need to be fixed and reviewed. I’ll do that
 [done] In Solver, I hope all occurrences of solver_interface are fixed but not sure; Solver should have it’s own .cpp file; all remaining methods from TumorSolverInterface (which are needed) should be moved to Solver.cpp;
 4.     In Solver.cpp, the allocation of p_vec_ needs to be fixed; quick and dirty I’ve been re-allocating in the run() methods if required; we should find a better way of allocating p_vec_ once and for all in specialized initialize of solvers. This is necessary since optimizer now has a function setInitialGuess which assumes a specific length of the vector (for RD and ME TIL can be given as Phi(p) or c(0))
 5.     In derivative operators: all Vec data has to be replaced by std::shared_ptr<Data> data, all data access by data->dt1(), all obs_->apply(..) by  bs_->apply(.., 1); the latter is for clarity, time point one is the default.
