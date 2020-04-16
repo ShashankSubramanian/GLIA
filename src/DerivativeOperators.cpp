@@ -277,7 +277,10 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective(PetscReal *J, Vec x, std
     }
   }
 
-  ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  // p and rho cannot be simultaneosly inverted ~ apply phi only when reaction inversion is off
+  if (!params_->opt_->flag_reaction_inv_) { 
+    ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  }
   ierr = pde_operators_->solveState(0);
   ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
   ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
@@ -371,7 +374,10 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, std::share
   /* ------------------ */
   /* (1) compute grad_p */
   // c = Phi(p), solve state
-  ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  // p and rho cannot be simultaneosly inverted ~ apply phi only when reaction inversion is off
+  if (!params_->opt_->flag_reaction_inv_) { 
+    ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  }
   ierr = pde_operators_->solveState(0);
   // final cond adjoint
   ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
@@ -381,30 +387,30 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, std::share
   // solve adjoint
   ierr = pde_operators_->solveAdjoint(1);
   // compute gradient
-  if (!params_->tu_->phi_store_) {
-    // restructure phi compute because it is now expensive
-    // assume that reg norm is L2 for now
-    // TODO: change to normal if reg norm is not L2
+  if (!params_->opt_->flag_reaction_inv_) { // g_p does not exist if reaction is inverted for
+    if (!params_->tu_->phi_store_) {
+      // restructure phi compute because it is now expensive
+      // assume that reg norm is L2 for now
+      // TODO: change to normal if reg norm is not L2
+      // p0 = p0 - beta * phi * p
+      ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
+      // dJ is phiT p0 - beta * phiT * phi * p
+      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
+      // dJ is beta * phiT * phi * p - phiT * p0
+      ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
+      ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-    // p0 = p0 - beta * phi * p
-    ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
-    // dJ is phiT p0 - beta * phiT * phi * p
-    ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
-    // dJ is beta * phiT * phi * p - phiT * p0
-    ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-
-  } else {
-    ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
-    ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-
-    if (params_->opt_->regularization_norm_ == L2) {
-      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
-      ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
-    } else if (params_->opt_->regularization_norm_ == L2b) {
-      ierr = VecCopy(x, dJ); CHKERRQ(ierr);
-      ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      if (params_->opt_->regularization_norm_ == L2) {
+        ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
+        ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      } else if (params_->opt_->regularization_norm_ == L2b) {
+        ierr = VecCopy(x, dJ); CHKERRQ(ierr);
+        ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      }
     }
   }
 
@@ -597,7 +603,9 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
   }
 
   // solve state
-  ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  if (!params_->opt_->flag_reaction_inv_) { 
+    ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  }
   ierr = pde_operators_->solveState(0);
   ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
 
@@ -610,31 +618,32 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
   ierr = VecScale(tumor_->p_t_, -1.0); CHKERRQ(ierr);
   ierr = pde_operators_->solveAdjoint(1);
 
-  if (!params_->tu_->phi_store_) {
-    // restructure phi compute because it is now expensive
-    // assume that reg norm is L2 for now
-    // TODO: change to normal if reg norm is not L2
+  if (!params_->opt_->flag_reaction_inv_) {
+    if (!params_->tu_->phi_store_) {
+      // restructure phi compute because it is now expensive
+      // assume that reg norm is L2 for now
+      // TODO: change to normal if reg norm is not L2
+      // p0 = p0 - beta * phi * p
+      ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
+      // dJ is phiT p0 - beta * phiT * phi * p
+      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
+      // dJ is beta * phiT * phi * p - phiT * p0
+      ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-    // p0 = p0 - beta * phi * p
-    ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
-    // dJ is phiT p0 - beta * phiT * phi * p
-    ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
-    // dJ is beta * phiT * phi * p - phiT * p0
-    ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
+      ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-  } else {
-    ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
-    ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-
-    // Gradient according to reg parameter chosen
-    if (params_->opt_->regularization_norm_ == L2) {
-      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
-      ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
-    } else if (params_->opt_->regularization_norm_ == L2b) {
-      ierr = VecCopy(x, dJ); CHKERRQ(ierr);
-      ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      // Gradient according to reg parameter chosen
+      if (params_->opt_->regularization_norm_ == L2) {
+        ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
+        ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      } else if (params_->opt_->regularization_norm_ == L2b) {
+        ierr = VecCopy(x, dJ); CHKERRQ(ierr);
+        ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      }
     }
   }
 
@@ -1061,7 +1070,9 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, std
     }
   }
 
-  ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  if (!params_->opt_->flag_reaction_inv_) { 
+    ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  }
   ierr = pde_operators_->solveState(0);
   // cross entropy obj is -(dlog(c) + (1-d)*log(1-c))
   ScalarType eps = eps_;
@@ -1171,7 +1182,9 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, std::share
   /* ------------------ */
   /* (1) compute grad_p */
   // c = Phi(p), solve state
-  ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  if (!params_->opt_->flag_reaction_inv_) { 
+    ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  }
   ierr = pde_operators_->solveState(0);
   // final cond adjoint
   ScalarType eps = eps_;
@@ -1194,31 +1207,33 @@ PetscErrorCode DerivativeOperatorsKL::evaluateGradient(Vec dJ, Vec x, std::share
   // solve adjoint
   ierr = pde_operators_->solveAdjoint(1);
   // compute gradient
-  if (!params_->tu_->phi_store_) {
-    // restructure phi compute because it is now expensive
-    // assume that reg norm is L2 for now
-    // TODO: change to normal if reg norm is not L2
+  if (!params_->opt_->flag_reaction_inv_) { 
+    if (!params_->tu_->phi_store_) {
+      // restructure phi compute because it is now expensive
+      // assume that reg norm is L2 for now
+      // TODO: change to normal if reg norm is not L2
 
-    // p0 = p0 - beta * phi * p
-    ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
-    // dJ is phiT p0 - beta * phiT * phi * p
-    ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
-    // dJ is beta * phiT * phi * p - phiT * p0
-    ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+      // p0 = p0 - beta * phi * p
+      ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
+      // dJ is phiT p0 - beta * phiT * phi * p
+      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
+      // dJ is beta * phiT * phi * p - phiT * p0
+      ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-  } else {
-    ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
-    ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
+      ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-    // Gradient according to reg parameter chosen
-    if (params_->opt_->regularization_norm_ == L2) {
-      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
-      ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
-    } else if (params_->opt_->regularization_norm_ == L2b) {
-      ierr = VecCopy(x, dJ); CHKERRQ(ierr);
-      ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      // Gradient according to reg parameter chosen
+      if (params_->opt_->regularization_norm_ == L2) {
+        ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
+        ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      } else if (params_->opt_->regularization_norm_ == L2b) {
+        ierr = VecCopy(x, dJ); CHKERRQ(ierr);
+        ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      }
     }
   }
 
@@ -1406,7 +1421,9 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
   }
 
   // solve state
-  ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  if (!params_->opt_->flag_reaction_inv_) { 
+    ierr = tumor_->phi_->apply(tumor_->c_0_, x); CHKERRQ(ierr);
+  }
   ierr = pde_operators_->solveState(0);
   // cross entropy obj is -(dlog(c) + (1-d)*log(1-c))
   ScalarType eps = eps_;
@@ -1439,31 +1456,33 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
   ierr = vecRestoreArray(data, &d_ptr); CHKERRQ(ierr);
   ierr = pde_operators_->solveAdjoint(1);
 
-  if (!params_->tu_->phi_store_) {
-    // restructure phi compute because it is now expensive
-    // assume that reg norm is L2 for now
-    // TODO: change to normal if reg norm is not L2
+  if (!params_->opt_->flag_reaction_inv_) { 
+    if (!params_->tu_->phi_store_) {
+      // restructure phi compute because it is now expensive
+      // assume that reg norm is L2 for now
+      // TODO: change to normal if reg norm is not L2
 
-    // p0 = p0 - beta * phi * p
-    ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
-    // dJ is phiT p0 - beta * phiT * phi * p
-    ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
-    // dJ is beta * phiT * phi * p - phiT * p0
-    ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+      // p0 = p0 - beta * phi * p
+      ierr = VecAXPY(tumor_->p_0_, -params_->opt_->beta_, tumor_->c_0_); CHKERRQ(ierr);
+      // dJ is phiT p0 - beta * phiT * phi * p
+      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->p_0_); CHKERRQ(ierr);
+      // dJ is beta * phiT * phi * p - phiT * p0
+      ierr = VecScale(dJ, -params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-  } else {
-    ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
-    ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+    } else {
+      ierr = tumor_->phi_->applyTranspose(ptemp_, tumor_->p_0_);
+      ierr = VecScale(ptemp_, params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
 
-    // Gradient according to reg parameter chosen
-    if (params_->opt_->regularization_norm_ == L2) {
-      ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
-      ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
-    } else if (params_->opt_->regularization_norm_ == L2b) {
-      ierr = VecCopy(x, dJ); CHKERRQ(ierr);
-      ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
-      ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      // Gradient according to reg parameter chosen
+      if (params_->opt_->regularization_norm_ == L2) {
+        ierr = tumor_->phi_->applyTranspose(dJ, tumor_->c_0_);
+        ierr = VecScale(dJ, params_->opt_->beta_ * params_->grid_->lebesgue_measure_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      } else if (params_->opt_->regularization_norm_ == L2b) {
+        ierr = VecCopy(x, dJ); CHKERRQ(ierr);
+        ierr = VecScale(dJ, params_->opt_->beta_); CHKERRQ(ierr);
+        ierr = VecAXPY(dJ, -1.0, ptemp_); CHKERRQ(ierr);
+      }
     }
   }
 

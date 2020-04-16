@@ -7,7 +7,8 @@
 [done] In derivative operators: all Vec data has to be replaced by std::shared_ptr<Data> data, all data access by data->dt1(), all obs_->apply(..) by  bs_->apply(.., 1); the latter is for clarity, time point one is the default.
 [done] Fixing many compile errors
 [done] In Solver.cpp, the allocation of p_vec_ needs to be fixed; quick and dirty I’ve been re-allocating in the run() methods if required; we should find a better way of allocating p_vec_ once and for all in specialized initialize of solvers. This is necessary since optimizer now has a function setInitialGuess which assumes a specific length of the vector (for RD and ME TIL can be given as Phi(p) or c(0))
-1.     Non-class methods in TaoInterfaceLandfill need to be revisited, cleaned up, and if possible combined with existing methods in TaoInterface
+1.[done]     Non-class methods in TaoInterfaceLandfill need to be revisited, cleaned up, and if possible combined with existing methods in TaoInterface
+             Derivative ops takes care of no-phi-apply and gradient of p computation if reaction inversion is on
 7.     Fixing many runtime errors
 
 ---

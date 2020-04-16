@@ -325,10 +325,6 @@ PetscErrorCode MEOptimizer::setTaoOptions() {
 
   ierr = Optimizer::setTaoOptions(); CHKERRQ(ierr);
 
-  // TODO(K): Do we need separate methods, double check.
-  // set monitor fro mass-effect inversion
-  ierr = TaoSetMonitor(tao_, optimizationMonitorMassEffect, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
-  // set convergence test routine
   ierr = TaoSetConvergenceTest(tao_, checkConvergenceGradObj, (void *) ctx_.get()); CHKERRQ(ierr); // TODO: check if correct
   // hessian routine
   ierr = TaoSetHessianRoutine(tao_, H_, H_, matfreeHessian, (void *) ctx_.get()); CHKERRQ(ierr);

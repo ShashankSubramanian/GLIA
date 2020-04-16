@@ -19,7 +19,7 @@ public :
 
 
   // TODO: revisit if necessary after cleanuop of TaoInterface
-  virtual PetscErrorCode setTaoOptions();
+  // virtual PetscErrorCode setTaoOptions();
   virtual PetscErrorCode solve();
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);

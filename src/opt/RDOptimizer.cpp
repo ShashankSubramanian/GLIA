@@ -215,6 +215,9 @@ PetscErrorCode RDOptimizer::solve() {
   ctx_->data = data_;
   ss << " tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
+  // set params->tu->np to zero so that derivative operators will compute the correct gradients
+  ctx_->params_->np_ = 0;
+
   /* === solve === */
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
   ierr = TaoSolve (tao_); CHKERRQ(ierr);
@@ -247,6 +250,7 @@ PetscErrorCode RDOptimizer::solve() {
   tao_reset_ = false;
   ctx_->params_->opt_->beta_ = beta_p;              // restore beta value
   ctx_->params_->opt_->flag_reaction_inv_ = false;  // disables derivative operators to compute the gradient w.r.t rho
+  ctx_->params_->np_ = np;                          // restores np
 
   // === populate solution to xout_
   // * {p, kappa, rho}, if c(0) is given as parametrization
@@ -329,22 +333,5 @@ PetscErrorCode RDOptimizer::setVariableBounds() {
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound); CHKERRQ (ierr);
   ierr = VecDestroy(&lower_bound); CHKERRQ(ierr);
   ierr = VecDestroy(&upper_bound); CHKERRQ(ierr);
-  PetscFunctionReturn(ierr);
-}
-
-// ### ______________________________________________________________________ ___
-// ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode RDOptimizer::setTaoOptions() {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
-
-  ierr = Optimizer::setTaoOptions(); CHKERRQ(ierr);
-
-  ierr = TaoSetObjectiveRoutine(tao_, evaluateObjectiveReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
-  ierr = TaoSetGradientRoutine(tao_, evaluateGradientReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
-  ierr = TaoSetObjectiveAndGradientRoutine(tao_, evaluateObjectiveAndGradientReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
-  ierr = TaoSetMonitor(tao_, optimizationMonitorReacDiff, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGrad, (void *) ctx_.get()); CHKERRQ(ierr);
-  // TODO: check if correct
   PetscFunctionReturn(ierr);
 }
