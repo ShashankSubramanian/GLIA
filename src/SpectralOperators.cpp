@@ -364,3 +364,26 @@ SpectralOperators::~SpectralOperators() {
 
   accfft_cleanup();
 }
+
+// initialization routines are part of spectral operators because accfft controls the memory distribution
+PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  int N[3] = {n, n, n};
+  int isize[3];
+  int istart[3];
+  int osize[3];
+  int ostart[3];
+  int c_dims[2] = {0};
+  MPI_Comm c_comm;
+
+  accfft_init();
+  accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
+  spec_ops->setup(N, isize, istart, osize, ostart, c_comm);
+  int64_t alloc_max = spec_ops->alloc_max_;
+  fft_plan *plan = spec_ops->plan_;
+  params->createGrid(N, isize, osize, istart, ostart, plan, c_comm, c_dims);
+  PetscFunctionReturn(ierr);
+}
+

@@ -3,34 +3,34 @@
 #### ------------------------------- ###
 
 
-### grid
-n=256
+### grid: run all tests in default 64
+n=64
 
 ### inversion scheme
-solver=sparse_til
+solver=forward
 invert_diff=1
 invert_reac=1
-multilevel=1
-inject_solution=1
-pre_reacdiff_solve=1
-verbosity=1
+multilevel=0
+inject_solution=0
+pre_reacdiff_solve=0
+verbosity=0
 
 ### optimizer
 newton_solver=QN
 line_search=armijo
 ce_loss=0
-regularization=L1c
-beta_p=0.0001
+regularization=L1
+beta_p=0.0
 opttol_grad=1e-05
-newton_maxit=50
+newton_maxit=2
 krylov_maxit=1
 gist_maxit=2
-kappa_lb=0.0001
-kappa_ub=1.0
+kappa_lb=0
+kappa_ub=0.1
 rho_lb=0
 rho_ub=15
 gamma_ub=15
-lbfgs_vectors=10
+lbfgs_vectors=50
 lbfgs_scale_type=diagonal
 lbfgs_scale_hist=5
 ls_max_func_evals=10
@@ -40,12 +40,12 @@ accuracy_order=2
 ip_order=3
 
 ### tumor params
-model=1
-init_rho=8
-init_k=0.01
-init_gamma=120000.0
-nt_inv=40
-dt_inv=0.025
+model=4
+init_rho=15
+init_k=0
+init_gamma=60000.0
+nt_inv=25
+dt_inv=0.04
 k_gm_wm=0.0
 r_gm_wm=0.0
 
@@ -59,7 +59,7 @@ obs_threshold_rel=0
 ### initial condition
 sparsity_level=5
 gaussian_selection_mode=1
-number_gaussians=64
+number_gaussians=1
 sigma_factor=1
 sigma_spacing=2
 threshold_data_driven=0.1
@@ -71,29 +71,29 @@ pred_times=[1.0, 1.2, 1.5]
 dt_pred=0.01
 
 ### synthetic data
-syn_flag=0
-user_cms=[(112, 136, 144, 1)]
-rho_data=12
-k_data=0.05
+syn_flag=1
+user_cms=[(137, 169, 96, 1)]
+rho_data=8
+k_data=0.01
 gamma_data=120000.0
-nt_data=100
-dt_data=0.01
+nt_data=25
+dt_data=0.04
 testcase=0
 
 ### paths
-output_dir=/Users/scheufele/workspace/code/SIBIA/tumor-tools/3rdparty/pglistr_tumor/scripts/../config/
-d1_path=/Users/scheufele/workspace/code/SIBIA/tumor-tools/3rdparty/pglistr_tumor/scripts/..//brain_data/256/cpl/c1p.nc
+output_dir=results/UT/
+d1_path=
 d0_path=
 a_seg_path=
-a_wm_path=/Users/scheufele/workspace/code/SIBIA/tumor-tools/3rdparty/pglistr_tumor/scripts/..//brain_data/256/white_matter.nc
-a_gm_path=/Users/scheufele/workspace/code/SIBIA/tumor-tools/3rdparty/pglistr_tumor/scripts/..//brain_data/256/gray_matter.nc
-a_csf_path=
-a_vt_path=/Users/scheufele/workspace/code/SIBIA/tumor-tools/3rdparty/pglistr_tumor/scripts/..//brain_data/256/csf.nc
+a_wm_path=testdata/wm.nc
+a_gm_path=testdata/gm.nc
+a_csf_path=testdata/csf.nc
+a_vt_path=testdata/vt.nc
 p_seg_path=
 p_wm_path=
 p_csf_path=
 p_vt_path=
-mri_path=
+mri_path=testdata/mri.nc
 obs_mask_path=
 support_data_path=
 gaussian_cm_path=
@@ -105,7 +105,7 @@ velocity_x2=
 velocity_x3=
 
 ### performance
-time_history_off=0
+time_history_off=1
 store_phi=0
 store_adjoint=1
-write_output=1
+write_output=0

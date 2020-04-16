@@ -7,7 +7,7 @@ import subprocess
 ###############
 r = {}
 p = {}
-submit_job = False;
+submit_job = True;
 
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -15,15 +15,15 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 64                         # grid resolution
-p['solver'] = 'test-inverse'        # modes: test-forward
+p['solver'] = 'test-forward'        # modes: test-forward
 p['output_dir'] = os.path.join(code_dir, 'results/' + p['solver'] + '/');   # results path
 p['a_gm_path'] = code_dir + "/testdata/gm.nc"     # atlas paths
 p['a_wm_path'] = code_dir + "/testdata/wm.nc"
 p['a_csf_path'] = code_dir + "/testdata/csf.nc"
 p['a_vt_path'] = code_dir + "/testdata/vt.nc"
 p['mri_path'] = code_dir + "/testdata/mri.nc"
-p['model'] = 1                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
-p['verbosity'] = 1                  # various levels of output density
+p['model'] = 4                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
+p['verbosity'] = 3                  # various levels of output density
 p['syn_flag'] = 1                   # create synthetic data
 p['user_cms'] = [(137,169,96,1)]    # arbitrary number of TILs (x,y,z,scale) with activation scale
 p['rho_data'] = 8                  # tumor parameters for synthetic data

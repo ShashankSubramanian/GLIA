@@ -26,7 +26,7 @@ PetscErrorCode ForwardSolver::initialize(std::shared_ptr<SpectralOperators> spec
 
   ierr = tuMSGwarn(" Initializing Forward Solver."); CHKERRQ(ierr);
   // switch off time history
-  params->tu_->time_history_off_;
+  params->tu_->time_history_off_ = true;
   ierr = tuMSGstd(" .. switching off time history."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
   params->tu_->np_ = 1;

@@ -6,6 +6,8 @@
 #include "TypeDefs.h"
 #include "Utils.h"
 
+// global variable
+extern bool DISABLE_VERBOSE;
 
 
 /* #### ------------------------------------------------------------------- #### */

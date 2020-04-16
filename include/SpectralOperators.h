@@ -37,6 +37,9 @@ class SpectralOperators {
   ~SpectralOperators();
 };
 
+// initialization routines are part of spectral operators because accfft controls the memory distribution
+PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
+// cuda helpers
 #ifdef CUDA
 void initSpecOpsCudaConstants(int *n, int *istart, int *ostart);
 void multiplyXWaveNumberCuda(CudaComplexType *w_f, CudaComplexType *f, int *sz);

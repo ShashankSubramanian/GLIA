@@ -1,5 +1,8 @@
 #include "Utils.h"
 
+// global variable
+bool DISABLE_VERBOSE = false;
+
 VecField::VecField(int nl, int ng) {
   PetscErrorCode ierr = 0;
   ierr = VecCreate(PETSC_COMM_WORLD, &x_);
@@ -219,16 +222,18 @@ PetscErrorCode _tuMSG(std::string msg, std::string color, int size) {
   std::stringstream ss;
   PetscFunctionBegin;
 
-  int procid, nprocs;
-  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+  if(!DISABLE_VERBOSE) {
+    int procid, nprocs;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &procid);
 
-  ss << std::left << std::setw(size) << msg;
-  msg = color + "[ " + ss.str() + "]\x1b[0m\n";
-  // msg = "\x1b[1;34;40m[ "  + ss.str() + "]\x1b[0m\n";
+    ss << std::left << std::setw(size) << msg;
+    msg = color + "[ " + ss.str() + "]\x1b[0m\n";
+    // msg = "\x1b[1;34;40m[ "  + ss.str() + "]\x1b[0m\n";
 
-  // display message
-  ierr = PetscPrintf(PETSC_COMM_WORLD, msg.c_str()); CHKERRQ(ierr);
+    // display message
+    ierr = PetscPrintf(PETSC_COMM_WORLD, msg.c_str()); CHKERRQ(ierr);
+  }
 
   PetscFunctionReturn(ierr);
 }

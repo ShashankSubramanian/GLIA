@@ -262,14 +262,14 @@ env = conf.Finish() # Used to check libraries
 
 
 if env["gpu"] == True:
-    binfwd = env.Program (
-    target = buildpath + '/forward',
-    source = [sourcesPGLISTRGPU, './app/forward.cpp']
-    )
     bininv = env.Program (
     target = buildpath + '/tusolver',
     source = [sourcesPGLISTRGPU, './app/tusolver.cpp']
     )
+    bininv = env.Program (
+        target = buildpath + '/test',
+        source = [sourcesPGLISTR, './app/test.cpp']
+    ) 
     env.Alias("bin", bininv)
     staticlib = env.StaticLibrary (
         target = buildpath + '/pglistr',
@@ -277,13 +277,13 @@ if env["gpu"] == True:
     )
     env.Alias("staticlib", staticlib)
 else:
-    binfwd = env.Program (
-    target = buildpath + '/forward',
-    source = [sourcesPGLISTR, './app/forward.cpp']
-    )
     bininv = env.Program (
         target = buildpath + '/tusolver',
         source = [sourcesPGLISTR, './app/tusolver.cpp']
+    ) 
+    bininv = env.Program (
+        target = buildpath + '/test',
+        source = [sourcesPGLISTR, './app/test.cpp']
     ) 
     env.Alias("bin", bininv)
     # solib = env.SharedLibrary (
