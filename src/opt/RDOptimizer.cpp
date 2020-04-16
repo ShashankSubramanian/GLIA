@@ -344,7 +344,7 @@ PetscErrorCode RDOptimizer::setTaoOptions() {
   ierr = TaoSetGradientRoutine(tao_, evaluateGradientReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
   ierr = TaoSetObjectiveAndGradientRoutine(tao_, evaluateObjectiveAndGradientReacDiff, (void*) ctx_.get()); CHKERRQ(ierr);
   ierr = TaoSetMonitor(tao_, optimizationMonitorReacDiff, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
-  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGradReacDiff, (void *) ctx_.get()); CHKERRQ(ierr);
+  ierr = TaoSetConvergenceTest(tao_, checkConvergenceGrad, (void *) ctx_.get()); CHKERRQ(ierr);
   // TODO: check if correct
   PetscFunctionReturn(ierr);
 }
