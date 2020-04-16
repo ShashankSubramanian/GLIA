@@ -38,7 +38,7 @@ PetscErrorCode SparseTILOptimizer::initialize(
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode Optimizer::allocateTaoObjects() {
+PetscErrorCode SparseTILOptimizer::allocateTaoObjects() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   // this function is empty since no tao objects should be allocated
@@ -49,7 +49,7 @@ PetscErrorCode Optimizer::allocateTaoObjects() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode Optimizer::setTaoOptions() {
+PetscErrorCode SparseTILOptimizer::setTaoOptions() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   // this function is empty since no tao object is allocated and no options are set.
@@ -58,6 +58,15 @@ PetscErrorCode Optimizer::setTaoOptions() {
   PetscFunctionReturn(ierr);
 }
 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode SparseTILOptimizer::setVariableBounds() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  // this function is empty since no tao objects should be allocated
+  // this is done in the sub solvers RD and TIL
+  PetscFunctionReturn(ierr);
+}
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode SparseTILOptimizer::restrictSubspace (Vec *x_restricted, Vec x_full, std::shared_ptr<CtxInv> ctx, bool create_rho_dofs = false) {

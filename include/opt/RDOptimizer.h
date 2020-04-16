@@ -25,7 +25,7 @@ public :
   virtual PetscErrorCode setInitialGuess(Vec x_init);
   virtual PetscErrorCode setVariableBounds();
 
-  virtual ~RDOptimizer();
+  virtual ~RDOptimizer() {};
 
   // TODO: Not specialized in this class; I think functions that are not specialized do not need to be declared
   // virtual PetscErrorCode resetOperators(Vec p);

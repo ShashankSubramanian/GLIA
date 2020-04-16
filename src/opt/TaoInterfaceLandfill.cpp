@@ -1,4 +1,12 @@
+
+#include <petsc/private/vecimpl.h>
+#include "petsctao.h"
+#include "petsc/private/taoimpl.h"
+#include "petsc/private/taolinesearchimpl.h"
+
 #include "Optimizer.h"
+#include "SparseTILOptimizer.h"
+#include "Parameters.h"
 #include "TaoInterface.h"
 
 /* ------------------------------------------------------------------- */
@@ -281,9 +289,9 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
       norm_gref = gnorm;
-      itctx->params_->optf_->gradnorm_0 = norm_gref;
+      itctx->params_->optf_->gradnorm0_ = norm_gref;
       itctx->update_reference_gradient = false;
-      s <<" updated reference gradient for relative convergence criterion, Quasi-Newton solver: " << itctx->params_->optf_->gradnorm_0;
+      s <<" updated reference gradient for relative convergence criterion, Quasi-Newton solver: " << itctx->params_->optf_->gradnorm0_;
       ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
     }
     #endif
@@ -307,7 +315,7 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
 
     ierr = itctx->tumor_->phi_->apply (itctx->tumor_->c_0_, itctx->x_old);                 CHKERRQ (ierr);
     //Prints a warning if tumor IC is clipped
-    ierr = checkClipping (itctx->tumor_->c_0_, itctx->params_);           CHKERRQ (ierr);
+    ierr = printVecBounds(itctx->tumor_->c_0_, "bounds of 0 <= c(0) <= 1"); CHKERRQ(ierr);
 
     ScalarType mx, mn;
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
@@ -340,7 +348,7 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
 
     s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
-      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->params_->optf_->gradnorm_0
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->params_->optf_->gradnorm0_
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step
       ;
@@ -364,7 +372,7 @@ PetscErrorCode optimizationMonitorReacDiff (Tao tao, void *ptr) {
     s.str ("");
     s.clear ();
 
-    if (itctx->params_->write_output_ && itctx->params_->tu_->verbosity_ >= 4 && its % 5 == 0) {
+    if (itctx->params_->tu_->write_output_ && itctx->params_->tu_->verbosity_ >= 4 && its % 5 == 0) {
         s << "c1guess_paraminvitr-" << its << ".nc";
         dataOut (itctx->tumor_->c_t_, itctx->params_, s.str().c_str());
     }
@@ -432,14 +440,14 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr) {
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
       norm_gref = gnorm;
-      ctx->params_->optf_->gradnorm_0 = norm_gref;
+      ctx->params_->optf_->gradnorm0_ = norm_gref;
       ctx->update_reference_gradient = false;
-      std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->params_->optf_->gradnorm_0;
+      std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->params_->optf_->gradnorm0_;
       ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     }
     #endif
     // get initial gradient
-    g0norm = ctx->params_->optf_->gradnorm_0;
+    g0norm = ctx->params_->optf_->gradnorm0_;
     g0norm = (g0norm > 0.0) ? g0norm : 1.0;
     ctx->convergence_message.clear();
     // check for NaN value
@@ -620,10 +628,10 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
     // update/set reference gradient
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
     if (itctx->update_reference_gradient) {
-        itctx->params_->optf_->gradnorm_0 = gnorm;
+        itctx->params_->optf_->gradnorm0_ = gnorm;
         itctx->params_->optf_->j0_ = J;
         itctx->update_reference_gradient = false;
-        std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << itctx->params_->optf_->gradnorm_0;
+        std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << itctx->params_->optf_->gradnorm0_;
         ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     }
     #endif
@@ -662,7 +670,7 @@ PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr) {
 
     s << " "   << std::scientific << std::setprecision(5) << std::setfill('0') << std::setw(4) << its << std::setfill(' ')
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << J
-      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->params_->optf_->gradnorm_0
+      << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm/itctx->params_->optf_->gradnorm0_
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << gnorm
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << step
       << "   " << std::scientific << std::setprecision(12) << std::setw(18) << tao_x_ptr[0]
@@ -732,16 +740,16 @@ PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr) {
     // update/set reference gradient
     #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR < 9)
     if (ctx->update_reference_gradient) {
-        ctx->params_->optf_->gradnorm_0 = gnorm;
+        ctx->params_->optf_->gradnorm0_ = gnorm;
         ctx->params_->optf_->j0_ = jx;
         ctx->update_reference_gradient = false;
-        std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->params_->optf_->gradnorm_0;
+        std::stringstream s; s <<" updated reference gradient for relative convergence criterion: " << ctx->params_->optf_->gradnorm0_;
         ierr = tuMSGstd(s.str());                                                 CHKERRQ(ierr);
     }
     #endif
 
 
-    g0norm = ctx->params_->optf_->gradnorm_0;
+    g0norm = ctx->params_->optf_->gradnorm0_;
     g0norm = (g0norm > 0.0) ? g0norm : 1.0;
     // compute tolerances for stopping conditions
     tolj = grtol;

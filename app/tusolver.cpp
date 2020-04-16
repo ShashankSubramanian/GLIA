@@ -154,8 +154,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "rho_ub") {p->opt_->rho_ub_ = std::stod(value); return;}
   if (name == "gamma_ub_") {p->opt_->gamma_ub_ = std::stod(value); return;}
   if (name == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value); return;}
-  if (name == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type = value; return;}
-  if (name == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist = std::stoi(value); return;}
+  if (name == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type_ = value; return;}
+  if (name == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist_ = std::stoi(value); return;}
   if (name == "ls_max_func_evals") {p->opt_->ls_max_func_evals = std::stoi(value); return;}
   // ### forward solver
   if (name == "model") {p->tu_->model_ = std::stoi(value); return;}
@@ -329,7 +329,7 @@ int main(int argc, char **argv) {
   }
 
   // === initialize solvers
-  std::shared_ptr<Solver> solver;
+  std::shared_ptr<SolverInterface> solver;
   switch(run_mode) {
     case FORWARD:
       solver = std::make_shared<ForwardSolver>();

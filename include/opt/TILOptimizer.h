@@ -24,7 +24,7 @@ public :
   virtual PetscErrorCode setInitialGuess(Vec x_init);
   virtual PetscErrorCode setVariableBounds();
 
-  virtual ~TILOptimizer();
+  virtual ~TILOptimizer() {};
 
 
   // TODO: Not specialized in this class; I think functions that are not specialized do not need to be declared

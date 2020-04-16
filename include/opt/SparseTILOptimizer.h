@@ -115,15 +115,15 @@ public :
 
   virtual PetscErrorCode allocateTaoObjects(); // no-op here
   virtual PetscErrorCode setTaoOptions();      // no-op here
+  virtual PetscErrorCode setVariableBounds();  // no-op
   virtual PetscErrorCode solve();
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);
 
-  virtual ~SparseTILOptimizer();
+  virtual ~SparseTILOptimizer() {};
 
   // TODO: Not specialized in this class; I think functions that are not specialized do not need to be declared
   // virtual PetscErrorCode resetOperators(Vec p);
-  // virtual PetscErrorCode setVariableBounds();
 
 private:
   // local methods

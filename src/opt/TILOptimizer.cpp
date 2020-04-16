@@ -1,7 +1,10 @@
 #include <iostream>
 #include <limits>
 
+#include <petsc/private/vecimpl.h>
 #include "petsctao.h"
+#include "petsc/private/taoimpl.h"
+#include "petsc/private/taolinesearchimpl.h"
 // #include <petsc/private/vecimpl.h>
 
 #include "Optimizer.h"

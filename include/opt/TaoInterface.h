@@ -22,7 +22,7 @@ PetscErrorCode checkConvergenceGradObj(Tao tao, void *ptr);
 PetscErrorCode dispTaoConvReason(TaoConvergedReason flag, std::string &solverstatus);
 PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedReason flag);
 // misc
-PetscErrorCode operatorCreateVecs(Mat A, Vec *left, Vec *right);
+PetscErrorCode operatorCreateVecsOptimizer(Mat A, Vec *left, Vec *right);
 
 
 
@@ -40,6 +40,6 @@ PetscErrorCode checkConvergenceGradReacDiff (Tao tao, void *ptr);
 
 // mass effect: rection + diffusion + forcing factor
 PetscErrorCode optimizationMonitorMassEffect (Tao tao, void *ptr);
-PetscErrorCode checkConvergenceGradObjMassEffect (Tao tao, void *ptr);
+PetscErrorCode checkConvergenceGradMassEffect (Tao tao, void *ptr);
 
 #endif

@@ -1,13 +1,16 @@
 #include <iostream>
 #include <limits>
 
+#include <petsc/private/vecimpl.h>
 #include "petsctao.h"
-// #include <petsc/private/vecimpl.h>
+#include "petsc/private/taoimpl.h"
+#include "petsc/private/taolinesearchimpl.h"
 
 #include "Parameters.h"
 #include "DerivativeOperators.h"
 #include "PdeOperators.h"
 #include "Optimizer.h"
+#include "SparseTILOptimizer.h"
 #include "TaoInterface.h"
 
 
@@ -304,7 +307,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     // TODO(K): do we need phi apply? can we store or take itctx->tumor_->c_0_?
     ierr = itctx->tumor_->phi_->apply (itctx->tumor_->c_0_, tao_x); CHKERRQ (ierr);
     // warn if tumor ic is clipped
-    ierr = checkClipping (itctx->tumor_->c_0_, itctx->params_); CHKERRQ (ierr);
+    ierr = printVecBounds(itctx->tumor_->c_0_, "bounds of 0 <= c(0) <= 1"); CHKERRQ(ierr);
 
     ScalarType mx, mn;
     ierr = VecMax (itctx->tumor_->c_t_, NULL, &mx); CHKERRQ (ierr);
@@ -362,7 +365,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
   CtxInv *ctx = reinterpret_cast<CtxInv*> (ptr); // user context
   PetscInt verbosity = ctx->params_->tu_->verbosity_;
-  ScalarType = minstep = ctx->params_->opt_->ls_minstep_;
+  ScalarType minstep = ctx->params_->opt_->ls_minstep_;
   PetscInt miniter = ctx->params_->opt_->newton_minit_;
   // get tolerances
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 7)
@@ -893,7 +896,7 @@ PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedRe
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode operatorCreateVecs (Mat A, Vec *left, Vec *right) {
+PetscErrorCode operatorCreateVecsOptimizer (Mat A, Vec *left, Vec *right) {
     PetscFunctionBegin;
     PetscErrorCode ierr = 0;
     CtxInv *ctx;

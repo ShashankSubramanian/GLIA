@@ -94,10 +94,10 @@ PetscErrorCode TestSuite::inverseTest() {
   // set the reg norm as L2
   params_->opt_->regularization_norm_ = L2;
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
-  optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
-  ierr = optimizer_->setData(data_); CHKERRQ(ierr);
-  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);         // TODO: requires length of np + nk + nr
-  ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+  //optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
+  //ierr = optimizer_->setData(data_); CHKERRQ(ierr);
+  //ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);         // TODO: requires length of np + nk + nr
+  //ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
   // ierr = solver_interface_->solveInverseCoSaMp(p_rec_, data_t1_, nullptr); CHKERRQ(ierr);
 
   // TODO: compare results

@@ -30,7 +30,7 @@ public :
 
   virtual PetscErrorCode setInitialGuess(Vec x_init);
   virtual PetscErrorCode setVariableBounds();
-  virtual ~MEOptimizer(); // TODO(K) implement destructor
+  virtual ~MEOptimizer() {};
 
   // virtual PetscErrorCode resetOperators(Vec p);
 

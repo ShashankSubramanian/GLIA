@@ -95,15 +95,15 @@ public :
             std::shared_ptr <Parameters> params,
             std::shared_ptr <Tumor> tumor);
 
-  virtual PetscErrorCode solve();
+  virtual PetscErrorCode solve() = 0;
 
   virtual PetscErrorCode allocateTaoObjects();
   virtual PetscErrorCode setTaoOptions();
   virtual PetscErrorCode resetOperators(Vec p);
   virtual PetscErrorCode resetTao();
 
-  virtual PetscErrorCode setInitialGuess(Vec x_init);
-  virtual PetscErrorCode setVariableBounds();
+  virtual PetscErrorCode setInitialGuess(Vec x_init) = 0;
+  virtual PetscErrorCode setVariableBounds() = 0;
 
   PetscErrorCode setData(std::shared_ptr<Data> d) {data_ = d;}
   PetscErrorCode setData(Vec d1, Vec d0={}) {data_->set(d1, d0);}

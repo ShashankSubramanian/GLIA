@@ -1,7 +1,11 @@
 #include <iostream>
 #include <limits>
 
+#include <petsc/private/vecimpl.h>
 #include "petsctao.h"
+#include "petsc/private/taoimpl.h"
+#include "petsc/private/taolinesearchimpl.h"
+
 
 #include "Optimizer.h"
 #include "Parameters.h"
@@ -59,7 +63,7 @@ PetscErrorCode Optimizer::allocateTaoObjects() {
   }
   ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec); CHKERRQ(ierr);
   #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
-      ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecs);
+      ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsOptimizer);
   #endif
   ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE); CHKERRQ(ierr);
 
@@ -140,6 +144,7 @@ PetscErrorCode Optimizer::setTaoOptions() {
 
   // set line-search method and minstep
   TaoLineSearch linesearch;
+  ctx_->params_->opt_->ls_minstep_ = PETSC_MACHINE_EPSILON;
   ierr = TaoGetLineSearch(tao_, &linesearch); CHKERRQ(ierr);
   linesearch->stepmin = ctx_->params_->opt_->ls_minstep_;
   if (ctx_->params_->opt_->linesearch_ == ARMIJO) {

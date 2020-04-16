@@ -20,7 +20,7 @@ public:
     regularization_norm_(0),
     opttolgrad_ (1E-3),
     ftol_ (1E-3),
-    ls_minstep_ (PETSC_MACHINE_EPSILON),
+    ls_minstep_(1E-16),
     gtolbound_ (0.8),
     grtol_ (1E-5),
     gatol_ (1E-4),
