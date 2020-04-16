@@ -86,12 +86,15 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
     ss.str("");
     ss.clear();
   }
+  // define number of additional inversion DOFs,
+  // used in initializeGaussians to create p_rec_
+  n_inv_ = parmas_->get_nk();
   ierr = initializeGaussians(); CHKERRQ(ierr);
 
   // === create optimizer
   optimizer_ = std::make_shared<TILOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
-  
+
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -112,10 +115,10 @@ PetscErrorCode InverseL2Solver::run() {
 
   // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
   // ---------
-  if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
-  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
-  ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  // if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
+  // ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
+  // ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  // ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   // ---------
   ScalarType *x_ptr;
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
@@ -183,11 +186,13 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
       tumor_->phi_->setLabels(data_comps_); CHKERRQ(ierr);
     }
   }
+  // define number of additional inversion DOFs,
+  // used in initializeGaussians to create p_rec_
+  n_inv_ = params_->get_nk() + params_->get_nr();
+  ierr = initializeGaussians(); CHKERRQ(ierr);
 
   // === inject coarse level solution
-  if (!app_settings_->inject_solution_) {
-    ierr = initializeGaussians(); CHKERRQ(ierr);
-  } else {
+  if(inject_coarse_solution) {
     ss << " Injecting coarse level solution (adopting p_vec and Gaussians).";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
@@ -196,7 +201,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
     int np_save = params_->tu_->np_, np_coarse = 0;  // save np, since overwritten in read function
     std::vector<ScalarType> coarse_sol_centers;
     ierr = readPhiMesh(coarse_sol_centers, params_, app_settings_->path_->phi_, false); CHKERRQ(ierr);
-    ierr = readPVec(&coarse_sol, params_->tu_->np_ + params_->get_nk() + params_->get_nk(), params_->tu_->np_, app_settings_->path_->pvec_); CHKERRQ(ierr);
+    ierr = readPVec(&coarse_sol, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, app_settings_->path_->pvec_); CHKERRQ(ierr);
     np_coarse = params_->tu_->np_;
     params_->tu_->np_ = np_save;  // reset to correct value
     // find coarse centers in centers_ of current Phi
@@ -289,12 +294,31 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Spectr
   // reads or generates data, sets and applies observation operator
   ierr = setupData(); CHKERRQ(ierr);
 
+
+  // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
+  if(!has_dt0_) {
+    ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
+    params_->tu_->use_c0_ = has_dt0_ = true;
+  }
+
+  // === create p_vec_ of correct length
+  if (p_rec_ != nullptr) {
+    ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
+    p_rec_ = nullptr;
+  }
+  n_inv_ = params_->get_nk() + params_->get_nr();
+  ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
+  ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  ss << "  .. creating p_vec of size " << n_inv_ << ", where nk = " << params_->get_nk() << " and nr = " << params_->get_nr();
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // reset p vec in tumor and pde_operators
+  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+
   // === create optimizer
   optimizer_ = std::make_shared<RDOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
 
-  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
@@ -317,26 +341,17 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
     exit(1);
   }
 
-  // set c(0), no phi apply in RD inversion
-  if(!has_dt0_) {
-    ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
-    params_->tu_->use_c0_ = has_dt0_ = true;
-  }
-    // initial guess TODO(K): if read in vector has nonzero rho/kappa values, take those
-  Vec x_rd;
-  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->get_nk() + params_->get_nr(), &x_rd); CHKERRQ(ierr);
-  ierr = setupVec(x_rd, SEQ); CHKERRQ(ierr);
-  ierr = VecSet(x_rd, 0.0); CHKERRQ(ierr);
-  ScalarType *x_ptr;
+  // set initial guess
+  ScalarType *x_ptr;  // TODO(K): if read in vector has nonzero rho/kappa values, take those
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   x_ptr[0] = params_->tu_->k_;
   x_ptr[params_->get_nk()] = params_->tu_->rho_;
-  ierr = VecRestoreArray (x_rd, &x_ptr); CHKERRQ (ierr);
+  ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
   ierr = optimizer_->setData(data_); CHKERRQ(ierr); // set data before initial guess
-  ierr = optimizer_->setInitialGuess(x_rd); CHKERRQ(ierr);
+  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // p_vec_ has length nr + nk
   ierr = optimizer_->solve(); CHKERRQ(ierr);
-  ierr = VecCopy(optimizer_->getSolution(), x_rd); CHKERRQ(ierr);
+  ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -372,12 +387,34 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   ierr = readPatient(); CHKERRQ(ierr);
   // enable mass effect inversion in optimizer
   params_->opt_->invert_mass_effect_ = true;
+
+
+  // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
+  if(!has_dt0_) {
+    ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
+    params_->tu_->use_c0_ = has_dt0_ = true;
+  }
+
+  // === create p_vec_ of correct length
+  if (p_rec_ != nullptr) {
+    ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
+    p_rec_ = nullptr;
+  }
+  n_inv_ = 1 + params_->get_nk() + params_->get_nr();
+  ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
+  ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  ss << "  .. creating p_vec of size " << n_inv_ << ", where nk = " << params_->get_nk() << " and nr = " << params_->get_nr();
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // reset p vec in tumor and pde_operators
+  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+
+
   // === create optimizer
   optimizer_ = std::make_shared<MEOptimizer>();
   ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
   // set patient material properties
   ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
   if (!warmstart_p_) {
@@ -394,21 +431,23 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
   ierr = tuMSGwarn(" Beginning Mass Effect Inversion."); CHKERRQ(ierr);
 
-  // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
-  // ---------
-  if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
-  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr() + 1, &p_rec_); CHKERRQ(ierr);
-  ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
-  // ---------
-  ScalarType *x_ptr;
-  int np = params_->tu_->np_;
+  // // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
+  // // ---------
+  // if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
+  // ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr() + 1, &p_rec_); CHKERRQ(ierr);
+  // ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  // ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  // // ---------
+  // int np = params_->tu_->np_;
+
+  // == set initial guess
   int nk = params_->get_nk();
   int nr = params_->get_nr();
+  ScalarType *x_ptr; // TODO(K): if read in vector has nonzero gamma/rho/kappa values, take those
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
-  x_ptr[np] = params_->tu_->forcing_factor_;
-  x_ptr[np+1] = params_->tu_->rho_;
-  x_ptr[np+nr] = params_->tu_->k_;
+  x_ptr[0] = params_->tu_->forcing_factor_;
+  x_ptr[1] = params_->tu_->rho_;
+  x_ptr[nr] = params_->tu_->k_;
   ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
   ierr = optimizer_->setData(data_); CHKERRQ(ierr); // set data before initial guess

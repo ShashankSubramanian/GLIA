@@ -17,6 +17,7 @@ SolverInterface::SolverInterface()
   tumor_(nullptr),
   custom_obs_(false),
   warmstart_p_(false),
+  n_inv_(0),
   wm_(nullptr),
   gm_(nullptr),
   vt_(nullptr),
@@ -79,7 +80,7 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
 
   // === create p_rec vector according to unknowns inverted for
   // ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
-  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
 
   // === initialize tumor, phi, mat_prop
@@ -752,7 +753,7 @@ PetscErrorCode SolverInterface::initializeGaussians() {
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
-  if (warmstart_p_) {
+  if (warmstart_p_ && !app_settings_->inject_solution_) {
     ss << "  .. solver warmstart: using p_vec and Gaussians from file.";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
@@ -793,9 +794,12 @@ PetscErrorCode SolverInterface::initializeGaussians() {
       ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
       p_rec_ = nullptr;
     }
-    // ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk(), &p_rec_); CHKERRQ(ierr);
-    ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), &p_rec_); CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + n_inv_, &p_rec_); CHKERRQ(ierr);
     ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+    ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+    ss << "  .. creating p_vec of size " << params_->tu_->np_ + n_inv_ << ", where np = " << params_->tu_->np_ << " is the number of selected Gaussians; nk+nr = " << n_inv;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+    n_inv_ += params_->tu_->np_;
   }
 
   PetscFunctionReturn(ierr);
