@@ -177,4 +177,6 @@ ScalarType myDistance(ScalarType *c1, ScalarType *c2);
 PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<ScalarType> weights, int &nnz, int num_components);
 PetscErrorCode computeCenterOfMass(Vec x, int *isize, int *istart, ScalarType *h, ScalarType *cm);
 
+PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec tu, int nl, std::vector<int> &labels);
+
 #endif  // end _UTILS_H

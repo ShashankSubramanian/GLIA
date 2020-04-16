@@ -88,7 +88,7 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
   }
   // define number of additional inversion DOFs,
   // used in initializeGaussians to create p_rec_
-  n_inv_ = parmas_->get_nk();
+  n_inv_ = params->get_nk();
   ierr = initializeGaussians(); CHKERRQ(ierr);
 
   // === create optimizer
@@ -192,7 +192,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = initializeGaussians(); CHKERRQ(ierr);
 
   // === inject coarse level solution
-  if(inject_coarse_solution) {
+  if(app_settings_->inject_solution_) {
     ss << " Injecting coarse level solution (adopting p_vec and Gaussians).";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
@@ -287,7 +287,7 @@ PetscErrorCode InverseL1Solver::finalize() {
 PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-
+  std::stringstream ss;
   ierr = tuMSGwarn(" Initializing Reaction/Diffusion Inversion."); CHKERRQ(ierr);
   // set and populate parameters; read material properties; read data
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
@@ -377,6 +377,7 @@ PetscErrorCode InverseReactionDiffusionSolver::finalize() {
 PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
+  std::stringstream ss;
   ierr = tuMSGwarn(" Initializing Mass Effect Inversion."); CHKERRQ(ierr);
 
   // set and populate parameters; read material properties; read data

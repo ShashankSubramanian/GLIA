@@ -216,7 +216,7 @@ PetscErrorCode RDOptimizer::solve() {
   ss << " tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   // set params->tu->np to zero so that derivative operators will compute the correct gradients
-  ctx_->params_->np_ = 0;
+  ctx_->params_->tu_->np_ = 0;
 
   /* === solve === */
   double self_exec_time_tuninv = -MPI_Wtime(); double invtime = 0;
@@ -250,7 +250,7 @@ PetscErrorCode RDOptimizer::solve() {
   tao_reset_ = false;
   ctx_->params_->opt_->beta_ = beta_p;              // restore beta value
   ctx_->params_->opt_->flag_reaction_inv_ = false;  // disables derivative operators to compute the gradient w.r.t rho
-  ctx_->params_->np_ = np;                          // restores np
+  ctx_->params_->tu_->np_ = np;                          // restores np
 
   // === populate solution to xout_
   // * {p, kappa, rho}, if c(0) is given as parametrization

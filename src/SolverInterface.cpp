@@ -480,7 +480,7 @@ PetscErrorCode SolverInterface::readAtlas() {
         data_t1_from_seg_ = true;
       }
     }
-    ierr = splitSegmentation(seg_, wm_, gm_, vt_, csf_, data_t1_, params_->grid_->nl_, app_settings_->atlas_seg_); CHKERRQ(ierr);
+    ierr = splitSegmentation(tmp_, wm_, gm_, vt_, csf_, data_t1_, params_->grid_->nl_, app_settings_->atlas_seg_); CHKERRQ(ierr);
 
     // TODO(K): test read in from segmentation
   } else {
@@ -818,7 +818,7 @@ PetscErrorCode SolverInterface::initializeGaussians() {
     ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + n_inv_, &p_rec_); CHKERRQ(ierr);
     ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
     ierr = resetOperators(p_rec_); CHKERRQ(ierr);
-    ss << "  .. creating p_vec of size " << params_->tu_->np_ + n_inv_ << ", where np = " << params_->tu_->np_ << " is the number of selected Gaussians; nk+nr = " << n_inv;
+    ss << "  .. creating p_vec of size " << params_->tu_->np_ + n_inv_ << ", where np = " << params_->tu_->np_ << " is the number of selected Gaussians; nk+nr = " << n_inv_;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     n_inv_ += params_->tu_->np_;
   }

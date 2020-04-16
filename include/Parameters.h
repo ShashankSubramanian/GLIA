@@ -621,13 +621,11 @@ class ApplicationSettings {
       syn_(),
       pred_(),
       atlas_seg_(),
-      patient_seg_ {
+      patient_seg_() {
 
       path_ = std::make_shared<FilePaths>();
       syn_ = std::make_shared<SyntheticData>();
       pred_ = std::make_shared<Prediction>();
-      std::vector<int> atlas_seg_;
-      std::vector<int> patient_seg_;
     }
 
     virtual ~ApplicationSettings() {}
@@ -638,6 +636,8 @@ class ApplicationSettings {
     std::shared_ptr<FilePaths> path_;
     std::shared_ptr<SyntheticData> syn_;
     std::shared_ptr<Prediction> pred_;
+    std::vector<int> atlas_seg_;
+    std::vector<int> patient_seg_;
 };
 
 #endif

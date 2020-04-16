@@ -552,19 +552,19 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
   }
 
   for (int i = 0; i < nl; i++) {
-    if(wm_label > 0) {wm_ptr[i] = (seg_ptr[i] ==  wm_label) 1 : wm_ptr[i];}
-    if(gm_label > 0) {gm_ptr[i] = (seg_ptr[i] ==  gm_label) 1 : gm_ptr[i];}
-    if(vt_label > 0) {vt_ptr[i] = (seg_ptr[i] ==  vt_label) 1 : vt_ptr[i];}
+    if(wm_label > 0) {wm_ptr[i] = (seg_ptr[i] ==  wm_label) ? 1 : wm_ptr[i];}
+    if(gm_label > 0) {gm_ptr[i] = (seg_ptr[i] ==  gm_label) ? 1 : gm_ptr[i];}
+    if(vt_label > 0) {vt_ptr[i] = (seg_ptr[i] ==  vt_label) ? 1 : vt_ptr[i];}
     if(csf != nullptr) {
-      if(csf_label > 0) {csf_ptr[i] = (seg_ptr[i] ==  csf_label) 1 : csf_ptr[i];}
+      if(csf_label > 0) {csf_ptr[i] = (seg_ptr[i] ==  csf_label) ? 1 : csf_ptr[i];}
     }
     if(tu != nullptr) {
       if(tc_label > 0) {
-        wm_ptr[i] = (seg_ptr[i] == tc_label) 1 : wm_ptr[i];
-        tu_ptr[i] = (seg_ptr[i] == tc_label) 1 : tu_ptr[i];
+        wm_ptr[i] = (seg_ptr[i] == tc_label) ? 1 : wm_ptr[i];
+        tu_ptr[i] = (seg_ptr[i] == tc_label) ? 1 : tu_ptr[i];
       }
       if(ed_label > 0) {
-        wm_ptr[i] = (seg_ptr[i] == ed_label) 1 : wm_ptr[i];
+        wm_ptr[i] = (seg_ptr[i] == ed_label) ? 1 : wm_ptr[i];
       }
     }
 
