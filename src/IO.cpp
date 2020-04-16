@@ -42,7 +42,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
     // quick set all neccessary parameters to support minimal config files
     if(value == "sparse_til") {
       (*run_mode) = INVERSE_L1;
-      p->opt_->regularization_norm_ = L1;    // TODO(K) set regularization norm to L1
+      p->opt_->regularization_norm_ = L2;
       p->opt_->diffusivity_inversion_ = true;
       p->opt_->reaction_inversion_ = true;
       p->opt_->pre_reacdiff_solve_ = true;
@@ -119,6 +119,35 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "obs_threshold_1") {p->tu_->obs_threshold_1_ = std::stod(value); return;}
   if (name == "obs_threshold_0") {p->tu_->obs_threshold_0_ = std::stod(value); return;}
   if (name == "obs_threshold_rel") {p->tu_->relative_obs_threshold_ = std::stoi(value) > 0; return;}
+  if (name == "atlas_labels" || name == "patient_labels") { // read in somehting like: [wm=1, gm=2, vt=3, tc=5]
+    std::string label, val;
+    std::string v = value.substr(value.find("[")+1);
+    value = v.substr(0, value.find("]"));
+    size_t pos_loop = 0, pos = 0;
+    std::vector<int> labels(6);
+    for(int i = 0; i < labels.size(); ++i) {
+      labels[i] = -1;
+    }
+    while ((pos_loop = value.find(",")) != std::string::npos) {
+      v = value.substr(0, pos_loop);
+      pos = v.find("=");
+      label = v.substr(0, pos);
+      val = v.substr(pos+1);
+      if(label == "wm")  labels[0] = std::stoi(val);
+      if(label == "gm")  labels[1] = std::stoi(val);
+      if(label == "vt")  labels[2] = std::stoi(val);
+      if(label == "csf") labels[3] = std::stoi(val);
+      if(label == "tc")  labels[4] = std::stoi(val);
+      if(label == "ed")  labels[5] = std::stoi(val);
+      value.erase(0, pos_loop + 1);
+    }
+    if(name == "atlas_labels") {
+      a->atlas_seg_ = labels;
+    } else {
+      a->patient_seg_ = labels;
+    }
+     return;
+  }
   // ### initial condition
   if (name == "sparsity_level") {p->tu_->sparsity_level_ = std::stoi(value); return;}
   if (name == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value); return;}
@@ -146,7 +175,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "dt_pred") {a->pred_->dt_ = std::stod(value); return;}
   // ### synthetic data
   if (name == "syn_flag") {a->syn_->enabled_ = std::stoi(value) > 0; return;}
-  if (name == "user_cms") {
+  if (name == "user_cms") { // read in somehting like: [(x1, y1, z1, scale1), (x2, y2, z2, scale2)]
     size_t pos_loop = 0, pos = 0;
     std::string cm_str, x_, y_, z_, s_;
     while ((pos_loop = value.find(")")) != std::string::npos) {

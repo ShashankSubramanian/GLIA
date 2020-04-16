@@ -523,3 +523,58 @@ PetscErrorCode vecMax(Vec x, PetscInt *p, PetscReal *val) {
 
   PetscFunctionReturn(ierr);
 }
+
+
+PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec tu, int nl, std::vector<int> &labels) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  if(seg == nullptr) {ierr = tuMSGwarn("Segmentation is null."); CHKERRQ(ierr); PetscFunctionReturn(1);}
+
+  ScalarType *gm_ptr, *wm_ptr, *vt_ptr, *tu_ptr, *csf_ptr, *seg_ptr;
+  int wm_label  = labels[0], gm_label = labels[1], vt_label = labels[2];
+  int csf_label = (labels[3] > 0) ? labels[3] : -1;
+  int tc_label  = (labels[4] > 0) ? labels[5] : -1;
+  int ed_label  = (labels[5] > 0) ? labels[6] : -1;
+  ierr = VecGetArray(seg, &seg_ptr); CHKERRQ(ierr);
+  ierr = VecSet(wm, 0.0); CHKERRQ(ierr);
+  ierr = VecSet(gm, 0.0); CHKERRQ(ierr);
+  ierr = VecSet(vt, 0.0); CHKERRQ(ierr);
+  ierr = VecGetArray(wm, &wm_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(gm, &gm_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(vt, &vt_ptr); CHKERRQ(ierr);
+  if(csf != nullptr) {
+    ierr = VecSet(csf, 0.0); CHKERRQ(ierr);
+    ierr = VecGetArray(csf, &csf_ptr); CHKERRQ(ierr);
+  }
+  if(tu  != nullptr) {
+    ierr = VecSet(tu, 0.0); CHKERRQ(ierr);
+    ierr = VecGetArray(tu, &tu_ptr); CHKERRQ(ierr);
+  }
+
+  for (int i = 0; i < nl; i++) {
+    if(wm_label > 0) {wm_ptr[i] = (seg_ptr[i] ==  wm_label) 1 : wm_ptr[i];}
+    if(gm_label > 0) {gm_ptr[i] = (seg_ptr[i] ==  gm_label) 1 : gm_ptr[i];}
+    if(vt_label > 0) {vt_ptr[i] = (seg_ptr[i] ==  vt_label) 1 : vt_ptr[i];}
+    if(csf != nullptr) {
+      if(csf_label > 0) {csf_ptr[i] = (seg_ptr[i] ==  csf_label) 1 : csf_ptr[i];}
+    }
+    if(tu != nullptr) {
+      if(tc_label > 0) {
+        wm_ptr[i] = (seg_ptr[i] == tc_label) 1 : wm_ptr[i];
+        tu_ptr[i] = (seg_ptr[i] == tc_label) 1 : tu_ptr[i];
+      }
+      if(ed_label > 0) {
+        wm_ptr[i] = (seg_ptr[i] == ed_label) 1 : wm_ptr[i];
+      }
+    }
+
+  }
+  ierr = VecRestoreArray(seg, &seg_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(wm, &wm_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(gm, &gm_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(vt, &vt_ptr); CHKERRQ(ierr);
+  if(csf != nullptr) {ierr = VecRestoreArray(csf, &csf_ptr); CHKERRQ(ierr);}
+  if(tu  != nullptr) {ierr = VecRestoreArray(tu, &tu_ptr); CHKERRQ(ierr);}
+
+  PetscFunctionReturn(ierr);
+}

@@ -619,11 +619,15 @@ class ApplicationSettings {
       gaussian_selection_mode_(1),
       path_(),
       syn_(),
-      pred_() {
+      pred_(),
+      atlas_seg_(),
+      patient_seg_ {
 
       path_ = std::make_shared<FilePaths>();
       syn_ = std::make_shared<SyntheticData>();
       pred_ = std::make_shared<Prediction>();
+      std::vector<int> atlas_seg_;
+      std::vector<int> patient_seg_;
     }
 
     virtual ~ApplicationSettings() {}

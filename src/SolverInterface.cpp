@@ -17,6 +17,7 @@ SolverInterface::SolverInterface()
   tumor_(nullptr),
   custom_obs_(false),
   warmstart_p_(false),
+  data_t1_from_seg_(false),
   n_inv_(0),
   wm_(nullptr),
   gm_(nullptr),
@@ -463,7 +464,25 @@ PetscErrorCode SolverInterface::readAtlas() {
 
   if (!app_settings_->path_->seg_.empty()) {
     ierr = dataIn(tmp_, params_, app_settings_->path_->seg_); CHKERRQ(ierr);
-    // TODO(K): populate to wm, gm, csf, ve
+    if(app_settings_->atlas_seg_[0] <= 0 || app_settings_->atlas_seg_[1] <= 0 || app_settings_->atlas_seg_[2] <= 0) {
+      ierr = tuMSGwarn(" Error: The segmentation must at least have WM, GM, VT."); CHKERRQ(ierr);
+      exit(0);
+    } else {
+      ierr = VecDuplicate(tmp_, &wm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &gm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &vt_); CHKERRQ(ierr);
+      csf_ = nullptr; data_t1_ = nullptr;
+      if (app_settings_->atlas_seg_[3] > 0) {
+        ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
+      }
+      if (app_settings_->atlas_seg_[4] > 0) {
+        ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
+        data_t1_from_seg_ = true;
+      }
+    }
+    ierr = splitSegmentation(seg_, wm_, gm_, vt_, csf_, data_t1_, params_->grid_->nl_, app_settings_->atlas_seg_); CHKERRQ(ierr);
+
+    // TODO(K): test read in from segmentation
   } else {
     if (!app_settings_->path_->wm_.empty()) {
       ierr = VecDuplicate(tmp_, &wm_); CHKERRQ(ierr);
@@ -512,8 +531,10 @@ PetscErrorCode SolverInterface::readData() {
   ScalarType min, max;
 
   if (!app_settings_->path_->data_t1_.empty()) {
-    ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
-    ierr = dataIn(data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
+    if(!data_t1_from_seg_) { // If false, t=1 data has already been read from segmentation in readAtlas
+      ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
+      ierr = dataIn(data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
+    }
     if (params_->tu_->smoothing_factor_data_ > 0) {
       ierr = spec_ops_->weierstrassSmoother(data_t1_, data_t1_, params_, sig_data); CHKERRQ(ierr);
       ss << " smoothing c(1) with factor: " << params_->tu_->smoothing_factor_data_ << ", and sigma: " << sig_data;
@@ -521,7 +542,7 @@ PetscErrorCode SolverInterface::readData() {
       ss.str("");
       ss.clear();
     }
-    // make obs threshold relaltive
+    // make obs threshold relative
     if (params_->tu_->relative_obs_threshold_) {
       ierr = VecMax(data_t1_, NULL, &max); CHKERRQ(ierr);
       params_->tu_->obs_threshold_1_ *= max;

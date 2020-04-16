@@ -60,6 +60,7 @@ class SolverInterface {
   bool custom_obs_;
   bool warmstart_p_;
   bool has_dt0_;
+  bool data_t1_from_seg_;
 
   int n_inv_;
 
