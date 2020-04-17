@@ -67,6 +67,8 @@ inline const char* cublasGetErrorString (cublasStatus_t status) {
         case CUBLAS_STATUS_MAPPING_ERROR: return "CUBLAS_STATUS_MAPPING_ERROR";
         case CUBLAS_STATUS_EXECUTION_FAILED: return "CUBLAS_STATUS_EXECUTION_FAILED"; 
         case CUBLAS_STATUS_INTERNAL_ERROR: return "CUBLAS_STATUS_INTERNAL_ERROR"; 
+        case CUBLAS_STATUS_NOT_SUPPORTED: return "CUBLAS_STATUS_NOT_SUPPORTED"; 
+        case CUBLAS_STATUS_LICENSE_ERROR: return "CUBLAS_STATUS_LICENSE_ERROR"; 
     }
     return "unknown error";
 }
@@ -83,6 +85,13 @@ inline const char* cufftGetErrorString (cufftResult error) {
         case CUFFT_SETUP_FAILED: return "CUFFT_SETUP_FAILED";
         case CUFFT_INVALID_SIZE: return "CUFFT_INVALID_SIZE";
         case CUFFT_UNALIGNED_DATA: return "CUFFT_UNALIGNED_DATA";
+        case CUFFT_INCOMPLETE_PARAMETER_LIST: return "CUFFT_INCOMPLETE_PARAMETER_LIST";
+        case CUFFT_INVALID_DEVICE: return "CUFFT_INVALID_DEVICE";
+        case CUFFT_PARSE_ERROR: return "CUFFT_PARSE_ERROR";
+        case CUFFT_NO_WORKSPACE: return "CUFFT_NO_WORKSPACE";
+        case CUFFT_NOT_IMPLEMENTED: return "CUFFT_NOT_IMPLEMENTED";
+        case CUFFT_LICENSE_ERROR: return "CUFFT_LICENSE_ERROR";
+        case CUFFT_NOT_SUPPORTED: return "CUFFT_NOT_SUPPORTED";
     }
 
     return "unknown error";
