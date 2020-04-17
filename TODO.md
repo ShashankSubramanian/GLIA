@@ -9,6 +9,8 @@
 - test TIL inversion (write test)
 - test grid cont (write test)
 
+(S)
+- cuda: performance is poor (gpu util < 30%) for full subspace solve ~ need to figure out why
 
 ---
 
