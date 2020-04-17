@@ -283,7 +283,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
       ierr = restrictSubspace(&x_L2, x_L1, ctx_, true); CHKERRQ (ierr); // x_L2 <-- R(x_L1)
       // solve
       cosamp_->cosamp_stage = PRE_RD;
-      ierr = rd_opt_->setData(data_); CHKERRQ(ierr);
+      rd_opt_->setData(data_);
       ierr = rd_opt_->setInitialGuess(x_L2); CHKERRQ (ierr); // with current guess as init cond.
 
       ierr = tuMSGstd(""); CHKERRQ (ierr);
@@ -383,7 +383,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     // update reference gradient and referenc objective (commented in the solve function)
     til_opt_->updateReferenceGradient(true);
     til_opt_->updateReferenceObjective(true);
-    ierr = til_opt_->setData(data_); CHKERRQ(ierr);
+    til_opt_->setData(data_);
     ierr = til_opt_->setInitialGuess(x_L2); CHKERRQ(ierr);
     ierr = til_opt_->solve(); CHKERRQ(ierr);
     ierr = VecCopy(getSolution(), x_L2); CHKERRQ (ierr);
@@ -488,7 +488,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   // update reference gradient and referenc objective (commented in the solve function)
   til_opt_->updateReferenceGradient(true);
   til_opt_->updateReferenceObjective(true);
-  ierr = til_opt_->setData(data_); CHKERRQ(ierr);
+  til_opt_->setData(data_);
   ierr = til_opt_->setInitialGuess(x_L2); CHKERRQ(ierr);
   ierr = til_opt_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(getSolution(), x_L2); CHKERRQ (ierr);
@@ -525,7 +525,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = restrictSubspace(&x_L2, x_L1, ctx_, true); CHKERRQ (ierr); // x_L2 <-- R(x_L1)
     // solve
     cosamp_->cosamp_stage = POST_RD;
-    ierr = rd_opt_->setData(data_); CHKERRQ(ierr);
+    rd_opt_->setData(data_);
     ierr = rd_opt_->setInitialGuess(x_L2); CHKERRQ (ierr); // with current guess as init cond.
 
     ierr = tuMSGstd(""); CHKERRQ (ierr);
@@ -632,7 +632,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
             ctx_->cosamp_->cosamp_stage = PRE_RD;
             ctx_->params_->opt_->newton_maxit_ = ctx_->cosamp_->maxit_newton;
             // == solve ==
-            ierr = rd_opt_->setData(data_); CHKERRQ(ierr);
+            rd_opt_->setData(data_);
             ierr = rd_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ (ierr); // with current guess as init cond.
             ierr = rd_opt_->solve(); CHKERRQ (ierr);
             ierr = VecCopy(rd_opt_->getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr); // get solution (length: np_r + nk + nr)
@@ -730,7 +730,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
         til_opt_->updateReferenceGradient(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
         til_opt_->updateReferenceObjective(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
         // == solve ==
-        ierr = til_opt_->setData(data_); CHKERRQ(ierr);
+        til_opt_->setData(data_);
         ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
         ierr = til_opt_->solve(); CHKERRQ(ierr);
         ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
@@ -862,7 +862,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
         til_opt_->updateReferenceGradient(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
         til_opt_->updateReferenceObjective(ctx_->cosamp_->nits < ctx_->cosamp_->inexact_nits);
         // == solve ==
-        ierr = til_opt_->setData(data_); CHKERRQ(ierr);
+        til_opt_->setData(data_);
         ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
         ierr = til_opt_->solve(); CHKERRQ(ierr);
         ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
@@ -926,7 +926,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
           ctx_->cosamp_->cosamp_stage = POST_RD;
           ctx_->params_->opt_->newton_maxit_ = ctx_->cosamp_->maxit_newton;
           // == solve ==
-          ierr = rd_opt_->setData(data_); CHKERRQ(ierr);
+          rd_opt_->setData(data_);
           ierr = rd_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ (ierr); // with current guess as init cond.
 
           ierr = tuMSGstd(""); CHKERRQ (ierr);

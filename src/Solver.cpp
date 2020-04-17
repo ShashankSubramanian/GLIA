@@ -125,7 +125,7 @@ PetscErrorCode InverseL2Solver::run() {
   if (params_->get_nk() > 0) x_ptr[params_->tu_->np_] = params_->tu_->k_;
   ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
-  ierr = optimizer_->setData(data_); CHKERRQ(ierr); // set data before initial guess
+  optimizer_->setData(data_);// set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // requires length: np + nk (nk=0 ok)
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
@@ -260,9 +260,9 @@ PetscErrorCode InverseL1Solver::run() {
   params_->opt_->regularization_norm_ = L2;
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
   optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
-  ierr = optimizer_->setData(data_); CHKERRQ(ierr);
-  ierr = optimizer_->solve(); CHKERRQ(ierr);
+  optimizer_->setData(data_);
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // requires p_rec_ to be of lengt np + nk + nr
+  ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
@@ -349,7 +349,7 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
   x_ptr[params_->get_nk()] = params_->tu_->rho_;
   ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
-  ierr = optimizer_->setData(data_); CHKERRQ(ierr); // set data before initial guess
+  optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // p_vec_ has length nr + nk
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
@@ -452,7 +452,7 @@ PetscErrorCode InverseMassEffectSolver::run() {
   x_ptr[nr] = params_->tu_->k_;
   ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
-  ierr = optimizer_->setData(data_); CHKERRQ(ierr); // set data before initial guess
+  optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
