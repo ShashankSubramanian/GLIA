@@ -255,10 +255,11 @@ PetscErrorCode Optimizer::setTaoOptions() {
   ierr = TaoSetConvergenceTest (tao_, checkConvergenceGrad, (void*) ctx_.get()); CHKERRQ(ierr);
   // ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx_); CHKERRQ(ierr);
 
-  ierr = tuMSGstd(" tolerances (stopping conditions):"); CHKERRQ(ierr);
-  ss << "   gatol: "<< ctx_->params_->opt_->gatol_; tuMSGstd(ss.str()); ss.str(""); ss.clear();
-  ss << "   grtol: "<< ctx_->params_->opt_->grtol_; tuMSGstd(ss.str()); ss.str(""); ss.clear();
-  ss << "   gttol: "<< ctx_->params_->opt_->opttolgrad_; tuMSGstd(ss.str()); ss.str(""); ss.clear();
+  ss << " .. setting tolerances: "
+     << " gatol: "<< ctx_->params_->opt_->gatol_ 
+     << ", grtol: "<< ctx_->params_->opt_->grtol_
+     << ", gttol: "<< ctx_->params_->opt_->opttolgrad_; 
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
   // ksp solver settings for Guass-Newton
   if (ctx_->params_->opt_->newton_solver_ == GAUSSNEWTON) {

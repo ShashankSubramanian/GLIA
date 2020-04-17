@@ -332,13 +332,14 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   if (itctx->params_->tu_->model_ == 4) {
     g = x_ptr[0];
     r = x_ptr[1];
-    k = x_ptr[2];
+    k = x_ptr[1 + itctx->params_->tu_->nr_];
+    s << "  Scalar parameters: (rho, kappa, gamma) = (" << r << ", " <<  k << ", " << g << ")";
   } else {
-    r = (itctx->params_->opt_->flag_reaction_inv_ == true) ? x_ptr[itctx->params_->tu_->nk_] : itctx->params_->tu_->rho_;
+    r = (itctx->params_->opt_->flag_reaction_inv_ == true) ? x_ptr[itctx->params_->get_nk()] : itctx->params_->tu_->rho_;
     k = (itctx->params_->opt_->diffusivity_inversion_ == true) ? x_ptr[itctx->params_->tu_->np_] : itctx->params_->tu_->k_;
     g = 0;
+    s << "  Scalar parameters: (rho, kappa) = (" << r << ", " <<  k << ")";
   }
-  s << "  Tumor inversion scalar parameters: (rho, kappa, gamma) = (" << r << ", " <<  k << ", " << g << ")";
   ierr = tuMSGwarn (s.str()); CHKERRQ(ierr); s.str ("");s.clear ();
   ierr = VecRestoreArray(tao_x, &x_ptr); CHKERRQ(ierr);
 
@@ -440,7 +441,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
   ctx->cosamp_->converged_error_l2 = false;
   if (iter >= miniter) {
     if (verbosity > 1) {
-      ss << "step size in linesearch: " << std::scientific << step;
+      ss << "  step size in linesearch: " << std::scientific << step;
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
     }
     if (step < minstep) {
@@ -847,42 +848,42 @@ PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedRe
 
   switch(flag) {
     case TAOLINESEARCH_FAILED_INFORNAN: {
-      msg = "linesearch: function evaluation gave INF or NaN";
+      msg = "  linesearch: function evaluation gave INF or NaN";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_FAILED_BADPARAMETER: {
-      msg = "linesearch: bad parameter detected";
+      msg = "  linesearch: bad parameter detected";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_FAILED_ASCENT: {
-      msg = "linesearch: search direction is not a descent direction";
+      msg = "  linesearch: search direction is not a descent direction";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_HALTED_MAXFCN: {
-      msg = "linesearch: maximum number of function evaluations reached";
+      msg = "  linesearch: maximum number of function evaluations reached";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_HALTED_UPPERBOUND: {
-      msg = "linesearch: step size reached upper bound";
+      msg = "  linesearch: step size reached upper bound";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_HALTED_LOWERBOUND: {
-      msg = "linesearch: step size reached lower bound";
+      msg = "  linesearch: step size reached lower bound";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_HALTED_RTOL: {
-      msg = "linesearch: range of uncertainty is smaller than given tolerance";
+      msg = "  linesearch: range of uncertainty is smaller than given tolerance";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
     case TAOLINESEARCH_HALTED_OTHER: {
-      msg = "linesearch: stopped (other)";
+      msg = "  linesearch: stopped (other)";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }
@@ -891,12 +892,12 @@ PetscErrorCode dispLineSearchStatus(Tao tao, void* ptr, TaoLineSearchConvergedRe
       break;
     }
     case TAOLINESEARCH_SUCCESS: {
-      msg = "linesearch: successful";
+      msg = "  linesearch: successful";
       ierr = tuMSGstd(msg); CHKERRQ(ierr);
       break;
     }
     default: {
-      msg = "linesearch: status not defined";
+      msg = "  linesearch: status not defined";
       ierr = tuMSGwarn(msg); CHKERRQ(ierr);
       break;
     }

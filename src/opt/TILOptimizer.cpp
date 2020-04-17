@@ -182,7 +182,7 @@ PetscErrorCode TILOptimizer::solve() {
   ctx_->params_->tu_->statistics_.reset();
   ctx_->params_->optf_->reset();
   ctx_->data = data_;
-  ss << " using tumor regularization = "<< ctx_->params_->opt_->beta_ << " type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  ss << " .. using tumor regularization beta: "<< ctx_->params_->opt_->beta_ << " and type: " << ctx_->params_->opt_->regularization_norm_;  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   if (ctx_->params_->tu_->verbosity_ >= 2) { ctx_->params_->tu_->outfile_sol_  << "\n ## ----- ##" << std::endl << std::flush; ctx_->params_->tu_->outfile_grad_ << "\n ## ----- ## "<< std::endl << std::flush; }
   //Gradient check begin
   //    ierr = ctx_->derivative_operators_->checkGradient (ctx_->tumor_->p_, ctx_->data);
