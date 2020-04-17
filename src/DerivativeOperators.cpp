@@ -1855,7 +1855,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateHessian(Vec y, Vec x) {
 PetscErrorCode DerivativeOperatorsRDObj::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  TU_assert(data != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
+  TU_assert(data_inv != nullptr, "DerivativeOperatorsRDObj::evaluateObjective: requires non-null input data.");
   ScalarType misfit_tu = 0, misfit_brain = 0;
   PetscReal reg = 0;
   params_->tu_->statistics_.nb_obj_evals++;
