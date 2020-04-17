@@ -9,14 +9,57 @@
 - test TIL inversion (write test)
 - test grid cont (write test)
 
-### other general todos:
-1. create directories and move files as indicated in discussion.txt, we should have directories cuda/, test/, opt/, pde/, utils/, mat/, and maybe solver/
-2. derivative operators: a generic FD model should be provided, which works for mass effect and alzh, maybe we should split up derivative operators
-3. Test suite
-4. remaining todos in discussion.txt and TODO.md
-5. Minimal documentation
-6. python scripts for grid-cont, forward, etc which process the data and do everything (also have to implement functionality to read in segmentation, i.e., split up into tissues)
-7. clean up in scripts/
+
+---
+
+### pde/
+- create ReactionSolver
+- rename DiffSolver --> DiffusionSolver
+
+
+---
+
+### grad/
+- split up DerivativeOperators
+- FD model for ME and RD
+
+
+---
+
+### mat/
+- rename ReacCoeff --> ReactionCoefficient 
+- rename DiffCoeff --> DiffusionCoefficient
+
+
+---
+
+### test/
+- implement integration test for ME inversion: compare rho, kappa, gamma
+- implement integration test for RD inversion: compare rho, kappa
+- implement integration test for TIL inversion: compare error c1, c0, kappa, p
+- implement integration test for sparse TIL inversion:  compare error c1, c0, TIL, rho, kappa, gamma
+- implement integration test for grid-cont integration (with coarse solution injection):  compare error c1, c0, TIL, rho, kappa, gamma
+- implement unit test objective evaluation (all models)
+- implement unit test gradient evaluation (all models)
+- implement unit test hessian evaluation
+- implement unit test adjoint solve
+
+
+---
+
+### doc/
+- write documentation
+
+---
+
+### scripts/
+- clean up
+- preprocessing of data should be done by ANTS, re-write scripts in this regard
+- clean up grid-cont, make it work with new code, and simplify.
+- clean up alzh script, make it work with new code.
+- script for forward run
+- script for inverse run
+- organize other helper scripts.
 
 
 ---
@@ -58,7 +101,6 @@
 
 --- 
 ### DerivativeOperators
-- data struct
 - generic FD derivative operators
 - split up
 
@@ -66,20 +108,3 @@
 ### Utils
 - GeometricCoupling() etc are opt related. Move to obj deriv ops source
 
----
-### TestSuite
-- implement apply low frequency noise
-- implement generation of MF data; you can also define coordinates in a p.txt and phi.txt file, store the min a test/ dir, and read them in (with hard coded path);
-- implement generate sinusoidal
-- implement tests
-- I.  SIN
-  - a. forward
-  - b. l2 inverse with small opttol 
-- II. Forward (non-const coeff; read in sample brain; all tests 64^3, nifty)
-  - a. forward solver me test
-  - b. forward solver ms test
-- III. Inverse:
-  - a. l2 inverse, compare error c1, c0, kappa, p
-  - b. l1 inverse, compare error c1, c0, TIL, rho, kappa, gamma
-  - c. me inversion, compare rho, kappa, gamma
----
