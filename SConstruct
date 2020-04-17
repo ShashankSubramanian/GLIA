@@ -81,6 +81,7 @@ env.Append(CPPPATH = [os.path.join('include', 'opt')])
 env.Append(CPPPATH = [os.path.join('include', 'utils')])
 env.Append(CPPPATH = [os.path.join('include', 'pde')])
 env.Append(CPPPATH = [os.path.join('include', 'mat')])
+env.Append(CPPPATH = [os.path.join('include', 'grad')])
 print
 print_options(vars)
 

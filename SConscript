@@ -7,6 +7,7 @@ sourcesPGLISTR = [
     Glob('./src/utils/*.cpp'),
     Glob('./src/pde/*.cpp'),
     Glob('./src/mat/*.cpp'),
+    Glob('./src/grad/*.cpp'),
 ]
 
 sourcesTHIRDPARTY = [
