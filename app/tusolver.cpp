@@ -13,6 +13,8 @@
 #include "SolverInterface.h"
 #include "Solver.h"
 
+#define CATCH_CONFIG_RUNNER
+#include "catch.hpp"
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 void openFiles(std::shared_ptr<Parameters> params) {
