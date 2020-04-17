@@ -222,10 +222,10 @@ PetscErrorCode SparseTILOptimizer::solve() {
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-  TU_assert (initialized_, "MEOptimizer needs to be initialized.")
-  TU_assert (data_->dt1() != nullptr, "MEOptimizer requires non-null input data for inversion.");
-  TU_assert (xrec_ != nullptr, "MEOptimizer requires non-null xrec_ vector to be set.");
-  TU_assert (xin_ != nullptr, "MEOptimizer requires non-null xin_ vector to be set.");
+  TU_assert (initialized_, "SparseTILOptimizer needs to be initialized.")
+  TU_assert (data_->dt1() != nullptr, "SparseTILOptimizer requires non-null input data for inversion.");
+  TU_assert (xrec_ != nullptr, "SparseTILOptimizer requires non-null xrec_ vector to be set.");
+  TU_assert (xin_ != nullptr, "SparseTILOptimizer requires non-null xin_ vector to be set.");
 
   std::stringstream ss;
   ierr = tuMSGstd (""); CHKERRQ (ierr);
