@@ -266,7 +266,7 @@ if env["gpu"] == True:
     target = buildpath + '/tusolver',
     source = [sourcesPGLISTRGPU, './app/tusolver.cpp']
     )
-    bininv = env.Program (
+    bintest = env.Program (
         target = buildpath + '/test',
         source = [sourcesPGLISTR, './app/test.cpp']
     ) 
@@ -281,7 +281,7 @@ else:
         target = buildpath + '/tusolver',
         source = [sourcesPGLISTR, './app/tusolver.cpp']
     ) 
-    bininv = env.Program (
+    bintest = env.Program (
         target = buildpath + '/test',
         source = [sourcesPGLISTR, './app/test.cpp']
     ) 
@@ -307,7 +307,7 @@ symlink = env.Command(
 
 # Default(staticlib, bin, symlink)
 #Default(bininv, solib, symlink)
-Default(bininv, symlink)
+Default(bininv, bintest, symlink)
 # Default(bininv, symlink)
 AlwaysBuild(symlink)
 
