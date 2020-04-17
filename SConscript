@@ -3,8 +3,10 @@
 sourcesPGLISTR = [
     Glob('./src/*.cpp'),
     Glob('./src/test/*.cpp'),
-    Glob('./src/opt/*.cpp')
-    #if '*.cpp' not in f.path
+    Glob('./src/opt/*.cpp'),
+    Glob('./src/utils/*.cpp'),
+    Glob('./src/pde/*.cpp'),
+    Glob('./src/mat/*.cpp'),
 ]
 
 sourcesTHIRDPARTY = [

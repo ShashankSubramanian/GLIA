@@ -78,6 +78,9 @@ env.Append(CPPPATH = [os.path.join( "3rdparty")])
 env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
 env.Append(CPPPATH = [os.path.join('include', 'test')])
 env.Append(CPPPATH = [os.path.join('include', 'opt')])
+env.Append(CPPPATH = [os.path.join('include', 'utils')])
+env.Append(CPPPATH = [os.path.join('include', 'pde')])
+env.Append(CPPPATH = [os.path.join('include', 'mat')])
 print
 print_options(vars)
 
