@@ -47,7 +47,6 @@ PetscErrorCode evaluateGradient(Tao tao, Vec x, Vec dJ, void *ptr) {
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
-  ierr = VecCopy (x, itctx->derivative_operators_->p_current_); CHKERRQ (ierr);
   itctx->params_->optf_->nb_gradevals_++;
   ierr = itctx->derivative_operators_->evaluateGradient (dJ, x, itctx->data);
 
@@ -77,7 +76,6 @@ PetscErrorCode evaluateObjectiveFunctionAndGradient(Tao tao, Vec x, PetscReal *J
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime ();
   CtxInv *itctx = reinterpret_cast<CtxInv*>(ptr);
-  ierr = VecCopy (x, itctx->derivative_operators_->p_current_); CHKERRQ (ierr);
   itctx->params_->optf_->nb_objevals_++;
   itctx->params_->optf_->nb_gradevals_++;
   ierr = itctx->derivative_operators_->evaluateObjectiveAndGradient (J, dJ, x, itctx->data);

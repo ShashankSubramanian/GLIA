@@ -175,12 +175,7 @@ PetscErrorCode DerivativeOperators::reset(Vec p, std::shared_ptr<PdeOperators> p
     ierr = VecDestroy(&ptemp_); CHKERRQ(ierr);
     ptemp_ = nullptr;
   }
-  if (p_current_ != nullptr) {
-    ierr = VecDestroy(&p_current_); CHKERRQ(ierr);
-    p_current_ = nullptr;
-  }
   ierr = VecDuplicate(p, &ptemp_); CHKERRQ(ierr);
-  ierr = VecDuplicate(p, &p_current_); CHKERRQ(ierr);
   if (temp_ != nullptr) {
     ierr = VecSet(temp_, 0.0); CHKERRQ(ierr);
   }
@@ -200,12 +195,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::reset(Vec p, std::shared_ptr<PdeOp
     ierr = VecDestroy(&ptemp_); CHKERRQ(ierr);
     ptemp_ = nullptr;
   }
-  if (p_current_ != nullptr) {
-    ierr = VecDestroy(&p_current_); CHKERRQ(ierr);
-    p_current_ = nullptr;
-  }
   ierr = VecDuplicate(delta_, &ptemp_); CHKERRQ(ierr);
-  ierr = VecDuplicate(delta_, &p_current_); CHKERRQ(ierr);
   if (temp_ != nullptr) {
     ierr = VecSet(temp_, 0.0); CHKERRQ(ierr);
   }

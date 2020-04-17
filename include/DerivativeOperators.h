@@ -8,7 +8,6 @@ class DerivativeOperators {
   DerivativeOperators(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : pde_operators_(pde_operators), params_(params), tumor_(tumor) {
     VecDuplicate(tumor_->c_0_, &temp_);
     VecDuplicate(tumor_->p_, &ptemp_);
-    VecDuplicate(tumor_->p_, &p_current_);
 
     disable_verbose_ = true;
   }
@@ -21,7 +20,6 @@ class DerivativeOperators {
 
   Vec temp_;
   Vec ptemp_;
-  Vec p_current_;  // Current solution vector in newton iteration
 
   virtual PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data) = 0;
   virtual PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data) = 0;
