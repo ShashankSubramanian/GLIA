@@ -285,7 +285,7 @@ PetscErrorCode printVecBounds(Vec c, std::string str) {
   ierr = VecMax(c, NULL, &max); CHKERRQ(ierr);
   ierr = VecMin(c, NULL, &min); CHKERRQ(ierr);
   ScalarType tol = 0.;
-  s << " ---------- " << str << " bounds: max = " << max << ", min = " << min << " ----------- ";
+  s << "  " << str << " bounds: max = " << max << ", min = " << min;
   ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   s.str("");
   s.clear();

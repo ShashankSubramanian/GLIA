@@ -140,7 +140,6 @@ PetscErrorCode TILOptimizer::solve() {
   // DOFs
   int nk = ctx_->params_->tu_->nk_;
   int np = ctx_->params_->tu_->np_;
-  ss<<"n_inv: <<"<<n_inv_<<", nk: "<<nk<<", np: "<<np; ierr = tuMSGstd (ss.str()); CHKERRQ (ierr); ss.str(""); ss.clear();
   TU_assert(n_inv_ == np + nk, "TILOptimizer: n_inv is inconsistent.");
 
   // === reset tao, (if we want virgin tao for every inverse solve)

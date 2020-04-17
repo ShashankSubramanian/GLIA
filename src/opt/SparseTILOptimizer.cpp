@@ -32,6 +32,7 @@ PetscErrorCode SparseTILOptimizer::initialize(
   cosamp_ = std::make_shared<CtxCoSaMp>();
   ctx_->cosamp_ = cosamp_;
   til_opt_->ctx_->cosamp_ = cosamp_;
+  rd_opt_->ctx_->cosamp_ = cosamp_;
 
   PetscFunctionReturn(ierr);
 }

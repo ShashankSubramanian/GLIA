@@ -294,7 +294,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective(PetscReal *J, Vec x, std
 
   (*J) *= params_->grid_->lebesgue_measure_;
 
-  s << "  J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << 0.5 * (*J) + reg << " = " << std::setprecision(12) << 0.5 * (*J) << " + " << std::setprecision(12) << reg << "";
+  s << "  obj: J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << 0.5 * (*J) + reg << " = " << std::setprecision(12) << 0.5 * (*J) << " + " << std::setprecision(12) << reg << "";
   ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   s.str("");
   s.clear();
@@ -655,7 +655,7 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
 
   (*J) *= params_->grid_->lebesgue_measure_;
 
-  s << "  J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << 0.5 * (*J) + reg << " = " << std::setprecision(12) << 0.5 * (*J) << " + " << std::setprecision(12) << reg << "";
+  s << "  obj: J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << 0.5 * (*J) + reg << " = " << std::setprecision(12) << 0.5 * (*J) << " + " << std::setprecision(12) << reg << "";
   ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   s.str("");
   s.clear();
@@ -1108,7 +1108,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, std
 
   (*J) *= params_->grid_->lebesgue_measure_;
 
-  s << "  J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << (*J) + reg << " = " << std::setprecision(12) << (*J) << " + " << std::setprecision(12) << reg << "";
+  s << "  obj: J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << (*J) + reg << " = " << std::setprecision(12) << (*J) << " + " << std::setprecision(12) << reg << "";
   ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   s.str("");
   s.clear();
@@ -1494,7 +1494,7 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
 
   (*J) *= params_->grid_->lebesgue_measure_;
 
-  s << "  J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << (*J) + reg << " = " << std::setprecision(12) << (*J) << " + " << std::setprecision(12) << reg << "";
+  s << "  obj: J(p) = Dc(c) + S(c0) = " << std::setprecision(12) << (*J) + reg << " = " << std::setprecision(12) << (*J) << " + " << std::setprecision(12) << reg << "";
   ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
   s.str("");
   s.clear();
