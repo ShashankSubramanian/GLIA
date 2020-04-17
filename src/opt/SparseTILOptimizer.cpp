@@ -386,7 +386,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     til_opt_->setData(data_);
     ierr = til_opt_->setInitialGuess(x_L2); CHKERRQ(ierr);
     ierr = til_opt_->solve(); CHKERRQ(ierr);
-    ierr = VecCopy(getSolution(), x_L2); CHKERRQ (ierr);
+    ierr = VecCopy(til_opt_->getSolution(), x_L2); CHKERRQ (ierr);
     ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
     ierr = tuMSGstd(""); CHKERRQ (ierr);
     ierr = VecCopy(x_L1, x_L1_old); CHKERRQ (ierr);
@@ -491,7 +491,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   til_opt_->setData(data_);
   ierr = til_opt_->setInitialGuess(x_L2); CHKERRQ(ierr);
   ierr = til_opt_->solve(); CHKERRQ(ierr);
-  ierr = VecCopy(getSolution(), x_L2); CHKERRQ (ierr);
+  ierr = VecCopy(til_opt_->getSolution(), x_L2); CHKERRQ (ierr);
   ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
   ierr = tuMSGstd(""); CHKERRQ (ierr);
   // print vec
@@ -733,7 +733,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
         til_opt_->setData(data_);
         ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
         ierr = til_opt_->solve(); CHKERRQ(ierr);
-        ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
+        ierr = VecCopy(til_opt_->getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
         ierr = tuMSG("### ----------------------------------------- L2 solver end --------------------------------------------- ###");CHKERRQ (ierr);
         ierr = tuMSGstd (""); CHKERRQ (ierr);
         ierr = VecCopy (ctx_->cosamp_->x_full, ctx_->cosamp_->x_full_prev); CHKERRQ (ierr);
@@ -865,7 +865,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
         til_opt_->setData(data_);
         ierr = til_opt_->setInitialGuess(ctx_->cosamp_->x_sub); CHKERRQ(ierr);
         ierr = til_opt_->solve(); CHKERRQ(ierr);
-        ierr = VecCopy(getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
+        ierr = VecCopy(til_opt_->getSolution(), ctx_->cosamp_->x_sub); CHKERRQ (ierr);
         ierr = tuMSG("### -------------------------------------------- L2 solver end ------------------------------------------ ###");CHKERRQ (ierr);
         ierr = tuMSGstd (""); CHKERRQ (ierr);
         // print phi's to file

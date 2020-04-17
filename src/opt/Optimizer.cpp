@@ -52,6 +52,10 @@ PetscErrorCode Optimizer::allocateTaoObjects() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
+  if(xrec_ != nullptr) {
+    ierr = VecDestroy(&xrec_); CHKERRQ(ierr); xrec_ = nullptr;
+  }
+
   // allocate memory for xrec_ (n_inv_ is already set in the specialized function)
   ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv_, &xrec_); CHKERRQ (ierr);
   ierr = setupVec (xrec_, SEQ); CHKERRQ (ierr);

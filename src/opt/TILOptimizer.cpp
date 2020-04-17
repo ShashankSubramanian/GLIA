@@ -23,12 +23,28 @@ PetscErrorCode TILOptimizer::initialize(
 
   // number of dofs = {p, kappa}
   n_inv_ = params->tu_->np_ +  params->get_nk();
-  ss << " Initializing TIL optimizer with = " << n_inv_ << " = " << params->tu_->np_ << " + " << params->get_nk() << " dofs.";
+  ss << " Initializing TIL optimizer with n_inv = " << n_inv_ << " = " << params->tu_->np_ << " + " << params->get_nk() << " dofs.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   // initialize super class
   ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
+}
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode TILOptimizer::allocateTaoObjects() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+
+  // number of dofs = {p, kappa}
+  n_inv_ = ctx_->params_->tu_->np_ +  ctx_->params_->get_nk();
+  ss << " Re-itializing TIL optimizer with changed n_inv = " << n_inv_ << " = " << ctx_->params_->tu_->np_ << " + " << ctx_->params_->get_nk() << " dofs.";
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+  ierr = Optimizer::allocateTaoObjects(); CHKERRQ(ierr);
+  PetscFunctionReturn (ierr);
 }
 
 
@@ -120,9 +136,11 @@ PetscErrorCode TILOptimizer::solve() {
   ierr = tuMSG("###                                         TIL inversion                                                 ###");CHKERRQ (ierr);
   ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###");CHKERRQ (ierr);
 
+
   // DOFs
   int nk = ctx_->params_->tu_->nk_;
   int np = ctx_->params_->tu_->np_;
+  ss<<"n_inv: <<"<<n_inv_<<", nk: "<<nk<<", np: "<<np; ierr = tuMSGstd (ss.str()); CHKERRQ (ierr); ss.str(""); ss.clear();
   TU_assert(n_inv_ == np + nk, "TILOptimizer: n_inv is inconsistent.");
 
   // === reset tao, (if we want virgin tao for every inverse solve)

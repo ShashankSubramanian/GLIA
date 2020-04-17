@@ -18,6 +18,7 @@ public :
             std::shared_ptr <Tumor> tumor);
 
   // TODO(K): currently does nothing different than Optimizer, revisit after TaoInterface done
+  virtual PetscErrorCode allocateTaoObjects();
   virtual PetscErrorCode setTaoOptions();
   virtual PetscErrorCode solve();
 
