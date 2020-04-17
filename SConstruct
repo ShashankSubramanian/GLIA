@@ -272,7 +272,7 @@ if env["gpu"] == True:
     )
     bintest = env.Program (
         target = buildpath + '/test',
-        source = [sourcesPGLISTR, './app/test.cpp']
+        source = [sourcesPGLISTRGPU, './app/test.cpp']
     ) 
     env.Alias("bin", bininv)
     staticlib = env.StaticLibrary (
