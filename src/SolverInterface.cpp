@@ -72,6 +72,7 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
   spec_ops_ = spec_ops;
   params_ = params;
   app_settings_ = app_settings;
+  data_ = std::make_shared<Data>();
 
   // === create tmp vector according to distributed grid
   ierr = VecCreate(PETSC_COMM_WORLD, &tmp_); CHKERRQ(ierr);
