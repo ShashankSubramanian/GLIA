@@ -45,10 +45,6 @@ class DerivativeOperators {
       VecDestroy(&ptemp_);
       ptemp_ = nullptr;
     }
-    if (p_current_ != nullptr) {
-      VecDestroy(&p_current_);
-      p_current_ = nullptr;
-    }
   }
 };
 

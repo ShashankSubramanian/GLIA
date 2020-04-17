@@ -256,6 +256,14 @@ PetscErrorCode InverseL1Solver::run() {
   ierr = tuMSGwarn(" Beginning Inversion for Sparse TIL, and Diffusion/Reaction."); CHKERRQ(ierr);
   SolverInterface::run(); CHKERRQ(ierr);
 
+  // set initial guess
+  ScalarType *x_ptr;  // TODO(K): if read in vector has nonzero rho/kappa values, take those
+  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
+  x_ptr[params_->tu_->np_] = params_->tu_->k_;
+  if (params_->get_nr() > 0) 
+    x_ptr[params_->tu_->np_ + params_->get_nk()] = params_->tu_->rho_;
+  ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
+
   // set the reg norm as L2
   params_->opt_->regularization_norm_ = L2;
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
