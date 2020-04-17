@@ -45,8 +45,8 @@ SolverInterface::~SolverInterface() {
   if(csf_ != nullptr) VecDestroy(&csf_);
   if(mri_ != nullptr) VecDestroy(&mri_);
   if(tmp_ != nullptr) VecDestroy(&tmp_);
-  if(data_t1_ != nullptr) VecDestroy(&data_t1_);
-  if(data_t0_ != nullptr) VecDestroy(&data_t0_);
+  if(data_t1_ != nullptr) {VecDestroy(&data_t1_); data_t1_ = nullptr;}
+  if(data_t0_ != nullptr) {VecDestroy(&data_t0_); data_t0_ = nullptr;}
   if(!app_settings_->syn_->enabled_ && !app_settings_->path_->data_support_.empty()) {
     if(data_support_ != nullptr) VecDestroy(&data_support_);
   }
@@ -276,19 +276,23 @@ PetscErrorCode SolverInterface::finalize() {
   ierr = VecDestroy(&c1_obs); CHKERRQ(ierr);
 
   // c(0): error everywhere
-  ierr = VecCopy(tumor_->c_0_, tmp_); CHKERRQ(ierr);
-  ierr = VecAXPY(tmp_, -1.0, data_t0_); CHKERRQ(ierr);
-  ierr = VecNorm(data_t0_, NORM_2, &data_norm); CHKERRQ(ierr);
-  ierr = VecNorm(tmp_, NORM_2, &error_norm_0); CHKERRQ(ierr);
-  ss << " t=0: l2-error (everywhere): " << error_norm_0;
-  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-  ss.str("");
-  ss.clear();
-  error_norm_0 /= data_norm;
-  ss << " t=0: rel. l2-error (everywhere): " << error_norm_0;
-  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-  ss.str("");
-  ss.clear();
+  if(data_t0_ != nullptr) {
+    ierr = VecCopy(tumor_->c_0_, tmp_); CHKERRQ(ierr);
+    ierr = VecAXPY(tmp_, -1.0, data_t0_); CHKERRQ(ierr);
+    ierr = VecNorm(data_t0_, NORM_2, &data_norm); CHKERRQ(ierr);
+    ierr = VecNorm(tmp_, NORM_2, &error_norm_0); CHKERRQ(ierr);
+    ss << " t=0: l2-error (everywhere): " << error_norm_0;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    error_norm_0 /= data_norm;
+    ss << " t=0: rel. l2-error (everywhere): " << error_norm_0;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  } else {
+    ierr = tuMSGstd(" Cannot compute errors for TIL, since TIL is nullptr."); CHKERRQ(ierr);
+  }
 
   // write file
   if (procid == 0) {
@@ -476,7 +480,7 @@ PetscErrorCode SolverInterface::readAtlas() {
       if (app_settings_->atlas_seg_[3] > 0) {
         ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
       }
-      if (app_settings_->atlas_seg_[4] > 0) {
+      if (app_settings_->atlas_seg_[4] > 0 || (app_settings_->atlas_seg_[5] > 0 && app_settings_->atlas_seg_[6] > 0)) {
         ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
         data_t1_from_seg_ = true;
       }
@@ -775,34 +779,40 @@ PetscErrorCode SolverInterface::initializeGaussians() {
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
+  // warmstart p given but  it's not a coarse solution
   if (warmstart_p_ && !app_settings_->inject_solution_) {
-    ss << "  .. solver warmstart: using p_vec and Gaussians from file.";
+    ss << " .. solver warmstart: using p_vec and Gaussians from file.";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
     ss.clear();
     ierr = tumor_->phi_->setGaussians(app_settings_->path_->phi_); CHKERRQ(ierr);
     ierr = tumor_->phi_->setValues(tumor_->mat_prop_); CHKERRQ(ierr);
     ierr = readPVec(&p_rec_, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, app_settings_->path_->pvec_); CHKERRQ(ierr);
+  // either no warmstart p given or coarse solution is injected
   } else {
     if (!app_settings_->path_->data_support_data_.empty()) {  // read Gaussian centers and comp labels from txt file
-      ss << "  .. reading Gaussian centers and component data from file.";
+      ss << " .. using centers from .dat file.";
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
       ss.str("");
       ss.clear();
       ierr = tumor_->phi_->setGaussians(app_settings_->path_->data_support_data_, true); CHKERRQ(ierr);
-    } else if (!app_settings_->path_->data_support_.empty()) {  // read Gaussian centers and comp labels from nc files
-      ss << "  .. reading Gaussian centers from .nc image file.";
-      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-      ss.str("");
-      ss.clear();
-      ierr = tumor_->phi_->setGaussians(data_support_); CHKERRQ(ierr);
     } else if (app_settings_->syn_->enabled_) {
       // synthetic data generation in data_t1_
-      ss << "  .. setting Gaussians with synthetic data.";
+      ss << " .. using synthetic data.";
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
       ss.str("");
       ss.clear();
       ierr = tumor_->phi_->setGaussians(data_->dt1()); CHKERRQ(ierr);
+    } else if (data_support_ != nullptr) {  // read Gaussian centers and comp labels from nc files
+      if(data_t1_from_seg_) {
+        ss << " .. using tumor data from segmentation file.";
+      } else {
+        ss << " .. using data_support.nc file..";
+      }
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+      ierr = tumor_->phi_->setGaussians(data_support_); CHKERRQ(ierr);
     } else {
       ss << " Error: Cannot set Gaussians: expecting user input data -support_data_path *.nc or *.txt. Exiting.";
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
@@ -819,7 +829,7 @@ PetscErrorCode SolverInterface::initializeGaussians() {
     ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + n_inv_, &p_rec_); CHKERRQ(ierr);
     ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
     ierr = resetOperators(p_rec_); CHKERRQ(ierr);
-    ss << "  .. creating p_vec of size " << params_->tu_->np_ + n_inv_ << ", where np = " << params_->tu_->np_ << " is the number of selected Gaussians; nk+nr = " << n_inv_;
+    ss << " .. creating p_vec of size " << params_->tu_->np_ + n_inv_ << ", where np = " << params_->tu_->np_ << " is the number of selected Gaussians; nk+nr = " << n_inv_;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
     n_inv_ += params_->tu_->np_;
   }

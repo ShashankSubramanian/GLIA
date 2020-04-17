@@ -533,8 +533,10 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
   ScalarType *gm_ptr, *wm_ptr, *vt_ptr, *tu_ptr, *csf_ptr, *seg_ptr;
   int wm_label  = labels[0], gm_label = labels[1], vt_label = labels[2];
   int csf_label = (labels[3] > 0) ? labels[3] : -1;
-  int tc_label  = (labels[4] > 0) ? labels[5] : -1;
-  int ed_label  = (labels[5] > 0) ? labels[6] : -1;
+  int tc_label  = (labels[4] > 0) ? labels[4] : -1;
+  int nec_label = (labels[5] > 0) ? labels[5] : -1;
+  int en_label  = (labels[6] > 0) ? labels[6] : -1;
+  int ed_label  = (labels[7] > 0) ? labels[7] : -1;
   ierr = VecGetArray(seg, &seg_ptr); CHKERRQ(ierr);
   ierr = VecSet(wm, 0.0); CHKERRQ(ierr);
   ierr = VecSet(gm, 0.0); CHKERRQ(ierr);
@@ -562,6 +564,9 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
       if(tc_label > 0) {
         wm_ptr[i] = (seg_ptr[i] == tc_label) ? 1 : wm_ptr[i];
         tu_ptr[i] = (seg_ptr[i] == tc_label) ? 1 : tu_ptr[i];
+      } else if (nec_label > 0 && en_label > 0) {
+        wm_ptr[i] = (seg_ptr[i] == nec_label || seg_ptr[i] == en_label) ? 1 : wm_ptr[i];
+        tu_ptr[i] = (seg_ptr[i] == nec_label || seg_ptr[i] == en_label) ? 1 : tu_ptr[i];
       }
       if(ed_label > 0) {
         wm_ptr[i] = (seg_ptr[i] == ed_label) ? 1 : wm_ptr[i];

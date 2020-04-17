@@ -45,8 +45,7 @@ PetscErrorCode Phi::setGaussians(std::array<ScalarType, 3> &user_cm, ScalarType 
   np_ = np;
   params_->tu_->np_ = np_;
 
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
-  ss << " ---- bounding box for phi set with np: " << np_ << " and sigma: " << sigma_ << " ---- ";
+  ss << " Gaussians set as grid with np: " << np_ << " and sigma: " << sigma_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
@@ -531,17 +530,10 @@ PetscErrorCode Phi::setGaussians(std::string file, bool read_comp_data) {
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
   std::stringstream ss;
 
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
-  ss << " ---- BASIS FUNCTIONS OVERWRITTEN (FROM FILE) ----";
+  ss << " Gaussian basis functions overwritten (from file) -- bounding box not set.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
-  ss << " ---- bounding box not set: basis functions set from file ----";
-  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-  ss.str("");
-  ss.clear();
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
   ss << " file: " << file;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
@@ -570,13 +562,13 @@ PetscErrorCode Phi::setGaussians(std::string file, bool read_comp_data) {
         dist = sqrt(i * i + j * j + k * k);
         if (dist <= sigma_ / hx) gaussian_interior++;
       }
-  ss << " ----- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior
+  ss << " .. parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior
      << " | gvf: " << params_->tu_->gaussian_vol_frac_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
   np_ = params_->tu_->np_;
-  ss << " ----- np: " << np_ << " ------";
+  ss << " np: " << np_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
@@ -629,17 +621,10 @@ PetscErrorCode Phi::setGaussians(Vec data) {
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
   std::stringstream ss;
 
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
-  ss << " ---- BASIS FUNCTIONS OVERWRITTEN ----";
+  ss << " .. basis functions set based on tumor intput data.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
-  ss << " ---- bounding box not set: basis functions set to match data ----";
-  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-  ss.str("");
-  ss.clear();
-  ierr = tuMSGstd(""); CHKERRQ(ierr);
 
   Vec num_tumor_output;
   ierr = VecDuplicate(data, &num_tumor_output); CHKERRQ(ierr);
@@ -668,7 +653,7 @@ PetscErrorCode Phi::setGaussians(Vec data) {
         if (dist <= sigma_ / hx) gaussian_interior++;
       }
 
-  ss << " ---- phi parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior
+  ss << " .. parameters: sigma:" << sigma_ << " | radius: " << sigma_ / hx << " | center spacing: " << space << " | gaussian interior: " << gaussian_interior
      << " | gvf: " << params_->tu_->gaussian_vol_frac_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
@@ -945,7 +930,7 @@ PetscErrorCode Phi::setGaussians(Vec data) {
 
   np_ = np_global;
   params_->tu_->np_ = np_;
-  ss << " ----- np: " << np_ << " ------";
+  ss << " .. np: " << np_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();

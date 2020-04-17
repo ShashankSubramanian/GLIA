@@ -124,7 +124,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
     std::string v = value.substr(value.find("[")+1);
     value = v.substr(0, value.find("]"));
     size_t pos_loop = 0, pos = 0;
-    std::vector<int> labels(6);
+    std::vector<int> labels(8);
     for(int i = 0; i < labels.size(); ++i) {
       labels[i] = -1;
     }
@@ -138,9 +138,24 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
       if(label == "vt")  labels[2] = std::stoi(val);
       if(label == "csf") labels[3] = std::stoi(val);
       if(label == "tc")  labels[4] = std::stoi(val);
-      if(label == "ed")  labels[5] = std::stoi(val);
+      if(label == "nec")  labels[5] = std::stoi(val);
+      if(label == "en")  labels[6] = std::stoi(val);
+      if(label == "ed")  labels[7] = std::stoi(val);
       value.erase(0, pos_loop + 1);
     }
+      if( (pos = value.find("=")) != std::string::npos) {
+        label = value.substr(0, pos);
+        val = value.substr(pos+1);
+        if(label == "wm")  labels[0] = std::stoi(val);
+        if(label == "gm")  labels[1] = std::stoi(val);
+        if(label == "vt")  labels[2] = std::stoi(val);
+        if(label == "csf") labels[3] = std::stoi(val);
+        if(label == "tc")  labels[4] = std::stoi(val);
+        if(label == "nec")  labels[5] = std::stoi(val);
+        if(label == "en")  labels[6] = std::stoi(val);
+        if(label == "ed")  labels[7] = std::stoi(val);
+      }
+    //for(int i = 0; i < labels.size(); ++i) std::cout<<"label["<<i<<"]: "<<labels[i]<<std::endl;
     if(name == "atlas_labels") {
       a->atlas_seg_ = labels;
     } else {
