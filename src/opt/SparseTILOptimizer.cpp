@@ -41,9 +41,9 @@ PetscErrorCode SparseTILOptimizer::initialize(
 PetscErrorCode SparseTILOptimizer::allocateTaoObjects() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  // this function is empty since no tao objects should be allocated
-  // this is done in the sub solvers RD and TIL
-  ierr = tuMSGstd(" Sparse TIL optimizer does not allocate tao objects (done in RD and TIL subsolvers)."); CHKERRQ(ierr);
+  ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv_, &xrec_); CHKERRQ (ierr);
+  ierr = setupVec (xrec_, SEQ); CHKERRQ (ierr);
+  ierr = VecSet (xrec_, 0.0); CHKERRQ (ierr);
   PetscFunctionReturn(ierr);
 }
 
