@@ -105,7 +105,7 @@ public :
   virtual PetscErrorCode setInitialGuess(Vec x_init) = 0;
   virtual PetscErrorCode setVariableBounds() = 0;
 
-  PetscErrorCode setData(std::shared_ptr<Data> d) {data_ = d;}
+  PetscErrorCode setData(std::shared_ptr<Data> d) {PetscFunctionBegin; data_ = d; PetscFunctionReturn(0);}
   PetscErrorCode setData(Vec d1, Vec d0={}) {data_->set(d1, d0);}
   PetscErrorCode setDataT1(Vec d1) {data_->setT1(d1);}
   PetscErrorCode setDataT0(Vec d0) {data_->setT1(d0);}

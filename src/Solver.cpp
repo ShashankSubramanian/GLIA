@@ -261,6 +261,7 @@ PetscErrorCode InverseL1Solver::run() {
   // inv_solver_->getInverseSolverContext()->cosamp_->inexact_nits = params_->opt_->newton_maxit_; // TODO(K) restart version
   optimizer_->ctx_->cosamp_->maxit_newton = params_->opt_->newton_maxit_;
   ierr = optimizer_->setData(data_); CHKERRQ(ierr);
+  ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // requires p_rec_ to be of lengt np + nk + nr
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
