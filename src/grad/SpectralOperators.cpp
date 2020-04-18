@@ -243,6 +243,10 @@ PetscErrorCode SpectralOperators::weierstrassSmoother(Vec wc, Vec c, std::shared
 
   double self_exec_time = -MPI_Wtime();
 
+  if (sigma == 0) {
+    PetscFunctionReturn(0);
+  }
+
   ScalarType *wc_ptr, *c_ptr;
 
   ierr = vecGetArray(wc, &wc_ptr); CHKERRQ(ierr);

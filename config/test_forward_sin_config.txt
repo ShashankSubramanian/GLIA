@@ -1,0 +1,111 @@
+#
+#### Tumor Solver Configuration File ###
+#### ------------------------------- ###
+
+
+### grid: run all tests in default 64
+n=64
+
+### inversion scheme
+solver=forward
+invert_diff=1
+invert_reac=1
+multilevel=0
+inject_solution=0
+pre_reacdiff_solve=0
+verbosity=0
+
+### optimizer
+newton_solver=QN
+line_search=armijo
+ce_loss=0
+regularization=L1
+beta_p=0.0
+opttol_grad=1e-05
+newton_maxit=2
+krylov_maxit=1
+gist_maxit=2
+kappa_lb=0
+kappa_ub=0.1
+rho_lb=0
+rho_ub=15
+gamma_ub=15
+lbfgs_vectors=50
+lbfgs_scale_type=diagonal
+lbfgs_scale_hist=5
+ls_max_func_evals=10
+
+### forward solver
+accuracy_order=2
+ip_order=3
+
+### tumor params
+model=4
+init_rho=15
+init_k=0
+init_gamma=60000.0
+nt_inv=25
+dt_inv=0.04
+k_gm_wm=0.0
+r_gm_wm=0.0
+
+### data
+smoothing_factor=1
+smoothing_factor_data=1
+obs_threshold_1=-0.99
+obs_threshold_0=-0.99
+obs_threshold_rel=0
+
+### initial condition
+sparsity_level=5
+gaussian_selection_mode=1
+number_gaussians=1
+sigma_factor=4
+sigma_spacing=2
+threshold_data_driven=0.1
+gaussian_volume_fraction=0.9
+
+### prediction
+prediction=1
+pred_times=[1.0, 1.2, 1.5]
+dt_pred=0.01
+
+### synthetic data
+syn_flag=1
+user_cms=[(137, 169, 96, 1)]
+rho_data=8
+k_data=0.01
+gamma_data=120000.0
+nt_data=25
+dt_data=0.04
+testcase=0
+
+### paths
+output_dir=results/UT/
+d1_path=
+d0_path=
+a_seg_path=
+a_wm_path=testdata/sinusoid.nc
+a_gm_path=
+a_csf_path=
+a_vt_path=
+p_seg_path=
+p_wm_path=
+p_csf_path=
+p_vt_path=
+mri_path=testdata/mri.nc
+obs_mask_path=
+support_data_path=
+gaussian_cm_path=
+pvec_path=
+data_comp_path=
+data_comp_data_path=
+velocity_x1=
+velocity_x2=
+velocity_x3=
+
+### performance
+time_history_off=1
+store_phi=0
+store_adjoint=1
+write_output=0

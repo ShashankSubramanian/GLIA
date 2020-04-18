@@ -510,17 +510,19 @@ PetscErrorCode SolverInterface::readAtlas() {
     }
   }
   // smooth
-  if (gm_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(gm_, gm_, params_, sigma_smooth); CHKERRQ(ierr);
-  }
-  if (wm_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(wm_, wm_, params_, sigma_smooth); CHKERRQ(ierr);
-  }
-  if (vt_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(vt_, vt_, params_, sigma_smooth); CHKERRQ(ierr);
-  }
-  if (csf_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(csf_, csf_, params_, sigma_smooth); CHKERRQ(ierr);
+  if (params_->tu_->smoothing_factor_atlas_ > 0) {
+    if (gm_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(gm_, gm_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
+    if (wm_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(wm_, wm_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
+    if (vt_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(vt_, vt_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
+    if (csf_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(csf_, csf_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
   }
 
   PetscFunctionReturn(ierr);

@@ -50,6 +50,7 @@ class Tumor {
 
   PetscErrorCode initialize(Vec p, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi = {}, std::shared_ptr<MatProp> mat_prop = {});
   PetscErrorCode setParams(Vec p, std::shared_ptr<Parameters> params, bool npchanged = false);
+  PetscErrorCode setSinusoidalCoefficients(std::shared_ptr<Parameters> params);
   PetscErrorCode computeEdema();
   PetscErrorCode computeSegmentation();
   PetscErrorCode computeSpeciesNorms();

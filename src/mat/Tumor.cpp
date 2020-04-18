@@ -97,6 +97,18 @@ PetscErrorCode Tumor::setParams(Vec p, std::shared_ptr<Parameters> params, bool 
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode Tumor::setSinusoidalCoefficients(std::shared_ptr<Parameters> params) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ierr = mat_prop_->setValuesSinusoidal(params); CHKERRQ(ierr);
+  ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = phi_->setValues(mat_prop_); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode Tumor::computeForce(Vec c1) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;

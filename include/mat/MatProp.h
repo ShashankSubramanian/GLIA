@@ -33,6 +33,7 @@ class MatProp {
 
   PetscErrorCode setValues(std::shared_ptr<Parameters> params);
   PetscErrorCode setValuesCustom(Vec gm, Vec wm, Vec csf, Vec vt, Vec bg, std::shared_ptr<Parameters> params);
+  PetscErrorCode setValuesSinusoidal(std::shared_ptr<Parameters> params);
   PetscErrorCode clipHealthyTissues();
   PetscErrorCode filterBackgroundAndSmooth(Vec in);
   PetscErrorCode filterTumor(Vec c);
