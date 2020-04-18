@@ -46,6 +46,8 @@
 - implement unit test hessian evaluation
 - implement unit test adjoint solve
 
+- delete TestSuite
+
 
 ---
 
