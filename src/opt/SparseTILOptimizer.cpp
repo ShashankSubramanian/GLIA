@@ -262,7 +262,9 @@ PetscErrorCode SparseTILOptimizer::solve() {
   ierr = VecSet (temp, 0); CHKERRQ (ierr);
 
   // defines whether or not initial guess for rho should be estimated or taken from input
-  ctx_->params_->opt_->estimate_rho_init_guess_ = !(ctx_->params_->opt_->multilevel_ && ctx_->params_->grid_->n_[0] > 64);
+  if(ctx_->params_->opt_->multilevel_ && ctx_->params_->grid_->n_[0] > 64) {
+    ctx_->params_->opt_->estimate_rho_init_guess_ = false;
+  }
 
   // === initial guess
   PetscReal *xin_ptr;

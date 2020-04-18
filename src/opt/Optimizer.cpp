@@ -155,8 +155,8 @@ PetscErrorCode Optimizer::setTaoOptions() {
     ierr = TaoLineSearchSetType (linesearch, "armijo"); CHKERRQ(ierr);
     ierr = tuMSGstd(" .. using line-search type: armijo"); CHKERRQ(ierr);
   } else {
-    ierr = TaoLineSearchSetType (linesearch, "mt"); CHKERRQ(ierr);
-    ierr = tuMSGstd("  .. using line-search type: more-thuene"); CHKERRQ(ierr);
+    ierr = TaoLineSearchSetType (linesearch, "more-thuente"); CHKERRQ(ierr);
+    ierr = tuMSGstd(" .. using line-search type: more-thuene"); CHKERRQ(ierr);
   }
   ierr = TaoLineSearchSetInitialStepLength (linesearch, 1.0); CHKERRQ(ierr);
   ierr = TaoLineSearchSetOptionsPrefix (linesearch,"tumor_"); CHKERRQ(ierr);
