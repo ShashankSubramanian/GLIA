@@ -36,15 +36,15 @@ TEST_CASE( "Running forward simulator", "[simulator]" ) {
 
   // test finalize, displacement norm, c0 norm, c1 norm
   REQUIRE(ierr == 0);
-  VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
-  REQUIRE(norm == Approx(0));
-  VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
-  REQUIRE(norm == Approx(0));
-  if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
-    solver->getTumor()->displacement_->computeMagnitude(tmp);
-    VecNorm(tmp, NORM_2, &norm);
-    REQUIRE(norm == Approx(0));
-  }
+  // VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
+  // REQUIRE(norm == Approx(0));
+  // VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+  // REQUIRE(norm == Approx(0));
+  // if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
+  //   solver->getTumor()->displacement_->computeMagnitude(tmp);
+  //   VecNorm(tmp, NORM_2, &norm);
+  //   REQUIRE(norm == Approx(0));
+  // }
 }
 
 TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
@@ -73,10 +73,10 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
 
   // test finalize, c0_inv norm, c1_inv norm, rho_inv, kappa_inv
   REQUIRE(ierr == 0);
-  VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
-  REQUIRE(norm == Approx(0));
-  VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
-  REQUIRE(norm == Approx(0));
+  // VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
+  // REQUIRE(norm == Approx(0));
+  // VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+  // REQUIRE(norm == Approx(0));
 }
 
 
