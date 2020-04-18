@@ -276,6 +276,10 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     ierr = VecRestoreArray(tao_grad, &grad_ptr); CHKERRQ(ierr);
   }
 
+  // warn if tumor ic is clipped
+  ierr = printVecBounds(itctx->tumor_->c_0_, "c(0)"); CHKERRQ(ierr);
+  ierr = printVecBounds(itctx->tumor_->c_t_, "c(1)"); CHKERRQ(ierr);
+  ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
   // === update reference gradient
   // (for older petsc the orrder of monitor and check convergence is switched)
 #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 9)
@@ -305,10 +309,6 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   }
 #endif
 
-  // warn if tumor ic is clipped
-  ierr = printVecBounds(itctx->tumor_->c_0_, "c(0)"); CHKERRQ(ierr);
-  ierr = printVecBounds(itctx->tumor_->c_t_, "c(1)"); CHKERRQ(ierr);
-  ierr = tuMSGstd(s.str()); CHKERRQ(ierr);s.str ("");s.clear ();
 
   if (its == 0) {
     s << std::setw(4)  << " iter"              << "   " << std::setw(18) << "objective (abs)" << "   "
