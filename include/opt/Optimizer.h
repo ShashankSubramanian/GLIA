@@ -110,8 +110,8 @@ public :
   void setDataT1(Vec d1) {data_->setT1(d1);}
   void setDataT0(Vec d0) {data_->setT1(d0);}
 
-  PetscErrorCode updateReferenceGradient(bool b) {ctx_->update_reference_gradient = b;}
-  PetscErrorCode updateReferenceObjective(bool b) {ctx_->update_reference_objective = b;}
+  void updateReferenceGradient(bool b) {ctx_->update_reference_gradient = b;}
+  void updateReferenceObjective(bool b) {ctx_->update_reference_objective = b;}
   bool initialized() {return initialized_;}
   Vec getSolution() {return xout_;}
 

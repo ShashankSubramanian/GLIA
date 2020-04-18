@@ -968,7 +968,7 @@ PetscErrorCode SolverInterface::setDistMeassureTargetDataImages(Vec wm, Vec gm, 
     ierr = tuMSGwarn("Warning: (setDistMeassureTargetDataImages) Vector csf is nullptr."); CHKERRQ(ierr);
   }
   /** Sets the image vectors for the simulation geometry material properties
-  /** Sets the image vectors for the target (patient) geometry material properties
+   * Sets the image vectors for the target (patient) geometry material properties
    *  - MOVING PATIENT: mP(1) (= advected patient)
    *  - MOVING ATLAS:   mR    (= patient data)
    */
@@ -990,7 +990,7 @@ PetscErrorCode SolverInterface::setDistMeassureDiffImages(Vec wm, Vec gm, Vec cs
     ierr = tuMSGwarn("Warning: (setDistMeassureDiffImages) Vector csf is nullptr."); CHKERRQ(ierr);
   }
   /** Sets the image vectors for the simulation geometry material properties
-  /** Sets the image vectors for the distance measure difference
+   * Sets the image vectors for the distance measure difference
    *  - MOVING PATIENT: || mA(0)(1-c(1)) - mP(1) ||^2
    *  - MOVING ATLAS:   || mA(1)(1-c(1)) - mR    ||^2
    */

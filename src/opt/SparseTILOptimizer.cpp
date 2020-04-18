@@ -265,6 +265,8 @@ PetscErrorCode SparseTILOptimizer::solve() {
   if(ctx_->params_->opt_->multilevel_ && ctx_->params_->grid_->n_[0] > 64) {
     ctx_->params_->opt_->estimate_rho_init_guess_ = false;
   }
+  // re-scales c0 to max(c0) = 1 for RD solve                                                                                                         
+  ctx_->params_->opt_->rescale_init_cond_ = true;
 
   // === initial guess
   PetscReal *xin_ptr;
