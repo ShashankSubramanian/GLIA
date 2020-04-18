@@ -22,7 +22,7 @@ ce_loss=0
 regularization=L1
 beta_p=1.0
 opttol_grad=1e-05
-newton_maxit=5
+newton_maxit=10
 krylov_maxit=1
 gist_maxit=2
 kappa_lb=0
@@ -33,7 +33,7 @@ gamma_ub=15
 lbfgs_vectors=50
 lbfgs_scale_type=diagonal
 lbfgs_scale_hist=5
-ls_max_func_evals=5
+ls_max_func_evals=10
 
 ### forward solver
 accuracy_order=2

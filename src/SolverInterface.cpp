@@ -302,16 +302,18 @@ PetscErrorCode SolverInterface::finalize() {
     opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << error_norm << " " << error_norm_0 << std::endl;
     opfile.flush();
     opfile.close();
-    // print reconstructed p_vec
-    ss << " --------------  RECONST P -----------------";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
-    ierr = VecView(p_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
-    ss << " --------------  -------------- -----------------";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    ss.str("");
-    ss.clear();
+    if (params_->tu_->verbosity_ >= 1) {
+      // print reconstructed p_vec
+      ss << " --------------  RECONST P -----------------";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+      ierr = VecView(p_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
+      ss << " --------------  -------------- -----------------";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+    }
   }
 
   // === final prediction

@@ -27,24 +27,24 @@ TEST_CASE( "Running forward simulator", "[simulator]" ) {
 
   // === create tmp vector for tests according to distributed grid
   Vec tmp;
-  ierr = VecCreate(PETSC_COMM_WORLD, &tmp);
-  ierr = VecSetSizes(tmp, params->grid_->nl_, params->grid_->ng_);
-  ierr = setupVec(tmp);
-  ierr = VecSet(tmp, 0.0);
+  VecCreate(PETSC_COMM_WORLD, &tmp);
+  VecSetSizes(tmp, params->grid_->nl_, params->grid_->ng_);
+  setupVec(tmp);
+  VecSet(tmp, 0.0);
 
   ScalarType norm = 0;
 
   // test finalize, displacement norm, c0 norm, c1 norm
   REQUIRE(ierr == 0);
-  // VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
-  // REQUIRE(norm == Approx(0));
-  // VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
-  // REQUIRE(norm == Approx(0));
-  // if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
-  //   solver->getTumor()->displacement_->computeMagnitude(tmp);
-  //   VecNorm(tmp, NORM_2, &norm);
-  //   REQUIRE(norm == Approx(0));
-  // }
+  VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
+  REQUIRE(norm == Approx(4.09351));
+  VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+  REQUIRE(norm == Approx(32.1486));
+  if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
+    solver->getTumor()->displacement_->computeMagnitude(tmp);
+    VecNorm(tmp, NORM_2, &norm);
+    REQUIRE(norm == Approx(27.0497));
+  }
 }
 
 TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
@@ -56,7 +56,7 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
   std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
 #endif
   // disable all I/O for tests
-  DISABLE_VERBOSE = true;
+  // DISABLE_VERBOSE = true;
 
   std::string s = "config/test_sparsetil_config.txt"; //test config
   RunMode r;
@@ -73,10 +73,12 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
 
   // test finalize, c0_inv norm, c1_inv norm, rho_inv, kappa_inv
   REQUIRE(ierr == 0);
-  // VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
-  // REQUIRE(norm == Approx(0));
-  // VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
-  // REQUIRE(norm == Approx(0));
+  VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
+  REQUIRE(norm == Approx(8.64906));
+  VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+  REQUIRE(norm == Approx(19.8132));
+  REQUIRE(params->tu_->rho_ == Approx(4.26639));
+  REQUIRE(params->tu_->k_ == Approx(0.0398976));
 }
 
 

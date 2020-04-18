@@ -202,7 +202,7 @@ PetscErrorCode RDOptimizer::solve() {
   ierr = tuMSGstd(""); CHKERRQ (ierr);
   ierr = tuMSG   ("### RD inversion: initial guess  ###"); CHKERRQ(ierr);
   ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
-  if (procid == 0) { ierr = VecView (xrec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
+  if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 1) { ierr = VecView (xrec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
   ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
 

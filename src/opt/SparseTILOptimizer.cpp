@@ -295,7 +295,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
       ierr = tuMSGstd(""); CHKERRQ (ierr);
       ierr = tuMSG   ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-      if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+      if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 1) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
       if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("scaled-pre-l1"));}
       ierr = tuMSGstd(""); CHKERRQ (ierr);
@@ -537,7 +537,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = tuMSGstd(""); CHKERRQ (ierr);
     ierr = tuMSG   ("### scaled L2 sol. w/ incorrect reaction coefficient     ###"); CHKERRQ (ierr);
     ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
-    if (procid == 0) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
+    if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 1) { ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
     ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);
     if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(x_L2, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("scaled"));}
     ierr = tuMSGstd(""); CHKERRQ (ierr);
