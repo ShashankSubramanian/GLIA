@@ -84,14 +84,6 @@ PetscErrorCode TILOptimizer::setInitialGuess(Vec x_init) {
     ierr = ctx_->tumor_->phi_->apply (ctx_->tumor_->c_0_, x_init); CHKERRQ(ierr);
     ierr = VecMax(ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ (ierr);
     ss << "TIL as Phi(p) (max=" << ic_max<<"); ";
-    if(ctx_->params_->opt_->rescale_init_cond_) {
-      ScalarType scale = (1.0 / ic_max);
-      if(ctx_->params_->opt_->multilevel_) scale = (1.0/4.0 * ctx_->params_->grid_->n_[0]/64.  / ic_max);
-      ierr = VecGetArray (xin_, &x_ptr); CHKERRQ (ierr);
-      for (int i = 0; i < np ; i++) x_ptr[i] *= scale;
-      ierr = VecRestoreArray (xin_, &x_ptr); CHKERRQ (ierr);
-      ss << "rescaled; ";
-    }
     if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("til-init"));}
     off = off_in = np;
   }
