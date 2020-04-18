@@ -264,6 +264,8 @@ PetscErrorCode SparseTILOptimizer::solve() {
   // defines whether or not initial guess for rho should be estimated or taken from input
   if(ctx_->params_->opt_->multilevel_ && ctx_->params_->grid_->n_[0] > 64) {
     ctx_->params_->opt_->estimate_rho_init_guess_ = false;
+  } else {
+    ctx_->params_->opt_->estimate_rho_init_guess_ = true;
   }
   // re-scales c0 to max(c0) = 1 for RD solve                                                                                                         
   ctx_->params_->opt_->rescale_init_cond_ = true;
@@ -290,7 +292,6 @@ PetscErrorCode SparseTILOptimizer::solve() {
       cosamp_->cosamp_stage = PRE_RD;
       rd_opt_->setData(data_);
       ierr = rd_opt_->setInitialGuess(x_L2); CHKERRQ (ierr); // with current guess as init cond.
-
       ierr = tuMSGstd(""); CHKERRQ (ierr);
       ierr = tuMSG   ("### scaled init guess w/ incorrect reaction coefficient  ###"); CHKERRQ (ierr);
       ierr = tuMSGstd("### ---------------------------------------------------- ###"); CHKERRQ (ierr);

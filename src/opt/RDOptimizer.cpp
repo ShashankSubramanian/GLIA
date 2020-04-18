@@ -38,6 +38,9 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
     ierr = tuMSGwarn("Error: Optimizer not initialized."); CHKERRQ(ierr);
     PetscFunctionReturn(ierr);
   }
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
   std::stringstream ss;
   int nk = ctx_->params_->tu_->nk_;
   int nr = ctx_->params_->tu_->nr_;
@@ -88,7 +91,10 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
       for (int i = 0; i < np ; i++) x_ptr[i] *= scale;
       ierr = VecRestoreArray (xin_, &x_ptr); CHKERRQ (ierr);
       ss << "rescaled; ";
+      // apply rescaled xin_ to get rescaled c0
+      ierr = ctx_->tumor_->phi_->apply (ctx_->tumor_->c_0_, xin_); CHKERRQ(ierr);
     }
+
     if (ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, ctx_->tumor_->phi_, ctx_->params_->tu_->writepath_, std::string("til-rd"));}
     off = off_in = np;
   }
@@ -134,6 +140,8 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
   ierr = VecSet(xout_, 0.0); CHKERRQ (ierr);
+
+  ierr = VecCopy(xin_, x_init); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
