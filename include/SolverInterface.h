@@ -24,6 +24,8 @@ class SolverInterface {
   // timers
   PetscErrorCode initializeEvent();
   PetscErrorCode finalizeEvent();
+  // getter
+  std::shared_ptr<Tumor> getTumor() {return tumor_;} // returns tumor so that test-cases can access concentration maps
   // setter
   PetscErrorCode setDistMeassureSimulationGeoImages(Vec wm, Vec gm, Vec csf, Vec bg);
   PetscErrorCode setDistMeassureTargetDataImages(Vec wm, Vec gm, Vec csf, Vec bg);

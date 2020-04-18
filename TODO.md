@@ -1,6 +1,9 @@
 # TODOS CLEANUP
 ---
 
+### gen/
+- scons clean does not clean cuda files - fix.
+
 ### opt/
 - inconcsisten use of params->tu->nk and params->get_nk(), I think almost everywhere params->get_nk() should be used.
 - dirty allocation of x_L1 in SparseTILOptimizer, revisit restrict/prolongate subspace

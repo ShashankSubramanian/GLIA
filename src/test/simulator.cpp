@@ -2,7 +2,7 @@
 #include "IO.h"
 #include "catch.hpp"
 
-TEST_CASE( "Running forward simulator", "[forward-simulator]" ) {
+TEST_CASE( "Running forward simulator", "[simulator]" ) {
   std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
   std::shared_ptr<ApplicationSettings> app_settings = std::make_shared<ApplicationSettings>();
 #if defined(CUDA) && !defined(MPICUDA)
@@ -25,18 +25,29 @@ TEST_CASE( "Running forward simulator", "[forward-simulator]" ) {
   ierr = solver->run();
   ierr = solver->finalize();
 
-  // ScalarType nrm;
-  // might be pointless to test this
+  // === create tmp vector for tests according to distributed grid
+  Vec tmp;
+  ierr = VecCreate(PETSC_COMM_WORLD, &tmp);
+  ierr = VecSetSizes(tmp, params->grid_->nl_, params->grid_->ng_);
+  ierr = setupVec(tmp);
+  ierr = VecSet(tmp, 0.0);
+
+  ScalarType norm = 0;
+
+  // test finalize, displacement norm, c0 norm, c1 norm
   REQUIRE(ierr == 0);
-  // what other tests? c0 norm, check for matprop nullptrs, dispnorm > 0 if model has mass effect
-  // if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
-  //   solver->tumor_->displacement_->computeMagnitude(solver->tmp_);
-  //   VecNorm(solver->tmp_, NORM_2, &nrm);
-  //   REQUIRE(nrm > 0);
-  // }
+  VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
+  REQUIRE(norm == Approx(0));
+  VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+  REQUIRE(norm == Approx(0));
+  if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
+    solver->getTumor()->displacement_->computeMagnitude(tmp);
+    VecNorm(tmp, NORM_2, &norm);
+    REQUIRE(norm == Approx(0));
+  }
 }
 
-TEST_CASE( "Running inverse sparse-til simulator", "[sparse-til-simulator]" ) {
+TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
   std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
   std::shared_ptr<ApplicationSettings> app_settings = std::make_shared<ApplicationSettings>();
 #if defined(CUDA) && !defined(MPICUDA)
@@ -58,7 +69,14 @@ TEST_CASE( "Running inverse sparse-til simulator", "[sparse-til-simulator]" ) {
   ierr = solver->run();
   ierr = solver->finalize();
 
+  ScalarType norm = 0;
+
+  // test finalize, c0_inv norm, c1_inv norm, rho_inv, kappa_inv
   REQUIRE(ierr == 0);
+  VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
+  REQUIRE(norm == Approx(0));
+  VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+  REQUIRE(norm == Approx(0));
 }
 
 
