@@ -2,7 +2,6 @@
 #include "IO.h"
 #include "catch.hpp"
 
-
 TEST_CASE( "Running forward simulator", "[forward-simulator]" ) {
   std::shared_ptr<Parameters> params = std::make_shared<Parameters>();
   std::shared_ptr<ApplicationSettings> app_settings = std::make_shared<ApplicationSettings>();
@@ -15,7 +14,6 @@ TEST_CASE( "Running forward simulator", "[forward-simulator]" ) {
   DISABLE_VERBOSE = true;
 
   /* forward solver test */
-  SECTION( "running forward solver with advection" ) {
   std::string s = "config/test_forward_config.txt"; //test config
   RunMode r;
   PetscErrorCode ierr = 0;
