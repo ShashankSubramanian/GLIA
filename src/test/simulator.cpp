@@ -56,7 +56,7 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
   std::shared_ptr<SpectralOperators> spec_ops = std::make_shared<SpectralOperators> (ACCFFT);
 #endif
   // disable all I/O for tests
-  // DISABLE_VERBOSE = true;
+  DISABLE_VERBOSE = true;
 
   std::string s = "config/test_sparsetil_config.txt"; //test config
   RunMode r;
