@@ -8,7 +8,8 @@ class DerivativeOperators {
   DerivativeOperators(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : pde_operators_(pde_operators), params_(params), tumor_(tumor) {
     VecDuplicate(tumor_->c_0_, &temp_);
     VecDuplicate(tumor_->p_, &ptemp_);
-
+    VecSet(temp_, 0);
+    VecSet(ptemp_, 0);
     disable_verbose_ = true;
   }
 

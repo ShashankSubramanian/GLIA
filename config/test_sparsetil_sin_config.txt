@@ -3,11 +3,11 @@
 #### ------------------------------- ###
 
 
-### grid : run all tests in default
+### grid: run all tests in default 64
 n=64
 
 ### inversion scheme
-solver=sparse_til
+solver=sparse-til
 invert_diff=1
 invert_reac=1
 multilevel=0
@@ -85,10 +85,10 @@ output_dir=results/UT/
 d1_path=
 d0_path=
 a_seg_path=
-a_wm_path=testdata/wm.nc
-a_gm_path=testdata/gm.nc
-a_csf_path=testdata/csf.nc
-a_vt_path=testdata/vt.nc
+a_wm_path=testdata/sinusoid.nc
+a_gm_path=
+a_csf_path=
+a_vt_path=
 p_seg_path=
 p_wm_path=
 p_csf_path=

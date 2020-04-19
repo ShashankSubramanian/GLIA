@@ -336,6 +336,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateGradient(Vec dJ, Vec x, std::share
   }
 #endif
 
+  ierr = VecSet(dJ, 0); CHKERRQ(ierr);
+
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
@@ -550,6 +552,8 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjectiveAndGradient(PetscReal *J,
     x->lock = 0;
   }
 #endif
+
+  ierr = VecSet(dJ, 0); CHKERRQ(ierr);
 
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
