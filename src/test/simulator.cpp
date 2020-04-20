@@ -81,8 +81,7 @@ TEST_CASE( "Running forward simulator", "[simulator]" ) {
 
   ScalarType norm = 0;
 
-  // test finalize, displacement norm, c0 norm, c1 norm
-  REQUIRE(ierr == 0);
+  // test displacement norm, c0 norm, c1 norm
 #ifdef SINGLE
   VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
   REQUIRE(norm == Approx(4.09351));
@@ -120,8 +119,7 @@ TEST_CASE( "Running inverse sparse-til simulator with sinusoidal coefficients", 
 
   ScalarType norm = 0;
 
-  // test finalize, c0_inv norm, c1_inv norm, rho_inv, kappa_inv
-  REQUIRE(ierr == 0);
+  // test c0_inv norm, c1_inv norm, rho_inv, kappa_inv
 #ifdef SINGLE
   VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
   REQUIRE(norm == Approx(34.9651));
@@ -156,8 +154,7 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
 
   ScalarType norm = 0;
 
-  // test finalize, c0_inv norm, c1_inv norm, rho_inv, kappa_inv
-  REQUIRE(ierr == 0);
+  // test c0_inv norm, c1_inv norm, rho_inv, kappa_inv
 #ifdef SINGLE
   VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
   REQUIRE(norm == Approx(28.4884));

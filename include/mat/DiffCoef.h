@@ -45,6 +45,7 @@ class DiffCoef {
   ScalarType *work_cuda_;
 
   PetscErrorCode setValues(ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params);
+  PetscErrorCode setValuesSinusoidal(std::shared_ptr<Parameters> params, ScalarType scale);
   // needs to be called when we invert for diffusivity and use Gauss-Newton
   PetscErrorCode setSecondaryCoefficients(ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params);
   // needs to be called when we invert for diffusivity (in every newton iteration, calls setValues())

@@ -131,6 +131,63 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType k_gm_wm_ratio,
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode DiffCoef::setValuesSinusoidal(std::shared_ptr<Parameters> params, ScalarType scale) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType *k_ptr;
+  ierr = VecGetArray(kxx_, &k_ptr); CHKERRQ (ierr);
+  ScalarType freq = 4;
+  k_scale_ = scale;
+  int64_t X, Y, Z, index;
+  for (int x = 0; x < params->grid_->isize_[0]; x++) {
+    for (int y = 0; y < params->grid_->isize_[1]; y++) {
+      for (int z = 0; z < params->grid_->isize_[2]; z++) {
+        X = params->grid_->istart_[0] + x;
+        Y = params->grid_->istart_[1] + y;
+        Z = params->grid_->istart_[2] + z;
+
+        index = x * params->grid_->isize_[1] * params->grid_->isize_[2] + y * params->grid_->isize_[2] + z;
+
+        k_ptr[index] = scale * (0.5 + 0.5 * sin (freq * 2.0 * M_PI / params->grid_->n_[0] * X)
+                                  * sin (freq * 2.0 * M_PI / params->grid_->n_[1] * Y)
+                                  * sin (freq * 2.0 * M_PI / params->grid_->n_[2] * Z));
+      }
+    }
+  }
+  ierr = VecRestoreArray(kxx_, &k_ptr); CHKERRQ (ierr);
+
+  ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
+  ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
+
+  // Average diff coeff values for preconditioner for diffusion solve
+  ierr = VecSum(kxx_, &kxx_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kxy_, &kxy_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kxz_, &kxz_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kyy_, &kyy_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kyz_, &kyz_avg_); CHKERRQ(ierr);
+  ierr = VecSum(kzz_, &kzz_avg_); CHKERRQ(ierr);
+  filter_avg_ = params->grid_->ng_;
+
+  kxx_avg_ *= 1.0 / filter_avg_;
+  kxy_avg_ *= 1.0 / filter_avg_;
+  kxz_avg_ *= 1.0 / filter_avg_;
+  kyy_avg_ *= 1.0 / filter_avg_;
+  kyz_avg_ *= 1.0 / filter_avg_;
+  kzz_avg_ *= 1.0 / filter_avg_;
+
+#ifdef CUDA
+  cudaMemcpy(&work_cuda_[1], &kxx_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[2], &kxy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[3], &kxz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[4], &kyz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[5], &kyy_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+  cudaMemcpy(&work_cuda_[6], &kzz_avg_, sizeof(ScalarType), cudaMemcpyHostToDevice);
+#endif
+
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode DiffCoef::smooth(std::shared_ptr<Parameters> params) {
   PetscFunctionBegin;
   PetscErrorCode ierr;

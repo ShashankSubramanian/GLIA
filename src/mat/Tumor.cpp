@@ -1,6 +1,6 @@
 #include "Tumor.h"
 
-Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) : params_(params), spec_ops_(spec_ops) {
+Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) : params_(params), spec_ops_(spec_ops), p_(nullptr) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
@@ -326,7 +326,8 @@ Tumor::~Tumor() {
   ierr = VecDestroy(&c_0_);
   ierr = VecDestroy(&p_t_);
   ierr = VecDestroy(&p_0_);
-  ierr = VecDestroy(&p_);
+  if (p_ != nullptr)
+    ierr = VecDestroy(&p_);
 
   for (int i = 0; i < 12; i++) {
     ierr = VecDestroy(&work_[i]);
