@@ -369,6 +369,31 @@ SpectralOperators::~SpectralOperators() {
   accfft_cleanup();
 }
 
+void accfftCreateComm(MPI_Comm in_comm, int *c_dims, MPI_Comm *c_comm) {
+  int nprocs, procid;
+  MPI_Comm_rank(in_comm, &procid);
+  MPI_Comm_size(in_comm, &nprocs);
+  std::stringstream ss;
+
+  if (c_dims[0] * c_dims[1] != nprocs) {
+    c_dims[0] = 0;
+    c_dims[1] = 0;
+    MPI_Dims_create(nprocs, 2, c_dims);
+  }
+
+  ss << " Creating distributed communication grid with dim: " << c_dims[0] << " x " << c_dims[1];
+  tuMSGstd(ss.str()); ss.str(""); ss.clear();
+
+  /* Create Cartesian Communicator */
+  int period[2], reorder;
+  int coord[2];
+  period[0] = 0;
+  period[1] = 0;
+  reorder = 1;
+
+  MPI_Cart_create(in_comm, 2, c_dims, period, reorder, c_comm);
+}
+
 // initialization routines are part of spectral operators because accfft controls the memory distribution
 PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) {
   PetscErrorCode ierr = 0;
@@ -383,7 +408,7 @@ PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::sh
   MPI_Comm c_comm;
 
   accfft_init();
-  accfft_create_comm(MPI_COMM_WORLD, c_dims, &c_comm);
+  accfftCreateComm(MPI_COMM_WORLD, c_dims, &c_comm);
   spec_ops->setup(N, isize, istart, osize, ostart, c_comm);
   int64_t alloc_max = spec_ops->alloc_max_;
   fft_plan *plan = spec_ops->plan_;
