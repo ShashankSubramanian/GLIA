@@ -41,7 +41,11 @@ TEST_CASE("Running forward simulator with sinusoidal coefficients", "[sinusoid-s
   VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
   REQUIRE(norm == Approx(22.0161));
   VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+#ifdef CUDA
+  REQUIRE(norm == Approx(83.9339));
+#else
   REQUIRE(norm == Approx(83.9893));
+#endif
   solver->getTumor()->displacement_->computeMagnitude(tmp);
   VecNorm(tmp, NORM_2, &norm);
   REQUIRE(norm == Approx(43.5494));
@@ -86,7 +90,11 @@ TEST_CASE( "Running forward simulator", "[simulator]" ) {
   VecNorm(solver->getTumor()->c_0_, NORM_2, &norm);
   REQUIRE(norm == Approx(4.09351));
   VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
+#ifdef CUDA
+  REQUIRE(norm == Approx(31.97134));
+#else
   REQUIRE(norm == Approx(32.1486));
+#endif
   if (params->tu_->model_ >= 4 && params->tu_->forcing_factor_ > 0) {
     solver->getTumor()->displacement_->computeMagnitude(tmp);
     VecNorm(tmp, NORM_2, &norm);
@@ -126,7 +134,11 @@ TEST_CASE( "Running inverse sparse-til simulator with sinusoidal coefficients", 
   VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
   REQUIRE(norm == Approx(68.3326));
   REQUIRE(params->tu_->rho_ == Approx(3.8765));
+#ifdef CUDA
+  REQUIRE(params->tu_->k_ == Approx(0.00024));
+#else
   REQUIRE(params->tu_->k_ == Approx(0.000236307));
+#endif
 #endif
 }
 
@@ -161,7 +173,11 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
   VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
   REQUIRE(norm == Approx(75.8813));
   REQUIRE(params->tu_->rho_ == Approx(5.22846));
+#ifdef CUDA
+  REQUIRE(params->tu_->k_ == Approx(0.000524));
+#else
   REQUIRE(params->tu_->k_ == Approx(0.00523482));
+#endif
 #endif
 }
 
