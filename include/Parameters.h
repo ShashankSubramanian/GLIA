@@ -34,7 +34,7 @@ public:
     fseqtype_ (SLFS),
     newton_solver_ (QUASINEWTON),
     linesearch_ (MT),
-    verbosity_ (3),
+    verbosity_ (0),
     reset_tao_ (false),
     cosamp_stage_ (0),
     ls_max_func_evals(10),
@@ -218,7 +218,7 @@ public:
   , penalty_ (1E-4)                        // Parameter for positivity objective function
   , beta_changed_ (false)                  // if true, we overwrite beta with user provided beta: only for tumor inversion standalone
   , transport_mri_ (false)                 // transport T1 image
-  , verbosity_ (1)                         // Print flag for optimization routines
+  , verbosity_ (0)                         // Print flag for optimization routines
   , write_p_checkpoint_(true)              // if true, p vector and corresponding Gaussian centers are written to file at certain checkpoints
   , statistics_()                          // stores statistics of function evaluations, gradient evaluaations, iterations etc.
   , outfile_sol_()

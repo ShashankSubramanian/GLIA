@@ -142,9 +142,10 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
   // update diffusion coefficient, reaction coefficient, phi with material properties
   ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
   ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
-  #ifdef CUDA
-  cudaPrintDeviceMemory();
-  #endif
+#ifdef CUDA
+  if (params_->tu_->verbosity_ > 0)
+    cudaPrintDeviceMemory();
+#endif
   PetscFunctionReturn(ierr);
 }
 
