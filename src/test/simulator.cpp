@@ -132,6 +132,7 @@ TEST_CASE( "Running inverse sparse-til simulator with sinusoidal coefficients", 
   ierr = solver->finalize();
 
   ScalarType norm = 0;
+  ScalarType rel_error_rho, rel_error_kappa;
 
   // test c0_inv norm, c1_inv norm, rho_inv, kappa_inv
 #ifdef SINGLE
@@ -139,12 +140,10 @@ TEST_CASE( "Running inverse sparse-til simulator with sinusoidal coefficients", 
   REQUIRE(norm == Approx(34.9651f));
   VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
   REQUIRE(norm == Approx(68.3326f));
-  REQUIRE(params->tu_->rho_ == Approx(3.8765f));
-#ifdef CUDA
-  REQUIRE(params->tu_->k_ == Approx(0.00023634f));
-#else
-  REQUIRE(params->tu_->k_ == Approx(0.000236307f));
-#endif
+  rel_error_rho = (params->tu_->rho_ - 3.8765f) / 3.8765f;
+  REQUIRE(rel_error_rho < 1E-3);
+  rel_error_kappa = (params->tu_->k_ - 0.000236307f) / 0.000236307f;
+  REQUIRE(rel_error_kappa < 1E-3);
 #endif
 }
 
@@ -171,6 +170,7 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
   ierr = solver->finalize();
 
   ScalarType norm = 0;
+  ScalarType rel_error_rho, rel_error_kappa;
 
   // test c0_inv norm, c1_inv norm, rho_inv, kappa_inv
 #ifdef SINGLE
@@ -178,12 +178,10 @@ TEST_CASE( "Running inverse sparse-til simulator", "[simulator]" ) {
   REQUIRE(norm == Approx(28.4884f));
   VecNorm(solver->getTumor()->c_t_, NORM_2, &norm);
   REQUIRE(norm == Approx(75.8813f));
-  REQUIRE(params->tu_->rho_ == Approx(5.22846f));
-#ifdef CUDA
-  REQUIRE(params->tu_->k_ == Approx(0.00523677f));
-#else
-  REQUIRE(params->tu_->k_ == Approx(0.00523482f));
-#endif
+  rel_error_rho = (params->tu_->rho_ - 5.22846f) / 5.22846f;
+  REQUIRE(rel_error_rho < 1E-3);
+  rel_error_kappa = (params->tu_->k_ - 0.00523482f) / 0.00523482f;
+  REQUIRE(rel_error_kappa < 1E-3);
 #endif
 }
 
