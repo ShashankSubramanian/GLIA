@@ -1,6 +1,11 @@
 # TODOS CLEANUP
 ---
 
+### Solver
+- set param->tu_->*_scale_ scales for FD gradients of RD only and ME inversion
+- initialize a DerivativeOperator object for RDOnlyFD
+- remaining alzh stuff
+
 ### gen/
 - scons clean does not clean cuda files - fix.
 
@@ -20,15 +25,14 @@
 ### pde/
 - create ReactionSolver
 - rename DiffSolver --> DiffusionSolver
-
+- for alzh: advection of material properties in forward solver is not yet implemented
 
 ---
 
 ### grad/
-- split up DerivativeOperator
-- code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if things only change in grad and not gradAndObj
-- FD model for ME and RD
-
+- split up DerivativeOperators into different classes/models
+- code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if
+  things only change in grad and not gradAndObj
 
 ---
 
