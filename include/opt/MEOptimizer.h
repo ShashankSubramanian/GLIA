@@ -9,9 +9,6 @@ class MEOptimizer : public Optimizer {
 public :
   MEOptimizer()
   : Optimizer()
-  , k_scale_(1E-2)
-  , rho_scale_(1)
-  , gamma_scale_(1E4)
   {}
 
   virtual PetscErrorCode initialize(
