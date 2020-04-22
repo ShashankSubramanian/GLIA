@@ -206,6 +206,7 @@ public:
   , smoothing_factor_ (1)                  // Smoothing factor for material properties
   , smoothing_factor_data_ (1)             // Smoothing factor for read in data
   , smoothing_factor_atlas_ (1)            // Smoothing factor for read in atlas
+  , smoothing_factor_patient_ (1)          // Smoothing factor for read in patient healthy tissues
   , use_c0_(false)                         // use c(0) directly, never use phi*p
   , two_time_points_(false)                // enables objective for two time points
   , interpolation_order_ (3)               // interpolation order for SL
@@ -337,6 +338,7 @@ public:
   ScalarType smoothing_factor_data_;
   ScalarType smoothing_factor_;
   ScalarType smoothing_factor_atlas_;
+  ScalarType smoothing_factor_patient_;
   bool use_c0_;
   bool relative_obs_threshold_;
   bool two_time_points_;

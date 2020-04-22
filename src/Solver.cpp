@@ -303,7 +303,6 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Spectr
   // reads or generates data, sets and applies observation operator
   ierr = setupData(); CHKERRQ(ierr);
 
-
   // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
     ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
@@ -392,15 +391,21 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   // set and populate parameters; read material properties; read data
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
+  // hack: for syn cases don't smooth data
+  params_->tu_->smoothing_factor_data_ = 0;
+  params_->tu_->smoothing_factor_patient_ = 0;
   ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
   // enable mass effect inversion in optimizer
   params_->opt_->invert_mass_effect_ = true;
 
-
   // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
+    // set gaussians from p_rec_ read and then apply phi
+    ierr = initializeGaussians(); CHKERRQ(ierr);
+    ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
+    data_->setT0(data_t0_);
     ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
     params_->tu_->use_c0_ = has_dt0_ = true;
   }
@@ -457,7 +462,7 @@ PetscErrorCode InverseMassEffectSolver::run() {
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   x_ptr[0] = params_->tu_->forcing_factor_;
   x_ptr[1] = params_->tu_->rho_;
-  x_ptr[nr] = params_->tu_->k_;
+  x_ptr[2] = params_->tu_->k_;
   ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
   optimizer_->setData(data_); // set data before initial guess
@@ -467,8 +472,8 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
-  // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->velocity_->set(0.);
 
   PetscFunctionReturn(ierr);
@@ -568,17 +573,19 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
     }
   }
   // smooth
-  if (p_gm_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(p_gm_, p_gm_, params_, sigma_smooth); CHKERRQ(ierr);
-  }
-  if (p_wm_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(p_wm_, p_wm_, params_, sigma_smooth); CHKERRQ(ierr);
-  }
-  if (p_vt_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(p_vt_, p_vt_, params_, sigma_smooth); CHKERRQ(ierr);
-  }
-  if (p_csf_ != nullptr) {
-    ierr = spec_ops_->weierstrassSmoother(p_csf_, p_csf_, params_, sigma_smooth); CHKERRQ(ierr);
+  if (params_->tu_->smoothing_factor_patient_ > 0) {
+    if (p_gm_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(p_gm_, p_gm_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
+    if (p_wm_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(p_wm_, p_wm_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
+    if (p_vt_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(p_vt_, p_vt_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
+    if (p_csf_ != nullptr) {
+      ierr = spec_ops_->weierstrassSmoother(p_csf_, p_csf_, params_, sigma_smooth); CHKERRQ(ierr);
+    }
   }
 
   PetscFunctionReturn(ierr);

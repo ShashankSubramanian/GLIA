@@ -63,7 +63,8 @@ def write_config(set_params, run):
     p['kappa_ub'] = 1.0                 # upper bound kappa
     p['rho_lb'] = 0                     # lower bound rho
     p['rho_ub'] = 15                    # upper bound rho
-    p['gamma_ub'] = 15                  # upper bound gamma
+    p['gamma_lb'] = 0                   # lower bound gamma
+    p['gamma_ub'] = 15E4                # upper bound gamma
     p['lbfgs_vectors'] = 10             # number of vectors for lbfgs update
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
@@ -203,6 +204,7 @@ def write_config(set_params, run):
         f.write("kappa_ub=" + str(p['kappa_ub']) + "\n");
         f.write("rho_lb=" + str(p['rho_lb']) + "\n");
         f.write("rho_ub=" + str(p['rho_ub']) + "\n");
+        f.write("gamma_lb=" + str(p['gamma_lb']) + "\n");
         f.write("gamma_ub=" + str(p['gamma_ub']) + "\n");
         f.write("lbfgs_vectors=" + str(p['lbfgs_vectors']) + "\n");
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
@@ -273,6 +275,7 @@ def write_config(set_params, run):
         f.write("a_vt_path=" + str(p['a_vt_path']) + "\n");
         f.write("p_seg_path=" + str(p['p_seg_path']) + "\n");
         f.write("p_wm_path=" + str(p['p_wm_path']) + "\n");
+        f.write("p_gm_path=" + str(p['p_gm_path']) + "\n");
         f.write("p_csf_path=" + str(p['p_csf_path']) + "\n");
         f.write("p_vt_path=" + str(p['p_vt_path']) + "\n");
         f.write("mri_path=" + str(p['mri_path']) + "\n");

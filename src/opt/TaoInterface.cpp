@@ -614,8 +614,6 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     stop[i] = false;
   }
   ctx->params_->optf_->converged_     = false;
-  ctx->cosamp_->converged_l2       = false;
-  ctx->cosamp_->converged_error_l2 = false;
   if (iter >= miniter && iter > 1) {
     if (step < minstep) {
       ss << "step  = " << std::scientific << step << " < " << minstep << " = " << "bound";

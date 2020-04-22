@@ -16,31 +16,25 @@ PetscErrorCode MEOptimizer::initialize(
   std::shared_ptr<Parameters> params,
   std::shared_ptr<Tumor> tumor) {
 
-    PetscErrorCode ierr = 0;
-    PetscFunctionBegin;
-    std::stringstream ss;
-    // number of dofs = {rho, kappa, gamma}
-    n_inv_ = params->get_nr() +  params->get_nk() + 1;
-    ss << " Initializing mass-effect optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " + 1 dofs.";
-    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-    // initialize super class
-    ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
-
-    PetscFunctionReturn(ierr);
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  std::stringstream ss;
+  // number of dofs = {rho, kappa, gamma}
+  n_inv_ = params->get_nr() +  params->get_nk() + 1;
+  ss << " Initializing mass-effect optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " + 1 dofs.";
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+  // initialize super class
+  ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
+  
+  PetscFunctionReturn(ierr);
 }
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode MEOptimizer::allocateTaoObjects() {
   PetscErrorCode ierr = 0;
-  PetscFunctionBegin;
-
+  PetscFunctionBegin; 
   ierr = Optimizer::allocateTaoObjects(); CHKERRQ(ierr);
-  // set initial guess TODO(K): move to solve()
-  ScalarType *ptr;
-  ierr = VecGetArray(xrec_, &ptr); CHKERRQ (ierr);
-  ptr[0] = 1; ptr[1] = 6; ptr[2] = 0.5;
-  ierr = VecRestoreArray(xrec_, &ptr); CHKERRQ (ierr);
   PetscFunctionReturn (ierr);
 }
 
@@ -109,20 +103,20 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
   // === gamma, rho, kappa init guess
   ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-  x_ptr[off_in + 0] = init_ptr[off];                                   // gamma
-  gamma_init_ = x_ptr[off_in + 0] = init_ptr[off];
-  x_ptr[off_in + 1 + 0] = init_ptr[off + 1 + 0];                       // rho
+  x_ptr[off_in + 0] = init_ptr[off] / gamma_scale_;                                   // gamma
+  gamma_init_ = x_ptr[off_in + 0];
+  x_ptr[off_in + 1 + 0] = init_ptr[off + 1 + 0] / rho_scale_;                       // rho
   rho_init_ = x_ptr[off_in + 1 + 0];
-  if (nr > 1) x_ptr[off_in + 1 + 1] = init_ptr[off + 1 + 1];           // r2
-  if (nr > 2) x_ptr[off_in + 1 + 2] = init_ptr[off + 1 + 2];           // r3
-  x_ptr[off_in + 1 + nr + 0] = init_ptr[off + 1 + nr + 0];             // kappa
+  if (nr > 1) x_ptr[off_in + 1 + 1] = init_ptr[off + 1 + 1] / rho_scale_;           // r2
+  if (nr > 2) x_ptr[off_in + 1 + 2] = init_ptr[off + 1 + 2] / rho_scale_;           // r3
+  x_ptr[off_in + 1 + nr + 0] = init_ptr[off + 1 + nr + 0] / k_scale_;             // kappa
   k_init_ = x_ptr[off_in + 1 + nr + 0];
-  if (nk > 1) x_ptr[off_in + 1 + nr + 1] = init_ptr[off + 1 + nr + 1]; // k2
-  if (nk > 2) x_ptr[off_in + 1 + nr + 2] = init_ptr[off + 1 + nr + 2]; // k3
+  if (nk > 1) x_ptr[off_in + 1 + nr + 1] = init_ptr[off + 1 + nr + 1] / k_scale_; // k2
+  if (nk > 2) x_ptr[off_in + 1 + nr + 2] = init_ptr[off + 1 + nr + 2] / k_scale_; // k3
   ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
   ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
 
-  ss << " gamma_init ="<<gamma_init_ << " rho_init="<<rho_init_<<"; k_init="<<k_init_;
+  ss << " gamma_init = " << gamma_init_ << " ;rho_init = " << rho_init_<<" ;k_init = " << k_init_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
@@ -156,15 +150,8 @@ PetscErrorCode MEOptimizer::solve() {
   int np = ctx_->params_->tu_->np_;
   TU_assert(n_inv_ == nr + nk + 1, "MEOptimizer: n_inv is inconsistent.");
 
-  // reset tao, if we want virgin TAO for every inverse solve
-  if (ctx_->params_->opt_->reset_tao_) {
-      ierr = resetTao(); CHKERRQ(ierr);
-  }
-  // set tao options
-  if (tao_reset_) {
-    tuMSGstd(" Setting tao options for TIL optimizer."); CHKERRQ(ierr);
-    ierr = setTaoOptions(); CHKERRQ(ierr);
-  }
+  // switch on rxn inv
+  ctx_->params_->opt_->flag_reaction_inv_ = true;
 
   // === initial guess
   PetscReal *xin_ptr, *xout_ptr, *x_ptr; int in_size;
@@ -181,6 +168,11 @@ PetscErrorCode MEOptimizer::solve() {
   ierr = tuMSGstd ("### ---------------------------- ###"); CHKERRQ (ierr);
   if (procid == 0) { ierr = VecView (xrec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
   ierr = tuMSGstd ("### ---------------------------- ###"); CHKERRQ (ierr);
+  // set tao options
+  if (tao_reset_) {
+    tuMSGstd(" Setting tao options for TIL optimizer."); CHKERRQ(ierr);
+    ierr = setTaoOptions(); CHKERRQ(ierr);
+  }
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
 
   if (ctx_->x_old != nullptr) {
@@ -297,18 +289,18 @@ PetscErrorCode MEOptimizer::setVariableBounds() {
   ierr = VecSet (upper_bound, PETSC_INFINITY); CHKERRQ(ierr);
   // upper bound
   ierr = VecGetArray(upper_bound, &ptr);CHKERRQ (ierr);
-  ptr[0] = ctx_->params_->opt_->gamma_ub_;
-  ptr[1] = ctx_->params_->opt_->rho_ub_;
-  ptr[2] = ctx_->params_->opt_->k_ub_;
+  ptr[0] = ctx_->params_->opt_->gamma_ub_ / gamma_scale_;
+  ptr[1] = ctx_->params_->opt_->rho_ub_ / rho_scale_;
+  ptr[2] = ctx_->params_->opt_->k_ub_ / k_scale_;
   ctx_->params_->opt_->bounds_array_[0] = ptr[0];
   ctx_->params_->opt_->bounds_array_[1] = ptr[1];
   ctx_->params_->opt_->bounds_array_[2] = ptr[2];
   ierr = VecRestoreArray(upper_bound, &ptr); CHKERRQ (ierr);
   // lower bound
   ierr = VecGetArray(lower_bound, &ptr);CHKERRQ (ierr);
-  ptr[0] = ctx_->params_->opt_->gamma_lb_;
-  ptr[1] = ctx_->params_->opt_->rho_lb_;
-  ptr[2] = ctx_->params_->opt_->k_lb_;
+  ptr[0] = ctx_->params_->opt_->gamma_lb_ / gamma_scale_;
+  ptr[1] = ctx_->params_->opt_->rho_lb_ / rho_scale_;
+  ptr[2] = ctx_->params_->opt_->k_lb_ / k_scale_;
   ierr = VecRestoreArray(lower_bound, &ptr); CHKERRQ (ierr);
   // set
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound); CHKERRQ (ierr);

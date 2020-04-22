@@ -1,12 +1,11 @@
 #ifndef ME_OPTIMIZER_H_
 #define ME_OPTIMIZER_H_
 
-
 #include "Optimizer.h"
 #include "Parameters.h"
 
 class MEOptimizer : public Optimizer {
-public :
+ public :
   MEOptimizer()
   : Optimizer()
   , k_scale_(1E-2)
@@ -20,10 +19,8 @@ public :
             std::shared_ptr <Parameters> params,
             std::shared_ptr <Tumor> tumor);
 
-  // TODO: is the initialization of xrec_ in allocateTaoObjects necessary?
-  //       will be overwritten by setInitialGuess
+
   virtual PetscErrorCode allocateTaoObjects();
-  // TODO: revisit if necessary after cleanuop of TaoInterface
   virtual PetscErrorCode setTaoOptions();
 
   virtual PetscErrorCode solve();
@@ -32,9 +29,7 @@ public :
   virtual PetscErrorCode setVariableBounds();
   virtual ~MEOptimizer() {};
 
-  // virtual PetscErrorCode resetOperators(Vec p);
-
-private:
+ private:
   ScalarType k_init_;
   ScalarType rho_init_;
   ScalarType gamma_init_;
