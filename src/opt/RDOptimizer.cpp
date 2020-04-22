@@ -27,6 +27,10 @@ PetscErrorCode RDOptimizer::initialize(
     // initialize super class
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
     PetscFunctionReturn(ierr);
+
+    // set scales for inversion variables
+    // params_->opt_->k_scale_ = (params_->opt_->k_scale_ != 1) ? params_->opt_->k_scale_ : 1E-1;
+    // params_->opt_->rho_scale_ = 1;
 }
 
 // ### ______________________________________________________________________ ___
@@ -105,7 +109,7 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   k_init_ = x_ptr[off_in + 0];
   if (nk > 1) x_ptr[off_in + 1] = init_ptr[off + 1];           // k2
   if (nk > 2) x_ptr[off_in + 2] = init_ptr[off + 2];           // k3
-  x_ptr[off_in + nk] = init_ptr[off + nk];                     // rho 
+  x_ptr[off_in + nk] = init_ptr[off + nk];                     // rho
   rho_init_ = x_ptr[off_in + nk];
   if (nr > 1) x_ptr[off_in + nk + 1] = init_ptr[off + nk + 1]; // r2
   if (nr > 2) x_ptr[off_in + nk + 2] = init_ptr[off + nk + 2]; // r3
@@ -176,10 +180,6 @@ PetscErrorCode RDOptimizer::solve() {
   // enables derivative operators to compute the gradient w.r.t rho
   ctx_->params_->opt_->flag_reaction_inv_ = true;
 
-  // store full solution vec TODO(K) do we need this?
-  // ierr = VecDuplicate(xin_, &ctx_->x_old); CHKERRQ(ierr);
-  // ierr = VecCopy(xin_, ctx_->x_old); CHKERRQ(ierr);
-
   // === reset tao, (if we want virgin tao for every inverse solve)
   if (ctx_->params_->opt_->reset_tao_) {
       ierr = resetTao(); CHKERRQ(ierr);
@@ -206,7 +206,6 @@ PetscErrorCode RDOptimizer::solve() {
   ierr = tuMSGstd("### ---------------------------- ###"); CHKERRQ(ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
 
-  // TODO(K): I've changed this to have length of xrec_ (nk+nr), so cannot be used to store full solution;
   if (ctx_->x_old != nullptr) {
     ierr = VecDestroy (&ctx_->x_old); CHKERRQ(ierr);
     ctx_->x_old = nullptr;
@@ -278,12 +277,12 @@ PetscErrorCode RDOptimizer::solve() {
   ctx_->params_->tu_->rho_ = x_ptr[nk];
   ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
   PetscReal r1, r2, r3, k1, k2, k3;
-  r1 = ctx_->params_->tu_->rho_;
-  r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_  : 0;
-  r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ : 0;
-  k1 = ctx_->params_->tu_->k_;
-  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  : 0;
-  k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ : 0;
+  r1 = ctx_->params_->tu_->rho_ * params_->opt_->rho_scale_;
+  r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_ * params_->opt_->rho_scale_  : 0;
+  r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ * params_->opt_->rho_scale_ : 0;
+  k1 = ctx_->params_->tu_->k_ * params_->opt_->k_scale_;
+  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  * params_->opt_->k_scale_: 0;
+  k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ * params_->opt_->k_scale_: 0;
   ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
   ierr = ctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
 

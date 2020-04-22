@@ -58,7 +58,10 @@ public:
     gamma_lb_(0),
     gamma_ub_(15),
     rho_lb_(1),
-    rho_ub_(15)
+    rho_ub_(15),
+    k_scale_(1),
+    rho_scale_(1),
+    gamma_scale_(1)
   {}
   ScalarType beta_;
   ScalarType regularization_norm_;
@@ -101,6 +104,9 @@ public:
   ScalarType gamma_ub_;         /// @brief upper bound on gamma
   ScalarType rho_lb_;           /// @brief lower bound on rho
   ScalarType rho_ub_;           /// @brief upper bound on rho
+  ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
+  ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
+  ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
   std::array<ScalarType, 3> bounds_array_;
 };
 
