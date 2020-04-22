@@ -3,6 +3,9 @@
 
 #include "PdeOperators.h"
 
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========          Derivative Operators Base Class          ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 class DerivativeOperators {
  public:
   DerivativeOperators(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : pde_operators_(pde_operators), params_(params), tumor_(tumor) {
@@ -49,6 +52,10 @@ class DerivativeOperators {
   }
 };
 
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========  Deriv. Ops.: Adjoints {rho,kappa,p} for RD Model ======== #### */
+/* #### ------------------------------------------------------------------- #### */
 class DerivativeOperatorsRD : public DerivativeOperators {
  public:
   DerivativeOperatorsRD(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : DerivativeOperators(pde_operators, params, tumor) {
@@ -66,6 +73,27 @@ class DerivativeOperatorsRD : public DerivativeOperators {
   // Vec work_np_;  // vector of size np to compute objective and part of gradient related to p
 };
 
+/* #### --------------------------------------------------------------------- #### */
+/* #### ========  Deriv. Ops.: Finite Diff. {rho,kappa} for RD Model ======== #### */
+/* #### --------------------------------------------------------------------- #### */
+class DerivativeOperatorsRDOnlyFD : public DerivativeOperators {
+	public :
+		DerivativeOperatorsRDOnlyFD (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
+				std::shared_ptr<Tumor> tumor)
+			 : DerivativeOperators (pde_operators, n_misc, tumor) {
+			 }
+
+		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, std::shared_ptr<Data> data);
+		PetscErrorCode evaluateGradient (Vec dJ, Vec x, std::shared_ptr<Data> data);
+		PetscErrorCode evaluateObjectiveAndGradient (PetscReal *J,Vec dJ, Vec x, std::shared_ptr<Data> data);
+		PetscErrorCode evaluateHessian (Vec y, Vec x);
+		~DerivativeOperatorsRDOnlyFD () {}
+};
+
+
+/* #### --------------------------------------------------------------------------- #### */
+/* #### ========  Deriv. Ops.: Adjoints {rho,kappa,p} for RD Model with KL ======== #### */
+/* #### --------------------------------------------------------------------------- #### */
 class DerivativeOperatorsKL : public DerivativeOperators {
  public:
   DerivativeOperatorsKL(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : DerivativeOperators(pde_operators, params, tumor) {
@@ -84,6 +112,9 @@ class DerivativeOperatorsKL : public DerivativeOperators {
 };
 
 
+/* #### --------------------------------------------------------------------------- #### */
+/* #### ========  Deriv. Ops.: Finite Diff. {gamma,rho,kappa} for ME Model ======== #### */
+/* #### --------------------------------------------------------------------------- #### */
 class DerivativeOperatorsMassEffect : public DerivativeOperators {
  public:
   DerivativeOperatorsMassEffect(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : DerivativeOperators(pde_operators, params, tumor) {
@@ -119,6 +150,10 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
   Vec gm_, wm_, vt_, csf_;
 };
 
+
+/* #### ------------------------------------------------------------------------------ #### */
+/* #### ========  Deriv. Ops.:  Adjoints {p,kappa} for RD Model and Full Obj. ======== #### */
+/* #### ------------------------------------------------------------------------------ #### */
 class DerivativeOperatorsRDObj : public DerivativeOperators {
  public:
   DerivativeOperatorsRDObj(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : DerivativeOperators(pde_operators, params, tumor) {

@@ -43,6 +43,10 @@ PdeOperatorsRD::PdeOperatorsRD(std::shared_ptr<Tumor> tumor, std::shared_ptr<Par
   ScalarType dt = params_->tu_->dt_;
   int nt = params_->tu_->nt_;
 
+  if(params->tu_->adv_velocity_set_) {
+    adv_solver_ = std::make_shared<SemiLagrangianSolver> (params, tumor, spec_ops);
+  }
+
   if (!params->tu_->time_history_off_ && params_->tu_->model_ < 4) {
     c_.resize(nt + 1);  // Time history of tumor
     p_.resize(nt + 1);  // Time history of adjoints
@@ -77,6 +81,8 @@ PdeOperatorsRD::PdeOperatorsRD(std::shared_ptr<Tumor> tumor, std::shared_ptr<Par
 PetscErrorCode PdeOperatorsRD::resizeTimeHistory(std::shared_ptr<Parameters> params) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
+
+  if(params->tu_->time_history_off_) {ierr = tuMSGwarn(" Cannot resize time history: switched off."); CHKERRQ(ierr); PetscFunctionReturn(0);}
 
   ScalarType dt = params_->tu_->dt_;
   int nt = params->tu_->nt_;
@@ -119,6 +125,42 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory(std::shared_ptr<Parameters> par
 
   PetscFunctionReturn(ierr);
 }
+
+PetscErrorCode PdeOperatorsRD::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  ScalarType dt = params_->tu_->dt_;
+  int nt = adv_time/dt;
+  std::stringstream ss;
+  ss << " Advecting using nt="<<nt<<" time steps"; tuMSGstd(ss.str());
+
+  for (int i = 0; i < nt; i++) {
+    // advection of healthy tissue
+    if (params->tu_->adv_velocity_set_) {
+      //adv_solver_->advection_mode_ = 1;  //  mass conservation
+      adv_solver_->advection_mode_ = 2;  // pure advection
+      ierr = adv_solver_->solve (gm, tumor_->velocity_, dt); CHKERRQ(ierr);
+      ierr = adv_solver_->solve (wm, tumor_->velocity_, dt); CHKERRQ(ierr);
+      ierr = adv_solver_->solve (csf, tumor_->velocity_, dt); CHKERRQ(ierr);
+      if(mri != nullptr) {
+        ierr = adv_solver_->solve (mri, tumor_->velocity_, dt); CHKERRQ(ierr);
+      }
+    }
+  }
+  // ierr = dataOut (wm, params_, "wm_atlas_adv.nc"); CHKERRQ(ierr);
+  // ierr = dataOut (gm, params_, "gm_atlas_adv.nc"); CHKERRQ(ierr);
+  // ierr = dataOut (csf, params_, "csf_atlas_adv.nc"); CHKERRQ(ierr);
+  // if(mri != nullptr) {
+      // ierr = dataOut (mri, params_, "mri_atlas_adv.nc"); CHKERRQ(ierr);
+  // }
+  PetscFunctionReturn (ierr);
+}
+
 
 PetscErrorCode PdeOperatorsRD::reaction(int linearized, int iter) {
   PetscFunctionBegin;
@@ -1405,4 +1447,3 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   e.stop();
   PetscFunctionReturn(ierr);
 }
-

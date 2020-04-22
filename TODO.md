@@ -25,7 +25,8 @@
 ---
 
 ### grad/
-- split up DerivativeOperators
+- split up DerivativeOperator
+- code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if things only change in grad and not gradAndObj
 - FD model for ME and RD
 
 

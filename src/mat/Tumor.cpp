@@ -32,11 +32,13 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   ierr = VecDuplicate(c_t_, &seg_);
   ierr = VecSet(seg_, 0);
 
-  if (params->tu_->model_ == 4 || params_->tu_->model_ == 5) {  // mass effect model -- allocate space for more variables
+  if(params_->tu_->adv_velocity_set_ || n_misc->model_ == 4 || n_misc_->model_ == 5) {
     velocity_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
+    work_field_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
+  }
+  if (params->tu_->model_ == 4 || params_->tu_->model_ == 5) {  // mass effect model -- allocate space for more variables
     force_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
     displacement_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
-    work_field_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
   }
 
   if (params_->tu_->model_ == 5) {
