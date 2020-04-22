@@ -78,9 +78,9 @@ class DerivativeOperatorsRD : public DerivativeOperators {
 /* #### --------------------------------------------------------------------- #### */
 class DerivativeOperatorsRDOnlyFD : public DerivativeOperators {
 	public :
-		DerivativeOperatorsRDOnlyFD (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <NMisc> n_misc,
+		DerivativeOperatorsRDOnlyFD (std::shared_ptr <PdeOperators> pde_operators, std::shared_ptr <Parameters> params,
 				std::shared_ptr<Tumor> tumor)
-			 : DerivativeOperators (pde_operators, n_misc, tumor) {
+			 : DerivativeOperators (pde_operators, params, tumor) {
 			 }
 
 		PetscErrorCode evaluateObjective (PetscReal *J, Vec x, std::shared_ptr<Data> data);

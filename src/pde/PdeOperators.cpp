@@ -141,7 +141,7 @@ PetscErrorCode PdeOperatorsRD::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mr
 
   for (int i = 0; i < nt; i++) {
     // advection of healthy tissue
-    if (params->tu_->adv_velocity_set_) {
+    if (params_->tu_->adv_velocity_set_) {
       //adv_solver_->advection_mode_ = 1;  //  mass conservation
       adv_solver_->advection_mode_ = 2;  // pure advection
       ierr = adv_solver_->solve (gm, tumor_->velocity_, dt); CHKERRQ(ierr);

@@ -49,7 +49,6 @@ public:
     rescale_init_cond_(false),
     estimate_rho_init_guess_(false),
     multilevel_(false),
-    adv_velocity_set_(false),
     cross_entropy_loss_(false),
     invert_mass_effect_(false),
     prune_components_(true),
@@ -94,7 +93,6 @@ public:
   bool rescale_init_cond_;      /// @brief if true, TIL is rescaled to 1
   bool estimate_rho_init_guess_;/// @brief if true a rough estimate of rho is computed based on given TIL
   bool multilevel_;             /// @brief if true, INT_Omega phi(x) dx = const across levels
-  bool adv_velocity_set_;       /// @brief if true, velocity for explicit advection of material properties is provided
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
   bool invert_mass_effect_;     /// @brief if true invert for mass-effect parameters {rho,k,gamma}
   bool prune_components_;       /// @brief prunes L2 solution based on components
@@ -213,6 +211,7 @@ public:
   , smoothing_factor_data_ (1)             // Smoothing factor for read in data
   , smoothing_factor_atlas_ (1)            // Smoothing factor for read in atlas
   , use_c0_(false)                         // use c(0) directly, never use phi*p
+  , adv_velocity_set_(false)
   , two_time_points_(false)                // enables objective for two time points
   , interpolation_order_ (3)               // interpolation order for SL
   , order_ (2)                             // Order of accuracy for PDE solves
@@ -328,14 +327,12 @@ public:
   int bounding_box_;
   int max_p_location_;
   ScalarType p_scale_;
-  // ScalarType p_scale_true_; // TODO(K) this should not be here
   ScalarType phi_sigma_;       // TODO(K) can we merge these two? <-- get rid of it
   ScalarType phi_sigma_data_driven_;
   ScalarType phi_spacing_factor_;
   ScalarType data_threshold_;
   ScalarType gaussian_vol_frac_;
   std::array<ScalarType, 3> user_cm_;
-  // std::vector<ScalarType> user_cms_;   // TODO(K) not sure why we need this <-- remove it
 
   // data
   ScalarType obs_threshold_0_;
@@ -344,6 +341,7 @@ public:
   ScalarType smoothing_factor_;
   ScalarType smoothing_factor_atlas_;
   bool use_c0_;
+  bool adv_velocity_set_;       /// @brief if true, velocity for explicit advection of material properties is provided
   bool relative_obs_threshold_;
   bool two_time_points_;
 

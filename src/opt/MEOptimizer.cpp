@@ -27,9 +27,9 @@ PetscErrorCode MEOptimizer::initialize(
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
 
     // set scales for inversion variables
-    params_->opt_->k_scale_ = (params_->opt_->k_scale_ != 1) ? params_->opt_->k_scale_ : 1E-2;
-    params_->opt_->rho_scale_ = 1;
-    params_->opt_->gamma_scale_ = (params_->opt_->gamma_scale_ != 1) ? params_->opt_->gamma_scale_ : 1E4;
+    params->opt_->k_scale_ = (params->opt_->k_scale_ != 1) ? params->opt_->k_scale_ : 1E-2;
+    params->opt_->rho_scale_ = 1;
+    params->opt_->gamma_scale_ = (params->opt_->gamma_scale_ != 1) ? params->opt_->gamma_scale_ : 1E4;
 
     PetscFunctionReturn(ierr);
 }
@@ -254,9 +254,9 @@ PetscErrorCode MEOptimizer::solve() {
 
   // === update diffusivity and reaction in coefficients
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
-  ctx_->params_->tu_->forcing_factor_ = params_->opt_->gamma_scale_ * x_ptr[0]; // gamma   re-scaling parameter scales
-  ctx_->params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[1];              // rho
-  ctx_->params_->tu_->k_ = kparams_->opt_->_scale_ * x_ptr[1 + nr];             // kappa   re-scaling parameter scales
+  ctx_->params_->tu_->forcing_factor_ = ctx_->params_->opt_->gamma_scale_ * x_ptr[0]; // gamma   re-scaling parameter scales
+  ctx_->params_->tu_->rho_ = ctx_->params_->opt_->rho_scale_ * x_ptr[1];              // rho
+  ctx_->params_->tu_->k_ = ctx_->params_->opt_->k_scale_ * x_ptr[1 + nr];             // kappa   re-scaling parameter scales
   ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
   PetscReal r1, r2, r3, k1, k2, k3;
   r1 = ctx_->params_->tu_->rho_;

@@ -650,7 +650,7 @@ PetscErrorCode SolverInterface::readVelocity() {
     std::stringstream ss;
     ss << " Given velocity read in: norm of velocity magnitude: " << vnorm;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str("");ss.clear();
-    params_->opt_->adv_velocity_set_ = true;
+    params_->tu_->adv_velocity_set_ = true;
     ierr = VecDestroy(&mag); CHKERRQ(ierr);
   }
   PetscFunctionReturn(ierr);

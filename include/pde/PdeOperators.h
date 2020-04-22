@@ -38,7 +38,7 @@ class PdeOperators {
   virtual PetscErrorCode reset(std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor = {}) = 0;
   virtual PetscErrorCode getModelSpecificVector(Vec *x) { PetscFunctionReturn(0); }
 
-  virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time);
+  virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {PetscFunctionReturn(0);};
 
   virtual ~PdeOperators() {}
 
@@ -67,6 +67,7 @@ class PdeOperatorsRD : public PdeOperators {
    *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
    */
   virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4);
+  virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time);
   virtual ~PdeOperatorsRD();
 
   // for explicit advection of material properties; only allocated if used

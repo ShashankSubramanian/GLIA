@@ -408,9 +408,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
     ctx->params_->optf_->j0_ = J;
     //ctx->gradnorm0 = gnorm;
     ctx->update_reference_gradient = false;
-    s <<" .. updating reference gradient; new norm(g0) = " << itctx->params_->optf_->gradnorm0_
+    ss <<" .. updating reference gradient; new norm(g0) = " << ctx->params_->optf_->gradnorm0_
       << " and reference objective: "  << ctx->params_->optf_->j0_;
-    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     if (dJ != nullptr) {ierr = VecDestroy(&dJ); CHKERRQ(ierr); dJ = nullptr;}
     if (p0 != nullptr) {ierr = VecDestroy(&p0); CHKERRQ(ierr); p0 = nullptr;}
   }
@@ -567,7 +567,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     ctx->params_->optf_->gradnorm0_ = gnorm;
     ctx->params_->optf_->j0_ = jx;
     ctx->update_reference_gradient = false;
-    ss <<" .. updating reference gradient; new norm(g0) = " << itctx->params_->optf_->gradnorm0_
+    ss <<" .. updating reference gradient; new norm(g0) = " << ctx->params_->optf_->gradnorm0_
       << " and reference objective: "  << ctx->params_->optf_->j0_;
     ierr = tuMSGstd(ss.str());  CHKERRQ(ierr);
   }

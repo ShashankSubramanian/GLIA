@@ -286,7 +286,6 @@ PetscErrorCode DerivativeOperatorsRD::evaluateObjective(PetscReal *J, Vec x, std
 
 
   /*Regularization term*/
-  PetscReal reg = 0;
   if (params_->opt_->regularization_norm_ == L2) {  // In tumor space, so scale norm by lebesque measure
     ierr = VecDot(tumor_->c_0_, tumor_->c_0_, &reg); CHKERRQ(ierr);
     reg *= 0.5 * params_->opt_->beta_;
