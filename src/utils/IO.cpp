@@ -99,7 +99,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "kappa_ub") {p->opt_->k_ub_ = std::stod(value); return;}
   if (name == "rho_lb") {p->opt_->rho_lb_ = std::stod(value); return;}
   if (name == "rho_ub") {p->opt_->rho_ub_ = std::stod(value); return;}
-  if (name == "gamma_ub_") {p->opt_->gamma_ub_ = std::stod(value); return;}
+  if (name == "gamma_lb") {p->opt_->gamma_lb_ = std::stod(value); return;}
+  if (name == "gamma_ub") {p->opt_->gamma_ub_ = std::stod(value); return;}
   if (name == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value); return;}
   if (name == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type_ = value; return;}
   if (name == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist_ = std::stoi(value); return;}

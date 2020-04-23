@@ -609,7 +609,7 @@ PetscErrorCode SolverInterface::readData() {
     if (data_t0_ != nullptr) {
       if (params_->tu_->smoothing_factor_data_ > 0) {
         ierr = spec_ops_->weierstrassSmoother(data_t0_, data_t0_, params_, sig_data); CHKERRQ(ierr);
-        ss << " smoothing c(1) with factor: " << params_->tu_->smoothing_factor_data_ << ", and sigma: " << sig_data;
+        ss << " smoothing c(0) with factor: " << params_->tu_->smoothing_factor_data_ << ", and sigma: " << sig_data;
         ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
         ss.str("");
         ss.clear();
@@ -618,6 +618,7 @@ PetscErrorCode SolverInterface::readData() {
     ierr = VecMax(data_t0_, NULL, &max); CHKERRQ(ierr);
     ierr = VecScale(data_t0_, (1.0 / max)); CHKERRQ(ierr);
     ierr = dataOut(data_t0_, params_, "c0True.nc"); CHKERRQ(ierr);
+    params_->tu_->use_c0_ = true; // optimizers will use c0 data
 
     // make obs threshold relaltive
     if (params_->tu_->relative_obs_threshold_) {
