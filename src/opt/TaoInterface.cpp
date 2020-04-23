@@ -333,7 +333,9 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     g = x_ptr[0];
     r = x_ptr[1];
     k = x_ptr[1 + itctx->params_->tu_->nr_];
-    s << "  Scalar parameters: (rho, kappa, gamma) = (" << r << ", " <<  k << ", " << g << ")";
+    s << "  Scalar parameters: (rho, kappa, gamma) = (" << std::scientific << std::setprecision(8) << r << ", "  
+                                                        << std::scientific << std::setprecision(8) << k << ", " 
+                                                        << std::scientific << std::setprecision(8) << g << ")";
   } else {
     r = (itctx->params_->opt_->flag_reaction_inv_ == true) ? x_ptr[itctx->params_->get_nk()] : itctx->params_->tu_->rho_;
     k = (itctx->params_->opt_->diffusivity_inversion_ == true) ? x_ptr[itctx->params_->tu_->np_] : itctx->params_->tu_->k_;
