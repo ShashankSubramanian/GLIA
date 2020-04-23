@@ -30,8 +30,8 @@
 ---
 
 ### grad/
-- split up DerivativeOperators into different classes/models
-- code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if
+- [done] split up DerivativeOperators into different classes/models: (S) vanilla split up, I think this is fine for now.
+- [FD reminaing] code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if
   things only change in grad and not gradAndObj
 
 ---

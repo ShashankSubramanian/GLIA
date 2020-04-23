@@ -317,9 +317,9 @@ PetscErrorCode Phi::apply(Vec out, Vec p) {
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime();
 
-  ScalarType *pg_ptr;
+  const ScalarType *pg_ptr;
   ierr = VecSet(out, 0.); CHKERRQ(ierr);
-  ierr = VecGetArray(p, &pg_ptr); CHKERRQ(ierr);
+  ierr = VecGetArrayRead(p, &pg_ptr); CHKERRQ(ierr);
 
   if (!compute_) {
     for (int i = 0; i < np_; i++) {
@@ -367,7 +367,7 @@ PetscErrorCode Phi::apply(Vec out, Vec p) {
     if (!p_has_nnz) phi_max = 1;
     ierr = VecScale(out, (1.0 / phi_max)); CHKERRQ(ierr);
   }
-  ierr = VecRestoreArray(p, &pg_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(p, &pg_ptr); CHKERRQ(ierr);
 
   self_exec_time += MPI_Wtime();
   accumulateTimers(t, t, self_exec_time);
