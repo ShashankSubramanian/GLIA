@@ -209,6 +209,7 @@ public:
   , relative_obs_threshold_(false)         // if true, observation threshold is relative to max concentration
   , smoothing_factor_ (1)                  // Smoothing factor for material properties
   , smoothing_factor_data_ (1)             // Smoothing factor for read in data
+  , smoothing_factor_data_t0_ (1)             // Smoothing factor for read in data
   , smoothing_factor_atlas_ (1)            // Smoothing factor for read in atlas
   , smoothing_factor_patient_ (1)          // Smoothing factor for read in patient healthy tissues
   , use_c0_(false)                         // use c(0) directly, never use phi*p
@@ -339,6 +340,7 @@ public:
   ScalarType obs_threshold_0_;
   ScalarType obs_threshold_1_;
   ScalarType smoothing_factor_data_;
+  ScalarType smoothing_factor_data_t0_;
   ScalarType smoothing_factor_;
   ScalarType smoothing_factor_atlas_;
   ScalarType smoothing_factor_patient_;

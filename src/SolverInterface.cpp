@@ -441,7 +441,7 @@ PetscErrorCode SolverInterface::setupData() {
     ss.clear();
   } else {
     ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
-    if (has_dt0_) {
+    if (has_dt0_ && params_->tu_->two_time_points_) {
       ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
     }
     ss << " Setting default observation mask based on input data (d1) and threshold " << tumor_->obs_->threshold_1_;
@@ -456,7 +456,7 @@ PetscErrorCode SolverInterface::setupData() {
   // === apply observation operator to data
   ierr = tumor_->obs_->apply(data_->dt1(), data_->dt1()), 1; CHKERRQ(ierr);
   ierr = tumor_->obs_->apply(data_support_, data_support_, 1); CHKERRQ(ierr);
-  if (has_dt0_) {
+  if (has_dt0_ && params_->tu_->two_time_points_) {
     ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
   }
   PetscFunctionReturn(ierr);
@@ -538,6 +538,7 @@ PetscErrorCode SolverInterface::readData() {
   std::stringstream ss;
   // ScalarType sigma_smooth = params_->smoothing_factor_ * 2 * M_PI / params_->grid_->n_[0];
   ScalarType sig_data = params_->tu_->smoothing_factor_data_ * 2 * M_PI / params_->grid_->n_[0];
+  ScalarType sig_data_t0 = params_->tu_->smoothing_factor_data_t0_ * 2 * M_PI / params_->grid_->n_[0];
   ScalarType min, max;
 
   if (!app_settings_->path_->data_t1_.empty()) {
@@ -607,9 +608,9 @@ PetscErrorCode SolverInterface::readData() {
     }
     // smooth a little bit because sometimes registration outputs have high gradients
     if (data_t0_ != nullptr) {
-      if (params_->tu_->smoothing_factor_data_ > 0) {
-        ierr = spec_ops_->weierstrassSmoother(data_t0_, data_t0_, params_, sig_data); CHKERRQ(ierr);
-        ss << " smoothing c(0) with factor: " << params_->tu_->smoothing_factor_data_ << ", and sigma: " << sig_data;
+      if (params_->tu_->smoothing_factor_data_t0_ > 0) {
+        ierr = spec_ops_->weierstrassSmoother(data_t0_, data_t0_, params_, sig_data_t0); CHKERRQ(ierr);
+        ss << " smoothing c(0) with factor: " << params_->tu_->smoothing_factor_data_t0_ << ", and sigma: " << sig_data_t0;
         ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
         ss.str("");
         ss.clear();
