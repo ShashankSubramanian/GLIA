@@ -185,26 +185,6 @@ PetscErrorCode DerivativeOperators::reset(Vec p, std::shared_ptr<PdeOperators> p
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DerivativeOperatorsMassEffect::reset(Vec p, std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
-
-  // delete and re-create p vectors
-  if (ptemp_ != nullptr) {
-    ierr = VecDestroy(&ptemp_); CHKERRQ(ierr);
-    ptemp_ = nullptr;
-  }
-  ierr = VecDuplicate(delta_, &ptemp_); CHKERRQ(ierr);
-  if (temp_ != nullptr) {
-    ierr = VecSet(temp_, 0.0); CHKERRQ(ierr);
-  }
-
-  pde_operators_ = pde_operators;
-  tumor_ = tumor;
-  params_ = params;
-  PetscFunctionReturn(ierr);
-}
-
 /* model helpers */
 PetscErrorCode DerivativeOperators::gradDiffusion(Vec dJ) {
   PetscFunctionBegin;

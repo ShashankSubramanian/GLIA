@@ -23,7 +23,6 @@
 ---
 
 ### pde/
-- create ReactionSolver
 - rename DiffSolver --> DiffusionSolver
 - for alzh: advection of material properties in forward solver is not yet implemented
 
@@ -88,7 +87,6 @@
 
 ### inverse/Solver
  - add l1 p relative error
- - Maybe bg can be dropped if lame-coefficients are initialized with its value:  modify _ElastictiySolver.cpp_
 ---
 
 ### IO
@@ -97,26 +95,14 @@
 
 ### PdeOperators
 - implement preAdvection
-- (S) move reaction solve to a new file ReactionSolver? I think this is more consistent even though it's an analytic solve and doesn't really need a new class, K: New class is fine. I'd say new file ReacSolver.h/cpp, then a new folder pde_solvers, and
-  put all forward solvers there.
- 
+
 --- 
 ### DiffSolver, ElasticitySolver, AdvectionSolver
 - (S) Rename DiffSolver to DiffusionSolver for consistency. ok
-- move all pde solvers to new folder pde/
 
 
 --- 
 ### DiffCoef, ReacCoef
 - Remove glm ratios? tumor never grows or diffuses here K: yes let's remove
 - can we remove the functions DiffCoef::compute_dKdm_gradc_gradp and ReacCoef::applydRdm? What are they needed for? K: needed for sibia moving atlas, we need to discuss what to do about this.
-
---- 
-### DerivativeOperators
-- generic FD derivative operators
-- split up
-
----
-### Utils
-- GeometricCoupling() etc are opt related. Move to obj deriv ops source
 
