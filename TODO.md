@@ -29,12 +29,6 @@
 
 ---
 
-### grad/
-- [FD reminaing] code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if
-  things only change in grad and not gradAndObj
-
----
-
 ### test/
 - implement integration test for ME inversion: compare rho, kappa, gamma
 - implement integration test for RD inversion: compare rho, kappa
