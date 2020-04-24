@@ -8,7 +8,6 @@
 #include "IO.h"
 #include "Utils.h"
 #include "Solver.h"
-#include "TestSuite.h"
 #include "Parameters.h"
 #include "SpectralOperators.h"
 #include "SolverInterface.h"

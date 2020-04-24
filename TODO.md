@@ -8,6 +8,7 @@
 
 ### gen/
 - scons clean does not clean cuda files - fix.
+- create a build-libs script to build all dependencies like CLAIRE
 
 ### opt/
 - inconcsisten use of params->tu->nk and params->get_nk(), I think almost everywhere params->get_nk() should be used.
@@ -23,8 +24,8 @@
 ---
 
 ### pde/
-- rename DiffSolver --> DiffusionSolver
 - for alzh: advection of material properties in forward solver is not yet implemented
+- implement preAdvection. 
 
 ---
 
@@ -35,9 +36,9 @@
 
 ---
 
-### mat/
+### mat/ 
 - rename ReacCoeff --> ReactionCoefficient 
-- rename DiffCoeff --> DiffusionCoefficient
+- rename DiffCoeff --> DiffusionCoefficient (S: Not important; anyways things like Obs, MatProp are also shortened. remove if agree)
 
 
 ---
@@ -52,8 +53,6 @@
 - implement unit test gradient evaluation (all models)
 - implement unit test hessian evaluation
 - implement unit test adjoint solve
-
-- delete TestSuite
 
 
 ---
@@ -83,14 +82,6 @@
 ### inverse/Solver
  - add l1 p relative error
 ---
-
-
-### PdeOperators
-- implement preAdvection
-
---- 
-### DiffSolver, ElasticitySolver, AdvectionSolver
-- (S) Rename DiffSolver to DiffusionSolver for consistency. ok
 
 
 --- 
