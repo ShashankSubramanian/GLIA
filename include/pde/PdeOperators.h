@@ -3,21 +3,21 @@
 
 #include "SpectralOperators.h"
 #include "AdvectionSolver.h"
-#include "DiffSolver.h"
+#include "DiffusionSolver.h"
 #include "ElasticitySolver.h"
 #include "Tumor.h"
 
 class PdeOperators {
  public:
   PdeOperators(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) : tumor_(tumor), params_(params), spec_ops_(spec_ops) {
-    diff_solver_ = std::make_shared<DiffSolver>(params, spec_ops, tumor->k_);
+    diff_solver_ = std::make_shared<DiffusionSolver>(params, spec_ops, tumor->k_);
     nt_ = params->tu_->nt_;
     diff_ksp_itr_state_ = 0;
     diff_ksp_itr_adj_ = 0;
   }
 
   std::shared_ptr<Tumor> tumor_;
-  std::shared_ptr<DiffSolver> diff_solver_;
+  std::shared_ptr<DiffusionSolver> diff_solver_;
   std::shared_ptr<Parameters> params_;
   std::shared_ptr<SpectralOperators> spec_ops_;
 

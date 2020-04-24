@@ -97,7 +97,7 @@ TEST_CASE( "Running diffusion solver", "[pdesolver]" ) {
   // set sinusoidal diffusion coefficient
   k->setValuesSinusoidal(params, 1E-2);
   // create a diffusion solver
-  std::shared_ptr<DiffSolver> diff_solver = std::make_shared<DiffSolver>(params, spec_ops, k);
+  std::shared_ptr<DiffusionSolver> diff_solver = std::make_shared<DiffusionSolver>(params, spec_ops, k);
   // create a valid function
   Vec c;
   VecDuplicate(work[0], &c);

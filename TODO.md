@@ -73,11 +73,6 @@
 - organize other helper scripts.
 
 
----
-
-
-### All files
- - (S) Format to tab-width 2, CHKERRQ(ierr) to one space after ";" and general \(\) formating
 
 ### External functionality:
  - we need to discuss how to handle this. SIBIA is not compatible with current code anyways. I think, if used, sibia has to be restructured, and fittet to new tumor code. That said, some of the legacy functinality should be dropped (which is clearly
@@ -89,9 +84,6 @@
  - add l1 p relative error
 ---
 
-### IO
-- change dataOut to take params_ as argument and std::string instead of char*
----
 
 ### PdeOperators
 - implement preAdvection

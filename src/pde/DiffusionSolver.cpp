@@ -1,8 +1,8 @@
-#include "DiffSolver.h"
+#include "DiffusionSolver.h"
 
 #include "petsc/private/kspimpl.h"
 
-DiffSolver::DiffSolver(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k) : ctx_() {
+DiffusionSolver::DiffusionSolver(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k) : ctx_() {
   PetscErrorCode ierr = 0;
   ksp_itr_ = 0;
   ctx_ = std::make_shared<Ctx>();
@@ -116,7 +116,7 @@ PetscErrorCode operatorA(Mat A, Vec x, Vec y) {  // y = Ax
   ;
 }
 
-PetscErrorCode DiffSolver::precFactor() {
+PetscErrorCode DiffusionSolver::precFactor() {
   PetscFunctionBegin;
   Event e("tumor-diffusion-prec-factor");
   std::array<double, 7> t = {0};
@@ -214,7 +214,7 @@ PetscErrorCode applyPC(PC pc, Vec x, Vec y) {
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode DiffSolver::solve(Vec c, ScalarType dt) {
+PetscErrorCode DiffusionSolver::solve(Vec c, ScalarType dt) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e("tumor-diffusion-solve");
@@ -245,7 +245,7 @@ PetscErrorCode DiffSolver::solve(Vec c, ScalarType dt) {
   PetscFunctionReturn(ierr);
 }
 
-DiffSolver::~DiffSolver() {
+DiffusionSolver::~DiffusionSolver() {
   PetscErrorCode ierr = 0;
   ierr = MatDestroy(&A_);
   ierr = KSPDestroy(&ksp_);

@@ -17,9 +17,9 @@ struct Ctx {
   ~Ctx() {}
 };
 
-class DiffSolver {
+class DiffusionSolver {
  public:
-  DiffSolver(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k);
+  DiffusionSolver(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<DiffCoef> k);
 
   KSP ksp_;
   Mat A_;
@@ -31,7 +31,7 @@ class DiffSolver {
   PetscErrorCode solve(Vec c, ScalarType dt);
   PetscErrorCode precFactor();
 
-  virtual ~DiffSolver();
+  virtual ~DiffusionSolver();
 };
 
 // Helper functions for KSP solve
