@@ -30,16 +30,8 @@
 ---
 
 ### grad/
-- [done] split up DerivativeOperators into different classes/models: (S) vanilla split up, I think this is fine for now.
 - [FD reminaing] code duplication in derivative operators; e.g., refactor part inversion for diffusion and inversion for reaction into functions (otherwise may be error prone if
   things only change in grad and not gradAndObj
-
----
-
-### mat/ 
-- rename ReacCoeff --> ReactionCoefficient 
-- rename DiffCoeff --> DiffusionCoefficient (S: Not important; anyways things like Obs, MatProp are also shortened. remove if agree)
-
 
 ---
 
