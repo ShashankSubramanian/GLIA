@@ -226,7 +226,11 @@ PetscErrorCode DiffusionSolver::solve(Vec c, ScalarType dt) {
   ctx->dt_ = dt;
   if (ctx->k_->k_scale_ == 0) {
     ksp_itr_ = 0;
-    return 0;
+    self_exec_time += MPI_Wtime();
+    accumulateTimers(ctx->params_->tu_->timers_, t, self_exec_time);
+    e.addTimings(t);
+    e.stop();
+    PetscFunctionReturn(ierr);
   }
   ScalarType alph = 1.0 / 2.0 * ctx->dt_;
   ierr = VecCopy(c, rhs_); CHKERRQ(ierr);
