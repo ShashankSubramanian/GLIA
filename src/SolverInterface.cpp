@@ -23,6 +23,7 @@ SolverInterface::SolverInterface()
   gm_(nullptr),
   vt_(nullptr),
   csf_(nullptr),
+  ed_(nullptr),
   mri_(nullptr),
   tmp_(nullptr),
   data_t1_(nullptr),
@@ -43,6 +44,7 @@ SolverInterface::~SolverInterface() {
   if(gm_  != nullptr) VecDestroy(&gm_);
   if(vt_  != nullptr) VecDestroy(&vt_);
   if(csf_ != nullptr) VecDestroy(&csf_);
+  if(ed_ != nullptr) VecDestroy(&ed_);
   if(mri_ != nullptr) VecDestroy(&mri_);
   if(tmp_ != nullptr) VecDestroy(&tmp_);
   if(data_t1_ != nullptr) {VecDestroy(&data_t1_); data_t1_ = nullptr;}
@@ -292,7 +294,7 @@ PetscErrorCode SolverInterface::finalize() {
     ss.str("");
     ss.clear();
   } else {
-    ierr = tuMSGstd(" Cannot compute errors for TIL, since TIL is nullptr."); CHKERRQ(ierr);
+    ierr = tuMSGstd(" Cannot compute errors for TIL, since true TIL not available."); CHKERRQ(ierr);
   }
 
   // write file
@@ -335,20 +337,23 @@ PetscErrorCode SolverInterface::predict() {
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
     ss.clear();
-    if (params_->tu_->time_history_off_) {
-      params_->tu_->dt_ = app_settings_->pred_->dt_;
-      // set c(0)
-      if (params_->tu_->use_c0_) {
-        ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
-      } else {
-        ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
-      }
+    params_->tu_->dt_ = app_settings_->pred_->dt_;
+    // set c(0)
+    if (params_->tu_->use_c0_) {
+      ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
+    } else {
+      ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
+    }
 
-      // predict tumor growth at different (user defined) times
-      for (int i = 0; i < app_settings_->pred_->t_pred_.size(); ++i) {
-        params_->tu_->nt_ = (int)(app_settings_->pred_->t_pred_[i] / app_settings_->pred_->dt_);  // number of time steps
-        // if different brain to perform prediction is given, read in and reset atlas
-        if (app_settings_->pred_->wm_path_.size() >= i && !app_settings_->pred_->wm_path_[i].empty()) {
+    // predict tumor growth at different (user defined) times
+    for (int i = 0; i < app_settings_->pred_->t_pred_.size(); ++i) {
+      params_->tu_->nt_ = (int)(app_settings_->pred_->t_pred_[i] / app_settings_->pred_->dt_);  // number of time steps
+      if(!params_->tu_->time_history_off_) {
+        ierr = pde_operators_->resizeTimeHistory(params_); CHKERRQ(ierr);
+      }
+      // if different brain to perform prediction is given, read in and reset atlas
+      if (app_settings_->pred_->wm_path_.size() > i) { 
+        if(!app_settings_->pred_->wm_path_[i].empty()) {
           app_settings_->path_->wm_ = app_settings_->pred_->wm_path_[i];
           app_settings_->path_->gm_ = app_settings_->pred_->gm_path_[i];
           app_settings_->path_->vt_ = app_settings_->pred_->vt_path_[i];
@@ -356,20 +361,22 @@ PetscErrorCode SolverInterface::predict() {
           ierr = readAtlas(); CHKERRQ(ierr);
           ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);
           ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
-        } else {
-          ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
         }
-        ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
-        ss << "c_pred_at_[t=" << app_settings_->pred_->t_pred_[i] << "]";
-        ierr = dataOut(tumor_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
-        ss.str("");
-        ss.clear();
-        ss << " .. prediction complete for t = " << app_settings_->pred_->t_pred_[i];
-        ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-        ss.str("");
-        ss.clear();
+      } else {
+        ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
+      }
+      ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
+      ss << "c_pred_at_[t=" << app_settings_->pred_->t_pred_[i] << "]";
+      ierr = dataOut(tumor_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+      ss << " .. prediction complete for t = " << app_settings_->pred_->t_pred_[i];
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
 
-        // if given: compute error to ground truth at predicted time
+      // if given: compute error to ground truth at predicted time
+      if (app_settings_->pred_->true_data_path_.size() > i) {
         if (!app_settings_->pred_->true_data_path_[i].empty()) {
           Vec true_dat_t1;
           ScalarType obs_c_norm, obs_data_norm, data_norm;
@@ -433,7 +440,7 @@ PetscErrorCode SolverInterface::setupData() {
   }
   data_->set(data_t1_, data_t0_);
   // === set observation operator
-  if (custom_obs_) {
+  if (custom_obs_ || obs_filter_ != nullptr) {
     ierr = tumor_->obs_->setCustomFilter(obs_filter_, 1);
     ss << " Setting custom observation mask";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
@@ -479,16 +486,21 @@ PetscErrorCode SolverInterface::readAtlas() {
       ierr = VecDuplicate(tmp_, &wm_); CHKERRQ(ierr);
       ierr = VecDuplicate(tmp_, &gm_); CHKERRQ(ierr);
       ierr = VecDuplicate(tmp_, &vt_); CHKERRQ(ierr);
-      csf_ = nullptr; data_t1_ = nullptr;
+      csf_ = nullptr; data_t1_ = nullptr; ed_ = nullptr;
       if (app_settings_->atlas_seg_[3] > 0) {
         ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
       }
+      // tc exists as label, or necrotic core + enhancing rim exist as labels
       if (app_settings_->atlas_seg_[4] > 0 || (app_settings_->atlas_seg_[5] > 0 && app_settings_->atlas_seg_[6] > 0)) {
         ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
         data_t1_from_seg_ = true;
+        // edema exists as label
+        if (app_settings_->atlas_seg_[7] > 0) {
+          ierr = VecDuplicate(tmp_, &ed_); CHKERRQ(ierr);
+        }
       }
     }
-    ierr = splitSegmentation(tmp_, wm_, gm_, vt_, csf_, data_t1_, params_->grid_->nl_, app_settings_->atlas_seg_); CHKERRQ(ierr);
+    ierr = splitSegmentation(tmp_, wm_, gm_, vt_, csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->atlas_seg_); CHKERRQ(ierr);
 
     // TODO(K): test read in from segmentation
   } else {
@@ -540,29 +552,39 @@ PetscErrorCode SolverInterface::readData() {
   ScalarType sig_data = params_->tu_->smoothing_factor_data_ * 2 * M_PI / params_->grid_->n_[0];
   ScalarType sig_data_t0 = params_->tu_->smoothing_factor_data_t0_ * 2 * M_PI / params_->grid_->n_[0];
   ScalarType min, max;
-
+  
+  // read t1 data
   if (!app_settings_->path_->data_t1_.empty()) {
-    if(!data_t1_from_seg_) { // If false, t=1 data has already been read from segmentation in readAtlas
-      ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
-      ierr = dataIn(data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
-    }
-    if (params_->tu_->smoothing_factor_data_ > 0) {
-      ierr = spec_ops_->weierstrassSmoother(data_t1_, data_t1_, params_, sig_data); CHKERRQ(ierr);
-      ss << " smoothing c(1) with factor: " << params_->tu_->smoothing_factor_data_ << ", and sigma: " << sig_data;
-      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-      ss.str("");
-      ss.clear();
-    }
-    // make obs threshold relative
-    if (params_->tu_->relative_obs_threshold_) {
-      ierr = VecMax(data_t1_, NULL, &max); CHKERRQ(ierr);
-      params_->tu_->obs_threshold_1_ *= max;
-      ss << " Changing observation threshold for d_1 to thr_1: " << params_->tu_->obs_threshold_1_;
-      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-      ss.str("");
-      ss.clear();
-    }
+    ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
+    ierr = dataIn(data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
+  } else if(data_t1_from_seg_) { // t=1 data has already been read from segmentation in readAtlas
+    if(ed_ != nullptr && params_->tu_->obs_lambda_ >= 0) {
+      ss << " constructing obs. mask from seg. as OBS = 1[TC] + lambda*1[WT/B] with lambda = " << params_->tu_->obs_lambda_;
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+      ierr = VecDuplicate(tmp_, &obs_filter_); CHKERRQ(ierr);
+      ierr = createEdemaBasedObservationMask(obs_filter_, data_t1_, ed_, params_->tu_->obs_lambda_, params_->grid_->nl_, app_settings_->atlas_seg_); CHKERRQ(ierr);
+    } 
+  } else {
+   ierr = tuMSGwarn(" Error: No target data available."); CHKERRQ(ierr);
   }
+  // smooth t1 data
+  if (params_->tu_->smoothing_factor_data_ > 0) {
+    ierr = spec_ops_->weierstrassSmoother(data_t1_, data_t1_, params_, sig_data); CHKERRQ(ierr);
+    ss << " smoothing c(1) with factor: " << params_->tu_->smoothing_factor_data_ << ", and sigma: " << sig_data;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  }
+  // make obs threshold relative
+  if (params_->tu_->relative_obs_threshold_) {
+    ierr = VecMax(data_t1_, NULL, &max); CHKERRQ(ierr);
+    params_->tu_->obs_threshold_1_ *= max;
+    ss << " Changing observation threshold for d_1 to thr_1: " << params_->tu_->obs_threshold_1_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+  }
+  // read Gaussian support
   bool read_supp;
   if (!app_settings_->path_->data_support_.empty()) {
     std::string file, path, ext;
@@ -572,15 +594,24 @@ PetscErrorCode SolverInterface::readData() {
       ierr = VecDuplicate(tmp_, &data_support_); CHKERRQ(ierr);
       ierr = dataIn(data_support_, params_, app_settings_->path_->data_support_); CHKERRQ(ierr);
     }
+  // no suppoert given, support equals data
   } else {
     data_support_ = data_t1_;
   }
-  if (read_supp && !app_settings_->path_->data_comps_.empty()) {
+  // read connected component information for target t1 data
+  if (!app_settings_->path_->data_comps_.empty()) {
+  //if (read_supp && !app_settings_->path_->data_comps_.empty()) {
     ierr = VecDuplicate(tmp_, &data_comps_); CHKERRQ(ierr);
     ierr = dataIn(data_comps_, params_, app_settings_->path_->data_comps_); CHKERRQ(ierr);
+  } else {
+    if(app_settings_->inject_solution_ || params_->opt_->multilevel_) {ierr = tuMSGstd(" Warning: Connected component data has not been set."); CHKERRQ(ierr);}
   }
   if (!app_settings_->path_->obs_filter_.empty()) {
-    ierr = VecDuplicate(tmp_, &obs_filter_); CHKERRQ(ierr);
+    if(obs_filter_ == nullptr) {
+      ierr = VecDuplicate(tmp_, &obs_filter_); CHKERRQ(ierr);
+    } else {
+    	ierr = tuMSGwarn(" Info: Custom observation operator has been overwritten from file."); CHKERRQ(ierr);
+    }
     ierr = dataIn(obs_filter_, params_, app_settings_->path_->obs_filter_); CHKERRQ(ierr);
     ss << " Reading custom observation mask";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);

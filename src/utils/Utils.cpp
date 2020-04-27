@@ -525,12 +525,38 @@ PetscErrorCode vecMax(Vec x, PetscInt *p, PetscReal *val) {
 }
 
 
-PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec tu, int nl, std::vector<int> &labels) {
+PetscErrorCode createEdemaBasedObservationMask(Vec mask, Vec tc, Vec ed, double lambda, int nl, std::vector<int> &labels) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  if(seg == nullptr) {ierr = tuMSGwarn("Segmentation is null."); CHKERRQ(ierr); PetscFunctionReturn(1);}
+  if(mask == nullptr) {ierr = tuMSGwarn(" Error: Observation mask is nullptr."); CHKERRQ(ierr); PetscFunctionReturn(1);}
+  if(tc == nullptr) {ierr = tuMSGwarn(" Error: Tumor core is nullptr."); CHKERRQ(ierr); PetscFunctionReturn(1);}
+  if(ed == nullptr) {ierr = tuMSGwarn(" Error: Edema is nullptr."); CHKERRQ(ierr); PetscFunctionReturn(1);}
+  
+  ScalarType *tc_ptr, *ed_ptr, *mask_ptr; 
+  int tc_label  = (labels[4] > 0) ? labels[4] : -1;
+  int ed_label  = (labels[7] > 0) ? labels[7] : -1;
+  
+  ierr = VecSet(mask, 0.0); CHKERRQ(ierr);
+  ierr = VecGetArray(mask, &mask_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(tc, &tc_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(ed, &ed_ptr); CHKERRQ(ierr);
+  for (int i = 0; i < nl; i++) {
+    // set observation operator to OBS = 1[TC] + lambda*1[B/WT]
+    mask_ptr[i] = (tc_ptr[i] > 0.99) ? 1 : (ed_ptr[i] > 0.99) ? 0 : lambda;
+  }
+  ierr = VecRestoreArray(mask, &mask_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(tc, &tc_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(ed, &ed_ptr); CHKERRQ(ierr);
+  PetscFunctionReturn(ierr);
+}
 
-  ScalarType *gm_ptr, *wm_ptr, *vt_ptr, *tu_ptr, *csf_ptr, *seg_ptr;
+
+PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec tu, Vec ed, int nl, std::vector<int> &labels) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  if(seg == nullptr) {ierr = tuMSGwarn(" Error: Segmentation is null."); CHKERRQ(ierr); PetscFunctionReturn(1);}
+
+  ScalarType *gm_ptr, *wm_ptr, *vt_ptr, *tu_ptr, *csf_ptr, *seg_ptr, *ed_ptr;
   int wm_label  = labels[0], gm_label = labels[1], vt_label = labels[2];
   int csf_label = (labels[3] > 0) ? labels[3] : -1;
   int tc_label  = (labels[4] > 0) ? labels[4] : -1;
@@ -552,6 +578,11 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
     ierr = VecSet(tu, 0.0); CHKERRQ(ierr);
     ierr = VecGetArray(tu, &tu_ptr); CHKERRQ(ierr);
   }
+  if(ed  != nullptr) {
+    ierr = VecSet(ed, 0.0); CHKERRQ(ierr);
+    ierr = VecGetArray(ed, &ed_ptr); CHKERRQ(ierr);
+  }
+
 
   for (int i = 0; i < nl; i++) {
     if(wm_label > 0) {wm_ptr[i] = (seg_ptr[i] ==  wm_label) ? 1 : wm_ptr[i];}
@@ -570,9 +601,11 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
       }
       if(ed_label > 0) {
         wm_ptr[i] = (seg_ptr[i] == ed_label) ? 1 : wm_ptr[i];
+        if(ed  != nullptr) {
+          ed_ptr[i] = (seg_ptr[i] == ed_label) ? 1 : ed_ptr[i];
+	}
       }
     }
-
   }
   ierr = VecRestoreArray(seg, &seg_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(wm, &wm_ptr); CHKERRQ(ierr);
@@ -580,6 +613,7 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
   ierr = VecRestoreArray(vt, &vt_ptr); CHKERRQ(ierr);
   if(csf != nullptr) {ierr = VecRestoreArray(csf, &csf_ptr); CHKERRQ(ierr);}
   if(tu  != nullptr) {ierr = VecRestoreArray(tu, &tu_ptr); CHKERRQ(ierr);}
+  if(ed  != nullptr) {ierr = VecRestoreArray(ed, &ed_ptr); CHKERRQ(ierr);}
 
   PetscFunctionReturn(ierr);
 }
