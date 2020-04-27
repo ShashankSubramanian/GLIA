@@ -86,7 +86,8 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Ve
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+
   ierr = tumor_->velocity_->set(0);
   ierr = tumor_->displacement_->set(0);
 

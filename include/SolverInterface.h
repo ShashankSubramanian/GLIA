@@ -79,6 +79,12 @@ class SolverInterface {
   Vec obs_filter_;
   Vec p_rec_;
   Vec velocity_;
+  Vec kfxx_;
+  Vec kfxy_;
+  Vec kfxz_;
+  Vec kfyy_;
+  Vec kfyz_;
+  Vec kfzz_;
   std::shared_ptr<Data> data_;
 };
 

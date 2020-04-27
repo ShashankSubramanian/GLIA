@@ -59,6 +59,7 @@ public:
     rho_lb_(1),
     rho_ub_(15),
     k_scale_(1),
+    kf_scale_(1),
     rho_scale_(1),
     gamma_scale_(1)
   {}
@@ -103,6 +104,7 @@ public:
   ScalarType rho_lb_;           /// @brief lower bound on rho
   ScalarType rho_ub_;           /// @brief upper bound on rho
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
+  ScalarType kf_scale_;          /// @brief if FD grad model, scaling of kappa_f
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
   std::array<ScalarType, 3> bounds_array_;
@@ -536,7 +538,7 @@ struct FilePaths {
       data_t1_(), data_t0_(), data_support_(), data_support_data_(),
       data_comps_(), data_comps_data_(), obs_filter_(), mri_(),
       velocity_x1_(), velocity_x2_(), velocity_x3_(),
-      pvec_(), phi_()
+      pvec_(), phi_(), kfxx_(), kfxy_(), kfxz_(), kfyy_(), kfyz_(), kfzz_()
     {}
 
     // material properties atlas
@@ -545,6 +547,12 @@ struct FilePaths {
     std::string gm_;
     std::string vt_;
     std::string csf_;
+    std::string kfxx_;
+    std::string kfxy_;
+    std::string kfxz_;
+    std::string kfyy_;
+    std::string kfyz_;
+    std::string kfzz_;
     // material properties patient
     std::string p_seg_;
     std::string p_wm_;
@@ -588,6 +596,7 @@ public:
   bool enabled_;
   ScalarType rho_;
   ScalarType k_;
+  ScalarType kf_;
   ScalarType forcing_factor_;
   ScalarType dt_;
   int nt_;

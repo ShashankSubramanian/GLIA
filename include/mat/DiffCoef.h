@@ -18,6 +18,7 @@ class DiffCoef {
   DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
 
   ScalarType k_scale_;         // (= k_f * k_wm),    k_wm  := 1 (fixed)      INVERSION for k_f, k_gm, k_glm
+  ScalarType kf_scale_;
   ScalarType k_gm_wm_ratio_;   // (= k_f * k_gm),    k_gm  := ratio_gm_wm
   ScalarType k_glm_wm_ratio_;  // (= k_f * k_glm),   k_glm := ratio_glm_wm
   int smooth_flag_;
@@ -44,7 +45,7 @@ class DiffCoef {
 
   ScalarType *work_cuda_;
 
-  PetscErrorCode setValues(ScalarType k_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params);
+  PetscErrorCode setValues(ScalarType k_scale, ScalarType kf_scale, ScalarType k_gm_wm_ratio, ScalarType k_glm_wm_ratio, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params);
   PetscErrorCode setValuesSinusoidal(std::shared_ptr<Parameters> params, ScalarType scale);
   // needs to be called when we invert for diffusivity and use Gauss-Newton
   PetscErrorCode setSecondaryCoefficients(ScalarType k1, ScalarType k2, ScalarType k3, std::shared_ptr<MatProp> mat_prop, std::shared_ptr<Parameters> params);

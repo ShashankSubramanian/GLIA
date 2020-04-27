@@ -76,8 +76,9 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### tumor params
     p['model'] = 1                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
-    p['init_rho'] = 8                   # initial guess rho (reaction in wm)
+    p['init_rho'] = 10                   # initial guess rho (reaction in wm)
     p['init_k'] = 1E-2                  # initial guess kappa (diffusivity in wm)
+    p['init_kf'] = 0
     p['init_gamma'] = 12E4              # initial guess (forcing factor for mass effect)
     p['nt_inv'] = 40                    # number time steps
     p['dt_inv'] = 0.025                 # time step size
@@ -86,6 +87,7 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
+    p['smoothing_factor_diffusion_fiber'] = 1           # kernel width for smoothing of data and diffusion fiber
     p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
@@ -111,6 +113,7 @@ def write_config(set_params, run):
     p['user_cms'] = [(137,169,96,1)]    # arbitrary number of TILs (x,y,z,scale) with activation scale
     p['rho_data'] = 10                  # tumor parameters for synthetic data
     p['k_data'] = 0.025
+    p['kf_data'] = 0
     p['gamma_data'] = 12E4
     p['nt_data'] = 25
     p['dt_data'] = 0.04
@@ -123,12 +126,23 @@ def write_config(set_params, run):
     ### paths
     p['output_dir'] = r['code_path'] + '/results/';
     p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
+    p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
+    p['output_dir'] = r['code_path'] + '/results/';
+    p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
     p['d0_path'] = ""                   # path to initial condition for tumor
     p['a_seg_path'] = ""                # paths to atlas material properties
     p['a_wm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/white_matter.nc'
     p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/gray_matter.nc'
     p['a_csf_path'] = ""
     p['a_vt_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/csf.nc'
+    
+    p['a_kfxx_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfxx.nc'
+    p['a_kfxy_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfxy.nc'
+    p['a_kfxz_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfxz.nc'
+    p['a_kfyy_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfyy.nc'
+    p['a_kfyz_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfyz.nc'
+    p['a_kfzz_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfzz.nc'
+   
     p['p_seg_path'] = ""                # [optional] paths to patient material properties for mass effect
     p['p_wm_path'] = ""
     p['p_gm_path'] = ""
@@ -221,6 +235,7 @@ def write_config(set_params, run):
         f.write("model=" + str(p['model']) + "\n");
         f.write("init_rho=" + str(p['init_rho']) + "\n");
         f.write("init_k=" + str(p['init_k']) + "\n");
+        f.write("init_kf=" + str(p['init_kf']) + "\n");
         f.write("init_gamma=" + str(p['init_gamma']) + "\n");
         f.write("nt_inv=" + str(p['nt_inv']) + "\n");
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
@@ -258,6 +273,7 @@ def write_config(set_params, run):
         f.write("user_cms=" + str(p['user_cms']) + "\n");
         f.write("rho_data=" + str(p['rho_data']) + "\n");
         f.write("k_data=" + str(p['k_data']) + "\n");
+        f.write("kf_data=" + str(p['kf_data']) + "\n");
         f.write("gamma_data=" + str(p['gamma_data']) + "\n");
         f.write("nt_data=" + str(p['nt_data']) + "\n");
         f.write("dt_data=" + str(p['dt_data']) + "\n");
@@ -273,6 +289,12 @@ def write_config(set_params, run):
         f.write("a_gm_path=" + str(p['a_gm_path']) + "\n");
         f.write("a_csf_path=" + str(p['a_csf_path']) + "\n");
         f.write("a_vt_path=" + str(p['a_vt_path']) + "\n");
+        f.write("a_kfxx_path=" + str(p['a_kfxx_path']) + "\n");
+        f.write("a_kfxy_path=" + str(p['a_kfxy_path']) + "\n");
+        f.write("a_kfxz_path=" + str(p['a_kfxz_path']) + "\n");
+        f.write("a_kfyy_path=" + str(p['a_kfyy_path']) + "\n");
+        f.write("a_kfyz_path=" + str(p['a_kfyz_path']) + "\n");
+        f.write("a_kfzz_path=" + str(p['a_kfzz_path']) + "\n");
         f.write("p_seg_path=" + str(p['p_seg_path']) + "\n");
         f.write("p_wm_path=" + str(p['p_wm_path']) + "\n");
         f.write("p_gm_path=" + str(p['p_gm_path']) + "\n");
@@ -326,37 +348,18 @@ def submit(tu_params, run_params, submit_job = True):
     import subprocess
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     code_dir = scripts_path + '/../'
-
-    if 'code_path' not in run_params:
-        run_params['code_path'] = code_dir
-    if 'compute_sys' not in run_params:
-        run_params['compute_sys'] = 'rebels'
-    if 'queue' not in run_params:
-        if run_params['compute_sys'] == 'rebels':
-            run_params['queue'] = 'rebels'
-        elif run_params['compute_sys'] == 'stampede2':
-            run_params['queue'] = 'skx-normal'
-        elif run_params['compute_sys'] == 'longhorn':
-            run_params['queue'] = 'v100'
-        elif run_params['compute_sys'] == 'maverick2':
-            run_params['queue'] = 'gtx'
-        elif run_params['compute_sys'] == 'frontera':
-            run_params['queue'] = 'normal'
-        else:
-            run_params['queue'] = 'normal'
-    if 'nodes' not in run_params:
-        if run_params['compute_sys'] == 'rebels':
-            run_params['nodes'] = 1
-        elif run_params['compute_sys'] == 'stampede2':
-            run_params['nodes'] = 3
-        elif run_params['compute_sys'] == 'longhorn':
-            run_params['nodes'] = 1
-        elif run_params['compute_sys'] == 'maverick2':
-            run_params['nodes'] = 1
-        elif run_params['compute_sys'] == 'frontera':
-            run_params['nodes'] = 1
-        else:
-            run_params['nodes'] = 1
+    if run_params['compute_sys'] == 'rebels':
+        run_params['nodes'] = 1
+    elif run_params['compute_sys'] == 'stampede2':
+        run_params['nodes'] = 3
+    elif run_params['compute_sys'] == 'longhorn':
+        run_params['nodes'] = 1
+    elif run_params['compute_sys'] == 'maverick2':
+        run_params['nodes'] = 1
+    elif run_params['compute_sys'] == 'frontera':
+        run_params['nodes'] = 1
+    else:
+        run_params['nodes'] = 1
     if 'mpi_taks' not in run_params:
         if run_params['compute_sys'] == 'rebels':
             run_params['mpi_taks'] = 20
@@ -390,7 +393,7 @@ def submit(tu_params, run_params, submit_job = True):
             submit_file.write ("#!/bin/bash\n" + \
             "#SBATCH -J tuinv\n" + \
             "#SBATCH -o " + tu_params['output_dir'] + "/log\n" + \
-            "#SBATCH -p " + str(run_params['queue']) + "\n" + \
+            "#SBATCH -p " + str(run_params['compute_sys']) + "\n" + \
             "#SBATCH -N " + str(run_params['nodes']) + "\n" + \
             "#SBATCH -n " + str(run_params['mpi_taks']) + "\n" + \
             "#SBATCH -t 02:00:00\n" + \
@@ -421,10 +424,10 @@ if __name__=='__main__':
     code_dir = scripts_path + '/../'
     params = {}
     run = {}
-    params['output_dir'] = os.path.join(code_dir, 'config/');
+    params['output_dir'] = os.path.join(code_dir, 'config/')
     run['code_path'] = code_dir
 
-    submit(params, run, submit_job);
+    submit(params, run, submit_job)
 
 
 

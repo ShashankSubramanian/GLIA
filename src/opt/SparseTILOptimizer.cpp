@@ -314,7 +314,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
   // === (1) L1 CoSaMp solver ===
   // if no inversion for kappa, set coefficients  -- this will not change during the solve
   if(!ctx_->params_->opt_->diffusivity_inversion_) {
-    ierr = ctx_->tumor_->k_->setValues (ctx_->params_->tu_->k_, ctx_->params_->tu_->k_gm_wm_ratio_, ctx_->params_->tu_->k_glm_wm_ratio_, ctx_->tumor_->mat_prop_, ctx_->params_);  CHKERRQ (ierr);
+    ierr = ctx_->tumor_->k_->setValues (ctx_->params_->tu_->k_, ctx_->params_->tu_->kf_, ctx_->params_->tu_->k_gm_wm_ratio_, ctx_->params_->tu_->k_glm_wm_ratio_, ctx_->tumor_->mat_prop_, ctx_->params_);  CHKERRQ (ierr);
   } else {
     //set initial guess for k_inv (possibly != zero)
     ierr = VecGetArray(x_L1, &x_L1_ptr); CHKERRQ (ierr);
@@ -658,7 +658,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
         ierr = VecGetArray(ctx_->cosamp_->x_full, &x_full_ptr); CHKERRQ (ierr);
         if (ctx_->params_->opt_->diffusivity_inversion_) x_full_ptr[np_full] = ctx_->params_->tu_->k_;
         else { // set diff ops with this guess -- this will not change during the solve
-          ierr = ctx_->tumor_->k_->setValues (ctx_->params_->tu_->k_, ctx_->params_->tu_->k_gm_wm_ratio_, ctx_->params_->tu_->k_glm_wm_ratio_, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
+          ierr = ctx_->tumor_->k_->setValues (ctx_->params_->tu_->k_, ctx_->params_->tu_->kf_, ctx_->params_->tu_->k_gm_wm_ratio_, ctx_->params_->tu_->k_glm_wm_ratio_, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
         }
         ierr = VecRestoreArray(ctx_->cosamp_->x_full, &x_full_ptr); CHKERRQ (ierr);
         ierr = VecCopy        (ctx_->cosamp_->x_full, ctx_->cosamp_->x_full_prev); CHKERRQ (ierr);

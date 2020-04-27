@@ -32,7 +32,13 @@ SolverInterface::SolverInterface()
   data_comps_(nullptr),
   obs_filter_(nullptr),
   velocity_(nullptr),
-  data_(nullptr)
+  data_(nullptr),
+  kfxx_(nullptr),
+  kfxy_(nullptr),
+  kfxz_(nullptr),
+  kfyy_(nullptr),
+  kfyz_(nullptr),
+  kfzz_(nullptr)
 {}
 
 
@@ -54,6 +60,14 @@ SolverInterface::~SolverInterface() {
   if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
   if(p_rec_ != nullptr) VecDestroy(&p_rec_);
   if(velocity_ != nullptr) VecDestroy(&velocity_);
+
+  if(kfxx_  != nullptr) VecDestroy(&kfxx_);
+  if(kfxy_  != nullptr) VecDestroy(&kfxy_);
+  if(kfxz_  != nullptr) VecDestroy(&kfxz_);
+  if(kfyy_  != nullptr) VecDestroy(&kfyy_);
+  if(kfyz_  != nullptr) VecDestroy(&kfyz_);
+  if(kfzz_  != nullptr) VecDestroy(&kfzz_);
+
 }
 
 
@@ -114,6 +128,9 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
   // === read brain: healthy segmentation wm, gm, csf, (ve) for simulation
   ierr = readAtlas(); CHKERRQ(ierr);
 
+  // === read brain: healthy fiber diffusion tensor kfxx, kfxy, kfxz, kfyy, kfyz, kfzz for simulation
+  ierr = readDiffusionFiberTensor(); CHKERRQ(ierr);
+  
   // === read in user given velocity
   ierr = readVelocity(); CHKERRQ(ierr);
 
@@ -354,9 +371,13 @@ PetscErrorCode SolverInterface::predict() {
           app_settings_->path_->vt_ = app_settings_->pred_->vt_path_[i];
           ierr = tuMSGstd(" .. reading in atlas brain to perform prediction."); CHKERRQ(ierr);
           ierr = readAtlas(); CHKERRQ(ierr);
+	  ierr = readDiffusionFiberTensor(); CHKERRQ(ierr);
           ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);
-          ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
-        } else {
+          ierr = tumor_->mat_prop_->setDiffusionFiber(kfxx_, kfxy_, kfxz_, kfyy_, kfyz_, kfzz_, params_); CHKERRQ(ierr);
+          ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr); 
+
+
+       } else {
           ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
         }
         ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
@@ -529,7 +550,6 @@ PetscErrorCode SolverInterface::readAtlas() {
   PetscFunctionReturn(ierr);
 }
 
-// ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode SolverInterface::readData() {
   PetscErrorCode ierr = 0;
@@ -663,7 +683,57 @@ PetscErrorCode SolverInterface::readVelocity() {
 PetscErrorCode SolverInterface::readDiffusionFiberTensor() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-  // TODO(K): implement reading in of DTI tensor.
+    ScalarType sigma_smooth = params_->tu_->smoothing_factor_ * 2 * M_PI /params_->grid_->n_[0];
+
+// reading the fiber diffusion tensor
+  if (!app_settings_->path_->kfxx_.empty()) {
+     ierr = VecDuplicate(tmp_, &kfxx_); CHKERRQ(ierr);
+     ierr = dataIn(kfxx_, params_, app_settings_->path_->kfxx_); CHKERRQ(ierr);
+}
+  if (!app_settings_->path_->kfxy_.empty()) {
+     ierr = VecDuplicate(tmp_, &kfxy_); CHKERRQ(ierr);
+     ierr = dataIn(kfxy_, params_, app_settings_->path_->kfxy_); CHKERRQ(ierr);
+}
+  if (!app_settings_->path_->kfxz_.empty()) {
+     ierr = VecDuplicate(tmp_, &kfxz_); CHKERRQ(ierr);
+     ierr = dataIn(kfxz_, params_, app_settings_->path_->kfxz_); CHKERRQ(ierr);
+}
+  if (!app_settings_->path_->kfyy_.empty()) {
+     ierr = VecDuplicate(tmp_, &kfyy_); CHKERRQ(ierr);
+     ierr = dataIn(kfyy_, params_, app_settings_->path_->kfyy_); CHKERRQ(ierr);
+}
+  if (!app_settings_->path_->kfyz_.empty()) {
+     ierr = VecDuplicate(tmp_, &kfyz_); CHKERRQ(ierr);
+     ierr = dataIn(kfyz_, params_, app_settings_->path_->kfyz_); CHKERRQ(ierr);
+}
+  if (!app_settings_->path_->kfzz_.empty()) {
+     ierr = VecDuplicate(tmp_, &kfzz_); CHKERRQ(ierr);
+     ierr = dataIn(kfzz_, params_, app_settings_->path_->kfzz_); CHKERRQ(ierr);
+}
+// smooth
+  if (params_->tu_->smoothing_factor_atlas_ > 0) {
+     if (kfxx_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+        }
+
+     if (kfxx_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     }
+     if (kfxx_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     }
+     if (kfxx_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     }
+     if (kfxx_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     }
+     if (kfxx_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     }
+}
+
+
   PetscFunctionReturn(ierr);
 }
 
@@ -690,7 +760,8 @@ PetscErrorCode SolverInterface::createSynthetic() {
   params_->tu_->forcing_factor_ = app_settings_->syn_->forcing_factor_;
 
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = VecDuplicate(gm_, &wm_);
 
   // allocate t1 and t0 data:
   if (data_t1_ == nullptr) {
@@ -923,7 +994,7 @@ PetscErrorCode SolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec csf,
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime();
   ierr = tumor_->mat_prop_->setValuesCustom(gm, wm, csf, vt, bg, params_); CHKERRQ(ierr);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
   ierr = tumor_->phi_->setValues(tumor_->mat_prop_); CHKERRQ(ierr);
   ierr = pde_operators_->diff_solver_->precFactor(); CHKERRQ(ierr);

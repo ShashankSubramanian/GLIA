@@ -214,6 +214,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   }
   if (name == "rho_data") {a->syn_->rho_ = std::stod(value); return;}
   if (name == "k_data") {a->syn_->k_ = std::stod(value); return;}
+  if (name == "kf_data") {a->syn_->kf_ = std::stod(value); return;} 
   if (name == "gamma_data") {a->syn_->forcing_factor_ = std::stod(value); return;}
   if (name == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
   if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
@@ -228,6 +229,12 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "a_gm_path") {a->path_->gm_ = value; return;}
   if (name == "a_csf_path") {a->path_->csf_ = value; return;}
   if (name == "a_vt_path") {a->path_->vt_ = value; return;}
+  if (name == "a_kfxx_path") {a->path_->kfxx_ = value; return;}
+  if (name == "a_kfxy_path") {a->path_->kfxy_ = value; return;}
+  if (name == "a_kfxz_path") {a->path_->kfxz_ = value; return;}
+  if (name == "a_kfyy_path") {a->path_->kfyy_ = value; return;}
+  if (name == "a_kfyz_path") {a->path_->kfyz_ = value; return;}
+  if (name == "a_kfzz_path") {a->path_->kfzz_ = value; return;}
   if (name == "p_seg_path") {a->path_->p_seg_ = value; return;}
   if (name == "p_wm_path") {a->path_->p_wm_ = value; return;}
   if (name == "p_gm_path") {a->path_->p_gm_ = value; return;}
@@ -235,7 +242,9 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "p_vt_path") {a->path_->p_vt_ = value; return;}
   if (name == "mri_path") {a->path_->mri_ = value; return;}
   if (name == "obs_mask_path") {a->path_->obs_filter_ = value; return;}
-  if (name == "support_data_path") {a->path_->data_support_ = value; return;} // TODO(K) .nc vs. dat.
+  if (name == "support_data_path") {a->path_->data_support_ = value; return;}
+  
+ // TODO(K) .nc vs. dat.
   if (name == "gaussian_cm_path") {a->path_->phi_ = value; return;}
   if (name == "pvec_path") {a->path_->pvec_ = value; return;}
   if (name == "data_comp_path") {a->path_->data_comps_ = value; return;}
@@ -312,6 +321,13 @@ PetscErrorCode readNifti(nifti_image *image, ScalarType *data_global, std::share
   }
   data = static_cast<T *>(image->data);
   // static cast image data to ScalarType
+  int64_t idx = 0;
+  int64_t index, x, y, z;
+  for (int p = 0; p < nprocs; p++) {
+    for (int i = 0; i < params->grid_->isize_gathered_[3 * p + 0]; i++) {
+      for (int j = 0; j < params->grid_->isize_gathered_[3 * p + 1]; j++) {
+        for (int k = 0; k < params->grid_->isize_gathered_[3 * p + 2]; k++) {
+          x = params->grid_->istart_gathered_[3 * p + 0] + i;
   int64_t idx = 0;
   int64_t index, x, y, z;
   for (int p = 0; p < nprocs; p++) {
@@ -941,14 +957,7 @@ PetscErrorCode readConCompDat(std::vector<ScalarType> &weights, std::vector<Scal
     ncomp = atoi(line.c_str());
     std::getline(file, line);  // center of mass:
     for (int i = 0; i < ncomp; ++i) {
-      std::getline(file, line);  // values
-      std::stringstream l(line);
-      std::string t;
-      while (std::getline(l, t, ',')) {
-        centers.push_back(atof(t.c_str()));
-      }
-    }
-    std::getline(file, line);  // relative mass:
+    std::getline(file, line);}  // relative mass:
     for (int i = 0; i < ncomp; ++i) {
       std::getline(file, line);  // values
       weights.push_back(atof(line.c_str()));

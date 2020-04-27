@@ -11,6 +11,13 @@ MatProp::MatProp(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOpe
   ierr = VecDuplicate(gm_, &csf_);
   ierr = VecDuplicate(gm_, &bg_);
   ierr = VecDuplicate(gm_, &filter_);
+  
+  ierr = VecDuplicate(gm_, &kfxx_);
+  ierr = VecDuplicate(gm_, &kfxy_);
+  ierr = VecDuplicate(gm_, &kfxz_);
+  ierr = VecDuplicate(gm_, &kfyy_);
+  ierr = VecDuplicate(gm_, &kfyz_);
+  ierr = VecDuplicate(gm_, &kfzz_);
 
   mri_ = nullptr;
 
@@ -201,6 +208,53 @@ PetscErrorCode MatProp::setValuesCustom(Vec gm, Vec wm, Vec csf, Vec vt, Vec bg,
   ierr = VecRestoreArray(bg_, &bg_ptr); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
+
+PetscErrorCode MatProp::setDiffusionFiber(Vec kfxx, Vec kfxy, Vec kfxz, Vec kfyy, Vec kfyz, Vec kfzz, std::shared_ptr<Parameters> params) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  if (kfxx != nullptr) {
+    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+  }
+  if (kfxx != nullptr) {
+    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+  }
+  if (kfxx != nullptr) {
+    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+  }
+  if (kfxx != nullptr) {
+    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+  }
+  if (kfxx != nullptr) {
+    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+  }
+  if (kfxx != nullptr) {
+    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+  } else {
+    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+  }
+
+  if (params->tu_->write_output_) {
+    dataOut(kfxx_, params, "kfxx.nc");
+    dataOut(kfxy_, params, "kfxy.nc");
+    dataOut(kfxz_, params, "kfxz.nc");
+    dataOut(kfyy_, params, "kfyy.nc");
+    dataOut(kfyz_, params, "kfyz.nc");
+    dataOut(kfzz_, params, "kfzz.nc");
+  }
+}
+
+
 
 PetscErrorCode MatProp::filterTumor(Vec c) {
   PetscFunctionBegin;

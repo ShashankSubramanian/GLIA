@@ -64,7 +64,7 @@ PetscErrorCode Tumor::initialize(Vec p, std::shared_ptr<Parameters> params, std:
     ierr = mat_prop_->setValues(params); CHKERRQ(ierr);
   } else
     mat_prop_ = mat_prop;
-  ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = k_->setValues(params->tu_->k_, params->tu_->kf_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = VecDuplicate(p, &p_); CHKERRQ(ierr);
   ierr = VecCopy(p, p_); CHKERRQ(ierr);
@@ -92,7 +92,7 @@ PetscErrorCode Tumor::setParams(Vec p, std::shared_ptr<Parameters> params, bool 
   }
   ierr = VecCopy(p, p_); CHKERRQ(ierr);
   // set new values
-  ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = k_->setValues(params->tu_->k_, params->tu_->kf_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = phi_->setValues(mat_prop_); CHKERRQ(ierr);
 
@@ -104,7 +104,7 @@ PetscErrorCode Tumor::setSinusoidalCoefficients(std::shared_ptr<Parameters> para
   PetscErrorCode ierr = 0;
 
   ierr = mat_prop_->setValuesSinusoidal(params); CHKERRQ(ierr);
-  ierr = k_->setValues(params->tu_->k_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
+  ierr = k_->setValues(params->tu_->k_, params->tu_->kf_, params->tu_->k_gm_wm_ratio_, params->tu_->k_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = rho_->setValues(params->tu_->rho_, params->tu_->r_gm_wm_ratio_, params->tu_->r_glm_wm_ratio_, mat_prop_, params); CHKERRQ(ierr);
   ierr = phi_->setValues(mat_prop_); CHKERRQ(ierr);
 

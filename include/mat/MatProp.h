@@ -16,6 +16,13 @@ class MatProp {
   Vec bg_;
   Vec filter_;
 
+  Vec kfxx_;
+  Vec kfxy_;
+  Vec kfxz_;
+  Vec kfyy_;
+  Vec kfyz_;
+  Vec kfzz_;
+  
   ScalarType force_factor_;
   ScalarType edema_threshold_;
 
@@ -27,12 +34,19 @@ class MatProp {
   Vec wm_0_;
   Vec vt_0_;
   Vec csf_0_;
+  Vec kfxx_0_;
+  Vec kfxy_0_;
+  Vec kfxz_0_;
+  Vec kfyy_0_;
+  Vec kfyz_0_; 
+  Vec kfzz_0_;
 
   // mri
   Vec mri_;
 
   PetscErrorCode setValues(std::shared_ptr<Parameters> params);
   PetscErrorCode setValuesCustom(Vec gm, Vec wm, Vec csf, Vec vt, Vec bg, std::shared_ptr<Parameters> params);
+  PetscErrorCode setDiffusionFiber(Vec kfxx, Vec kfxy, Vec kfxz, Vec kfyy, Vec kfyz, Vec kfzz, std::shared_ptr<Parameters> params);
   PetscErrorCode setValuesSinusoidal(std::shared_ptr<Parameters> params);
   PetscErrorCode clipHealthyTissues();
   PetscErrorCode filterBackgroundAndSmooth(Vec in);
