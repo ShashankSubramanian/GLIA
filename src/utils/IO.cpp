@@ -229,12 +229,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "a_gm_path") {a->path_->gm_ = value; return;}
   if (name == "a_csf_path") {a->path_->csf_ = value; return;}
   if (name == "a_vt_path") {a->path_->vt_ = value; return;}
-  if (name == "a_kfxx_path") {a->path_->kfxx_ = value; return;}
-  if (name == "a_kfxy_path") {a->path_->kfxy_ = value; return;}
-  if (name == "a_kfxz_path") {a->path_->kfxz_ = value; return;}
-  if (name == "a_kfyy_path") {a->path_->kfyy_ = value; return;}
-  if (name == "a_kfyz_path") {a->path_->kfyz_ = value; return;}
-  if (name == "a_kfzz_path") {a->path_->kfzz_ = value; return;}
+  if (name == "a_kf_path") {a->path_->kf_ = value; return;}
   if (name == "p_seg_path") {a->path_->p_seg_ = value; return;}
   if (name == "p_wm_path") {a->path_->p_wm_ = value; return;}
   if (name == "p_gm_path") {a->path_->p_gm_ = value; return;}

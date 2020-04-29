@@ -130,7 +130,6 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
 
   // === read brain: healthy fiber diffusion tensor kfxx, kfxy, kfxz, kfyy, kfyz, kfzz for simulation
   ierr = readDiffusionFiberTensor(); CHKERRQ(ierr);
-  
   // === read in user given velocity
   ierr = readVelocity(); CHKERRQ(ierr);
 
@@ -159,6 +158,7 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
   // update diffusion coefficient, reaction coefficient, phi with material properties
   ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr); CHKERRQ(ierr);
   ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
+  ierr = tumor_->mat_prop_->setDiffusionFiber(kfxx_, kfxy_, kfxz_, kfyy_, kfyz_, kfzz_, params_); CHKERRQ(ierr);
 #ifdef CUDA
   if (params_->tu_->verbosity_ > 0)
     cudaPrintDeviceMemory();
@@ -374,6 +374,7 @@ PetscErrorCode SolverInterface::predict() {
 	  ierr = readDiffusionFiberTensor(); CHKERRQ(ierr);
           ierr = updateTumorCoefficients(wm_, gm_, csf_, vt_, nullptr);
           ierr = tumor_->mat_prop_->setDiffusionFiber(kfxx_, kfxy_, kfxz_, kfyy_, kfyz_, kfzz_, params_); CHKERRQ(ierr);
+          
           ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr); 
 
 
@@ -686,50 +687,40 @@ PetscErrorCode SolverInterface::readDiffusionFiberTensor() {
     ScalarType sigma_smooth = params_->tu_->smoothing_factor_ * 2 * M_PI /params_->grid_->n_[0];
 
 // reading the fiber diffusion tensor
-  if (!app_settings_->path_->kfxx_.empty()) {
+  if (!app_settings_->path_->kf_.empty()) {
      ierr = VecDuplicate(tmp_, &kfxx_); CHKERRQ(ierr);
-     ierr = dataIn(kfxx_, params_, app_settings_->path_->kfxx_); CHKERRQ(ierr);
-}
-  if (!app_settings_->path_->kfxy_.empty()) {
      ierr = VecDuplicate(tmp_, &kfxy_); CHKERRQ(ierr);
-     ierr = dataIn(kfxy_, params_, app_settings_->path_->kfxy_); CHKERRQ(ierr);
-}
-  if (!app_settings_->path_->kfxz_.empty()) {
      ierr = VecDuplicate(tmp_, &kfxz_); CHKERRQ(ierr);
-     ierr = dataIn(kfxz_, params_, app_settings_->path_->kfxz_); CHKERRQ(ierr);
-}
-  if (!app_settings_->path_->kfyy_.empty()) {
      ierr = VecDuplicate(tmp_, &kfyy_); CHKERRQ(ierr);
-     ierr = dataIn(kfyy_, params_, app_settings_->path_->kfyy_); CHKERRQ(ierr);
-}
-  if (!app_settings_->path_->kfyz_.empty()) {
      ierr = VecDuplicate(tmp_, &kfyz_); CHKERRQ(ierr);
-     ierr = dataIn(kfyz_, params_, app_settings_->path_->kfyz_); CHKERRQ(ierr);
-}
-  if (!app_settings_->path_->kfzz_.empty()) {
      ierr = VecDuplicate(tmp_, &kfzz_); CHKERRQ(ierr);
-     ierr = dataIn(kfzz_, params_, app_settings_->path_->kfzz_); CHKERRQ(ierr);
+     ierr = dataIn(kfxx_, params_, app_settings_->path_->kf_ + "kf11_w.nc" ); CHKERRQ(ierr);
+     ierr = dataIn(kfxy_, params_, app_settings_->path_->kf_ + "kf12_w.nc" ); CHKERRQ(ierr);
+     ierr = dataIn(kfxz_, params_, app_settings_->path_->kf_ + "kf13_w.nc" ); CHKERRQ(ierr);
+     ierr = dataIn(kfyy_, params_, app_settings_->path_->kf_ + "kf22_w.nc" ); CHKERRQ(ierr);
+     ierr = dataIn(kfyz_, params_, app_settings_->path_->kf_ + "kf23_w.nc" ); CHKERRQ(ierr);
+     ierr = dataIn(kfzz_, params_, app_settings_->path_->kf_ + "kf33_w.nc" ); CHKERRQ(ierr);
 }
 // smooth
   if (params_->tu_->smoothing_factor_atlas_ > 0) {
      if (kfxx_ !=nullptr) {
         ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
-        }
+     }
 
-     if (kfxx_ !=nullptr) {
-        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     if (kfxy_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxy_, kfxy_, params_, sigma_smooth); CHKERRQ(ierr);
      }
-     if (kfxx_ !=nullptr) {
-        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     if (kfxz_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfxz_, kfxz_, params_, sigma_smooth); CHKERRQ(ierr);
      }
-     if (kfxx_ !=nullptr) {
-        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     if (kfyy_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfyy_, kfyy_, params_, sigma_smooth); CHKERRQ(ierr);
      }
-     if (kfxx_ !=nullptr) {
-        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     if (kfyz_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfyz_, kfyz_, params_, sigma_smooth); CHKERRQ(ierr);
      }
-     if (kfxx_ !=nullptr) {
-        ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
+     if (kfzz_ !=nullptr) {
+        ierr = spec_ops_->weierstrassSmoother(kfzz_, kfzz_, params_, sigma_smooth); CHKERRQ(ierr);
      }
 }
 
@@ -755,6 +746,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   // set to synthetic parameters
   params_->tu_->rho_ = app_settings_->syn_->rho_;
   params_->tu_->k_ = app_settings_->syn_->k_;
+  params_->tu_->kf_ = app_settings_->syn_->kf_;
   params_->tu_->dt_ = app_settings_->syn_->dt_;
   params_->tu_->nt_ = app_settings_->syn_->nt_;
   params_->tu_->forcing_factor_ = app_settings_->syn_->forcing_factor_;

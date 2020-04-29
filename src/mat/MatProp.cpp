@@ -244,14 +244,6 @@ PetscErrorCode MatProp::setDiffusionFiber(Vec kfxx, Vec kfxy, Vec kfxz, Vec kfyy
     ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
   }
 
-  if (params->tu_->write_output_) {
-    dataOut(kfxx_, params, "kfxx.nc");
-    dataOut(kfxy_, params, "kfxy.nc");
-    dataOut(kfxz_, params, "kfxz.nc");
-    dataOut(kfyy_, params, "kfyy.nc");
-    dataOut(kfyz_, params, "kfyz.nc");
-    dataOut(kfzz_, params, "kfzz.nc");
-  }
 }
 
 

@@ -87,7 +87,6 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
-    p['smoothing_factor_diffusion_fiber'] = 1           # kernel width for smoothing of data and diffusion fiber
     p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
@@ -135,13 +134,7 @@ def write_config(set_params, run):
     p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/gray_matter.nc'
     p['a_csf_path'] = ""
     p['a_vt_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/csf.nc'
-    
-    p['a_kfxx_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfxx.nc'
-    p['a_kfxy_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfxy.nc'
-    p['a_kfxz_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfxz.nc'
-    p['a_kfyy_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfyy.nc'
-    p['a_kfyz_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfyz.nc'
-    p['a_kfzz_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/kfzz.nc'
+    p['a_kf_path'] = r['code_path'] + '/brain_data/' + str(p['n']) + '/w/'
    
     p['p_seg_path'] = ""                # [optional] paths to patient material properties for mass effect
     p['p_wm_path'] = ""
@@ -289,12 +282,7 @@ def write_config(set_params, run):
         f.write("a_gm_path=" + str(p['a_gm_path']) + "\n");
         f.write("a_csf_path=" + str(p['a_csf_path']) + "\n");
         f.write("a_vt_path=" + str(p['a_vt_path']) + "\n");
-        f.write("a_kfxx_path=" + str(p['a_kfxx_path']) + "\n");
-        f.write("a_kfxy_path=" + str(p['a_kfxy_path']) + "\n");
-        f.write("a_kfxz_path=" + str(p['a_kfxz_path']) + "\n");
-        f.write("a_kfyy_path=" + str(p['a_kfyy_path']) + "\n");
-        f.write("a_kfyz_path=" + str(p['a_kfyz_path']) + "\n");
-        f.write("a_kfzz_path=" + str(p['a_kfzz_path']) + "\n");
+        f.write("a_kf_path=" + str(p['a_kf_path']) + "\n");
         f.write("p_seg_path=" + str(p['p_seg_path']) + "\n");
         f.write("p_wm_path=" + str(p['p_wm_path']) + "\n");
         f.write("p_gm_path=" + str(p['p_gm_path']) + "\n");

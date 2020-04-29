@@ -1,7 +1,7 @@
 #include "DiffCoef.h"
 
 DiffCoef::DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops)
-    : spec_ops_(spec_ops), k_scale_(1E-2), kf_scale_(0), k_gm_wm_ratio_(1.0 / 5.0), k_glm_wm_ratio_(3.0 / 5.0), smooth_flag_(0), filter_avg_(0.0) {
+    : spec_ops_(spec_ops), k_scale_(1E-2), k_gm_wm_ratio_(1.0 / 5.0), k_glm_wm_ratio_(3.0 / 5.0), smooth_flag_(0), filter_avg_(0.0) {
   PetscErrorCode ierr;
   ierr = VecCreate(PETSC_COMM_WORLD, &kxx_);
   ierr = VecSetSizes(kxx_, params->grid_->nl_, params->grid_->ng_);
@@ -70,7 +70,7 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients(ScalarType k1, ScalarType k
                                                                                        // provide user with option to control the diffusivity in others from params
   k_glm_wm_ratio_ = (params->tu_->nk_ == 1) ? params->tu_->k_glm_wm_ratio_ : k3 / k1;  // glm is always zero. TODO:  take it out in new iterations of the solver
   // and set the values
-  ierr = setValues(k_scale_, kf_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, params);
+  ierr = setValues(k_scale_, params->tu_->kf_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, params);
   PetscFunctionReturn(ierr);
 }
 
@@ -78,7 +78,6 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   PetscFunctionBegin;
   PetscErrorCode ierr;
   k_scale_ = k_scale;
-  kf_scale_ = kf_scale;
   k_gm_wm_ratio_ = k_gm_wm_ratio;
   k_glm_wm_ratio_ = k_glm_wm_ratio;
   params->tu_->k_gm_wm_ratio_ = k_gm_wm_ratio_;  // update values in params
@@ -100,17 +99,18 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   ierr = VecAXPY(kxx_, dk_dm_gm, mat_prop->gm_); CHKERRQ(ierr);
   ierr = VecAXPY(kxx_, dk_dm_wm, mat_prop->wm_); CHKERRQ(ierr);
   ierr = VecAXPY(kxx_, dk_dm_glm, mat_prop->csf_); CHKERRQ(ierr);
-
+  
   ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
   ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
 
-  ierr = VecAXPY(kxx_, kf_scale, mat_prop->kfxx_);
-  ierr = VecAXPY(kxy_, kf_scale, mat_prop->kfxy_);
-  ierr = VecAXPY(kxz_, kf_scale, mat_prop->kfxz_);
-  ierr = VecAXPY(kyy_, kf_scale, mat_prop->kfyy_);
-  ierr = VecAXPY(kyz_, kf_scale, mat_prop->kfyz_);
-  ierr = VecAXPY(kzz_, kf_scale, mat_prop->kfzz_);
- 
+  ierr = VecAXPY(kxx_, params->tu_->kf_, mat_prop->kfxx_);
+  ierr = VecAXPY(kxy_, params->tu_->kf_, mat_prop->kfxy_);
+  ierr = VecAXPY(kxz_, params->tu_->kf_, mat_prop->kfxz_);
+  ierr = VecAXPY(kyy_, params->tu_->kf_, mat_prop->kfyy_);
+  ierr = VecAXPY(kyz_, params->tu_->kf_, mat_prop->kfyz_);
+  ierr = VecAXPY(kzz_, params->tu_->kf_, mat_prop->kfzz_);
+  ierr = dataOut(kxx_, params, "kxx.nc"); CHKERRQ(ierr);    
+
   // Average diff coeff values for preconditioner for diffusion solve
   ierr = VecSum(kxx_, &kxx_avg_); CHKERRQ(ierr);
   ierr = VecSum(kxy_, &kxy_avg_); CHKERRQ(ierr);
