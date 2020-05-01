@@ -206,6 +206,7 @@ public:
   , user_cm_()
   , obs_threshold_0_ (0.0)                 // Observation threshold for data at time t=0
   , obs_threshold_1_ (0.0)                 // Observation threshold for data at time t=1
+  , obs_lambda_(-1)                        // enables custom observation operator to be build from segmentation as OBS = 1[TC] + lambda*1{B/WT]
   , relative_obs_threshold_(false)         // if true, observation threshold is relative to max concentration
   , smoothing_factor_ (1)                  // Smoothing factor for material properties
   , smoothing_factor_data_ (1)             // Smoothing factor for read in data
@@ -339,6 +340,7 @@ public:
   // data
   ScalarType obs_threshold_0_;
   ScalarType obs_threshold_1_;
+  ScalarType obs_lambda_;
   ScalarType smoothing_factor_data_;
   ScalarType smoothing_factor_data_t0_;
   ScalarType smoothing_factor_;

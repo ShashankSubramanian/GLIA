@@ -70,6 +70,7 @@ class SolverInterface {
   Vec gm_;
   Vec vt_;
   Vec csf_;
+  Vec ed_;
   Vec mri_;
   Vec tmp_;
   Vec data_t1_;
