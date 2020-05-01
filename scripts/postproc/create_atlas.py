@@ -49,15 +49,15 @@ def convert_tu_brats_seg(tu_seg):
 
 
 
-pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+##pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+pat_names = ["Brats18_CBICA_ABO_1"]
 scripts_path = os.getcwd() + "/.."
 nm = ["ABO", "AAP", "AMH", "ALU"]
 idx = 0
-for n in nm:
-    data_path = scripts_path + "/../results/reg-" + n + "-KS/"
+for n in pat_names:
+    data_path = scripts_path + "/../results/reg-" + n + "/"
     pnm = pat_names[idx]
-#    atlases = ["atlas-7", "atlas-8", "atlas-9"]
-    atlases = ["atlas-4", "atlas-5", "atlas-9", "atlas-10"]
+    atlases = ["atlas-1", "atlas-2", "atlas-3"]
 #atlases = ["atlas-1"]
 
     for atlas in atlases:
@@ -66,26 +66,26 @@ for n in nm:
         altas_seg = nib.load(atlas_path).get_fdata()
         patient_seg = nib.load(scripts_path + "/../brain_data/real_data/" + pnm + "/data/" + pnm + "_seg_tu_aff2jakob.nii.gz").get_fdata()
         tc = np.logical_or(patient_seg == 1, patient_seg == 4)
-#        print("transporting maps for {}".format(atlas))
-#        c0_path = r_path + "/c0Recon_transported.nii.gz"
-#        c0 = nib.load(c0_path).get_fdata()
-#        createNetCDFFile(r_path + "/c0Recon_transported.nc", 256 * np.ones(3), np.transpose(c0))
-        ### create nc files
-#        nm = r_path + "/" + atlas + "_vt_new"
-#        altas_mat_img = 0 * altas_seg
-#        altas_mat_img[altas_seg == 7] = 1
-#        createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
-#        nm = r_path + "/" + atlas + "_csf_new"
-#        altas_mat_img = 0 * altas_seg
-#        altas_mat_img[altas_seg == 8] = 1
-#        createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
-#        nm = r_path + "/" + atlas + "_gm_new"
-#        altas_mat_img = 0 * altas_seg
-#        altas_mat_img[altas_seg == 5] = 1
-#        createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
-        nm = r_path + "/" + atlas + "_wm_new_tc"
+        print("transporting maps for {}".format(atlas))
+        c0_path = r_path + "/c0Recon_transported.nii.gz"
+        c0 = nib.load(c0_path).get_fdata()
+        createNetCDFFile(r_path + "/c0Recon_transported.nc", 256 * np.ones(3), np.transpose(c0))
+       ### create nc files
+        nm = r_path + "/" + atlas + "_vt_new"
         altas_mat_img = 0 * altas_seg
-        altas_mat_img[np.logical_or(altas_seg == 6, tc == 1)] = 1  ### add tc to wm of atlas
-#        altas_mat_img[altas_seg == 6] = 1
+        altas_mat_img[altas_seg == 7] = 1
+        createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
+        nm = r_path + "/" + atlas + "_csf_new"
+        altas_mat_img = 0 * altas_seg
+        altas_mat_img[altas_seg == 8] = 1
+        createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
+        nm = r_path + "/" + atlas + "_gm_new"
+        altas_mat_img = 0 * altas_seg
+        altas_mat_img[altas_seg == 5] = 1
+        createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
+        nm = r_path + "/" + atlas + "_wm_new"
+        altas_mat_img = 0 * altas_seg
+#        altas_mat_img[np.logical_or(altas_seg == 6, tc == 1)] = 1  ### add tc to wm of atlas
+        altas_mat_img[altas_seg == 6] = 1
         createNetCDFFile(nm + ".nc", 256 * np.ones(3), np.transpose(altas_mat_img))
     idx += 1      
