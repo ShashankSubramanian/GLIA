@@ -98,6 +98,7 @@ PetscErrorCode InverseL2Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 101 Solver" << std::endl;
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
@@ -241,6 +242,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 245 Solver" << std::endl;
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
@@ -329,6 +331,7 @@ PetscErrorCode InverseReactionDiffusionSolver::initialize(std::shared_ptr<Spectr
 
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 334 Solver" << std::endl;
 
   PetscFunctionReturn(ierr);
 }
@@ -432,6 +435,7 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, p_csf_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 438 Solver" << std::endl;
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
@@ -474,6 +478,7 @@ PetscErrorCode InverseMassEffectSolver::run() {
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 481 Solver" << std::endl;
   ierr = tumor_->velocity_->set(0.);
 
   PetscFunctionReturn(ierr);

@@ -31,7 +31,7 @@ PetscErrorCode ReacCoef::setValues(ScalarType rho_scale, ScalarType r_gm_wm_rati
   ierr = VecAXPY(rho_vec_, dr_dm_gm, mat_prop->gm_); CHKERRQ(ierr);
   ierr = VecAXPY(rho_vec_, dr_dm_wm, mat_prop->wm_); CHKERRQ(ierr);
   ierr = VecAXPY(rho_vec_, dr_dm_glm, mat_prop->csf_); CHKERRQ(ierr);
-  
+  ierr = dataOut(rho_vec_, params, "rho_inrhocoeff.nc"); 
   if (smooth_flag_) this->smooth(params);
 
   PetscFunctionReturn(ierr);

@@ -219,29 +219,29 @@ PetscErrorCode MatProp::setDiffusionFiber(Vec kfxx, Vec kfxy, Vec kfxz, Vec kfyy
     ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
   }
   if (kfxx != nullptr) {
-    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+    ierr = VecCopy(kfxy, kfxy_); CHKERRQ(ierr);
   } else {
-    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(kfxy_, 0.0); CHKERRQ(ierr);
   }
   if (kfxx != nullptr) {
-    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+    ierr = VecCopy(kfxz, kfxz_); CHKERRQ(ierr);
   } else {
-    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(kfxz_, 0.0); CHKERRQ(ierr);
   }
   if (kfxx != nullptr) {
-    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+    ierr = VecCopy(kfyy, kfyy_); CHKERRQ(ierr);
   } else {
-    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(kfyy_, 0.0); CHKERRQ(ierr);
   }
   if (kfxx != nullptr) {
-    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+    ierr = VecCopy(kfyz, kfyz_); CHKERRQ(ierr);
   } else {
-    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(kfyz_, 0.0); CHKERRQ(ierr);
   }
   if (kfxx != nullptr) {
-    ierr = VecCopy(kfxx, kfxx_); CHKERRQ(ierr);
+    ierr = VecCopy(kfzz, kfzz_); CHKERRQ(ierr);
   } else {
-    ierr = VecSet(kfxx_, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(kfzz_, 0.0); CHKERRQ(ierr);
   }
 
 }

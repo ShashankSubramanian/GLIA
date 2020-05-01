@@ -47,7 +47,7 @@ def write_config(set_params, run):
     p['multilevel'] = 0                 # rescale p activations according to Gaussian width on each level
     p['inject_solution'] = 0            # use coarse level solution as warm-start
     p['pre_reacdiff_solve'] = 0         # reaction/diffusion solver before sparse til solve
-    p['verbosity'] = 1                  # various levels of output density
+    p['verbosity'] = 3                  # various levels of output density
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### optimizer
     p['newton_solver'] = "QN"           # GN, QN
@@ -60,7 +60,7 @@ def write_config(set_params, run):
     p['krylov_maxit'] = 1               # if GN: number krylov iterations
     p['gist_maxit'] = 2                 # number iterations for L1 CoSaMp solver
     p['kappa_lb'] = 0.0001              # lower bound kappa
-    p['kappa_ub'] = 1.0                 # upper bound kappa
+    p['kappa_ub'] = 1                 # upper bound kappa
     p['rho_lb'] = 0                     # lower bound rho
     p['rho_ub'] = 15                    # upper bound rho
     p['gamma_lb'] = 0                   # lower bound gamma

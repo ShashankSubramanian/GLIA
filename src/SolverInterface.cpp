@@ -132,7 +132,6 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = readDiffusionFiberTensor(); CHKERRQ(ierr);
   // === read in user given velocity
   ierr = readVelocity(); CHKERRQ(ierr);
-
   // === advect healthy material properties with read in velocity, if given
   if (app_settings_->syn_->pre_adv_time_ > 0 && velocity_ != nullptr) {
     ss << " pre-advecting material properties with velocity to time t=" << app_settings_->syn_->pre_adv_time_;
@@ -753,6 +752,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
 
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 756 SolverInterface" << std::endl;
   ierr = VecDuplicate(gm_, &wm_);
 
   // allocate t1 and t0 data:
@@ -987,6 +987,7 @@ PetscErrorCode SolverInterface::updateTumorCoefficients(Vec wm, Vec gm, Vec csf,
   double self_exec_time = -MPI_Wtime();
   ierr = tumor_->mat_prop_->setValuesCustom(gm, wm, csf, vt, bg, params_); CHKERRQ(ierr);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+  std::cout << "kf=" << params_->tu_->k_ << ", k=" << params_->tu_->kf_ << "line 991 SolverInterface" << std::endl;
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
   ierr = tumor_->phi_->setValues(tumor_->mat_prop_); CHKERRQ(ierr);
   ierr = pde_operators_->diff_solver_->precFactor(); CHKERRQ(ierr);

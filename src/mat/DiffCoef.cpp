@@ -102,14 +102,14 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   
   ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
   ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
-
-  ierr = VecAXPY(kxx_, params->tu_->kf_, mat_prop->kfxx_);
-  ierr = VecAXPY(kxy_, params->tu_->kf_, mat_prop->kfxy_);
-  ierr = VecAXPY(kxz_, params->tu_->kf_, mat_prop->kfxz_);
-  ierr = VecAXPY(kyy_, params->tu_->kf_, mat_prop->kfyy_);
-  ierr = VecAXPY(kyz_, params->tu_->kf_, mat_prop->kfyz_);
-  ierr = VecAXPY(kzz_, params->tu_->kf_, mat_prop->kfzz_);
-  ierr = dataOut(kxx_, params, "kxx.nc"); CHKERRQ(ierr);    
+  ScalarType alpha = params->tu_->kf_ - params->tu_->k_;
+  ierr = VecAXPY(kxx_, alpha, mat_prop->kfxx_);
+  ierr = VecAXPY(kxy_, alpha, mat_prop->kfxy_);
+  ierr = VecAXPY(kxz_, alpha, mat_prop->kfxz_);
+  ierr = VecAXPY(kyy_, alpha, mat_prop->kfyy_);
+  ierr = VecAXPY(kyz_, alpha, mat_prop->kfyz_);
+  ierr = VecAXPY(kzz_, alpha, mat_prop->kfzz_);
+  ierr = dataOut(kyz_, params, "kyz.nc"); CHKERRQ(ierr);    
 
   // Average diff coeff values for preconditioner for diffusion solve
   ierr = VecSum(kxx_, &kxx_avg_); CHKERRQ(ierr);
