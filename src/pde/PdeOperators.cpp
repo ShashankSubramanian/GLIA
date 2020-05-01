@@ -19,10 +19,6 @@ PdeOperatorsRD::PdeOperatorsRD(std::shared_ptr<Tumor> tumor, std::shared_ptr<Par
   ScalarType dt = params_->tu_->dt_;
   int nt = params_->tu_->nt_;
 
-  if(params->tu_->adv_velocity_set_) {
-    adv_solver_ = std::make_shared<SemiLagrangianSolver> (params, tumor, spec_ops);
-  }
-
   if (!params->tu_->time_history_off_ && params_->tu_->model_ < 4) {
     c_.resize(nt + 1);  // Time history of tumor
     p_.resize(nt + 1);  // Time history of adjoints
@@ -100,41 +96,6 @@ PetscErrorCode PdeOperatorsRD::resizeTimeHistory(std::shared_ptr<Parameters> par
   }
 
   PetscFunctionReturn(ierr);
-}
-
-PetscErrorCode PdeOperatorsRD::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {
-  PetscFunctionBegin;
-  PetscErrorCode ierr = 0;
-
-  int procid, nprocs;
-  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
-
-  ScalarType dt = params_->tu_->dt_;
-  int nt = adv_time/dt;
-  std::stringstream ss;
-  ss << " Advecting using nt="<<nt<<" time steps"; tuMSGstd(ss.str());
-
-  for (int i = 0; i < nt; i++) {
-    // advection of healthy tissue
-    if (params_->tu_->adv_velocity_set_) {
-      //adv_solver_->advection_mode_ = 1;  //  mass conservation
-      adv_solver_->advection_mode_ = 2;  // pure advection
-      ierr = adv_solver_->solve (gm, tumor_->velocity_, dt); CHKERRQ(ierr);
-      ierr = adv_solver_->solve (wm, tumor_->velocity_, dt); CHKERRQ(ierr);
-      ierr = adv_solver_->solve (csf, tumor_->velocity_, dt); CHKERRQ(ierr);
-      if(mri != nullptr) {
-        ierr = adv_solver_->solve (mri, tumor_->velocity_, dt); CHKERRQ(ierr);
-      }
-    }
-  }
-  // ierr = dataOut (wm, params_, "wm_atlas_adv.nc"); CHKERRQ(ierr);
-  // ierr = dataOut (gm, params_, "gm_atlas_adv.nc"); CHKERRQ(ierr);
-  // ierr = dataOut (csf, params_, "csf_atlas_adv.nc"); CHKERRQ(ierr);
-  // if(mri != nullptr) {
-      // ierr = dataOut (mri, params_, "mri_atlas_adv.nc"); CHKERRQ(ierr);
-  // }
-  PetscFunctionReturn (ierr);
 }
 
 
@@ -527,3 +488,154 @@ PdeOperatorsRD::~PdeOperatorsRD() {
   }
 }
 
+
+
+/* #### ----------------------------------------------------------------------------------- #### */
+/* #### ========    PDE Operators for Reaction/DIffusion w/ explicit. Advection    ======== #### */
+/* #### ----------------------------------------------------------------------------------- #### */
+
+PdeOperatorsRD::PdeOperatorsRDAdv(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops)
+: PdeOperatorsRD(tumor, params, spec_ops) {
+  PetscErrorCode ierr = 0;
+  ScalarType dt = params_->tu_->dt_;
+  int nt = params_->tu_->nt_;
+
+  // first order splitting
+  params->tu_->order_ = 1;
+  // initialize advection solver
+  if(params->tu_->adv_velocity_set_) {
+    adv_solver_ = std::make_shared<SemiLagrangianSolver> (params, tumor, spec_ops);
+  }
+}
+
+PetscErrorCode PdeOperatorsRDAdv::solveState(int linearized) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e("tumor-solve-state");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
+
+  ScalarType dt = params_->tu_->dt_;
+  int nt = params_->tu_->nt_;
+
+  params_->tu_->statistics_.nb_state_solves++;
+
+  int procid, nprocs;
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+
+  ierr = VecCopy(tumor_->c_0_, tumor_->c_t_); CHKERRQ(ierr);
+  if (linearized == 0 && !params_->tu_->time_history_off_) {
+    ierr = VecCopy(tumor_->c_t_, c_[0]); CHKERRQ(ierr);
+  }
+
+  diff_ksp_itr_state_ = 0;
+
+  /* linearized = 0 -- state equation
+     linearized = 1 -- linearized state equation
+     linearized = 2 -- linearized state equation with diffusivity inversion
+                       for hessian application
+  */
+
+  for (int i = 0; i < nt; i++) {
+    if (linearized == 2) {
+      // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
+      // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
+      ierr = solveIncremental(tumor_->c_t_, c_, dt / 2, i, 1);
+    }
+
+    // advection of healthy tissue
+    if (params->tu_->adv_velocity_set_) {
+        adv_solver_->advection_mode_ = 1;  //  mass conservation
+        // adv_solver_->advection_mode_ = 2;    // pure advection
+        ierr = adv_solver_->solve(tumor_->mat_prop_->gm_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->wm_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        if(tumor_->mat_prop_->csf_ !_ nullptr) {
+          ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        }
+        ierr = adv_solver_->solve(tumor_->c_t_, tumor_->velocity_, dt); CHKERRQ(ierr);
+    }
+
+    if (params_->tu_->order_ == 2) {
+      diff_solver_->solve(tumor_->c_t_, dt / 2.0);
+      diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+      if (linearized == 0 && params_->tu_->adjoint_store_ && !params_->tu_->time_history_off_) {
+        ierr = VecCopy(tumor_->c_t_, c_half_[i]); CHKERRQ(ierr);
+      }
+      ierr = reaction(linearized, i);
+      diff_solver_->solve(tumor_->c_t_, dt / 2.0);
+      diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+
+      // diff inv for incr fwd
+      if (linearized == 2) {
+        // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
+        // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
+        ierr = solveIncremental(tumor_->c_t_, c_, dt / 2, i, 2);
+      }
+    } else {
+      diff_solver_->solve(tumor_->c_t_, dt);
+      diff_ksp_itr_state_ += diff_solver_->ksp_itr_;
+      if (linearized == 0 && params_->tu_->adjoint_store_ && !params_->tu_->time_history_off_) {
+        ierr = VecCopy(tumor_->c_t_, c_half_[i]); CHKERRQ(ierr);
+      }
+      ierr = reaction(linearized, i);
+    }
+
+    // Copy current conc to use for the adjoint equation
+    if (linearized == 0 && !params_->tu_->time_history_off_) {
+      ierr = VecCopy(tumor_->c_t_, c_[i + 1]); CHKERRQ(ierr);
+    }
+  }
+
+  std::stringstream s;
+  if (params_->tu_->verbosity_ >= 3) {
+    s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+  }
+
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
+}
+
+
+PetscErrorCode PdeOperatorsRDAdv::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  int procid, nprocs;
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank (MPI_COMM_WORLD, &procid);
+
+  ScalarType dt = params_->tu_->dt_;
+  int nt = adv_time/dt;
+  std::stringstream ss;
+  ss << " Advecting using nt="<<nt<<" time steps"; tuMSGstd(ss.str());
+
+  for (int i = 0; i < nt; i++) {
+    // advection of healthy tissue
+    if (params_->tu_->adv_velocity_set_) {
+      //adv_solver_->advection_mode_ = 1;  //  mass conservation
+      adv_solver_->advection_mode_ = 2;  // pure advection
+      ierr = adv_solver_->solve (gm, tumor_->velocity_, dt); CHKERRQ(ierr);
+      ierr = adv_solver_->solve (wm, tumor_->velocity_, dt); CHKERRQ(ierr);
+      ierr = adv_solver_->solve (csf, tumor_->velocity_, dt); CHKERRQ(ierr);
+      if(mri != nullptr) {
+        ierr = adv_solver_->solve (mri, tumor_->velocity_, dt); CHKERRQ(ierr);
+      }
+    }
+  }
+  // ierr = dataOut (wm, params_, "wm_atlas_adv.nc"); CHKERRQ(ierr);
+  // ierr = dataOut (gm, params_, "gm_atlas_adv.nc"); CHKERRQ(ierr);
+  // ierr = dataOut (csf, params_, "csf_atlas_adv.nc"); CHKERRQ(ierr);
+  // if(mri != nullptr) {
+      // ierr = dataOut (mri, params_, "mri_atlas_adv.nc"); CHKERRQ(ierr);
+  // }
+  PetscFunctionReturn (ierr);
+}

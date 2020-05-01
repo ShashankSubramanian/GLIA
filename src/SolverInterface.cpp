@@ -101,15 +101,16 @@ PetscErrorCode SolverInterface::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
 
+  params->tu_->adv_velocity_set_ = !app_settings_->path_->velocity_x1_.empty();
+  warmstart_p_ = !app_settings_->path_->pvec_.empty();
+  custom_obs_ = !app_settings_->path_->obs_filter_.empty();
+  has_dt0_ = params_->tu_->two_time_points_ || !app_settings_->path_->data_t0_.empty();
+
   // === initialize tumor, phi, mat_prop
   tumor_ = std::make_shared<Tumor>(params_, spec_ops_);
   ierr = tumor_->initialize(p_rec_, params_, spec_ops_, nullptr, nullptr); CHKERRQ(ierr);
   // === initialize pde- and derivative operators
   ierr = initializeOperators(); CHKERRQ(ierr);
-
-  warmstart_p_ = !app_settings_->path_->pvec_.empty();
-  custom_obs_ = !app_settings_->path_->obs_filter_.empty();
-  has_dt0_ = params_->tu_->two_time_points_ || !app_settings_->path_->data_t0_.empty();
 
   // === error handling for some configuration inconsistencies
   if (warmstart_p_ && app_settings_->path_->phi_.empty()) {
@@ -948,7 +949,11 @@ PetscErrorCode SolverInterface::initializeOperators() {
   // === initialize pde- and derivative operators
   switch (params_->tu_->model_) {
     case 1: {
-        pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
+        if(params->tu_->adv_velocity_set_) {
+          pde_operators_ = std::make_shared<PdeOperatorsRDAdv>(tumor_, params_, spec_ops_);
+        } else {
+          pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
+        }
         if (params_->opt_->cross_entropy_loss_) {
           derivative_operators_ = std::make_shared<DerivativeOperatorsKL>(pde_operators_, params_, tumor_);
         } else {
@@ -956,9 +961,9 @@ PetscErrorCode SolverInterface::initializeOperators() {
         }
     break;
     }
-    case 2: {
-      pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);
-      derivative_operators_ = std::make_shared<DerivativeOperatorsRD>(pde_operators_, params_, tumor_);
+    case 2: { // FD mode lfor finite differences
+      pde_operators_ = std::make_shared<PdeOperatorsRDAdv>(tumor_, params_, spec_ops_);
+      derivative_operators_ = std::make_shared<DerivativeOperatorsRDOnlyFD>(pde_operators_, params_, tumor_);
       break;
     }
     case 3: {

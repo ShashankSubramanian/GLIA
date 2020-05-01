@@ -67,8 +67,16 @@ class PdeOperatorsRD : public PdeOperators {
    *  computes q = int_T dK / dm * (grad c)^T grad * \alpha + dRho / dm c(1-c) * \alpha dt
    */
   virtual PetscErrorCode computeTumorContributionRegistration(Vec q1, Vec q2, Vec q3, Vec q4);
-  virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time);
   virtual ~PdeOperatorsRD();
+};
+
+class PdeOperatorsRDAdv : public PdeOperatorsRD {
+ public:
+  PdeOperatorsRDAdv(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
+
+  virtual PetscErrorCode solveState(int linearized);
+  virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time);
+  virtual ~PdeOperatorsRDAdv();
 
   // for explicit advection of material properties; only allocated if used
   std::shared_ptr<AdvectionSolver> adv_solver_;
