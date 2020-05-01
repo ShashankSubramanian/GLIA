@@ -76,7 +76,6 @@ class PdeOperatorsRDAdv : public PdeOperatorsRD {
 
   virtual PetscErrorCode solveState(int linearized);
   virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time);
-  virtual ~PdeOperatorsRDAdv();
 
   // for explicit advection of material properties; only allocated if used
   std::shared_ptr<AdvectionSolver> adv_solver_;

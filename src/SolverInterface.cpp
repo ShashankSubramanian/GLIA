@@ -949,7 +949,7 @@ PetscErrorCode SolverInterface::initializeOperators() {
   // === initialize pde- and derivative operators
   switch (params_->tu_->model_) {
     case 1: {
-        if(params->tu_->adv_velocity_set_) {
+        if(params_->tu_->adv_velocity_set_) {
           pde_operators_ = std::make_shared<PdeOperatorsRDAdv>(tumor_, params_, spec_ops_);
         } else {
           pde_operators_ = std::make_shared<PdeOperatorsRD>(tumor_, params_, spec_ops_);

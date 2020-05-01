@@ -494,7 +494,7 @@ PdeOperatorsRD::~PdeOperatorsRD() {
 /* #### ========    PDE Operators for Reaction/DIffusion w/ explicit. Advection    ======== #### */
 /* #### ----------------------------------------------------------------------------------- #### */
 
-PdeOperatorsRD::PdeOperatorsRDAdv(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops)
+PdeOperatorsRDAdv::PdeOperatorsRDAdv(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops)
 : PdeOperatorsRD(tumor, params, spec_ops) {
   PetscErrorCode ierr = 0;
   ScalarType dt = params_->tu_->dt_;
@@ -545,14 +545,14 @@ PetscErrorCode PdeOperatorsRDAdv::solveState(int linearized) {
     }
 
     // advection of healthy tissue
-    if (params->tu_->adv_velocity_set_) {
+    if (params_->tu_->adv_velocity_set_) {
         adv_solver_->advection_mode_ = 1;  //  mass conservation
         // adv_solver_->advection_mode_ = 2;    // pure advection
         ierr = adv_solver_->solve(tumor_->mat_prop_->gm_, tumor_->velocity_, dt); CHKERRQ(ierr);
         ierr = adv_solver_->solve(tumor_->mat_prop_->wm_, tumor_->velocity_, dt); CHKERRQ(ierr);
         ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
-        if(tumor_->mat_prop_->csf_ !_ nullptr) {
-          ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        if(tumor_->mat_prop_->csf_ != nullptr) {
+          ierr = adv_solver_->solve(tumor_->mat_prop_->csf_, tumor_->velocity_, dt); CHKERRQ(ierr);
         }
         ierr = adv_solver_->solve(tumor_->c_t_, tumor_->velocity_, dt); CHKERRQ(ierr);
     }

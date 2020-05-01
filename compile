@@ -1,1 +1,1 @@
-scons build=release compiler=mpicxx niftiio=no platform=rebels single_precision=yes gpu=no multi_gpu=no -j 20 
+scons build=debug compiler=mpicxx niftiio=no platform=frontera single_precision=yes gpu=no multi_gpu=no -j 20 
