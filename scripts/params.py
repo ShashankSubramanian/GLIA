@@ -92,7 +92,7 @@ def write_config(set_params, run):
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
     p['obs_lambda'] = -1                # if > 0: creates observation mask OBS = 1[TC] + lambda*1[B/WT] from segmentation file (only works if segmentation is read)
     p['two_time_points_'] = 0           # 0: only data at t=1 is provided, 1: data for both t=1 and t=0 is provided
-    p['atlas_labels'] = '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
+    p['atlas_labels'] = ""              # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### initial condition
     p['sparsity_level'] = 5             # target sparsity of recovered IC in sparse_til solver
