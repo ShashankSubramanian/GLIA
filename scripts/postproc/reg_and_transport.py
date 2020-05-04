@@ -231,8 +231,9 @@ if __name__=='__main__':
 
 #    atlases = ["atlas-2", "atlas-4", "atlas-5", "atlas-6"]
 #    atlases = ["atlas-4", "atlas-5", "atlas-6"]
-    atlases = ["atlas-1"]
-    for atlas in atlases:
+#    atlases = ["atlas-1"]
+    for i in range(1,9):
+        atlas = "atlas-" + str(i)
         r_path = results_path + atlas
         if not os.path.exists(r_path):
             os.makedirs(r_path)
@@ -245,10 +246,10 @@ if __name__=='__main__':
         bash_file = transport(claire_path, r_path, bash_file, "c0Recon")
         bash_file = transport(claire_path, r_path, bash_file, "patient_vt")
 
-    fio = open(bash_file, 'a')
-    fio.write("python3 " + scripts_path + "/postproc/reg_and_transport.py -tp 3\n")
-    fio.write("python3 " + scripts_path + "/postproc/reg_and_transport.py -tp 2\n")
-    fio.close()
+#    fio = open(bash_file, 'a')
+#    fio.write("python3 " + scripts_path + "/postproc/reg_and_transport.py -tp 3\n")
+#    fio.write("python3 " + scripts_path + "/postproc/reg_and_transport.py -tp 2\n")
+#    fio.close()
     sx = sy = sz = 256 / (2*math.pi)
     ### transport disp
     if tp == 1:

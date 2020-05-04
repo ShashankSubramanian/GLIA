@@ -14,46 +14,52 @@ from postproc_utils import writeNII, createNetCDFFile
 def computeNorm(img_1, img_2):
     return la.norm(img_1 - img_2)
 
-def printStats(altas, patient):
+def printStats(altas, patient, f):
     a_mat = 0 * altas
     a_mat[atlas == 5] = 1
     p_mat = 0 * patient
     p_mat[patient == 5] = 1
 
-    diff = computeNorm(a_mat, p_mat)
-    print("GM difference is {}".format(diff))
+    diff_gm = computeNorm(a_mat, p_mat)
 
     a_mat = 0 * altas
     a_mat[atlas == 6] = 1
     p_mat = 0 * patient
     p_mat[patient == 6] = 1
 
-    diff = computeNorm(a_mat, p_mat)
-    print("WM difference is {}".format(diff))
+    diff_wm = computeNorm(a_mat, p_mat)
 
     a_mat = 0 * altas
     a_mat[atlas == 7] = 1
     p_mat = 0 * patient
     p_mat[patient == 7] = 1
 
-    diff = computeNorm(a_mat, p_mat)
-    print("VT difference is {}".format(diff))
+    diff_vt = computeNorm(a_mat, p_mat)
 
     a_mat = 0 * altas
     a_mat[atlas == 8] = 1
     p_mat = 0 * patient
     p_mat[patient == 8] = 1
 
-    diff = computeNorm(a_mat, p_mat)
-    print("CSF difference is {}".format(diff))
+    diff_csf = computeNorm(a_mat, p_mat)
+
+    diff = diff_gm + diff_wm + diff_csf + diff_vt
+    f.write("{} \t\t\t\t {} \t\t\t\t {} \t\t\t\t {} \t\t\t\t {}\n".format(diff_wm, diff_gm, diff_csf, diff_vt, diff))
 
 
 scripts_path = os.getcwd() + "/.."
-patient_path = scripts_path + "/../brain_data/t16/t16-m12-seg.nii.gz"
+pat_name = "Brats18_CBICA_ABO_1"
+patient_path = scripts_path + "/../brain_data/real_data/" + pat_name + "/data/" + pat_name + "_seg_tu_aff2jakob.nii.gz"
 patient = nib.load(patient_path).get_fdata()
-atlas_path = scripts_path + "/../brain_data/atlas/" 
-for atlas_file in os.listdir(atlas_path):
+tumor_mask = np.logical_or(np.logical_or(patient == 1, patient == 4), patient == 2)
+atlas_path = scripts_path + "/../brain_data/atlas/"
+afile = scripts_path + "/../results/inv-" + pat_name + "/atlas_stat.txt"
+f = open(afile, "w+")
+f.write("WM \t\t\t\t GM \t\t\t\t CSF \t\t\t\t VT \t\t\t\t Total \n")
+for i in range(1,9):
+    atlas_file = "atlas-" + str(i) + ".nii.gz"
     atlas = nib.load(atlas_path + atlas_file).get_fdata()
-    print("Printing statistics for atlas {}...".format(atlas_file.split(".")[0]))
-    printStats(atlas, patient)
+    atlas[tumor_mask == 1] = 0      ### mask the tumor region
+    printStats(atlas, patient, f)
+f.close()
 

@@ -19,7 +19,7 @@ p['a_csf_path'] = code_dir + "/brain_data/t16/256/t16_csf.nc"
 p['a_vt_path'] = code_dir + "/brain_data/t16/256/t16_vt.nc"
 p['mri_path'] = code_dir + "/brain_data/t16/t1.nc"
 p['solver'] = 'forward'             # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
-p['model'] = 1                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
+p['model'] = 4                      # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
 p['verbosity'] = 3                  # various levels of output density
 p['syn_flag'] = 1                   # create synthetic data
 p['user_cms'] = [(137,169,96,1)]    # arbitrary number of TILs (x,y,z,scale) with activation scale
@@ -32,7 +32,7 @@ p['time_history_off'] = 1           # 1: do not allocate time history (only work
 
 ############### === define run configuration
 r['code_path'] = code_dir;
-r['compute_sys'] = 'rebels'         # TACC systems are: maverick2, frontera, stampede2, longhorn
+r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn
 
 ###############=== write config to write_path and submit job
 par.submit(p, r, submit_job);

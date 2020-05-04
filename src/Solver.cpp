@@ -392,8 +392,8 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
   // hack: for syn cases don't smooth data
-  params_->tu_->smoothing_factor_data_ = 0;
-  params_->tu_->smoothing_factor_patient_ = 0;
+//  params_->tu_->smoothing_factor_data_ = 0;
+//  params_->tu_->smoothing_factor_patient_ = 0;
   ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
