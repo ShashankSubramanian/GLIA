@@ -541,6 +541,9 @@ PetscErrorCode SolverInterface::readAtlas() {
     if (!app_settings_->path_->csf_.empty()) {
       ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
       ierr = dataIn(csf_, params_, app_settings_->path_->csf_); CHKERRQ(ierr);
+      if(app_settings_->path_->vt_.empty()) {
+        ierr = tuMSGwarn(" Warning: csf data is read in but vt path is not set. Please set vt path instead."); CHKERRQ(ierr);
+      }
     }
   }
   // smooth
