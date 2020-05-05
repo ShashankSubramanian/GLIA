@@ -4,7 +4,6 @@ import numpy as np
 import nibabel as nib
 import scipy as sc
 from scipy.ndimage import gaussian_filter
-import TumorParams
 from netCDF4 import Dataset
 from numpy import linalg as la
 
@@ -48,12 +47,12 @@ def printStats(altas, patient, f):
 
 
 scripts_path = os.getcwd() + "/.."
-pat_name = "Brats18_CBICA_ABO_1"
+pat_name = "Brats18_CBICA_AAP_1"
 patient_path = scripts_path + "/../brain_data/real_data/" + pat_name + "/data/" + pat_name + "_seg_tu_aff2jakob.nii.gz"
 patient = nib.load(patient_path).get_fdata()
 tumor_mask = np.logical_or(np.logical_or(patient == 1, patient == 4), patient == 2)
 atlas_path = scripts_path + "/../brain_data/atlas/"
-afile = scripts_path + "/../results/inv-" + pat_name + "/atlas_stat.txt"
+afile = scripts_path + "/../results/stat-" + pat_name + "/atlas_stat.txt"
 f = open(afile, "w+")
 f.write("WM \t\t\t\t GM \t\t\t\t CSF \t\t\t\t VT \t\t\t\t Total \n")
 for i in range(1,9):

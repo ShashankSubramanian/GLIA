@@ -83,13 +83,17 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients(Vec seg, st
   ierr = vecGetArray(tumor_->mat_prop_->csf_, &csf_ptr); CHKERRQ(ierr);
 
   ScalarType temp = 1.;
+  ScalarType gm_k_scale = 1 - params_->tu_->k_gm_wm_ratio_;
+  ScalarType gm_r_scale = 1 - params_->tu_->r_gm_wm_ratio_;
 #ifdef CUDA
-  updateReacAndDiffCoefficientsCuda(rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, params_->tu_->rho_, params_->tu_->k_, params_->grid_->nl_);
+  updateReacAndDiffCoefficientsCuda(rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, params_->tu_->rho_, params_->tu_->k_, gm_r_scale, gm_k_scale, params_->grid_->nl_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) {
-    temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+    temp = (1 - (bg_ptr[i] + gm_r_scale * gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
     temp = (temp < 0) ? 0 : temp;
     rho_ptr[i] = temp * params_->tu_->rho_;
+    temp = (1 - (bg_ptr[i] + gm_k_scale * gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+    temp = (temp < 0) ? 0 : temp;
     k_ptr[i] = temp * params_->tu_->k_;
   }
 #endif
