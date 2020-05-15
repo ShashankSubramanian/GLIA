@@ -466,6 +466,8 @@ PetscErrorCode SolverInterface::setupData() {
   if (has_dt0_ && params_->tu_->two_time_points_) {
     ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
   }
+  ierr = dataOut(data_->dt1(), params_, "data.nc"); CHKERRQ(ierr);
+  ierr = dataOut(obs_filter_, params_, "obs.nc"); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 

@@ -15,14 +15,18 @@ match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee][+-]?\ *-?\ *[0-9]+)?')
 isz = 256
 c_avg = np.zeros((isz,isz,isz))
 u_avg = np.zeros((isz,isz,isz))
-pat_names = ["Brats18_CBICA_ABO_1"]
+pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+#pat_names = ["Brats18_CBICA_AAP_1", "Brats18_CBICA_ALU_1"]
+#pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
+suff = "-nav-ratio-0"
 base_dir  = os.getcwd() + "/../../"
-avg = np.zeros(6)
 for pat in pat_names:
   c_avg = 0 * c_avg
   u_avg = 0 * u_avg
   num_cases = 8
 
+  print("postop for pat {}".format(pat))
+  row = ""
   r_path = base_dir + "results/stat-" + pat + "/"
   if not os.path.exists(r_path):
     os.makedirs(r_path)
@@ -36,7 +40,6 @@ for pat in pat_names:
   err_list   = []
   time_list  = []
 
-  suff = "-rk-0.5"
 ### scrub the log file
   statfile = open(r_path + "stats_" + str(isz) + suff + ".txt", 'w+')
   for idx in range(1,num_cases+1):
@@ -65,7 +68,7 @@ for pat in pat_names:
 
       ## displacement
       line = lines[start_idx+15]
-      l = re.findall("\d*\.?\d+", line)
+      l = re.findall(match_number, line)
       max_disp = float(l[2])
 
       ### relative error
@@ -78,7 +81,7 @@ for pat in pat_names:
       l = re.findall("\d*\.?\d+", line)
       t = float(l[1])
 
-      if max_disp > 5 or rel_error > 1:
+      if max_disp > 2 or rel_error > 1:
         failed_atlas.append(idx)
         row += atlas + "(F) \t& "
       else:
