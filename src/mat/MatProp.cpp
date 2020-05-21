@@ -133,7 +133,7 @@ PetscErrorCode MatProp::resetValues() {
   // Set bg prob as 1 - sum
   ierr = VecWAXPY(bg_, 1., gm_, wm_); CHKERRQ(ierr);
   ierr = VecAXPY(bg_, 1., vt_); CHKERRQ(ierr);
-  if (csf_0_ != nullptr && csf_ != nullptr){
+  if (csf_ != nullptr){
     ierr = VecAXPY(bg_, 1., csf_); CHKERRQ(ierr);
   }
   ierr = VecShift(bg_, -1.0); CHKERRQ(ierr);
