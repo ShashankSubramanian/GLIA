@@ -333,8 +333,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
     g = x_ptr[0];
     r = x_ptr[1];
     k = x_ptr[1 + itctx->params_->tu_->nr_];
-    s << "  Scalar parameters: (rho, kappa, gamma) = (" << std::scientific << std::setprecision(8) << r << ", "  
-                                                        << std::scientific << std::setprecision(8) << k << ", " 
+    s << "  Scalar parameters: (rho, kappa, gamma) = (" << std::scientific << std::setprecision(8) << r << ", "
+                                                        << std::scientific << std::setprecision(8) << k << ", "
                                                         << std::scientific << std::setprecision(8) << g << ")";
   } else {
     r = (itctx->params_->opt_->flag_reaction_inv_ == true) ? x_ptr[itctx->params_->get_nk()] : itctx->params_->tu_->rho_;
@@ -439,8 +439,10 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
   // == check convergence
   stop[0] = false; stop[1] = false; stop[2] = false;
   ctx->params_->optf_->converged_ = false;
-  ctx->cosamp_->converged_l2 = false;
-  ctx->cosamp_->converged_error_l2 = false;
+  if (ctx->cosamp_ != nullptr) {
+    ctx->cosamp_->converged_l2 = false;
+    ctx->cosamp_->converged_error_l2 = false;
+  }
   if (iter >= miniter) {
     if (verbosity > 1) {
       ss << "  step size in linesearch: " << std::scientific << step;
@@ -451,7 +453,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
       ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_STEPTOL); CHKERRQ(ierr);
       if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-      ctx->cosamp_->converged_error_l2 = true;
+      if (ctx->cosamp_ != nullptr) {
+        ctx->cosamp_->converged_error_l2 = true;
+      }
       PetscFunctionReturn(ierr);
     }
     if (ls_flag != 1 && ls_flag != 0 && ls_flag != 2) {
@@ -459,7 +463,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
       ierr = TaoSetConvergedReason(tao, TAO_DIVERGED_LS_FAILURE);
       if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-      ctx->cosamp_->converged_error_l2 = true;
+      if (ctx->cosamp_ != nullptr) {
+        ctx->cosamp_->converged_error_l2 = true;
+      }
       PetscFunctionReturn(ierr);
     }
     // ||g_k||_2 < tol*||g_0||
@@ -497,7 +503,7 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
 
     // store objective function value
     ctx->jvalold = J;
-    if (stop[0] || stop[1]) {ctx->cosamp_->converged_l2 = true;} // for CoSaMpRS to split up L2 solve
+    if (stop[0] || stop[1]) {if (ctx->cosamp_ != nullptr) {ctx->cosamp_->converged_l2 = true;}} // for CoSaMpRS to split up L2 solve
     if (stop[0] || stop[1] || stop[2]) {
       ctx->params_->optf_->converged_ = true;
       if (g != nullptr) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = nullptr;}
@@ -511,7 +517,9 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(std::string()); ss.clear();
       ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_GATOL); CHKERRQ(ierr);
       if (g != nullptr) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = nullptr;}
-      ctx->cosamp_->converged_l2 = true;
+      if (ctx->cosamp_ != nullptr) {
+        ctx->cosamp_->converged_l2 = true;
+      }
       PetscFunctionReturn(ierr);
     }
   }
