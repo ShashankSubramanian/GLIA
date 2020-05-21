@@ -11,7 +11,7 @@ MatProp::MatProp(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOpe
   ierr = VecDuplicate(gm_, &csf_);
   ierr = VecDuplicate(gm_, &bg_);
   ierr = VecDuplicate(gm_, &filter_);
-  
+
   ierr = VecDuplicate(gm_, &kfxx_);
   ierr = VecDuplicate(gm_, &kfxy_);
   ierr = VecDuplicate(gm_, &kfxz_);
@@ -126,12 +126,16 @@ PetscErrorCode MatProp::resetValues() {
   ierr = VecCopy(gm_0_, gm_); CHKERRQ(ierr);
   ierr = VecCopy(wm_0_, wm_); CHKERRQ(ierr);
   ierr = VecCopy(vt_0_, vt_); CHKERRQ(ierr);
-  ierr = VecCopy(csf_0_, csf_); CHKERRQ(ierr);
+  if (csf_0_ != nullptr && csf_ != nullptr){
+    ierr = VecCopy(csf_0_, csf_); CHKERRQ(ierr);
+  }
 
   // Set bg prob as 1 - sum
   ierr = VecWAXPY(bg_, 1., gm_, wm_); CHKERRQ(ierr);
   ierr = VecAXPY(bg_, 1., vt_); CHKERRQ(ierr);
-  ierr = VecAXPY(bg_, 1., csf_); CHKERRQ(ierr);
+  if (csf_0_ != nullptr && csf_ != nullptr){
+    ierr = VecAXPY(bg_, 1., csf_); CHKERRQ(ierr);
+  }
   ierr = VecShift(bg_, -1.0); CHKERRQ(ierr);
   ierr = VecScale(bg_, -1.0); CHKERRQ(ierr);
 
