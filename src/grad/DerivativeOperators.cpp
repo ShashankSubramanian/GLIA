@@ -525,3 +525,145 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> da
 
   PetscFunctionReturn(ierr);
 }
+
+
+// computes a FD approximation to the hessian of the objective function
+PetscErrorCode DerivativeOperators::computeFDHessian(Vec x, std::shared_ptr<Data> data, std::string ss_str) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  int procid, nprocs;
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+  
+  PetscInt sz;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  std::vector<ScalarType> hessian(sz*sz);
+  Vec grad, hess_row, delta;
+  ierr = VecDuplicate(x, &grad); CHKERRQ(ierr);
+  ierr = VecDuplicate(x, &delta); CHKERRQ(ierr);
+  ierr = VecDuplicate(x, &hess_row); CHKERRQ(ierr);
+  ierr = evaluateGradient(grad, x, data); CHKERRQ(ierr);
+  ierr = VecView(x, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
+  ierr = VecView(grad, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
+  ScalarType small = 1E-5;
+  ScalarType dx;
+  ScalarType volatile xph;
+  ScalarType *x_ptr, *delta_ptr;
+  for (int i = 0; i < sz; i++) {
+    // compute each row of the hessian
+    ierr = VecCopy(x, delta); CHKERRQ(ierr);
+    ierr = VecGetArray(delta, &delta_ptr); CHKERRQ(ierr);
+    xph = delta_ptr[i] + small;
+    dx = xph - delta_ptr[i];
+    delta_ptr[i] = xph;
+    ierr = VecRestoreArray(delta, &delta_ptr); CHKERRQ(ierr);
+    ierr = evaluateGradient(hess_row, delta, data); CHKERRQ(ierr);
+    ierr = VecAXPY(hess_row, -1, grad); CHKERRQ(ierr); // g_plus - g
+    ierr = VecScale(hess_row, (1.0F/dx)); CHKERRQ(ierr); // grad(g)
+    ierr = VecGetArray(hess_row, &x_ptr); CHKERRQ(ierr);
+    for (int j = 0; j < sz; j++) hessian[sz*i + j] = x_ptr[j];
+    ierr = VecRestoreArray(hess_row, &x_ptr); CHKERRQ(ierr);
+  }
+
+  ierr = VecDestroy(&grad); CHKERRQ(ierr);
+  ierr = VecDestroy(&hess_row); CHKERRQ(ierr);
+  ierr = VecDestroy(&delta); CHKERRQ(ierr);
+
+  // write hessian to a file
+  if (procid == 0) {
+    std::ofstream f;
+    f.open(params_->tu_->writepath_ + "hessian_" + ss_str + ".txt"); 
+    for (int i = 0; i < sz; i++) {
+      for (int j = 0; j < sz; j++) f << hessian[sz*i + j] << " ";
+      f << "\n";
+    }
+    f.close();
+  }
+  bool verbose = false;
+  // print the hessian
+  std::stringstream s;
+  if (verbose) {
+    for (int i = 0; i < sz; i++) {
+      for (int j = 0; j < sz; j++) s << hessian[sz*i + j] << " ";
+      ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+      s.str("");
+      s.clear();
+    }
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode DerivativeOperators::visLossLandscape(Vec start, Vec d1, Vec d2, std::shared_ptr<Data> data, std::string fname) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  int procid, nprocs;
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+
+  int n = 10;
+  std::vector<ScalarType> alpha(n);
+  ScalarType end = 1.2, beg = 0;
+  ScalarType del = (end - beg) / (n - 1);
+  std::vector<ScalarType>::iterator x;
+  ScalarType val;
+  for (x = alpha.begin(), val = beg; x != alpha.end(); ++x, val += del) *x = val;
+
+  ScalarType a1, a2;
+  PetscInt sz;
+  PetscReal J = 0;
+  Vec sol;
+  ierr = VecDuplicate(start, &sol); CHKERRQ(ierr);
+  ierr = VecGetSize(start, &sz); CHKERRQ(ierr);
+  ScalarType *sol_ptr, *start_ptr, *d1_ptr, *d2_ptr;
+  ierr = VecGetArray(start, &start_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(d1, &d1_ptr); CHKERRQ(ierr);
+  if (d2 != nullptr) {
+    ierr = VecGetArray(d2, &d2_ptr); CHKERRQ(ierr);
+  }
+  std::ofstream f;
+  if (procid == 0) {
+    f.open(params_->tu_->writepath_ + fname + ".txt"); 
+  }
+  if (d2 == nullptr) {
+    for (int i = 0; i < n; i++) {
+      a1 = alpha[i];
+      ierr = VecGetArray(sol, &sol_ptr); CHKERRQ(ierr);
+      for (int k = 0; k < sz; k++) sol_ptr[k] = start_ptr[k] + a1 * d1_ptr[k];
+      if (procid == 0) {
+        f << a1 << ",";
+        for (int k = 0; k < sz; k++) f << sol_ptr[k] << ",";
+      }
+      ierr = VecRestoreArray(sol, &sol_ptr); CHKERRQ(ierr);
+      ierr = evaluateObjective(&J, sol, data); CHKERRQ(ierr);
+      if(procid == 0) f << J << "\n";
+    }
+  } else {
+    for (int i = 0; i < n; i++) {
+      a1 = alpha[i];
+      for (int j = 0; j < n; j++) {
+        a2 = alpha[j];
+        ierr = VecGetArray(sol, &sol_ptr); CHKERRQ(ierr);
+        for (int k = 0; k < sz; k++) sol_ptr[k] = start_ptr[k] + a1 * d1_ptr[k] + a2 * d2_ptr[k];
+        if (procid == 0) {
+          f << a1 << "," << a2 << ",";
+          for (int k = 0; k < sz; k++) f << sol_ptr[k] << ",";
+        }
+        ierr = VecRestoreArray(sol, &sol_ptr); CHKERRQ(ierr);
+        ierr = evaluateObjective(&J, sol, data); CHKERRQ(ierr);
+        if(procid == 0) f << J << "\n";
+      }
+    }
+  }
+  if (procid == 0) f.close();
+  ierr = VecRestoreArray(start, &start_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(d1, &d1_ptr); CHKERRQ(ierr);
+  if (d2 != nullptr) {
+    ierr = VecRestoreArray(d2, &d2_ptr); CHKERRQ(ierr);
+  }
+  ierr = VecDestroy(&sol); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
