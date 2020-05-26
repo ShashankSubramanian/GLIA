@@ -4,7 +4,6 @@ import numpy as np
 import nibabel as nib
 import scipy as sc
 from scipy.ndimage import gaussian_filter
-import TumorParams
 from netCDF4 import Dataset
 from numpy import linalg as la
 import math
@@ -67,6 +66,7 @@ def create_sbatch_header(results_path, compute_sys='frontera', suff=0):
 def create_label_maps(atlas_image_path, patient_image_path, results_path, atlas_name):
     nii = nib.load(atlas_image_path)
     altas_seg = nii.get_fdata()
+    writeNII(altas_seg, results_path + "/" + atlas_name + "_labels.nii.gz", ref_image=nii)
     altas_mat_img = 0 * altas_seg
     altas_mat_img[altas_seg == 7] = 1
     writeNII(altas_mat_img, results_path + "/" + atlas_name + "_vt.nii.gz", ref_image=nii)
@@ -82,6 +82,7 @@ def create_label_maps(atlas_image_path, patient_image_path, results_path, atlas_
 
     nii = nib.load(patient_image_path)
     patient_seg = nii.get_fdata()
+    writeNII(patient_seg, results_path + "/patient_labels.nii.gz", ref_image=nii)
     patient_mat_img = 0 * patient_seg
     patient_mat_img[patient_seg == 7] = 1
     writeNII(patient_mat_img, results_path + "/patient_vt.nii.gz", ref_image=nii)
@@ -112,7 +113,7 @@ def register(claire_bin_path, results_path, atlas_name, bash_filename, idx, mult
                 + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm.nii.gz "\
                 + "-mtc 3 " + results_path + "/patient_vt.nii.gz " + results_path + "/patient_gm.nii.gz " + results_path + "/patient_wm.nii.gz " \
                 + "-mask " + results_path + "/patient_mask.nii.gz " \
-                + "-nx 256 -train reduce -jbound 5e-2 -regnorm h1s-div -opttol 5e-2 -maxit 50 -krylovmaxit 50 -velocity -detdefgrad -deffield -defmap -residual -x "\
+                + "-nx 256 -train binary -jbound 0.2 -regnorm h1s-div -opttol 5e-2 -maxit 25 -krylovmaxit 50 -beta-div 1e-4 -velocity -detdefgrad -deffield -defmap -residual -x "\
                 + results_path + "/"\
                 + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " > " + results_path + "/registration_log.txt &";
     bash_file.write(cmd)
@@ -123,7 +124,7 @@ def register(claire_bin_path, results_path, atlas_name, bash_filename, idx, mult
     return bash_filename
 
 # transport
-def transport(claire_bin_path, results_path, bash_filename, transport_file_name, idx, multigpu=False):
+def transport(claire_bin_path, results_path, bash_filename, transport_file_name, idx, r2t=False, multigpu=False):
     # run this after reg always
     bash_file = open(bash_filename, 'a')
     if multigpu:
@@ -131,8 +132,17 @@ def transport(claire_bin_path, results_path, bash_filename, transport_file_name,
     else:
       cmd = ""
 
-    cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile "\
-                   + results_path + "/" + transport_file_name + ".nii.gz -xfile " + results_path + "/" + transport_file_name + "_transported.nii.gz -deformimage -iporder 1" + " > " + results_path + "/transport_log_" + transport_file_name + ".txt &";
+    if r2t == True:
+      cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -r2t -tlabelmap -labels 0,1,2,4,5,6,7,8 -ifile "\
+              + results_path + "/" + transport_file_name + ".nii.gz -xfile " + results_path + "/" + transport_file_name + "_transported.nii.gz -iporder 1" + " > " + results_path + "/transport_log_" + transport_file_name + ".txt &";
+    else:
+### enable -r2t if reference to transport is needed. keep disabled for now.
+      if transport_file_name == "patient_labels":
+        cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -tlabelmap -labels 0,1,2,4,5,6,7,8 -ifile "\
+                + results_path + "/" + transport_file_name + ".nii.gz -xfile " + results_path + "/" + transport_file_name + "_transported.nii.gz -iporder 1" + " > " + results_path + "/transport_log_" + transport_file_name + ".txt &";
+      else:
+        cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile "\
+                + results_path + "/" + transport_file_name + ".nii.gz -xfile " + results_path + "/" + transport_file_name + "_transported.nii.gz -deformimage -iporder 1" + " > " + results_path + "/transport_log_" + transport_file_name + ".txt &";
 
     bash_file.write(cmd)
     bash_file.write("\n\n")
@@ -158,18 +168,18 @@ if __name__=='__main__':
     mg = args.multigpu
 
     scripts_path    = os.getcwd() + "/.."
-    patient_name    = "Brats18_CBICA_AAP_1"
+    patient_name    = "Brats18_CBICA_ABO_1"
     patient_path    = scripts_path + "/../brain_data/real_data/" + patient_name + "/data/" + patient_name + "_seg_tu_aff2jakob.nii.gz"
     map_of_interest = scripts_path + "/../brain_data/real_data/" + patient_name + "/data/" + patient_name + "_c0Recon_aff2jakob.nc"
+    submit_job      = True
 
     patient = nib.load(patient_path).get_fdata()
     atlas_path = scripts_path + "/../brain_data/atlas/"
-    results_path = scripts_path + "/../results/reg-Brats18_CBICA_AAP_1/"
+    results_path = scripts_path + "/../results/reg-Brats18_CBICA_ABO_1-check/"
     if not os.path.exists(results_path):
         os.makedirs(results_path)
     claire_path = scripts_path + "/../../claire-dev/bingpu/"
     bash_file = create_sbatch_header(results_path, compute_sys = "longhorn", suff=tp)
-
     if tp == 0:
       atlist = [1,2,3,4]
     else:
@@ -193,9 +203,12 @@ if __name__=='__main__':
         atlas = "atlas-" + str(i)
         r_path = results_path + atlas
         ### create reg-transport script
-        bash_file = transport(claire_path, r_path, bash_file, "c0Recon", i, multigpu=mg)
-        bash_file = transport(claire_path, r_path, bash_file, "patient_vt", i, multigpu=mg)
+        bash_file = transport(claire_path, r_path, bash_file, "c0Recon", i, r2t=False, multigpu=mg)
+        bash_file = transport(claire_path, r_path, bash_file, "patient_labels", i, r2t=False, multigpu=mg)
+        bash_file = transport(claire_path, r_path, bash_file, atlas + "_labels", i, r2t=True, multigpu=mg)
 
     fio = open(bash_file, 'a')
     fio.write("wait\n\n")
     fio.close()
+    if submit_job:
+      subprocess.call(['sbatch', bash_file])
