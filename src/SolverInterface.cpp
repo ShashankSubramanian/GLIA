@@ -448,6 +448,8 @@ PetscErrorCode SolverInterface::setupData() {
     ss.clear();
   } else {
     ierr = tumor_->obs_->setDefaultFilter(data_->dt1(), 1, params_->tu_->obs_threshold_1_); CHKERRQ(ierr);
+    ierr = VecDuplicate(tmp_, &obs_filter_); CHKERRQ(ierr);
+    ierr = VecCopy(tumor_->obs_->filter_1_, obs_filter_); CHKERRQ(ierr);
     if (has_dt0_ && params_->tu_->two_time_points_) {
       ierr = tumor_->obs_->setDefaultFilter(data_t0_, 0, params_->tu_->obs_threshold_0_); CHKERRQ(ierr);
     }

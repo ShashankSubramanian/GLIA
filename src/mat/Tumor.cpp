@@ -216,7 +216,7 @@ PetscErrorCode Tumor::computeSegmentation() {
   //         v.clear();
   //     }
   // } else {
-
+  int my_label = 0;
   for (int i = 0; i < params_->grid_->nl_; i++) {
     v.push_back(bg_ptr[i]);
     v.push_back(c_ptr[i]);
@@ -226,7 +226,19 @@ PetscErrorCode Tumor::computeSegmentation() {
     v.push_back(csf_ptr[i]);
 
     seg_component = std::max_element(v.begin(), v.end());
-    seg_ptr[i] = std::distance(v.begin(), seg_component);
+    my_label   = std::distance(v.begin(), seg_component);
+
+    if (my_label == 2) {
+      my_label = 6;
+    } else if (my_label == 3) {
+      my_label = 5;
+    } else if (my_label == 4) {
+      my_label = 7;
+    } else if (my_label == 5) {
+      my_label = 8;
+    }
+
+    seg_ptr[i] = my_label;  
 
     v.clear();
   }
