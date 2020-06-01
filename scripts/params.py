@@ -87,7 +87,8 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
-    p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width
+    p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width (for data at t=1 and material properties)
+    p['smoothing_factor_data_t0'] = 1   # 0: no smoothing, otherwise kernel width (for data at t=0)
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
@@ -137,7 +138,7 @@ def write_config(set_params, run):
     p['a_csf_path'] = ""
     p['a_vt_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/csf.nc'
     p['a_kf_path'] = r['code_path'] + '/brain_data/' + str(p['n']) + '/w/'
-   
+
     p['p_seg_path'] = ""                # [optional] paths to patient material properties for mass effect
     p['p_wm_path'] = ""
     p['p_gm_path'] = ""

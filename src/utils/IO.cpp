@@ -117,6 +117,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   // ### data
   if (name == "smoothing_factor") {p->tu_->smoothing_factor_ = std::stod(value); return;}
   if (name == "smoothing_factor_data") {p->tu_->smoothing_factor_data_ = std::stod(value); return;}
+  if (name == "smoothing_factor_data_t0") {p->tu_->smoothing_factor_data_t0_ = std::stod(value); return;}
   if (name == "obs_threshold_1") {p->tu_->obs_threshold_1_ = std::stod(value); return;}
   if (name == "obs_threshold_0") {p->tu_->obs_threshold_0_ = std::stod(value); return;}
   if (name == "obs_threshold_rel") {p->tu_->relative_obs_threshold_ = std::stoi(value) > 0; return;}
@@ -215,7 +216,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   }
   if (name == "rho_data") {a->syn_->rho_ = std::stod(value); return;}
   if (name == "k_data") {a->syn_->k_ = std::stod(value); return;}
-  if (name == "kf_data") {a->syn_->kf_ = std::stod(value); return;} 
+  if (name == "kf_data") {a->syn_->kf_ = std::stod(value); return;}
   if (name == "gamma_data") {a->syn_->forcing_factor_ = std::stod(value); return;}
   if (name == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
   if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
@@ -239,7 +240,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "mri_path") {a->path_->mri_ = value; return;}
   if (name == "obs_mask_path") {a->path_->obs_filter_ = value; return;}
   if (name == "support_data_path") {a->path_->data_support_ = value; return;}
-  
+
  // TODO(K) .nc vs. dat.
   if (name == "gaussian_cm_path") {a->path_->phi_ = value; return;}
   if (name == "pvec_path") {a->path_->pvec_ = value; return;}
