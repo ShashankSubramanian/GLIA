@@ -1,8 +1,11 @@
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import os,argparse, sys
+
 import numpy as np
 import nibabel as nib
 import nibabel.processing
-import imageTools as imgtools
+
 import file_io as fio
 import ntpath
 import math
@@ -15,9 +18,9 @@ from scipy.spatial import distance
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
+
+import .image_tools as imgtools
 
 class bcolors:
     HEADER = '\033[95m'

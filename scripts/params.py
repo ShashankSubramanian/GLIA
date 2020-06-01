@@ -1,5 +1,5 @@
 """ This script defines all parameters for the tumor solver
-    and generates a config file, hwich can be read in by the
+    and generates a config file, wich can be read in by the
     c++ binary.
     The script can be called with a dict 'set_params' to override
     defaults defined here.
