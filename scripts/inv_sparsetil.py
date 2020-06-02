@@ -1,24 +1,15 @@
 import os, sys
 import params as par
+from .gridcont import sparsetil_gridcont
 
+input = {}
 ###############
-r = {}
-p = {}
-submit = False;
+input['patient_path'] = ""     # define path to patient segmentation
+input['output_base_path'] = "" # define path to output dir
+input['obs_lambda'] = 1        # define lambda for observation operator
+input['segmentation_labels'] = "0=bg,1=nec,4=en,2=ed,8=csf,7=vt,5=gm,6=wm" # define segmentation labels
+input['submit'] = False
 ###############
 
-### === define code path, write path, read path
-code_path =
-write_path =
-read_path =
-
-### === define parameters
-p['output_dir'] = write_path;
-
-
-
-### === define run configuration
-r['code_path'] = code_path;
-
-# === write config to write_path and submit job
-par.submit(submit, p, r);
+print('running for single patient')
+sparsetil_gridcont(input);

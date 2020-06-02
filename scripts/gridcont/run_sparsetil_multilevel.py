@@ -28,7 +28,7 @@ def sparsetil_gridcont(input):
     # ########### SETTINGS ########### #
     # -------------------------------- #
     patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
-    submit             = False;
+    submit             = input['submit'] if input['submit'] else False
     # -------------------------------- #
     system             = 'frontera'    # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
     nodes              = 2;
