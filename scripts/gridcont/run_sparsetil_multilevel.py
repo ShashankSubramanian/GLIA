@@ -11,9 +11,9 @@ import nibabel as nib
 import numpy as np
 import glob
 
-import file_io as fio
-import image_tools as imgtools
-import utils as utils
+# from ..utils import file_io as fio
+# from ..utils import image_tools as imgtools
+# from ..utils import utils_gridcont as utils
 
 cases_per_jobfile_counter = 0;
 JOBfile = "";
@@ -28,7 +28,7 @@ def sparsetil_gridcont(input):
     # ########### SETTINGS ########### #
     # -------------------------------- #
     patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
-    submit             = input['submit'] if input['submit'] else False
+    submit             = input['submit'] if 'submit' in input else False
     # -------------------------------- #
     system             = 'frontera'    # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
     nodes              = 2;
@@ -68,6 +68,7 @@ def sparsetil_gridcont(input):
 
     r = {}
     scripts_path = os.path.dirname(os.path.realpath(__file__))
+    utils_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'utils')
     ############### === define run configuration
     r['code_path'] 			= scripts_path + '/../../';
     r['compute_sys'] 		= system
@@ -121,7 +122,7 @@ def sparsetil_gridcont(input):
     resample_cmd  = "\n# resample data"
     resample_cmd += "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
     for l in levels[:-1]:
-        resample_cmd += "\n" + pythoncmd + os.path.join(scripts_path, 'utils.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + '_nx240x240x155' + ext + " -ndim " + str(l)
+        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + '_nx240x240x155' + ext + " -ndim " + str(l)
 
     # loop over levels and create config files
     for level, ii in zip(levels, range(len(levels))):
@@ -198,23 +199,23 @@ def sparsetil_gridcont(input):
             symlink_cmd +=  "\nln -sf " + "../../../input/patient_tc_nx"+str(level)   + ext + " support_data" + ext + " "
         else:
             level_prev = int(level/2);
-            resample_cmd += "\n" + pythoncmd + scripts_path + '/utils.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0Recon.nc' ' -ndim ' + str(level)
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0Recon.nc' ' -ndim ' + str(level)
             symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0Recon_nx"+str(level)+ ext + " support_data" + ext
-            resample_cmd += "\n" + pythoncmd + scripts_path + '/utils.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'phiSupportFinal.nc'  ' -ndim ' + str(level)
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'phiSupportFinal.nc'  ' -ndim ' + str(level)
             symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/phiSupportFinal_nx"+str(level)+ ext + " support_data_phi" + ext;
         symlink_cmd +=  "\n" + "cd " + str(result_path_level) + "\n#----------"
 
         # compute connected components of target data
         rdir = "obs"
         cmd_concomp = "\n\n# compute connected component of TC data"
-        cmd_concomp += "\n" + pythoncmd + scripts_path + '/utils.py -concomp_data  -input_path ' +  result_path_level + ' -output_path ' +  input_path + ' -labels ' + input['segmentation_labels'] + ' '
+        cmd_concomp += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -concomp_data  -input_path ' +  result_path_level + ' -output_path ' +  input_path + ' -labels ' + input['segmentation_labels'] + ' '
         cmd_concomp += "  -sigma " + str(sigma_fac[ii]) + " ";
         cmd_concomp +=  " -select_gaussians  \n" if (gaussian_mode == 'C0_RANKED' and level > 64) else " \n";
 
         # extract reconstructed rho and k
         if level > 64:
-            cmd_extractrhok =  "\n\n# extract reconstructed rho, k from logfile";
-            cmd_extractrhok += "\n" + pythoncmd + basedir + '/utils.py -update_config -input_path ' + result_path_level_coarse + ' -output_path ' + result_path_level
+            cmd_extractrhok =  "\n\n# extract reconstructed rho, k from logfile, and modify config";
+            cmd_extractrhok += "\n" + pythoncmd + utils_path + '/utils.py -update_config -input_path ' + result_path_level_coarse + ' -output_path ' + result_path_level
             # cmd_extractrhok += "\n" + "source " + os.path.join(result_path_level_coarse, 'env_rhok.sh') + "\n"
 
 
