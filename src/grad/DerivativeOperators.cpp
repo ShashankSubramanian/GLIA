@@ -539,43 +539,63 @@ PetscErrorCode DerivativeOperators::computeFDHessian(Vec x, std::shared_ptr<Data
   PetscInt sz;
   ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
   std::vector<ScalarType> hessian(sz*sz);
-  Vec grad, hess_row, delta;
-  ierr = VecDuplicate(x, &grad); CHKERRQ(ierr);
-  ierr = VecDuplicate(x, &delta); CHKERRQ(ierr);
-  ierr = VecDuplicate(x, &hess_row); CHKERRQ(ierr);
-  ierr = evaluateGradient(grad, x, data); CHKERRQ(ierr);
-  ierr = VecView(x, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
-  ierr = VecView(grad, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
-  ScalarType small = 1E-5;
-  ScalarType dx;
-  ScalarType volatile xph;
-  ScalarType *x_ptr, *delta_ptr;
+
+  // since gradient might be inaccurate, use the func eval directly
+  ScalarType small = std::pow(PETSC_MACHINE_EPSILON, (1.0/3.0));
+  PetscReal J, Jij;
+  ierr = evaluateObjective(&J, x, data); CHKERRQ(ierr);
+
+  Vec dx;
+  ierr = VecDuplicate(x, &dx); CHKERRQ(ierr);
+  ierr = VecSet(dx, 0); CHKERRQ(ierr);
+  std::vector<ScalarType> fplus(sz);
+  ScalarType *x_ptr, *dx_ptr;
+  ScalarType h, hi, hj;
   for (int i = 0; i < sz; i++) {
-    // compute each row of the hessian
-    ierr = VecCopy(x, delta); CHKERRQ(ierr);
-    ierr = VecGetArray(delta, &delta_ptr); CHKERRQ(ierr);
-    xph = delta_ptr[i] + small;
-    dx = xph - delta_ptr[i];
-    delta_ptr[i] = xph;
-    ierr = VecRestoreArray(delta, &delta_ptr); CHKERRQ(ierr);
-    ierr = evaluateGradient(hess_row, delta, data); CHKERRQ(ierr);
-    ierr = VecAXPY(hess_row, -1, grad); CHKERRQ(ierr); // g_plus - g
-    ierr = VecScale(hess_row, (1.0F/dx)); CHKERRQ(ierr); // grad(g)
-    ierr = VecGetArray(hess_row, &x_ptr); CHKERRQ(ierr);
-    for (int j = 0; j < sz; j++) hessian[sz*i + j] = x_ptr[j];
-    ierr = VecRestoreArray(hess_row, &x_ptr); CHKERRQ(ierr);
+    ierr = VecCopy(x, dx); CHKERRQ(ierr);
+    ierr = VecGetArray(dx, &dx_ptr); CHKERRQ(ierr);
+    h = (dx_ptr[i] == 0) ? small : small * dx_ptr[i];
+    dx_ptr[i] += h;
+    ierr = VecRestoreArray(dx, &dx_ptr); CHKERRQ(ierr);
+    ierr = evaluateObjective(&fplus[i], dx, data); CHKERRQ(ierr);
   }
 
-  ierr = VecDestroy(&grad); CHKERRQ(ierr);
-  ierr = VecDestroy(&hess_row); CHKERRQ(ierr);
-  ierr = VecDestroy(&delta); CHKERRQ(ierr);
+  ScalarType temp = 0;
+  for (int i = 0; i < sz; i++) {
+    for (int j = 0; j < sz; j++) {
+      // hessian is symm by construction; only compute lower triangle and diagonal
+      if (i < j) {
+        // compute f(x + h*e_i + h*e_j)
+        ierr = VecCopy(x, dx); CHKERRQ(ierr);
+        ierr = VecGetArray(dx, &dx_ptr); CHKERRQ(ierr);
+        hi = (dx_ptr[i] == 0) ? small : small * dx_ptr[i];
+        dx_ptr[i] += hi;
+        hj = (dx_ptr[j] == 0) ? small : small * dx_ptr[j];
+        dx_ptr[j] += hj;
+        ierr = VecRestoreArray(dx, &dx_ptr); CHKERRQ(ierr);
+        ierr = evaluateObjective(&Jij, dx, data); CHKERRQ(ierr);
+      } else if (i == j) {
+        ierr = VecCopy(x, dx); CHKERRQ(ierr);
+        ierr = VecGetArray(dx, &dx_ptr); CHKERRQ(ierr);
+        hi = (dx_ptr[i] == 0) ? small : small * dx_ptr[i];
+        hj = hi;
+        dx_ptr[i] += (hi + hj);
+        ierr = VecRestoreArray(dx, &dx_ptr); CHKERRQ(ierr);
+        ierr = evaluateObjective(&Jij, dx, data); CHKERRQ(ierr);
+      }
+      if (i <= j) hessian[sz*i + j] = (1.0/(hi*hj)) * (Jij - fplus[i] - fplus[j] + J);
+    }
+  }
 
   // write hessian to a file
   if (procid == 0) {
     std::ofstream f;
     f.open(params_->tu_->writepath_ + "hessian_" + ss_str + ".txt"); 
     for (int i = 0; i < sz; i++) {
-      for (int j = 0; j < sz; j++) f << hessian[sz*i + j] << " ";
+      for (int j = 0; j < sz; j++) {
+        if (i > j) hessian[sz*i + j] = hessian[sz*j + i]; // symmetric
+        f << hessian[sz*i + j] << " ";
+      }
       f << "\n";
     }
     f.close();
