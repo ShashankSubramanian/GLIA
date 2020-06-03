@@ -315,7 +315,7 @@ PetscErrorCode DerivativeOperators::gradReaction(Vec dJ) {
 
     ierr = VecRestoreArray(dJ, &dj_ptr); CHKERRQ(ierr);
   }
-  
+
 
   PetscFunctionReturn(ierr);
 }
@@ -327,19 +327,22 @@ PetscErrorCode DerivativeOperators::updateReactionAndDiffusion(Vec x) {
   ScalarType r1, r2, r3, k1, k2, k3;
   const ScalarType *x_ptr;
 
+  ScalarType scale_rho = params_->opt_->rho_scale_;
+  ScalarType scale_kap = params_->opt_->k_scale_;
+
   ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
   if (params_->opt_->diffusivity_inversion_ || params_->opt_->flag_reaction_inv_) {
-    k1 = x_ptr[params_->tu_->np_];
-    k2 = (params_->tu_->nk_ > 1) ? x_ptr[params_->tu_->np_ + 1] : 0;
-    k3 = (params_->tu_->nk_ > 2) ? x_ptr[params_->tu_->np_ + 2] : 0;
+    k1 = x_ptr[params_->tu_->np_] * scale_kap;
+    k2 = (params_->tu_->nk_ > 1) ? x_ptr[params_->tu_->np_ + 1] * scale_kap : 0;
+    k3 = (params_->tu_->nk_ > 2) ? x_ptr[params_->tu_->np_ + 2] * scale_kap : 0;
     ierr = tumor_->k_->updateIsotropicCoefficients(k1, k2, k3, tumor_->mat_prop_, params_); CHKERRQ(ierr);
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     pde_operators_->diff_solver_->precFactor();
   }
   if (params_->opt_->flag_reaction_inv_) {
-    r1 = x_ptr[params_->tu_->np_ + params_->tu_->nk_];
-    r2 = (params_->tu_->nr_ > 1) ? x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 1] : 0;
-    r3 = (params_->tu_->nr_ > 2) ? x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] : 0;
+    r1 = x_ptr[params_->tu_->np_ + params_->tu_->nk_] * scale_rho;
+    r2 = (params_->tu_->nr_ > 1) ? x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 1] * scale_rho : 0;
+    r3 = (params_->tu_->nr_ > 2) ? x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] * scale_rho : 0;
     ierr = tumor_->rho_->updateIsotropicCoefficients(r1, r2, r3, tumor_->mat_prop_, params_);
   }
   ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
@@ -535,7 +538,7 @@ PetscErrorCode DerivativeOperators::computeFDHessian(Vec x, std::shared_ptr<Data
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
-  
+
   PetscInt sz;
   ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
   std::vector<ScalarType> hessian(sz*sz);
@@ -590,7 +593,7 @@ PetscErrorCode DerivativeOperators::computeFDHessian(Vec x, std::shared_ptr<Data
   // write hessian to a file
   if (procid == 0) {
     std::ofstream f;
-    f.open(params_->tu_->writepath_ + "hessian_" + ss_str + ".txt"); 
+    f.open(params_->tu_->writepath_ + "hessian_" + ss_str + ".txt");
     for (int i = 0; i < sz; i++) {
       for (int j = 0; j < sz; j++) {
         if (i > j) hessian[sz*i + j] = hessian[sz*j + i]; // symmetric
@@ -645,7 +648,7 @@ PetscErrorCode DerivativeOperators::visLossLandscape(Vec start, Vec d1, Vec d2, 
   }
   std::ofstream f;
   if (procid == 0) {
-    f.open(params_->tu_->writepath_ + fname + ".txt"); 
+    f.open(params_->tu_->writepath_ + fname + ".txt");
   }
   if (d2 == nullptr) {
     for (int i = 0; i < n; i++) {

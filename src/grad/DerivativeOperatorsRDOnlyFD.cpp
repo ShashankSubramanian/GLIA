@@ -13,8 +13,6 @@ PetscErrorCode DerivativeOperatorsRDOnlyFD::evaluateObjective (PetscReal *J, Vec
   PetscReal m1 = 0, m0 = 0, reg = 0;
   std::stringstream s;
 
-  ScalarType scale_rho = params_->opt_->rho_scale_;
-  ScalarType scale_kap = params_->opt_->k_scale_;
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues (); CHKERRQ (ierr);
@@ -160,7 +158,7 @@ PetscErrorCode DerivativeOperatorsRDOnlyFD::evaluateObjectiveAndGradient (PetscR
 
   if(procid == 0) { ierr = VecView(dJ, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);}
   if(delta_ != nullptr) {ierr = VecDestroy(&delta_); CHKERRQ(ierr);}
-  
+
   PetscFunctionReturn (ierr);
 }
 
@@ -180,4 +178,3 @@ PetscErrorCode DerivativeOperatorsRDOnlyFD::evaluateHessian (Vec y, Vec x){
     self_exec_time += MPI_Wtime(); t[5] = self_exec_time; e.addTimings (t); e.stop ();
     PetscFunctionReturn (ierr);
 }
-
