@@ -110,15 +110,16 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 	}
 }
 
-__global__ void updateReacAndDiffCoefficients (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, int64_t sz) {
+__global__ void updateReacAndDiffCoefficients (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k,  ScalarType gm_r_scale, ScalarType gm_k_scale, int64_t sz) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
-
 	if (i < sz) {
 		ScalarType temp;
-		temp = (1 - (bg_ptr[i] + gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
-        temp = (temp < 0) ? 0 : temp;
-        rho_ptr[i] = temp * rho;
-        k_ptr[i] = temp * k;
+    temp = (1 - (bg_ptr[i] + gm_r_scale * gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+    temp = (temp < 0) ? 0 : temp;
+    rho_ptr[i] = temp * rho;
+    temp = (1 - (bg_ptr[i] + gm_k_scale * gm_ptr[i] + vt_ptr[i] + csf_ptr[i]));
+    temp = (temp < 0) ? 0 : temp;
+    k_ptr[i] = temp * k;
 	}
 }
 
@@ -179,10 +180,10 @@ void computeSourcesCuda (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType *n_ptr
 	cudaCheckKernelError ();
 }
 
-void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, int64_t sz) {
+void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *vt_ptr, ScalarType *csf_ptr, ScalarType rho, ScalarType k, ScalarType gm_r_scale, ScalarType gm_k_scale, int64_t sz) {
 	int n_th = N_THREADS;
 
-	updateReacAndDiffCoefficients <<< (sz + n_th - 1) / n_th, n_th >>> (rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, rho, k, sz);
+	updateReacAndDiffCoefficients <<< (sz + n_th - 1) / n_th, n_th >>> (rho_ptr, k_ptr, bg_ptr, gm_ptr, vt_ptr, csf_ptr, rho, k, gm_r_scale, gm_k_scale, sz);
 
 	cudaDeviceSynchronize ();
 	cudaCheckKernelError ();

@@ -4,7 +4,7 @@ import numpy as np
 import nibabel as nib
 import scipy as sc
 from scipy.ndimage import gaussian_filter
-import TumorParams
+##import TumorParams
 from netCDF4 import Dataset
 from numpy import linalg as la
 

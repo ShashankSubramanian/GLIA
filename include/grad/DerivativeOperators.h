@@ -42,6 +42,8 @@ class DerivativeOperators {
   virtual PetscErrorCode setMaterialProperties(Vec gm, Vec wm, Vec csf, Vec glm) { PetscFunctionReturn(0); }
   virtual PetscErrorCode checkGradient(Vec p, std::shared_ptr<Data> data);
   virtual PetscErrorCode checkHessian(Vec p, std::shared_ptr<Data> data);
+  virtual PetscErrorCode computeFDHessian(Vec x, std::shared_ptr<Data> data, std::string ss_str = "");
+  virtual PetscErrorCode visLossLandscape(Vec start, Vec d1, Vec d2, std::shared_ptr<Data> data, std::string fname);
   // reset vector sizes
   virtual PetscErrorCode reset(Vec p, std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor);
 

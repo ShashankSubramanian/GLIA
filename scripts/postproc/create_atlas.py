@@ -4,7 +4,6 @@ import numpy as np
 import nibabel as nib
 import scipy as sc
 from scipy.ndimage import gaussian_filter
-import TumorParams
 from netCDF4 import Dataset
 from numpy import linalg as la
 import math
@@ -49,23 +48,20 @@ def convert_tu_brats_seg(tu_seg):
 
 
 
-##pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
-pat_names = ["Brats18_CBICA_ABO_1"]
+pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+##pat_names = ["Brats18_CBICA_AAP_1"]
 scripts_path = os.getcwd() + "/.."
-nm = ["ABO", "AAP", "AMH", "ALU"]
 idx = 0
 for n in pat_names:
-    data_path = scripts_path + "/../results/reg-" + n + "/"
+    data_path = scripts_path + "/../results/reg-" + n + "-nav/"
     pnm = pat_names[idx]
-    atlases = ["atlas-1", "atlas-2", "atlas-3"]
-#atlases = ["atlas-1"]
-
-    for atlas in atlases:
+    patient_seg = nib.load(scripts_path + "/../brain_data/real_data/" + pnm + "/data/" + pnm + "_seg_tu_aff2jakob.nii.gz").get_fdata()
+    tc = np.logical_or(patient_seg == 1, patient_seg == 4)
+    for i in range(1,9):
+        atlas = "atlas-" + str(i)
         r_path = data_path + atlas
         atlas_path = scripts_path + "/../brain_data/atlas/" + atlas + ".nii.gz"
         altas_seg = nib.load(atlas_path).get_fdata()
-        patient_seg = nib.load(scripts_path + "/../brain_data/real_data/" + pnm + "/data/" + pnm + "_seg_tu_aff2jakob.nii.gz").get_fdata()
-        tc = np.logical_or(patient_seg == 1, patient_seg == 4)
         print("transporting maps for {}".format(atlas))
         c0_path = r_path + "/c0Recon_transported.nii.gz"
         c0 = nib.load(c0_path).get_fdata()

@@ -392,8 +392,8 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
   // hack: for syn cases don't smooth data
-  params_->tu_->smoothing_factor_data_ = 0;
-  params_->tu_->smoothing_factor_patient_ = 0;
+//  params_->tu_->smoothing_factor_data_ = 0;
+//  params_->tu_->smoothing_factor_patient_ = 0;
   ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
@@ -460,10 +460,18 @@ PetscErrorCode InverseMassEffectSolver::run() {
   int nr = params_->get_nr();
   ScalarType *x_ptr; // TODO(K): if read in vector has nonzero gamma/rho/kappa values, take those
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
-  x_ptr[0] = params_->tu_->forcing_factor_;
-  x_ptr[1] = params_->tu_->rho_;
-  x_ptr[2] = params_->tu_->k_;
-  ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
+  std::random_device rd; // obtain a random number from hardware
+  std::mt19937 eng(rd()); // seed the generator
+  std::uniform_real_distribution<> distg(0.1, 1.2); // define the range
+  std::uniform_real_distribution<> distr(5, 12); // define the range
+  std::uniform_real_distribution<> distk(0.5, 5); // define the range
+//  x_ptr[0] = params_->tu_->forcing_factor_;
+//  x_ptr[1] = params_->tu_->rho_;
+//  x_ptr[2] = params_->tu_->k_;
+  x_ptr[0] = distg(eng) * 1E5;
+  x_ptr[1] = distr(eng);
+  x_ptr[2] = distk(eng) * 1E-2;
+  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ (ierr);
 
   optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
