@@ -12,8 +12,8 @@ import nibabel as nib
 import numpy as np
 import glob
 
-# from ..utils import file_io as fio
-# from ..utils import image_tools as imgtools
+from utils import file_io as fio
+from utils import image_tools as imgtools
 # from ..utils import utils_gridcont as utils
 
 cases_per_jobfile_counter = 0;
@@ -30,6 +30,7 @@ def sparsetil_gridcont(input):
     # -------------------------------- #
     patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
     submit             = input['submit'] if 'submit' in input else False
+    dtype              = '.nc'
     # -------------------------------- #
     system             = input['system'] if 'system' in input else 'frontera' # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
     nodes              = 2;
@@ -119,15 +120,27 @@ def sparsetil_gridcont(input):
         fname = os.path.join(patient_path, segmentation_files[0])
     filename = fname.split('/')[-1].split('.')[0]
 
-    # resmaple template
-    cp_cmd = "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
+    cp_cmd = ''
+    if dtype == '.nc':
+       try:
+         ext = '.nc'
+         tmp = nib.load(fname).get_fdata()
+         tmp_regular = imgtools.resizeImage(tmp, tuple([256, 256, 256]), interp_order=0)
+         fio.createNetCDF(os.path.join(input_path, filename + '_nx' + str(256) + ext), tmp_regular.shape, np.swapaxes(tmp_regular, 0, 2))
+         suffix = '_nx256'
+       except Exception as e:
+         print(e)
+    else:
+      # resmaple template
+      cp_cmd = "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
+      suffix = '_nx240x240x155'
 
     # loop over levels and create config files
     for level, ii in zip(levels, range(len(levels))):
         p = {}
 
         resample_cmd  = "\n# resample data"
-        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + '_nx240x240x155' + ext + " -ndim " + str(level)
+        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + suffix + ext + " -ndim " + str(level)
         # create dirs
         output_path_level = os.path.join(output_path_tumor, 'nx' + str(level) + "/");
         result_path_level = os.path.join(output_path_level, obs_dir)

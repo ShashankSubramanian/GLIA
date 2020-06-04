@@ -272,27 +272,23 @@ def compute_connected_components(args, labels=None):
     level = int(res_path.split("nx")[-1].split("/")[0]);
 
     fname = "patient_seg"
-    success = False
     ref_img = None
+    success = True
     try:
         ext = ".nc"
         data = np.swapaxes(fio.readNetCDF(os.path.join(init_path, fname + ext)), 0, 2)
         dims = data.shape
     except Exception as c:
-        print(c)
-        success = False
-    success = True
-    try:
-        ext = ".nii.gz"
-        ref_img = nib.load(os.path.join(init_path, fname + ext))
-        data = ref_img.get_fdata()
-        dims = data.shape;
-    except Exception as c:
-        print(c)
         success = False
     if not success:
-        print("Error reading file patient_seg: neither .nc nor .nii.gz file exists in {}".format(init_path))
-        return
+        try:
+            ext = ".nii.gz"
+            ref_img = nib.load(os.path.join(init_path, fname + ext))
+            data = ref_img.get_fdata()
+            dims = data.shape;
+        except Exception as c:
+            print(c)
+            return
     print(".. reading data ", os.path.join(init_path, fname + ext), " with dimension", dims)
 
     if labels is not None:
