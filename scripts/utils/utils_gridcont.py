@@ -40,51 +40,51 @@ def update_config(path_log, path_config):
     """ Extracts reconstructed rho and kappa values from the log file and
         updates the config file for the next level.
     """
-    rho, k =  extract_from_log(os.path.join(path_log, "solver_log.txt"))
-    with open(os.path.join(path_config, "solver_config"), "r") as f:
-        lines = file.readlines()
-    with open(os.path.join(path_config, "solver_config"), "w")  as f:
+    rho, k =  extract_from_log(path_log, "solver_log.txt")
+    with open(os.path.join(path_config, "solver_config.txt"), "r") as f:
+        lines = f.readlines()
+    with open(os.path.join(path_config, "solver_config.txt"), "w")  as f:
         for line in lines:
             if "init_rho=" in line:
-                f.write("init_rho="+str(rho))
+                f.write("init_rho="+str(rho)+"\n")
+                continue
             if "init_k=" in line:
-                f.write("init_k="+str(k))
-            else:
-                f.write(line)
+                f.write("init_k="+str(k)+"\n")
+                continue
+            f.write(line)
 ###
 ### ------------------------------------------------------------------------ ###
 def extract_from_log(path, filename):
-    # env_file = open(os.path.join(path,'env_rhok.sh'), 'w')
-    # env_file.write("#!/bin/bash\n")
-    # env_file.write("export RHO_INIT=8\n")
-    # env_file.write("export K_INIT=0\n")
     empty = False
     exist = False
-    if os.path.exists(os.path.join(path, filename)):
-        exist =True;
-        print("reading logifle:", os.path.join(path, filename))
-        with open(os.path.join(path,filename), 'r',  encoding="utf-8") as f:
-            lines  = f.readlines();
-            no = 0;
-            if len(lines) > 0:
-                for line in lines:
-                    if " ### estimated reaction coefficients:                  ###" in line:
-                        rho = float(lines[no+1].split("r1:")[-1].split(",")[0])
-                    if " ### estimated diffusion coefficients:                 ### " in line:
-                        k = float(lines[no+1].split("k1:")[-1].split(",")[0]);
-                    no += 1;
-                # env_file.write("export RHO_INIT="+str(rho)+"\n")
-                # env_file.write("export K_INIT="+str(k)+"\n")
-                # os.environ['RHO_INIT'] = str(rho);
-                # os.environ['K_INIT']   = str(k);
-                print( bcolors.OKBLUE + " ... setting init guess (rho, k) = (",rho,",",k,") " + bcolors.ENDC);
-            else:
-                empty = True;
-    if empty or not exist:
-        print("Error: tumor solver log file in ", path, "does not exist.");
-    # env_file.close();
+    try:
+      with open(os.path.join(path, 'reconstruction_info.dat'), 'r') as rec_file:
+        lines = rec_file.readlines()
+        line = lines[-1]
+        rho = float(line.split()[0])
+        k = float(line.split()[1])
+    except Exception as e:
+      print("[] reconstruction file {}/reconstruction_info.dat could not be opened:\n  -->  {}".format(path, e))
+      print("[] trying to read log file...")
+      if os.path.exists(os.path.join(path, filename)):
+          exist =True;
+          print("reading logifle:", os.path.join(path, filename))
+          with open(os.path.join(path,filename), 'r',  encoding="utf-8") as f:
+              lines  = f.readlines();
+              no = 0;
+              if len(lines) > 0:
+                  for line in lines:
+                      if " ### estimated reaction coefficients:                  ###" in line:
+                          rho = float(lines[no+1].split("r1:")[-1].split(",")[0])
+                      if " ### estimated diffusion coefficients:                 ### " in line:
+                          k = float(lines[no+1].split("k1:")[-1].split(",")[0]);
+                      no += 1;
+                  print( bcolors.OKBLUE + " ... setting init guess (rho, k) = (",rho,",",k,") " + bcolors.ENDC);
+              else:
+                  empty = True;
+      if empty or not exist:
+          print("Error: tumor solver log file in ", path, "does not exist.");
     return rho, k
-
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -92,29 +92,57 @@ def resample(path, fname, ndim):
     """ Resamples image. If nifty file format, function tries to load reference image.
     """
     order = 1
+    ndims = tuple([ndim, ndim, ndim]);
     if "seg" in fname or "obs" in fname or "mask" in fname:
         order = 0
         print('segmentation/mask found, using NN interpolation')
     ext = ".n" + fname.split('.n')[-1]
     if ext in ['.nii.gz', '.nii']:
-        img = nib.load(fname)
-        img_d = p_seg.get_fdata()
-        try:
-            nii_files = glob.glob(os.path.join(path, "*nx"+str(ndim)+".nii.gz"))
-            ref_img = nib.load(os.path.join(path, nii_files[0]))
-        except:
-            print("Warining, no reference image found!")
-            ref_img = None
+        img = nib.load(os.path.join(path,fname))
+        scale = img.get_fdata().shape[0]/ndim 
+        new_affine = np.copy(img.affine)
+        row,col = np.diag_indices(new_affine.shape[0])
+        new_affine[row,col] = np.array([-scale,-scale,scale,1]);
+        img_resized = nib.processing.resample_from_to(img, (np.multiply(1./scale, img.shape).astype(int), new_affine), order=order)
+
+        #img_resized = imgtools.resizeNIIImage(img, ndims, interp_order=order)
+        fio.writeNII(img_resized.get_fdata(), os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), affine=img_resized.affine, ref_image=img_resized);
     else:
         img_d = fio.readNetCDF(os.path.join(path, fname));
-        ndims = tuple([ndim, ndim, ndim]);
-    # resize
-    img_resized = imgtools.resizeImage(img_d, ndims, order);
-    if ext in ['.nii.gz', '.nii']:
-        fio.writeNII(img_resized, os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), affine=ref_img.affine, ref_image=ref_img);
-    else:
+        img_resized = imgtools.resizeImage(img_d, ndims, order);
         fio.createNetCDF(os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), ndims, img_resized);
 
+
+
+###
+### ------------------------------------------------------------------------ ###
+#def resample(path, fname, ndim):
+#    """ Resamples image. If nifty file format, function tries to load reference image.
+#    """
+#    order = 1
+#    if "seg" in fname or "obs" in fname or "mask" in fname:
+#        order = 0
+#        print('segmentation/mask found, using NN interpolation')
+#    ext = ".n" + fname.split('.n')[-1]
+#    if ext in ['.nii.gz', '.nii']:
+#        img = nib.load(os.path.join(path,fname))
+#        img_d = img.get_fdata()
+#        try:
+#            nii_files = glob.glob(os.path.join(path, "*nx"+str(ndim)+".nii.gz"))
+#            ref_img = nib.load(os.path.join(path, nii_files[0]))
+#        except:
+#            print("Warining, no reference image found!")
+#            ref_img = None
+#    else:
+#        img_d = fio.readNetCDF(os.path.join(path, fname));
+#        ndims = tuple([ndim, ndim, ndim]);
+#    # resize
+#    img_resized = imgtools.resizeImage(img_d, ndims, order);
+#    if ext in ['.nii.gz', '.nii']:
+#        fio.writeNII(img_resized, os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), affine=ref_img.affine, ref_image=ref_img);
+#    else:
+#        fio.createNetCDF(os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), ndims, img_resized);
+#
 ###
 ### ------------------------------------------------------------------------ ###
 def resample_input(path, fname, ndim, order=0):
@@ -138,7 +166,7 @@ def resample_input(path, fname, ndim, order=0):
          
         img_resized_regular_256 = imgtools.resizeNIIImage(p_seg, tuple([256, 256, 256]), interp_order=order)
         if ndim==128:
-            fio.writeNII(img_resized_regular_256.get_fdata(), os.path.join(path, filename + '_nx' + str(256) + ext), ref_image=img_resized_regular)
+            fio.writeNII(img_resized_regular_256.get_fdata(), os.path.join(path, filename + '_nx' + str(256) + ext), ref_image=img_resized_regular_256)
         img_resized_regular = nib.processing.resample_from_to(img_resized_regular_256, (np.multiply(1./scale, img_resized_regular_256.shape).astype(int), affine_coarse), order=order)
         #img_resized_regular = imgtools.resizeNIIImage(img_resized_regular_256, tuple([ndim, ndim, ndim]), interp_order=order)
         fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(ndim) + ext), ref_image=img_resized_regular)
@@ -444,7 +472,7 @@ if __name__=='__main__':
 
     if args.update_config:
         print("[] extracting rho and k from ", args.input_path);
-        update_config(args.input_path, args.out_path);
+        update_config(args.input_path, args.output_path);
 
     # if args.convert_netcdf_to_nii:
     #     print("[] converting ", args.name_old, "to", args.name_new);

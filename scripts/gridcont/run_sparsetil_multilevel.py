@@ -200,9 +200,9 @@ def sparsetil_gridcont(input):
             symlink_cmd +=  "\nln -sf " + "../../../input/patient_tc_nx"+str(level)   + ext + " support_data" + ext + " "
         else:
             level_prev = int(level/2);
-            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0Recon.nc' ' -ndim ' + str(level)
-            symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0Recon_nx"+str(level)+ ext + " support_data" + ext
-            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'phiSupportFinal.nc'  ' -ndim ' + str(level)
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0_rec'+ext + ' -ndim ' + str(level)
+            symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0_rec_nx"+str(level)+ ext + " support_data" + ext
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'phiSupportFinal' + ext + ' -ndim ' + str(level)
             symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/phiSupportFinal_nx"+str(level)+ ext + " support_data_phi" + ext;
         symlink_cmd +=  "\n" + "cd " + str(result_path_level) + "\n#----------"
 
