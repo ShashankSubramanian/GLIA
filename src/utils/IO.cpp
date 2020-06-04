@@ -494,7 +494,7 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, cons
 #ifdef SINGLE
   image->datatype = NIFTI_TYPE_FLOAT32;
 #else
-  image->datatype = NIFTI_TYPE_FLOAT64
+  image->datatype = NIFTI_TYPE_FLOAT64;
 #endif
 
   ierr = writeNifti(&image, p_x, params, fname); CHKERRQ(ierr);

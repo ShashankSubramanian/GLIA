@@ -1,8 +1,9 @@
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
-sys.path.append(os.path.join(os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir))
+#sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+#sys.path.append(os.path.join(os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir))
 
-from scripts import params as par
+#from scripts import params as par
+import params as par
 import subprocess
 import argparse
 from shutil import copyfile
@@ -30,7 +31,7 @@ def sparsetil_gridcont(input):
     patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
     submit             = input['submit'] if 'submit' in input else False
     # -------------------------------- #
-    system             = 'frontera'    # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
+    system             = input['system'] if 'system' in input else 'frontera' # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
     nodes              = 2;
     procs              = 96;
     wtime_h            = [x * patients_per_job for x in [0,2,12]];
@@ -119,14 +120,14 @@ def sparsetil_gridcont(input):
     filename = fname.split('/')[-1].split('.')[0]
 
     # resmaple template
-    resample_cmd  = "\n# resample data"
-    resample_cmd += "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
-    for l in levels[:-1]:
-        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + '_nx240x240x155' + ext + " -ndim " + str(l)
+    cp_cmd = "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
 
     # loop over levels and create config files
     for level, ii in zip(levels, range(len(levels))):
         p = {}
+
+        resample_cmd  = "\n# resample data"
+        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + '_nx240x240x155' + ext + " -ndim " + str(level)
         # create dirs
         output_path_level = os.path.join(output_path_tumor, 'nx' + str(level) + "/");
         result_path_level = os.path.join(output_path_level, obs_dir)
@@ -215,7 +216,7 @@ def sparsetil_gridcont(input):
         # extract reconstructed rho and k
         if level > 64:
             cmd_extractrhok =  "\n\n# extract reconstructed rho, k from logfile, and modify config";
-            cmd_extractrhok += "\n" + pythoncmd + utils_path + '/utils.py -update_config -input_path ' + result_path_level_coarse + ' -output_path ' + result_path_level
+            cmd_extractrhok += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -update_config -input_path ' + result_path_level_coarse + ' -output_path ' + result_path_level
             # cmd_extractrhok += "\n" + "source " + os.path.join(result_path_level_coarse, 'env_rhok.sh') + "\n"
 
 
@@ -232,6 +233,7 @@ def sparsetil_gridcont(input):
         # cmd_postproc += " -generate_slices " + "\n";
 
         cmd_command = "\n\n\n" + "# ### LEVEL {} ###\n# ==================\n".format(level)
+        cmd_command += cp_cmd
         cmd_command += resample_cmd
         cmd_command += symlink_cmd
         cmd_command += cmd_concomp
@@ -301,7 +303,7 @@ def sparsetil_gridcont(input):
 
 
         run_str = par.write_config(p, r)
-        cmd_command += "\n" + "# run tumor solver\n" + run_str + "  &>2  " + os.path.join(output_path_level, "solver_log.txt")
+        cmd_command += "\n" + "# run tumor solver\n" + run_str + "  2>&1  " + os.path.join(output_path_level, "solver_log.txt")
         cmd_command +="\n#=================="
         JOBfile += cmd_command
 

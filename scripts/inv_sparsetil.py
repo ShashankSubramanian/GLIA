@@ -7,10 +7,11 @@ input = {}
 
 ## SETTTINGS ##
 # -----------------------------------
+input['system'] = 'pele'
 # define path to patient segmentation
-input['patient_path'] = '/Users/scheufele/scratch/brats_test/Brats18_TCIA03_296_1/data/Brats18_TCIA03_296_1_seg_tu.nii.gz'
+input['patient_path'] = '/scratch/scheufele/test/gridcont-test/data/Brats18_TCIA03_257_1_seg_tu.nii.gz'
 # define path to output dir
-input['output_base_path'] = "/Users/scheufele/scratch/brats_test/Brats18_TCIA03_296_1/"
+input['output_base_path'] = "/scratch/scheufele/test/gridcont-test"
 # define lambda for observation operator
 input['obs_lambda'] = 1
 # define segmentation labels

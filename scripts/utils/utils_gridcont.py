@@ -135,12 +135,13 @@ def resample_input(path, fname, ndim, order=0):
         p_seg_coarse = nib.processing.resample_from_to(p_seg, (np.multiply(1./scale, p_seg.shape).astype(int), affine_coarse), order=order)
         # save template (brats hdr)
         nib.save(p_seg_coarse, os.path.join(path, filename + dim_descr + ext));
-
-        img_resized_regular = imgtools.resizeNIIImage(p_seg, tuple([ndim, ndim, ndim]), interp_order=order)
-        fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(ndim) + ext), ref_image=img_resized_regular)
+         
+        img_resized_regular_256 = imgtools.resizeNIIImage(p_seg, tuple([256, 256, 256]), interp_order=order)
         if ndim==128:
-            img_resized_regular = imgtools.resizeNIIImage(p_seg, tuple([256, 256, 256]), interp_order=order)
-            fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(256) + ext), ref_image=img_resized_regular)
+            fio.writeNII(img_resized_regular_256.get_fdata(), os.path.join(path, filename + '_nx' + str(256) + ext), ref_image=img_resized_regular)
+        img_resized_regular = nib.processing.resample_from_to(img_resized_regular_256, (np.multiply(1./scale, img_resized_regular_256.shape).astype(int), affine_coarse), order=order)
+        #img_resized_regular = imgtools.resizeNIIImage(img_resized_regular_256, tuple([ndim, ndim, ndim]), interp_order=order)
+        fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(ndim) + ext), ref_image=img_resized_regular)
     else:
         p_seg_d = fio.readNetCDF(os.path.join(path,fname))
         p_seg_d_coarse  = imgtools.resizeImage(p_seg_d, tuple([ndim, ndim, ndim]), interp_order=order)
@@ -430,7 +431,7 @@ if __name__=='__main__':
         resample_input(args.input_path, args.fname, args.ndim);
 
     if args.resample:
-        print("[] resampling image {} to resolution {}^3".format(fname, ndim))
+        print("[] resampling image {} to resolution {}^3".format(args.fname, args.ndim))
         resample(args.input_path, args.fname, args.ndim);
 
     if args.concomp_data:
