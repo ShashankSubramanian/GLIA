@@ -44,7 +44,7 @@ def sparsetil_gridcont(input):
     inject_coarse_sol  = True;
     pre_reacdiff_solve = True;         # performs a reaction/diffusion solve before sparse TIL solve
     sparsity_per_comp  = 5;            # allowed sparsity per tumor component
-    predict            = [0,0,0]       # enable predict flag on level
+    predict            = [0,0,1]       # enable predict flag on level
     # -------------------------------- #
     rho_init           = 8;            # initial guess rho on coarsest level
     k_init             = 0;            # initial guess kappa on coarsest level
@@ -76,6 +76,8 @@ def sparsetil_gridcont(input):
     r['compute_sys']   = system
     if 'extra_modules' in input:
       r['extra_modules'] = input['extra_modules']
+    if 'queue' in input:
+        r['queue'] = input['queue']
 
     cmd_command = ''
     symlink_cmd = ''
@@ -105,7 +107,7 @@ def sparsetil_gridcont(input):
     output_base_path = input['output_base_path']
     patient_data_path = input['patient_path']
     input_path = os.path.join(output_base_path, 'input');
-    output_path_tumor = os.path.join(output_base_path, 'tumor_inversion');
+    output_path_tumor = os.path.join(output_base_path, 'inversion');
     if not os.path.exists(input_path):
         os.mkdir(input_path);
 
@@ -123,19 +125,32 @@ def sparsetil_gridcont(input):
     filename = fname.split('/')[-1].split('.')[0]
 
     cp_cmd = ''
+    reference_img = dataimg = None
+    healthy_seg = False
+    try:
+       reference_img = nib.load(fname)
+       if 'data_path' in input and input['data_path']:
+           filename_data = os.path.basename(input['data_path']).split('.n')[0]
+           dataimg = nib.load(input['data_path'])
+           healthy_seg = True
+    except Exception as e:
+      print(e)
     if dtype == '.nc':
-       try:
-         ext = '.nc'
-         tmp = nib.load(fname).get_fdata()
-         tmp_regular = imgtools.resizeImage(tmp, tuple([256, 256, 256]), interp_order=0)
-         fio.createNetCDF(os.path.join(input_path, filename + '_nx' + str(256) + ext), tmp_regular.shape, np.swapaxes(tmp_regular, 0, 2))
-         suffix = '_nx256'
-       except Exception as e:
-         print(e)
+       ext = '.nc'
+       suffix = '_nx256'
+       tmp = reference_img.get_fdata()
+       tmp_regular = imgtools.resizeImage(tmp, tuple([256, 256, 256]), interp_order=0)
+       fio.createNetCDF(os.path.join(input_path, filename + suffix + ext), tmp_regular.shape, np.swapaxes(tmp_regular, 0, 2))
+       if healthy_seg:
+           data = reference_img.get_fdata()
+           data_regular = imgtools.resizeImage(data, tuple([256, 256, 256]), interp_order=1)
+           fio.createNetCDF(os.path.join(input_path, filename_data + suffix + ext), tmp_regular.shape, np.swapaxes(data_regular, 0, 2))
+
     else:
-      # resmaple template
-      cp_cmd = "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
-      suffix = '_nx240x240x155'
+      suffix = "_nx{}x{}x{}".format(reference_img.shape[0], reference_img.shape[1], reference_img.shape[2])
+      cp_cmd = "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + suffix + ext)
+      if healthy_seg:
+          cp_cmd = "\n" + "cp -r " + input['data_path'] + " " + os.path.join(input_path, filename_data + suffix + ext)
 
     # loop over levels and create config files
     for level, ii in zip(levels, range(len(levels))):
@@ -143,6 +158,8 @@ def sparsetil_gridcont(input):
 
         resample_cmd  = "\n# resample data"
         resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + suffix + ext + " -ndim " + str(level)
+        if healthy_seg:
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + input_path + ' -fname ' + filename_data + suffix  + ext + ' -ndim ' + str(level)
         # create dirs
         output_path_level = os.path.join(output_path_tumor, 'nx' + str(level) + "/");
         result_path_level = os.path.join(output_path_level, obs_dir)
@@ -185,6 +202,8 @@ def sparsetil_gridcont(input):
 
             # symlink
             symlink_cmd += "\nln -sf ../../../input/" + filename + "_nx"+str(level) + ext + " patient_seg" + ext + " "
+            if healthy_seg:
+                symlink_cmd += "\nln -sf ../../../input/" + filename_data + "_nx"+str(level) + ext + " data" + ext + " "
             #  set labels: [wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]
             labelstr = ""
             if "wm" in labels_rev and "gm" in labels_rev:
@@ -206,13 +225,16 @@ def sparsetil_gridcont(input):
             labelstr += "]"
             p['atlas_labels'] = labelstr
             p['a_seg_path'] = os.path.join(input_path_level, 'patient_seg' + ext)
-            p['obs_lambda'] = obs_lambda
-            p['d1_path'] = p['a_wm_path'] = p['a_gm_path'] = p['a_vt_path'] = ""
+            if healthy_seg:
+                p['d1_path'] = os.path.join(input_path_level, 'data' + ext)
+            else:
+                p['obs_lambda'] = obs_lambda
+                p['d1_path'] = p['a_wm_path'] = p['a_gm_path'] = p['a_vt_path'] = ""
 
         symlink_cmd +=  "\nln -sf " + "../../../input/data_comps_nx" + str(level) + ext + " data_comps" + ext + " "
-        symlink_cmd +=  "\nln -sf " + "../../../input/patient_tc_nx" + str(level) + ext + " patient_tc" + ext + " "
+        symlink_cmd +=  "\nln -sf " + "../../../input/target_data_nx" + str(level) + ext + " target_data" + ext + " "
         if level == 64 or gaussian_mode == "D":
-            symlink_cmd +=  "\nln -sf " + "../../../input/patient_tc_nx"+str(level)   + ext + " support_data" + ext + " "
+            symlink_cmd +=  "\nln -sf " + "../../../input/target_data_nx"+str(level)   + ext + " support_data" + ext + " "
         else:
             level_prev = int(level/2);
             resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0_rec'+ext + ' -ndim ' + str(level)
@@ -224,7 +246,11 @@ def sparsetil_gridcont(input):
         # compute connected components of target data
         rdir = "obs"
         cmd_concomp = "\n\n# compute connected component of TC data"
-        cmd_concomp += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -concomp_data  -input_path ' +  result_path_level + ' -output_path ' +  input_path + ' -labels ' + input['segmentation_labels'] + ' '
+        cmd_concomp += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -concomp_data  -input_path ' +  result_path_level + ' -output_path ' +  input_path 
+        if healthy_seg:
+            cmd_concomp += ' -obs_th ' + str(input['obs_threshold_1']) + ' '
+        else:
+            cmd_concomp += ' -labels ' + input['segmentation_labels'] + ' '
         cmd_concomp += "  -sigma " + str(sigma_fac[ii]) + " ";
         cmd_concomp +=  " -select_gaussians  \n" if (gaussian_mode == 'C0_RANKED' and level > 64) else " \n";
 
@@ -237,8 +263,9 @@ def sparsetil_gridcont(input):
 
         # postprocess results
         #   - resize all images back to input resolution and save as nifti
-        cmd_postproc = "\n# resize back to original resolution and convert to nifty" 
-        cmd_postproc += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -input_path ' + output_path_tumor + ' -reference_image ' + fname + ' -multilevel '
+        if level == 256:
+            cmd_postproc = "\n# resize back to original resolution and convert to nifty" 
+            cmd_postproc += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -convert -input_path ' + output_path_tumor + ' -reference_image ' + fname + ' -multilevel '
 
         # TODO
         # cmd_postproc += " -rdir " + rdir + " ";
@@ -303,6 +330,11 @@ def sparsetil_gridcont(input):
             p['dt_pred'] = 0.01
         p['smoothing_factor'] = 1
         p['smoothing_factor_data'] = 1
+        if 'obs_threshold_1' in input:
+            p['obs_threshold_1'] = input['obs_threshold_1']
+        if 'obs_threshold_rel' in input:
+            p['obs_threshold_rel'] = input['obs_threshold_rel']
+
 
         if gaussian_mode in ["C0", "D"] or level == 64:
             p['support_data_path'] = os.path.join(input_path_level, 'support_data' + ext); # on coarsest level always d(1), i.e., TC as support_data

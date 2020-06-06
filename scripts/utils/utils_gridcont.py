@@ -97,6 +97,7 @@ def resample(path, fname, ndim):
         order = 0
         print('segmentation/mask found, using NN interpolation')
     ext = ".n" + fname.split('.n')[-1]
+    fname_out = fname.split('_nx')[0].split('.')[0]
     if ext in ['.nii.gz', '.nii']:
         img = nib.load(os.path.join(path,fname))
         scale = img.get_fdata().shape[0]/ndim 
@@ -106,43 +107,12 @@ def resample(path, fname, ndim):
         img_resized = nib.processing.resample_from_to(img, (np.multiply(1./scale, img.shape).astype(int), new_affine), order=order)
 
         #img_resized = imgtools.resizeNIIImage(img, ndims, interp_order=order)
-        fio.writeNII(img_resized.get_fdata(), os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), affine=img_resized.affine, ref_image=img_resized);
+        fio.writeNII(img_resized.get_fdata(), os.path.join(path, fname_out + "_nx" + str(ndim) + ext), affine=img_resized.affine, ref_image=img_resized);
     else:
         img_d = fio.readNetCDF(os.path.join(path, fname));
         img_resized = imgtools.resizeImage(img_d, ndims, order);
-        fio.createNetCDF(os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), ndims, img_resized);
+        fio.createNetCDF(os.path.join(path, fname_out + "_nx" + str(ndim) + ext), ndims, img_resized);
 
-
-
-###
-### ------------------------------------------------------------------------ ###
-#def resample(path, fname, ndim):
-#    """ Resamples image. If nifty file format, function tries to load reference image.
-#    """
-#    order = 1
-#    if "seg" in fname or "obs" in fname or "mask" in fname:
-#        order = 0
-#        print('segmentation/mask found, using NN interpolation')
-#    ext = ".n" + fname.split('.n')[-1]
-#    if ext in ['.nii.gz', '.nii']:
-#        img = nib.load(os.path.join(path,fname))
-#        img_d = img.get_fdata()
-#        try:
-#            nii_files = glob.glob(os.path.join(path, "*nx"+str(ndim)+".nii.gz"))
-#            ref_img = nib.load(os.path.join(path, nii_files[0]))
-#        except:
-#            print("Warining, no reference image found!")
-#            ref_img = None
-#    else:
-#        img_d = fio.readNetCDF(os.path.join(path, fname));
-#        ndims = tuple([ndim, ndim, ndim]);
-#    # resize
-#    img_resized = imgtools.resizeImage(img_d, ndims, order);
-#    if ext in ['.nii.gz', '.nii']:
-#        fio.writeNII(img_resized, os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), affine=ref_img.affine, ref_image=ref_img);
-#    else:
-#        fio.createNetCDF(os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), ndims, img_resized);
-#
 ###
 ### ------------------------------------------------------------------------ ###
 def resample_input(path, fname, ndim, order=0):
@@ -312,14 +282,19 @@ def compute_concomp(data, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def compute_connected_components(args, labels=None):
+def compute_connected_components(args, labels=None, obs_th=-1):
     """ Computes connecte components of tumor data and writes file with component data.
     """
     res_path  = os.path.join(args.input_path);
     init_path = os.path.join(args.input_path, '../init');
     level = int(res_path.split("nx")[-1].split("/")[0]);
 
-    fname = "patient_seg"
+    data_not_from_seg = labels==None
+
+    if data_not_from_seg:
+        fname = "data"
+    else:        
+        fname = "patient_seg"
     ref_img = None
     success = True
     try:
@@ -337,17 +312,27 @@ def compute_connected_components(args, labels=None):
         except Exception as c:
             print(c)
             return
-
     if labels is not None:
-        en = (data==labels['en']).astype(float)
-        nec = (data==labels['nec']).astype(float)
-        tc = np.logical_or(en, nec).astype(float)
-        data = tc
-        if ext == ".nc":
-            fio.createNetCDF(os.path.join(args.output_path,'patient_tc_nx'+str(level)+'.nc'), np.shape(tc), np.swapaxes(tc,0,2));
+        if 'tc' in labels:
+            tc = (data==labels['tc']).astype(float)
         else:
-            fio.writeNII(tc, os.path.join(args.output_path,'patient_tc_nx'+str(level)+'.nii.gz'), affine=ref_img.affine, ref_image=ref_img);
+            en = (data==labels['en']).astype(float)
+            nec = (data==labels['nec']).astype(float)
+            tc = np.logical_or(en, nec).astype(float)
+        data = tc
+    # observation operator:
+    if obs_th > 0:
+        print(" .. applying rel. obs-threshold: {}".format(obs_th))
+        m = np.amax(data.flatten())
+        th = obs_th * m
+        data = np.where(data > th, data, 0)
+    if ext == ".nc":
+        fio.createNetCDF(os.path.join(args.output_path,'target_data_nx'+str(level)+'.nc'), np.shape(data), np.swapaxes(data,0,2));
+    else:
+        fio.writeNII(data, os.path.join(args.output_path,'target_data_nx'+str(level)+'.nii.gz'), affine=ref_img.affine, ref_image=ref_img);
 
+    if data_not_from_seg:
+        data = (data>0).astype(float)
     # compute connected components
     labeled, comps_data, ncomps_data, xcm_data_px, xcm_data, relmass = compute_concomp(data, level);
 
@@ -467,6 +452,7 @@ if __name__=='__main__':
     # connected components`
     parser.add_argument ('-concomp_data', action='store_true', help = 'computes connected components of input data, along with center of mass and relative mass of component');
     parser.add_argument ('-select_gaussians', action='store_true', help = 'selects maximal (200 + #nc * 10) Gaussians according to ranking in c(0) of previous level, and relative mass of components.');
+    parser.add_argument ('-obs_th', type = float, default = 0.0,   help = 'relative observation threshold for target data  (as used in connected component analysis)');
     parser.add_argument ('-sigma', type = float, default = 1,   help = 'sigma = factor * hx on level');
     parser.add_argument ('-labels', type=str, help = 'patient labels');
 
@@ -497,6 +483,9 @@ if __name__=='__main__':
         for x in args.labels.split(','):
             labels[int(x.split('=')[0])] = x.split('=')[1];
         labels_rev = {v:k for k,v in labels.items()};
+    else:
+        labels = None
+        labels_rev = None
 
     if args.resample_input:
         print("[] resampling input image {} to resolution {}^3".format(args.fname, args.ndim))
@@ -507,7 +496,7 @@ if __name__=='__main__':
         resample(args.input_path, args.fname, args.ndim);
 
     if args.concomp_data:
-        compute_connected_components(args, labels_rev)
+        compute_connected_components(args, labels_rev, obs_th=args.obs_th)
 
     if args.compute_observation_mask:
         print("[] computing observation mask OBS = TC + lambda*(1-WT) using lambda=", args.obs_lambda)
@@ -517,5 +506,5 @@ if __name__=='__main__':
         print("[] extracting rho and k from ", args.input_path);
         update_config(args.input_path, args.output_path);
 
-     if args.convert:
-         convert_images_to_orig_size(args.input_path, args.reference_image, gridcont=args.multilevel):
+    if args.convert:
+        convert_images_to_orig_size(args.input_path, args.reference_image, gridcont=args.multilevel)

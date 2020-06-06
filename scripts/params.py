@@ -348,7 +348,7 @@ def write_jobscript_header(tu_params, run_params):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
-            run_params['queue'] = 'normal'
+                run_params['queue'] = 'normal'
         else:
             run_params['queue'] = 'normal'
     if 'nodes' not in run_params:
