@@ -204,6 +204,54 @@ def compute_observation_mask(path, segfile, obs_lambda, labels, dim=256, suffix=
     else:
         fio.createNetCDF(os.path.join(path,"obs_mask" + suffix + ext), dims, obs);
 
+
+
+###
+### ------------------------------------------------------------------------ ###
+def convert_images_to_orig_size(input_path, reference_image_path, gridcont=False):
+    """ Resamples the output images back to the original dimension (same dimension as reference image).
+    """
+    levels = [64,128,256] if gridcont else [256];
+    templates = {}
+    ref_img = nib.load(reference_image_path);
+
+    print('[] converting nc files to nii.gz files in brats hdr.')
+    refshape = ref_img.shape 
+    suf = {}
+    for l in levels:
+        suf[l] = "_{}x{}x{}.nii.gz".format(int(refshape[0]/scale), int(resfshape[1]/scale), int(refshape[2]/scale))
+        tu_out_path = os.path.join(input_path, 'nx'+str(l)+'/');
+        # create template image 
+        new_affine = np.copy(ref_img.affine)
+        row,col = np.diag_indices(new_affine.shape[0])
+        new_affine[row,col] = np.array([-scale, -scale, scale,1])
+        if l < 256:
+            resampled_template = nib.processing.resample_from_to(ref_img, (np.multiply(1./scale, ref_img.shape).astype(int), new_affine))
+        else:
+            resampled_template = ref_img
+        templates[str(l)] = resampled_template
+        nib.save(resampled_template, os.path.join(tu_out_path,"template" + suf[l] ));
+
+        template = templates[str(l)];
+        print(" == converting files of level {} ==".format(l))
+        dirs = os.listdir(tu_out_path)
+        for dir in dirs:
+            if not "obs" in dir:
+                continue;
+            ncfiles_tumor = imgtools.getNetCDFImageList(os.path.join(tu_out_path, dir + '/'));
+            for f in ncfiles_tumor:
+                data = fio.readNetCDF(f);
+                data = np.swapaxes(data,0,2);
+                order = 0 if 'seg' in f else 1
+                newdata = imgtools.resizeImage(data, tuple(template.shape), order);
+                output_size = tuple(template.shape)
+                filename = ntpath.basename(f);
+                filename = filename.split(".")[0]
+                newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz';
+                print("  .. creating {}".format(newfilename))
+                fio.writeNII(newdata, os.path.join(os.path.join(tu_out_path, dir), newfilename), template.affine);
+
+
 ###
 ### ------------------------------------------------------------------------ ###
 def convert_netcdf_to_nii(input_filename, output_filename, affine=None, ref_image=None):
@@ -231,8 +279,8 @@ def compute_concomp(data, level):
 
     total_mass = 0
     labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
-    print(bcolors.OKBLUE, "   - number of components found: ", ncomponents, bcolors.ENDC)
-
+    print("[] computing connected components of TC data:" + bcolors.OKBLUE + " {} components found".format(ncomponents),
+    bcolors.ENDC)
     for i in range(ncomponents):
         comps[i] = (labeled == i+1)
         a, b = scipy.ndimage.measurements._stats(comps[i])
@@ -289,7 +337,6 @@ def compute_connected_components(args, labels=None):
         except Exception as c:
             print(c)
             return
-    print(".. reading data ", os.path.join(init_path, fname + ext), " with dimension", dims)
 
     if labels is not None:
         en = (data==labels['en']).astype(float)
@@ -435,8 +482,9 @@ if __name__=='__main__':
     parser.add_argument ('-suffix', type=str, help = 'ob name suffix');
 
     # convert
-    parser.add_argument ('-convert_netcdf_to_nii',action='store_true', help = 'convert netcdf images to nifti images');
+    parser.add_argument ('-convert',action='store_true', help = 'convert netcdf images to nifti images');
     parser.add_argument ('-reference_image', type=str, help = 'reference nifti image')
+    parser.add_argument ('-multilevel', action='store_true', default=False, help = 'If set, convert images on all levels.');
 
     # read log and extract
     parser.add_argument ('-update_config', action='store_true', help = 'extracts rho and k from logfile of previous level, and updates config');
@@ -459,7 +507,6 @@ if __name__=='__main__':
         resample(args.input_path, args.fname, args.ndim);
 
     if args.concomp_data:
-        print("[] computing connected components of TC data")
         compute_connected_components(args, labels_rev)
 
     if args.compute_observation_mask:
@@ -470,6 +517,5 @@ if __name__=='__main__':
         print("[] extracting rho and k from ", args.input_path);
         update_config(args.input_path, args.output_path);
 
-    # if args.convert_netcdf_to_nii:
-    #     print("[] converting ", args.name_old, "to", args.name_new);
-    #     convert_netcdf_to_nii(args.name_old, args.name_new, affine=None, ref_image=args.reference_image)
+     if args.convert:
+         convert_images_to_orig_size(args.input_path, args.reference_image, gridcont=args.multilevel):

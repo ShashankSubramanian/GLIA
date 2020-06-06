@@ -1,6 +1,6 @@
 import os, sys
-#sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
-#sys.path.append(os.path.join(os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir))
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+sys.path.append(os.path.join(os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir))
 
 #from scripts import params as par
 import params as par
@@ -34,7 +34,7 @@ def sparsetil_gridcont(input):
     # -------------------------------- #
     system             = input['system'] if 'system' in input else 'frontera' # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
     nodes              = 2;
-    procs              = 96;
+    procs              = [24, 48, 96];
     wtime_h            = [x * patients_per_job for x in [0,2,12]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
     # -------------------------------- #
@@ -72,8 +72,10 @@ def sparsetil_gridcont(input):
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     utils_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'utils')
     ############### === define run configuration
-    r['code_path'] 			= scripts_path + '/../../';
-    r['compute_sys'] 		= system
+    r['code_path']     = scripts_path + '/../../';
+    r['compute_sys']   = system
+    if 'extra_modules' in input:
+      r['extra_modules'] = input['extra_modules']
 
     cmd_command = ''
     symlink_cmd = ''
@@ -233,10 +235,12 @@ def sparsetil_gridcont(input):
             # cmd_extractrhok += "\n" + "source " + os.path.join(result_path_level_coarse, 'env_rhok.sh') + "\n"
 
 
-        #  TODO
         # postprocess results
         #   - resize all images back to input resolution and save as nifti
-        # cmd_postproc  = pythoncmd + basedir + '/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
+        cmd_postproc = "\n# resize back to original resolution and convert to nifty" 
+        cmd_postproc += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -input_path ' + output_path_tumor + ' -reference_image ' + fname + ' -multilevel '
+
+        # TODO
         # cmd_postproc += " -rdir " + rdir + " ";
         # cmd_postproc += " -convert_images -gridcont ";
         # cmd_postproc += " -compute_tumor_stats ";
@@ -254,36 +258,38 @@ def sparsetil_gridcont(input):
             cmd_command += cmd_extractrhok
 
         ############### === define parameters
-        r['nodes']    = nodes
-        r['mpi_taks'] = procs
-        r['wtime_h']  = wtime_h
-        r['wtime_m']  = wtime_m
-
-        p['output_dir'] 		= result_path_level
+        r['nodes']     = nodes
+        r['mpi_taks']  = procs[-1]
+        r['wtime_h']   = wtime_h[-1]
+        r['wtime_m']   = wtime_m[-1]
+        r['log_dir']   = output_path_tumor
+        r['ibrun_man'] = " -n " + str(procs[ii]) + " -o 0 "
+        
+        p['output_dir']         = result_path_level
         p['n']                  = level
-        p['solver'] 			= 'sparse_til'
+        p['solver']             = 'sparse_til'
         p['multilevel']         = 1
         p['invert_reac']        = 1
         p['invert_diff']        = invert_diffusivity[ii]
         p['inject_solution']    = 1 if (inject_coarse_sol  and level > 64) else 0;
         p['pre_reacdiff_solve'] = 1 if (pre_reacdiff_solve and level > 64) else 0;
-        p['model'] 				= 1
-        p['verbosity'] 			= 1
-        p['syn_flag'] 			= 0
-        p['init_rho'] 			= rho_init if (level == 64) else 'TBD'
-        p['init_k'] 			= k_init if (level == 64) else 'TBD'
-        p['nt_inv'] 			= nt
-        p['dt_inv'] 			= 1./nt
+        p['model']              = 1
+        p['verbosity']          = 1
+        p['syn_flag']           = 0
+        p['init_rho']           = rho_init if (level == 64) else 'TBD'
+        p['init_k']             = k_init if (level == 64) else 'TBD'
+        p['nt_inv']             = nt
+        p['dt_inv']             = 1./nt
         p['time_history_off'] 	= 0
         p['sparsity_level'] 	= sparsity_per_comp
         p['gist_maxit']         = gist_maxit[ii]
-        p['beta_p'] 			= beta_p
-        p['opttol_grad'] 		= opttol
-        p['newton_maxit'] 		= newton_maxit[ii]
-        p['kappa_lb'] 			= kappa_lb[ii]
-        p['kappa_ub'] 			= kappa_ub[ii]
-        p['rho_lb'] 			= rho_lb[ii]
-        p['rho_ub'] 			= rho_ub[ii]
+        p['beta_p']             = beta_p
+        p['opttol_grad']        = opttol
+        p['newton_maxit']       = newton_maxit[ii]
+        p['kappa_lb']           = kappa_lb[ii]
+        p['kappa_ub']           = kappa_ub[ii]
+        p['rho_lb']             = rho_lb[ii]
+        p['rho_ub']             = rho_ub[ii]
         p['newton_solver']      = "QN"
         p['line_search']        = ls_type[ii]
         p['lbfgs_vectors'] 		= 50
@@ -317,6 +323,8 @@ def sparsetil_gridcont(input):
 
         run_str = par.write_config(p, r)
         cmd_command += "\n" + "# run tumor solver\n" + run_str + "  2>&1  " + os.path.join(output_path_level, "solver_log.txt")
+        if level == 256:
+          cmd_command += "\n" + cmd_postproc
         cmd_command +="\n#=================="
         JOBfile += cmd_command
 

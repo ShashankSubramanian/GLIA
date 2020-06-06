@@ -3,7 +3,8 @@ import numpy as np
 from netCDF4 import Dataset
 import argparse
 import scipy.ndimage as ndimage
-import file_io as fio
+import utils.file_io as fio
+#import file_io as fio
 import nibabel as nib
 
 

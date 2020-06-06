@@ -302,7 +302,7 @@ def write_config(set_params, run):
 
     ibman = ""
     if 'ibrun_man' in r and r['ibrun_man']:
-        ibman = " -n " + str(r['mpi_tasks']) + " -o 0 "
+        ibman = r['ibrun_man']
     cmd = ""
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
@@ -378,17 +378,25 @@ def write_jobscript_header(tu_params, run_params):
         else:
             run_params['mpi_taks'] = 1
 
+    if 'wtime_h' not in run_params:
+        run_params['wtime_h'] = 6
+    if 'wtime_m' not in run_params:
+        run_params['wtime_m'] = 0
+    if 'log_dir' not in run_params:
+        run_params['log_dir'] = tu_params['output_dir']
     fname = out_dir + '/job.sh'
     job_header = "" #open(fname, 'w+')
     job_header += "#!/bin/bash\n"
     job_header += "#SBATCH -J tuinv\n"
-    job_header += "#SBATCH -o " + tu_params['output_dir'] + "/log\n"
+    job_header += "#SBATCH -o " + run_params['log_dir'] + "/log\n"
     job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
     job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
     job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"
-    job_header += "#SBATCH -t 06:00:00\n\n"
+    job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
     job_header += "source ~/.bashrc\n"
     job_header += "export OMP_NUM_THREADS=1\n\n"
+    if 'extra_modules' in run_params:
+      job_header += str(run_params['extra_modules']) + "\n"
 
     return job_header
 
