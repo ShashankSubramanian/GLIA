@@ -1,5 +1,5 @@
 """ This script defines all parameters for the tumor solver
-    and generates a config file, wich can be read in by the
+    and generates a config file, hwich can be read in by the
     c++ binary.
     The script can be called with a dict 'set_params' to override
     defaults defined here.
@@ -53,7 +53,7 @@ def write_config(set_params, run):
     p['newton_solver'] = "QN"           # GN, QN
     p['line_search'] = "armijo"         # 'armijo' : armijo conditions; 'mt' : more-thuene (wolfe conditions)
     p['ce_loss'] = 0                    # cross-entropy or L2 loss
-    p['regularization'] = "L2"          # L2, L1
+    p['regularization'] = "L1"          # L2, L1
     p['beta_p'] = 1E-4                  # regularization parameter
     p['opttol_grad'] = 1E-5             # relative gradient tolerance
     p['newton_maxit'] = 50              # number of iterations for optimizer
@@ -91,8 +91,9 @@ def write_config(set_params, run):
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
     p['obs_lambda'] = -1                # if > 0: creates observation mask OBS = 1[TC] + lambda*1[B/WT] from segmentation file (only works if segmentation is read)
-    p['two_time_points'] = 0           # 0: only data at t=1 is provided, 1: data for both t=1 and t=0 is provided
+    p['two_time_points_'] = 0           # 0: only data at t=1 is provided, 1: data for both t=1 and t=0 is provided
     p['atlas_labels'] = ""              # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
+    p['patient_labels'] = ""              # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### initial condition
     p['sparsity_level'] = 5             # target sparsity of recovered IC in sparse_til solver
@@ -237,7 +238,7 @@ def write_config(set_params, run):
         f.write("obs_threshold_0=" + str(p['obs_threshold_0']) + "\n");
         f.write("obs_threshold_rel=" + str(p['obs_threshold_rel']) + "\n");
         f.write("obs_lambda=" + str(p['obs_lambda']) + "\n");
-        f.write("two_time_points=" + str(p['two_time_points']) + "\n");
+        f.write("two_time_points_=" + str(p['two_time_points_']) + "\n");
         f.write("atlas_labels=" + str(p['atlas_labels']) + "\n");
 
         f.write("\n");
@@ -322,17 +323,14 @@ def write_config(set_params, run):
 
 
 
-### ________________________________________________________________________ ___
-### //////////////////////////////////////////////////////////////////////// ###
-def write_jobscript_header(tu_params, run_params):
-    """ writes the header for the job script to string.
-    """
+
+ ### ________________________________________________________________________ ___
+ ### //////////////////////////////////////////////////////////////////////// ###
+def submit(tu_params, run_params, submit_job = True):
+    """ creates config file and submits job """
+    import subprocess
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     code_dir = scripts_path + '/../'
-    if "output_dir" in tu_params:
-        out_dir = tu_params['output_dir']
-    else:
-        out_dir = scripts_path
 
     if 'code_path' not in run_params:
         run_params['code_path'] = code_dir
@@ -378,44 +376,42 @@ def write_jobscript_header(tu_params, run_params):
         else:
             run_params['mpi_taks'] = 1
 
-    fname = out_dir + '/job.sh'
-    job_header = "" #open(fname, 'w+')
-    job_header += "#!/bin/bash\n"
-    job_header += "#SBATCH -J tuinv\n"
-    job_header += "#SBATCH -o " + tu_params['output_dir'] + "/log\n"
-    job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
-    job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
-    job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"
-    job_header += "#SBATCH -t 06:00:00\n\n"
-    job_header += "source ~/.bashrc\n"
-    job_header += "export OMP_NUM_THREADS=1\n\n"
-
-    return job_header
-
-### ________________________________________________________________________ ___
-### //////////////////////////////////////////////////////////////////////// ###
-def submit(tu_params, run_params, submit_job = True):
-    """ creates config file and submits job """
-    import subprocess
-    scripts_path = os.path.dirname(os.path.realpath(__file__))
-    code_dir = scripts_path + '/../'
-    if "output_dir" in tu_params:
-        out_dir = tu_params['output_dir']
-    else:
-        out_dir = scripts_path
-
-    fname = out_dir + '/job.sh'
-    job_file = open(fname, 'w+')
-
-    job_header = write_jobscript_header(tu_params, run_params)
     run_str = write_config(tu_params, run_params)
 
-    job_file.write(job_header)
-    job_file.write(run_str)
-    job_file.close()
-    ### submit jobfile
-    if submit_job:
-        subprocess.call(['sbatch', fname])
+    if True:
+        print('No errors, submitting jobfile\n')
+        fname = scripts_path + '/job.sh'
+        submit_file = open(fname, 'w+')
+        if run_params['compute_sys'] == 'hazelhen':
+            submit_file.write("#!/bin/bash\n" + \
+            "#PBS -N ITP\n" + \
+            "#PBS -l nodes="+str(run_params['nodes'])+":ppn=24 \n" + \
+            "#PBS -l walltime=01:00:00 \n" + \
+            "#PBS -m e\n" + \
+            "#PBS -M kscheufele@austin.utexas.edu\n\n" + \
+            "source /zhome/academic/HLRS/ipv/ipvscheu/env_intel.sh\n" + \
+            "export OMP_NUM_THREADS=1\n")
+        else:
+            submit_file.write ("#!/bin/bash\n" + \
+            "#SBATCH -J tuinv\n" + \
+            "#SBATCH -o " + tu_params['output_dir'] + "/log\n" + \
+            "#SBATCH -p " + str(run_params['queue']) + "\n" + \
+            "#SBATCH -N " + str(run_params['nodes']) + "\n" + \
+            "#SBATCH -n " + str(run_params['mpi_taks']) + "\n" + \
+            "#SBATCH -t 06:00:00\n" + \
+            "source ~/.bashrc\n" + \
+            "export OMP_NUM_THREADS=1\n")
+        submit_file.write(run_str)
+        submit_file.close()
+
+        ### submit jobfile
+        if submit_job:
+            if run_params['compute_sys'] == 'hazelhen':
+                subprocess.call(['qsub', fname])
+            else:
+                subprocess.call(['sbatch', fname])
+    else:
+        print('Errors, no job submitted\n')
 
 
 

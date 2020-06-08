@@ -15,10 +15,11 @@ match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee][+-]?\ *-?\ *[0-9]+)?')
 isz = 256
 c_avg = np.zeros((isz,isz,isz))
 u_avg = np.zeros((isz,isz,isz))
-pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
-#pat_names = ["Brats18_CBICA_AAP_1", "Brats18_CBICA_ALU_1"]
-#pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
-suff = "-nav-ratio-0"
+#pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+#pat_names = ["atlas-2-case2", "atlas-2-case3"]
+#pat_names = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+pat_names = ["Brats18_CBICA_AAP_1"]
+suff = ""
 base_dir  = os.getcwd() + "/../../"
 for pat in pat_names:
   c_avg = 0 * c_avg
@@ -27,7 +28,7 @@ for pat in pat_names:
 
   print("postop for pat {}".format(pat))
   row = ""
-  r_path = base_dir + "results/stat-" + pat + "/"
+  r_path = base_dir + "results/" + pat + "/stat/"
   if not os.path.exists(r_path):
     os.makedirs(r_path)
   failed_atlas = []
@@ -42,88 +43,94 @@ for pat in pat_names:
 
 ### scrub the log file
   statfile = open(r_path + "stats_" + str(isz) + suff + ".txt", 'w+')
-  for idx in range(1,num_cases+1):
-    if isz == 256:
-      atlas = "atlas-" + str(idx) + suff
-    else:
-      atlas = "atlas-" + str(idx) + "_" + str(isz)
-    log_file = base_dir + "results/inv-" + pat + "/" + atlas + "/log"
-    start_idx = 0
-    with open(log_file) as f:
-      lines = f.readlines()
-      for line in lines:
-        if "estimated" in line:
-          break;
-        start_idx += 1
+  invdir   = base_dir + "results/" + pat + "/tu/"
+  for atlas in os.listdir(invdir):
+    if atlas[0] == "5" and atlas.find("-r-0.2") is -1 and atlas.find("-r-0.1") is -1: ### adni atlas
+    #if atlas[0] == "5" and atlas.find(suff) is not -1: ### adni atlas
+    #if atlas[0] == "5" and atlas.find(suff) is not -1: ### adni atlas
+      print("scrubbing log atlas " + atlas)
+#      if isz == 256:
+#        atlas = "atlas-" + str(idx) + suff
+#      else:
+#        atlas = "atlas-" + str(idx) + "_" + str(isz)
+      log_file = invdir + atlas + "/log"
+      start_idx = 0
+      with open(log_file) as f:
+        lines = f.readlines()
+        for line in lines:
+          if "estimated" in line:
+            break;
+          start_idx += 1
 
-      line = lines[start_idx+1]
-      l = re.findall("\d*\.?\d+", line)
-      gamma = float(l[1])
-      line = lines[start_idx+3]
-      l = re.findall("\d*\.?\d+", line)
-      rho = float(l[2])
-      line = lines[start_idx+5]
-      l = re.findall("\d*\.?\d+", line)
-      kappa = float(l[2])
+        line = lines[start_idx+1]
+        l = re.findall("\d*\.?\d+", line)
+        gamma = float(l[1])
+        line = lines[start_idx+3]
+        l = re.findall("\d*\.?\d+", line)
+        rho = float(l[2])
+        line = lines[start_idx+5]
+        l = re.findall("\d*\.?\d+", line)
+        kappa = float(l[2])
 
-      ## displacement
-      line = lines[start_idx+15]
-      l = re.findall(match_number, line)
-      max_disp = float(l[2])
+        ## displacement
+        shift = 0#41
+        line = lines[start_idx+15+shift]#11
+        l = re.findall(match_number, line)
+        max_disp = float(l[2])
 
-      ### relative error
-      line = lines[start_idx+20]
-      l = re.findall("\d*\.?\d+", line)
-      rel_error = float(l[3])
+        ### relative error
+        line = lines[start_idx+20+shift]
+        l = re.findall("\d*\.?\d+", line)
+        rel_error = float(l[3])
 
-      ### time
-      line = lines[start_idx+24]
-      l = re.findall("\d*\.?\d+", line)
-      t = float(l[1])
+        ### time
+        line = lines[start_idx+24+shift]
+        l = re.findall("\d*\.?\d+", line)
+        t = float(l[1])
 
-      if max_disp > 2 or rel_error > 1:
-        failed_atlas.append(idx)
-        row += atlas + "(F) \t& "
-      else:
-        gam_list.append(gamma)
-        rho_list.append(rho)
-        kappa_list.append(kappa)
-        disp_list.append(max_disp)
-        err_list.append(rel_error)
-        time_list.append(t)
-        row += atlas + " \t& "
-    
-      row += "\\num{" + "{:e}".format(gamma) + "} \t& "
-      row += "\\num{" + "{:e}".format(rho) + "} \t& "
-      row += "\\num{" + "{:e}".format(kappa) + "} \t& "
-      row += "\\num{" + "{:e}".format(max_disp) + "} \t& "
-      row += "\\num{" + "{:e}".format(rel_error) + "} \t& "
-      row += "\\num{" + "{:e}".format(t) + "} \\\\ \n"
+        if max_disp > 2 or rel_error > 1:
+          failed_atlas.append(idx)
+          row += atlas + "(F) \t& "
+        else:
+          gam_list.append(gamma)
+          rho_list.append(rho)
+          kappa_list.append(kappa)
+          disp_list.append(max_disp)
+          err_list.append(rel_error)
+          time_list.append(t)
+          row += atlas + " \t& "
+      
+        row += "\\num{" + "{:e}".format(gamma) + "} \t& "
+        row += "\\num{" + "{:e}".format(rho) + "} \t& "
+        row += "\\num{" + "{:e}".format(kappa) + "} \t& "
+        row += "\\num{" + "{:e}".format(max_disp) + "} \t& "
+        row += "\\num{" + "{:e}".format(rel_error) + "} \t& "
+        row += "\\num{" + "{:e}".format(t) + "} \\\\ \n"
 
-  for idx in range(1,num_cases+1):
-    if isz == 256:
-      atlas = "atlas-" + str(idx) + suff
-    else:
-      atlas = "atlas-" + str(idx) + "_" + str(isz)
-    if idx in failed_atlas:
-      print('skipping failed atlas {}'.format(idx))
-      continue
-
-    inv_results = base_dir + "results/inv-" + pat + "/" + atlas + "/"
-    file = Dataset(inv_results + "c_rec_final.nc", mode='r', format="NETCDF3_CLASSIC")
-    c_avg += np.transpose(file.variables['data'])
-    file = Dataset(inv_results + "displacement_rec_final.nc", mode='r', format="NETCDF3_CLASSIC")
-    u_avg += np.transpose(file.variables['data'])
-
-  c_avg /= num_cases
-  u_avg /= num_cases
-  nii = nib.load(base_dir + "brain_data/real_data/" + pat + "/data/" + pat + "_seg_tu_aff2jakob.nii.gz")
-  if isz == 256:
-    writeNII(c_avg, r_path + "c_avg_" + str(isz) + suff + ".nii.gz", ref_image = nii)
-    writeNII(u_avg, r_path + "u_avg_" + str(isz) + suff + ".nii.gz", ref_image = nii)
-  else:
-    writeNII(c_avg, r_path + "c_avg_" + str(isz) + ".nii.gz")
-    writeNII(u_avg, r_path + "u_avg_" + str(isz) + ".nii.gz")
+#  for idx in range(1,num_cases+1):
+#    if isz == 256:
+#      atlas = "atlas-" + str(idx) + suff
+#    else:
+#      atlas = "atlas-" + str(idx) + "_" + str(isz)
+#    if idx in failed_atlas:
+#      print('skipping failed atlas {}'.format(idx))
+#      continue
+#
+#    inv_results = base_dir + "results/inv-" + pat + "/" + atlas + "/"
+#    file = Dataset(inv_results + "c_rec_final.nc", mode='r', format="NETCDF3_CLASSIC")
+#    c_avg += np.transpose(file.variables['data'])
+#    file = Dataset(inv_results + "displacement_rec_final.nc", mode='r', format="NETCDF3_CLASSIC")
+#    u_avg += np.transpose(file.variables['data'])
+#
+#  c_avg /= num_cases
+#  u_avg /= num_cases
+#  nii = nib.load(base_dir + "brain_data/real_data/" + pat + "/data/" + pat + "_seg_tu_aff2jakob.nii.gz")
+#  if isz == 256:
+#    writeNII(c_avg, r_path + "c_avg_" + str(isz) + suff + ".nii.gz", ref_image = nii)
+#    writeNII(u_avg, r_path + "u_avg_" + str(isz) + suff + ".nii.gz", ref_image = nii)
+#  else:
+#    writeNII(c_avg, r_path + "c_avg_" + str(isz) + ".nii.gz")
+#    writeNII(u_avg, r_path + "u_avg_" + str(isz) + ".nii.gz")
 
   row += "\n\n ######################################################## \n\n "
 
@@ -133,7 +140,9 @@ for pat in pat_names:
   err_arr    = np.asarray(err_list)
   disp_arr   = np.asarray(disp_list)
   time_arr   = np.asarray(time_list)
-
+  
+  print(rho_arr.shape)
+  print(rho_arr)
   row += "stats" + " \t& "
   row += "\\num{" + "{:e}".format(np.mean(gam_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(gam_arr)) + "} \t& "
   row += "\\num{" + "{:e}".format(np.mean(rho_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(rho_arr)) + "} \t& "

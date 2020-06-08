@@ -394,6 +394,7 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   // hack: for syn cases don't smooth data
 //  params_->tu_->smoothing_factor_data_ = 0;
 //  params_->tu_->smoothing_factor_patient_ = 0;
+  params_->tu_->smoothing_factor_data_t0_ = 0; // set to zero if c0 does not need to be smoothed
   ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
@@ -475,8 +476,68 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
   optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
+
+  
+//  Vec x_scale; 
+//  ierr = VecDuplicate(p_rec_, &x_scale); CHKERRQ(ierr);
+//
+//  ScalarType *scale_ptr;
+//  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+//  ierr = VecGetArray(x_scale, &scale_ptr); CHKERRQ(ierr);
+//  scale_ptr[0] = 0*x_ptr[0] / 1E4;
+//  scale_ptr[1] = 0*x_ptr[1];
+//  scale_ptr[2] = 0*x_ptr[2] / 1E-2 + 0.5;
+//  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+//
+//  Vec d1, d2;
+//  ierr = VecDuplicate(x_scale, &d1); CHKERRQ(ierr);
+//  ierr = VecDuplicate(x_scale, &d2); CHKERRQ(ierr);
+//
+//  ScalarType *d1_ptr, *d2_ptr;
+//  ierr = VecGetArray(d1, &d1_ptr); CHKERRQ(ierr);
+//  ierr = VecGetArray(d2, &d2_ptr); CHKERRQ(ierr);
+// 
+//  d1_ptr[0] = 0.402885 - scale_ptr[0];
+//  d1_ptr[1] = 9.22808 - scale_ptr[1];
+//  d1_ptr[2] = 2.4698 - scale_ptr[2];
+//  d2_ptr[0] = 1.2 - scale_ptr[0];
+//  d2_ptr[1] = 12 - scale_ptr[1];
+//  d2_ptr[2] = 5 - scale_ptr[2];
+//
+//  ierr = VecRestoreArray(d1, &d1_ptr); CHKERRQ(ierr);
+//  ierr = VecRestoreArray(d2, &d2_ptr); CHKERRQ(ierr);
+//  ierr = VecRestoreArray(x_scale, &scale_ptr); CHKERRQ(ierr);
+//
+//  ierr = derivative_operators_->visLossLandscape(x_scale, d2, nullptr, data_, "obj-list"); CHKERRQ(ierr);
+//  ierr = VecDestroy(&d1); CHKERRQ(ierr);
+//  ierr = VecDestroy(&d2); CHKERRQ(ierr);
+
+  // SNAFU: compute hessian
+//  ierr = tuMSGstd("computing FD hessian at IC"); CHKERRQ(ierr);
+//  Vec x_scale; 
+//  ierr = VecDuplicate(p_rec_, &x_scale); CHKERRQ(ierr);
+//  ScalarType *scale_ptr;
+//  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+//  ierr = VecGetArray(x_scale, &scale_ptr); CHKERRQ(ierr);
+//  scale_ptr[0] = x_ptr[0] / 1E4;
+//  scale_ptr[1] = x_ptr[1];
+//  scale_ptr[2] = x_ptr[2] / 1E-2;
+//  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+//  ierr = VecRestoreArray(x_scale, &scale_ptr); CHKERRQ(ierr);
+//  std::string ss_str = "IC";
+//  ierr = derivative_operators_->computeFDHessian(x_scale, data_, ss_str); CHKERRQ(ierr); 
+//  ierr = tuMSGstd("Hessian compute complete."); CHKERRQ(ierr);
+
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+//
+ // SNAFU: compute hessian
+// ierr = tuMSGstd("computing FD hessian at optimum"); CHKERRQ(ierr);
+// ierr = VecCopy(p_rec_, x_scale); CHKERRQ(ierr);
+// ss_str = "opt";
+// ierr = derivative_operators_->computeFDHessian(x_scale, data_, ss_str); CHKERRQ(ierr); 
+//
+// ierr = VecDestroy(&x_scale); CHKERRQ(ierr);
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
@@ -506,6 +567,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
     ierr = dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_); CHKERRQ(ierr);
   }
   // transport mri
+  params_->tu_->transport_mri_ = !app_settings_->path_->mri_.empty();
   if (params_->tu_->transport_mri_) {
     if (mri_ == nullptr) {
       ierr = VecDuplicate(tmp_, &mri_); CHKERRQ(ierr);
@@ -671,6 +733,29 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
 
   if (!app_settings_->path_->p_seg_.empty()) {
     ierr = dataIn(tmp_, params_, app_settings_->path_->p_seg_); CHKERRQ(ierr);
+    if(app_settings_->patient_seg_[0] <= 0 || app_settings_->patient_seg_[1] <= 0 || app_settings_->patient_seg_[2] <= 0) {
+      ierr = tuMSGwarn(" Error: Patient segmentation must at least have WM, GM, VT."); CHKERRQ(ierr);
+      exit(0);
+    } else {
+      ierr = VecDuplicate(tmp_, &wm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &gm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &vt_); CHKERRQ(ierr);
+      csf_ = nullptr; data_t1_ = nullptr; ed_ = nullptr;
+      if (app_settings_->patient_seg_[3] > 0) {
+        ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
+      }
+      // tc exists as label, or necrotic core + enhancing rim exist as labels
+      if (app_settings_->patient_seg_[4] > 0 || (app_settings_->patient_seg_[5] > 0 && app_settings_->patient_seg_[6] > 0)) {
+        ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
+        data_t1_from_seg_ = true;
+        // edema exists as label
+        if (app_settings_->patient_seg_[7] > 0) {
+          ierr = VecDuplicate(tmp_, &ed_); CHKERRQ(ierr);
+        }
+      }
+    }
+    ierr = splitSegmentation(tmp_, wm_, gm_, vt_, csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->patient_seg_); CHKERRQ(ierr);
+
     // TODO(K): populate to wm, gm, csf, ve
   } else {
     if (!app_settings_->path_->p_wm_.empty()) {
