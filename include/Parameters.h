@@ -193,7 +193,8 @@ public:
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.6)                     // hypoxia threshold
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
-  , support_()                             // // support of compressive sampling guess
+  , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
+  , support_()                            // // support of compressive sampling guess
   , bounding_box_ (0)                     // Flag to set bounding box for gaussians
   , max_p_location_ (0)                   // Location of maximum gaussian scale concentration - this is used to set bounds for reaction inversion
   , p_scale_ (0.0)                        // Scaling factor for initial guess
@@ -325,6 +326,7 @@ public:
 
   // initial condition (inversion)
   int sparsity_level_;            // should this go to opt?
+  double thresh_component_weight_;
   std::vector<int> support_;      // support of cs guess
   // initial condition (parametrization)
   int bounding_box_;

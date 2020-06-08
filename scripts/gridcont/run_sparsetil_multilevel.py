@@ -108,6 +108,8 @@ def sparsetil_gridcont(input):
     patient_data_path = input['patient_path']
     input_path = os.path.join(output_base_path, 'input');
     output_path_tumor = os.path.join(output_base_path, 'inversion');
+    if 'out_dir_suffix' in input:
+        output_path_tumor = output_path_tumor + '_' + input['out_dir_suffix']
     if not os.path.exists(input_path):
         os.mkdir(input_path);
 
@@ -142,7 +144,7 @@ def sparsetil_gridcont(input):
        tmp_regular = imgtools.resizeImage(tmp, tuple([256, 256, 256]), interp_order=0)
        fio.createNetCDF(os.path.join(input_path, filename + suffix + ext), tmp_regular.shape, np.swapaxes(tmp_regular, 0, 2))
        if healthy_seg:
-           data = reference_img.get_fdata()
+           data = dataimg.get_fdata()
            data_regular = imgtools.resizeImage(data, tuple([256, 256, 256]), interp_order=1)
            fio.createNetCDF(os.path.join(input_path, filename_data + suffix + ext), tmp_regular.shape, np.swapaxes(data_regular, 0, 2))
 
@@ -229,7 +231,8 @@ def sparsetil_gridcont(input):
                 p['d1_path'] = os.path.join(input_path_level, 'data' + ext)
             else:
                 p['obs_lambda'] = obs_lambda
-                p['d1_path'] = p['a_wm_path'] = p['a_gm_path'] = p['a_vt_path'] = ""
+                p['d1_path'] = ""
+            p['a_wm_path'] = p['a_gm_path'] = p['a_vt_path'] = ""
 
         symlink_cmd +=  "\nln -sf " + "../../../input/data_comps_nx" + str(level) + ext + " data_comps" + ext + " "
         symlink_cmd +=  "\nln -sf " + "../../../input/target_data_nx" + str(level) + ext + " target_data" + ext + " "
@@ -329,12 +332,16 @@ def sparsetil_gridcont(input):
             p['pred_times'] = [1.0, 1.2, 1.5]
             p['dt_pred'] = 0.01
         p['smoothing_factor'] = 1
-        p['smoothing_factor_data'] = 1
+        if healthy_seg:
+            p['smoothing_factor_data'] = 0
+        else:
+            p['smoothing_factor_data'] = 1
         if 'obs_threshold_1' in input:
             p['obs_threshold_1'] = input['obs_threshold_1']
         if 'obs_threshold_rel' in input:
             p['obs_threshold_rel'] = input['obs_threshold_rel']
-
+        if 'thresh_component_weight' in input:
+            p['thresh_component_weight'] = input['thresh_component_weight']
 
         if gaussian_mode in ["C0", "D"] or level == 64:
             p['support_data_path'] = os.path.join(input_path_level, 'support_data' + ext); # on coarsest level always d(1), i.e., TC as support_data

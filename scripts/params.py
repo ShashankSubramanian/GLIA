@@ -96,6 +96,7 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### initial condition
     p['sparsity_level'] = 5             # target sparsity of recovered IC in sparse_til solver
+    p['thresh_component_weight'] = 1E-3 # threshold for weight of data component (to be considered for sparsity comp.)
     p['gaussian_selection_mode'] = 1    # 0: grid-based; 1: based on target data
     p['number_gaussians'] = 1           # only used if selection mode = 0
     p['sigma_factor'] = 1               # kernel width of Gaussians
@@ -243,6 +244,7 @@ def write_config(set_params, run):
         f.write("\n");
         f.write("### initial condition" + "\n");
         f.write("sparsity_level=" + str(p['sparsity_level']) + "\n");
+        f.write("thresh_component_weight=" + str(p['thresh_component_weight']) + "\n");
         f.write("gaussian_selection_mode=" + str(p['gaussian_selection_mode']) + "\n");
         f.write("number_gaussians=" + str(p['number_gaussians']) + "\n");
         f.write("sigma_factor=" + str(p['sigma_factor']) + "\n");

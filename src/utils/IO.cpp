@@ -167,6 +167,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   }
   // ### initial condition
   if (name == "sparsity_level") {p->tu_->sparsity_level_ = std::stoi(value); return;}
+  if (name == "thresh_component_weight") {p->tu_->thresh_component_weight_ = std::stod(value); return;}
   if (name == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value); return;}
   if (name == "number_gaussians") {p->tu_->np_ = std::stoi(value); return;}
   if (name == "sigma_factor") {

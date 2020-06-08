@@ -17,6 +17,7 @@ extra_modules += "\nexport CUDA_DIR=${TACC_CUDA_DIR}/"
 
 # double precision
 #extra_modules =  "module load petsc/3.11"
+extra_modules =  "module load petsc/3.11-single"
 
 
 ## SETTTINGS ##
@@ -25,7 +26,7 @@ extra_modules += "\nexport CUDA_DIR=${TACC_CUDA_DIR}/"
 input['extra_modules'] = extra_modules
 # == compute system
 input['system'] = 'frontera'
-input['queue'] = 'rtx'
+#input['queue'] = 'rtx'
 
 # == define path to patient segmentation
 input['patient_path'] = '/scratch1/04678/scheufks/test/case_035_S_4114/data/time_point_0_seg.nii.gz'
@@ -37,10 +38,13 @@ input['output_base_path'] = '/scratch1/04678/scheufks/test/case_035_S_4114/'
 # == define lambda for observation operator
 input['obs_lambda'] = 1
 # == define segmentation labels
-input['segmentation_labels'] = "0=bg,1=csf,2=gm,3=wm"
+input['segmentation_labels'] = "0=bg,1=vt,2=gm,3=wm"
 # observation threshold
-input['obs_threshold_1'] = 0.8
+input['obs_threshold_1'] = 0.6
 input['obs_threshold_rel'] = 1
+input['thresh_component_weight'] = 1E-2
+
+input['out_dir_suffix'] = 'obs-'+str(input['obs_threshold_1'])
 
 input['submit'] = False
 # =======================================================================

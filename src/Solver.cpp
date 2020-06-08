@@ -167,8 +167,8 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
     readConCompDat(tumor_->phi_->component_weights_, tumor_->phi_->component_centers_, app_settings_->path_->data_comps_data_);
     int nnc = 0;
     for (auto w : tumor_->phi_->component_weights_)
-      if (w >= 1E-3) nnc++;  // number of significant components
-    ss << " Setting sparsity level to " << params_->tu_->sparsity_level_ << " x n_components (w > 1E-3) + n_components (w < 1E-3) = " << params_->tu_->sparsity_level_ << " x " << nnc << " + "
+      if (w >= params_->tu_->thresh_component_weight_) nnc++;  // number of significant components
+    ss << " Setting sparsity level to " << params_->tu_->sparsity_level_ << " x n_components (w > "<< params_->tu_->thresh_component_weight_ <<") + n_components (w < "<< params_->tu_->thresh_component_weight_ <<") = " << params_->tu_->sparsity_level_ << " x " << nnc << " + "
        << (tumor_->phi_->component_weights_.size() - nnc) << " = " << params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc);
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");

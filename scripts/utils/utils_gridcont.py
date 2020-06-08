@@ -189,7 +189,8 @@ def convert_images_to_orig_size(input_path, reference_image_path, gridcont=False
     refshape = ref_img.shape 
     suf = {}
     for l in levels:
-        suf[l] = "_{}x{}x{}.nii.gz".format(int(refshape[0]/scale), int(resfshape[1]/scale), int(refshape[2]/scale))
+        scale = 256/l
+        suf[l] = "_{}x{}x{}.nii.gz".format(int(refshape[0]/scale), int(refshape[1]/scale), int(refshape[2]/scale))
         tu_out_path = os.path.join(input_path, 'nx'+str(l)+'/');
         # create template image 
         new_affine = np.copy(ref_img.affine)
@@ -322,9 +323,9 @@ def compute_connected_components(args, labels=None, obs_th=-1):
         data = tc
     # observation operator:
     if obs_th > 0:
-        print(" .. applying rel. obs-threshold: {}".format(obs_th))
         m = np.amax(data.flatten())
         th = obs_th * m
+        print(" .. applying rel. obs-threshold: th = {}x{} = max, resulting in new threshold of: {} ".format(obs_th, m, th))
         data = np.where(data > th, data, 0)
     if ext == ".nc":
         fio.createNetCDF(os.path.join(args.output_path,'target_data_nx'+str(level)+'.nc'), np.shape(data), np.swapaxes(data,0,2));
