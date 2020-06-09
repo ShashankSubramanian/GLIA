@@ -18,11 +18,16 @@ __global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr
         // bg: 0, c: 1, wm: 2, gm: 3, csf: 4, glm: 5
         ScalarType max = bg_ptr[i];
         int ct = 0;
+        ScalarType w, g, v, c;
+        w = wm_ptr[i] * (1 - c_ptr[i]);
+        g = gm_ptr[i] * (1 - c_ptr[i]);
+        v = csf_ptr[i] * (1 - c_ptr[i]);
+        c = glm_ptr[i] * (1 - c_ptr[i]);
         if (c_ptr[i] > max) {max = c_ptr[i]; ct = 1;}
-        if (wm_ptr[i] > max) {max = wm_ptr[i]; ct = 6;}
-        if (gm_ptr[i] > max) {max = gm_ptr[i]; ct = 5;}
-        if (csf_ptr[i] > max) {max = csf_ptr[i]; ct = 7;}
-        if (glm_ptr[i] > max) {max = glm_ptr[i]; ct = 8;}
+        if (w > max) {max = w; ct = 6;}
+        if (g > max) {max = g; ct = 5;}
+        if (v > max) {max = v; ct = 7;}
+        if (c > max) {max = c; ct = 8;}
         seg_ptr[i] = ct;
     }
 }

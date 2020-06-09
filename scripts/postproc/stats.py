@@ -15,11 +15,11 @@ match_number = re.compile('-?\ *[0-9]+\.?[0-9]*(?:[Ee][+-]?\ *-?\ *[0-9]+)?')
 isz = 256
 c_avg = np.zeros((isz,isz,isz))
 u_avg = np.zeros((isz,isz,isz))
-#pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
 #pat_names = ["atlas-2-case2", "atlas-2-case3"]
 #pat_names = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
-pat_names = ["Brats18_CBICA_AAP_1"]
-suff = ""
+#pat_names = ["Brats18_CBICA_AAP_1"]
+suff = "-noreg"
 base_dir  = os.getcwd() + "/../../"
 for pat in pat_names:
   c_avg = 0 * c_avg
@@ -45,9 +45,8 @@ for pat in pat_names:
   statfile = open(r_path + "stats_" + str(isz) + suff + ".txt", 'w+')
   invdir   = base_dir + "results/" + pat + "/tu/"
   for atlas in os.listdir(invdir):
-    if atlas[0] == "5" and atlas.find("-r-0.2") is -1 and atlas.find("-r-0.1") is -1: ### adni atlas
-    #if atlas[0] == "5" and atlas.find(suff) is not -1: ### adni atlas
-    #if atlas[0] == "5" and atlas.find(suff) is not -1: ### adni atlas
+#    if atlas[0] == "5" and atlas.find("-r-0.2") is -1 and atlas.find("-r-0.1") is -1: ### adni atlas
+    if atlas[0] == "5" and atlas.find(suff) is not -1: ### adni atlas
       print("scrubbing log atlas " + atlas)
 #      if isz == 256:
 #        atlas = "atlas-" + str(idx) + suff
@@ -89,7 +88,8 @@ for pat in pat_names:
         t = float(l[1])
 
         if max_disp > 2 or rel_error > 1:
-          failed_atlas.append(idx)
+          failed_atlas.append(atlas)
+          print('failed atlas {}'.format(atlas))
           row += atlas + "(F) \t& "
         else:
           gam_list.append(gamma)
@@ -141,8 +141,6 @@ for pat in pat_names:
   disp_arr   = np.asarray(disp_list)
   time_arr   = np.asarray(time_list)
   
-  print(rho_arr.shape)
-  print(rho_arr)
   row += "stats" + " \t& "
   row += "\\num{" + "{:e}".format(np.mean(gam_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(gam_arr)) + "} \t& "
   row += "\\num{" + "{:e}".format(np.mean(rho_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(rho_arr)) + "} \t& "

@@ -12,9 +12,9 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
 
 brats_str = "Brats18_CBICA_"
-names     = ["ABO", "AMH", "ALU", "AAP"]
+#names     = ["ABO", "AMH", "ALU", "AAP"]
 #names     = ["ABO", "AMH", "ALU"]
-#names     = ["AAP"]
+names     = ["ALU"]
 ##patient_name = "ABO"
 for patient_name in names:
   pat         = brats_str + patient_name + "_1"
@@ -24,7 +24,7 @@ for patient_name in names:
     if atlas[0] == "5": ### adni atlases
       reg_path  = reg + atlas + '/'
 ############### === define parameters
-      p['output_dir'] 		    = os.path.join(code_dir, 'results/' + pat + '/tu/' + atlas + '-noreg/');  	# results path
+      p['output_dir'] 		    = os.path.join(code_dir, 'results/' + pat + '/tu/' + atlas + '-noreg-rholb/');  	# results path
       p['d1_path'] 			      = real_path + pat + '_tu_aff2jakob.nc'
       p['d0_path']            = real_path + pat + '_c0Recon_aff2jakob.nc'              # path to initial condition for tumor
 #      p['d0_path']            = reg_path + '/c0Recon_transported.nc'                # path to initial condition for tumor
@@ -58,7 +58,7 @@ for patient_name in names:
       p['newton_maxit'] 		  = 50              			# number of iterations for optimizer
       p['kappa_lb'] 			    = 0.005                   		# lower bound kappa
       p['kappa_ub'] 			    = 0.05                 		# upper bound kappa
-      p['rho_lb'] 			      = 0                     	# lower bound rho
+      p['rho_lb'] 			      = 2                     	# lower bound rho
       p['rho_ub'] 			      = 12                    	# upper bound rho
       p['gamma_lb']           = 0                         # lower bound gamma
       p['gamma_ub'] 			    = 12E4                		# upper bound gamma

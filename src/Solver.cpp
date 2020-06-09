@@ -394,7 +394,7 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   // hack: for syn cases don't smooth data
 //  params_->tu_->smoothing_factor_data_ = 0;
 //  params_->tu_->smoothing_factor_patient_ = 0;
-  params_->tu_->smoothing_factor_data_t0_ = 0; // set to zero if c0 does not need to be smoothed
+//  params_->tu_->smoothing_factor_data_t0_ = 0; // set to zero if c0 does not need to be smoothed
   ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);

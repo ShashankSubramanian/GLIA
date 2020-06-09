@@ -25,15 +25,15 @@ flag_real = True
 if flag_real:
   #pat_names = ["Brats18_CBICA_ALU_1"]
   pat_names = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AAP_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
-  inv_suff = ""
+  inv_suff = "-noreg"
   for pat_name in pat_names:
     print("postop for patient {}".format(pat_name))
     pat_path = scripts_path + "/../brain_data/real_data/" + pat_name + "/data/" + pat_name + "_seg_tu_aff2jakob.nii.gz"
     nii = nib.load(pat_path)
     invdir = scripts_path + "/../results/" + pat_name + "/tu/"
     for atlas_name in os.listdir(invdir):
-      if atlas_name[0] == "5":
-        inv_results = invdir + atlas_name + inv_suff
+      if atlas_name[0] == "5" and atlas_name.find(inv_suff) is not -1:
+        inv_results = invdir + atlas_name
         infile = inv_results + "/seg_rec_final.nc"
         ncfile = Dataset(infile, mode='r', format="NETCDF3_CLASSIC")
         dat = np.transpose(ncfile.variables['data'])
