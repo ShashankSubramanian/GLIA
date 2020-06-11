@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/workspace/ghafouri/Tumor_cpp/scripts/postproc_alzh/nc2nii.py", line 1, in <module>
+    from tools import *
+  File "/workspace/ghafouri/Tumor_cpp/scripts/postproc_alzh/tools.py", line 6, in <module>
+    import netCDF4
+ModuleNotFoundError: No module named 'netCDF4'

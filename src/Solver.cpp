@@ -358,9 +358,9 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
 
   optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr); // p_vec_ has length nr + nk
+  
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
-
   PetscFunctionReturn(ierr);
 }
 

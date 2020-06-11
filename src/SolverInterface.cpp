@@ -229,10 +229,16 @@ PetscErrorCode SolverInterface::finalize() {
   ierr = dataOut(tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
   ss.str(std::string());
   ss.clear();
-
+  
+  
   // === compute errors
   ScalarType *c0_ptr;
-  ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_);
+  // set c(0)
+  if (params_->tu_->use_c0_) {
+  ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
+  } else {
+  ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
+  }
   if (params_->tu_->write_output_) {
     ierr = dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_); CHKERRQ(ierr);
   }
@@ -246,6 +252,7 @@ PetscErrorCode SolverInterface::finalize() {
       }
     }
   }
+  
   ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
 
@@ -256,8 +263,7 @@ PetscErrorCode SolverInterface::finalize() {
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
-  if (params_->tu_->write_output_) ierr = dataOut(tmp_, params_, "c1_rec" + params_->tu_->ext_); CHKERRQ(ierr);
-
+  if (params_->tu_->write_output_) ierr = dataOut(tumor_->c_t_, params_, "c1_rec" + params_->tu_->ext_); CHKERRQ(ierr);
   // copy c(1)
   ScalarType data_norm, error_norm, error_norm_0;
   Vec c1_obs;
@@ -371,6 +377,7 @@ PetscErrorCode SolverInterface::predict() {
       // if different brain to perform prediction is given, read in and reset atlas
       if (app_settings_->pred_->wm_path_.size() > i) {
         if(!app_settings_->pred_->wm_path_[i].empty()) {
+	  ierr = tuMSGstd(" first if condition running"); CHKERRQ(ierr);
           app_settings_->path_->wm_ = app_settings_->pred_->wm_path_[i];
           app_settings_->path_->gm_ = app_settings_->pred_->gm_path_[i];
           app_settings_->path_->vt_ = app_settings_->pred_->vt_path_[i];
@@ -384,6 +391,7 @@ PetscErrorCode SolverInterface::predict() {
           ierr = tumor_->mat_prop_->setAtlas(gm_, wm_, csf_, vt_, nullptr); CHKERRQ(ierr);
         }
       } else {
+        ierr = tuMSGstd(" second if condition running"); CHKERRQ(ierr);
         ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
       }
       ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
@@ -489,8 +497,11 @@ PetscErrorCode SolverInterface::setupData() {
   if (has_dt0_ && params_->tu_->two_time_points_) {
     ierr = tumor_->obs_->apply(data_t0_, data_t0_, 0); CHKERRQ(ierr);
   }
-  ierr = dataOut(data_->dt1(), params_, "data.nc"); CHKERRQ(ierr);
+
   ierr = dataOut(obs_filter_, params_, "obs.nc"); CHKERRQ(ierr);
+  
+  ierr = dataOut(data_->dt0(), params_, "d0.nc"); CHKERRQ(ierr);
+  ierr = dataOut(data_->dt1(), params_, "d1.nc"); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 
@@ -582,8 +593,12 @@ PetscErrorCode SolverInterface::readData() {
 
   // read t1 data
   if (!app_settings_->path_->data_t1_.empty()) {
+    ss << " Reading data_t1 path" ;
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
     ierr = dataIn(data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
+    if (data_t1_ == nullptr) {
+       ss << " Not reading data_t1 ";
+} 
   } else if(data_t1_from_seg_) { // t=1 data has already been read from segmentation in readAtlas
     if(ed_ != nullptr && params_->tu_->obs_lambda_ >= 0) {
       ss << " constructing obs. mask from seg. as OBS = 1[TC] + lambda*1[WT/B] with lambda = " << params_->tu_->obs_lambda_;
@@ -675,7 +690,9 @@ PetscErrorCode SolverInterface::readData() {
       }
     }
     ierr = VecMax(data_t0_, NULL, &max); CHKERRQ(ierr);
-    ierr = VecScale(data_t0_, (1.0 / max)); CHKERRQ(ierr);
+    if (!has_dt0_) {
+    	ierr = VecScale(data_t0_, (1.0 / max)); CHKERRQ(ierr);
+    }
     ierr = dataOut(data_t0_, params_, "c0True.nc"); CHKERRQ(ierr);
     params_->tu_->use_c0_ = true; // optimizers will use c0 data
 
@@ -702,7 +719,7 @@ PetscErrorCode SolverInterface::readVelocity() {
     ierr = readVecField(tumor_->velocity_.get(), app_settings_->path_->velocity_x1_, app_settings_->path_->velocity_x2_, app_settings_->path_->velocity_x3_, params_); CHKERRQ(ierr);
     ierr = tumor_->velocity_->scale(-1); CHKERRQ(ierr);
     Vec mag;
-    ierr = VecDuplicate(data_->dt1(), &mag); CHKERRQ(ierr);
+    ierr = VecDuplicate(tmp_, &mag); CHKERRQ(ierr);
     ierr = tumor_->velocity_->computeMagnitude(mag); CHKERRQ(ierr);
     ierr = dataOut(mag, params_, "velocity_mag.nc"); CHKERRQ(ierr);
     ScalarType vnorm;

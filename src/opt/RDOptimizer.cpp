@@ -24,13 +24,16 @@ PetscErrorCode RDOptimizer::initialize(
     n_inv_ = params->get_nr() +  params->get_nk();
     ss << " Initializing reaction/diffusion optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " dofs.";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    
+    
     // initialize super class
     ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
-    PetscFunctionReturn(ierr);
-
+    
+    
     // set scales for inversion variables
-    // params->opt_->k_scale_ = (params->opt_->k_scale_ != 1) ? params->opt_->k_scale_ : 1E-1;
+    params->opt_->k_scale_ = (params->opt_->k_scale_ != 1) ? params->opt_->k_scale_ : 1E-1;
     // params->opt_->rho_scale_ = 1;
+    PetscFunctionReturn(ierr);
 }
 
 // ### ______________________________________________________________________ ___
@@ -154,6 +157,8 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode RDOptimizer::solve() {
   PetscFunctionBegin;
+
+  
   PetscErrorCode ierr = 0;
   int procid, nprocs;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
@@ -285,7 +290,8 @@ PetscErrorCode RDOptimizer::solve() {
   k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ * ctx_->params_->opt_->k_scale_: 0;
   ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
   ierr = ctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
-
+  
+  
   ierr = tuMSG("### ---------------------------------------- rho/kappa solver end --------------------------------------- ###");CHKERRQ (ierr);
   ierr = tuMSGstd (""); CHKERRQ (ierr);
   ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);

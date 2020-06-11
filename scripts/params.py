@@ -397,7 +397,7 @@ def write_jobscript_header(tu_params, run_params):
     job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
     job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
     job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"
-    job_header += "#SBATCH -t 06:00:00\n\n"
+    job_header += "#SBATCH -t 48:00:00\n\n"
     job_header += "source ~/.bashrc\n"
     job_header += "export OMP_NUM_THREADS=1\n\n"
 
@@ -415,7 +415,7 @@ def submit(tu_params, run_params, submit_job = True):
     else:
         out_dir = scripts_path
 
-    fname = out_dir + '/job.sh'
+    fname = scripts_path + '/job.sh'
     job_file = open(fname, 'w+')
 
     job_header = write_jobscript_header(tu_params, run_params)
