@@ -107,5 +107,5 @@ PetscErrorCode advSolverKSPMonitor(KSP ksp, PetscInt its, PetscReal rnorm, void 
 void computeEulerPointsCuda(ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *sz);
 void computeSecondOrderEulerPointsCuda(ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt,
                                        int *sz);
-void initAdvectionCudaConstants(int *n, int *istart, int *ostart);
+void initAdvectionCudaConstants(int *n, int *istart, int *ostart, int *isize);
 #endif

@@ -1,14 +1,15 @@
 #include "AdvectionSolver.h"
 
-__constant__ int n_cuda[3], istart_cuda[3], ostart_cuda[3];
+__constant__ int n_cuda[3], istart_cuda[3], ostart_cuda[3], isize_cuda[3];
 
-void initAdvectionCudaConstants(int *n, int *istart, int *ostart) {
+void initAdvectionCudaConstants(int *n, int *istart, int *ostart, int *isize) {
 	cudaMemcpyToSymbol (istart_cuda, istart, 3 * sizeof(int));
+	cudaMemcpyToSymbol (isize_cuda, isize, 3 * sizeof(int));
 	cudaMemcpyToSymbol (ostart_cuda, ostart, 3 * sizeof(int));
 	cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
 }
 
-__global__ void computeEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt, int *isize_cuda) {
+__global__ void computeEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -36,7 +37,7 @@ __global__ void computeEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, S
     }
 }
 
-__global__ void computeSecondOrderEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt, int *isize_cuda) {
+__global__ void computeSecondOrderEulerPoints (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarType *vy_ptr, ScalarType *vz_ptr, ScalarType *wx_ptr, ScalarType *wy_ptr, ScalarType *wz_ptr, ScalarType dt) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -71,7 +72,7 @@ void computeSecondOrderEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_pt
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	computeSecondOrderEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, wx_ptr, wy_ptr, wz_ptr, dt, sz);
+	computeSecondOrderEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, wx_ptr, wy_ptr, wz_ptr, dt);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -84,7 +85,7 @@ void computeEulerPointsCuda (ScalarType *query_ptr, ScalarType *vx_ptr, ScalarTy
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	computeEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt, sz);
+	computeEulerPoints <<< n_blocks, n_threads >>> (query_ptr, vx_ptr, vy_ptr, vz_ptr, dt);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

@@ -14,7 +14,7 @@ ElasticitySolver::ElasticitySolver(std::shared_ptr<Parameters> params, std::shar
   cudaMalloc((void **)&ctx_->ux_hat_, params->grid_->accfft_alloc_max_);
   cudaMalloc((void **)&ctx_->uy_hat_, params->grid_->accfft_alloc_max_);
   cudaMalloc((void **)&ctx_->uz_hat_, params->grid_->accfft_alloc_max_);
-  initElasticityCudaConstants(params->grid_->n_, params->grid_->ostart_);
+  initElasticityCudaConstants(params->grid_->n_, params->grid_->ostart_, params->grid_->osize_);
 #else
   ctx_->fx_hat_ = (ComplexType *)accfft_alloc(params->grid_->accfft_alloc_max_);
   ctx_->fy_hat_ = (ComplexType *)accfft_alloc(params->grid_->accfft_alloc_max_);

@@ -1,13 +1,14 @@
 #include "DiffCoef.h"
 
-__constant__ int n_cuda[3], ostart_cuda[3];
+__constant__ int n_cuda[3], ostart_cuda[3], osize_cuda[3];
 
-void initDiffCoefCudaConstants(int *n, int *ostart) {
+void initDiffCoefCudaConstants(int *n, int *ostart, int *osize) {
 	cudaMemcpyToSymbol (ostart_cuda, ostart, 3 * sizeof(int));
+	cudaMemcpyToSymbol (osize_cuda, osize, 3 * sizeof(int));
 	cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
 }
 
-__global__ void precFactorDiffusion (ScalarType *precfactor, ScalarType *work, int *osize_cuda) {
+__global__ void precFactorDiffusion (ScalarType *precfactor, ScalarType *work) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -69,7 +70,7 @@ void precFactorDiffusionCuda (ScalarType *precfactor, ScalarType *work, int *sz)
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	precFactorDiffusion <<< n_blocks, n_threads >>> (precfactor, work, sz);
+	precFactorDiffusion <<< n_blocks, n_threads >>> (precfactor, work);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

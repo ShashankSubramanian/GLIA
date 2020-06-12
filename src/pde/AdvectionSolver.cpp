@@ -12,7 +12,7 @@ AdvectionSolver::AdvectionSolver(std::shared_ptr<Parameters> params, std::shared
   ctx_->temp_.resize(3);
   for (int i = 0; i < 3; i++) ctx_->temp_[i] = tumor->work_[11 - i];  // Choose some tumor work vector
 #ifdef CUDA
-  initAdvectionCudaConstants(params->grid_->n_, params->grid_->istart_, params->grid_->ostart_);
+  initAdvectionCudaConstants(params->grid_->n_, params->grid_->istart_, params->grid_->ostart_, params->grid_->isize_);
 #endif
 
   ctx_->velocity_ = tumor->velocity_;

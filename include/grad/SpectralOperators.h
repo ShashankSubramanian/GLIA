@@ -41,7 +41,7 @@ class SpectralOperators {
 PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
 // cuda helpers
 #ifdef CUDA
-void initSpecOpsCudaConstants(int *n, int *istart, int *ostart);
+void initSpecOpsCudaConstants(int *n, int *istart, int *ostart, int *isize, int *osize);
 void multiplyXWaveNumberCuda(CudaComplexType *w_f, CudaComplexType *f, int *sz);
 void multiplyYWaveNumberCuda(CudaComplexType *w_f, CudaComplexType *f, int *sz);
 void multiplyZWaveNumberCuda(CudaComplexType *w_f, CudaComplexType *f, int *sz);
