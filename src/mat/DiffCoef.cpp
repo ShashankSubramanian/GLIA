@@ -103,7 +103,6 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
   ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
   ScalarType alpha = params->tu_->kf_ - params->tu_->k_;
-  alpha = 0;
   ierr = VecAXPY(kxx_, alpha, mat_prop->kfxx_);
   ierr = VecAXPY(kxy_, alpha, mat_prop->kfxy_);
   ierr = VecAXPY(kxz_, alpha, mat_prop->kfxz_);

@@ -28,7 +28,7 @@ for case_dir in case_directs:
     case = str(case_dir.split('CASE_')[-1])
     data_dir = code_dir + '/' + case_dir + '/data/'
 
-    p['output_dir'] 		= os.path.join(code_dir, 'results/inverse_RD_final2/') + case_dir + '/th06/'
+    p['output_dir'] 		= os.path.join(code_dir, 'results/inverse_RD_final/') + case_dir + '/th06/'
     p['d0_path'] 		= data_dir +  'time_point_0_tau_th06.nc'     # tumor data path
     p['d1_path'] 		= data_dir +  'time_point_1_tau_th06.nc'
 
@@ -38,9 +38,9 @@ for case_dir in case_directs:
     p['a_vt_path'] 		= data_dir + prefix + '_seg_csf.nc'
     p['a_kf_path']		= ''
     
-    p['velocity_x1']		= code_dir + '/' + case_dir + '/' + 'reg-1-0/velocity-field-x1.nc'
-    p['velocity_x2']		= code_dir + '/' + case_dir + '/' + 'reg-1-0/velocity-field-x2.nc'
-    p['velocity_x3']		= code_dir + '/' + case_dir + '/' + 'reg-1-0/velocity-field-x3.nc'
+    p['velocity_x1']		= "" #code_dir + '/' + case_dir + '/' + 'reg-1-0/velocity-field-x1.nc'
+    p['velocity_x2']		= "" #code_dir + '/' + case_dir + '/' + 'reg-1-0/velocity-field-x2.nc'
+    p['velocity_x3']		= "" #code_dir + '/' + case_dir + '/' + 'reg-1-0/velocity-field-x3.nc'
     
     p['p_wm_path'] 		= data_dir + prefix_p + '_seg_wm.nc'		# patient brain data path 
     p['p_gm_path']              = data_dir + prefix_p + '_seg_gm.nc'
