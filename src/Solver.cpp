@@ -463,8 +463,8 @@ PetscErrorCode InverseMassEffectSolver::run() {
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   std::random_device rd; // obtain a random number from hardware
   std::mt19937 eng(rd()); // seed the generator
-  std::uniform_real_distribution<> distg(0.1, 1.2); // define the range
-  std::uniform_real_distribution<> distr(5, 12); // define the range
+  std::uniform_real_distribution<> distg(0.1, 1.0); // define the range
+  std::uniform_real_distribution<> distr(5, 10); // define the range
   std::uniform_real_distribution<> distk(0.5, 5); // define the range
 //  x_ptr[0] = params_->tu_->forcing_factor_;
 //  x_ptr[1] = params_->tu_->rho_;
