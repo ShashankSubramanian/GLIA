@@ -395,9 +395,9 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
 //  params_->tu_->smoothing_factor_data_ = 0;
 //  params_->tu_->smoothing_factor_patient_ = 0;
 //  params_->tu_->smoothing_factor_data_t0_ = 0; // set to zero if c0 does not need to be smoothed
-  ierr = setupData(); CHKERRQ(ierr);
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
+  ierr = setupData(); CHKERRQ(ierr);
   // enable mass effect inversion in optimizer
   params_->opt_->invert_mass_effect_ = true;
 
@@ -410,6 +410,8 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
     ierr = tumor_->phi_->apply(data_->dt0(), p_rec_); CHKERRQ(ierr);
     params_->tu_->use_c0_ = has_dt0_ = true;
   }
+
+  if (params_->opt_->multilevel_) params_->opt_->rescale_init_cond_ = true;
 
   // === create p_vec_ of correct length
   if (p_rec_ != nullptr) {
@@ -595,6 +597,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
 
+  ScalarType mag_norm, mm;
   if (params_->tu_->write_output_) {
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
     ss.str(std::string());
@@ -630,7 +633,6 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
     ierr = dataOut(mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
     ss.str(std::string());
     ss.clear();
-    ScalarType mag_norm, mm;
     ierr = VecNorm(mag, NORM_2, &mag_norm); CHKERRQ(ierr);
     ierr = VecMax(mag, NULL, &mm); CHKERRQ(ierr);
     ss << " Norm of reconstructed displacement: " << mag_norm << "; max of reconstructed displacement: " << mm;
@@ -714,8 +716,8 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   if (procid == 0) {
     std::ofstream opfile;
     opfile.open(params_->tu_->writepath_ + "reconstruction_info.dat");
-    opfile << "rho k gamma c1_rel c0_rel \n";
-    opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << params_->tu_->forcing_factor_ << " " << error_norm << " " << error_norm_0 << std::endl;
+    opfile << "rho k gamma max_disp norm_disp c1_rel c0_rel \n";
+    opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << params_->tu_->forcing_factor_ << " " << mm << " " <<mag_norm << " " << error_norm << " " << error_norm_0 << std::endl;
     opfile.flush();
     opfile.close();
   }
@@ -729,7 +731,7 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
-  ScalarType sigma_smooth = params_->tu_->smoothing_factor_ * 2 * M_PI / params_->grid_->n_[0];
+  ScalarType sigma_smooth = params_->tu_->smoothing_factor_patient_ * 2 * M_PI / params_->grid_->n_[0];
 
   if (!app_settings_->path_->p_seg_.empty()) {
     ierr = dataIn(tmp_, params_, app_settings_->path_->p_seg_); CHKERRQ(ierr);
@@ -737,9 +739,9 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
       ierr = tuMSGwarn(" Error: Patient segmentation must at least have WM, GM, VT."); CHKERRQ(ierr);
       exit(0);
     } else {
-      ierr = VecDuplicate(tmp_, &wm_); CHKERRQ(ierr);
-      ierr = VecDuplicate(tmp_, &gm_); CHKERRQ(ierr);
-      ierr = VecDuplicate(tmp_, &vt_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_wm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_gm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_vt_); CHKERRQ(ierr);
       csf_ = nullptr; data_t1_ = nullptr; ed_ = nullptr;
       if (app_settings_->patient_seg_[3] > 0) {
         ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
@@ -754,8 +756,7 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
         }
       }
     }
-    ierr = splitSegmentation(tmp_, wm_, gm_, vt_, csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->patient_seg_); CHKERRQ(ierr);
-
+    ierr = splitSegmentation(tmp_, p_wm_, p_gm_, p_vt_, p_csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->patient_seg_); CHKERRQ(ierr);
     // TODO(K): populate to wm, gm, csf, ve
   } else {
     if (!app_settings_->path_->p_wm_.empty()) {

@@ -82,8 +82,10 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
     ss << "TIL as d0 (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
       ScalarType scale = (1.0 / ic_max);
+      if(ctx_->params_->opt_->multilevel_) scale = (1.0/4.0 * ctx_->params_->grid_->n_[0]/64.  / ic_max);
       ierr = VecScale(ctx_->tumor_->c_0_, scale); CHKERRQ(ierr);
-      ss << "rescaled; ";
+      ss << " and rescaled with scale " << ic_max / scale;
+ //     ss << "rescaled; ";
     }
     off = (in_size > 1 + nr + nk) ? np : 0; // offset in x_init vec
     off_in = 0;
