@@ -531,6 +531,9 @@ PetscErrorCode PdeOperatorsRDAdv::solveState(int linearized) {
 
   diff_ksp_itr_state_ = 0;
 
+  // reset mat prob to atlas
+  ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
+
   /* linearized = 0 -- state equation
      linearized = 1 -- linearized state equation
      linearized = 2 -- linearized state equation with diffusivity inversion
@@ -538,6 +541,13 @@ PetscErrorCode PdeOperatorsRDAdv::solveState(int linearized) {
   */
 
   for (int i = 0; i < nt; i++) {
+
+    ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+    ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+    //tumor_->phi_->setValues (tumor_->mat_prop_);  // update the phi values, i.e., update the filter
+    diff_solver_->precFactor();   // need to update prefactors for diffusion KSP preconditioner, as k changed
+
+
     if (linearized == 2) {
       // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
       // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
@@ -629,6 +639,7 @@ PetscErrorCode PdeOperatorsRDAdv::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec 
       if(mri != nullptr) {
         ierr = adv_solver_->solve (mri, tumor_->velocity_, dt); CHKERRQ(ierr);
       }
+      ierr = tumor_->mat_prop_->clipHealthyTissues(); CHKERRQ(ierr);
     }
   }
   // ierr = dataOut (wm, params_, "wm_atlas_adv.nc"); CHKERRQ(ierr);
