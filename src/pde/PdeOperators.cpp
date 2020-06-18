@@ -542,7 +542,7 @@ PetscErrorCode PdeOperatorsRDAdv::solveState(int linearized) {
 
   for (int i = 0; i < nt; i++) {
 
-    ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+    ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->kf_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
     ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
     //tumor_->phi_->setValues (tumor_->mat_prop_);  // update the phi values, i.e., update the filter
     diff_solver_->precFactor();   // need to update prefactors for diffusion KSP preconditioner, as k changed
