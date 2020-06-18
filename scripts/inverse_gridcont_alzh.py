@@ -44,7 +44,12 @@ input['obs_threshold_1'] = 0.6
 input['obs_threshold_rel'] = 1
 input['thresh_component_weight'] = 1E-2
 
-input['out_dir_suffix'] = 'obs-'+str(input['obs_threshold_1'])
+input['rho_init'] = 4
+
+input['k_gm_wm'] = 1./5
+input['r_gm_wm'] = 1
+
+input['out_dir_suffix'] = 'obs-'+str(input['obs_threshold_1']) + '_no-obs-on-c'
 
 input['submit'] = False
 # =======================================================================

@@ -358,7 +358,7 @@ PetscErrorCode SparseTILOptimizer::solve() {
     ierr = hardThreshold(temp, 2 * ctx_->params_->tu_->sparsity_level_,
                          np_full, idx, ctx_->tumor_->phi_->gaussian_labels_,
                          ctx_->tumor_->phi_->component_weights_,
-                         nnz, ctx_->tumor_->phi_->num_components_, ctx_->params_->tu_->thresh_component_weight_);
+                         nnz, ctx_->tumor_->phi_->num_components_, ctx_->params_->tu_->thresh_component_weight_, true);
     CHKERRQ(ierr);
 
     /* === update support of prev. solution with new support === */
@@ -698,7 +698,7 @@ PetscErrorCode SparseTILOptimizer::solve_rs(bool rs_mode_active) {
           ierr = VecRestoreArray(ctx_->cosamp_->work, &grad_ptr); CHKERRQ(ierr);
         }
         idx.clear();
-        ierr = hardThreshold(ctx_->cosamp_->work, 2 * ctx_->params_->tu_->sparsity_level_, np_full, idx, ctx_->tumor_->phi_->gaussian_labels_, ctx_->tumor_->phi_->component_weights_, nnz, ctx_->tumor_->phi_->num_components_, ctx_->params_->tu_->thresh_component_weight_); CHKERRQ(ierr);
+        ierr = hardThreshold(ctx_->cosamp_->work, 2 * ctx_->params_->tu_->sparsity_level_, np_full, idx, ctx_->tumor_->phi_->gaussian_labels_, ctx_->tumor_->phi_->component_weights_, nnz, ctx_->tumor_->phi_->num_components_, ctx_->params_->tu_->thresh_component_weight_, true); CHKERRQ(ierr);
 
         /* === update support of prev. solution with new support === */
         ctx_->params_->tu_->support_.insert (ctx_->params_->tu_->support_.end(), idx.begin(), idx.end());

@@ -56,17 +56,27 @@ def sparsetil_gridcont(input):
     ls_max_func_evals  = [10, 10, 10]; # max number of allowed ls attempts per level
     ls_type            = ['mt', 'armijo', 'armijo'] # ls type per level
     kappa_lb           = [1E-4, 1E-4, 1E-4];
-    kappa_ub           = [1., 1., 1.]; # kappa bounds per level
+    kappa_ub           = [.4, 1., 1.]; # kappa bounds per level
     rho_lb             = [1, 1, 1];    #
     rho_ub             = [18, 18, 18]; # rho bounds per level
+    k_gm_wm            = 0             # kappa ratio wm to gm
+    rho_gm_wm          = 0             # rho ratio wm to gm
     # -------------------------------- #
     gaussian_mode      = "PHI";        # alternatives: {"D", "PHI", "C0", "C0_RANKED"}
-    data_thresh        = [1E-1, 1E-4, 1E-4] if (gaussian_mode in ["PHI","C0"]) else [1E-1, 1E-1, 1E-1];
+    data_thresh        = [1E-2, 1E-4, 1E-4] if (gaussian_mode in ["PHI","C0"]) else [1E-1, 1E-1, 1E-1];
     sigma_fac          = [1,1,1]       # on every level, sigma = fac * hx
     gvf                = [0.0,0.9,0.9] # Gaussian volume fraction for Phi selection; ignored for C0_RANKED
     # -------------------------------- #
     # ################################ #
 
+    if 'rho_init' in input:
+        rho_init = input['rho_init']
+    if 'k_init' in input:
+        k_init = input['k_init']
+    if 'k_gm_wm' in input:
+        k_gm_wm = input['k_gm_wm']
+    if 'r_gm_wm' in input:
+        r_gm_wm = input['r_gm_wm']
 
     r = {}
     scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -228,7 +238,8 @@ def sparsetil_gridcont(input):
             p['atlas_labels'] = labelstr
             p['a_seg_path'] = os.path.join(input_path_level, 'patient_seg' + ext)
             if healthy_seg:
-                p['d1_path'] = os.path.join(input_path_level, 'data' + ext)
+                #p['d1_path'] = os.path.join(input_path_level, 'data' + ext)
+                p['d1_path'] = os.path.join(input_path_level, 'target_data' + ext)
             else:
                 p['obs_lambda'] = obs_lambda
                 p['d1_path'] = ""
@@ -320,6 +331,8 @@ def sparsetil_gridcont(input):
         p['kappa_ub']           = kappa_ub[ii]
         p['rho_lb']             = rho_lb[ii]
         p['rho_ub']             = rho_ub[ii]
+        p['k_gm_wm']            = k_gm_wm
+        p['r_gm_wm']            = r_gm_wm
         p['newton_solver']      = "QN"
         p['line_search']        = ls_type[ii]
         p['lbfgs_vectors'] 		= 50
@@ -337,9 +350,9 @@ def sparsetil_gridcont(input):
         else:
             p['smoothing_factor_data'] = 1
         if 'obs_threshold_1' in input:
-            p['obs_threshold_1'] = input['obs_threshold_1']
+            p['obs_threshold_1'] = -0.99 # input['obs_threshold_1']
         if 'obs_threshold_rel' in input:
-            p['obs_threshold_rel'] = input['obs_threshold_rel']
+            p['obs_threshold_rel'] = 0 #input['obs_threshold_rel']
         if 'thresh_component_weight' in input:
             p['thresh_component_weight'] = input['thresh_component_weight']
 

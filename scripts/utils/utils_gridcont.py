@@ -189,19 +189,24 @@ def convert_images_to_orig_size(input_path, reference_image_path, gridcont=False
     refshape = ref_img.shape 
     suf = {}
     for l in levels:
-        scale = 256/l
+        scale = float(256./l)
         suf[l] = "_{}x{}x{}.nii.gz".format(int(refshape[0]/scale), int(refshape[1]/scale), int(refshape[2]/scale))
         tu_out_path = os.path.join(input_path, 'nx'+str(l)+'/');
         # create template image 
-        new_affine = np.copy(ref_img.affine)
-        row,col = np.diag_indices(new_affine.shape[0])
-        new_affine[row,col] = np.array([-scale, -scale, scale,1])
-        if l < 256:
-            resampled_template = nib.processing.resample_from_to(ref_img, (np.multiply(1./scale, ref_img.shape).astype(int), new_affine))
-        else:
-            resampled_template = ref_img
+       # new_affine = np.copy(ref_img.affine)
+       # row,col = np.diag_indices(new_affine.shape[0])
+       # new_affine[row,col] = np.array([-scale, -scale, scale,1])
+       # if l < 256:
+       #     resampled_template = nib.processing.resample_from_to(ref_img, (np.multiply(1./scale, ref_img.shape).astype(int), new_affine))
+       # else:
+       #     resampled_template = ref_img
+       # templates[str(l)] = resampled_template
+       # fio.writeNII(resampled_template.get_fdata(), os.path.join(tu_out_path, 'template' + suf[l]), resampled_template.affine);
+
+        resampled_template = imgtools.resizeNIIImage(ref_img, tuple([int(256/scale), int(256/scale), int(256/scale)]), interp_order=0)
         templates[str(l)] = resampled_template
-        nib.save(resampled_template, os.path.join(tu_out_path,"template" + suf[l] ));
+        fio.writeNII(resampled_template.get_fdata(), os.path.join(tu_out_path, 'template' + suf[l]), resampled_template.affine);
+        print("  .. creating {}".format(os.path.join(tu_out_path, 'template' + suf[l])))
 
         template = templates[str(l)];
         print(" == converting files of level {} ==".format(l))
