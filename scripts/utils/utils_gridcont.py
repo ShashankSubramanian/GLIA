@@ -40,51 +40,51 @@ def update_config(path_log, path_config):
     """ Extracts reconstructed rho and kappa values from the log file and
         updates the config file for the next level.
     """
-    rho, k =  extract_from_log(os.path.join(path_log, "solver_log.txt"))
-    with open(os.path.join(path_config, "solver_config"), "r") as f:
-        lines = file.readlines()
-    with open(os.path.join(path_config, "solver_config"), "w")  as f:
+    rho, k =  extract_from_log(path_log, "solver_log.txt")
+    with open(os.path.join(path_config, "solver_config.txt"), "r") as f:
+        lines = f.readlines()
+    with open(os.path.join(path_config, "solver_config.txt"), "w")  as f:
         for line in lines:
             if "init_rho=" in line:
-                f.write("init_rho="+str(rho))
+                f.write("init_rho="+str(rho)+"\n")
+                continue
             if "init_k=" in line:
-                f.write("init_k="+str(k))
-            else:
-                f.write(line)
+                f.write("init_k="+str(k)+"\n")
+                continue
+            f.write(line)
 ###
 ### ------------------------------------------------------------------------ ###
 def extract_from_log(path, filename):
-    # env_file = open(os.path.join(path,'env_rhok.sh'), 'w')
-    # env_file.write("#!/bin/bash\n")
-    # env_file.write("export RHO_INIT=8\n")
-    # env_file.write("export K_INIT=0\n")
     empty = False
     exist = False
-    if os.path.exists(os.path.join(path, filename)):
-        exist =True;
-        print("reading logifle:", os.path.join(path, filename))
-        with open(os.path.join(path,filename), 'r',  encoding="utf-8") as f:
-            lines  = f.readlines();
-            no = 0;
-            if len(lines) > 0:
-                for line in lines:
-                    if " ### estimated reaction coefficients:                  ###" in line:
-                        rho = float(lines[no+1].split("r1:")[-1].split(",")[0])
-                    if " ### estimated diffusion coefficients:                 ### " in line:
-                        k = float(lines[no+1].split("k1:")[-1].split(",")[0]);
-                    no += 1;
-                # env_file.write("export RHO_INIT="+str(rho)+"\n")
-                # env_file.write("export K_INIT="+str(k)+"\n")
-                # os.environ['RHO_INIT'] = str(rho);
-                # os.environ['K_INIT']   = str(k);
-                print( bcolors.OKBLUE + " ... setting init guess (rho, k) = (",rho,",",k,") " + bcolors.ENDC);
-            else:
-                empty = True;
-    if empty or not exist:
-        print("Error: tumor solver log file in ", path, "does not exist.");
-    # env_file.close();
+    try:
+      with open(os.path.join(path, 'reconstruction_info.dat'), 'r') as rec_file:
+        lines = rec_file.readlines()
+        line = lines[-1]
+        rho = float(line.split()[0])
+        k = float(line.split()[1])
+    except Exception as e:
+      print("[] reconstruction file {}/reconstruction_info.dat could not be opened:\n  -->  {}".format(path, e))
+      print("[] trying to read log file...")
+      if os.path.exists(os.path.join(path, filename)):
+          exist =True;
+          print("reading logifle:", os.path.join(path, filename))
+          with open(os.path.join(path,filename), 'r',  encoding="utf-8") as f:
+              lines  = f.readlines();
+              no = 0;
+              if len(lines) > 0:
+                  for line in lines:
+                      if " ### estimated reaction coefficients:                  ###" in line:
+                          rho = float(lines[no+1].split("r1:")[-1].split(",")[0])
+                      if " ### estimated diffusion coefficients:                 ### " in line:
+                          k = float(lines[no+1].split("k1:")[-1].split(",")[0]);
+                      no += 1;
+                  print( bcolors.OKBLUE + " ... setting init guess (rho, k) = (",rho,",",k,") " + bcolors.ENDC);
+              else:
+                  empty = True;
+      if empty or not exist:
+          print("Error: tumor solver log file in ", path, "does not exist.");
     return rho, k
-
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -92,28 +92,26 @@ def resample(path, fname, ndim):
     """ Resamples image. If nifty file format, function tries to load reference image.
     """
     order = 1
+    ndims = tuple([ndim, ndim, ndim]);
     if "seg" in fname or "obs" in fname or "mask" in fname:
         order = 0
         print('segmentation/mask found, using NN interpolation')
     ext = ".n" + fname.split('.n')[-1]
+    fname_out = fname.split('_nx')[0].split('.')[0]
     if ext in ['.nii.gz', '.nii']:
-        img = nib.load(fname)
-        img_d = p_seg.get_fdata()
-        try:
-            nii_files = glob.glob(os.path.join(path, "*nx"+str(ndim)+".nii.gz"))
-            ref_img = nib.load(os.path.join(path, nii_files[0]))
-        except:
-            print("Warining, no reference image found!")
-            ref_img = None
+        img = nib.load(os.path.join(path,fname))
+        scale = img.get_fdata().shape[0]/ndim 
+        new_affine = np.copy(img.affine)
+        row,col = np.diag_indices(new_affine.shape[0])
+        new_affine[row,col] = np.array([-scale,-scale,scale,1]);
+        img_resized = nib.processing.resample_from_to(img, (np.multiply(1./scale, img.shape).astype(int), new_affine), order=order)
+
+        #img_resized = imgtools.resizeNIIImage(img, ndims, interp_order=order)
+        fio.writeNII(img_resized.get_fdata(), os.path.join(path, fname_out + "_nx" + str(ndim) + ext), affine=img_resized.affine, ref_image=img_resized);
     else:
         img_d = fio.readNetCDF(os.path.join(path, fname));
-        ndims = tuple([ndim, ndim, ndim]);
-    # resize
-    img_resized = imgtools.resizeImage(img_d, ndims, order);
-    if ext in ['.nii.gz', '.nii']:
-        fio.writeNII(img_resized, os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), affine=ref_img.affine, ref_image=ref_img);
-    else:
-        fio.createNetCDF(os.path.join(path, fname.split(".")[0] + "_nx" + str(ndim) + ext), ndims, img_resized);
+        img_resized = imgtools.resizeImage(img_d, ndims, order);
+        fio.createNetCDF(os.path.join(path, fname_out + "_nx" + str(ndim) + ext), ndims, img_resized);
 
 ###
 ### ------------------------------------------------------------------------ ###
@@ -135,12 +133,13 @@ def resample_input(path, fname, ndim, order=0):
         p_seg_coarse = nib.processing.resample_from_to(p_seg, (np.multiply(1./scale, p_seg.shape).astype(int), affine_coarse), order=order)
         # save template (brats hdr)
         nib.save(p_seg_coarse, os.path.join(path, filename + dim_descr + ext));
-
-        img_resized_regular = imgtools.resizeNIIImage(p_seg, tuple([ndim, ndim, ndim]), interp_order=order)
-        fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(ndim) + ext), ref_image=img_resized_regular)
+         
+        img_resized_regular_256 = imgtools.resizeNIIImage(p_seg, tuple([256, 256, 256]), interp_order=order)
         if ndim==128:
-            img_resized_regular = imgtools.resizeNIIImage(p_seg, tuple([256, 256, 256]), interp_order=order)
-            fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(256) + ext), ref_image=img_resized_regular)
+            fio.writeNII(img_resized_regular_256.get_fdata(), os.path.join(path, filename + '_nx' + str(256) + ext), ref_image=img_resized_regular_256)
+        img_resized_regular = nib.processing.resample_from_to(img_resized_regular_256, (np.multiply(1./scale, img_resized_regular_256.shape).astype(int), affine_coarse), order=order)
+        #img_resized_regular = imgtools.resizeNIIImage(img_resized_regular_256, tuple([ndim, ndim, ndim]), interp_order=order)
+        fio.writeNII(img_resized_regular.get_fdata(), os.path.join(path, filename + '_nx' + str(ndim) + ext), ref_image=img_resized_regular)
     else:
         p_seg_d = fio.readNetCDF(os.path.join(path,fname))
         p_seg_d_coarse  = imgtools.resizeImage(p_seg_d, tuple([ndim, ndim, ndim]), interp_order=order)
@@ -175,6 +174,55 @@ def compute_observation_mask(path, segfile, obs_lambda, labels, dim=256, suffix=
     else:
         fio.createNetCDF(os.path.join(path,"obs_mask" + suffix + ext), dims, obs);
 
+
+
+###
+### ------------------------------------------------------------------------ ###
+def convert_images_to_orig_size(input_path, reference_image_path, gridcont=False):
+    """ Resamples the output images back to the original dimension (same dimension as reference image).
+    """
+    levels = [64,128,256] if gridcont else [256];
+    templates = {}
+    ref_img = nib.load(reference_image_path);
+
+    print('[] converting nc files to nii.gz files in brats hdr.')
+    refshape = ref_img.shape 
+    suf = {}
+    for l in levels:
+        scale = 256/l
+        suf[l] = "_{}x{}x{}.nii.gz".format(int(refshape[0]/scale), int(refshape[1]/scale), int(refshape[2]/scale))
+        tu_out_path = os.path.join(input_path, 'nx'+str(l)+'/');
+        # create template image 
+        new_affine = np.copy(ref_img.affine)
+        row,col = np.diag_indices(new_affine.shape[0])
+        new_affine[row,col] = np.array([-scale, -scale, scale,1])
+        if l < 256:
+            resampled_template = nib.processing.resample_from_to(ref_img, (np.multiply(1./scale, ref_img.shape).astype(int), new_affine))
+        else:
+            resampled_template = ref_img
+        templates[str(l)] = resampled_template
+        nib.save(resampled_template, os.path.join(tu_out_path,"template" + suf[l] ));
+
+        template = templates[str(l)];
+        print(" == converting files of level {} ==".format(l))
+        dirs = os.listdir(tu_out_path)
+        for dir in dirs:
+            if not "obs" in dir:
+                continue;
+            ncfiles_tumor = imgtools.getNetCDFImageList(os.path.join(tu_out_path, dir + '/'));
+            for f in ncfiles_tumor:
+                data = fio.readNetCDF(f);
+                data = np.swapaxes(data,0,2);
+                order = 0 if 'seg' in f else 1
+                newdata = imgtools.resizeImage(data, tuple(template.shape), order);
+                output_size = tuple(template.shape)
+                filename = ntpath.basename(f);
+                filename = filename.split(".")[0]
+                newfilename = filename + '_' + "".join([str(x) for x in list(output_size)]) + '.nii.gz';
+                print("  .. creating {}".format(newfilename))
+                fio.writeNII(newdata, os.path.join(os.path.join(tu_out_path, dir), newfilename), template.affine);
+
+
 ###
 ### ------------------------------------------------------------------------ ###
 def convert_netcdf_to_nii(input_filename, output_filename, affine=None, ref_image=None):
@@ -202,8 +250,8 @@ def compute_concomp(data, level):
 
     total_mass = 0
     labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
-    print(bcolors.OKBLUE, "   - number of components found: ", ncomponents, bcolors.ENDC)
-
+    print("[] computing connected components of TC data:" + bcolors.OKBLUE + " {} components found".format(ncomponents),
+    bcolors.ENDC)
     for i in range(ncomponents):
         comps[i] = (labeled == i+1)
         a, b = scipy.ndimage.measurements._stats(comps[i])
@@ -235,47 +283,57 @@ def compute_concomp(data, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def compute_connected_components(args, labels=None):
+def compute_connected_components(args, labels=None, obs_th=-1):
     """ Computes connecte components of tumor data and writes file with component data.
     """
     res_path  = os.path.join(args.input_path);
     init_path = os.path.join(args.input_path, '../init');
     level = int(res_path.split("nx")[-1].split("/")[0]);
 
-    fname = "patient_seg"
-    success = False
+    data_not_from_seg = labels==None
+
+    if data_not_from_seg:
+        fname = "data"
+    else:        
+        fname = "patient_seg"
     ref_img = None
+    success = True
     try:
         ext = ".nc"
         data = np.swapaxes(fio.readNetCDF(os.path.join(init_path, fname + ext)), 0, 2)
         dims = data.shape
     except Exception as c:
-        print(c)
-        success = False
-    success = True
-    try:
-        ext = ".nii.gz"
-        ref_img = nib.load(os.path.join(init_path, fname + ext))
-        data = ref_img.get_fdata()
-        dims = data.shape;
-    except Exception as c:
-        print(c)
         success = False
     if not success:
-        print("Error reading file patient_seg: neither .nc nor .nii.gz file exists in {}".format(init_path))
-        return
-    print(".. reading data ", os.path.join(init_path, fname + ext), " with dimension", dims)
-
+        try:
+            ext = ".nii.gz"
+            ref_img = nib.load(os.path.join(init_path, fname + ext))
+            data = ref_img.get_fdata()
+            dims = data.shape;
+        except Exception as c:
+            print(c)
+            return
     if labels is not None:
-        en = (data==labels['en']).astype(float)
-        nec = (data==labels['nec']).astype(float)
-        tc = np.logical_or(en, nec).astype(float)
-        data = tc
-        if ext == ".nc":
-            fio.createNetCDF(os.path.join(args.output_path,'patient_tc_nx'+str(level)+'.nc'), np.shape(tc), np.swapaxes(tc,0,2));
+        if 'tc' in labels:
+            tc = (data==labels['tc']).astype(float)
         else:
-            fio.writeNII(tc, os.path.join(args.output_path,'patient_tc_nx'+str(level)+'.nii.gz'), affine=ref_img.affine, ref_image=ref_img);
+            en = (data==labels['en']).astype(float)
+            nec = (data==labels['nec']).astype(float)
+            tc = np.logical_or(en, nec).astype(float)
+        data = tc
+    # observation operator:
+    if obs_th > 0:
+        m = np.amax(data.flatten())
+        th = obs_th * m
+        print(" .. applying rel. obs-threshold: th = {}x{} = max, resulting in new threshold of: {} ".format(obs_th, m, th))
+        data = np.where(data > th, data, 0)
+    if ext == ".nc":
+        fio.createNetCDF(os.path.join(args.output_path,'target_data_nx'+str(level)+'.nc'), np.shape(data), np.swapaxes(data,0,2));
+    else:
+        fio.writeNII(data, os.path.join(args.output_path,'target_data_nx'+str(level)+'.nii.gz'), affine=ref_img.affine, ref_image=ref_img);
 
+    if data_not_from_seg:
+        data = (data>0).astype(float)
     # compute connected components
     labeled, comps_data, ncomps_data, xcm_data_px, xcm_data, relmass = compute_concomp(data, level);
 
@@ -395,6 +453,7 @@ if __name__=='__main__':
     # connected components`
     parser.add_argument ('-concomp_data', action='store_true', help = 'computes connected components of input data, along with center of mass and relative mass of component');
     parser.add_argument ('-select_gaussians', action='store_true', help = 'selects maximal (200 + #nc * 10) Gaussians according to ranking in c(0) of previous level, and relative mass of components.');
+    parser.add_argument ('-obs_th', type = float, default = 0.0,   help = 'relative observation threshold for target data  (as used in connected component analysis)');
     parser.add_argument ('-sigma', type = float, default = 1,   help = 'sigma = factor * hx on level');
     parser.add_argument ('-labels', type=str, help = 'patient labels');
 
@@ -410,8 +469,9 @@ if __name__=='__main__':
     parser.add_argument ('-suffix', type=str, help = 'ob name suffix');
 
     # convert
-    parser.add_argument ('-convert_netcdf_to_nii',action='store_true', help = 'convert netcdf images to nifti images');
+    parser.add_argument ('-convert',action='store_true', help = 'convert netcdf images to nifti images');
     parser.add_argument ('-reference_image', type=str, help = 'reference nifti image')
+    parser.add_argument ('-multilevel', action='store_true', default=False, help = 'If set, convert images on all levels.');
 
     # read log and extract
     parser.add_argument ('-update_config', action='store_true', help = 'extracts rho and k from logfile of previous level, and updates config');
@@ -424,18 +484,20 @@ if __name__=='__main__':
         for x in args.labels.split(','):
             labels[int(x.split('=')[0])] = x.split('=')[1];
         labels_rev = {v:k for k,v in labels.items()};
+    else:
+        labels = None
+        labels_rev = None
 
     if args.resample_input:
         print("[] resampling input image {} to resolution {}^3".format(args.fname, args.ndim))
         resample_input(args.input_path, args.fname, args.ndim);
 
     if args.resample:
-        print("[] resampling image {} to resolution {}^3".format(fname, ndim))
+        print("[] resampling image {} to resolution {}^3".format(args.fname, args.ndim))
         resample(args.input_path, args.fname, args.ndim);
 
     if args.concomp_data:
-        print("[] computing connected components of TC data")
-        compute_connected_components(args, labels_rev)
+        compute_connected_components(args, labels_rev, obs_th=args.obs_th)
 
     if args.compute_observation_mask:
         print("[] computing observation mask OBS = TC + lambda*(1-WT) using lambda=", args.obs_lambda)
@@ -443,8 +505,7 @@ if __name__=='__main__':
 
     if args.update_config:
         print("[] extracting rho and k from ", args.input_path);
-        update_config(args.input_path, args.out_path);
+        update_config(args.input_path, args.output_path);
 
-    # if args.convert_netcdf_to_nii:
-    #     print("[] converting ", args.name_old, "to", args.name_new);
-    #     convert_netcdf_to_nii(args.name_old, args.name_new, affine=None, ref_image=args.reference_image)
+    if args.convert:
+        convert_images_to_orig_size(args.input_path, args.reference_image, gridcont=args.multilevel)

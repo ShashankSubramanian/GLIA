@@ -2,7 +2,8 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 sys.path.append(os.path.join(os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir))
 
-from scripts import params as par
+#from scripts import params as par
+import params as par
 import subprocess
 import argparse
 from shutil import copyfile
@@ -11,8 +12,8 @@ import nibabel as nib
 import numpy as np
 import glob
 
-# from ..utils import file_io as fio
-# from ..utils import image_tools as imgtools
+from utils import file_io as fio
+from utils import image_tools as imgtools
 # from ..utils import utils_gridcont as utils
 
 cases_per_jobfile_counter = 0;
@@ -29,10 +30,11 @@ def sparsetil_gridcont(input):
     # -------------------------------- #
     patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
     submit             = input['submit'] if 'submit' in input else False
+    dtype              = '.nc'
     # -------------------------------- #
-    system             = 'frontera'    # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
+    system             = input['system'] if 'system' in input else 'frontera' # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
     nodes              = 2;
-    procs              = 96;
+    procs              = [24, 48, 96];
     wtime_h            = [x * patients_per_job for x in [0,2,12]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
     # -------------------------------- #
@@ -42,7 +44,7 @@ def sparsetil_gridcont(input):
     inject_coarse_sol  = True;
     pre_reacdiff_solve = True;         # performs a reaction/diffusion solve before sparse TIL solve
     sparsity_per_comp  = 5;            # allowed sparsity per tumor component
-    predict            = [0,0,0]       # enable predict flag on level
+    predict            = [0,0,1]       # enable predict flag on level
     # -------------------------------- #
     rho_init           = 8;            # initial guess rho on coarsest level
     k_init             = 0;            # initial guess kappa on coarsest level
@@ -70,8 +72,12 @@ def sparsetil_gridcont(input):
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     utils_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'utils')
     ############### === define run configuration
-    r['code_path'] 			= scripts_path + '/../../';
-    r['compute_sys'] 		= system
+    r['code_path']     = scripts_path + '/../../';
+    r['compute_sys']   = system
+    if 'extra_modules' in input:
+      r['extra_modules'] = input['extra_modules']
+    if 'queue' in input:
+        r['queue'] = input['queue']
 
     cmd_command = ''
     symlink_cmd = ''
@@ -101,7 +107,9 @@ def sparsetil_gridcont(input):
     output_base_path = input['output_base_path']
     patient_data_path = input['patient_path']
     input_path = os.path.join(output_base_path, 'input');
-    output_path_tumor = os.path.join(output_base_path, 'tumor_inversion');
+    output_path_tumor = os.path.join(output_base_path, 'inversion');
+    if 'out_dir_suffix' in input:
+        output_path_tumor = output_path_tumor + '_' + input['out_dir_suffix']
     if not os.path.exists(input_path):
         os.mkdir(input_path);
 
@@ -118,15 +126,42 @@ def sparsetil_gridcont(input):
         fname = os.path.join(patient_path, segmentation_files[0])
     filename = fname.split('/')[-1].split('.')[0]
 
-    # resmaple template
-    resample_cmd  = "\n# resample data"
-    resample_cmd += "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + '_nx240x240x155' + ext)
-    for l in levels[:-1]:
-        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + '_nx240x240x155' + ext + " -ndim " + str(l)
+    cp_cmd = ''
+    reference_img = dataimg = None
+    healthy_seg = False
+    try:
+       reference_img = nib.load(fname)
+       if 'data_path' in input and input['data_path']:
+           filename_data = os.path.basename(input['data_path']).split('.n')[0]
+           dataimg = nib.load(input['data_path'])
+           healthy_seg = True
+    except Exception as e:
+      print(e)
+    if dtype == '.nc':
+       ext = '.nc'
+       suffix = '_nx256'
+       tmp = reference_img.get_fdata()
+       tmp_regular = imgtools.resizeImage(tmp, tuple([256, 256, 256]), interp_order=0)
+       fio.createNetCDF(os.path.join(input_path, filename + suffix + ext), tmp_regular.shape, np.swapaxes(tmp_regular, 0, 2))
+       if healthy_seg:
+           data = dataimg.get_fdata()
+           data_regular = imgtools.resizeImage(data, tuple([256, 256, 256]), interp_order=1)
+           fio.createNetCDF(os.path.join(input_path, filename_data + suffix + ext), tmp_regular.shape, np.swapaxes(data_regular, 0, 2))
+
+    else:
+      suffix = "_nx{}x{}x{}".format(reference_img.shape[0], reference_img.shape[1], reference_img.shape[2])
+      cp_cmd = "\n" + "cp -r " + fname + " " + os.path.join(input_path, filename + suffix + ext)
+      if healthy_seg:
+          cp_cmd = "\n" + "cp -r " + input['data_path'] + " " + os.path.join(input_path, filename_data + suffix + ext)
 
     # loop over levels and create config files
     for level, ii in zip(levels, range(len(levels))):
         p = {}
+
+        resample_cmd  = "\n# resample data"
+        resample_cmd += "\n" + pythoncmd + os.path.join(utils_path, 'utils_gridcont.py') + " -resample_input -input_path " + input_path +  " -fname " + filename + suffix + ext + " -ndim " + str(level)
+        if healthy_seg:
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + input_path + ' -fname ' + filename_data + suffix  + ext + ' -ndim ' + str(level)
         # create dirs
         output_path_level = os.path.join(output_path_tumor, 'nx' + str(level) + "/");
         result_path_level = os.path.join(output_path_level, obs_dir)
@@ -169,6 +204,8 @@ def sparsetil_gridcont(input):
 
             # symlink
             symlink_cmd += "\nln -sf ../../../input/" + filename + "_nx"+str(level) + ext + " patient_seg" + ext + " "
+            if healthy_seg:
+                symlink_cmd += "\nln -sf ../../../input/" + filename_data + "_nx"+str(level) + ext + " data" + ext + " "
             #  set labels: [wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]
             labelstr = ""
             if "wm" in labels_rev and "gm" in labels_rev:
@@ -190,39 +227,50 @@ def sparsetil_gridcont(input):
             labelstr += "]"
             p['atlas_labels'] = labelstr
             p['a_seg_path'] = os.path.join(input_path_level, 'patient_seg' + ext)
-            p['obs_lambda'] = obs_lambda
-            p['d1_path'] = p['a_wm_path'] = p['a_gm_path'] = p['a_vt_path'] = ""
+            if healthy_seg:
+                p['d1_path'] = os.path.join(input_path_level, 'data' + ext)
+            else:
+                p['obs_lambda'] = obs_lambda
+                p['d1_path'] = ""
+            p['a_wm_path'] = p['a_gm_path'] = p['a_vt_path'] = ""
 
         symlink_cmd +=  "\nln -sf " + "../../../input/data_comps_nx" + str(level) + ext + " data_comps" + ext + " "
-        symlink_cmd +=  "\nln -sf " + "../../../input/patient_tc_nx" + str(level) + ext + " patient_tc" + ext + " "
+        symlink_cmd +=  "\nln -sf " + "../../../input/target_data_nx" + str(level) + ext + " target_data" + ext + " "
         if level == 64 or gaussian_mode == "D":
-            symlink_cmd +=  "\nln -sf " + "../../../input/patient_tc_nx"+str(level)   + ext + " support_data" + ext + " "
+            symlink_cmd +=  "\nln -sf " + "../../../input/target_data_nx"+str(level)   + ext + " support_data" + ext + " "
         else:
             level_prev = int(level/2);
-            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0Recon.nc' ' -ndim ' + str(level)
-            symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0Recon_nx"+str(level)+ ext + " support_data" + ext
-            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'phiSupportFinal.nc'  ' -ndim ' + str(level)
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'c0_rec'+ext + ' -ndim ' + str(level)
+            symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/c0_rec_nx"+str(level)+ ext + " support_data" + ext
+            resample_cmd += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -resample -input_path ' + result_path_level_coarse + ' -fname ' + 'phiSupportFinal' + ext + ' -ndim ' + str(level)
             symlink_cmd += "\n" + "ln -sf " + "../../nx"+ str(level_prev)+ "/" + obs_dir +"/phiSupportFinal_nx"+str(level)+ ext + " support_data_phi" + ext;
         symlink_cmd +=  "\n" + "cd " + str(result_path_level) + "\n#----------"
 
         # compute connected components of target data
         rdir = "obs"
         cmd_concomp = "\n\n# compute connected component of TC data"
-        cmd_concomp += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -concomp_data  -input_path ' +  result_path_level + ' -output_path ' +  input_path + ' -labels ' + input['segmentation_labels'] + ' '
+        cmd_concomp += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -concomp_data  -input_path ' +  result_path_level + ' -output_path ' +  input_path 
+        if healthy_seg:
+            cmd_concomp += ' -obs_th ' + str(input['obs_threshold_1']) + ' '
+        else:
+            cmd_concomp += ' -labels ' + input['segmentation_labels'] + ' '
         cmd_concomp += "  -sigma " + str(sigma_fac[ii]) + " ";
         cmd_concomp +=  " -select_gaussians  \n" if (gaussian_mode == 'C0_RANKED' and level > 64) else " \n";
 
         # extract reconstructed rho and k
         if level > 64:
             cmd_extractrhok =  "\n\n# extract reconstructed rho, k from logfile, and modify config";
-            cmd_extractrhok += "\n" + pythoncmd + utils_path + '/utils.py -update_config -input_path ' + result_path_level_coarse + ' -output_path ' + result_path_level
+            cmd_extractrhok += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -update_config -input_path ' + result_path_level_coarse + ' -output_path ' + result_path_level
             # cmd_extractrhok += "\n" + "source " + os.path.join(result_path_level_coarse, 'env_rhok.sh') + "\n"
 
 
-        #  TODO
         # postprocess results
         #   - resize all images back to input resolution and save as nifti
-        # cmd_postproc  = pythoncmd + basedir + '/postprocess.py -input_path ' + args.results_directory + ' -reference_image_path ' + args.patient_image_path + " -patient_labels " +  args.patient_segmentation_labels
+        if level == 256:
+            cmd_postproc = "\n# resize back to original resolution and convert to nifty" 
+            cmd_postproc += "\n" + pythoncmd + utils_path + '/utils_gridcont.py -convert -input_path ' + output_path_tumor + ' -reference_image ' + fname + ' -multilevel '
+
+        # TODO
         # cmd_postproc += " -rdir " + rdir + " ";
         # cmd_postproc += " -convert_images -gridcont ";
         # cmd_postproc += " -compute_tumor_stats ";
@@ -232,6 +280,7 @@ def sparsetil_gridcont(input):
         # cmd_postproc += " -generate_slices " + "\n";
 
         cmd_command = "\n\n\n" + "# ### LEVEL {} ###\n# ==================\n".format(level)
+        cmd_command += cp_cmd
         cmd_command += resample_cmd
         cmd_command += symlink_cmd
         cmd_command += cmd_concomp
@@ -239,36 +288,38 @@ def sparsetil_gridcont(input):
             cmd_command += cmd_extractrhok
 
         ############### === define parameters
-        r['nodes']    = nodes
-        r['mpi_taks'] = procs
-        r['wtime_h']  = wtime_h
-        r['wtime_m']  = wtime_m
-
-        p['output_dir'] 		= result_path_level
+        r['nodes']     = nodes
+        r['mpi_taks']  = procs[-1]
+        r['wtime_h']   = wtime_h[-1]
+        r['wtime_m']   = wtime_m[-1]
+        r['log_dir']   = output_path_tumor
+        r['ibrun_man'] = " -n " + str(procs[ii]) + " -o 0 "
+        
+        p['output_dir']         = result_path_level
         p['n']                  = level
-        p['solver'] 			= 'sparse_til'
+        p['solver']             = 'sparse_til'
         p['multilevel']         = 1
         p['invert_reac']        = 1
         p['invert_diff']        = invert_diffusivity[ii]
         p['inject_solution']    = 1 if (inject_coarse_sol  and level > 64) else 0;
         p['pre_reacdiff_solve'] = 1 if (pre_reacdiff_solve and level > 64) else 0;
-        p['model'] 				= 1
-        p['verbosity'] 			= 1
-        p['syn_flag'] 			= 0
-        p['init_rho'] 			= rho_init if (level == 64) else 'TBD'
-        p['init_k'] 			= k_init if (level == 64) else 'TBD'
-        p['nt_inv'] 			= nt
-        p['dt_inv'] 			= 1./nt
+        p['model']              = 1
+        p['verbosity']          = 1
+        p['syn_flag']           = 0
+        p['init_rho']           = rho_init if (level == 64) else 'TBD'
+        p['init_k']             = k_init if (level == 64) else 'TBD'
+        p['nt_inv']             = nt
+        p['dt_inv']             = 1./nt
         p['time_history_off'] 	= 0
         p['sparsity_level'] 	= sparsity_per_comp
         p['gist_maxit']         = gist_maxit[ii]
-        p['beta_p'] 			= beta_p
-        p['opttol_grad'] 		= opttol
-        p['newton_maxit'] 		= newton_maxit[ii]
-        p['kappa_lb'] 			= kappa_lb[ii]
-        p['kappa_ub'] 			= kappa_ub[ii]
-        p['rho_lb'] 			= rho_lb[ii]
-        p['rho_ub'] 			= rho_ub[ii]
+        p['beta_p']             = beta_p
+        p['opttol_grad']        = opttol
+        p['newton_maxit']       = newton_maxit[ii]
+        p['kappa_lb']           = kappa_lb[ii]
+        p['kappa_ub']           = kappa_ub[ii]
+        p['rho_lb']             = rho_lb[ii]
+        p['rho_ub']             = rho_ub[ii]
         p['newton_solver']      = "QN"
         p['line_search']        = ls_type[ii]
         p['lbfgs_vectors'] 		= 50
@@ -281,7 +332,16 @@ def sparsetil_gridcont(input):
             p['pred_times'] = [1.0, 1.2, 1.5]
             p['dt_pred'] = 0.01
         p['smoothing_factor'] = 1
-        p['smoothing_factor_data'] = 1
+        if healthy_seg:
+            p['smoothing_factor_data'] = 0
+        else:
+            p['smoothing_factor_data'] = 1
+        if 'obs_threshold_1' in input:
+            p['obs_threshold_1'] = input['obs_threshold_1']
+        if 'obs_threshold_rel' in input:
+            p['obs_threshold_rel'] = input['obs_threshold_rel']
+        if 'thresh_component_weight' in input:
+            p['thresh_component_weight'] = input['thresh_component_weight']
 
         if gaussian_mode in ["C0", "D"] or level == 64:
             p['support_data_path'] = os.path.join(input_path_level, 'support_data' + ext); # on coarsest level always d(1), i.e., TC as support_data
@@ -301,7 +361,9 @@ def sparsetil_gridcont(input):
 
 
         run_str = par.write_config(p, r)
-        cmd_command += "\n" + "# run tumor solver\n" + run_str + "  &>2  " + os.path.join(output_path_level, "solver_log.txt")
+        cmd_command += "\n" + "# run tumor solver\n" + run_str + "  2>&1  " + os.path.join(output_path_level, "solver_log.txt")
+        if level == 256:
+          cmd_command += "\n" + cmd_postproc
         cmd_command +="\n#=================="
         JOBfile += cmd_command
 

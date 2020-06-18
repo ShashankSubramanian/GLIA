@@ -367,7 +367,7 @@ PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int>
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<ScalarType> weights, int &nnz, int num_components) {
+PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<ScalarType> weights, int &nnz, int num_components, double thresh_component_weight) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   int nprocs, procid;
@@ -387,12 +387,12 @@ PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int>
   int sparsity;
   int ncc = 0;
   for (auto w : weights)
-    if (w >= 1E-3) ncc++;
+    if (w >= thresh_component_weight) ncc++;
   for (int nc = 0; nc < num_components; nc++) {
     if (nc != num_components - 1) {
       // sparsity level in total is 5 * #nc (number components)
       // every component gets at 3 degrees of freedom, the remaining 2 * #nc degrees of freedom are distributed based on component weight
-      sparsity = (weights[nc] > 1E-3) ? (3 + std::floor(weights[nc] * (sparsity_level - 3 * ncc - (num_components - ncc)))) : 1;
+      sparsity = (weights[nc] > thresh_component_weight) ? (3 + std::floor(weights[nc] * (sparsity_level - 3 * ncc - (num_components - ncc)))) : 1;
       component_sparsity.push_back(sparsity);
       ss << "sparsity of component " << nc << ": " << component_sparsity.at(nc);
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);

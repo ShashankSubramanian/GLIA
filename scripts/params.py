@@ -98,6 +98,7 @@ def write_config(set_params, run):
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### initial condition
     p['sparsity_level'] = 5             # target sparsity of recovered IC in sparse_til solver
+    p['thresh_component_weight'] = 1E-3 # threshold for weight of data component (to be considered for sparsity comp.)
     p['gaussian_selection_mode'] = 1    # 0: grid-based; 1: based on target data
     p['number_gaussians'] = 1           # only used if selection mode = 0
     p['sigma_factor'] = 1               # kernel width of Gaussians
@@ -252,6 +253,7 @@ def write_config(set_params, run):
         f.write("\n");
         f.write("### initial condition" + "\n");
         f.write("sparsity_level=" + str(p['sparsity_level']) + "\n");
+        f.write("thresh_component_weight=" + str(p['thresh_component_weight']) + "\n");
         f.write("gaussian_selection_mode=" + str(p['gaussian_selection_mode']) + "\n");
         f.write("number_gaussians=" + str(p['number_gaussians']) + "\n");
         f.write("sigma_factor=" + str(p['sigma_factor']) + "\n");
@@ -313,7 +315,7 @@ def write_config(set_params, run):
 
     ibman = ""
     if 'ibrun_man' in r and r['ibrun_man']:
-        ibman = " -n " + str(r['mpi_tasks']) + " -o 0 "
+        ibman = r['ibrun_man']
     cmd = ""
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
@@ -359,7 +361,7 @@ def write_jobscript_header(tu_params, run_params):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
-            run_params['queue'] = 'normal'
+                run_params['queue'] = 'normal'
         else:
             run_params['queue'] = 'normal'
     if 'nodes' not in run_params:
@@ -389,17 +391,25 @@ def write_jobscript_header(tu_params, run_params):
         else:
             run_params['mpi_taks'] = 1
 
+    if 'wtime_h' not in run_params:
+        run_params['wtime_h'] = 6
+    if 'wtime_m' not in run_params:
+        run_params['wtime_m'] = 0
+    if 'log_dir' not in run_params:
+        run_params['log_dir'] = tu_params['output_dir']
     fname = out_dir + '/job.sh'
     job_header = "" #open(fname, 'w+')
     job_header += "#!/bin/bash\n"
     job_header += "#SBATCH -J tuinv\n"
-    job_header += "#SBATCH -o " + tu_params['output_dir'] + "/log\n"
+    job_header += "#SBATCH -o " + run_params['log_dir'] + "/log\n"
     job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
     job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
     job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"
-    job_header += "#SBATCH -t 48:00:00\n\n"
+    job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
     job_header += "source ~/.bashrc\n"
     job_header += "export OMP_NUM_THREADS=1\n\n"
+    if 'extra_modules' in run_params:
+      job_header += str(run_params['extra_modules']) + "\n"
 
     return job_header
 

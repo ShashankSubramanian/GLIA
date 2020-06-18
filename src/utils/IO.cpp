@@ -81,7 +81,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   // ### inversion scheme
   if (name == "invert_diff") {p->opt_->diffusivity_inversion_ = std::stoi(value) > 0; return;}
   if (name == "invert_reac") {p->opt_->reaction_inversion_ = std::stoi(value) > 0; return;}
-  if (name == "multilevel") {p->tu_->multilevel_ = std::stoi(value) > 0; return;}
+  if (name == "multilevel") {p->opt_->multilevel_ = std::stoi(value) > 0; return;}
   if (name == "inject_solution") {a->inject_solution_ = std::stoi(value) > 0; return;}
   if (name == "pre_reacdiff_solve") {p->opt_->pre_reacdiff_solve_ = std::stoi(value) > 0; return;}
   if (name == "verbosity") {p->tu_->verbosity_ = std::stoi(value); return;}
@@ -169,6 +169,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   }
   // ### initial condition
   if (name == "sparsity_level") {p->tu_->sparsity_level_ = std::stoi(value); return;}
+  if (name == "thresh_component_weight") {p->tu_->thresh_component_weight_ = std::stod(value); return;}
   if (name == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value); return;}
   if (name == "number_gaussians") {p->tu_->np_ = std::stoi(value); return;}
   if (name == "sigma_factor") {
@@ -507,7 +508,7 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, cons
 #ifdef SINGLE
   image->datatype = NIFTI_TYPE_FLOAT32;
 #else
-  image->datatype = NIFTI_TYPE_FLOAT64
+  image->datatype = NIFTI_TYPE_FLOAT64;
 #endif
 
   ierr = writeNifti(&image, p_x, params, fname); CHKERRQ(ierr);
