@@ -373,7 +373,7 @@ class NMisc {
         , ic_max_ (0)                           // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
         , predict_flag_ (0)                     // Flag to perform future tumor growth prediction after inversion
         , pre_reacdiff_solve_ (0)               // Flag indicating of reaction/diffusion solve is performed prior to L1 inversion in CoSaMp
-        , order_ (2)                            // Order of accuracy for PDE solves
+        , order_ (1)                            // Order of accuracy for PDE solves
         , nu_healthy_ (0.4)                     // Poisson's ratio of wm and gm
         , nu_tumor_ (0.45)                      // Poisson's ratio of tumor
         , nu_bg_ (0.45)                         // Poisson's ratio of background

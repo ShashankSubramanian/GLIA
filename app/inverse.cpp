@@ -651,6 +651,7 @@ int main (int argc, char** argv) {
     if (read_atlas) {
         ierr = readAtlas (wm, gm, glm, csf, bg, n_misc, spec_ops, gm_path, wm_path, csf_path, glm_path);
         ierr = solver_interface->updateTumorCoefficients (wm, gm, glm, csf, bg);
+        ierr = tumor->mat_prop_->setAtlas(gm, wm, glm, csf, bg);      CHKERRQ(ierr);
     }
 
     std::shared_ptr<HealthyProbMaps> h_maps = nullptr;
@@ -666,6 +667,12 @@ int main (int argc, char** argv) {
 
     if (syn_flag == 1) {
         ss << " generating Synthetic Data"; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+        if (read_data_velocity) {
+            Vec mag;
+            ierr = readVecField(tumor->velocity_.get(), vx1_path, vx2_path, vx3_path, n_misc); CHKERRQ(ierr);
+            ierr = tumor->velocity_->scale(-1); CHKERRQ(ierr);
+        }
+
         if (n_misc->testcase_ == BRAINFARMF || n_misc->testcase_ == BRAINNEARMF) {
             ierr = createMFData (c_0, data_t1, p_rec, solver_interface, n_misc);
         } else {
@@ -685,8 +692,10 @@ int main (int argc, char** argv) {
     ScalarType max_c1, max_c0;
     ierr = VecMax(data_t0, NULL, &max_c0); CHKERRQ(ierr);
     ierr = VecMax(data_t1, NULL, &max_c1); CHKERRQ(ierr);
+    if (true){
     n_misc->obs_threshold_1_ = obs_thresh_1 * max_c1;
     n_misc->obs_threshold_0_ = obs_thresh_0 * max_c0;
+    }
     ss << " changing observation threshold to thr_0: "<<n_misc->obs_threshold_0_<<", and thr_1: "<<n_misc->obs_threshold_1_; ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         if (use_custom_obs_mask){

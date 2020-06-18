@@ -10,8 +10,9 @@ tumor_dir = scripts_path + '/../'
 params = {}
 
 
-case_dir = '/scratch1/04678/scheufks/alzh/syn_test/test04/tc/t_series/'
-d_dir = '/scratch1/04678/scheufks/alzh/syn_test/test04/data/'
+base_dir = '/scratch1/04678/scheufks/alzh/syn_test/_NEW_synthetic_adv/'
+case_dir = os.path.join(base_dir, 'tc/t_series/')
+d_dir = os.path.join(base_dir, 'data/')
 
 params['code_path'] = tumor_dir
 params['results_path'] = case_dir; #tumor_dir + '/results/dev-tc4-l0-lb0-50vecs/'
@@ -25,10 +26,20 @@ params['compute_sys'] = 'frontera'
 #params['wm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_wm.nc" 
 #params['glm_path'] = tumor_dir + "/brain_data/jakob/256/jakob_csf.nc" 
 #params['csf_path'] = tumor_dir + "/brain_data/jakob/256/jakob_vt.nc"
-params['gm_path'] = d_dir + "0368Y02_seg_gm.nc"
-params['wm_path'] = d_dir + "0368Y02_seg_wm.nc"
+params['gm_path'] = d_dir + "0368Y01_seg_gm.nc"
+params['wm_path'] = d_dir + "0368Y01_seg_wm.nc"
 params['glm_path'] = ""
-params['csf_path'] = d_dir + "0368Y02_seg_csf.nc"
+params['csf_path'] = d_dir + "0368Y01_seg_csf.nc"
+
+vx1 = 'reg/velocity-field-x1.nc'
+vx2 = 'reg/velocity-field-x2.nc'
+vx3 = 'reg/velocity-field-x3.nc'
+
+params['velocity_x1'] = os.path.join(base_dir, vx1);
+params['velocity_x2'] = os.path.join(base_dir, vx2);
+params['velocity_x3'] = os.path.join(base_dir, vx3);
+ 
+
 
 params['data_path'] = ""
 #params['init_tumor_path'] = case_dir + "c0Recon.nc"

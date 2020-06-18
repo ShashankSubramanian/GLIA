@@ -249,6 +249,7 @@ PetscErrorCode PdeOperatorsRD::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mr
             if(mri != nullptr) {
                 ierr = adv_solver_->solve (mri, tumor_->velocity_, dt);             CHKERRQ(ierr);
 	    }
+            ierr = tumor_->mat_prop_->clipHealthyTissues ();                        CHKERRQ (ierr);
         }
     }
     dataOut (wm, n_misc_,  "wm_atlas_adv.nc");
@@ -298,35 +299,52 @@ PetscErrorCode PdeOperatorsRD::solveState (int linearized) {
        linearized = 2 -- linearized state equation with diffusivity inversion
                          for hessian application
     */
-    
+  
+    // reset mat prob to atlas
+    ierr = tumor_->mat_prop_->resetValues ();                       CHKERRQ (ierr);
+
     //std::stringstream ss;
     //ScalarType norm_ref, norm_i;
     //ierr = VecNorm (tumor_->c_0_, NORM_2, &norm_ref); CHKERRQ (ierr);
-    //norm_ref = 225.6508907756024;
+    //norm_ref = 191.80212;
 
 
     for (int i = 0; i < nt; i++) {
+
+        ierr = tumor_->k_->setValues (n_misc_->k_, n_misc_->k_gm_wm_ratio_, n_misc_->k_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);
+        ierr = tumor_->rho_->setValues (n_misc_->rho_, n_misc_->r_gm_wm_ratio_, n_misc_->r_glm_wm_ratio_, tumor_->mat_prop_, n_misc_);
+        //tumor_->phi_->setValues (tumor_->mat_prop_);  // update the phi values, i.e., update the filter
+        diff_solver_->precFactor();   // need to update prefactors for diffusion KSP preconditioner, as k changed
+
+
+
+
         if (linearized == 2) {
             // eliminating incremental forward for Hpk k_tilde calculation during hessian apply
             // since i+0.5 does not exist, we average i and i+1 to approximate this psuedo time
             ierr = solveIncremental (tumor_->c_t_, c_, dt / 2, i, 1);
         }
 
-        //ss << "c_t[" << i << "].nc";
-        //dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
-        //ss.str(std::string()); ss.clear();
-        //ierr = VecNorm (tumor_->c_t_, NORM_2, &norm_i); CHKERRQ (ierr);
-        //ss << "itr: " << i << " norm ||c(t)|| / ||c(1)|| = " << (norm_i/norm_ref); tuMSGstd(ss.str()); ss.str(""); ss.clear();
+       //ss << "c_t[" << i << "].nc";
+       //dataOut (tumor_->c_t_, n_misc_, ss.str().c_str());
+       //ss.str(std::string()); ss.clear();
+       //ierr = VecNorm (tumor_->c_t_, NORM_2, &norm_i); CHKERRQ (ierr);
+       //ss << "itr: " << i << " norm ||c(t)|| / ||c(1)|| = " << (norm_i/norm_ref); 
+       //if (n_misc_->data_velocity_set_) { ss << " adv enabled"; } 
+       //tuMSGstd(ss.str()); ss.str(""); ss.clear();
 
         // advection of healthy tissue
         if (n_misc_->data_velocity_set_) {
-            //adv_solver_->advection_mode_ = 1;  //  mass conservation
-            adv_solver_->advection_mode_ = 2;  // pure advection
+            adv_solver_->advection_mode_ = 1;  //  mass conservation
+            //adv_solver_->advection_mode_ = 2;  // pure advection
             ierr = adv_solver_->solve (tumor_->mat_prop_->gm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
             ierr = adv_solver_->solve (tumor_->mat_prop_->wm_, tumor_->velocity_, dt);                  CHKERRQ(ierr);
             ierr = adv_solver_->solve (tumor_->mat_prop_->csf_, tumor_->velocity_, dt);                 CHKERRQ(ierr);
             ierr = adv_solver_->solve (tumor_->c_t_, tumor_->velocity_, dt);                            CHKERRQ(ierr); 
+            ierr = tumor_->mat_prop_->clipHealthyTissues ();                                            CHKERRQ (ierr);
         }
+
+
 
         if (n_misc_->order_ == 2) {
             diff_solver_->solve (tumor_->c_t_, dt / 2.0);   diff_ksp_itr_state_ += diff_solver_->ksp_itr_;

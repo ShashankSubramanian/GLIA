@@ -87,14 +87,10 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
         #bash_file.write("#SBATCH --mail-user=nutexas.edu\n");
         #bash_file.write("#SBATCH --mail-type=fail\n");
-        if opt['compute_sys'] == 'frontera':
-            bash_file.write("#SBATCH -A FTA-Biros\n");
-        else:
-            bash_file.write("#SBATCH -A PADAS\n");
-
 
     bash_file.write("\n\n");
     bash_file.write("source ~/.bashrc\n");
+    bash_file.write("\nmodule load petsc/3.11-single")
     if opt['gpu']:
         bash_file.write("\nmodule load cuda")
         bash_file.write("\nmodule load cudnn")
@@ -120,44 +116,56 @@ def createJobsubFile(cmd, opt, level):
 
 ###
 ### ------------------------------------------------------------------------ ###
-def set_params(basedir, args, nlevel='no', case_dir='d_nc', gpu=False):
+def set_params(basedir, args, nlevel='no', case_dir='d_nc', gpu=False, th=0.0):
     
     tpoint = case_dir.split('d_nc-')[-1]
     Tp = {'0'  : {'t1.0' : 1.0,  't1.2' : 1.2,  't1.5' : 1.5},
-          '20' : {'t1.0' : 0.44, 't1.2' : 0.64, 't1.5' : 0.94},
-          '40' : {'t1.0' : 0.28, 't1.2' : 0.48, 't1.5' : 0.78},
-          '60' : {'t1.0' : 0.17, 't1.2' : 0.37, 't1.5' : 0.67},
-          '80' : {'t1.0' : 0.10, 't1.2' : 0.3,  't1.5' : 0.6}
+          '20' : {'t1.0' : 0.44, 't1.2' : 0.64, 't1.5' : 0.94},  # it-55 = 56 tsteps, 44 left
+          '40' : {'t1.0' : 0.27, 't1.2' : 0.47, 't1.5' : 0.77},  # it-72 = 73 tsteps, 27 left
+          '60' : {'t1.0' : 0.16, 't1.2' : 0.36, 't1.5' : 0.66},  # it-83 = 84 tsteps, 16 left
+          '80' : {'t1.0' : 0.08, 't1.2' : 0.28,  't1.5' : 0.58}, # it-91 = 92 tsteps, 8 left
+          '90' : {'t1.0' : 0.04, 't1.2' : 0.24,  't1.5' : 0.54}, # it-95 = 96 tsteps, 4 left
+          '95' : {'t1.0' : 0.02, 't1.2' : 0.22,  't1.5' : 0.52}, # it 97 = 98 tsteps, 2 left
+          '97' : {'t1.0' : 0.01, 't1.2' : 0.21,  't1.5' : 0.51}, # it-98 - 99 tsteps, 1 left
          }
 
-    Ts = {'0' : 100, '20' : 44,   '40' : 28,   '60' : 17,   '80' : 10}
-    Ta = {'0' : -1,  '20' : 0.56, '40' : 0.72, '60' : 0.83, '80' : 0.90}
+    Ts = {'0' : 100, '20' : 44,   '40' : 27,   '60' : 16,   '80' : 8,    '90' : 4,    '95' : 2,    '97' : 1}
+    Ta = {'0' : -1,  '20' : 0.56, '40' : 0.73, '60' : 0.84, '80' : 0.92, '90' : 0.96, '95' : 0.98, '97' : 0.99}
 
+    th_dict = {0.6 : 'th06', 0.4 : 'th04', 0.2 : 'th02'}
     #Ts = {'0' : 40, '20' : 17.6,   '40' : 11.2,   '60' : 6.8,   '80' : 4}
     #Ta = {'0' : -1,  '20' : 0.56, '40' : 0.72, '60' : 0.83, '80' : 0.90}
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)));
-    submit             = True;
+    submit  = True;
     ###########
     opttol  = 1E-5;
     scale   = 1e-1;
     rho_inv = 6;
     k_inv   = 1E-2/scale;
-    nt_inv  = Ts[tpoint];
     dt_inv  = 0.01;
+    nt_inv  = int(Tp[tpoint]['t1.0']/dt_inv)
+    #nt_inv  = Ts[tpoint];
     k_lb    = 1E-4/scale;
     k_ub    = 1/scale;
     rho_lb  = 4;
     rho_ub  = 15;
     model   = 2;
+    obs_th_1= th;
+    obs_th_0= th;
     smooth_fac = 1.5;
+    smooth_fac_c0 = 0;
     pred_t0 = Tp[tpoint]['t1.0']
     pred_t1 = Tp[tpoint]['t1.2']
     pred_t2 = Tp[tpoint]['t1.5']
     pre_adv_time = Ta[tpoint]
     #b_name  = 'inverse_adv_scale'
-    b_name  = 'inverse_gpu_scale'
-    d1      = os.path.join(case_dir, 'dataBeforeObservation.nc')
-    d0      = os.path.join(case_dir, 'c0True.nc')
+    if gpu:
+        #b_name  = 'inverse_gpu_norel'
+        b_name  = 'inverse_gpu'
+    else:
+        b_name  = 'inverse_cpu'
+    d1      = os.path.join(case_dir, 'd1.nc')
+    d0      = os.path.join(case_dir, 'd0.nc')
     solver  = 'QN'
     prefix  = '0368Y01'
     adv     = True;
@@ -181,24 +189,28 @@ def set_params(basedir, args, nlevel='no', case_dir='d_nc', gpu=False):
         d1      = os.path.join(case_dir, 'data_t1_noise-'+str(nlevel.split('sp')[-1])+'.nc')
         d0      = os.path.join(case_dir, 'data_t0_noise-'+str(nlevel.split('sp')[-1])+'.nc')
     
-    d1_true  = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.0/dataBeforeObservation.nc')
-    d12_true = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.2/dataBeforeObservation.nc')
-    d15_true = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.5/dataBeforeObservation.nc')
+    d1_true  = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.0/d1true.nc')
+    d12_true = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.2/d1true.nc')
+    d15_true = os.path.join(os.path.join(os.path.join(dat_dir, case_dir), '..'), 't=1.5/d1true.nc')
 
-    # define results path
-    if not adv:
-        res_dir = os.path.join(args.results_directory,'inv-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
+    reg_str = ''
+    if adv:
+        #reg_str = '-reg-norel-thresh-'+str(obs_th_1)
+        #reg_str = '-reg-thresh-'+str(obs_th_1)
+        reg_str = '-reg-corrected-'
     else:
-        res_dir =  os.path.join(args.results_directory,'inv-adv-'+str(case_dir)+'-corr-c0-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale/');
+        reg_str = '-no-reg-t1'
+
+    res_dir = os.path.join(args.results_directory,'_gpu_inv'+str(reg_str)+'-'+str(case_dir)+'-noise-'+str(noise_level)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-fd-lbfgs-3-bounds-scale-dt-'+str(dt_inv)+'/');
     
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
     opt['gpu']          = gpu; 
     opt['output_dir']   = res_dir;
     opt['input_dir']    = inp_dir;
-    opt['num_nodes']    = 1 if gpu else 2;
-    opt['mpi_pernode']  = 1 if gpu else 96;
-    opt['wtime_h']      = 6;
+    opt['num_nodes']    = 1 if gpu else 2
+    opt['mpi_pernode']  = 1 if gpu else 96
+    opt['wtime_h']      = 10 if gpu else 10
     opt['wtime_m']      = 0;
 
     output_path = args.results_directory
@@ -265,6 +277,9 @@ def set_params(basedir, args, nlevel='no', case_dir='d_nc', gpu=False):
     t_params['data_path_pred_t2']     = d15_true;
     t_params['forward_flag']          = 0
     t_params['smooth_f']              = smooth_fac;
+    t_params['smooth_f_c0']           = smooth_fac_c0;
+    #t_params['obs_thres']             = obs_th_1;
+    #t_params['obs_thres_0']           = obs_th_0;
     t_params['model']                 = model;
     t_params['gaussian_cm_path']      = os.path.join(dat_dir, 'phi-mesh-p-syn.txt');
     t_params['pvec_path']             = os.path.join(dat_dir, 'p-rec-p-syn.txt');
@@ -306,13 +321,16 @@ if __name__=='__main__':
     args = parser.parse_args();
 
    
-    for case_dir in ['d_nc-0', 'd_nc-20', 'd_nc-40', 'd_nc-60', 'd_nc-80']:
-    #for case_dir in ['d_nc-0', 'd_nc-20', 'd_nc-80']:
+    for case_dir in ['d_nc-0', 'd_nc-20', 'd_nc-40', 'd_nc-60', 'd_nc-80', 'd_nc-90', 'd_nc-95', 'd_nc-97']:
+    #for case_dir in ['d_nc-0', 'd_nc-20', 'd_nc-60', 'd_nc-80', 'd_nc-90']:
+    #for case_dir in ['d_nc-80', 'd_nc-90', 'd_nc-95']:
+    #for case_dir in ['d_nc-20']:
     #for case_dir in ['d_nc-80']:
-        for nlevel in ['no', 'sp0.1', 'sp0.5', 'sp1.0', 'sp1.5', 'sp2.0']:
-        ##for nlevel in ['no', 'sp1.0']:
+        #for nlevel in [ 'sp0.1', 'sp0.5', 'sp1.0', 'sp1.5', 'sp2.0']:
+        for nlevel in ['no']:
         #for nlevel in ['no']:
         #for nlevel in ['no', 'sp0.005', 'sp0.01', 'sp0.1', 'sp0.3', 'sp0.5']:
         #for nlevel in ['sp0.005', 'sp0.01', 'sp0.1', 'sp0.3']:
         #for nlevel in ['no', 'sp1E-1', 'sp1E-2', 'sp1E-3']:
-             set_params(basedir, args, nlevel, case_dir, gpu=True);
+            #for th in [ 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]:
+            set_params(basedir, args, nlevel, case_dir, gpu=True, th=-1);

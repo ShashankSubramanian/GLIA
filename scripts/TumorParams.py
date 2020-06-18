@@ -24,7 +24,7 @@ def getTumorRunCmd(params):
 
     ### TUMOR PARAMETERS SET BEGIN
 
-    binary_name = 'inverse_gpu_scale'
+    binary_name = 'inverse_gpu'
     ### No of discretization points (Assumed uniform)
     N = 256
     ### Path to all output results (Directories are created automatically)
@@ -91,7 +91,7 @@ def getTumorRunCmd(params):
     ### Synthetic data parameters  -- Tumor is grown with these parameters
     rho_data = 8
     k_data   = 0.18
-    nt_data  = 100
+    nt_data  = 150
     dt_data  = 0.01
 
 
