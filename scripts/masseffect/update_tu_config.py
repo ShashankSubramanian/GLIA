@@ -25,20 +25,20 @@ def update_config(path_res, path_config):
   """ Extracts reconstructed rho, kappa, and gamma values from tumor results and
       updates the config file for the next level.
   """
-  eho, k, g =  extract_from_tu_info(os.path.join(path_res, "reconstruction_info.dat"))
-  with open(os.path.join(path_config, "solver_config"), "r") as f:
-    lines = file.readlines()
-  with open(os.path.join(path_config, "solver_config"), "w")  as f:
+  rho, k, g =  extract_from_tu_info(os.path.join(path_res, "reconstruction_info.dat"))
+  with open(os.path.join(path_config, "solver_config.txt"), "r") as f:
+    lines = f.readlines()
+  with open(os.path.join(path_config, "solver_config.txt"), "w")  as f:
     for line in lines:
       if "init_rho=" in line:
         print("...updating rho IC to {}".format(rho))
-        f.write("init_rho="+str(rho))
-      if "init_k=" in line:
+        f.write("init_rho="+str(rho)+"\n")
+      elif "init_k=" in line:
         print("...updating k IC to {}".format(k))
-        f.write("init_k="+str(k))
-      if "init_gamma=" in line:
-        print("...updating gamma IC to {}".format(gamma))
-        f.write("init_gamma="+str(k))
+        f.write("init_k="+str(k)+"\n")
+      elif "init_gamma=" in line:
+        print("...updating gamma IC to {}".format(g))
+        f.write("init_gamma="+str(g)+"\n")
       else:
         f.write(line)
 ###

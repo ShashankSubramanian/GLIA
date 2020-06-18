@@ -7,7 +7,7 @@ from scipy.ndimage import gaussian_filter
 from netCDF4 import Dataset
 from numpy import linalg as la
 import re
-sys.path.append('../utils/')
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
 from file_io import writeNII, createNetCDF
 from image_tools import resizeImage, resizeNIIImage
 sys.path.append('../')
@@ -15,7 +15,7 @@ sys.path.append('../')
 
 ###
 ### ------------------------------------------------------------------------ ###
-if __name__=='__main__'
+if __name__=='__main__':
   parser = argparse.ArgumentParser(description='extract/compute tumor stats')
   parser.add_argument ('-n', type=int, help = 'size');
   parser.add_argument ('-res_path', type=str, help = 'path to output results');
@@ -90,7 +90,7 @@ if __name__=='__main__'
         for l in lines:
           if l.find("Global runtime") is not -1:
             l_s = re.findall("\d*\.?\d+", l)
-            t = float(l_s[3])
+            t = float(l_s[1])
 
       if max_disp > 2 or rel_error > 1:
         failed_atlas.append(atlas)
@@ -155,21 +155,22 @@ if __name__=='__main__'
   disp_arr   = np.asarray(disp_list)
   time_arr   = np.asarray(time_list)
   
-  row += "stats" + " \t& "
-  row += "\\num{" + "{:e}".format(np.mean(gam_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(gam_arr)) + "} \t& "
-  row += "\\num{" + "{:e}".format(np.mean(rho_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(rho_arr)) + "} \t& "
-  row += "\\num{" + "{:e}".format(np.mean(kappa_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(kappa_arr)) + "} \t& "
-  row += "\\num{" + "{:e}".format(np.mean(disp_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(disp_arr)) + "} \t& "
-  row += "\\num{" + "{:e}".format(np.mean(err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(err_arr)) + "} \t& "
-  row += "\\num{" + "{:e}".format(np.mean(time_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(time_arr)) + "}\n"
- 
-  row_csv += "\n\n ######################################################## \n\n "
-  row_csv += str(np.mean(gam_arr)) + "," + str(np.std(gam_arr)) + ","
-  row_csv += str(np.mean(rho_arr)) + "," + str(np.std(rho_arr)) + ","
-  row_csv += str(np.mean(kappa_arr)) + "," + str(np.std(kappa_arr)) + ","
-  row_csv += str(np.mean(disp_arr)) + "," + str(np.std(disp_arr)) + ","
-  row_csv += str(np.mean(err_arr)) + "," + str(np.std(err_arr)) + ","
-  row_csv += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + ",\n"
+  if len(gam_arr) > 0:
+    row += "stats" + " \t& "
+    row += "\\num{" + "{:e}".format(np.mean(gam_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(gam_arr)) + "} \t& "
+    row += "\\num{" + "{:e}".format(np.mean(rho_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(rho_arr)) + "} \t& "
+    row += "\\num{" + "{:e}".format(np.mean(kappa_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(kappa_arr)) + "} \t& "
+    row += "\\num{" + "{:e}".format(np.mean(disp_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(disp_arr)) + "} \t& "
+    row += "\\num{" + "{:e}".format(np.mean(err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(err_arr)) + "} \t& "
+    row += "\\num{" + "{:e}".format(np.mean(time_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(time_arr)) + "}\n"
+  
+    row_csv += "\n\n ######################################################## \n\n "
+    row_csv += str(np.mean(gam_arr)) + "," + str(np.std(gam_arr)) + ","
+    row_csv += str(np.mean(rho_arr)) + "," + str(np.std(rho_arr)) + ","
+    row_csv += str(np.mean(kappa_arr)) + "," + str(np.std(kappa_arr)) + ","
+    row_csv += str(np.mean(disp_arr)) + "," + str(np.std(disp_arr)) + ","
+    row_csv += str(np.mean(err_arr)) + "," + str(np.std(err_arr)) + ","
+    row_csv += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + ",\n"
 
   statfile.write(row)
   statfile.close()

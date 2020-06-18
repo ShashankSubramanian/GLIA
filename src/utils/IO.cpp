@@ -81,7 +81,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   // ### inversion scheme
   if (name == "invert_diff") {p->opt_->diffusivity_inversion_ = std::stoi(value) > 0; return;}
   if (name == "invert_reac") {p->opt_->reaction_inversion_ = std::stoi(value) > 0; return;}
-  if (name == "multilevel") {p->tu_->multilevel_ = std::stoi(value) > 0; return;}
+  if (name == "multilevel") {p->opt_->multilevel_ = std::stoi(value) > 0; return;}
   if (name == "inject_solution") {a->inject_solution_ = std::stoi(value) > 0; return;}
   if (name == "pre_reacdiff_solve") {p->opt_->pre_reacdiff_solve_ = std::stoi(value) > 0; return;}
   if (name == "verbosity") {p->tu_->verbosity_ = std::stoi(value); return;}
@@ -518,6 +518,9 @@ PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<Parameters> params, const
   int ncerr, fileid, ndims, nvars, ngatts, unlimited, varid[1];
   // open file
   ncerr = ncmpi_open(PETSC_COMM_WORLD, fname, NC_NOWRITE, MPI_INFO_NULL, &fileid);
+  std::stringstream ss;
+  ss << "data file: " << std::string(fname);
+  if (ncerr != NC_NOERR) tuMSGwarn(ss.str());
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
   // query info about field named "data"
   ncerr = ncmpi_inq(fileid, &ndims, &nvars, &ngatts, &unlimited);

@@ -15,6 +15,7 @@ from image_tools import resizeImage, resizeNIIImage
 sys.path.append('../')
 import params as par
 import random
+import shutil
 
 def convert_nifti_to_nc(filename, n):
   infilename = filename.replace(".nc", ".nii.gz")
@@ -23,6 +24,7 @@ def convert_nifti_to_nc(filename, n):
   createNetCDF(filename, dimensions, np.transpose(data))
 
 def resize_data(img_path, img_path_out, sz, order = 3):
+  sz       -= 1
   img       = nib.load(img_path)
   img_rsz   = resizeNIIImage(img, sz, interp_order = order)
   nib.save(img_rsz, img_path_out)
@@ -31,11 +33,16 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
   r = {}
   p = {}
   submit_job = False;
-  listfile    = res_dir + "/atlas-list.txt"
+  listfile    = res_dir + "/../atlas-list.txt"
   at_list_f   = open(listfile, 'r')
   at_list     = at_list_f.readlines()
   case_str    = ""  ### for different cases to go in different dir with this suffix
-  n_str       = str(n)
+  n_str       = "_" + str(n)
+
+  ### randomize the IC  -- will be overwritten in gridcont at finer levels
+  init_rho    = random.uniform(5,10)
+  init_k      = random.uniform(0.005,0.05)
+  init_gamma  = random.uniform(1E4,1E5)
 
   for atlas in at_list:
     atlas                   = atlas.strip("\n")
@@ -55,9 +62,9 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['obs_lambda']         = 1.0                       # if > 0: creates observation mask OBS = 1[TC] + lambda*1[B/WT] from segmentation file
     p['verbosity'] 			    = 1                  		    # various levels of output density
     p['syn_flag'] 			    = 0                  	      # create synthetic data
-    p['init_rho'] 			    = 6                  		    # initial guess rho (reaction in wm)
-    p['init_k'] 			      = 0.005                     # initial guess kappa (diffusivity in wm)
-    p['init_gamma'] 		    = 1E4              		      # initial guess (forcing factor for mass effect)
+    p['init_rho'] 			    = init_rho                  # initial guess rho (reaction in wm)
+    p['init_k'] 			      = init_k                    # initial guess kappa (diffusivity in wm)
+    p['init_gamma'] 		    = init_gamma                # initial guess (forcing factor for mass effect)
     p['nt_inv'] 			      = 25                    	  # number time steps for inversion
     p['dt_inv'] 			      = 0.04                  	  # time step size for inversion
     p['k_gm_wm']            = 0.2                       # kappa ratio gm/wm (if zero, kappa=0 in gm)
@@ -121,17 +128,19 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
 
   return bash_filename
 
-def update_config(level, bash_file, scripts_path, invdir, atlist):
+def update_config(level, bash_file, scripts_path, invdir, atlist, idx):
   with open(bash_file, 'a') as f:
     if level is not 64:
       for i in range(1,5):
         f.write("config_dir_" + str(i) + "=" + invdir + atlist[4*idx + i - 1] + "\n")
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_1 -config_path $config_dir_1\n" 
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_2 -config_path $config_dir_2\n" 
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_3 -config_path $config_dir_3\n" 
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_4 -config_path $config_dir_4\n" 
+      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_1 -config_path $config_dir_1\n") 
+      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_2 -config_path $config_dir_2\n") 
+      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_3 -config_path $config_dir_3\n") 
+      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_4 -config_path $config_dir_4\n") 
     for i in range(1,5):
       f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i - 1] + "\n")
+
+  return bash_file
     
 def write_tuinv(invdir, atlist, bash_file, idx):
   f = open(bash_file, 'a') 
@@ -154,46 +163,46 @@ def create_level_specific_data(n, pat, data_dir, create = True):
   if create: ### files do not exist
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
-    if not.os.path.exists(fname_n):
-      resize_patient_data(fname, fname_n, sz, order = 3)
+    if not os.path.exists(fname_n):
+      resize_data(fname, fname_n, sz, order = 3)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not.os.path.exists(fname_n_nc):
+    if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
     fname = data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_seg_tu_aff2jakob_" + str(n) + ".nii.gz"
-    if not.os.path.exists(fname_n):
-      resize_patient_data(fname, fname_n, sz, order = 0)
+    if not os.path.exists(fname_n):
+      resize_data(fname, fname_n, sz, order = 0)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not.os.path.exists(fname_n_nc):
+    if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
     fname = data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_c0Recon_aff2jakob_" + str(n) + ".nii.gz"
-    if not.os.path.exists(fname_n):
-      resize_patient_data(fname, fname_n, sz, order = 3)
+    if not os.path.exists(fname_n):
+      resize_data(fname, fname_n, sz, order = 1)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not.os.path.exists(fname_n_nc):
+    if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
   else:
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
-    if not.os.path.exists(fname_n):
+    if not os.path.exists(fname_n):
       shutil.copy(fname, fname_n)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not.os.path.exists(fname_n_nc):
+    if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
     fname = data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_seg_tu_aff2jakob_" + str(n) + ".nii.gz"
-    if not.os.path.exists(fname_n):
+    if not os.path.exists(fname_n):
       shutil.copy(fname, fname_n)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not.os.path.exists(fname_n_nc):
+    if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
     fname = data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_c0Recon_aff2jakob_" + str(n) + ".nii.gz"
-    if not.os.path.exists(fname_n):
-      resize_patient_data(fname, fname_n, sz, order = 0)
+    if not os.path.exists(fname_n):
+      shutil.copy(fname, fname_n)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not.os.path.exists(fname_n_nc):
+    if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -206,7 +215,7 @@ if __name__=='__main__':
   r_args.add_argument('-c', '--code_dir', type = str, help = 'path to tumor solver code', required = True) 
   r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
   args = parser.parse_args();
-  submit_job = False
+  submit_job = True
 
   patient_list = os.listdir(args.patient_dir)
   if os.path.exists(args.patient_dir + "/failed.txt"): ### some patients have failed gridcont; ignore them
@@ -276,8 +285,8 @@ if __name__=='__main__':
     levels   = [64,128,256]
     for n in levels:
       pat_dir    = res + "/" + str(n) + "/"
-      atlas_dir  = atlas_dir + "/" + str(n) + "/"
-      create_tusolver_config(n, pat, pat_dir, atlas_dir, pat_dir)
+      atlas_dir_level  = atlas_dir + "/" + str(n) + "/"
+      create_tusolver_config(n, pat, pat_dir, atlas_dir_level, pat_dir)
     
     ### (3)  create job files in tusolver results directories
     numatlas = len(at_list)
@@ -291,14 +300,13 @@ if __name__=='__main__':
       
       ### create tumor_inv stats
       for n in levels: 
-        res_level = res + "/" + str(n) "/"
-        bash_file = update_config(n, bash_file, scripts_path, res_level, at_list) 
+        res_level = res + "/" + str(n) + "/"
+        bash_file = update_config(n, bash_file, scripts_path, res_level, at_list, i) 
         bash_file = write_tuinv(res_level, at_list, bash_file, i)
 
       ### extract stats
       with open(bash_file, 'a') as f:
-        f.write("python3 " + scripts_path + "/extract_stats.py -n 256 -res_path " + stat + " -inv_path " + res +
-        "/256/ \n" 
+        f.write("python3 " + scripts_path + "/extract_stats.py -n 256 -res_path " + stat + " -inv_path " + res + "/256/ \n") 
 
       if submit_job:
         subprocess.call(['sbatch', bash_file])

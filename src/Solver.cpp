@@ -449,15 +449,6 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
   ierr = tuMSGwarn(" Beginning Mass Effect Inversion."); CHKERRQ(ierr);
 
-  // // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
-  // // ---------
-  // if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
-  // ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr() + 1, &p_rec_); CHKERRQ(ierr);
-  // ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
-  // ierr = resetOperators(p_rec_); CHKERRQ(ierr);
-  // // ---------
-  // int np = params_->tu_->np_;
-
   // == set initial guess
   int nk = params_->get_nk();
   int nr = params_->get_nr();
@@ -468,12 +459,15 @@ PetscErrorCode InverseMassEffectSolver::run() {
   std::uniform_real_distribution<> distg(0.1, 1.0); // define the range
   std::uniform_real_distribution<> distr(5, 10); // define the range
   std::uniform_real_distribution<> distk(0.5, 5); // define the range
-//  x_ptr[0] = params_->tu_->forcing_factor_;
-//  x_ptr[1] = params_->tu_->rho_;
-//  x_ptr[2] = params_->tu_->k_;
-  x_ptr[0] = distg(eng) * 1E5;
-  x_ptr[1] = distr(eng);
-  x_ptr[2] = distk(eng) * 1E-2;
+  if (params_->opt_->multilevel_) { // ICs handled from script
+    x_ptr[0] = params_->tu_->forcing_factor_;
+    x_ptr[1] = params_->tu_->rho_;
+    x_ptr[2] = params_->tu_->k_;
+  } else { // else random ICs
+    x_ptr[0] = distg(eng) * 1E5;
+    x_ptr[1] = distr(eng);
+    x_ptr[2] = distk(eng) * 1E-2;
+  }
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ (ierr);
 
   optimizer_->setData(data_); // set data before initial guess
