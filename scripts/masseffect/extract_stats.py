@@ -50,7 +50,7 @@ if __name__=='__main__':
 ### scrub the log file
   statfile = open(res_path + "stats" + suff + ".txt", 'w+')
   statfile_csv = open(res_path + "stats" + suff + ".csv", 'w+')
-  listfile = res_path + "/atlas-list.txt"
+  listfile = res_path + "/../atlas-list.txt"
   at_list  = []
   with open(listfile, 'r') as f:
     lines = f.readlines()
@@ -170,7 +170,7 @@ if __name__=='__main__':
     row_csv += str(np.mean(kappa_arr)) + "," + str(np.std(kappa_arr)) + ","
     row_csv += str(np.mean(disp_arr)) + "," + str(np.std(disp_arr)) + ","
     row_csv += str(np.mean(err_arr)) + "," + str(np.std(err_arr)) + ","
-    row_csv += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + ",\n"
+    row_csv += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + "\n"
 
   statfile.write(row)
   statfile.close()

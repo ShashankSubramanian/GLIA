@@ -17,11 +17,14 @@ import params as par
 import random
 import shutil
 
-def convert_nifti_to_nc(filename, n):
+def convert_nifti_to_nc(filename, n, reverse=False):
   infilename = filename.replace(".nc", ".nii.gz")
   dimensions = n * np.ones(3)
   data = nib.load(infilename).get_fdata()
-  createNetCDF(filename, dimensions, np.transpose(data))
+  if not reverse:
+    createNetCDF(filename, dimensions, np.transpose(data))
+  else:
+    createNetCDF(filename, dimensions, np.transpose(data[::-1,::-1,:]))
 
 def resize_data(img_path, img_path_out, sz, order = 3):
   sz       -= 1
@@ -33,7 +36,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
   r = {}
   p = {}
   submit_job = False;
-  listfile    = res_dir + "/../atlas-list.txt"
+  listfile    = res_dir + "/../../atlas-list.txt"
   at_list_f   = open(listfile, 'r')
   at_list     = at_list_f.readlines()
   case_str    = ""  ### for different cases to go in different dir with this suffix
@@ -120,7 +123,7 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
   bash_file.write("#SBATCH -p " + queue + "\n")
   bash_file.write("#SBATCH -N " + num_nodes + "\n")
   bash_file.write("#SBATCH -n " + num_cores + "\n")
-  bash_file.write("#SBATCH -t 06:00:00\n\n")
+  bash_file.write("#SBATCH -t 12:00:00\n\n")
   bash_file.write("source ~/.bashrc\n")
 
   bash_file.write("\n\n")
@@ -129,25 +132,23 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
   return bash_filename
 
 def update_config(level, bash_file, scripts_path, invdir, atlist, idx):
+  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
   with open(bash_file, 'a') as f:
     if level is not 64:
-      for i in range(1,5):
-        f.write("config_dir_" + str(i) + "=" + invdir + atlist[4*idx + i - 1] + "\n")
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_1 -config_path $config_dir_1\n") 
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_2 -config_path $config_dir_2\n") 
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_3 -config_path $config_dir_3\n") 
-      f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_4 -config_path $config_dir_4\n") 
-    for i in range(1,5):
-      f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i - 1] + "\n")
+      for i in range(0,n_local):
+        f.write("config_dir_" + str(i) + "=" + invdir + atlist[4*idx + i] + "\n")
+      for i in range(0,n_local):
+        f.write('python3 ' + scripts_path + "update_tu_config.py -res_path $results_dir_" + str(i) + " -config_path $config_dir_" + str(i) + "\n") 
+    for i in range(0,n_local):
+      f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i] + "\n")
 
   return bash_file
     
 def write_tuinv(invdir, atlist, bash_file, idx):
   f = open(bash_file, 'a') 
-  f.write("CUDA_VISIBLE_DEVICES=0 ibrun ${bin_path} -config ${results_dir_1}/solver_config.txt > ${results_dir_1}/log &\n")
-  f.write("CUDA_VISIBLE_DEVICES=1 ibrun ${bin_path} -config ${results_dir_2}/solver_config.txt > ${results_dir_2}/log &\n")
-  f.write("CUDA_VISIBLE_DEVICES=2 ibrun ${bin_path} -config ${results_dir_3}/solver_config.txt > ${results_dir_3}/log &\n")
-  f.write("CUDA_VISIBLE_DEVICES=3 ibrun ${bin_path} -config ${results_dir_4}/solver_config.txt > ${results_dir_4}/log &\n")
+  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
+  for i in range(0,n_local):
+    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/log &\n")
   f.write("\n")
   f.write("wait\n")
 
@@ -164,24 +165,24 @@ def create_level_specific_data(n, pat, data_dir, create = True):
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
     if not os.path.exists(fname_n):
-      resize_data(fname, fname_n, sz, order = 3)
+      resize_data(fname, fname_n, sz, order = 1)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
-      convert_nifti_to_nc(fname_n_nc, n)
+      convert_nifti_to_nc(fname_n_nc, n, reverse=True) ## reverse for files resized through nibabel
     fname = data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_seg_tu_aff2jakob_" + str(n) + ".nii.gz"
     if not os.path.exists(fname_n):
       resize_data(fname, fname_n, sz, order = 0)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
-      convert_nifti_to_nc(fname_n_nc, n)
+      convert_nifti_to_nc(fname_n_nc, n, reverse=True) ## reverse for files resized through nibabel
     fname = data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_c0Recon_aff2jakob_" + str(n) + ".nii.gz"
     if not os.path.exists(fname_n):
       resize_data(fname, fname_n, sz, order = 1)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
-      convert_nifti_to_nc(fname_n_nc, n)
+      convert_nifti_to_nc(fname_n_nc, n, reverse=True) ## reverse for files resized through nibabel
   else:
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
@@ -228,6 +229,7 @@ if __name__=='__main__':
 
   ### SNAFU
   patient_list = ["Brats18_CBICA_AAP_1"]
+  #patient_list = ["Brats18_CBICA_AAP_1", "Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
@@ -237,12 +239,13 @@ if __name__=='__main__':
   for pat in patient_list:
     data_dir  = os.path.join(os.path.join(in_dir, pat), "aff2jakob")
     res = results_dir + "/" + pat + "/tu/"
+    respat = results_dir + "/" + pat
     stat = results_dir + "/" + pat + "/stat/"
     if not os.path.exists(res):
       os.makedirs(res)
     if not os.path.exists(stat):
       os.makedirs(stat)
-    listfile = res + "/atlas-list.txt"
+    listfile = respat + "/atlas-list.txt"
 
     ### (1) create list of candidate atlases
     at_list = []
@@ -261,7 +264,8 @@ if __name__=='__main__':
         if float(vals[1]) >= vt_pat and float(vals[1]) < 1.3*vt_pat: ### choose atlases whose vt vol is greater than pat
           at_list.append(vals[0])
       
-      at_list = random.sample(at_list, 16) ### take a random subset
+      n_samples = 16 if len(at_list) > 16 else len(at_list)
+      at_list = random.sample(at_list, n_samples) ### take a random subset
       for item in at_list:
         f.write(item + "\n")
 
@@ -274,8 +278,6 @@ if __name__=='__main__':
       for l in lines:
         at_list.append(l.strip("\n"))
    
-    ### copy list file to stats for ease
-    shutil.copy(listfile, stat + "/atlas-list.txt")
 
     ### create data files
     create_level_specific_data(64, pat, data_dir)
@@ -290,11 +292,11 @@ if __name__=='__main__':
     
     ### (3)  create job files in tusolver results directories
     numatlas = len(at_list)
-    numjobs  = int(numatlas/4)
+    numjobs  = math.ceil(numatlas/4)
     bin_path = code_dir + "build/last/tusolver" 
     scripts_path = code_dir + "scripts/masseffect/"
     for i in range(0,numjobs):
-      bash_file = create_sbatch_header(res, i, compute_sys = "frontera")
+      bash_file = create_sbatch_header(respat, i, compute_sys = "frontera")
       with open(bash_file, 'a') as f:
         f.write("bin_path=" + bin_path + "\n")
       
@@ -304,9 +306,9 @@ if __name__=='__main__':
         bash_file = update_config(n, bash_file, scripts_path, res_level, at_list, i) 
         bash_file = write_tuinv(res_level, at_list, bash_file, i)
 
-      ### extract stats
-      with open(bash_file, 'a') as f:
-        f.write("python3 " + scripts_path + "/extract_stats.py -n 256 -res_path " + stat + " -inv_path " + res + "/256/ \n") 
+#      ### extract stats
+#      with open(bash_file, 'a') as f:
+#        f.write("python3 " + scripts_path + "/extract_stats.py -n 256 -res_path " + stat + " -inv_path " + res + "/256/ \n") 
 
       if submit_job:
         subprocess.call(['sbatch', bash_file])

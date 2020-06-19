@@ -55,7 +55,10 @@ def resizeImage(wfile, name, size, outdir, inorder=0):
     ncimg      = Dataset(wfile, mode='r', format="NETCDF3_CLASSIC")
     img        = np.transpose(ncimg.variables['data'])
     dimensions = size * np.ones(3)
-    img        = skimage.transform.resize(img, dimensions, order=inorder)
+#    img        = skimage.transform.resize(img, dimensions, order=inorder)
+    fac = float(size)/float(256)
+    if size is not 256:
+      img = ndimage.zoom(img, fac, order=inorder)
     wfile_new  = outdir + "/" + name + "_" + str(size) + ".nc"
     createNetCDFFile(wfile_new, dimensions, np.transpose(img))
 
@@ -65,12 +68,13 @@ tumor_dir = os.getcwd() + "/../../"
 ### atlases
 patient_name = "Brats18_CBICA_AAP_1"
 pat          = False
-new_size     = 160
-pat_prefix   = tumor_dir + "brain_data/real_data/" + patient_name + "/data/" + patient_name
-invdir       = tumor_dir + "results/" + patient_name
-regdir       = tumor_dir + "/reg/"
-atlasdir     = tumor_dir + "../data/adni-nc/"
-outdir       = atlasdir + str(new_size) + "/"
+new_size     = 256
+#pat_prefix   = tumor_dir + "brain_data/real_data/" + patient_name + "/data/" + patient_name
+#invdir       = tumor_dir + "results/" + patient_name
+#regdir       = tumor_dir + "/reg/"
+atlasdir     = "/scratch1/05027/shas1693/adni-nc/"
+#atlasdir     = tumor_dir + "../data/adni-nc/"
+outdir       = "/scratch1/05027/shas1693/adni-nc/" + str(new_size) + "/"
 if not os.path.exists(outdir):
   os.makedirs(outdir)
 
