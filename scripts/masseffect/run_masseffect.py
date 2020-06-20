@@ -100,7 +100,7 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
   if compute_sys == 'frontera':
       queue = "rtx"
       num_nodes = str(1)
-      num_cores = str(4)
+      num_cores = str(1)
   elif compute_sys == 'maverick2':
       queue = "v100"
       num_nodes = str(1)
@@ -140,7 +140,7 @@ def write_tuinv(invdir, atlist, bash_file, idx):
   for i in range(0,n_local):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i] + "\n")
   for i in range(0,n_local):
-    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun -np 1 ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/log &\n")
+    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/log &\n")
   f.write("\n")
   f.write("wait\n")
 
@@ -223,8 +223,7 @@ if __name__=='__main__':
       patient_list.remove(failed_pat)
 
   ### SNAFU
-  patient_list = ["Brats18_CBICA_ABO_1"]
-#, "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+  patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
