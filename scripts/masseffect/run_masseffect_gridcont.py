@@ -225,11 +225,12 @@ if __name__=='__main__':
     for l in lines:
       failed_pat = l.strip("\n")
       print("ignoring failed patient {}".format(failed_pat))
-      patient_list.remove(failed_pat)
+      if failed_pat in patient_list:
+        patient_list.remove(failed_pat)
 
   ### SNAFU
-  patient_list = ["Brats18_CBICA_AAP_1"]
-  #patient_list = ["Brats18_CBICA_AAP_1", "Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
+  #patient_list = ["Brats18_CBICA_AAP_1"]
+  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
@@ -296,7 +297,7 @@ if __name__=='__main__':
     bin_path = code_dir + "build/last/tusolver" 
     scripts_path = code_dir + "scripts/masseffect/"
     for i in range(0,numjobs):
-      bash_file = create_sbatch_header(respat, i, compute_sys = "frontera")
+      bash_file = create_sbatch_header(respat, i, compute_sys = args.compute_sys)
       with open(bash_file, 'a') as f:
         f.write("bin_path=" + bin_path + "\n")
       
