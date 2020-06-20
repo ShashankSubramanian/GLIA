@@ -240,6 +240,7 @@ def write_config(set_params, run):
         f.write("obs_lambda=" + str(p['obs_lambda']) + "\n");
         f.write("two_time_points_=" + str(p['two_time_points_']) + "\n");
         f.write("atlas_labels=" + str(p['atlas_labels']) + "\n");
+        f.write("patient_labels=" + str(p['patient_labels']) + "\n");
 
         f.write("\n");
         f.write("### initial condition" + "\n");
@@ -346,7 +347,7 @@ def submit(tu_params, run_params, submit_job = True):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
-            run_params['queue'] = 'normal'
+            run_params['queue'] = 'rtx'
         else:
             run_params['queue'] = 'normal'
     if 'nodes' not in run_params:
@@ -372,7 +373,7 @@ def submit(tu_params, run_params, submit_job = True):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['mpi_taks'] = 1
         elif run_params['compute_sys'] == 'frontera':
-            run_params['mpi_taks'] = 32
+            run_params['mpi_taks'] = 1
         else:
             run_params['mpi_taks'] = 1
 
