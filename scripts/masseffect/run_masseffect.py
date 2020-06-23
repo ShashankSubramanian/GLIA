@@ -54,8 +54,8 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['multilevel']         = 1                 # rescale p activations according to Gaussian width on each level
     p['output_dir'] 		    = os.path.join(res_dir, atlas + case_str + '/');  	# results path
     p['d1_path']            = ""  # from segmentation directly
-#    p['d0_path']            = pat_dir + atlas + "/" + pat + '_c0Recon_transported' + n_str + '.nc'              # path to initial condition for tumor
-    p['d0_path']            = pat_dir + pat + '_c0Recon_aff2jakob' + n_str + '.nc'              # path to initial condition for tumor
+    p['d0_path']            = pat_dir + atlas + "/" + pat + '_c0Recon_transported' + n_str + '.nc'              # path to initial condition for tumor
+#    p['d0_path']            = pat_dir + pat + '_c0Recon_aff2jakob' + n_str + '.nc'              # path to initial condition for tumor
     p['atlas_labels']       = "[wm=6,gm=5,vt=7,csf=8]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['patient_labels']     = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['a_seg_path']         = atlas_dir + "/" + atlas + "_seg_aff2jakob_ants" + n_str + ".nc"
@@ -355,7 +355,7 @@ if __name__=='__main__':
         res_level = res + "/" + str(n) + "/"
         if reg_flag: ### perform registration first
           bash_file = write_reg(reg, pat, data_dir, atlas_dir + "/nifti/", at_list, claire_dir, bash_file, i)
- #       bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i) SNAFU
+        bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i)
         bash_file = write_tuinv(res_level, at_list, bash_file, i) 
     else:
       for i in range(0,numjobs):
