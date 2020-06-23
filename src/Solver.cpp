@@ -469,71 +469,15 @@ PetscErrorCode InverseMassEffectSolver::run() {
     x_ptr[2] = distk(eng) * 1E-2;
   }
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ (ierr);
-
+  
   optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
-
-  
-//  Vec x_scale; 
-//  ierr = VecDuplicate(p_rec_, &x_scale); CHKERRQ(ierr);
-//
-//  ScalarType *scale_ptr;
-//  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ(ierr);
-//  ierr = VecGetArray(x_scale, &scale_ptr); CHKERRQ(ierr);
-//  scale_ptr[0] = 0*x_ptr[0] / 1E4;
-//  scale_ptr[1] = 0*x_ptr[1];
-//  scale_ptr[2] = 0*x_ptr[2] / 1E-2 + 0.5;
-//  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
-//
-//  Vec d1, d2;
-//  ierr = VecDuplicate(x_scale, &d1); CHKERRQ(ierr);
-//  ierr = VecDuplicate(x_scale, &d2); CHKERRQ(ierr);
-//
-//  ScalarType *d1_ptr, *d2_ptr;
-//  ierr = VecGetArray(d1, &d1_ptr); CHKERRQ(ierr);
-//  ierr = VecGetArray(d2, &d2_ptr); CHKERRQ(ierr);
-// 
-//  d1_ptr[0] = 0.402885 - scale_ptr[0];
-//  d1_ptr[1] = 9.22808 - scale_ptr[1];
-//  d1_ptr[2] = 2.4698 - scale_ptr[2];
-//  d2_ptr[0] = 1.2 - scale_ptr[0];
-//  d2_ptr[1] = 12 - scale_ptr[1];
-//  d2_ptr[2] = 5 - scale_ptr[2];
-//
-//  ierr = VecRestoreArray(d1, &d1_ptr); CHKERRQ(ierr);
-//  ierr = VecRestoreArray(d2, &d2_ptr); CHKERRQ(ierr);
-//  ierr = VecRestoreArray(x_scale, &scale_ptr); CHKERRQ(ierr);
-//
-//  ierr = derivative_operators_->visLossLandscape(x_scale, d2, nullptr, data_, "obj-list"); CHKERRQ(ierr);
-//  ierr = VecDestroy(&d1); CHKERRQ(ierr);
-//  ierr = VecDestroy(&d2); CHKERRQ(ierr);
-
-  // SNAFU: compute hessian
-//  ierr = tuMSGstd("computing FD hessian at IC"); CHKERRQ(ierr);
-//  Vec x_scale; 
-//  ierr = VecDuplicate(p_rec_, &x_scale); CHKERRQ(ierr);
-//  ScalarType *scale_ptr;
-//  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ(ierr);
-//  ierr = VecGetArray(x_scale, &scale_ptr); CHKERRQ(ierr);
-//  scale_ptr[0] = x_ptr[0] / 1E4;
-//  scale_ptr[1] = x_ptr[1];
-//  scale_ptr[2] = x_ptr[2] / 1E-2;
-//  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
-//  ierr = VecRestoreArray(x_scale, &scale_ptr); CHKERRQ(ierr);
-//  std::string ss_str = "IC";
-//  ierr = derivative_operators_->computeFDHessian(x_scale, data_, ss_str); CHKERRQ(ierr); 
-//  ierr = tuMSGstd("Hessian compute complete."); CHKERRQ(ierr);
-
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
-//
- // SNAFU: compute hessian
-// ierr = tuMSGstd("computing FD hessian at optimum"); CHKERRQ(ierr);
-// ierr = VecCopy(p_rec_, x_scale); CHKERRQ(ierr);
-// ss_str = "opt";
-// ierr = derivative_operators_->computeFDHessian(x_scale, data_, ss_str); CHKERRQ(ierr); 
-//
-// ierr = VecDestroy(&x_scale); CHKERRQ(ierr);
+  
+  ierr = tuMSGstd("...computing FD hessian at optimum"); CHKERRQ(ierr);
+  std::string ss_str = "opt";
+  ierr = derivative_operators_->computeFDHessian(p_rec_, data_, ss_str); CHKERRQ(ierr); 
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
@@ -738,7 +682,7 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
       ierr = VecDuplicate(tmp_, &p_vt_); CHKERRQ(ierr);
       csf_ = nullptr; data_t1_ = nullptr; ed_ = nullptr;
       if (app_settings_->patient_seg_[3] > 0) {
-        ierr = VecDuplicate(tmp_, &csf_); CHKERRQ(ierr);
+        ierr = VecDuplicate(tmp_, &p_csf_); CHKERRQ(ierr);
       }
       // tc exists as label, or necrotic core + enhancing rim exist as labels
       if (app_settings_->patient_seg_[4] > 0 || (app_settings_->patient_seg_[5] > 0 && app_settings_->patient_seg_[6] > 0)) {
@@ -784,6 +728,13 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
     if (p_csf_ != nullptr) {
       ierr = spec_ops_->weierstrassSmoother(p_csf_, p_csf_, params_, sigma_smooth); CHKERRQ(ierr);
     }
+  }
+  
+  if (params_->tu_->write_output_) {
+    if (p_gm_ != nullptr) dataOut(p_gm_, params_, "p_gm.nc");
+    if (p_wm_ != nullptr) dataOut(p_wm_, params_, "p_wm.nc");
+    if (p_csf_ != nullptr) dataOut(p_csf_, params_, "p_csf.nc");
+    if (p_vt_ != nullptr) dataOut(p_vt_, params_, "p_vt.nc");
   }
 
   PetscFunctionReturn(ierr);

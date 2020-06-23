@@ -9,10 +9,11 @@ from netCDF4 import Dataset
 from numpy import linalg as la
 import math
 
-sys.path.append('../utils/')
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
 from file_io import writeNII, createNetCDF
 from image_tools import resizeImage, resizeNIIImage
-sys.path.append('../')
+from register import create_patient_labels, create_atlas_labels, register, transport
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../')
 import params as par
 import random
 import shutil
@@ -29,8 +30,6 @@ def convert_nifti_to_nc(filename, n, reverse=False):
 def resize_data(img_path, img_path_out, sz, order = 3):
   sz       -= 1
   img       = nib.load(img_path)
-#  fac       = float(sz) / float(256)
-#  img_2     = ndimage.zoom(img, fac, order=inorder)
   img_rsz   = resizeNIIImage(img, sz, interp_order = order)
   nib.save(img_rsz, img_path_out)
 
@@ -44,17 +43,18 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
   case_str    = ""  ### for different cases to go in different dir with this suffix
   n_str       = "_" + str(n)
 
-  ### randomize the IC  -- will be overwritten in gridcont at finer levels
-  init_rho    = random.uniform(5,10)
-  init_k      = random.uniform(0.005,0.05)
-  init_gamma  = random.uniform(1E4,1E5)
-
   for atlas in at_list:
+    ### randomize the IC  -- will be overwritten in gridcont at finer levels
+    init_rho                = random.uniform(5,10)
+    init_k                  = random.uniform(0.005,0.05)
+    init_gamma              = random.uniform(1E4,1E5)
     atlas                   = atlas.strip("\n")
+
     p['n']                  = n
     p['multilevel']         = 1                 # rescale p activations according to Gaussian width on each level
     p['output_dir'] 		    = os.path.join(res_dir, atlas + case_str + '/');  	# results path
     p['d1_path']            = ""  # from segmentation directly
+#    p['d0_path']            = pat_dir + atlas + "/" + pat + '_c0Recon_transported' + n_str + '.nc'              # path to initial condition for tumor
     p['d0_path']            = pat_dir + pat + '_c0Recon_aff2jakob' + n_str + '.nc'              # path to initial condition for tumor
     p['atlas_labels']       = "[wm=6,gm=5,vt=7,csf=8]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['patient_labels']     = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
@@ -94,7 +94,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     par.submit(p, r, submit_job);
 
 def create_sbatch_header(results_path, idx, compute_sys='frontera'):
-  bash_filename = results_path + "/tuinv-job" + str(idx) + ".sh"
+  bash_filename = results_path + "/job" + str(idx) + ".sh"
   print("creating job file in ", results_path)
 
   if compute_sys == 'frontera':
@@ -121,11 +121,11 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
   bash_file = open(bash_filename, 'w')
   bash_file.write("#!/bin/bash\n\n");
   bash_file.write("#SBATCH -J tumor-inv\n");
-  bash_file.write("#SBATCH -o " + results_path + "/tu_log_" + str(idx) + ".txt\n")
+  bash_file.write("#SBATCH -o " + results_path + "/log_" + str(idx) + ".txt\n")
   bash_file.write("#SBATCH -p " + queue + "\n")
   bash_file.write("#SBATCH -N " + num_nodes + "\n")
   bash_file.write("#SBATCH -n " + num_cores + "\n")
-  bash_file.write("#SBATCH -t 04:00:00\n\n")
+  bash_file.write("#SBATCH -t 03:00:00\n\n")
   bash_file.write("source ~/.bashrc\n")
 
   bash_file.write("\n\n")
@@ -198,6 +198,53 @@ def create_level_specific_data(n, pat, data_dir, create = True):
     if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
 
+def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx):
+  """ writes registration cmds """
+  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
+  ### create template(patient) labels
+  if not os.path.exists(reg + pat + "_vt.nii.gz"):
+    create_patient_labels(data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz", reg, pat)
+  ### create reference(atlas) labels
+  for i in range(0, n_local):
+    at = at_list[4*idx+i]
+    if not os.path.exists(reg + at + "/" + at + "_vt.nii.gz"):
+      create_atlas_labels(atlas_dir + at + "_seg_aff2jakob_ants.nii.gz", reg + at, at) 
+    ### register
+    bash_file = register(claire_dir, reg+at, at, reg, pat, bash_file, i)
+  
+  with open(bash_file, "a") as f:
+    f.write("\n\nwait\n\n")
+  
+  for i in range(0, n_local):
+    ### transport
+    at = at_list[4*idx+i]
+    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz", pat + "_c0Recon", bash_file, i)    
+    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz", pat + "_labels", bash_file, i)    
+
+  with open(bash_file, "a") as f:
+    f.write("\n\nwait\n\n")
+  
+  return bash_file
+
+def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx):
+  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
+  with open(bash_file, "a") as f:
+    for i in range(0, n_local):
+      ### convert transported c0 to netcdf and mv it
+      at = at_list[4*idx+i]
+      nm = pat + "_c0Recon_transported_" + str(n) + ".nc"
+      ###if not os.path.exists(reg + at + "/" + nm):
+      f.write("python3 " + scripts_path + "/helpers/convert_to_netcdf.py -i " + reg + at + "/" + pat + "_c0Recon_transported.nii.gz -n " + str(n) + " -resample\n")
+
+    f.write("\n\n")
+
+    for i in range(0, n_local):
+      at = at_list[4*idx+i]
+      nm = pat + "_c0Recon_transported_" + str(n) + ".nc"
+      f.write("cp " + reg + at + "/" + nm + " " + tu + "/" + at + "/" + nm + "\n") 
+
+  return bash_file
+
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -210,8 +257,8 @@ if __name__=='__main__':
   r_args.add_argument('-r', '--reg', type = int, help = 'perform registration', default = 0) 
   r_args.add_argument('-rc', '--claire_dir', type = str, help = 'path to claire bin', default = "") 
   r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
+  r_args.add_argument('-submit', action = 'store_true', help = 'submit jobs (after they have been created)') 
   args = parser.parse_args();
-  submit_job = True
 
   patient_list = os.listdir(args.patient_dir)
   if os.path.exists(args.patient_dir + "/failed.txt"): ### some patients have failed gridcont; ignore them
@@ -224,7 +271,8 @@ if __name__=='__main__':
         patient_list.remove(failed_pat)
 
   ### SNAFU
-  patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1"]
+  patient_list = ["Brats18_CBICA_ABO_1"]
+  #patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
@@ -265,7 +313,7 @@ if __name__=='__main__':
           at_list.append(vals[0])
 
       n_samples = 16 if len(at_list) > 16 else len(at_list)
-      at_list = random.sample(at_list, n_samples) ### take a random subset
+      at_list = at_list[0:n_samples] ###random.sample(at_list, n_samples) ### take a random subset
       for item in at_list:
         f.write(item + "\n")
 
@@ -277,7 +325,7 @@ if __name__=='__main__':
         lines = f.readlines()
       for l in lines:
         at_list.append(l.strip("\n"))
-   
+  
 
     ### create data files
     if n is not 256:
@@ -294,21 +342,23 @@ if __name__=='__main__':
     numatlas = len(at_list)
     numjobs  = math.ceil(numatlas/4)
     bin_path = code_dir + "build/last/tusolver" 
-    scripts_path = code_dir + "scripts/masseffect/"
-    for i in range(0,numjobs):
-      bash_file = create_sbatch_header(respat, i, compute_sys = args.compute_sys)
-      with open(bash_file, 'a') as f:
-        f.write("bin_path=" + bin_path + "\n")
-        if reg_flag:
-          f.write("claire_bin_path=" + claire_dir + "\n")
-       
-      ### create tumor_inv stats
-      res_level = res + "/" + str(n) + "/"
-#      if reg_flag: ### perform registration first
-#        bash_file = write_reg(reg, at_list, bash_file, i)
-
-      bash_file = write_tuinv(res_level, at_list, bash_file, i)
-      
-      if submit_job:
+    scripts_path = code_dir + "scripts/"
+    if not args.submit:
+      for i in range(0,numjobs):
+        bash_file = create_sbatch_header(respat, i, compute_sys = args.compute_sys)
+        with open(bash_file, 'a') as f:
+          f.write("bin_path=" + bin_path + "\n")
+          if reg_flag:
+            f.write("claire_bin_path=" + claire_dir + "\n")
+        
+        ### create tumor_inv stats
+        res_level = res + "/" + str(n) + "/"
+        if reg_flag: ### perform registration first
+          bash_file = write_reg(reg, pat, data_dir, atlas_dir + "/nifti/", at_list, claire_dir, bash_file, i)
+ #       bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i) SNAFU
+        bash_file = write_tuinv(res_level, at_list, bash_file, i) 
+    else:
+      for i in range(0,numjobs):
+        bash_file = respat + "/job" + str(i) + ".sh"
         subprocess.call(['sbatch', bash_file])
 
