@@ -330,9 +330,15 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   ScalarType *x_ptr;
   ierr = VecGetArray(tao_x, &x_ptr); CHKERRQ(ierr);
   if (itctx->params_->tu_->model_ == 4) {
-    g = x_ptr[0];
-    r = x_ptr[1];
-    k = x_ptr[1 + itctx->params_->tu_->nr_];
+    if (itctx->params_->opt_->invert_mass_effect_) {
+      g = x_ptr[0];
+      r = x_ptr[1];
+      k = x_ptr[1 + itctx->params_->tu_->nr_];
+    } else {
+      g = 0;
+      r = x_ptr[0];
+      k = x_ptr[0 + itctx->params_->tu_->nr_];
+    }
     s << "  Scalar parameters: (rho, kappa, gamma) = (" << std::scientific << std::setprecision(8) << r << ", "  
                                                         << std::scientific << std::setprecision(8) << k << ", " 
                                                         << std::scientific << std::setprecision(8) << g << ")";

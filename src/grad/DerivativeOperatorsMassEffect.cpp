@@ -63,9 +63,14 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Ve
 
   std::stringstream s;
   ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
-  params_->tu_->forcing_factor_ = params_->opt_->gamma_scale_ * x_ptr[0];  // re-scaling parameter scales
-  params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[1];               // rho
-  params_->tu_->k_ = params_->opt_->k_scale_ * x_ptr[2];                   // kappa
+  if (params_->opt_->invert_mass_effect_) {
+    params_->tu_->forcing_factor_ = params_->opt_->gamma_scale_ * x_ptr[0];  // re-scaling parameter scales
+    params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[1];               // rho
+    params_->tu_->k_ = params_->opt_->k_scale_ * x_ptr[2];                   // kappa
+  } else {
+    params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[0];               // rho
+    params_->tu_->k_ = params_->opt_->k_scale_ * x_ptr[1];                   // kappa
+  }
   ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
 
   if (!disable_verbose_) {

@@ -388,6 +388,8 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   std::stringstream ss;
   ierr = tuMSGwarn(" Initializing Mass Effect Inversion."); CHKERRQ(ierr);
 
+  // enable/disable inversion for mass effect parameter in the optimizer 
+  params->opt_->invert_mass_effect_ = true;
   // set and populate parameters; read material properties; read data
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
@@ -398,8 +400,6 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
   ierr = setupData(); CHKERRQ(ierr);
-  // enable mass effect inversion in optimizer
-  params_->opt_->invert_mass_effect_ = true;
 
   // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
@@ -418,7 +418,8 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
     ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
     p_rec_ = nullptr;
   }
-  n_inv_ = 1 + params_->get_nk() + params_->get_nr();
+  int n_g = (params_->opt_->invert_mass_effect_) ? 1 : 0;
+  n_inv_ = n_g + params_->get_nk() + params_->get_nr();
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
   ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
@@ -459,14 +460,20 @@ PetscErrorCode InverseMassEffectSolver::run() {
   std::uniform_real_distribution<> distg(0.1, 1.0); // define the range
   std::uniform_real_distribution<> distr(5, 10); // define the range
   std::uniform_real_distribution<> distk(0.5, 5); // define the range
-  if (params_->opt_->multilevel_) { // ICs handled from script
-    x_ptr[0] = params_->tu_->forcing_factor_;
-    x_ptr[1] = params_->tu_->rho_;
-    x_ptr[2] = params_->tu_->k_;
-  } else { // else random ICs
-    x_ptr[0] = distg(eng) * 1E5;
-    x_ptr[1] = distr(eng);
-    x_ptr[2] = distk(eng) * 1E-2;
+  if (params_->opt_->invert_mass_effect_) {
+    if (params_->opt_->multilevel_) { // ICs handled from script
+      x_ptr[0] = params_->tu_->forcing_factor_;
+      x_ptr[1] = params_->tu_->rho_;
+      x_ptr[2] = params_->tu_->k_;
+    } else { // else random ICs
+      x_ptr[0] = distg(eng) * 1E5;
+      x_ptr[1] = distr(eng);
+      x_ptr[2] = distk(eng) * 1E-2;
+    }
+  } else {
+    x_ptr[0] = params_->tu_->rho_;
+    x_ptr[1] = params_->tu_->k_;
+    params_->tu_->forcing_factor_ = 0;
   }
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   
