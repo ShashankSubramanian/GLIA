@@ -125,7 +125,7 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
   bash_file.write("#SBATCH -p " + queue + "\n")
   bash_file.write("#SBATCH -N " + num_nodes + "\n")
   bash_file.write("#SBATCH -n " + num_cores + "\n")
-  bash_file.write("#SBATCH -t 12:00:00\n\n")
+  bash_file.write("#SBATCH -t 06:00:00\n\n")
   bash_file.write("source ~/.bashrc\n")
 
   bash_file.write("\n\n")
@@ -281,8 +281,9 @@ if __name__=='__main__':
         patient_list.remove(failed_pat)
 
   ### SNAFU
-  ##patient_list = ["Brats18_CBICA_ABO_1"]
-  patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+#  patient_list = ["Brats18_CBICA_ABO_1"]
+#  patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
@@ -337,12 +338,19 @@ if __name__=='__main__':
   
 
     ### create data files
-    create_level_specific_data(64, pat, data_dir)
-    create_level_specific_data(128, pat, data_dir)
-    create_level_specific_data(256, pat, data_dir, create=False) ### just copy these files
+    level_1 = 64
+    level_2 = 128
+    level_3 = 160
+    create_level_specific_data(level_1, pat, data_dir)
+    create_level_specific_data(level_2, pat, data_dir)
+    if level_3 == 256:
+      create_level_specific_data(level_3, pat, data_dir, create=False) ### just copy these files
+    else:
+      create_level_specific_data(level_3, pat, data_dir)
+
 
     ### (2)  create tumor solver configs
-    levels   = [64,128,256]
+    levels   = [level_1, level_2, level_3]
     for n in levels:
       pat_dir    = res + "/" + str(n) + "/"
       atlas_dir_level  = atlas_dir + "/" + str(n) + "/"

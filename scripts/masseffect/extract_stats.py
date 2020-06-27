@@ -42,7 +42,7 @@ if __name__=='__main__':
   u_avg = np.zeros((n,n,n))
   suff = ""
   base_dir  = os.getcwd() + "/../../"
-  use_mat_prop = False
+  use_mat_prop = True
   
   #patient_list = ["Brats18_CBICA_ABO_1"]
   patient_list = ["Brats18_CBICA_AAP_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
@@ -96,6 +96,7 @@ if __name__=='__main__':
       at_list.append(l.strip('\n'))
 
     patient_compute = False
+#    num_atlases = 8 if len(at_list) > 8 else len(at_list)
     for atlas in at_list:
       exist = True
       print("reading recon dat file from atlas " + atlas)
@@ -187,6 +188,7 @@ if __name__=='__main__':
           cond = LA.cond(hess)
 
         ### compute vt volume change
+        ###print("atlas stats: {},{}".format(at_orig, at_vt_recon))
         vt_change = np.abs((at_vt_recon - at_orig)/at_orig)
         vt_err    = np.abs((at_vt_recon - pat_vt)/pat_vt)
         
@@ -196,6 +198,11 @@ if __name__=='__main__':
           print('failed atlas {}'.format(atlas))
           row += atlas + "(F) \t& "
           row_csv += atlas + "(F),"
+        elif cond > 10000:
+          failed_atlas.append(atlas)
+          print('bad conditioned atlas {}'.format(atlas))
+          row += atlas + "(B) \t& "
+          row_csv += atlas + "(B),"
         else:
           gam_list.append(gamma)
           rho_list.append(rho)

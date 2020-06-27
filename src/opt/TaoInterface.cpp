@@ -671,7 +671,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     ss.str(std::string());
     ss.clear();
     // ||g_k||_2 < tol
-    if (gnorm < gatol || std::abs(jxold-jx) <= PETSC_MACHINE_EPSILON)  {
+    if (gnorm < gatol)  {
       stop[3] = true;
     }
     ss  << "  " << stop[3] << "    ||g|| = " << std::setw(18)
@@ -739,12 +739,13 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
       ctx->params_->optf_->converged_ = true;
       if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
       PetscFunctionReturn (ierr);
-    } else if (stop[6]) {
-      ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER); CHKERRQ(ierr);
-      ctx->params_->optf_->converged_ = true;
-      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-      PetscFunctionReturn (ierr);
-    }
+    } 
+//    else if (stop[6]) {
+//      ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER); CHKERRQ(ierr);
+//      ctx->params_->optf_->converged_ = true;
+//      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+//      PetscFunctionReturn (ierr);
+//    }
   }
   else {
     // if the gradient is zero, we should terminate immediately

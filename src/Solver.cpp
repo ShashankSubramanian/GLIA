@@ -461,15 +461,9 @@ PetscErrorCode InverseMassEffectSolver::run() {
   std::uniform_real_distribution<> distr(5, 10); // define the range
   std::uniform_real_distribution<> distk(0.5, 5); // define the range
   if (params_->opt_->invert_mass_effect_) {
-    if (params_->opt_->multilevel_) { // ICs handled from script
-      x_ptr[0] = params_->tu_->forcing_factor_;
-      x_ptr[1] = params_->tu_->rho_;
-      x_ptr[2] = params_->tu_->k_;
-    } else { // else random ICs
-      x_ptr[0] = distg(eng) * 1E5;
-      x_ptr[1] = distr(eng);
-      x_ptr[2] = distk(eng) * 1E-2;
-    }
+    x_ptr[0] = params_->tu_->forcing_factor_;
+    x_ptr[1] = params_->tu_->rho_;
+    x_ptr[2] = params_->tu_->k_;
   } else {
     x_ptr[0] = params_->tu_->rho_;
     x_ptr[1] = params_->tu_->k_;
