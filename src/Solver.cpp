@@ -584,6 +584,30 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
       ss.str(std::string());
       ss.clear();
     }
+    ss << "disp_x_rec_final";
+    ierr = dataOut(tumor_->displacement_->x_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "disp_y_rec_final";
+    ierr = dataOut(tumor_->displacement_->y_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "disp_z_rec_final";
+    ierr = dataOut(tumor_->displacement_->z_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vel_x_rec_final";
+    ierr = dataOut(tumor_->velocity_->x_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vel_y_rec_final";
+    ierr = dataOut(tumor_->velocity_->y_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vel_z_rec_final";
+    ierr = dataOut(tumor_->velocity_->z_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
   }
 
   ScalarType max, min;
@@ -661,6 +685,9 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
     opfile.close();
   }
 
+  // === final prediction
+  ierr = predict(); CHKERRQ(ierr);
+  
   PetscFunctionReturn(ierr);
 }
 
