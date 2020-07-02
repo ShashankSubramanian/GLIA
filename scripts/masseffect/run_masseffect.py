@@ -88,7 +88,9 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['lbfgs_scale_type']   = "scalar"                  # initial hessian approximation
     p['lbfgs_scale_hist']   = 5                         # used vecs for initial hessian approx
     p['ls_max_func_evals']  = 20                        # number of max line-search attempts
-    p['prediction']         = 0                         # enable prediction
+    p['prediction']         = 1                         # enable prediction
+    p['pred_times']         = [1.0, 1.2, 1.5]           # times for prediction
+    p['dt_pred']            = 0.02                      # time step size for prediction
 
 ###############=== write config to write_path and submit job
     par.submit(p, r, submit_job);
@@ -243,6 +245,7 @@ def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx):
       nm = pat + "_c0Recon_transported_" + str(n) + ".nc"
       f.write("cp " + reg + at + "/" + nm + " " + tu + "/" + at + "/" + nm + "\n") 
 
+    f.write("\n\n")
   return bash_file
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -271,8 +274,9 @@ if __name__=='__main__':
         patient_list.remove(failed_pat)
 
   ### SNAFU
-  patient_list = ["Brats18_CBICA_ABO_1"]
-  #patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+#  patient_list = ["Brats18_CBICA_ABO_1"]
+#  patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
