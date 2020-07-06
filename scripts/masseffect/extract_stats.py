@@ -28,6 +28,7 @@ def computeVolume(mat):
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='extract/compute tumor stats')
   parser.add_argument ('-n', type=int, help = 'size');
+  parser.add_argument ('-patient_dir', type = str, help = 'path to patients (brats format)') 
   parser.add_argument ('-results_path', type=str, help = 'path to tumor inversion results');
   parser.add_argument ('-atlas_stat_path', type=str, help = 'path to atlas stats');
   parser.add_argument ('-patient_stat_path', type=str, help = 'path to patient stats');
@@ -44,8 +45,33 @@ if __name__=='__main__':
   base_dir  = os.getcwd() + "/../../"
   use_mat_prop = True
   
-  #patient_list = ["Brats18_CBICA_ABO_1"]
-  patient_list = ["Brats18_CBICA_AAP_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1"]
+  
+  
+  with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
+    brats_pats = f.readlines()
+  patient_list = []
+  for l in brats_pats:
+    patient_list.append(l.split(",")[0])
+  if os.path.exists(args.patient_dir + "/failed.txt"): ### some patients have failed gridcont; ignore them
+    with open(args.patient_dir + "/failed.txt", "r") as f:
+      lines = f.readlines()
+    for l in lines:
+      failed_pat = l.strip("\n")
+      print("ignoring failed patient {}".format(failed_pat))
+      if failed_pat in patient_list:
+        patient_list.remove(failed_pat)
+
+  other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  for others in other_remove:
+    patient_list.remove(others)
+
+  block_job = True
+  if block_job:
+    it = 0
+    num_pats = 10
+    ### 0:10
+    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+  
   global_stats = ""
   global_f     = open(results_path + "/tumor_inversion_stats.csv", "w+")
   for pat_name in patient_list:
@@ -287,6 +313,7 @@ if __name__=='__main__':
     
       row_csv += "\n\n ######################################################## \n\n "
       row_means = ""
+      row_means += pat_name + ","
       row_means += str(np.mean(gam_arr)) + "," + str(np.std(gam_arr)) + ","
       row_means += str(np.mean(rho_arr)) + "," + str(np.std(rho_arr)) + ","
       row_means += str(np.mean(kappa_arr)) + "," + str(np.std(kappa_arr)) + ","

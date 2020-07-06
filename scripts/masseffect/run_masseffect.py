@@ -248,6 +248,68 @@ def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx):
     f.write("\n\n")
   return bash_file
 
+def find_crossover(arr, low, high, x):
+  if x < arr[low]:
+    return low
+  if x > arr[high]:
+    return high
+  mid = (low + high) // 2
+  if arr[mid] <= x and arr[mid+1] > x:
+    return mid
+  if arr[mid] < x:
+    return find_crossover(arr, mid+1, high, x)
+  return find_crossover(arr, low, mid-1, x)
+
+   
+
+def find_k_closest(atlas_dict, k, elem, leave_out=[]):
+  """ finds k closest elements to a list with duplicates in leave_out not counted """
+  if len(leave_out) > 0:
+    atlas_dict_mod = {key:val for key,val in atlas_dict.items() if key not in leave_out}
+  else:
+    atlas_dict_mod = atlas_dict.copy()
+
+  vt = [v for k,v in atlas_dict_mod.items()]
+  names = [k for k,v in atlas_dict_mod.items()]
+
+  ##base case
+  if elem < vt[0]:
+    return names[0:k]
+  if elem > vt[-1]:
+    return names[-k:]
+
+  n = len(vt)
+  left = find_crossover(vt, 0, n-1, elem)
+  right = left + 1
+
+  if vt[left] == elem:
+    left -= 1
+
+  count = 0
+  at_list = []
+  while left >= 0 and right < n and count < k:
+    if elem - vt[left] < vt[right] - elem:
+      at_list.append(names[left])
+      left -= 1
+    else:
+      at_list.append(names[right])
+      right += 1
+    count += 1
+
+  ### elements remaining
+  while count < k and left >= 0:
+    at_list.append(names[left])
+    left -= 1
+    count += 1
+
+  while count < k  and right < n:
+    at_list.append(names[right])
+    right += 1
+    count += 1
+
+  return at_list
+
+
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -263,7 +325,12 @@ if __name__=='__main__':
   r_args.add_argument('-submit', action = 'store_true', help = 'submit jobs (after they have been created)') 
   args = parser.parse_args();
 
-  patient_list = os.listdir(args.patient_dir)
+  #patient_list = os.listdir(args.patient_dir)
+  with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
+    brats_pats = f.readlines()
+  patient_list = []
+  for l in brats_pats:
+    patient_list.append(l.split(",")[0])
   if os.path.exists(args.patient_dir + "/failed.txt"): ### some patients have failed gridcont; ignore them
     with open(args.patient_dir + "/failed.txt", "r") as f:
       lines = f.readlines()
@@ -273,10 +340,21 @@ if __name__=='__main__':
       if failed_pat in patient_list:
         patient_list.remove(failed_pat)
 
-  ### SNAFU
-#  patient_list = ["Brats18_CBICA_ABO_1"]
-#  patient_list = ["Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
-  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  for others in other_remove:
+    patient_list.remove(others)
+
+  block_job = True
+  if block_job:
+    it = 1
+    num_pats = 10
+    ### 10:20
+    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+
+  for item in patient_list:
+    print(item)
+  print(len(patient_list))
+#  exit()
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
@@ -285,6 +363,18 @@ if __name__=='__main__':
   n           = args.n_resample
   reg_flag    = args.reg
   claire_dir  = args.claire_dir
+
+  ### create atlas dict for corner cases and atlas selection
+  at_dict = {}
+  fa = open(atlas_dir + "/adni-atlas-stats.csv", "r")
+  la = fa.readlines()
+  for l in la:
+    at_dict[l.split(",")[0]] = l.split(",")[1]
+  ### sort the dict
+  at_dict = {k:float(v) for k,v in sorted(at_dict.items(), key=lambda item : item[1])}
+  all_at_vt = [v for k,v in at_dict.items()]
+  all_at_names = [k for k,v in at_dict.items()]
+
   for pat in patient_list:
     data_dir  = os.path.join(os.path.join(in_dir, pat), "aff2jakob")
     res = results_dir + "/" + pat + "/tu/"
@@ -301,11 +391,10 @@ if __name__=='__main__':
 
     ### (1) create list of candidate atlases
     at_list = []
+    at_list_err = False
     if not os.path.exists(listfile):
       f  = open(listfile, "w+")
-      fa = open(atlas_dir + "/adni-atlas-stats.csv", "r")
       fp = open(in_dir + "/brats-pat-stats.csv", "r")
-      la = fa.readlines()
       lp = fp.readlines()
       for l in lp:
         if pat in l:
@@ -315,6 +404,42 @@ if __name__=='__main__':
         vals = l.split(",")
         if float(vals[1]) >= vt_pat and float(vals[1]) < 1.3*vt_pat: ### choose atlases whose vt vol is greater than pat
           at_list.append(vals[0])
+
+      min_at_needed = 4
+      if len(at_list) < min_at_needed:
+        at_list_err = True
+        print("at_list selection failed for patient {}; finding nearest neighbors instead".format(pat))
+        ### cannot find sufficient atlases; relax the restrictions
+        if len(at_list) == 0:
+          ### pat vt is greater than all the atlases
+          ### pat vt is very small (at > 1.3pat for all atlases)
+          print("no atlases were found; nearest neighbors selected")
+          at_list = find_k_closest(at_dict, k=min_at_needed, elem=vt_pat)
+        else:
+          num_needed = min_at_needed - len(at_list)
+          print("insufficient atlases were found; trying 50% difference for remaining {} atlases".format(num_needed))
+          ct = 0
+          for l in la:
+            vals = l.split(",")
+            if float(vals[1]) >= vt_pat and float(vals[1]) < 1.5*vt_pat and vals[0] not in at_list:
+              at_list.append(vals[0])
+              ct += 1
+            if ct >= num_needed:
+              break
+          
+          if ct >= num_needed:
+            print("found atlases with relaxed constraint")
+          else:
+            num_needed -= ct
+            print("insufficient atlases were found; nearest neighbors selected for remaining {} atlases".format(num_needed))
+            extra = find_k_closest(at_dict, k=num_needed, elem=vt_pat, leave_out = at_list)
+            for item in extra:
+              at_list.append(item)
+
+      if at_list_err:
+        print(at_list)
+        input("Press enter to continue...")
+            
 
       n_samples = 16 if len(at_list) > 16 else len(at_list)
       at_list = at_list[0:n_samples] ###random.sample(at_list, n_samples) ### take a random subset
