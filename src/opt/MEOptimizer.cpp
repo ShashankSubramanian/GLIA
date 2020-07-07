@@ -88,6 +88,8 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
       ss << " and rescaled with scale " << ic_max / scale;
  //     ss << "rescaled; ";
     }
+    // copy back to data
+    ierr = VecCopy(ctx_->tumor_->c_0_, data_->dt0()); CHKERRQ(ierr);
     off = (in_size > n_g_ + nr + nk) ? np : 0; // offset in x_init vec
     off_in = 0;
 
