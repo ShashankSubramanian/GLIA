@@ -346,15 +346,18 @@ if __name__=='__main__':
 
   block_job = True
   if block_job:
-    it = 1
-    num_pats = 10
-    ### 10:20
+    it = 3
+    num_pats = 20
+    ### 60:80
     patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+
+  mylog = open(args.results_dir + "/config_log_" + str(it) + ".log", "a")
+  sys.stdout = mylog
 
   for item in patient_list:
     print(item)
   print(len(patient_list))
-#  exit()
+  #exit()
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir
@@ -438,7 +441,7 @@ if __name__=='__main__':
 
       if at_list_err:
         print(at_list)
-        input("Press enter to continue...")
+        ##input("Press enter to continue...")
             
 
       n_samples = 16 if len(at_list) > 16 else len(at_list)

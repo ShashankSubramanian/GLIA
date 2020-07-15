@@ -4,12 +4,13 @@ PAT_DIR=/scratch/05027/shas1693/tmi-results/
 AT_DIR=/scratch/05027/shas1693/adni-nc/
 CODE_DIR=/scratch/05027/shas1693/pglistr_tumor/
 CLAIRE_DIR=/scratch/05027/shas1693/claire-dev/bingpu/
-RES_DIR=$CODE_DIR/results/noreg/
+RES_DIR=$CODE_DIR/results/brats/
+JOB_DIR=$CODE_DIR/results/bratsjobs/
 COMP_SYS=longhorn
 N=160
-reg=0
+reg=1
 
-#python3 run_masseffect_gridcont.py -p $PAT_DIR -a $AT_DIR -csys $COMP_SYS -c $CODE_DIR -x $RES_DIR
-python3 run_masseffect.py -p $PAT_DIR -a $AT_DIR -csys $COMP_SYS -c $CODE_DIR -x $RES_DIR -n $N -r $reg -rc $CLAIRE_DIR
-##python3 run_masseffect.py -p $PAT_DIR -a $AT_DIR -csys $COMP_SYS -c $CODE_DIR -x $RES_DIR -n $N -r $reg -rc $CLAIRE_DIR -submit
+#python3 run_masseffect.py -p $PAT_DIR -a $AT_DIR -csys $COMP_SYS -c $CODE_DIR -x $RES_DIR -n $N -r $reg -rc $CLAIRE_DIR
+python3 run_multiple_patients.py -p $PAT_DIR -csys $COMP_SYS -c $CODE_DIR -x $RES_DIR -j $JOB_DIR
+#python3 run_masseffect.py -p $PAT_DIR -a $AT_DIR -csys $COMP_SYS -c $CODE_DIR -x $RES_DIR -n $N -r $reg -rc $CLAIRE_DIR -submit
 
