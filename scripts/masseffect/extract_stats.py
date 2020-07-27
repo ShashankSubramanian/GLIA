@@ -61,16 +61,17 @@ if __name__=='__main__':
       if failed_pat in patient_list:
         patient_list.remove(failed_pat)
 
-  other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  other_remove = [] #["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
   for others in other_remove:
     patient_list.remove(others)
 
   block_job = True
   if block_job:
-    it = 0
-    num_pats = 10
-    ### 0:10
-    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+    it = 5
+    num_pats = 40
+    ### 200:205
+#    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+    patient_list = patient_list[it*num_pats:it*num_pats + 5]
   
   global_stats = ""
   global_f     = open(results_path + "/tumor_inversion_stats.csv", "w+")
@@ -170,7 +171,7 @@ if __name__=='__main__':
 
       if not os.path.exists(hess_file):
         print("hessian file for atlas {} not found".format(atlas))
-        cond = inf
+        cond = math.inf
         exist = False
       if not os.path.exists(recon_file):
         print("recon file for atlas {} not found".format(atlas))

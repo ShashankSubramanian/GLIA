@@ -59,7 +59,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['atlas_labels']       = "[wm=6,gm=5,vt=7,csf=8]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['patient_labels']     = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['a_seg_path']         = atlas_dir + "/" + atlas + "_seg_aff2jakob_ants" + n_str + ".nc"
-    p['p_seg_path'] 	      = pat_dir + pat + '_seg_tu_aff2jakob' + n_str + '.nc'
+    p['p_seg_path'] 	      = pat_dir + pat + '_seg_ants_aff2jakob' + n_str + '.nc'
     p['mri_path'] 			    = atlas_dir + "/" + atlas + "_t1_aff2jakob" + n_str + ".nc"
     p['solver'] 			      = 'mass_effect'
     p['model'] 				      = 4                       	# mass effect model
@@ -163,8 +163,8 @@ def create_level_specific_data(n, pat, data_dir, create = True):
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n, reverse=True) ## reverse for files resized through nibabel
-    fname = data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz"
-    fname_n = n_dir + pat + "_seg_tu_aff2jakob_" + str(n) + ".nii.gz"
+    fname = data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz"
+    fname_n = n_dir + pat + "_seg_ants_aff2jakob_" + str(n) + ".nii.gz"
     if not os.path.exists(fname_n):
       resize_data(fname, fname_n, sz, order = 0)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
@@ -185,8 +185,8 @@ def create_level_specific_data(n, pat, data_dir, create = True):
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
-    fname = data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz"
-    fname_n = n_dir + pat + "_seg_tu_aff2jakob_" + str(n) + ".nii.gz"
+    fname = data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz"
+    fname_n = n_dir + pat + "_seg_ants_aff2jakob_" + str(n) + ".nii.gz"
     if not os.path.exists(fname_n):
       shutil.copy(fname, fname_n)
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
@@ -205,7 +205,7 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
   n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
   ### create template(patient) labels
   if not os.path.exists(reg + pat + "_vt.nii.gz"):
-    create_patient_labels(data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz", reg, pat)
+    create_patient_labels(data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", reg, pat)
   ### create reference(atlas) labels
   for i in range(0, n_local):
     at = at_list[4*idx+i]
@@ -221,7 +221,7 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
     ### transport
     at = at_list[4*idx+i]
     bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz", pat + "_c0Recon", bash_file, i)    
-    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_tu_aff2jakob.nii.gz", pat + "_labels", bash_file, i)    
+    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", pat + "_labels", bash_file, i)    
 
   with open(bash_file, "a") as f:
     f.write("\n\nwait\n\n")
@@ -340,16 +340,21 @@ if __name__=='__main__':
       if failed_pat in patient_list:
         patient_list.remove(failed_pat)
 
-  other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  other_remove = []
+  #other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
   for others in other_remove:
     patient_list.remove(others)
 
   block_job = True
   if block_job:
-    it = 3
-    num_pats = 20
-    ### 60:80
-    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+    it = 5
+    num_pats = 40
+    ### 200:205
+#    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+    patient_list = patient_list[it*num_pats:it*num_pats + 5]
+
+  if not os.path.exists(args.results_dir):
+    os.makedirs(args.results_dir)
 
   mylog = open(args.results_dir + "/config_log_" + str(it) + ".log", "a")
   sys.stdout = mylog
