@@ -60,7 +60,7 @@ def compute_com(img):
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
-  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to patients (brats format)', required = True) 
+  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to patients', required = True) 
   r_args.add_argument('-x', '--results_dir', type = str, help = 'results path', required = True) 
   args = parser.parse_args();
 
@@ -87,28 +87,45 @@ if __name__=='__main__':
   cmap_c0c = LinearSegmentedColormap.from_list('c0_cmap', colors)
 
   #patient_list = os.listdir(args.patient_dir)
-  with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
-    brats_pats = f.readlines()
-  patient_list = []
-  for l in brats_pats:
-    patient_list.append(l.split(",")[0])
+
+  brats_format = False
+  if brats_format:
+    with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
+      brats_pats = f.readlines()
+    patient_list = []
+    for l in brats_pats:
+      patient_list.append(l.split(",")[0])
+  else:
+    patient_list = []
+    for f in os.listdir(args.patient_dir):
+      patient_list.append(f)
+
+  for pat in patient_list:
+    if not os.path.exists(args.patient_dir + "/" + pat + "/" + pat + "_t1.nii.gz"):
+      print("removing ", pat)
+      patient_list.remove(pat)
 
 ###  patient_list = patient_list[0:10] ## snafu: checking
   num_pats = len(patient_list)
   num_pats_per_page = 5
 
-  with PdfPages(args.results_dir + "/brats_mri_seg.pdf") as pdf:
+  with PdfPages(args.results_dir + "/penn_mri_epoch200.pdf") as pdf:
     for it in range(0,math.ceil(num_pats/num_pats_per_page)):
       cur_pats = patient_list[it*num_pats_per_page:it*num_pats_per_page + num_pats_per_page]
-      fig, ax = plt.subplots(num_pats_per_page, 6, figsize=(4,5))
       ct = 0
+      fig, ax = plt.subplots(num_pats_per_page, 6, figsize=(4,5))
       for pat in cur_pats:
         print("printing patient ", pat)
         for ax_id in range(0,6):
           ax[ct][ax_id].tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False)
-        t1ce = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1ce_aff2jakob.nii.gz").get_fdata()
-        seg = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz").get_fdata()
-        com = compute_com(seg)
+        if brats_format:
+          t1ce = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1ce_aff2jakob.nii.gz").get_fdata()
+          seg = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz").get_fdata()
+          com = compute_com(seg)
+        else:
+          t1ce = nib.load(args.patient_dir + "/" + pat + "/" + pat + "_t1ce.nii.gz").get_fdata()
+          seg = nib.load(args.patient_dir + "/" + pat + "/" + pat + "_seg_epoch200.nii.gz").get_fdata()
+          com = compute_com(seg)
         ax[ct][0].imshow(t1ce[:,:,com[2]].T, cmap='gray', interpolation='none', origin='upper')
         ax[ct][1].imshow(t1ce[:,com[1],:].T, cmap='gray', interpolation='none', origin='upper')
         ax[ct][2].imshow(t1ce[com[0],:,:].T, cmap='gray', interpolation='none', origin='upper')
@@ -121,9 +138,14 @@ if __name__=='__main__':
         pad_y = 30
         ox = 0
         oy = 10
+
         for ax_id in range(0,6):
-          ax[ct][ax_id].set_xlim(pad_x,256-pad_x+ox)
-          ax[ct][ax_id].set_ylim(pad_y-oy,256-pad_y)
+          if ax_id is not 0 and ax_id is not 3:
+            ax[ct][ax_id].set_xlim(pad_x,256-pad_x+ox)
+            ax[ct][ax_id].set_ylim(pad_y-oy,160-pad_y)
+          else:
+            ax[ct][ax_id].set_xlim(pad_x,256-pad_x+ox)
+            ax[ct][ax_id].set_ylim(pad_y-oy,256-pad_y)
           if ax_id == 0 or ax_id == 3:
             ax[ct][ax_id].set_ylim(ax[ct][ax_id].get_ylim()[::-1])
         #  ax[ct][ax_id].set_title("slice {}".format(com[3 - ((ax_id+1%3) if (ax_id+1)%3 is not 0 else 3)]))

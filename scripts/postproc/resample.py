@@ -72,9 +72,10 @@ new_size     = 256
 #pat_prefix   = tumor_dir + "brain_data/real_data/" + patient_name + "/data/" + patient_name
 #invdir       = tumor_dir + "results/" + patient_name
 #regdir       = tumor_dir + "/reg/"
-atlasdir     = "/scratch1/05027/shas1693/adni-nc/"
-#atlasdir     = tumor_dir + "../data/adni-nc/"
-outdir       = "/scratch1/05027/shas1693/adni-nc/" + str(new_size) + "/"
+#atlasdir     = "/scratch1/05027/shas1693/adni-nc/"
+atlasdir     = tumor_dir + "../data/adni-nc/"
+outdir       = tumor_dir + "../data/adni-nc/" + str(new_size) + "/"
+#outdir       = "/scratch1/05027/shas1693/adni-nc/" + str(new_size) + "/"
 if not os.path.exists(outdir):
   os.makedirs(outdir)
 
