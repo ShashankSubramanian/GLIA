@@ -519,6 +519,9 @@ PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<Parameters> params, const
   int ncerr, fileid, ndims, nvars, ngatts, unlimited, varid[1];
   // open file
   ncerr = ncmpi_open(PETSC_COMM_WORLD, fname, NC_NOWRITE, MPI_INFO_NULL, &fileid);
+  std::stringstream ss;
+  ss << "data file: " << std::string(fname);
+  if (ncerr != NC_NOERR) tuMSGwarn(ss.str());
   ierr = NCERRQ(ncerr); CHKERRQ(ierr);
   // query info about field named "data"
   ncerr = ncmpi_inq(fileid, &ndims, &nvars, &ngatts, &unlimited);

@@ -126,7 +126,10 @@ class DerivativeOperatorsMassEffect : public DerivativeOperators {
  public:
   DerivativeOperatorsMassEffect(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor) : DerivativeOperators(pde_operators, params, tumor) {
     tuMSGstd(" ----- Setting RD derivative operators with mass-effect objective --------");
-    VecCreateSeq(PETSC_COMM_SELF, 3, &delta_);
+    int n_inv;
+    if (params->opt_->invert_mass_effect_) n_inv = 3;
+    else n_inv = 2;
+    VecCreateSeq(PETSC_COMM_SELF, n_inv, &delta_);
     setupVec(delta_, SEQ);
     VecSet(delta_, 0.);
     disable_verbose_ = false;

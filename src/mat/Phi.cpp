@@ -26,7 +26,7 @@ Phi::Phi(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> 
   component_weights_.push_back(1.);
 
 #ifdef CUDA
-  initPhiCudaConstants(params->grid_->n_, params->grid_->istart_);
+  initPhiCudaConstants(params->grid_->n_, params->grid_->istart_, params->grid_->isize_);
 #endif
 }
 

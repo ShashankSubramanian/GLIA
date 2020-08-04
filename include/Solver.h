@@ -52,7 +52,7 @@ class InverseReactionDiffusionSolver : public SolverInterface {
 
 class InverseMassEffectSolver : public SolverInterface {
  public:
-  InverseMassEffectSolver() : SolverInterface() {}
+  InverseMassEffectSolver() : SolverInterface() {p_wm_ = nullptr; p_gm_ = nullptr; p_vt_ = nullptr; p_csf_ = nullptr;}
 
   virtual PetscErrorCode finalize();
   virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
@@ -68,7 +68,6 @@ class InverseMassEffectSolver : public SolverInterface {
   }
 
  private:
-  ScalarType gamma_;
   Vec p_wm_;
   Vec p_gm_;
   Vec p_vt_;

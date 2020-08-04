@@ -367,7 +367,6 @@ public:
   ScalarType exp_shift_;
   ScalarType penalty_;
   bool beta_changed_;
-  //bool multilevel_;
 
   // auxiliary
   bool transport_mri_;

@@ -30,25 +30,25 @@ PetscErrorCode DerivativeOperatorsMassEffect::computeMisfitBrain(PetscReal *J) {
 
   PetscReal ms = 0;
   *J = 0;
-  ierr = VecCopy(tumor_->mat_prop_->gm_, temp_); CHKERRQ(ierr);
-  ierr = VecAXPY(temp_, -1.0, gm_); CHKERRQ(ierr);
-  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
-  *J += ms;
-
-  ierr = VecCopy(tumor_->mat_prop_->wm_, temp_); CHKERRQ(ierr);
-  ierr = VecAXPY(temp_, -1.0, wm_); CHKERRQ(ierr);
-  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
-  *J += ms;
+//  ierr = VecCopy(tumor_->mat_prop_->gm_, temp_); CHKERRQ(ierr);
+//  ierr = VecAXPY(temp_, -1.0, gm_); CHKERRQ(ierr);
+//  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
+//  *J += ms;
+//
+//  ierr = VecCopy(tumor_->mat_prop_->wm_, temp_); CHKERRQ(ierr);
+//  ierr = VecAXPY(temp_, -1.0, wm_); CHKERRQ(ierr);
+//  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
+//  *J += ms;
 
   ierr = VecCopy(tumor_->mat_prop_->vt_, temp_); CHKERRQ(ierr);
   ierr = VecAXPY(temp_, -1.0, vt_); CHKERRQ(ierr);
   ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
   *J += ms;
 
-  ierr = VecCopy(tumor_->mat_prop_->csf_, temp_); CHKERRQ(ierr);
-  ierr = VecAXPY(temp_, -1.0, csf_); CHKERRQ(ierr);
-  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
-  *J += ms;
+//  ierr = VecCopy(tumor_->mat_prop_->csf_, temp_); CHKERRQ(ierr);
+//  ierr = VecAXPY(temp_, -1.0, csf_); CHKERRQ(ierr);
+//  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
+//  *J += ms;
 
   PetscFunctionReturn(ierr);
 }
@@ -63,9 +63,14 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Ve
 
   std::stringstream s;
   ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
-  params_->tu_->forcing_factor_ = params_->opt_->gamma_scale_ * x_ptr[0];  // re-scaling parameter scales
-  params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[1];               // rho
-  params_->tu_->k_ = params_->opt_->k_scale_ * x_ptr[2];                   // kappa
+  if (params_->opt_->invert_mass_effect_) {
+    params_->tu_->forcing_factor_ = params_->opt_->gamma_scale_ * x_ptr[0];  // re-scaling parameter scales
+    params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[1];               // rho
+    params_->tu_->k_ = params_->opt_->k_scale_ * x_ptr[2];                   // kappa
+  } else {
+    params_->tu_->rho_ = params_->opt_->rho_scale_ * x_ptr[0];               // rho
+    params_->tu_->k_ = params_->opt_->k_scale_ * x_ptr[1];                   // kappa
+  }
   ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
 
   if (!disable_verbose_) {
@@ -96,7 +101,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateObjective(PetscReal *J, Ve
   ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
   (*J) *= 0.5 * params_->grid_->lebesgue_measure_;
   PetscReal misfit_brain = 0.;
-  // ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
+  ierr = computeMisfitBrain (&misfit_brain);                      CHKERRQ (ierr);
   misfit_brain *= 0.5 * params_->grid_->lebesgue_measure_;
   if (!disable_verbose_) {
     s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
@@ -129,12 +134,7 @@ PetscErrorCode DerivativeOperatorsMassEffect::evaluateGradient(Vec dJ, Vec x, st
   ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
   ierr = VecGetArray(dJ, &dj_ptr); CHKERRQ(ierr);
   std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
-  //    #ifdef SINGLE
-  //    ScalarType small = 3.45266983e-04F;
-  //    #else
-  //    ScalarType small = 3.45266983e-04;
-  //    #endif
-  ScalarType small = 1E-5;
+  ScalarType small = 1E-5;//PETSC_SQRT_MACHINE_EPSILON;
   for (int i = 0; i < sz; i++) {
     ierr = VecCopy(x, delta_); CHKERRQ(ierr);
     ierr = VecGetArray(delta_, &delta_ptr); CHKERRQ(ierr);

@@ -27,6 +27,7 @@ class MEOptimizer : public Optimizer {
   virtual ~MEOptimizer() {};
 
  private:
+  int n_g_;
   ScalarType k_init_;
   ScalarType rho_init_;
   ScalarType gamma_init_;

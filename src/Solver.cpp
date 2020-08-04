@@ -388,17 +388,18 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   std::stringstream ss;
   ierr = tuMSGwarn(" Initializing Mass Effect Inversion."); CHKERRQ(ierr);
 
+  // enable/disable inversion for mass effect parameter in the optimizer 
+  params->opt_->invert_mass_effect_ = true;
   // set and populate parameters; read material properties; read data
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
   // hack: for syn cases don't smooth data
 //  params_->tu_->smoothing_factor_data_ = 0;
 //  params_->tu_->smoothing_factor_patient_ = 0;
-  ierr = setupData(); CHKERRQ(ierr);
+//  params_->tu_->smoothing_factor_data_t0_ = 0; // set to zero if c0 does not need to be smoothed
   // read mass effect patient data
   ierr = readPatient(); CHKERRQ(ierr);
-  // enable mass effect inversion in optimizer
-  params_->opt_->invert_mass_effect_ = true;
+  ierr = setupData(); CHKERRQ(ierr);
 
   // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
@@ -410,12 +411,15 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
     params_->tu_->use_c0_ = has_dt0_ = true;
   }
 
+  if (params_->opt_->multilevel_) params_->opt_->rescale_init_cond_ = true;
+
   // === create p_vec_ of correct length
   if (p_rec_ != nullptr) {
     ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
     p_rec_ = nullptr;
   }
-  n_inv_ = 1 + params_->get_nk() + params_->get_nr();
+  int n_g = (params_->opt_->invert_mass_effect_) ? 1 : 0;
+  n_inv_ = n_g + params_->get_nk() + params_->get_nr();
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
   ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
@@ -446,15 +450,6 @@ PetscErrorCode InverseMassEffectSolver::run() {
 
   ierr = tuMSGwarn(" Beginning Mass Effect Inversion."); CHKERRQ(ierr);
 
-  // // TODO(K) fix re-allocation of p-vector; allocation has to be moved in derived class initialize()
-  // // ---------
-  // if(p_rec_ != nullptr) {ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);}
-  // ierr = VecCreateSeq(PETSC_COMM_SELF, params_->tu_->np_ + params_->get_nk() + params_->get_nr() + 1, &p_rec_); CHKERRQ(ierr);
-  // ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
-  // ierr = resetOperators(p_rec_); CHKERRQ(ierr);
-  // // ---------
-  // int np = params_->tu_->np_;
-
   // == set initial guess
   int nk = params_->get_nk();
   int nr = params_->get_nr();
@@ -462,21 +457,28 @@ PetscErrorCode InverseMassEffectSolver::run() {
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   std::random_device rd; // obtain a random number from hardware
   std::mt19937 eng(rd()); // seed the generator
-  std::uniform_real_distribution<> distg(0.1, 1.2); // define the range
-  std::uniform_real_distribution<> distr(5, 12); // define the range
+  std::uniform_real_distribution<> distg(0.1, 1.0); // define the range
+  std::uniform_real_distribution<> distr(5, 10); // define the range
   std::uniform_real_distribution<> distk(0.5, 5); // define the range
-//  x_ptr[0] = params_->tu_->forcing_factor_;
-//  x_ptr[1] = params_->tu_->rho_;
-//  x_ptr[2] = params_->tu_->k_;
-  x_ptr[0] = distg(eng) * 1E5;
-  x_ptr[1] = distr(eng);
-  x_ptr[2] = distk(eng) * 1E-2;
+  if (params_->opt_->invert_mass_effect_) {
+    x_ptr[0] = params_->tu_->forcing_factor_;
+    x_ptr[1] = params_->tu_->rho_;
+    x_ptr[2] = params_->tu_->k_;
+  } else {
+    x_ptr[0] = params_->tu_->rho_;
+    x_ptr[1] = params_->tu_->k_;
+    params_->tu_->forcing_factor_ = 0;
+  }
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ (ierr);
-
+  
   optimizer_->setData(data_); // set data before initial guess
   ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
   ierr = optimizer_->solve(); CHKERRQ(ierr);
   ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+  
+  ierr = tuMSGstd("...computing FD hessian at optimum"); CHKERRQ(ierr);
+  std::string ss_str = "opt";
+  ierr = derivative_operators_->computeFDHessian(p_rec_, data_, ss_str); CHKERRQ(ierr); 
 
   // Reset mat-props and diffusion and reaction operators, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
@@ -506,6 +508,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
     ierr = dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_); CHKERRQ(ierr);
   }
   // transport mri
+  params_->tu_->transport_mri_ = !app_settings_->path_->mri_.empty();
   if (params_->tu_->transport_mri_) {
     if (mri_ == nullptr) {
       ierr = VecDuplicate(tmp_, &mri_); CHKERRQ(ierr);
@@ -533,6 +536,7 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
 
+  ScalarType mag_norm, mm;
   if (params_->tu_->write_output_) {
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
     ss.str(std::string());
@@ -568,7 +572,6 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
     ierr = dataOut(mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
     ss.str(std::string());
     ss.clear();
-    ScalarType mag_norm, mm;
     ierr = VecNorm(mag, NORM_2, &mag_norm); CHKERRQ(ierr);
     ierr = VecMax(mag, NULL, &mm); CHKERRQ(ierr);
     ss << " Norm of reconstructed displacement: " << mag_norm << "; max of reconstructed displacement: " << mm;
@@ -581,6 +584,30 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
       ss.str(std::string());
       ss.clear();
     }
+    ss << "disp_x_rec_final";
+    ierr = dataOut(tumor_->displacement_->x_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "disp_y_rec_final";
+    ierr = dataOut(tumor_->displacement_->y_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "disp_z_rec_final";
+    ierr = dataOut(tumor_->displacement_->z_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vel_x_rec_final";
+    ierr = dataOut(tumor_->velocity_->x_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vel_y_rec_final";
+    ierr = dataOut(tumor_->velocity_->y_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vel_z_rec_final";
+    ierr = dataOut(tumor_->velocity_->z_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
   }
 
   ScalarType max, min;
@@ -652,12 +679,15 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   if (procid == 0) {
     std::ofstream opfile;
     opfile.open(params_->tu_->writepath_ + "reconstruction_info.dat");
-    opfile << "rho k gamma c1_rel c0_rel \n";
-    opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << params_->tu_->forcing_factor_ << " " << error_norm << " " << error_norm_0 << std::endl;
+    opfile << "rho k gamma max_disp norm_disp c1_rel c0_rel \n";
+    opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << params_->tu_->forcing_factor_ << " " << mm << " " <<mag_norm << " " << error_norm << " " << error_norm_0 << std::endl;
     opfile.flush();
     opfile.close();
   }
 
+  // === final prediction
+  ierr = predict(); CHKERRQ(ierr);
+  
   PetscFunctionReturn(ierr);
 }
 
@@ -667,10 +697,32 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
-  ScalarType sigma_smooth = params_->tu_->smoothing_factor_ * 2 * M_PI / params_->grid_->n_[0];
+  ScalarType sigma_smooth = params_->tu_->smoothing_factor_patient_ * 2 * M_PI / params_->grid_->n_[0];
 
   if (!app_settings_->path_->p_seg_.empty()) {
     ierr = dataIn(tmp_, params_, app_settings_->path_->p_seg_); CHKERRQ(ierr);
+    if(app_settings_->patient_seg_[0] <= 0 || app_settings_->patient_seg_[1] <= 0 || app_settings_->patient_seg_[2] <= 0) {
+      ierr = tuMSGwarn(" Error: Patient segmentation must at least have WM, GM, VT."); CHKERRQ(ierr);
+      exit(0);
+    } else {
+      ierr = VecDuplicate(tmp_, &p_wm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_gm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_vt_); CHKERRQ(ierr);
+      csf_ = nullptr; data_t1_ = nullptr; ed_ = nullptr;
+      if (app_settings_->patient_seg_[3] > 0) {
+        ierr = VecDuplicate(tmp_, &p_csf_); CHKERRQ(ierr);
+      }
+      // tc exists as label, or necrotic core + enhancing rim exist as labels
+      if (app_settings_->patient_seg_[4] > 0 || (app_settings_->patient_seg_[5] > 0 && app_settings_->patient_seg_[6] > 0)) {
+        ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
+        data_t1_from_seg_ = true;
+        // edema exists as label
+        if (app_settings_->patient_seg_[7] > 0) {
+          ierr = VecDuplicate(tmp_, &ed_); CHKERRQ(ierr);
+        }
+      }
+    }
+    ierr = splitSegmentation(tmp_, p_wm_, p_gm_, p_vt_, p_csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->patient_seg_); CHKERRQ(ierr);
     // TODO(K): populate to wm, gm, csf, ve
   } else {
     if (!app_settings_->path_->p_wm_.empty()) {
@@ -704,6 +756,13 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
     if (p_csf_ != nullptr) {
       ierr = spec_ops_->weierstrassSmoother(p_csf_, p_csf_, params_, sigma_smooth); CHKERRQ(ierr);
     }
+  }
+  
+  if (params_->tu_->write_output_) {
+    if (p_gm_ != nullptr) dataOut(p_gm_, params_, "p_gm.nc");
+    if (p_wm_ != nullptr) dataOut(p_wm_, params_, "p_wm.nc");
+    if (p_csf_ != nullptr) dataOut(p_csf_, params_, "p_csf.nc");
+    if (p_vt_ != nullptr) dataOut(p_vt_, params_, "p_vt.nc");
   }
 
   PetscFunctionReturn(ierr);

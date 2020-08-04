@@ -370,6 +370,25 @@ PetscErrorCode SolverInterface::predict() {
       ierr = dataOut(tumor_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
       ss.str("");
       ss.clear();
+      if (params_->tu_->model_ >= 4) {
+        ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
+        ss << "seg_pred_at_[t=" << app_settings_->pred_->t_pred_[i] << "]";
+        ierr = dataOut(tumor_->seg_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+        ss.str("");
+        ss.clear();
+        ss << "disp_x_pred_at_[t=" << app_settings_->pred_->t_pred_[i] << "]";
+        ierr = dataOut(tumor_->displacement_->x_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+        ss.str("");
+        ss.clear();
+        ss << "disp_y_pred_at_[t=" << app_settings_->pred_->t_pred_[i] << "]";
+        ierr = dataOut(tumor_->displacement_->y_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+        ss.str("");
+        ss.clear();
+        ss << "disp_z_pred_at_[t=" << app_settings_->pred_->t_pred_[i] << "]";
+        ierr = dataOut(tumor_->displacement_->z_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+        ss.str("");
+        ss.clear();
+      }
       ss << " .. prediction complete for t = " << app_settings_->pred_->t_pred_[i];
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
       ss.str("");
@@ -653,7 +672,7 @@ PetscErrorCode SolverInterface::readData() {
     }
     ierr = VecMax(data_t0_, NULL, &max); CHKERRQ(ierr);
     ierr = VecScale(data_t0_, (1.0 / max)); CHKERRQ(ierr);
-    ierr = dataOut(data_t0_, params_, "c0True.nc"); CHKERRQ(ierr);
+    ierr = dataOut(data_t0_, params_, "c0_input.nc"); CHKERRQ(ierr);
     params_->tu_->use_c0_ = true; // optimizers will use c0 data
 
     // make obs threshold relaltive

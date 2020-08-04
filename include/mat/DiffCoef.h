@@ -61,7 +61,7 @@ class DiffCoef {
 };
 
 // Cuda helpers
-void initDiffCoefCudaConstants(int *n, int *ostart);
+void initDiffCoefCudaConstants(int *n, int *ostart, int *osize);
 void precFactorDiffusionCuda(ScalarType *precfactor, ScalarType *work, int *sz);
 
 #endif

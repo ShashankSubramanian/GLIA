@@ -1,13 +1,14 @@
 #include "Phi.h"
 
-__constant__ int n_cuda[3], istart_cuda[3];
+__constant__ int n_cuda[3], istart_cuda[3], isize_cuda[3];
 
-void initPhiCudaConstants(int *n, int *istart) {
+void initPhiCudaConstants(int *n, int *istart, int *isize) {
 	cudaMemcpyToSymbol (istart_cuda, istart, 3 * sizeof(int));
 	cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
+	cudaMemcpyToSymbol (isize_cuda, isize, 3 * sizeof(int));
 }
 
-__global__ void initializeGaussian (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int *isize_cuda) {
+__global__ void initializeGaussian (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -52,7 +53,7 @@ __global__ void initializeGaussian (ScalarType *out, ScalarType sigma, ScalarTyp
     }
 }
 
-__global__ void truncateGaussian (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc, int *isize_cuda) {
+__global__ void truncateGaussian (ScalarType *out, ScalarType sigma, ScalarType xc, ScalarType yc, ScalarType zc) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -88,7 +89,7 @@ void initializeGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, S
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	initializeGaussian <<< n_blocks, n_threads >>> (out, sigma, xc, yc, zc, sz);
+	initializeGaussian <<< n_blocks, n_threads >>> (out, sigma, xc, yc, zc);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -101,7 +102,7 @@ void truncateGaussianCuda (ScalarType *out, ScalarType sigma, ScalarType xc, Sca
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	truncateGaussian <<< n_blocks, n_threads >>> (out, sigma, xc, yc, zc, sz);
+	truncateGaussian <<< n_blocks, n_threads >>> (out, sigma, xc, yc, zc);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

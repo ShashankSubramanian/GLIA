@@ -20,8 +20,9 @@ PetscErrorCode MEOptimizer::initialize(
   PetscFunctionBegin;
   std::stringstream ss;
   // number of dofs = {rho, kappa, gamma}
-  n_inv_ = params->get_nr() +  params->get_nk() + 1;
-  ss << " Initializing mass-effect optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " + 1 dofs.";
+  n_g_ = (params->opt_->invert_mass_effect_) ? 1 : 0;
+  n_inv_ = params->get_nr() +  params->get_nk() + n_g_;
+  ss << " Initializing mass-effect optimizer with = " << n_inv_ << " = " <<  params->get_nr() << " + " <<  params->get_nk() << " + " << n_g_ << " dofs.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   // initialize super class
   ierr = Optimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
@@ -73,7 +74,7 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
   PetscReal ic_max = 0.;
   // 1. TIL not given as parametrization
   if(ctx_->params_->tu_->use_c0_) {
-    ierr = VecCreateSeq (PETSC_COMM_SELF, nk + nr + 1, &xin_); CHKERRQ (ierr);
+    ierr = VecCreateSeq (PETSC_COMM_SELF, nk + nr + n_g_, &xin_); CHKERRQ (ierr);
     ierr = setupVec (xin_, SEQ); CHKERRQ (ierr);
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     // === init TIL
@@ -82,16 +83,20 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
     ss << "TIL as d0 (max=" << ic_max<<"); ";
     if(ctx_->params_->opt_->rescale_init_cond_) {
       ScalarType scale = (1.0 / ic_max);
+      if(ctx_->params_->opt_->multilevel_) scale = (1.0/4.0 * ctx_->params_->grid_->n_[0]/64.  / ic_max);
       ierr = VecScale(ctx_->tumor_->c_0_, scale); CHKERRQ(ierr);
-      ss << "rescaled; ";
+      ss << " and rescaled with scale " << ic_max / scale;
+ //     ss << "rescaled; ";
     }
-    off = (in_size > 1 + nr + nk) ? np : 0; // offset in x_init vec
+    // copy back to data
+    ierr = VecCopy(ctx_->tumor_->c_0_, data_->dt0()); CHKERRQ(ierr);
+    off = (in_size > n_g_ + nr + nk) ? np : 0; // offset in x_init vec
     off_in = 0;
 
   // 2. TIL given as parametrization
   } else {
-    TU_assert(in_size == np + 1 + nk + nr, "MEOptimizer::setInitialGuess: Size of input vector not correct."); CHKERRQ(ierr);
-    ierr = VecCreateSeq (PETSC_COMM_SELF, np + 1 + nk + nr, &xin_); CHKERRQ (ierr);
+    TU_assert(in_size == np + n_g_ + nk + nr, "MEOptimizer::setInitialGuess: Size of input vector not correct."); CHKERRQ(ierr);
+    ierr = VecCreateSeq (PETSC_COMM_SELF, np + n_g_ + nk + nr, &xin_); CHKERRQ (ierr);
     ierr = setupVec (xin_, SEQ); CHKERRQ (ierr);
     ierr = VecSet (xin_, 0.0); CHKERRQ (ierr);
     ierr = VecCopy(x_init, xin_); CHKERRQ(ierr);
@@ -112,21 +117,39 @@ PetscErrorCode MEOptimizer::setInitialGuess(Vec x_init) {
   // === gamma, rho, kappa init guess
   ierr = VecGetArray(x_init, &init_ptr); CHKERRQ (ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
-  x_ptr[off_in + 0] = init_ptr[off] / gamma_scale_;                                   // gamma
-  gamma_init_ = x_ptr[off_in + 0];
-  x_ptr[off_in + 1 + 0] = init_ptr[off + 1 + 0] / rho_scale_;                       // rho
-  rho_init_ = x_ptr[off_in + 1 + 0];
-  if (nr > 1) x_ptr[off_in + 1 + 1] = init_ptr[off + 1 + 1] / rho_scale_;           // r2
-  if (nr > 2) x_ptr[off_in + 1 + 2] = init_ptr[off + 1 + 2] / rho_scale_;           // r3
-  x_ptr[off_in + 1 + nr + 0] = init_ptr[off + 1 + nr + 0] / k_scale_;             // kappa
-  k_init_ = x_ptr[off_in + 1 + nr + 0];
-  if (nk > 1) x_ptr[off_in + 1 + nr + 1] = init_ptr[off + 1 + nr + 1] / k_scale_; // k2
-  if (nk > 2) x_ptr[off_in + 1 + nr + 2] = init_ptr[off + 1 + nr + 2] / k_scale_; // k3
-  ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
-  ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
 
-  ss << " gamma_init = " << gamma_init_ << " ;rho_init = " << rho_init_<<" ;k_init = " << k_init_;
-  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  if (n_g_ == 1) {
+    x_ptr[off_in + 0] = init_ptr[off] / gamma_scale_;                                   // gamma
+    gamma_init_ = x_ptr[off_in + 0];
+    x_ptr[off_in + 1 + 0] = init_ptr[off + 1 + 0] / rho_scale_;                       // rho
+    rho_init_ = x_ptr[off_in + 1 + 0];
+    if (nr > 1) x_ptr[off_in + 1 + 1] = init_ptr[off + 1 + 1] / rho_scale_;           // r2
+    if (nr > 2) x_ptr[off_in + 1 + 2] = init_ptr[off + 1 + 2] / rho_scale_;           // r3
+    x_ptr[off_in + 1 + nr + 0] = init_ptr[off + 1 + nr + 0] / k_scale_;             // kappa
+    k_init_ = x_ptr[off_in + 1 + nr + 0];
+    if (nk > 1) x_ptr[off_in + 1 + nr + 1] = init_ptr[off + 1 + nr + 1] / k_scale_; // k2
+    if (nk > 2) x_ptr[off_in + 1 + nr + 2] = init_ptr[off + 1 + nr + 2] / k_scale_; // k3
+    ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
+    ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
+
+    ss << " gamma_init = " << gamma_init_ << " ;rho_init = " << rho_init_<<" ;k_init = " << k_init_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  } else {
+    // n_g_ is zero = do not invert for mass effect
+    x_ptr[off_in + 0 + 0] = init_ptr[off + 0 + 0] / rho_scale_;                       // rho
+    rho_init_ = x_ptr[off_in + 0 + 0];
+    if (nr > 1) x_ptr[off_in + 0 + 1] = init_ptr[off + 0 + 1] / rho_scale_;           // r2
+    if (nr > 2) x_ptr[off_in + 0 + 2] = init_ptr[off + 0 + 2] / rho_scale_;           // r3
+    x_ptr[off_in + 0 + nr + 0] = init_ptr[off + 0 + nr + 0] / k_scale_;             // kappa
+    k_init_ = x_ptr[off_in + 0 + nr + 0];
+    if (nk > 1) x_ptr[off_in + 0 + nr + 1] = init_ptr[off + 0 + nr + 1] / k_scale_; // k2
+    if (nk > 2) x_ptr[off_in + 0 + nr + 2] = init_ptr[off + 0 + nr + 2] / k_scale_; // k3
+    ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
+    ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ (ierr);
+
+    ss << " rho_init = " << rho_init_<<" ;k_init = " << k_init_;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  }
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
   ierr = VecSet(xout_, 0.0); CHKERRQ (ierr);
@@ -157,7 +180,7 @@ PetscErrorCode MEOptimizer::solve() {
   int nk = ctx_->params_->tu_->nk_;
   int nr = ctx_->params_->tu_->nr_;
   int np = ctx_->params_->tu_->np_;
-  TU_assert(n_inv_ == nr + nk + 1, "MEOptimizer: n_inv is inconsistent.");
+  TU_assert(n_inv_ == nr + nk + n_g_, "MEOptimizer: n_inv is inconsistent.");
 
   // switch on rxn inv
   ctx_->params_->opt_->flag_reaction_inv_ = true;
@@ -250,9 +273,15 @@ PetscErrorCode MEOptimizer::solve() {
 
   // === update diffusivity and reaction in coefficients
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
-  ctx_->params_->tu_->forcing_factor_ = gamma_scale_ * x_ptr[0]; // gamma   re-scaling parameter scales
-  ctx_->params_->tu_->rho_ = rho_scale_ * x_ptr[1];              // rho
-  ctx_->params_->tu_->k_ = k_scale_ * x_ptr[1 + nr];             // kappa   re-scaling parameter scales
+  if (n_g_ == 1) {
+    ctx_->params_->tu_->forcing_factor_ = gamma_scale_ * x_ptr[0]; // gamma   re-scaling parameter scales
+    ctx_->params_->tu_->rho_ = rho_scale_ * x_ptr[1];              // rho
+    ctx_->params_->tu_->k_ = k_scale_ * x_ptr[1 + nr];             // kappa   re-scaling parameter scales
+  } else {
+    ctx_->params_->tu_->rho_ = rho_scale_ * x_ptr[0];              // rho
+    ctx_->params_->tu_->k_ = k_scale_ * x_ptr[0 + nr];             // kappa   re-scaling parameter scales
+  }
+
   ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
   PetscReal r1, r2, r3, k1, k2, k3;
   r1 = ctx_->params_->tu_->rho_;
@@ -297,20 +326,34 @@ PetscErrorCode MEOptimizer::setVariableBounds() {
   ierr = VecDuplicate (xrec_, &upper_bound); CHKERRQ(ierr);
   ierr = VecSet (upper_bound, PETSC_INFINITY); CHKERRQ(ierr);
   // upper bound
-  ierr = VecGetArray(upper_bound, &ptr);CHKERRQ (ierr);
-  ptr[0] = ctx_->params_->opt_->gamma_ub_ / gamma_scale_;
-  ptr[1] = ctx_->params_->opt_->rho_ub_ / rho_scale_;
-  ptr[2] = ctx_->params_->opt_->k_ub_ / k_scale_;
-  ctx_->params_->opt_->bounds_array_[0] = ptr[0];
-  ctx_->params_->opt_->bounds_array_[1] = ptr[1];
-  ctx_->params_->opt_->bounds_array_[2] = ptr[2];
-  ierr = VecRestoreArray(upper_bound, &ptr); CHKERRQ (ierr);
-  // lower bound
-  ierr = VecGetArray(lower_bound, &ptr);CHKERRQ (ierr);
-  ptr[0] = ctx_->params_->opt_->gamma_lb_ / gamma_scale_;
-  ptr[1] = ctx_->params_->opt_->rho_lb_ / rho_scale_;
-  ptr[2] = ctx_->params_->opt_->k_lb_ / k_scale_;
-  ierr = VecRestoreArray(lower_bound, &ptr); CHKERRQ (ierr);
+  if (n_g_ == 1) {
+    ierr = VecGetArray(upper_bound, &ptr);CHKERRQ (ierr);
+    ptr[0] = ctx_->params_->opt_->gamma_ub_ / gamma_scale_;
+    ptr[1] = ctx_->params_->opt_->rho_ub_ / rho_scale_;
+    ptr[2] = ctx_->params_->opt_->k_ub_ / k_scale_;
+    ctx_->params_->opt_->bounds_array_[0] = ptr[0];
+    ctx_->params_->opt_->bounds_array_[1] = ptr[1];
+    ctx_->params_->opt_->bounds_array_[2] = ptr[2];
+    ierr = VecRestoreArray(upper_bound, &ptr); CHKERRQ (ierr);
+    // lower bound
+    ierr = VecGetArray(lower_bound, &ptr);CHKERRQ (ierr);
+    ptr[0] = ctx_->params_->opt_->gamma_lb_ / gamma_scale_;
+    ptr[1] = ctx_->params_->opt_->rho_lb_ / rho_scale_;
+    ptr[2] = ctx_->params_->opt_->k_lb_ / k_scale_;
+    ierr = VecRestoreArray(lower_bound, &ptr); CHKERRQ (ierr);
+  } else {
+    ierr = VecGetArray(upper_bound, &ptr);CHKERRQ (ierr);
+    ptr[0] = ctx_->params_->opt_->rho_ub_ / rho_scale_;
+    ptr[1] = ctx_->params_->opt_->k_ub_ / k_scale_;
+    ctx_->params_->opt_->bounds_array_[0] = ptr[0];
+    ctx_->params_->opt_->bounds_array_[1] = ptr[1];
+    ierr = VecRestoreArray(upper_bound, &ptr); CHKERRQ (ierr);
+    // lower bound
+    ierr = VecGetArray(lower_bound, &ptr);CHKERRQ (ierr);
+    ptr[0] = ctx_->params_->opt_->rho_lb_ / rho_scale_;
+    ptr[1] = ctx_->params_->opt_->k_lb_ / k_scale_;
+    ierr = VecRestoreArray(lower_bound, &ptr); CHKERRQ (ierr);
+  }
   // set
   ierr = TaoSetVariableBounds(tao_, lower_bound, upper_bound); CHKERRQ (ierr);
   ierr = VecDestroy(&lower_bound); CHKERRQ(ierr);

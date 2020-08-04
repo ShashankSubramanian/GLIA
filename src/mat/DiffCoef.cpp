@@ -16,7 +16,7 @@ DiffCoef::DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralO
   // create 8 work vectors (will be pointed to tumor work vectors, thus no memory handling here)
   temp_ = new Vec[8];
 #ifdef CUDA
-  initDiffCoefCudaConstants(params->grid_->n_, params->grid_->ostart_);
+  initDiffCoefCudaConstants(params->grid_->n_, params->grid_->ostart_, params->grid_->osize_);
   cudaMalloc((void **)&temp_accfft_, params->grid_->accfft_alloc_max_);
   cudaMalloc((void **)&work_cuda_, 7 * sizeof(ScalarType));
 #else

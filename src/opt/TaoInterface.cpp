@@ -330,9 +330,15 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   ScalarType *x_ptr;
   ierr = VecGetArray(tao_x, &x_ptr); CHKERRQ(ierr);
   if (itctx->params_->tu_->model_ == 4) {
-    g = x_ptr[0];
-    r = x_ptr[1];
-    k = x_ptr[1 + itctx->params_->tu_->nr_];
+    if (itctx->params_->opt_->invert_mass_effect_) {
+      g = x_ptr[0];
+      r = x_ptr[1];
+      k = x_ptr[1 + itctx->params_->tu_->nr_];
+    } else {
+      g = 0;
+      r = x_ptr[0];
+      k = x_ptr[0 + itctx->params_->tu_->nr_];
+    }
     s << "  Scalar parameters: (rho, kappa, gamma) = (" << std::scientific << std::setprecision(8) << r << ", "  
                                                         << std::scientific << std::setprecision(8) << k << ", " 
                                                         << std::scientific << std::setprecision(8) << g << ")";
@@ -665,7 +671,7 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
     ss.str(std::string());
     ss.clear();
     // ||g_k||_2 < tol
-    if (gnorm < gatol || std::abs(jxold-jx) <= PETSC_MACHINE_EPSILON)  {
+    if (gnorm < gatol)  {
       stop[3] = true;
     }
     ss  << "  " << stop[3] << "    ||g|| = " << std::setw(18)
@@ -733,12 +739,13 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
       ctx->params_->optf_->converged_ = true;
       if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
       PetscFunctionReturn (ierr);
-    } else if (stop[6]) {
-      ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER); CHKERRQ(ierr);
-      ctx->params_->optf_->converged_ = true;
-      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
-      PetscFunctionReturn (ierr);
-    }
+    } 
+//    else if (stop[6]) {
+//      ierr = TaoSetConvergedReason(tao, TAO_CONVERGED_USER); CHKERRQ(ierr);
+//      ctx->params_->optf_->converged_ = true;
+//      if (g != NULL) {ierr = VecDestroy(&g); CHKERRQ(ierr); g = NULL;}
+//      PetscFunctionReturn (ierr);
+//    }
   }
   else {
     // if the gradient is zero, we should terminate immediately

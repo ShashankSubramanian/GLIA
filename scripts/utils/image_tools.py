@@ -67,8 +67,8 @@ def resizeNIIImage(img, new_size, interp_order):
     old_size = img.header['dim'][1:4];
     new_size = np.asarray(new_size);
     new_voxel_size = np.multiply(old_voxel_size, np.divide(old_size, new_size));
-    print("old v size: {}, old sze: {}, new vx size: {}, new size: {}".format(old_voxel_size, old_size, new_voxel_size, new_size))
-    return nib.processing.resample_to_output(img, new_voxel_size, order=0, mode='wrap');
+#    print("old v size: {}, old sze: {}, new vx size: {}, new size: {}".format(old_voxel_size, old_size, new_voxel_size, new_size))
+    return nib.processing.resample_to_output(img, new_voxel_size, order=interp_order, mode='wrap');
 
 ###
 ### ------------------------------------------------------------------------ ###

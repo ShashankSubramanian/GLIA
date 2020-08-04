@@ -610,7 +610,7 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
         wm_ptr[i] = (seg_ptr[i] == ed_label) ? 1 : wm_ptr[i];
         if(ed  != nullptr) {
           ed_ptr[i] = (seg_ptr[i] == ed_label) ? 1 : ed_ptr[i];
-	}
+	      }
       }
     }
   }

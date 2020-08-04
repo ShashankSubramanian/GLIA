@@ -1,13 +1,15 @@
 #include "SpectralOperators.h"
-__constant__ int n_cuda[3], istart_cuda[3], ostart_cuda[3];
+__constant__ int n_cuda[3], istart_cuda[3], ostart_cuda[3], isize_cuda[3], osize_cuda[3];
 
-void initSpecOpsCudaConstants(int *n, int *istart, int *ostart) {
+void initSpecOpsCudaConstants(int *n, int *istart, int *ostart, int *isize, int *osize) {
 	cudaMemcpyToSymbol (istart_cuda, istart, 3 * sizeof(int));
 	cudaMemcpyToSymbol (ostart_cuda, ostart, 3 * sizeof(int));
 	cudaMemcpyToSymbol (n_cuda, n, 3 * sizeof(int));
+	cudaMemcpyToSymbol (isize_cuda, isize, 3 * sizeof(int));
+	cudaMemcpyToSymbol (osize_cuda, osize, 3 * sizeof(int));
 }
 
-__global__ void computeWeierstrassFilter (ScalarType *f, ScalarType sigma, int *isize_cuda) {
+__global__ void computeWeierstrassFilter (ScalarType *f, ScalarType sigma) {
 	int i = threadIdx.x + blockDim.x * blockIdx.x;
 	int j = threadIdx.y + blockDim.y * blockIdx.y;
 	int k = threadIdx.z + blockDim.z * blockIdx.z;
@@ -49,7 +51,7 @@ __global__ void computeWeierstrassFilter (ScalarType *f, ScalarType sigma, int *
 }
 
 // No inplace multiply - be careful
-__global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f, int *osize_cuda) {
+__global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -74,7 +76,7 @@ __global__ void multiplyXWaveNumber (CudaComplexType *w_f, CudaComplexType *f, i
 	}
 }
 
-__global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f, int *osize_cuda) {
+__global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -99,7 +101,7 @@ __global__ void multiplyYWaveNumber (CudaComplexType *w_f, CudaComplexType *f, i
 	}
 }
 
-__global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f, int *osize_cuda) {
+__global__ void multiplyZWaveNumber (CudaComplexType *w_f, CudaComplexType *f) {
 	int x = threadIdx.x + blockDim.x * blockIdx.x;
 	int y = threadIdx.y + blockDim.y * blockIdx.y;
 	int z = threadIdx.z + blockDim.z * blockIdx.z;
@@ -133,7 +135,7 @@ void computeWeierstrassFilterCuda (ScalarType *f, ScalarType *sum, ScalarType si
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma, sz);
+	computeWeierstrassFilter <<< n_blocks, n_threads >>> (f, sigma);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError();
@@ -162,7 +164,7 @@ void multiplyXWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	multiplyXWaveNumber <<< n_blocks, n_threads >>> (w_f, f, sz);
+	multiplyXWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -175,7 +177,7 @@ void multiplyYWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	multiplyYWaveNumber <<< n_blocks, n_threads >>> (w_f, f, sz);
+	multiplyYWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
@@ -188,7 +190,7 @@ void multiplyZWaveNumberCuda (CudaComplexType *w_f, CudaComplexType *f, int *sz)
 	dim3 n_threads (n_th_x, n_th_y, n_th_z);
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
-	multiplyZWaveNumber <<< n_blocks, n_threads >>> (w_f, f, sz);
+	multiplyZWaveNumber <<< n_blocks, n_threads >>> (w_f, f);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
