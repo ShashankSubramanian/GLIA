@@ -31,7 +31,7 @@ class Phi {
 		PetscErrorCode setGaussians (std::array<ScalarType, 3>& user_cm, ScalarType sigma, ScalarType spacing_factor, int np); //, std::shared_ptr<Parameters> params);   //Bounding box
 		PetscErrorCode setGaussians (Vec data);		
 		PetscErrorCode setGaussians (std::string file, bool read_comp_data = false);
-    	PetscErrorCode setLabels (Vec labels) {labels_ = labels; PetscFunctionReturn(0);}																						//Adaptive phis
+    PetscErrorCode setLabels (Vec labels) {labels_ = labels; PetscFunctionReturn(0);}																						//Adaptive phis
 		PetscErrorCode setValues (std::shared_ptr<MatProp> mat_prop);
 		PetscErrorCode phiMesh (ScalarType *center);
 		PetscErrorCode initialize (ScalarType *out, std::shared_ptr<Parameters> params, ScalarType *center);
@@ -40,6 +40,7 @@ class Phi {
 		PetscErrorCode applyTranspose (Vec pout, Vec in);
 		void modifyCenters (std::vector<int> support_idx);    	// Picks only the basis needed in the restricted subspace
 		void resetCenters ();									// Resets centers to the older ones
+		PetscErrorCode setAdditionalMemory(int n);
 
 		~Phi ();
 };

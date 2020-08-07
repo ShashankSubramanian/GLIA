@@ -161,7 +161,7 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
   ierr = setupData(); CHKERRQ(ierr);
-
+  int set_sparsity_level = params_->tu_->sparsity_level_;
   // read connected components; set sparsity level
   if (!app_settings_->path_->data_comps_data_.empty()) {
     readConCompDat(tumor_->phi_->component_weights_, tumor_->phi_->component_centers_, app_settings_->path_->data_comps_data_);
@@ -203,6 +203,12 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
     ierr = readPhiMesh(coarse_sol_centers, params_, app_settings_->path_->phi_, false); CHKERRQ(ierr);
     ierr = readPVec(&coarse_sol, params_->tu_->np_ + params_->get_nk() + params_->get_nr(), params_->tu_->np_, app_settings_->path_->pvec_); CHKERRQ(ierr);
     np_coarse = params_->tu_->np_;
+    if (np_coarse > set_sparsity_level) {
+      ss << "injected solution has sparsity " << np_coarse << " > sparsity level = " << set_sparsity_level << "; setting extra memory for " << np_coarse - set_sparsity_level << " gaussian(s)."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+      ierr = tumor_->phi_->setAdditionalMemory(np_coarse - set_sparsity_level); CHKERRQ(ierr);
+    }
     params_->tu_->np_ = np_save;  // reset to correct value
     // find coarse centers in centers_ of current Phi
     int xc, yc, zc, xf, yf, zf;

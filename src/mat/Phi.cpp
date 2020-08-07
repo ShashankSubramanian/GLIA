@@ -987,6 +987,20 @@ PetscErrorCode Phi::setGaussians(Vec data) {
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode Phi::setAdditionalMemory(int n) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  int sz = phi_vec_.size();
+  phi_vec_.resize(sz + n);
+
+  for (int i = sz; i < sz + n; i++) {
+    ierr = VecDuplicate(phi_vec_[0], &phi_vec_[i]); CHKERRQ(ierr);
+    ierr = VecSet(phi_vec_[i], 0); CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
 void Phi::modifyCenters(std::vector<int> support_idx) {
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
