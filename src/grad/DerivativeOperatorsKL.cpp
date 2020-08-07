@@ -24,8 +24,8 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, std
   ScalarType *c_ptr, *d_ptr, *ce_ptr;
   ierr = vecGetArray(tumor_->c_t_, &c_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(data, &d_ptr); CHKERRQ(ierr);
-  ierr = vecGetArray(temp_, &ce_ptr); CHKERRQ(ierr);
 #ifdef CUDA
+  ierr = vecGetArray(temp_, &ce_ptr); CHKERRQ(ierr);
   computeCrossEntropyCuda(ce_ptr, d_ptr, c_ptr, eps, params_->grid_->nl_);
   // vecSumCuda(ce_ptr, J, params_->grid_->nl_);
   cublasStatus_t status;
@@ -33,16 +33,19 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjective(PetscReal *J, Vec x, std
   PetscCUBLASGetHandle(&handle);
   status = cublasSum(handle, params_->grid_->nl_, ce_ptr, 1, J);
   cublasCheckError(status);
+  ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
 #else
+  ierr = vecGetArray(temp_, &ce_ptr); CHKERRQ(ierr);
   for (int i = 0; i < params_->grid_->nl_; i++) {
     c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
     c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
-    (*J) += -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
+    ce_ptr[i] += -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
   }
+  ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
+  ierr = VecSum(temp_, J); CHKERRQ(ierr);
 #endif
   ierr = vecRestoreArray(tumor_->c_t_, &c_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(data, &d_ptr); CHKERRQ(ierr);
-  ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
 
   /*Regularization term*/
   PetscReal reg = 0;
@@ -167,8 +170,8 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
   ierr = vecGetArray(tumor_->c_t_, &c_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->p_t_, &a_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(data, &d_ptr); CHKERRQ(ierr);
-  ierr = vecGetArray(temp_, &ce_ptr); CHKERRQ(ierr);
 #ifdef CUDA
+  ierr = vecGetArray(temp_, &ce_ptr); CHKERRQ(ierr);
   computeCrossEntropyCuda(ce_ptr, d_ptr, c_ptr, eps, params_->grid_->nl_);
   // vecSumCuda(ce_ptr, J, params_->grid_->nl_);
   cublasStatus_t status;
@@ -177,15 +180,18 @@ PetscErrorCode DerivativeOperatorsKL::evaluateObjectiveAndGradient(PetscReal *J,
   status = cublasSum(handle, params_->grid_->nl_, ce_ptr, 1, J);
   cublasCheckError(status);
   computeCrossEntropyAdjointICCuda(a_ptr, d_ptr, c_ptr, eps, params_->grid_->nl_);
+  ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
 #else
+  ierr = vecGetArray(temp_, &ce_ptr); CHKERRQ(ierr);
   for (int i = 0; i < params_->grid_->nl_; i++) {
     c_ptr[i] = (c_ptr[i] < eps) ? eps : c_ptr[i];
     c_ptr[i] = (c_ptr[i] > 1 - eps) ? 1 - eps : c_ptr[i];
-    (*J) += -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
+    ce_ptr[i] += -(d_ptr[i] * log(c_ptr[i]) + (1 - d_ptr[i]) * log(1 - c_ptr[i]));
     a_ptr[i] = (d_ptr[i] / (c_ptr[i]) - (1 - d_ptr[i]) / (1 - c_ptr[i]));
   }
-#endif
   ierr = vecRestoreArray(temp_, &ce_ptr); CHKERRQ(ierr);
+  ierr = VecSum(temp_, J); CHKERRQ(ierr);
+#endif
   ierr = vecRestoreArray(tumor_->c_t_, &c_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(tumor_->p_t_, &a_ptr); CHKERRQ(ierr);
   ierr = vecRestoreArray(data, &d_ptr); CHKERRQ(ierr);
