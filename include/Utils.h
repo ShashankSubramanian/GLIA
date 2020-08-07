@@ -637,7 +637,7 @@ PetscErrorCode vecSparsity (Vec x, double &sparsity); //Hoyer measure for sparsi
 void __TU_assert(const char* expr_str, bool expr, const char* file, int line, const char* msg);
 
 PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, int &nnz);
-PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<double> weights, int &nnz, int num_components);
+PetscErrorCode hardThreshold (Vec x, int sparsity_level, int sz, std::vector<int> &support, std::vector<int> labels, std::vector<double> weights, int &nnz, int num_components, bool double_mode = false);
 
 double myDistance (double *c1, double *c2);
 

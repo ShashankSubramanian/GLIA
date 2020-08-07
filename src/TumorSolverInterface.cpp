@@ -244,15 +244,37 @@ PetscErrorCode TumorSolverInterface::solveInverse (Vec prec, Vec d1, Vec d1g) {
         ierr = VecGetArray (x_L2, &x_L2_ptr);                                   CHKERRQ (ierr);
         n_misc_->rho_ = x_L2_ptr[np + nk];
 
-        double r1, r2, r3;
-        r1 = x_L2_ptr[np + nk];
-        r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
-        r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
+//        double r1, r2, r3;
+//        r1 = x_L2_ptr[np + nk];
+//        r2 = (n_misc_->nr_ > 1) ? x_L2_ptr[np + nk + 1] : 0;
+//        r3 = (n_misc_->nr_ > 2) ? x_L2_ptr[np + nk + 2] : 0;
+//
+//        PCOUT << "\nEstimated reaction coefficients " <<  std::endl;
+//        PCOUT << "r1: " << r1 << std::endl;
+//        PCOUT << "r2: " << r2 << std::endl;
+//        PCOUT << "r3: " << r3 << std::endl;
+//
 
-        PCOUT << "\nEstimated reaction coefficients " <<  std::endl;
-        PCOUT << "r1: " << r1 << std::endl;
-        PCOUT << "r2: " << r2 << std::endl;
-        PCOUT << "r3: " << r3 << std::endl;
+	PetscReal r1, r2, r3, k1, k2, k3;
+        r1 = n_misc_->rho_;                                                      // equals x_L2_ptr[np + nk]
+        r2 = (n_misc_->nr_ > 1) ? n_misc_->rho_ * n_misc_->r_gm_wm_ratio_  : 0;  // equals x_L2_ptr[np + nk + 1]
+        r3 = (n_misc_->nr_ > 2) ? n_misc_->rho_ * n_misc_->r_glm_wm_ratio_ : 0;  // equals x_L2_ptr[np + nk + 2]
+        k1 = n_misc_->k_;                                                                        // equals x_L2_ptr[np];
+        k2 = (n_misc_->nk_ > 1) ? n_misc_->k_   * n_misc_->k_gm_wm_ratio_  : 0;  // equals x_L2_ptr[np+1];
+        k3 = (n_misc_->nk_ > 2) ? n_misc_->k_   * n_misc_->k_glm_wm_ratio_ : 0;  // equals x_L2_ptr[np+2];
+
+        if (n_misc_->reaction_inversion_) {
+            std::stringstream ss;
+            ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
+            ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+            ierr = tuMSG    ("### estimated reaction coefficients:                  ###"); CHKERRQ (ierr);
+            ss << "    r1: "<< r1 << ", r2: " << r2 << ", r3: "<< r3;
+            ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSG    ("### estimated diffusion coefficients:                 ###"); CHKERRQ (ierr);
+            ss << "    k1: "<< k1 << ", k2: " << k2 << ", k3: "<< k3;
+            ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+            ierr = tuMSGstd ("### ------------------------------------------------- ###"); CHKERRQ (ierr);
+        }
 
         ierr = VecGetArray (prec, &prec_ptr);                                   CHKERRQ (ierr);
 

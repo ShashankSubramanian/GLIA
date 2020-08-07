@@ -562,6 +562,7 @@ int main (int argc, char** argv) {
         ss << " results in: " << n_misc->writepath_.str().c_str(); ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
         std::string file_concomp(data_comp_dat_path);
+        int set_sparsity_level = n_misc->sparsity_level_;
         if(read_data_comp_file){
           readConCompDat(tumor->phi_->component_weights_, tumor->phi_->component_centers_, file_concomp);
           int nnc = 0;
@@ -639,6 +640,11 @@ int main (int argc, char** argv) {
               ierr = readPhiMesh(coarse_sol_centers, n_misc, file_cm, false);           CHKERRQ (ierr);
               ierr = readPVec(&coarse_sol, n_misc->np_ + nk + nr, n_misc->np_, file_p); CHKERRQ (ierr);
               np_coarse = n_misc->np_;
+              if (np_coarse > set_sparsity_level) {
+                ss << "injected solution has sparsity " << np_coarse << " > sparsity level = " << set_sparsity_level << "; setting extra memory for " << np_coarse - set_sparsity_level << " gaussian(s)."; ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+                ierr = tumor->phi_->setAdditionalMemory(np_coarse - set_sparsity_level); CHKERRQ(ierr);
+              }
+
               n_misc->np_ = np_save; // reset to correct value
               // find coarse centers in centers_ of current Phi
               int xc,yc,zc,xf,yf,zf;

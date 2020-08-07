@@ -1038,7 +1038,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMpRS(bool rs_mode_active = true) {
               ierr = VecRestoreArray(itctx_->cosamp_->work, &grad_ptr);                                            CHKERRQ(ierr);
             }
             idx.clear();
-            ierr = hardThreshold (itctx_->cosamp_->work, 2 * itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
+            ierr = hardThreshold (itctx_->cosamp_->work, 2 * itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_, true);
 
             /* === update support of prev. solution with new support === */
             itctx_->n_misc_->support_.insert (itctx_->n_misc_->support_.end(), idx.begin(), idx.end());
@@ -1401,7 +1401,7 @@ PetscErrorCode InvSolver::solveInverseCoSaMp() {
 
       // threshold gradient
       idx.clear();
-      ierr = hardThreshold (temp, 2 * itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_);
+      ierr = hardThreshold (temp, 2 * itctx_->n_misc_->sparsity_level_, np_full, idx, itctx_->tumor_->phi_->gaussian_labels_, itctx_->tumor_->phi_->component_weights_, nnz, itctx_->tumor_->phi_->num_components_, true);
 
       /* === update support of prev. solution with new support === */
       itctx_->n_misc_->support_.insert (itctx_->n_misc_->support_.end(), idx.begin(), idx.end());

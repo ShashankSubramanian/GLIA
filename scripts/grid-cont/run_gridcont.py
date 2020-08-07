@@ -70,12 +70,12 @@ def createJobsubFile(cmd, opt, level):
             bash_file.write("#SBATCH -N " + str(opt['num_nodes']) + "\n");
 
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
-        bash_file.write("#SBATCH --mail-user=kscheufele@austin.utexas.edu\n");
-        bash_file.write("#SBATCH --mail-type=fail\n");
-        if opt['compute_sys'] == 'frontera':
-          bash_file.write("#SBATCH -A FTA-Biros\n");
-        else:
-          bash_file.write("#SBATCH -A PADAS\n");
+#        bash_file.write("#SBATCH --mail-user=kscheufele@austin.utexas.edu\n");
+#        bash_file.write("#SBATCH --mail-type=fail\n");
+#        if opt['compute_sys'] == 'frontera':
+#          bash_file.write("#SBATCH -A FTA-Biros\n");
+#        else:
+#          bash_file.write("#SBATCH -A PADAS\n");
         bash_file.write("#SBATCH -o " + os.path.join(opt['output_dir'], "grid-cont-l"+str(level)+".out ") + "\n");
         bash_file.write("\n\n");
         bash_file.write("source ~/.bashrc\n");
@@ -160,7 +160,7 @@ def registration(basedir, args):
 def gridcont(basedir, args):
 
     # ########### SETTINGS ############
-    patients_per_job   = 2;
+    patients_per_job   = 1;
     levels             = [64,128,256]
     if args.compute_cluster == "stampede2":
       nodes      = [1,1,2]
@@ -174,7 +174,7 @@ def gridcont(basedir, args):
     wtime_h            = [x * patients_per_job for x in [0,2,9]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
     sigma_fac          = [1,1,1]                    # on every level, sigma = fac * hx
-    predict            = [0,0,0]
+    predict            = [0,0,1]
     gvf                = [0.0,0.9,0.9]              # ignored for C0_RANKED
     rho_default        = 8;
     k_default          = 0;
