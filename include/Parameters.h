@@ -221,7 +221,7 @@ public:
   , order_ (2)                             // Order of accuracy for PDE solves
   , write_output_ (1)                      // Print flag for paraview visualization
   , phi_store_ (false)                     // Flag to store phis
-  , adjoint_store_ (true)                  // Flag to store half-step concentrations for adjoint solve to speed up time to solution
+  , adjoint_store_ (false)                  // Flag to store half-step concentrations for adjoint solve to speed up time to solution
   , time_history_off_(false)               // if true, time history is not stored (forward solve, or finite-differences)
   , exp_shift_ (10.0)                      // Parameter for positivity shift
   , penalty_ (1E-4)                        // Parameter for positivity objective function

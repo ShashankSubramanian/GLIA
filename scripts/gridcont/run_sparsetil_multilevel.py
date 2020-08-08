@@ -22,7 +22,7 @@ JOBfile = "";
 
 ### ________________________________________________________________________ ___
 ### //////////////////////////////////////////////////////////////////////// ###
-def sparsetil_gridcont(input):
+def sparsetil_gridcont(input, use_gpu = False):
     """ Creates tumor solver input files, config files, and submits grid continuation
         jobs for sparse TIL tumor inversion.
     """
@@ -33,8 +33,12 @@ def sparsetil_gridcont(input):
     dtype              = '.nc'
     # -------------------------------- #
     system             = input['system'] if 'system' in input else 'frontera' # TACC systems are: stampede2, frontera, maverick2, pele, longhorn
-    nodes              = 2;
-    procs              = [24, 48, 96];
+    if use_gpu:
+      nodes            = 1
+      procs            = [1, 1, 1]
+    else:
+      nodes            = 2;
+      procs            = [24, 48, 96];
     wtime_h            = [x * patients_per_job for x in [0,2,12]];
     wtime_m            = [x * patients_per_job for x in [30,0,0]];
     # -------------------------------- #
@@ -48,6 +52,8 @@ def sparsetil_gridcont(input):
     # -------------------------------- #
     rho_init           = 8;            # initial guess rho on coarsest level
     k_init             = 0;            # initial guess kappa on coarsest level
+    r_gm_wm            = 0             # ratio of reaction coeffient in gm to wm
+    k_gm_wm            = 0             # ratio of diffusion coeffient in gm to wm
     nt                 = 40            # number of time steps
     beta_p             = 0;            # L2 regularization weight
     opttol             = 1E-4;         # gradient tolerance for the optimizer
@@ -56,7 +62,7 @@ def sparsetil_gridcont(input):
     ls_max_func_evals  = [10, 10, 10]; # max number of allowed ls attempts per level
     ls_type            = ['mt', 'armijo', 'armijo'] # ls type per level
     kappa_lb           = [1E-4, 1E-4, 1E-4];
-    kappa_ub           = [.4, 1., 1.]; # kappa bounds per level
+    kappa_ub           = [.5, .5, .5]; # kappa bounds per level
     rho_lb             = [1, 1, 1];    #
     rho_ub             = [18, 18, 18]; # rho bounds per level
     k_gm_wm            = 0             # kappa ratio wm to gm
@@ -121,7 +127,7 @@ def sparsetil_gridcont(input):
     if 'out_dir_suffix' in input:
         output_path_tumor = output_path_tumor + '_' + input['out_dir_suffix']
     if not os.path.exists(input_path):
-        os.mkdir(input_path);
+        os.makedirs(input_path);
 
 
     # == load and resample input segmentation
@@ -180,7 +186,7 @@ def sparsetil_gridcont(input):
         if not os.path.exists(result_path_level):
             os.makedirs(result_path_level, exist_ok=True);
         if not os.path.exists(input_path_level):
-            os.mkdir(input_path_level);
+            os.makedirs(input_path_level);
         # create symlinks
 
         symlink_cmd = "\n\n### Symlinks ###\n#----------"
@@ -304,7 +310,8 @@ def sparsetil_gridcont(input):
         r['wtime_h']   = wtime_h[-1]
         r['wtime_m']   = wtime_m[-1]
         r['log_dir']   = output_path_tumor
-        r['ibrun_man'] = " -n " + str(procs[ii]) + " -o 0 "
+        if not use_gpu:
+          r['ibrun_man'] = " -n " + str(procs[ii]) + " -o 0 "
         
         p['output_dir']         = result_path_level
         p['n']                  = level
@@ -373,7 +380,7 @@ def sparsetil_gridcont(input):
 
 
 
-        run_str = par.write_config(p, r)
+        run_str = par.write_config(p, r, use_gpu)
         cmd_command += "\n" + "# run tumor solver\n" + run_str + "  2>&1  " + os.path.join(output_path_level, "solver_log.txt")
         if level == 256:
           cmd_command += "\n" + cmd_postproc

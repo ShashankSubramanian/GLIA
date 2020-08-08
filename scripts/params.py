@@ -9,7 +9,7 @@ import os
 
  ### ________________________________________________________________________ ___
  ### //////////////////////////////////////////////////////////////////////// ###
-def write_config(set_params, run):
+def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     """ 'set_params' is a dictionary which can be populated
          with user values for compulsory tumor parameters.
          'run' is a dictionary containig compute system and
@@ -308,6 +308,8 @@ def write_config(set_params, run):
     if 'ibrun_man' in r and r['ibrun_man']:
         ibman = r['ibrun_man']
     cmd = ""
+    if use_gpu:
+      cmd += "CUDA_VISIBLE_DEVICES=" + gpu_device_id + " "
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
         if r['mpi_tasks'] < 24:
@@ -408,7 +410,7 @@ def write_jobscript_header(tu_params, run_params):
 
 ### ________________________________________________________________________ ___
 ### //////////////////////////////////////////////////////////////////////// ###
-def submit(tu_params, run_params, submit_job = True):
+def submit(tu_params, run_params, submit_job = True, use_gpu = False):
     """ creates config file and submits job """
     import subprocess
     scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -425,7 +427,7 @@ def submit(tu_params, run_params, submit_job = True):
     job_file = open(fname, 'w+')
 
     job_header = write_jobscript_header(tu_params, run_params)
-    run_str = write_config(tu_params, run_params)
+    run_str = write_config(tu_params, run_params, use_gpu)
 
     job_file.write(job_header)
     job_file.write(run_str)
