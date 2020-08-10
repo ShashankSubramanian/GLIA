@@ -381,7 +381,7 @@ def sparsetil_gridcont(input, use_gpu = False):
 
 
         run_str = par.write_config(p, r, use_gpu)
-        cmd_command += "\n" + "# run tumor solver\n" + run_str + "  2>&1  " + os.path.join(output_path_level, "solver_log.txt")
+        cmd_command += "\n" + "# run tumor solver\n" + run_str + " > " + os.path.join(result_path_level, "solver_log.txt") + " 2>&1"
         if level == 256:
           cmd_command += "\n" + cmd_postproc
         cmd_command +="\n#=================="
