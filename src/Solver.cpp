@@ -168,12 +168,18 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
     int nnc = 0;
     for (auto w : tumor_->phi_->component_weights_)
       if (w >= params_->tu_->thresh_component_weight_) nnc++;  // number of significant components
-    ss << " Setting sparsity level to " << params_->tu_->sparsity_level_ << " x n_components (w > "<< params_->tu_->thresh_component_weight_ <<") + n_components (w < "<< params_->tu_->thresh_component_weight_ <<") = " << params_->tu_->sparsity_level_ << " x " << nnc << " + "
-       << (tumor_->phi_->component_weights_.size() - nnc) << " = " << params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc);
+    //ss << " Setting sparsity level to " << params_->tu_->sparsity_level_ << " x n_components (w > "<< params_->tu_->thresh_component_weight_ <<") + n_components (w < "<< params_->tu_->thresh_component_weight_ <<") = " << params_->tu_->sparsity_level_ << " x " << nnc << " + " << (tumor_->phi_->component_weights_.size() - nnc) << " = " << params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc);
+    double thres_reduce = params_->tu_->thresh_component_weight_ / 10.0; 
+    int nnc_t = 0;
+    for (auto w : tumor_->phi_->component_weights_)
+      if (w < params_->tu_->thresh_component_weight_ && w >= thres_reduce) nnc_t++;  // number of intermediate components
+
+    ss << " Setting sparsity level to " << params_->tu_->sparsity_level_ << " x n_components (w > "<< params_->tu_->thresh_component_weight_ <<") + n_components (" << thres_reduce << " < w < "<< params_->tu_->thresh_component_weight_ <<") = " << params_->tu_->sparsity_level_ << " x " << nnc << " + " << nnc_t << " = " << params_->tu_->sparsity_level_ * nnc + nnc_t;
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
     ss.clear();
-    params_->tu_->sparsity_level_ = params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc);
+    //params_->tu_->sparsity_level_ = params_->tu_->sparsity_level_ * nnc + (tumor_->phi_->component_weights_.size() - nnc);
+    params_->tu_->sparsity_level_ = params_->tu_->sparsity_level_ * nnc + nnc_t;
   }
 
   // === set Gaussians

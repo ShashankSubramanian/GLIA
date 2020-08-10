@@ -389,13 +389,26 @@ PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int>
   int fin_spars;
   int sparsity;
   int ncc = 0;
+  int ncc_t = 0;
   for (auto w : weights)
     if (w >= thresh_component_weight) ncc++;
+  double thres_reduce = thresh_component_weight / 10.0; 
+  for (auto w : weights)
+    if (w < thresh_component_weight && w >= thres_reduce) ncc_t++;
+
   for (int nc = 0; nc < num_components; nc++) {
     if (nc != num_components - 1) {
-      // sparsity level in total is 5 * #nc (number components)
+      // sparsity level in total is 5 * #nc (number components); if the sparsity per component is 5.
       // every component gets at 3 degrees of freedom, the remaining 2 * #nc degrees of freedom are distributed based on component weight
-      sparsity = (weights[nc] > thresh_component_weight) ? (3 + std::floor(weights[nc] * (sparsity_level - 3 * ncc - (num_components - ncc)))) : 1;
+      // sparsity = (weights[nc] > thresh_component_weight) ? (3 + std::floor(weights[nc] * (sparsity_level - 3 * ncc - (num_components - ncc)))) : 1;
+      if (weights[nc] >= thresh_component_weight) {
+        sparsity = 3 + std::floor(weights[nc] * (sparsity_level - 3 * ncc - ncc_t));
+      } else if (weights[nc] < thresh_component_weight && weights[nc] >= thres_reduce) {
+        sparsity = 1;
+      } else {
+        sparsity = 0;
+      }
+      
       if (double_mode)
       	sparsity *= 2;
       component_sparsity.push_back(sparsity);
