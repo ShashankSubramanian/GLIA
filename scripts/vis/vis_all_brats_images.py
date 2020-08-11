@@ -109,7 +109,7 @@ if __name__=='__main__':
   num_pats = len(patient_list)
   num_pats_per_page = 5
 
-  with PdfPages(args.results_dir + "/penn_mri_epoch200.pdf") as pdf:
+  with PdfPages(args.results_dir + "/penn_mri.pdf") as pdf:
     for it in range(0,math.ceil(num_pats/num_pats_per_page)):
       cur_pats = patient_list[it*num_pats_per_page:it*num_pats_per_page + num_pats_per_page]
       ct = 0
@@ -123,8 +123,10 @@ if __name__=='__main__':
           seg = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz").get_fdata()
           com = compute_com(seg)
         else:
-          t1ce = nib.load(args.patient_dir + "/" + pat + "/" + pat + "_t1ce.nii.gz").get_fdata()
-          seg = nib.load(args.patient_dir + "/" + pat + "/" + pat + "_seg_epoch200.nii.gz").get_fdata()
+          t1ce = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1ce_aff2jakob.nii.gz").get_fdata()
+          seg = nib.load(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz").get_fdata()
+#          t1ce = nib.load(args.patient_dir + "/" + pat + "/" + pat + "_t1ce.nii.gz").get_fdata()
+#          seg = nib.load(args.patient_dir + "/" + pat + "/" + pat + "_seg_epoch200.nii.gz").get_fdata()
           com = compute_com(seg)
         ax[ct][0].imshow(t1ce[:,:,com[2]].T, cmap='gray', interpolation='none', origin='upper')
         ax[ct][1].imshow(t1ce[:,com[1],:].T, cmap='gray', interpolation='none', origin='upper')
@@ -142,7 +144,7 @@ if __name__=='__main__':
         for ax_id in range(0,6):
           if ax_id is not 0 and ax_id is not 3:
             ax[ct][ax_id].set_xlim(pad_x,256-pad_x+ox)
-            ax[ct][ax_id].set_ylim(pad_y-oy,160-pad_y)
+            ax[ct][ax_id].set_ylim(pad_y-oy,256-pad_y)
           else:
             ax[ct][ax_id].set_xlim(pad_x,256-pad_x+ox)
             ax[ct][ax_id].set_ylim(pad_y-oy,256-pad_y)
