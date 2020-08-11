@@ -344,13 +344,15 @@ PetscErrorCode SolverInterface::predict() {
     } else {
       ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
     }
-
+    bool time_history = params_->tu_->time_history_off_;
     // predict tumor growth at different (user defined) times
     for (int i = 0; i < app_settings_->pred_->t_pred_.size(); ++i) {
       params_->tu_->nt_ = (int)(app_settings_->pred_->t_pred_[i] / app_settings_->pred_->dt_);  // number of time steps
-      if(!params_->tu_->time_history_off_) {
-        ierr = pde_operators_->resizeTimeHistory(params_); CHKERRQ(ierr);
-      }
+      // time history can be off here since only prediction(forward)
+      params_->tu_->time_history_off_ = true;
+//      if(!params_->tu_->time_history_off_) {
+//        ierr = pde_operators_->resizeTimeHistory(params_); CHKERRQ(ierr);
+//      }
       // if different brain to perform prediction is given, read in and reset atlas
       if (app_settings_->pred_->wm_path_.size() > i) { 
         if(!app_settings_->pred_->wm_path_[i].empty()) {
@@ -437,6 +439,7 @@ PetscErrorCode SolverInterface::predict() {
         }
       }
     }
+    params_->tu_->time_history_off_ = time_history;
   }
   PetscFunctionReturn(ierr);
 }
