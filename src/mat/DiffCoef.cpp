@@ -103,14 +103,77 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
   ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
   ScalarType alpha = params->tu_->kf_ - params->tu_->k_;
-  ierr = VecAXPY(kxx_, alpha, mat_prop->kfxx_);
-  ierr = VecAXPY(kxy_, alpha, mat_prop->kfxy_);
-  ierr = VecAXPY(kxz_, alpha, mat_prop->kfxz_);
-  ierr = VecAXPY(kyy_, alpha, mat_prop->kfyy_);
-  ierr = VecAXPY(kyz_, alpha, mat_prop->kfyz_);
-  ierr = VecAXPY(kzz_, alpha, mat_prop->kfzz_);
-  ierr = dataOut(kxx_, params, "kxx.nc"); CHKERRQ(ierr);    
+  /*
+  ierr = VecAXPY(kxx_, alpha, mat_prop->kfxx_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxy_, alpha, mat_prop->kfxy_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxz_, alpha, mat_prop->kfxz_); CHKERRQ(ierr);
+  ierr = VecAXPY(kyy_, alpha, mat_prop->kfyy_); CHKERRQ(ierr);
+  ierr = VecAXPY(kyz_, alpha, mat_prop->kfyz_); CHKERRQ(ierr);
+  ierr = VecAXPY(kzz_, alpha, mat_prop->kfzz_); CHKERRQ(ierr);
+  */
+   
+  ScalarType dk_dm_wm_p = alpha;
+  ScalarType dk_dm_gm_p = 0.0; //alpha*k_gm_wm_ratio_;
+  
 
+  Vec tmp_;
+  ierr = VecDuplicate(kxx_, &tmp_); CHKERRQ(ierr);
+  
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfxx_, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxx_, dk_dm_gm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfxy_, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxy_, dk_dm_gm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfxz_, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxz_, dk_dm_gm_p, tmp_); CHKERRQ(ierr);
+
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfyy_, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kyy_, dk_dm_gm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfyz_, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kyz_, dk_dm_gm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfzz_, mat_prop->gm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kzz_, dk_dm_gm_p, tmp_); CHKERRQ(ierr);
+
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfxx_, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxx_, dk_dm_wm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfxy_, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxy_, dk_dm_wm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfxz_, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kxz_, dk_dm_wm_p, tmp_); CHKERRQ(ierr);
+
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfyy_, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kyy_, dk_dm_wm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfyz_, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kyz_, dk_dm_wm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = VecSet(tmp_, 0.0); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(tmp_, mat_prop->kfzz_, mat_prop->wm_); CHKERRQ(ierr);
+  ierr = VecAXPY(kzz_, dk_dm_wm_p, tmp_); CHKERRQ(ierr);
+
+  ierr = dataOut(kxy_, params, "kxy.nc"); CHKERRQ(ierr);    
+  ierr = dataOut(kxz_, params, "kxz.nc"); CHKERRQ(ierr);    
+  ierr = dataOut(kyz_, params, "kyz.nc"); CHKERRQ(ierr);    
+  
   // Average diff coeff values for preconditioner for diffusion solve
   ierr = VecSum(kxx_, &kxx_avg_); CHKERRQ(ierr);
   ierr = VecSum(kxy_, &kxy_avg_); CHKERRQ(ierr);

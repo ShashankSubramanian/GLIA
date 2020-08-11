@@ -748,6 +748,7 @@ PetscErrorCode SolverInterface::readDiffusionFiberTensor() {
     ierr = dataIn(kfzz_, params_, app_settings_->path_->kf_ + "kf33_w.nc" ); CHKERRQ(ierr);
 
     // smooth
+    /*
     if (params_->tu_->smoothing_factor_atlas_ > 0) {
       if (kfxx_ !=nullptr) {
         ierr = spec_ops_->weierstrassSmoother(kfxx_, kfxx_, params_, sigma_smooth); CHKERRQ(ierr);
@@ -768,6 +769,7 @@ PetscErrorCode SolverInterface::readDiffusionFiberTensor() {
         ierr = spec_ops_->weierstrassSmoother(kfzz_, kfzz_, params_, sigma_smooth); CHKERRQ(ierr);
       }
     }
+    */
     ierr = tuMSGstd("  .. diffusion fiber data read."); CHKERRQ(ierr);
   } else {
     ierr = tuMSGstd("  .. no diffusion fiber data read."); CHKERRQ(ierr);
@@ -849,6 +851,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   ss.clear();
 
   std::map<std::string, Vec> species;
+  ierr = dataOut(tumor_->k_->kyz_, params_, "kyz_creSyn.nc"); CHKERRQ(ierr);
   if (params_->tu_->model_ == 5) {
     ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
     ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
