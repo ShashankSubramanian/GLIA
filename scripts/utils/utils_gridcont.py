@@ -188,22 +188,23 @@ def convert_images_to_orig_size(input_path, reference_image_path, gridcont=False
     print('[] converting nc files to nii.gz files in brats hdr.')
     refshape = ref_img.shape 
     suf = {}
+    ref_affine = ref_img.affine
     for l in levels:
         scale = float(256./l)
         suf[l] = "_{}x{}x{}.nii.gz".format(int(refshape[0]/scale), int(refshape[1]/scale), int(refshape[2]/scale))
         tu_out_path = os.path.join(input_path, 'nx'+str(l)+'/');
         # create template image 
-       # new_affine = np.copy(ref_img.affine)
-       # row,col = np.diag_indices(new_affine.shape[0])
-       # new_affine[row,col] = np.array([-scale, -scale, scale,1])
-       # if l < 256:
-       #     resampled_template = nib.processing.resample_from_to(ref_img, (np.multiply(1./scale, ref_img.shape).astype(int), new_affine))
-       # else:
-       #     resampled_template = ref_img
-       # templates[str(l)] = resampled_template
-       # fio.writeNII(resampled_template.get_fdata(), os.path.join(tu_out_path, 'template' + suf[l]), resampled_template.affine);
+        new_affine = np.copy(ref_img.affine)
+        row,col = np.diag_indices(new_affine.shape[0])
+        ref_affine_diagonal = (ref_img.affine).diagonal()
+        new_affine[row,col] = np.array([scale, scale, scale,1]) * ref_affine_diagonal
+        resampled_template = nib.processing.resample_from_to(ref_img, (np.multiply(1./scale, ref_img.shape).astype(int), new_affine), order=0)
+        templates[str(l)] = resampled_template
+        fio.writeNII(resampled_template.get_fdata(), os.path.join(tu_out_path, 'template' + suf[l]), resampled_template.affine);
 
-        resampled_template = imgtools.resizeNIIImage(ref_img, tuple([int(256/scale), int(256/scale), int(256/scale)]), interp_order=0)
+        ### TODO: don't use resizeNIIImage -- something wrong with the affines; need to fix
+#        resampled_template = imgtools.resizeNIIImage(ref_img, tuple([int(256/scale), int(256/scale), int(256/scale)]), interp_order=0)
+        
         templates[str(l)] = resampled_template
         fio.writeNII(resampled_template.get_fdata(), os.path.join(tu_out_path, 'template' + suf[l]), resampled_template.affine);
         print("  .. creating {}".format(os.path.join(tu_out_path, 'template' + suf[l])))
