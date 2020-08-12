@@ -247,7 +247,7 @@ def getNIIImageList(path, exclude=None):
 ### ------------------------------------------------------------------------ ###
 def getNetCDFImageList(path, exclude=None):
     file_list = [];
-    special_list = ["c0_rec", "data", "seg"]
+    special_list = ["c0_rec", "c1_rec", "data", "seg", "c_pred_at"]
     for dirpath,_,filenames in os.walk(path):
         for f in filenames:
             #if f.split(".").count('nc') == 1: 

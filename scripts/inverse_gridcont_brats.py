@@ -14,10 +14,10 @@ input = {}
 input['system'] = 'longhorn'
 
 # == define path to patient segmentation
-input['patient_path'] = '/scratch/05027/shas1693/tmi-results/Brats18_CBICA_ABO_1/data/Brats18_CBICA_ABO_1_seg_tu.nii.gz'
+input['patient_path'] = '/scratch/05027/shas1693/tmi-results/Brats18_CBICA_ABO_1/aff2jakob/Brats18_CBICA_ABO_1_seg_ants_aff2jakob.nii.gz'
 
 # == define path to output dir
-input['output_base_path'] = '/scratch/05027/shas1693/pglistr_tumor/results/gridcont-test/Brats18_CBICA_ABO_1/'
+input['output_base_path'] = '/scratch/05027/shas1693/pglistr_tumor/results/test/Brats18_CBICA_ABO_1/'
 
 # == define lambda for observation operator
 input['obs_lambda'] = 1
