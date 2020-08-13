@@ -52,39 +52,39 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
 
     p['n']                  = n
     p['multilevel']         = 1                 # rescale p activations according to Gaussian width on each level
-    p['output_dir'] 		    = os.path.join(res_dir, atlas + case_str + '/');  	# results path
+    p['output_dir']         = os.path.join(res_dir, atlas + case_str + '/');    # results path
     p['d1_path']            = ""  # from segmentation directly
     p['d0_path']            = pat_dir + atlas + "/" + pat + '_c0Recon_transported' + n_str + '.nc'              # path to initial condition for tumor
 #    p['d0_path']            = pat_dir + pat + '_c0Recon_aff2jakob' + n_str + '.nc'              # path to initial condition for tumor
     p['atlas_labels']       = "[wm=6,gm=5,vt=7,csf=8]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['patient_labels']     = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['a_seg_path']         = atlas_dir + "/" + atlas + "_seg_aff2jakob_ants" + n_str + ".nc"
-    p['p_seg_path'] 	      = pat_dir + pat + '_seg_ants_aff2jakob' + n_str + '.nc'
-    p['mri_path'] 			    = atlas_dir + "/" + atlas + "_t1_aff2jakob" + n_str + ".nc"
-    p['solver'] 			      = 'mass_effect'
-    p['model'] 				      = 4                       	# mass effect model
+    p['p_seg_path']         = pat_dir + pat + '_seg_ants_aff2jakob' + n_str + '.nc'
+    p['mri_path']           = atlas_dir + "/" + atlas + "_t1_aff2jakob" + n_str + ".nc"
+    p['solver']             = 'mass_effect'
+    p['model']              = 4                         # mass effect model
     p['regularization']     = "L2"                      # L2, L1
     p['obs_lambda']         = 1.0                       # if > 0: creates observation mask OBS = 1[TC] + lambda*1[B/WT] from segmentation file
-    p['verbosity'] 			    = 1                  		    # various levels of output density
-    p['syn_flag'] 			    = 0                  	      # create synthetic data
-    p['init_rho'] 			    = init_rho                  # initial guess rho (reaction in wm)
-    p['init_k'] 			      = init_k                    # initial guess kappa (diffusivity in wm)
-    p['init_gamma'] 		    = init_gamma                # initial guess (forcing factor for mass effect)
-    p['nt_inv'] 			      = 25                    	  # number time steps for inversion
-    p['dt_inv'] 			      = 0.04                  	  # time step size for inversion
+    p['verbosity']          = 1                         # various levels of output density
+    p['syn_flag']           = 0                         # create synthetic data
+    p['init_rho']           = init_rho                  # initial guess rho (reaction in wm)
+    p['init_k']             = init_k                    # initial guess kappa (diffusivity in wm)
+    p['init_gamma']         = init_gamma                # initial guess (forcing factor for mass effect)
+    p['nt_inv']             = 25                        # number time steps for inversion
+    p['dt_inv']             = 0.04                      # time step size for inversion
     p['k_gm_wm']            = 0.2                       # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm']            = 1                         # rho ratio gm/wm (if zero, rho=0 in gm)
-    p['time_history_off'] 	= 0          				        # 1: do not allocate time history (only works with forward solver or FD inversion)
-    p['beta_p'] 			      = 0E-4                  	  # regularization parameter
-    p['opttol_grad'] 		    = 1E-5             			    # relative gradient tolerance
-    p['newton_maxit'] 		  = 50              			    # number of iterations for optimizer
-    p['kappa_lb'] 			    = 0.005                     # lower bound kappa
-    p['kappa_ub'] 			    = 0.05                 		  # upper bound kappa
-    p['rho_lb'] 			      = 2                     	  # lower bound rho
-    p['rho_ub'] 			      = 12                    	  # upper bound rho
+    p['time_history_off']   = 0                         # 1: do not allocate time history (only works with forward solver or FD inversion)
+    p['beta_p']             = 0E-4                      # regularization parameter
+    p['opttol_grad']        = 1E-5                      # relative gradient tolerance
+    p['newton_maxit']       = 50                        # number of iterations for optimizer
+    p['kappa_lb']           = 0.005                     # lower bound kappa
+    p['kappa_ub']           = 0.05                      # upper bound kappa
+    p['rho_lb']             = 2                         # lower bound rho
+    p['rho_ub']             = 12                        # upper bound rho
     p['gamma_lb']           = 0                         # lower bound gamma
-    p['gamma_ub'] 			    = 12E4                		  # upper bound gamma
-    p['lbfgs_vectors'] 		  = 5        			            # number of vectors for lbfgs update
+    p['gamma_ub']           = 12E4                      # upper bound gamma
+    p['lbfgs_vectors']      = 5                         # number of vectors for lbfgs update
     p['lbfgs_scale_type']   = "scalar"                  # initial hessian approximation
     p['lbfgs_scale_hist']   = 5                         # used vecs for initial hessian approx
     p['ls_max_func_evals']  = 20                        # number of max line-search attempts
