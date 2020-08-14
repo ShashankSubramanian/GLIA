@@ -17,48 +17,71 @@ input = {}
 # bashrc is sourced prior to this command.
 #input['extra_modules'] = "module load petsc/3.11"
 
-# == compute system
+### == compute system
 input['system'] = 'longhorn'
-# == define lambda for observation operator
+### == define lambda for observation operator
 input['obs_lambda'] = 1
-# == define segmentation labels
+### == define segmentation labels
 input['segmentation_labels'] = "0=bg,1=nec,4=en,2=ed,8=csf,7=vt,5=gm,6=wm"
+### == submit the jobs?
 input['submit'] = False
+### == use gpus?
+gpu_flag = True
+### == if using gpus; specify how many gpus per compute node to use
+num_gpus_per_node = 4  ### this will run num_gpus_per_node patients parallely on the gpus
+### == how many blocks/patients per job
+input['patients_per_job'] = 2
+### == path to all patients (assumes a brats directory structure)
+path_to_all_patients = '/scratch/05027/shas1693/tmi-results/'
+### == custom list of patients; keep empty to simply walk through all patients
+patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+patient_list.extend(["Brats18_CBICA_ABM_1", "Brats18_CBICA_ALN_1", "Brats18_CBICA_ABY_1", "Brats18_CBICA_AAB_1"])
+patient_list.extend(["Brats18_CBICA_AOD_1", "Brats18_CBICA_AOH_1"])
+
+### == path to all the jobs and results
+job_path= "/scratch/05027/shas1693/pglistr_tumor/results/test3/"
+
+# =======================================================================
 # =======================================================================
 
-path_to_all_patients = '/scratch/05027/shas1693/tmi-results/'
-patient_list = []
-if os.path.exists(path_to_all_patients + "/pat_stats.csv"):
-  with open(path_to_all_patients + "/pat_stats.csv", "r") as f:
-    all_pats = f.readlines()
-  patient_list = []
-  for l in all_pats:
-    patient_list.append(l.split(",")[0])
-  if os.path.exists(path_to_all_patients + "/failed.txt"): ### if some patients have failed in some preproc routinh; ignore them
-    with open(path_to_all_patients + "/failed.txt", "r") as f:
-      lines = f.readlines()
-    for l in lines:
-      failed_pat = l.strip("\n")
-      print("ignoring failed patient {}".format(failed_pat))
-      if failed_pat in patient_list:
-        patient_list.remove(failed_pat)
-else:
-  for patient in os.listdir(path_to_all_patients):
-    suffix = ""
-    if not os.path.exists(os.path.join(os.path.join(path_to_all_patients, patient), patient + "_t1" + suffix + ".nii.gz")):
-      continue
-    patient_list.append(patient) 
+if not patient_list:
+  if os.path.exists(path_to_all_patients + "/pat_stats.csv"):
+    with open(path_to_all_patients + "/pat_stats.csv", "r") as f:
+      all_pats = f.readlines()
+    patient_list = []
+    for l in all_pats:
+      patient_list.append(l.split(",")[0])
+    if os.path.exists(path_to_all_patients + "/failed.txt"): ### if some patients have failed in some preproc routinh; ignore them
+      with open(path_to_all_patients + "/failed.txt", "r") as f:
+        lines = f.readlines()
+      for l in lines:
+        failed_pat = l.strip("\n")
+        print("ignoring failed patient {}".format(failed_pat))
+        if failed_pat in patient_list:
+          patient_list.remove(failed_pat)
+  else:
+    for patient in os.listdir(path_to_all_patients):
+      suffix = ""
+      if not os.path.exists(os.path.join(os.path.join(path_to_all_patients, patient), patient + "_t1" + suffix + ".nii.gz")):
+        continue
+      patient_list.append(patient) 
 
-### comment; else use a custom list
-patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
 total_no_patients = len(patient_list)
-gpu_flag = True
-job_path= "/scratch/05027/shas1693/pglistr_tumor/results/test3/"
+
 if gpu_flag:
-  num_gpus_per_node = 4  ### this will run num_gpus_per_node patients parallely on the gpus
   num_jobs = math.ceil(total_no_patients/num_gpus_per_node)
+  job_idx = 0
   for job in range(0,num_jobs):
-    patient_local_list = patient_list[job*num_gpus_per_node:(job+1)*num_gpus_per_node]
+    if (job+1)%input['patients_per_job'] == 0:
+      job_idx += 1
+
+    if (job+1)*num_gpus_per_node > total_no_patients:
+      ### no more patients; end the job
+      input['batch_end'] = True
+      job_idx += 1
+      patient_local_list = patient_list[job*num_gpus_per_node:]
+    else:
+      patient_local_list = patient_list[job*num_gpus_per_node:(job+1)*num_gpus_per_node]
     patient_data_paths = []
     output_base_paths = []
     for pat in patient_local_list:
@@ -66,7 +89,7 @@ if gpu_flag:
       patient_data_paths.append(os.path.join(path_to_all_patients, pat) + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz")
       # == define path to output dir
       output_base_paths.append(job_path + pat)
-    gridcont_gpu.sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_path, use_gpu = True);
+    gridcont_gpu.sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_path, job_idx, use_gpu = True);
 else:
   for pat in patient_list:
     # == define path to patient segmentation

@@ -22,12 +22,15 @@ JOBfile = "";
 
 ### ________________________________________________________________________ ___
 ### //////////////////////////////////////////////////////////////////////// ###
-def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_path, use_gpu = True):
+def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_path, job_idx = 0, use_gpu = True):
     """ This function is a copy of sparsetil_gridcont for running jobs parallely on multiple gpus 
     """
     # ########### SETTINGS ########### #
     # -------------------------------- #
-    patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
+    if 'patients_per_job' in input:
+      patients_per_job = input['patients_per_job']
+    else:
+      patients_per_job = 1;            # specify if multiple cases should be combined in single job script
     submit             = input['submit'] if 'submit' in input else False
     dtype              = '.nc'
     # -------------------------------- #
@@ -102,11 +105,13 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
     global cases_per_jobfile_counter;
     cases_per_jobfile_counter = cases_per_jobfile_counter + 1 if cases_per_jobfile_counter < patients_per_job else 1;
     batch_end = cases_per_jobfile_counter == patients_per_job
+    if 'batch_end' in input:
+      if input['batch_end'] == True:
+        batch_end = True
     submit    = submit and batch_end;
     new_job   = cases_per_jobfile_counter == 1
     global JOBfile;
     JOBfile = "" if new_job else JOBfile + "\n\n###############################################################\n###############################################################\n###############################################################\n\n\n";
-
     # labels
     labels = {}
     for x in input['segmentation_labels'].split(','):
@@ -390,7 +395,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
 
     ### write config to write_path and submit job
     if batch_end:
-        fname_job = os.path.join(job_path, 'job.sh')
+        fname_job = os.path.join(job_path, 'job_' + str(job_idx) + '.sh')
         job_file = open(fname_job, 'w+')
         # get header, config and run str
         job_header = par.write_jobscript_header(p, r)
