@@ -161,7 +161,6 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
   // reads or generates data, sets and applies observation operator
   ierr = setupData(); CHKERRQ(ierr);
-  int set_sparsity_level = params_->tu_->sparsity_level_;
   // read connected components; set sparsity level
   if (!app_settings_->path_->data_comps_data_.empty()) {
     readConCompDat(tumor_->phi_->component_weights_, tumor_->phi_->component_centers_, app_settings_->path_->data_comps_data_);
@@ -183,21 +182,22 @@ PetscErrorCode InverseL1Solver::initialize(std::shared_ptr<SpectralOperators> sp
   }
 
   // === set Gaussians
-  if (!warmstart_p_) {  // set component labels
-    if (!app_settings_->path_->data_comps_.empty()) {
-      ss << "  Setting component data from .nc image file.";
-      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-      ss.str("");
-      ss.clear();
-      tumor_->phi_->setLabels(data_comps_); CHKERRQ(ierr);
-    }
+  //if (!warmstart_p_) {  // set component labels
+  if (!app_settings_->path_->data_comps_.empty()) {
+    ss << "  Setting component data from .nc image file.";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    tumor_->phi_->setLabels(data_comps_); CHKERRQ(ierr);
   }
+  //}
   // define number of additional inversion DOFs,
   // used in initializeGaussians to create p_rec_
   n_inv_ = params_->get_nk() + params_->get_nr();
   ierr = initializeGaussians(); CHKERRQ(ierr);
 
   // === inject coarse level solution
+  int set_sparsity_level = params_->tu_->sparsity_level_;
   if(app_settings_->inject_solution_) {
     ss << " Injecting coarse level solution (adopting p_vec and Gaussians).";
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
