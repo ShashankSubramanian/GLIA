@@ -32,14 +32,12 @@ num_gpus_per_node = 4  ### this will run num_gpus_per_node patients parallely on
 ### == how many blocks/patients per job
 input['patients_per_job'] = 2
 ### == path to all patients (assumes a brats directory structure)
-path_to_all_patients = '/scratch/05027/shas1693/tmi-results/'
+path_to_all_patients = '/scratch/05027/shas1693/penn_gbm_survival20/Data/'
 ### == custom list of patients; keep empty to simply walk through all patients
-patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
-patient_list.extend(["Brats18_CBICA_ABM_1", "Brats18_CBICA_ALN_1", "Brats18_CBICA_ABY_1", "Brats18_CBICA_AAB_1"])
-patient_list.extend(["Brats18_CBICA_AOD_1", "Brats18_CBICA_AOH_1"])
+patient_list = []
 
 ### == path to all the jobs and results
-job_path= "/scratch/05027/shas1693/pglistr_tumor/results/test3/"
+job_path= "/scratch/05027/shas1693/pglistr_tumor/results/penn_til/"
 
 # =======================================================================
 # =======================================================================

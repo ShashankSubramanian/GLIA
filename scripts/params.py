@@ -392,11 +392,13 @@ def write_jobscript_header(tu_params, run_params):
         run_params['wtime_m'] = 0
     if 'log_dir' not in run_params:
         run_params['log_dir'] = tu_params['output_dir']
+    if 'log_name' not in run_params:
+        run_params['log_name'] = 'log'
     fname = out_dir + '/job.sh'
     job_header = "" #open(fname, 'w+')
     job_header += "#!/bin/bash\n"
     job_header += "#SBATCH -J tuinv\n"
-    job_header += "#SBATCH -o " + run_params['log_dir'] + "/log\n"
+    job_header += "#SBATCH -o " + run_params['log_dir'] + "/" + run_params['log_name'] + "\n"
     job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
     job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
     job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"

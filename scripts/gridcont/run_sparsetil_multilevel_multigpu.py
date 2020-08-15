@@ -73,7 +73,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
     gaussian_mode      = "PHI";        # alternatives: {"D", "PHI", "C0", "C0_RANKED"}
     data_thresh        = [1E-2, 1E-4, 1E-4] if (gaussian_mode in ["PHI","C0"]) else [1E-1, 1E-1, 1E-1];
     sigma_fac          = [1,1,1]       # on every level, sigma = fac * hx
-    gvf                = [0.0,0.9,0.9] # Gaussian volume fraction for Phi selection; ignored for C0_RANKED
+    gvf                = [0.0,0.0,0.0] # Gaussian volume fraction for Phi selection; ignored for C0_RANKED
     # -------------------------------- #
     # ################################ #
 
@@ -147,7 +147,8 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
                 print(" Warning: Multiple segmentation files found in patient directory: \n {} \n .. please specify filename (first one is selected for now).".format(segmentation_files))
             ext = ".n" + segmentation_files[0].split(".n")[-1]
             fname = os.path.join(patient_path, segmentation_files[0])
-        filename = fname.split('/')[-1].split('.')[0]
+#        filename = fname.split('/')[-1].split('.')[0]
+        filename = fname.split('/')[-1].replace(ext, "")
         cmd_command ="\n#===================================== PATIENT = " + filename + " ====================================================#"
 
         cp_cmd = ''
@@ -314,6 +315,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
         r['wtime_h']   = wtime_h[-1]
         r['wtime_m']   = wtime_m[-1]
         r['log_dir']   = job_path
+        r['log_name']  = 'log_' + str(job_idx)
         if not use_gpu:
           r['ibrun_man'] = " -n " + str(procs[ii]) + " -o 0 "
         
