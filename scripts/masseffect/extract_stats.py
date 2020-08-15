@@ -15,7 +15,7 @@ from image_tools import resizeImage, resizeNIIImage
 sys.path.append('../')
 
 
-def computeVolume(mat):
+def compute_volume(mat):
   sz      = mat.shape[0]
   h       = (2.0 * math.pi) /  sz
   measure = h * h * h
@@ -42,7 +42,7 @@ if __name__=='__main__':
   c_avg = np.zeros((n,n,n))
   u_avg = np.zeros((n,n,n))
   suff = ""
-  base_dir  = os.getcwd() + "/../../"
+  base_dir = os.path.dirname(os.path.realpath(__file__)) + "/../../" 
   use_mat_prop = True
   
   
@@ -136,14 +136,14 @@ if __name__=='__main__':
         if os.path.exists(vt_rec_file):
           vt_nc = Dataset(vt_rec_file, mode='r', format="NETCDF3_CLASSIC")
           vt = np.transpose(vt_nc.variables['data'])
-          at_vt_recon = computeVolume(vt)
+          at_vt_recon = compute_volume(vt)
         else:
           print("vt rec file {} not found. skipping vt data...".format(vt_rec_file))
 
         if os.path.exists(at_vt_file):
           vt_nc = Dataset(at_vt_file, mode='r', format="NETCDF3_CLASSIC")
           vt = np.transpose(vt_nc.variables['data'])
-          at_orig = computeVolume(vt)
+          at_orig = compute_volume(vt)
         else:
           print("atlas vt file {} not found. skipping vt data...".format(at_vt_file))
 
@@ -151,7 +151,7 @@ if __name__=='__main__':
           if os.path.exists(pat_vt_file):
             vt_nc = Dataset(pat_vt_file, mode='r', format="NETCDF3_CLASSIC")
             vt = np.transpose(vt_nc.variables['data'])
-            pat_vt = computeVolume(vt)
+            pat_vt = compute_volume(vt)
             patient_compute = True
           else:
             print("pat vt file {} not found. skipping vt data...".format(pat_vt_file))
@@ -161,7 +161,7 @@ if __name__=='__main__':
           seg_nc = Dataset(seg_rec_file, mode='r', format="NETCDF3_CLASSIC")
           seg = np.transpose(seg_nc.variables['data'])
           vt = (seg == 7)
-          at_vt_recon = computeVolume(vt)
+          at_vt_recon = compute_volume(vt)
         else:
           print("seg rec file {} not found. skipping vt data...".format(seg_rec_file))
         at_orig = atlas_vt_dict[atlas]
