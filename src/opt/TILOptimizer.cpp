@@ -41,7 +41,7 @@ PetscErrorCode TILOptimizer::allocateTaoObjects() {
 
   // number of dofs = {p, kappa}
   n_inv_ = ctx_->params_->tu_->np_ +  ctx_->params_->get_nk();
-  ss << " Re-itializing TIL optimizer with changed n_inv = " << n_inv_ << " = " << ctx_->params_->tu_->np_ << " + " << ctx_->params_->get_nk() << " dofs.";
+  ss << " Re-intializing TIL optimizer with changed n_inv = " << n_inv_ << " = " << ctx_->params_->tu_->np_ << " + " << ctx_->params_->get_nk() << " dofs.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ierr = Optimizer::allocateTaoObjects(); CHKERRQ(ierr);
   PetscFunctionReturn (ierr);

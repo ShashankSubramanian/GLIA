@@ -621,7 +621,7 @@ PetscErrorCode Phi::setGaussians(Vec data) {
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
   std::stringstream ss;
 
-  ss << " .. basis functions set based on tumor intput data.";
+  ss << " .. basis functions set based on tumor input data.";
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();

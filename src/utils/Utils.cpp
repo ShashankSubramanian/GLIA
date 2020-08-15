@@ -451,7 +451,7 @@ PetscErrorCode hardThreshold(Vec x, int sparsity_level, int sz, std::vector<int>
         }
         q.pop();
       } else {
-        ss << "  ... no DOF selected in comp. " << nc << "; no value in queue (component weight, w=" << weights[nc] << "). ";
+        ss << "  ... insufficient DOF selected in comp. " << nc << "; insufficient value in queue (component weight, w=" << weights[nc] << "). ";
         ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
         ss.str("");
         ss.clear();
