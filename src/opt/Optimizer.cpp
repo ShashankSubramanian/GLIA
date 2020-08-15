@@ -62,14 +62,16 @@ PetscErrorCode Optimizer::allocateTaoObjects() {
   ierr = VecSet (xrec_, 0.0); CHKERRQ (ierr);
 
   // set up routine to compute the hessian matrix vector product
-  if (H_ == nullptr) { // TODO(K): is this also needed for QN? (ctx_->params_->opt_->newton_solver_ == GAUSSNEWTON)
-    ierr = MatCreateShell (PETSC_COMM_SELF, n_inv_, n_inv_, n_inv_, n_inv_, (void*) ctx_.get(), &H_); CHKERRQ(ierr);
+  if (ctx_->params_->opt_->newton_solver_ == GAUSSNEWTON) {
+    if (H_ == nullptr) { 
+      ierr = MatCreateShell (PETSC_COMM_SELF, n_inv_, n_inv_, n_inv_, n_inv_, (void*) ctx_.get(), &H_); CHKERRQ(ierr);
+    }
+    ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec); CHKERRQ(ierr);
+    #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
+        ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsOptimizer);
+    #endif
+    ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE); CHKERRQ(ierr);
   }
-  ierr = MatShellSetOperation (H_, MATOP_MULT, (void (*)(void))hessianMatVec); CHKERRQ(ierr);
-  #if (PETSC_VERSION_MAJOR >= 3) && (PETSC_VERSION_MINOR >= 10)
-      ierr = MatShellSetOperation (H_, MATOP_CREATE_VECS, (void(*)(void)) operatorCreateVecsOptimizer);
-  #endif
-  ierr = MatSetOption (H_, MAT_SYMMETRIC, PETSC_TRUE); CHKERRQ(ierr);
 
   // create tao object
   if (tao_ == nullptr) {
