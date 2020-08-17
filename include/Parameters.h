@@ -236,35 +236,7 @@ public:
   , writepath_()
   , readpath_()
   , ext_(".nc")
-  // other (should be deleted) ===========
-  // , ic_max_ (0)                            // Maximum value of reconstructed initial condition with wrong reaction coefficient - this is used to rescale the ic to 1
-  // , predict_flag_ (0)                      // Flag to perform future tumor growth prediction after inversion
-  // , forward_flag_ (0)                      // Flag to perform only forward solve - saves memory
-  // , testcase_ (testcase)                   // Testcases
-  // , lambda_ (1e5)                          // Regularization parameter for L1
-  // , low_freq_noise_scale_ (0.25)           // Low freq noise scale
-  // , noise_scale_(0.0)                      // Noise scale
-  // , nk_fixed_ (true)                       // if true, nk cannot be changed anymore
-  // , lambda_continuation_ (true)            // bool for parameter continuation
-  // , target_sparsity_ (0.99)                // target sparsity for L1 continuation
-  // , diffusivity_inversion_ (false)         // if true, we also invert for k_i scalings of material properties to construct isotropic part of diffusion coefficient
-  // , reaction_inversion_ (false)            // Automatically managed inside the code: We can only invert for reaction given some constraints on the solution
-  // , flag_reaction_inv_ (false)             // This switch is turned on automatically when reaction iversion is used for the separate final tao solver
-  // other (moved to OptimizerSettings)
-  // , newton_solver_ (QUASINEWTON)          // Newton solver type
-  // , linesearch_ (MT)                      // Line-search type
-  // , newton_maxit_ (30)                    // Newton max itr
-  // , gist_maxit_ (50)                      // GIST max itr
-  // , krylov_maxit_ (30)                    // Krylov max itr
-  // , opttolgrad_ (1E-5)                    // Relative gradient tolerance of L2 solves
-  // , pre_reacdiff_solve_ (0)               // Flag indicating of reaction/diffusion solve is performed prior to L1 inversion in CoSaMp
-  // , invert_mass_effect_ (0)               // Flag to invert for mass-effect
-  // , prune_components_ (1)                 // prunes L2 solution based on components
-  // , k_lb_ (1E-3)                          // Lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
-  // , k_ub_ (1)                             // Upper bound on kappa
-  // , gamma_ub_ (15)                       // Upper bound on gamma
-  // , rho_ub_ (15)                         // Upper bound on rho
-  // , cross_entropy_loss_ (false)           // implements cross entropy loss instead of L2
+  , force_phi_compute_ (false)             // forces the computation of gaussians on the fly because of insufficient memory on the device 
   {
     time_horizon_ = nt_ * dt_;
     // SRI-atlas
@@ -384,24 +356,12 @@ public:
   // .nc or nifty output
   std::string ext_; // extension ".nc" or ".nii.gz"
 
+  bool force_phi_compute_;
+
   #ifdef NIFTIIO
     nifti_image* nifti_ref_image_;
   #endif
 
-  // TODO(K) REMOVE ?
-  // ScalarType ic_max_;          // ?
-  // int predict_flag_;           // Solver
-  // int forward_flag_ // removed by time_history_off_ (search/replace)
-  // int testcase_;               // synthetic
-  // ScalarType lambda_;          // old L1 solver
-  // ScalarType low_freq_noise_scale_; // synthetic
-  // ScalarType noise_scale_;     // synthetic
-  // bool nk_fixed_;
-  // bool lambda_continuation_;   // old L1 solver
-  // ScalarType target_sparsity_; // old L1 solver
-  // bool diffusivity_inversion_; // is it sufficient to have it in opt?
-  // bool reaction_inversion_;    // is it sufficient to have it in opt?
-  // bool flag_reaction_inv_;     // what is this?
 };
 
 

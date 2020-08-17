@@ -46,6 +46,9 @@ inline void cudaPrintDeviceMemory(int dev=0) {
   size_t free_mem;
   size_t total_mem;
 
+  int device = 0;
+  cudaGetDevice(&device);
+  if (device != 0) dev = device;
   cudaSetDevice(dev);
   cudaMemGetInfo(&free_mem, &total_mem);
 

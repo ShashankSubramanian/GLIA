@@ -962,6 +962,22 @@ PetscErrorCode Phi::setGaussians(Vec data) {
   // max size of subspace can be 3 * sparsity_level
   // on the fly
   int num_phi_store = (params_->tu_->phi_store_) ? np_ : 3 * params_->tu_->sparsity_level_;
+#ifdef CUDA
+  size_t free_mem;
+  size_t total_mem;
+  cudaMemGetInfo(&free_mem, &total_mem);
+  ScalarType free = static_cast<ScalarType>(free_mem) / 1048576.0;
+  ScalarType size_of_vector_256 = 68.;
+  // insufficient memory for even restricted subspace; +1 because there is a temp vector created in TILOptimzer (might have to check if there are more like this)
+  if (std::floor(free / size_of_vector_256) <= num_phi_store + 1) {
+    params_->tu_->force_phi_compute_ = true;
+    ss << "Insufficient memory for gaussians on restricted subspace = " << std::floor(free / size_of_vector_256) << " <= " << num_phi_store + 1 << " ; all computations performed on the fly";
+    ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+   }
+#endif
+  if (params_->tu_->force_phi_compute_) num_phi_store = 1;
 
   // Destroy and clear any previously set phis
   for (int i = 0; i < phi_vec_.size(); i++) {
@@ -1022,7 +1038,13 @@ void Phi::modifyCenters(std::vector<int> support_idx) {
 
   // resize np
   np_ = support_idx.size();
-  if (!params_->tu_->phi_store_) compute_ = false;
+  if (!params_->tu_->force_phi_compute_) {
+    // restricted subspace; can store phis
+    if (!params_->tu_->phi_store_) compute_ = false;
+  } else {
+    // phi compute is forced to be on the fly
+    compute_ = true;
+  }
   ss << " size of restricted subspace: " << np_;
   tuMSGstd(ss.str());
   ss.str("");

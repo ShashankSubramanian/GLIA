@@ -400,12 +400,21 @@ PetscErrorCode SparseTILOptimizer::solve() {
     // print support
     ierr = VecDuplicate(ctx_->tumor_->phi_->phi_vec_[0], &all_phis); CHKERRQ (ierr);
     ierr = VecSet(all_phis, 0.); CHKERRQ (ierr);
-    for (int i = 0; i < ctx_->params_->tu_->np_; i++) {
-      ierr = VecAXPY (all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);
+    if (ctx_->tumor_->phi_->compute_) {
+      Vec x_ones;
+      ierr = VecDuplicate(x_L2, &x_ones); CHKERRQ(ierr);
+      ierr = VecSet(x_ones, 1.); CHKERRQ(ierr);
+      ierr = ctx_->tumor_->phi_->apply(all_phis, x_ones); CHKERRQ(ierr);
+      ierr = VecDestroy(&x_ones); CHKERRQ(ierr);
+    } else {
+      for (int i = 0; i < ctx_->params_->tu_->np_; i++) {
+        ierr = VecAXPY (all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);
+      }
     }
     ss << "phiSupport_csitr-" << its << ".nc";
     if (ctx_->params_->tu_->write_output_) dataOut (all_phis, ctx_->params_, ss.str().c_str()); ss.str(""); ss.clear();
     if (all_phis != nullptr) {ierr = VecDestroy (&all_phis); CHKERRQ (ierr); all_phis = nullptr;}
+    
     // print vec
     if (procid == 0 && ctx_->params_->tu_->verbosity_ >= 4) {
       ierr = VecView (x_L2, PETSC_VIEWER_STDOUT_SELF); CHKERRQ (ierr);
@@ -508,10 +517,20 @@ PetscErrorCode SparseTILOptimizer::solve() {
   if (ctx_->params_->tu_->write_output_) {
     ierr = VecDuplicate(ctx_->tumor_->phi_->phi_vec_[0], &all_phis); CHKERRQ (ierr);
     ierr = VecSet(all_phis, 0.); CHKERRQ (ierr);
-    for (int i = 0; i < ctx_->params_->tu_->np_; i++) {
-      ierr = VecAXPY(all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);
+    if (ctx_->tumor_->phi_->compute_) {
+      Vec x_ones;
+      ierr = VecDuplicate(x_L2, &x_ones); CHKERRQ(ierr);
+      ierr = VecSet(x_ones, 1.); CHKERRQ(ierr);
+      ierr = ctx_->tumor_->phi_->apply(all_phis, x_ones); CHKERRQ(ierr);
+      ierr = VecDestroy(&x_ones); CHKERRQ(ierr);
+    } else {
+      for (int i = 0; i < ctx_->params_->tu_->np_; i++) {
+        ierr = VecAXPY(all_phis, 1.0, ctx_->tumor_->phi_->phi_vec_[i]); CHKERRQ (ierr);
+      }
     }
-    ss << "phiSupportFinal.nc";  {dataOut(all_phis, ctx_->params_, ss.str().c_str());} ss.str(std::string()); ss.clear();
+    ss << "phiSupportFinal.nc";  
+    dataOut(all_phis, ctx_->params_, ss.str().c_str());
+    ss.str(std::string()); ss.clear();
     ss << "c0FinalGuess.nc";  dataOut(ctx_->tumor_->c_0_, ctx_->params_, ss.str().c_str()); ss.str(std::string()); ss.clear();
     ss << "c1FinalGuess.nc"; if (ctx_->params_->tu_->verbosity_ >= 4) { dataOut(ctx_->tumor_->c_t_, ctx_->params_, ss.str().c_str()); } ss.str(std::string()); ss.clear();
     if (all_phis != nullptr) {ierr = VecDestroy(&all_phis); CHKERRQ(ierr); all_phis = nullptr;}
