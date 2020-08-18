@@ -142,7 +142,7 @@ def write_tuinv(invdir, atlist, bash_file, idx):
   for i in range(0,n_local):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i] + "\n")
   for i in range(0,n_local):
-    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/log &\n")
+    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 &\n")
   f.write("\n")
   f.write("wait\n")
 
@@ -326,7 +326,7 @@ if __name__=='__main__':
   args = parser.parse_args();
 
   #patient_list = os.listdir(args.patient_dir)
-  with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
+  with open(args.patient_dir + "/pat_stats.csv", "r") as f:
     brats_pats = f.readlines()
   patient_list = []
   for l in brats_pats:
@@ -348,7 +348,7 @@ if __name__=='__main__':
   block_job = True
   if block_job:
     it = 0
-    num_pats = 40
+    num_pats = 50
     patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
   else:
     it = 0
@@ -402,7 +402,7 @@ if __name__=='__main__':
     at_list_err = False
     if not os.path.exists(listfile):
       f  = open(listfile, "w+")
-      fp = open(in_dir + "/brats-pat-stats.csv", "r")
+      fp = open(in_dir + "/pat_stats.csv", "r")
       lp = fp.readlines()
       for l in lp:
         if pat in l:

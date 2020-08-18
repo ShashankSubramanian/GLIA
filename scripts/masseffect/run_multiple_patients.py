@@ -58,7 +58,7 @@ if __name__=='__main__':
   args = parser.parse_args();
 
   #patient_list = os.listdir(args.patient_dir)
-  with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
+  with open(args.patient_dir + "/pat_stats.csv", "r") as f:
     brats_pats = f.readlines()
   patient_list = []
   for l in brats_pats:
@@ -73,15 +73,17 @@ if __name__=='__main__':
         patient_list.remove(failed_pat)
 
   other_remove = []
-#  other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
+  #other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
   for others in other_remove:
     patient_list.remove(others)
 
   block_job = True
   if block_job:
     it = 0
-    num_pats = 40
+    num_pats = 50
     patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+  else:
+    it = 0
 
   for item in patient_list:
     print(item)

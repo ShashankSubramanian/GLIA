@@ -1,11 +1,11 @@
 #!/bin/bash
 #### default script to run mass effect
-PAT_DIR=/scratch/05027/shas1693/tmi-results/
+PAT_DIR=/scratch/05027/shas1693/penn_gbm_survival20/Data/
 AT_DIR=/scratch/05027/shas1693/adni-nc/
 CODE_DIR=/scratch/05027/shas1693/pglistr_tumor/
 CLAIRE_DIR=/scratch/05027/shas1693/claire-dev/bingpu/
-RES_DIR=$CODE_DIR/results/real_check/
-JOB_DIR=$CODE_DIR/results/real_check_jobs/
+RES_DIR=$CODE_DIR/results/penn_masseffect/
+JOB_DIR=$CODE_DIR/results/penn_masseffect_jobs/
 COMP_SYS=longhorn
 N=160
 reg=1
