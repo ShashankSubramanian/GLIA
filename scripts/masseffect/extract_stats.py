@@ -47,7 +47,7 @@ if __name__=='__main__':
   
   
   
-  with open(args.patient_dir + "/brats-pat-stats.csv", "r") as f:
+  with open(args.patient_dir + "/pat_stats.csv", "r") as f:
     brats_pats = f.readlines()
   patient_list = []
   for l in brats_pats:
@@ -68,7 +68,7 @@ if __name__=='__main__':
   block_job = True
   if block_job:
     it = 0
-    num_pats = 40
+    num_pats = 50
     patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
   
   global_stats = ""
@@ -191,7 +191,7 @@ if __name__=='__main__':
           continue
         
         ### extract timings from logfile
-        log_file = inv_path + atlas + "/log"
+        log_file = inv_path + atlas + "/solver_log.txt"
         if not os.path.exists(log_file):
           print("logfile does not exist!. breaking..")
           continue
