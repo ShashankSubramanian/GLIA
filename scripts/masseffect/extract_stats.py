@@ -65,7 +65,7 @@ if __name__=='__main__':
   for others in other_remove:
     patient_list.remove(others)
 
-  block_job = True
+  block_job = False
   if block_job:
     it = 0
     num_pats = 50
@@ -109,6 +109,7 @@ if __name__=='__main__':
     cond_list  = []
     vt_change_list = []
     vt_err_list    = []
+    vt_nome_err_list    = []
 
 ### scrub the log file
     statfile = open(res_path + "stats" + suff + ".txt", 'w+')
@@ -191,7 +192,8 @@ if __name__=='__main__':
           continue
         
         ### extract timings from logfile
-        log_file = inv_path + atlas + "/solver_log.txt"
+        #log_file = inv_path + atlas + "/solver_log.txt"
+        log_file = inv_path + atlas + "/log"
         if not os.path.exists(log_file):
           print("logfile does not exist!. breaking..")
           continue
@@ -216,7 +218,7 @@ if __name__=='__main__':
         ###print("atlas stats: {},{}".format(at_orig, at_vt_recon))
         vt_change = np.abs((at_vt_recon - at_orig)/at_orig)
         vt_err    = np.abs((at_vt_recon - pat_vt)/pat_vt)
-        
+        vt_nome_err = np.abs((at_orig - pat_vt)/pat_vt)
 
         if max_disp > 2 or rel_error > 1:
           failed_atlas.append(atlas)
@@ -238,6 +240,7 @@ if __name__=='__main__':
           cond_list.append(cond)
           vt_change_list.append(vt_change)
           vt_err_list.append(vt_err)
+          vt_nome_err_list.append(vt_nome_err)
           row += atlas + " \t& "
           row_csv += atlas + ","
       
@@ -249,6 +252,7 @@ if __name__=='__main__':
         row += "\\num{" + "{:e}".format(cond) + "} \t& "
         row += "\\num{" + "{:e}".format(vt_change) + "} \t& "
         row += "\\num{" + "{:e}".format(vt_err) + "} \t& "
+        row += "\\num{" + "{:e}".format(vt_nome_err) + "} \t& "
         row += "\\num{" + "{:e}".format(t) + "} \\\\ \n"
 
         row_csv += str(gamma) + ","
@@ -259,6 +263,7 @@ if __name__=='__main__':
         row_csv += str(cond) + ","
         row_csv += str(vt_change) + ","
         row_csv += str(vt_err) + ","
+        row_csv += str(vt_nome_err) + ","
         row_csv += str(t) + "\n"
 
 #  for idx in range(1,num_cases+1):
@@ -297,6 +302,7 @@ if __name__=='__main__':
     cond_arr   = np.asarray(cond_list)
     vt_change_arr = np.asarray(vt_change_list)
     vt_err_arr    = np.asarray(vt_err_list)
+    vt_nome_err_arr = np.asarray(vt_nome_err_list)
     
     if len(gam_arr) > 0:
       row += "stats" + " \t& "
@@ -308,6 +314,7 @@ if __name__=='__main__':
       row += "\\num{" + "{:e}".format(np.mean(cond_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(cond_arr)) + "} \t& "
       row += "\\num{" + "{:e}".format(np.mean(vt_change_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_change_arr)) + "} \t& "
       row += "\\num{" + "{:e}".format(np.mean(vt_err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_err_arr)) + "} \t& "
+      row += "\\num{" + "{:e}".format(np.mean(vt_nome_err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_nome_err_arr)) + "} \t& "
       row += "\\num{" + "{:e}".format(np.mean(time_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(time_arr)) + "}\n"
     
       row_csv += "\n\n ######################################################## \n\n "
@@ -321,6 +328,7 @@ if __name__=='__main__':
       row_means += str(np.mean(cond_arr)) + "," + str(np.std(cond_arr)) + ","
       row_means += str(np.mean(vt_change_arr)) + "," + str(np.std(vt_change_arr)) + ","
       row_means += str(np.mean(vt_err_arr)) + "," + str(np.std(vt_err_arr)) + ","
+      row_means += str(np.mean(vt_nome_err_arr)) + "," + str(np.std(vt_nome_err_arr)) + ","
       row_means += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + "\n"
       row_csv += row_means
 
