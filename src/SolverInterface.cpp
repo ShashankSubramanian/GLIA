@@ -753,6 +753,23 @@ PetscErrorCode SolverInterface::createSynthetic() {
   if (data_t1_ == nullptr) {
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
   }
+  // if data_t0_ path is set; use that
+  if (!app_settings_->path_->data_t0_.empty()) {
+    if (data_t0_ == nullptr) {
+      ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
+    }
+    ierr = dataIn(data_t0_, params_, app_settings_->path_->data_t0_); CHKERRQ(ierr);
+    ScalarType sig_data_t0 = params_->tu_->smoothing_factor_data_t0_ * 2 * M_PI / params_->grid_->n_[0];
+    if (params_->tu_->smoothing_factor_data_t0_ > 0) {
+      ierr = spec_ops_->weierstrassSmoother(data_t0_, data_t0_, params_, sig_data_t0); CHKERRQ(ierr);
+      ss << " smoothing c(0) with factor: " << params_->tu_->smoothing_factor_data_t0_ << ", and sigma: " << sig_data_t0;
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+    }
+  } else {
+    data_t0_ = nullptr;
+  }
   if (data_t0_ == nullptr) {
     ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
     ierr = VecSet(data_t0_, 0.); CHKERRQ(ierr);
