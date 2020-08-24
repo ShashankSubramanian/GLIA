@@ -755,32 +755,32 @@ PetscErrorCode SolverInterface::createSynthetic() {
   }
   if (data_t0_ == nullptr) {
     ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
-  }
-  ierr = VecSet(data_t0_, 0.); CHKERRQ(ierr);
+    ierr = VecSet(data_t0_, 0.); CHKERRQ(ierr);
+  
+    std::array<ScalarType, 3> cm_tmp;
+    ScalarType scale = 1;
+    int count = 0;
+    // insert user defined tumor foci
+    for (auto &cm : app_settings_->syn_->user_cms_) {
+      count++;
+      ierr = VecSet(tmp_, 0.); CHKERRQ(ierr);
+      cm_tmp[0] = (2 * M_PI / 256 * cm[0]);
+      cm_tmp[1] = (2 * M_PI / 256 * cm[1]);
+      cm_tmp[2] = (2 * M_PI / 256 * cm[2]);
+      scale = (cm[3] < 0) ? 1 : cm[3];  // p activation stored in last entry
 
-  std::array<ScalarType, 3> cm_tmp;
-  ScalarType scale = 1;
-  int count = 0;
-  // insert user defined tumor foci
-  for (auto &cm : app_settings_->syn_->user_cms_) {
-    count++;
-    ierr = VecSet(tmp_, 0.); CHKERRQ(ierr);
-    cm_tmp[0] = (2 * M_PI / 256 * cm[0]);
-    cm_tmp[1] = (2 * M_PI / 256 * cm[1]);
-    cm_tmp[2] = (2 * M_PI / 256 * cm[2]);
-    scale = (cm[3] < 0) ? 1 : cm[3];  // p activation stored in last entry
+      ierr = tumor_->phi_->setGaussians(cm_tmp, params_->tu_->phi_sigma_, params_->tu_->phi_spacing_factor_, params_->tu_->np_);
+      ierr = tumor_->phi_->setValues(tumor_->mat_prop_);
 
-    ierr = tumor_->phi_->setGaussians(cm_tmp, params_->tu_->phi_sigma_, params_->tu_->phi_spacing_factor_, params_->tu_->np_);
-    ierr = tumor_->phi_->setValues(tumor_->mat_prop_);
-
-    // set p_rec_ according to user centers
-    ierr = VecSet(p_rec_, scale); CHKERRQ(ierr);
-    ierr = tumor_->phi_->apply(tmp_, p_rec_); CHKERRQ(ierr);
-    ierr = VecAXPY(data_t0_, 1.0, tmp_); CHKERRQ(ierr);
-    ss << "p-syn-sm" << count;
-    writeCheckpoint(p_rec_, tumor_->phi_, params_->tu_->writepath_, ss.str());
-    ss.str("");
-    ss.clear();
+      // set p_rec_ according to user centers
+      ierr = VecSet(p_rec_, scale); CHKERRQ(ierr);
+      ierr = tumor_->phi_->apply(tmp_, p_rec_); CHKERRQ(ierr);
+      ierr = VecAXPY(data_t0_, 1.0, tmp_); CHKERRQ(ierr);
+      ss << "p-syn-sm" << count;
+      writeCheckpoint(p_rec_, tumor_->phi_, params_->tu_->writepath_, ss.str());
+      ss.str("");
+      ss.clear();
+    }
   }
 
   ScalarType max, min;
