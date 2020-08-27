@@ -69,7 +69,8 @@ if __name__=='__main__':
   if block_job:
     it = 0
     num_pats = 50
-    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+    patient_list = patient_list[0:50]
+#    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
   
   global_stats = ""
   global_f     = open(results_path + "/tumor_inversion_stats.csv", "w+")
@@ -81,8 +82,8 @@ if __name__=='__main__':
     inv_path = results_path + pat_name + "/tu/" + str(n) + "/"
 
     print("[] extracting stats for patient {}".format(pat_name))
-    row = ""
-    row_csv = ""
+    row = "atlas \t gam \t rho \t k \t u \t err \t cond \t vt_change \t vt_err \t vt_nome_err \t vt_l2 \it vt_l2_nome \t time \n"
+    row_csv = "atlas,gam,rho,k,u,err,cond,vt_change,vt_err,vt_nome_err,vt_l2,vt_l2_nome,time\n"
     failed_atlas = []
 
     with open(pat_stat_path, 'r') as f:
@@ -100,6 +101,7 @@ if __name__=='__main__':
       atlas_vt_dict[at_nm] = float(vt)
 
     ### parameters
+#    parameters_lists = []
     gam_list   = []
     rho_list   = []
     kappa_list = []
@@ -110,6 +112,11 @@ if __name__=='__main__':
     vt_change_list = []
     vt_err_list    = []
     vt_nome_err_list    = []
+    vt_l2_err_list    = []
+    vt_l2_nome_err_list    = []
+
+#    for i in range(0,10):
+#      parameters_lists.append([])
 
 ### scrub the log file
     statfile = open(res_path + "stats" + suff + ".txt", 'w+')
@@ -136,23 +143,23 @@ if __name__=='__main__':
         at_vt_recon = 0
         if os.path.exists(vt_rec_file):
           vt_nc = Dataset(vt_rec_file, mode='r', format="NETCDF3_CLASSIC")
-          vt = np.transpose(vt_nc.variables['data'])
-          at_vt_recon = compute_volume(vt)
+          vt_recon = np.transpose(vt_nc.variables['data'])
+          at_vt_recon = compute_volume(vt_recon)
         else:
           print("vt rec file {} not found. skipping vt data...".format(vt_rec_file))
 
         if os.path.exists(at_vt_file):
           vt_nc = Dataset(at_vt_file, mode='r', format="NETCDF3_CLASSIC")
-          vt = np.transpose(vt_nc.variables['data'])
-          at_orig = compute_volume(vt)
+          vt_at = np.transpose(vt_nc.variables['data'])
+          at_orig = compute_volume(vt_at)
         else:
           print("atlas vt file {} not found. skipping vt data...".format(at_vt_file))
 
         if not patient_compute:
           if os.path.exists(pat_vt_file):
             vt_nc = Dataset(pat_vt_file, mode='r', format="NETCDF3_CLASSIC")
-            vt = np.transpose(vt_nc.variables['data'])
-            pat_vt = compute_volume(vt)
+            vt_pat = np.transpose(vt_nc.variables['data'])
+            pat_vt = compute_volume(vt_pat)
             patient_compute = True
           else:
             print("pat vt file {} not found. skipping vt data...".format(pat_vt_file))
@@ -167,6 +174,12 @@ if __name__=='__main__':
           print("seg rec file {} not found. skipping vt data...".format(seg_rec_file))
         at_orig = atlas_vt_dict[atlas]
 
+      ### compute vt volume change
+      vt_change = np.abs((at_vt_recon - at_orig)/at_orig)
+      vt_err    = np.abs((at_vt_recon - pat_vt)/pat_vt)
+      vt_nome_err = np.abs((at_orig - pat_vt)/pat_vt)
+      vt_l2_err = LA.norm(vt_recon.flatten() - vt_pat.flatten())/LA.norm(vt_pat.flatten())
+      vt_l2_nome_err = LA.norm(vt_at.flatten() - vt_pat.flatten())/LA.norm(vt_pat.flatten())
 
       if not os.path.exists(hess_file):
         print("hessian file for atlas {} not found".format(atlas))
@@ -191,80 +204,91 @@ if __name__=='__main__':
           print('recon file is corrupted. skipping...\n')
           continue
         
-        ### extract timings from logfile
-        #log_file = inv_path + atlas + "/solver_log.txt"
-        log_file = inv_path + atlas + "/log"
-        if not os.path.exists(log_file):
-          print("logfile does not exist!. breaking..")
-          continue
+      ### extract timings from logfile
+      log_file = inv_path + atlas + "/solver_log.txt"
+      #log_file = inv_path + atlas + "/log"
+      if not os.path.exists(log_file):
+        print("logfile does not exist!. breaking..")
+        continue
 
-        with open(log_file, 'r') as f:
-          lines = f.readlines()
-          for l in lines:
-            if l.find("Global runtime") is not -1:
-              l_s = re.findall("\d*\.?\d+", l)
-              t = float(l_s[1])
-        
-        raw      = []
-        if exist:
-          with open(hess_file, "r") as f1:
-            for line in f1:
-              raw.append(line.split())
-          hess = np.array(raw)
-          hess = hess.astype(float)
-          cond = LA.cond(hess)
-
-        ### compute vt volume change
-        ###print("atlas stats: {},{}".format(at_orig, at_vt_recon))
-        vt_change = np.abs((at_vt_recon - at_orig)/at_orig)
-        vt_err    = np.abs((at_vt_recon - pat_vt)/pat_vt)
-        vt_nome_err = np.abs((at_orig - pat_vt)/pat_vt)
-
-        if max_disp > 2 or rel_error > 1:
-          failed_atlas.append(atlas)
-          print('failed atlas {}'.format(atlas))
-          row += atlas + "(F) \t& "
-          row_csv += atlas + "(F),"
-        elif cond > 10000:
-          failed_atlas.append(atlas)
-          print('bad conditioned atlas {}'.format(atlas))
-          row += atlas + "(B) \t& "
-          row_csv += atlas + "(B),"
-        else:
-          gam_list.append(gamma)
-          rho_list.append(rho)
-          kappa_list.append(kappa)
-          disp_list.append(max_disp)
-          err_list.append(rel_error)
-          time_list.append(t)
-          cond_list.append(cond)
-          vt_change_list.append(vt_change)
-          vt_err_list.append(vt_err)
-          vt_nome_err_list.append(vt_nome_err)
-          row += atlas + " \t& "
-          row_csv += atlas + ","
+      with open(log_file, 'r') as f:
+        lines = f.readlines()
+        for l in lines:
+          if l.find("Global runtime") is not -1:
+            l_s = re.findall("\d*\.?\d+", l)
+            t = float(l_s[1])
       
-        row += "\\num{" + "{:e}".format(gamma) + "} \t& "
-        row += "\\num{" + "{:e}".format(rho) + "} \t& "
-        row += "\\num{" + "{:e}".format(kappa) + "} \t& "
-        row += "\\num{" + "{:e}".format(max_disp) + "} \t& "
-        row += "\\num{" + "{:e}".format(rel_error) + "} \t& "
-        row += "\\num{" + "{:e}".format(cond) + "} \t& "
-        row += "\\num{" + "{:e}".format(vt_change) + "} \t& "
-        row += "\\num{" + "{:e}".format(vt_err) + "} \t& "
-        row += "\\num{" + "{:e}".format(vt_nome_err) + "} \t& "
-        row += "\\num{" + "{:e}".format(t) + "} \\\\ \n"
+      raw      = []
+      if exist:
+        with open(hess_file, "r") as f1:
+          for line in f1:
+            raw.append(line.split())
+        hess = np.array(raw)
+        hess = hess.astype(float)
+        cond = LA.cond(hess)
 
-        row_csv += str(gamma) + ","
-        row_csv += str(rho) + ","
-        row_csv += str(kappa) + ","
-        row_csv += str(max_disp) + ","
-        row_csv += str(rel_error) + ","
-        row_csv += str(cond) + ","
-        row_csv += str(vt_change) + ","
-        row_csv += str(vt_err) + ","
-        row_csv += str(vt_nome_err) + ","
-        row_csv += str(t) + "\n"
+
+      if max_disp > 2 or rel_error > 1:
+        failed_atlas.append(atlas)
+        print('failed atlas {}'.format(atlas))
+        row += atlas + "(F) \t& "
+        row_csv += atlas + "(F),"
+      elif cond > 10000:
+        failed_atlas.append(atlas)
+        print('bad conditioned atlas {}'.format(atlas))
+        row += atlas + "(B) \t& "
+        row_csv += atlas + "(B),"
+      else:
+#        parameters_lists[0].append(gamma)
+#        parameters_lists[1].append(rho)
+#        parameters_lists[2].append(kappa)
+#        parameters_lists[3].append(max_disp)
+#        parameters_lists[4].append(rel_error)
+#        parameters_lists[5].append(cond)
+#        parameters_lists[6].append(vt_change)
+#        parameters_lists[7].append(vt_err)
+#        parameters_lists[8].append(vt_nome_err)
+#        parameters_lists[9].append(t)
+        gam_list.append(gamma)
+        rho_list.append(rho)
+        kappa_list.append(kappa)
+        disp_list.append(max_disp)
+        err_list.append(rel_error)
+        time_list.append(t)
+        cond_list.append(cond)
+        vt_change_list.append(vt_change)
+        vt_err_list.append(vt_err)
+        vt_nome_err_list.append(vt_nome_err)
+        vt_l2_err_list.append(vt_l2_err)
+        vt_l2_nome_err_list.append(vt_l2_nome_err)
+        row += atlas + " \t& "
+        row_csv += atlas + ","
+
+      row += "\\num{" + "{:e}".format(gamma) + "} \t& "
+      row += "\\num{" + "{:e}".format(rho) + "} \t& "
+      row += "\\num{" + "{:e}".format(kappa) + "} \t& "
+      row += "\\num{" + "{:e}".format(max_disp) + "} \t& "
+      row += "\\num{" + "{:e}".format(rel_error) + "} \t& "
+      row += "\\num{" + "{:e}".format(cond) + "} \t& "
+      row += "\\num{" + "{:e}".format(vt_change) + "} \t& "
+      row += "\\num{" + "{:e}".format(vt_err) + "} \t& "
+      row += "\\num{" + "{:e}".format(vt_nome_err) + "} \t& "
+      row += "\\num{" + "{:e}".format(vt_l2_err) + "} \t& "
+      row += "\\num{" + "{:e}".format(vt_l2_nome_err) + "} \t& "
+      row += "\\num{" + "{:e}".format(t) + "} \\\\ \n"
+
+      row_csv += str(gamma) + ","
+      row_csv += str(rho) + ","
+      row_csv += str(kappa) + ","
+      row_csv += str(max_disp) + ","
+      row_csv += str(rel_error) + ","
+      row_csv += str(cond) + ","
+      row_csv += str(vt_change) + ","
+      row_csv += str(vt_err) + ","
+      row_csv += str(vt_nome_err) + ","
+      row_csv += str(vt_l2_err) + ","
+      row_csv += str(vt_l2_nome_err) + ","
+      row_csv += str(t) + "\n"
 
 #  for idx in range(1,num_cases+1):
 #    if n == 256:
@@ -303,6 +327,8 @@ if __name__=='__main__':
     vt_change_arr = np.asarray(vt_change_list)
     vt_err_arr    = np.asarray(vt_err_list)
     vt_nome_err_arr = np.asarray(vt_nome_err_list)
+    vt_l2_err_arr    = np.asarray(vt_l2_err_list)
+    vt_l2_nome_err_arr = np.asarray(vt_l2_nome_err_list)
     
     if len(gam_arr) > 0:
       row += "stats" + " \t& "
@@ -315,6 +341,8 @@ if __name__=='__main__':
       row += "\\num{" + "{:e}".format(np.mean(vt_change_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_change_arr)) + "} \t& "
       row += "\\num{" + "{:e}".format(np.mean(vt_err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_err_arr)) + "} \t& "
       row += "\\num{" + "{:e}".format(np.mean(vt_nome_err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_nome_err_arr)) + "} \t& "
+      row += "\\num{" + "{:e}".format(np.mean(vt_l2_err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_l2_err_arr)) + "} \t& "
+      row += "\\num{" + "{:e}".format(np.mean(vt_l2_nome_err_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(vt_l2_nome_err_arr)) + "} \t& "
       row += "\\num{" + "{:e}".format(np.mean(time_arr)) + "} $\pm$ \\num{" + "{:e}".format(np.std(time_arr)) + "}\n"
     
       row_csv += "\n\n ######################################################## \n\n "
@@ -329,6 +357,8 @@ if __name__=='__main__':
       row_means += str(np.mean(vt_change_arr)) + "," + str(np.std(vt_change_arr)) + ","
       row_means += str(np.mean(vt_err_arr)) + "," + str(np.std(vt_err_arr)) + ","
       row_means += str(np.mean(vt_nome_err_arr)) + "," + str(np.std(vt_nome_err_arr)) + ","
+      row_means += str(np.mean(vt_l2_err_arr)) + "," + str(np.std(vt_l2_err_arr)) + ","
+      row_means += str(np.mean(vt_l2_nome_err_arr)) + "," + str(np.std(vt_l2_nome_err_arr)) + ","
       row_means += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + "\n"
       row_csv += row_means
 
