@@ -138,7 +138,7 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
  
 def write_tuinv(invdir, atlist, bash_file, idx):
   f = open(bash_file, 'a') 
-  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
+  n_local = 4 if len(atlist) >= 4*idx + 4 else len(atlist) % 4
   for i in range(0,n_local):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i] + "\n")
   for i in range(0,n_local):
@@ -149,7 +149,7 @@ def write_tuinv(invdir, atlist, bash_file, idx):
   f.close()
   return bash_file
 
-def create_level_specific_data(n, pat, data_dir, create = True):
+def create_level_specific_data(n, pat, data_dir, res, create = True):
   n_dir    = res + "/" + str(n) + "/"
   sz       = n
   if not os.path.exists(n_dir):
@@ -309,22 +309,7 @@ def find_k_closest(atlas_dict, k, elem, leave_out=[]):
 
   return at_list
 
-
-#--------------------------------------------------------------------------------------------------------------------------
-if __name__=='__main__':
-  parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  r_args = parser.add_argument_group('required arguments')
-  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to patients (brats format)', required = True) 
-  r_args.add_argument('-a', '--atlas_dir', type = str, help = 'path to atlases', required = True) 
-  r_args.add_argument('-x', '--results_dir', type = str, help = 'path to results', required = True) 
-  r_args.add_argument('-c', '--code_dir', type = str, help = 'path to tumor solver code', required = True) 
-  r_args.add_argument('-n', '--n_resample', type = int, help = 'size for inversion', default = 160) 
-  r_args.add_argument('-r', '--reg', type = int, help = 'perform registration', default = 0) 
-  r_args.add_argument('-rc', '--claire_dir', type = str, help = 'path to claire bin', default = "") 
-  r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
-  r_args.add_argument('-submit', action = 'store_true', help = 'submit jobs (after they have been created)') 
-  args = parser.parse_args();
-
+def run(args):
   #patient_list = os.listdir(args.patient_dir)
   with open(args.patient_dir + "/pat_stats.csv", "r") as f:
     brats_pats = f.readlines()
@@ -345,11 +330,13 @@ if __name__=='__main__':
   for others in other_remove:
     patient_list.remove(others)
 
-  block_job = True
+  ## keep off
+  block_job = False
   if block_job:
     it = 0
     num_pats = 50
-    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
+    patient_list = patient_list[150:]
+#    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
   else:
     it = 0
 
@@ -466,9 +453,9 @@ if __name__=='__main__':
 
     ### create data files
     if n is not 256:
-      create_level_specific_data(n, pat, data_dir)
+      create_level_specific_data(n, pat, data_dir, res)
     else:
-      create_level_specific_data(n, pat, data_dir, create=False) ### just copy these files
+      create_level_specific_data(n, pat, data_dir, res, create=False) ### just copy these files
 
     ### (2)  create tumor solver configs
     pat_dir    = res + "/" + str(n) + "/"
@@ -498,4 +485,21 @@ if __name__=='__main__':
       for i in range(0,numjobs):
         bash_file = respat + "/job" + str(i) + ".sh"
         subprocess.call(['sbatch', bash_file])
+
+
+#--------------------------------------------------------------------------------------------------------------------------
+if __name__=='__main__':
+  parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  r_args = parser.add_argument_group('required arguments')
+  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to patients (brats format)', required = True) 
+  r_args.add_argument('-a', '--atlas_dir', type = str, help = 'path to atlases', required = True) 
+  r_args.add_argument('-x', '--results_dir', type = str, help = 'path to results', required = True) 
+  r_args.add_argument('-c', '--code_dir', type = str, help = 'path to tumor solver code', required = True) 
+  r_args.add_argument('-n', '--n_resample', type = int, help = 'size for inversion', default = 160) 
+  r_args.add_argument('-r', '--reg', type = int, help = 'perform registration', default = 0) 
+  r_args.add_argument('-rc', '--claire_dir', type = str, help = 'path to claire bin', default = "") 
+  r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
+  r_args.add_argument('-submit', action = 'store_true', help = 'submit jobs (after they have been created)') 
+  args = parser.parse_args();
+  run(args)
 
