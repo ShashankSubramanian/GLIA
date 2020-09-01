@@ -28,6 +28,17 @@ def read_netcdf(filename):
   imgfile.close();
   return np.transpose(img)
 
+def thresh(slice, cmap, thresh=0.3, v_max=None, v_min=None):
+  # clip slice to interval [0,1], generate alpha values: any value > thres will have zero transparency
+  slice_clipped = np.clip(slice, 0, 1)
+  alphas = Normalize(0, thresh, clip=True)(slice_clipped)
+  # alphas = np.clip(alphas, .4, 1)  # alpha value clipped at the bottom at .4
+  max = np.amax(slice_clipped) if v_max == None else v_max;
+  min = np.amin(slice_clipped) if v_min == None else v_min;
+  slice_normalized = Normalize(min, max)(slice_clipped);
+  cmap_ = cmap(slice_normalized)
+  cmap_[..., -1] = alphas
+  return cmap_;
 
 def colorbar(mappable):
   last_axes = plt.gca()
@@ -67,7 +78,7 @@ def create_segmentation(root_path, is_patient = False):
     max_arr = np.maximum(max_arr, tu)
     max_arr = np.maximum(max_arr, ed)
   max_arr = np.maximum(max_arr, bg)
-  return ((max_arr == wm) * 6 + (max_arr == gm) * 5 + (max_arr == csf) * 8 + (max_arr == vt) * 7 + (max_arr == tu) * 1 + (max_arr == ed) * 2 + (max_arr == bg) * 0)
+  return ((max_arr == wm) * 6 + (max_arr == gm) * 5 + (max_arr == csf) * 8 + (max_arr == vt) * 7 + (max_arr == tu) * 2 + (max_arr == ed) * 3 + (max_arr == bg) * 0)
 
 def compute_com(img):
   return tuple(int(s) for s in ndimage.measurements.center_of_mass(img))
@@ -101,6 +112,7 @@ if __name__=='__main__':
   ### pats with diff-vol < 0
   patient_list = stats.loc[stats['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
   patient_list = patient_list[0:4]
+ # patient_list = stats['PATIENT'].tolist()
   print("selected patients: ")
   for pat in patient_list:
     print(pat)
@@ -108,14 +120,20 @@ if __name__=='__main__':
   atlases = np.zeros((im_sz,im_sz,im_sz,16))
   recon   = atlases.copy()
   disp    = atlases.copy()
+  c       = atlases.copy()
   ### aesthetics
   pad_x = 25
   pad_y = 25
   ox = 0
   oy = 10
+  cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, 4);
   im_at = np.zeros((im_sz,im_sz,im_sz,4))
   im_rec = im_at.copy()
   im_disp = im_at.copy()
+  im_c = im_at.copy()
+
+  stat_file = open(args.results_dir + "/inversion_stats.txt", "w")
+  stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
   
   with PdfPages(args.results_dir + "/penn_masseffect_stats.pdf") as pdf:
     for pat in patient_list:
@@ -123,6 +141,7 @@ if __name__=='__main__':
       atlases[:] = 0
       recon[:]   = 0
       disp[:]    = 0
+      c[:]       = 0
       fig, ax = plt.subplots(4,4,figsize=(12,16))
       for ct in range(0,4):
           ax[ct][0].tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False)
@@ -151,6 +170,7 @@ if __name__=='__main__':
               pat = create_segmentation(root_path = curr_path, is_patient = True)
               pat_compute = True
           recon[:,:,:,idx]   = read_netcdf(curr_path + "seg_rec_final.nc")
+          c[:,:,:,idx]       = read_netcdf(curr_path + "c_rec_final.nc")
           disp[:,:,:,idx]    = read_netcdf(curr_path + "displacement_rec_final.nc")
           
       vt_pat = compute_vol(pat == 7)
@@ -169,27 +189,46 @@ if __name__=='__main__':
       im_at[:,:,:,0] = atlases.sum(axis=3)/num_atlases
       im_rec[:,:,:,0] = recon.sum(axis=3)/num_atlases
       im_disp[:,:,:,0] = disp.sum(axis=3)/num_atlases
+      im_c[:,:,:,0] = c.sum(axis=3)/num_atlases
 
       ## next is closest to patient vt vol
       im_at[:,:,:,1] = atlases[:,:,:,atlas_names.index(min_at)]
       im_rec[:,:,:,1] = recon[:,:,:,atlas_names.index(min_at)]
       im_disp[:,:,:,1] = disp[:,:,:,atlas_names.index(min_at)]
+      im_c[:,:,:,1] = c[:,:,:,atlas_names.index(min_at)]
 
       ## next is farthest to patient vt vol
       im_at[:,:,:,2] = atlases[:,:,:,atlas_names.index(max_at)]
       im_rec[:,:,:,2] = recon[:,:,:,atlas_names.index(max_at)]
       im_disp[:,:,:,2] = disp[:,:,:,atlas_names.index(max_at)]
+      im_c[:,:,:,2] = c[:,:,:,atlas_names.index(max_at)]
 
       ## last is median atlas
       im_at[:,:,:,3] = atlases[:,:,:,atlas_names.index(med_at)]
       im_rec[:,:,:,3] = recon[:,:,:,atlas_names.index(med_at)]
       im_disp[:,:,:,3] = disp[:,:,:,atlas_names.index(med_at)]
-      tu     = (pat == 1)
+      im_c[:,:,:,3] = c[:,:,:,atlas_names.index(med_at)]
+
+      df_row = stats.loc[stats["PATIENT"] == pat_name]
+      diff_vol = df_row['diff-vol'].values[0]*100
+      diff_l2  = df_row['diff-l2'].values[0]*100
+      prob_vol = compute_vol((np.abs(im_at[:,:,:,0] - 7) < 2.5E-1))
+      min_vol  = compute_vol(im_at[:,:,:,1] == 7)
+      max_vol  = compute_vol(im_at[:,:,:,2] == 7)
+      med_vol  = compute_vol(im_at[:,:,:,3] == 7)
+      param_list = [pat_name, atlas_failed, diff_vol, diff_l2, vt_pat, prob_vol, min_vol, max_vol, med_vol]
+      for item in param_list:
+        stat_file.write(str(item) + ",")
+      stat_file.write("\n")
+
+      tu     = (pat == 2)
       com    = compute_com(tu)
       axial  = com[2] 
       for idx in range(0,4):
         ax[idx][0].imshow(im_at[:,:,axial,idx].T, cmap='gray', interpolation='none', origin='upper')
         ax[idx][1].imshow(im_rec[:,:,axial,idx].T, cmap='gray', interpolation='none', origin='upper')
+        ax[idx][1].imshow(thresh(im_c[:,:,axial,idx].T, cmap_c1, thresh=0.4), cmap=plt.cm.rainbow,interpolation='none', alpha=1) 
+        ax[idx][1].contour(tu[:,:,axial].T,  levels=[1.0],  cmap=plt.cm.gray, linestyles=['--'] ,linewidths=0.8, alpha=0.9)
         ax[idx][2].imshow(pat[:,:,axial].T, cmap='gray', interpolation='none', origin='upper')
         im = ax[idx][3].imshow(im_disp[:,:,axial,idx].T, vmin=0, vmax=max_disp,cmap=plt.cm.coolwarm, interpolation='none', origin='upper') #viridis
         
@@ -218,9 +257,8 @@ if __name__=='__main__':
       ax[3][0].set_ylabel("Median", fontsize="12", fontweight="bold")
 
       fig.subplots_adjust(left=0.05, right=0.9, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3)
-      df_row = stats.loc[stats["PATIENT"] == pat_name]
-      fig.suptitle("{}; (vol,l2,status)=({:3G},{:3G},{})".format(pat_name, df_row['diff-vol'].values[0]*100, df_row['diff-l2'].values[0]*100, atlas_failed))
+      fig.suptitle("{}; (vol,l2,status)=({:3G},{:3G},{})".format(pat_name, diff_vol, diff_l2, atlas_failed))
       pdf.savefig()
       fig.clf()
 
-
+  stat_file.close()
