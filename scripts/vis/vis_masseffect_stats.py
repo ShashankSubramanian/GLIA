@@ -96,22 +96,43 @@ if __name__=='__main__':
   parser = argparse.ArgumentParser(description='script to visualize some stats for mass effect reconstructions',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
   r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to masseffect patient reconstructions', required = True) 
+  r_args.add_argument('-d', '--data_dir', type = str, help = 'path to masseffect inversion input data (if different from patient_dir)') 
   r_args.add_argument('-x', '--results_dir', type = str, help = 'results path', required = True) 
   args = parser.parse_args();
 
   me_res_dir = args.patient_dir
-  stat_file  = me_res_dir + "/penn_masseffect_inversion_stats.csv"
+  if not args.data_dir:
+    data_dir = me_res_dir
+  else:
+    data_dir = args.data_dir
+  temp = os.listdir(me_res_dir)
+  for tmp in temp:
+    if "csv" in tmp:
+      stat_file_name = tmp
+      break
+  stat_file  = os.path.join(me_res_dir, stat_file_name) 
   stats      = pd.read_csv(stat_file, header=0)
   stats.reset_index(inplace=True)
+  if not data_dir == me_res_dir:
+    temp = os.listdir(data_dir)
+    for tmp in temp:
+      if "csv" in tmp:
+        stat_file_name = tmp
+        break
+    stat_file  = os.path.join(data_dir, stat_file_name) 
+    stats_me   = pd.read_csv(stat_file, header=0)
+  else:
+    stats_me = stats 
 
   ### add some important columns
-  stats['diff-vol'] = stats['mu-vol-err-nm'] - stats['mu-vol-err']
-  stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
+  if not 'diff-vol' in stats:
+    stats['diff-vol'] = stats['mu-vol-err-nm'] - stats['mu-vol-err']
+    stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
 
   ### subselect patients
   ### pats with diff-vol < 0
-  patient_list = stats.loc[stats['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
-  patient_list = patient_list[0:4]
+  patient_list = stats_me.loc[stats_me['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
+  #patient_list = patient_list[0:4]
  # patient_list = stats['PATIENT'].tolist()
   print("selected patients: ")
   for pat in patient_list:
@@ -135,7 +156,7 @@ if __name__=='__main__':
   stat_file = open(args.results_dir + "/inversion_stats.txt", "w")
   stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
   
-  with PdfPages(args.results_dir + "/penn_masseffect_stats.pdf") as pdf:
+  with PdfPages(args.results_dir + "/penn_nomasseffect_stats.pdf") as pdf:
     for pat in patient_list:
       pat_name = pat
       atlases[:] = 0
@@ -150,6 +171,7 @@ if __name__=='__main__':
           ax[ct][3].tick_params(axis='both', which='both', bottom=False, top=False, left=False, labelleft=False, labelbottom=False)
       print("printing for patient ", pat)
       path_to_results = os.path.join(me_res_dir, pat)
+      path_to_data = os.path.join(data_dir, pat)
       atlas_list = os.path.join(path_to_results, "atlas-list.txt")
       with open(atlas_list, "r") as f:
           lines = f.readlines()
@@ -158,7 +180,7 @@ if __name__=='__main__':
           atlas_names.append(ln.strip("\n"))
 
       num_atlases = len(atlas_names)
-      patient = nib.load(path_to_results + "/tu/160/" + pat + "_seg_ants_aff2jakob_160.nii.gz").get_fdata()
+      patient = nib.load(path_to_data + "/tu/160/" + pat + "_seg_ants_aff2jakob_160.nii.gz").get_fdata()
 
       pat_compute = False
       vt_at = []
