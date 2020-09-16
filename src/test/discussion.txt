@@ -1,0 +1,14 @@
+1. Integration Tests:
+  - run RD forward and compare result, constant and brain non-constant coefficients
+  - run ME forward and compare result, brain non-constant coefficients
+  - run MS forward and compare result, brain non-constant coefficients
+  - run inverse L2, sinusoidal and brain non-const coefficients
+  - run inverse sparse TIL, brain non-const coefficients
+  - run inverse RD
+  - run inverse ME
+
+2. Unit Tests: e.g.,
+  - forward solve, adjoint solve, advection solve 
+  - objective function evaluation, gradient evaluation.
+  - phi->apply
+  - etc..

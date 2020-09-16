@@ -87,7 +87,13 @@ def createJobsubFile(cmd, opt, level):
         bash_file.write("#SBATCH -t " + str(opt['wtime_h']) + ":" + str(opt['wtime_m']) + ":00\n");
         #bash_file.write("#SBATCH --mail-user=nutexas.edu\n");
         #bash_file.write("#SBATCH --mail-type=fail\n");
+<<<<<<< HEAD
         if opt['compute_sys'] != 'frontera':
+=======
+        if opt['compute_sys'] == 'frontera':
+            bash_file.write("#SBATCH -A FTA-Biros\n");
+        else:
+>>>>>>> dev_alzh-ali
             bash_file.write("#SBATCH -A PADAS\n");
 
 
@@ -152,8 +158,13 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     rho_lb  = 1E-4;
     rho_ub  = 15;
     model   = 2;
+<<<<<<< HEAD
     obs_th_1= 0.4;
     obs_th_0= 0.4;
+=======
+    obs_th_1= 0.2;
+    obs_th_0= 0.2;
+>>>>>>> dev_alzh-ali
     smooth_fac    = 1.5;
     smooth_fac_c0 = 1.5;
     pred_t0 = TF[case]['t1']
@@ -168,6 +179,7 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     solver  = 'QN'
     prefix  = 'time_point_0'
     prefix_p= 'time_point_1'
+<<<<<<< HEAD
     adv     = False #reg_dict[case];
     vx1     = 'reg-1-0_more_accurate/velocity-field-x1.nc'
     vx2     = 'reg-1-0_more_accurate/velocity-field-x2.nc'
@@ -175,6 +187,15 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
     vx1_p   = ''#'reg-2-1/velocity-field-x1.nc'
     vx2_p   = ''#'reg-2-1/velocity-field-x2.nc'
     vx3_p   = ''#'reg-2-1/velocity-field-x3.nc'
+=======
+    adv     = reg_dict[case];
+    vx1     = 'reg-1-0/velocity-field-x1.nc'
+    vx2     = 'reg-1-0/velocity-field-x2.nc'
+    vx3     = 'reg-1-0/velocity-field-x3.nc'
+    vx1_p   = 'reg-2-1/velocity-field-x1.nc'
+    vx2_p   = 'reg-2-1/velocity-field-x2.nc'
+    vx3_p   = 'reg-2-1/velocity-field-x3.nc'
+>>>>>>> dev_alzh-ali
     obs_mask_path = ''
     ###########
     
@@ -188,9 +209,15 @@ def set_params(basedir, args, case_dir='d_nc', gpu=False):
 
     # define results path
     if not adv:
+<<<<<<< HEAD
         res_dir = os.path.join(os.path.join(args.results_directory, case_dir),'_reg-sensitivity_inv-obs-th-'+str(obs_th_1)+'-smc0-'+str(smooth_fac_c0)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale-tol'+str(opttol)+'/');
     else:
         res_dir = os.path.join(os.path.join(args.results_directory,case_dir),'_reg-sensitivity_inv-obs-adv-obs-th-'+str(obs_th_1)+'-smc0-'+str(smooth_fac_c0)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale-tol-'+str(opttol)+'/');
+=======
+        res_dir = os.path.join(os.path.join(args.results_directory, case_dir),'inv-obs-th-'+str(obs_th_1)+'-smc0-'+str(smooth_fac_c0)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale-tol'+str(opttol)+'/');
+    else:
+        res_dir = os.path.join(os.path.join(args.results_directory,case_dir),'inv-obs-adv-obs-th-'+str(obs_th_1)+'-smc0-'+str(smooth_fac_c0)+'-iguess[r-'+str(rho_inv)+'-k-'+str(k_inv*scale)+']-rho-lb-'+str(rho_lb)+'-fd-lbfgs-10-bounds-scale-tol-'+str(opttol)+'/');
+>>>>>>> dev_alzh-ali
     
     opt = {}
     opt['compute_sys']  = args.compute_cluster;
@@ -324,8 +351,13 @@ if __name__=='__main__':
     #case_dir = 'CASE_941_S_4036'   
     #case_dir = 'CASE_033_S_4179'   
     #case_dir = 'CASE_032_S_5289'   
+<<<<<<< HEAD
     #case_dir = 'CASE_035_S_4114'  
     #CASES = ['CASE_022_S_6013','CASE_127_S_2234', 'CASE_127_S_4301', 'CASE_023_S_1190', 'CASE_012_S_6073', 'CASE_941_S_4036', 'CASE_033_S_4179', 'CASE_032_S_5289','CASE_035_S_4114']   
     CASES = ['CASE_022_S_6013', 'CASE_023_S_1190', 'CASE_941_S_4036','CASE_035_S_4114']   
+=======
+    case_dir = 'CASE_035_S_4114'  
+    CASES = ['CASE_022_S_6013','CASE_127_S_2234', 'CASE_127_S_4301', 'CASE_023_S_1190', 'CASE_012_S_6073', 'CASE_941_S_4036', 'CASE_033_S_4179', 'CASE_032_S_5289','CASE_035_S_4114']   
+>>>>>>> dev_alzh-ali
     for case_dir in CASES:
         set_params(basedir, args, case_dir, gpu=True);

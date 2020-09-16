@@ -64,7 +64,7 @@ vars.Add(PathVariable("builddir", "Directory holding build files.", "build", Pat
 vars.Add(EnumVariable('build', 'Build type, either release or debug', "debug", allowed_values=('release', 'debug')))
 vars.Add("compiler", "Compiler to use.", "mpicxx")
 vars.Add("platform", "Specify platform.", "local")
-vars.Add(BoolVariable("use_nii", "enable/disable nifti.", False))
+vars.Add(BoolVariable("niftiio", "enable/disable nifti.", False))
 vars.Add(BoolVariable("gpu", "Enables build for GPU support.", False))
 vars.Add(BoolVariable("multi_gpu", "Enables build for multi-GPU support.", False))
 vars.Add(BoolVariable("single_precision", "Enables single precision computation.", False))
@@ -76,7 +76,12 @@ Help(vars.GenerateHelpText(env))
 env.Append(CPPPATH = ['#include'])
 env.Append(CPPPATH = [os.path.join( "3rdparty")])
 env.Append(CPPPATH = [os.path.join('3rdparty', 'timings')])
-
+env.Append(CPPPATH = [os.path.join('include', 'opt')])
+env.Append(CPPPATH = [os.path.join('include', 'utils')])
+env.Append(CPPPATH = [os.path.join('include', 'pde')])
+env.Append(CPPPATH = [os.path.join('include', 'mat')])
+env.Append(CPPPATH = [os.path.join('include', 'grad')])
+env.Append(CPPPATH = [os.path.join('include', 'test')])
 print
 print_options(vars)
 
@@ -150,12 +155,15 @@ env.Append(LINKFLAGS = ["-fopenmp"])
 # ====== preprocessor defines, #ifdefs ========
 env.Append(CCFLAGS = ['-DPVFMM_MEMDEBUG'])
 
+<<<<<<< HEAD
 # enforce positivity inside tumor forward solve
 env.Append(CCFLAGS = ['-DPOSITIVITY'])
 
 # inversion vector p is serial, not distributed
 env.Append(CCFLAGS = ['-DSERIAL'])
 
+=======
+>>>>>>> dev_alzh-ali
 if env["gpu"] == True:
     env.Append(CCFLAGS = ['-DCUDA'])
 
@@ -165,10 +173,15 @@ if env["single_precision"] == True:
 if env["multi_gpu"] == True:
     env.Append(CCFLAGS = ['-DMPICUDA'])
 
+<<<<<<< HEAD
 # enforce positivity in diffusion inversion for ksenv.Append(CCFLAGS = ['-DPOSITIVITY_DIFF_COEF'])
 
 # print centers of phi's to file
 # env.Append(CCFLAGS = ['-DVISUALIZE_PHI'])
+=======
+if env["niftiio"] == True:
+    env.Append(CCFLAGS = ['-DNIFTIIO'])
+>>>>>>> dev_alzh-ali
 
 # avx
 if env["platform"] != "frontera":
@@ -206,8 +219,21 @@ PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
 env.Append(CPPPATH = [os.path.join( PNETCDF_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( PNETCDF_DIR, "lib")])
 uniqueCheckLib(conf, "pnetcdf")
-# registration with pnetcdf
-env.Append(CPPDEFINES = ['-DREG_HAS_PNETCDF'])
+
+# ====== NIFTI ======
+if env["niftiio"] == True:
+    NIFTI_DIR = checkset_var("NIFTI_DIR", "")
+    env.Append(CPPPATH = [os.path.join( NIFTI_DIR, "include/nifti")])
+    env.Append(LIBPATH = [os.path.join( NIFTI_DIR, "lib")])
+    uniqueCheckLib(conf, "niftiio")
+    uniqueCheckLib(conf, "nifticdf")
+    uniqueCheckLib(conf, "znz")
+
+    # ====== ZLIB ======
+    ZLIB_DIR = checkset_var("ZLIB_DIR", "")
+    env.Append(CPPPATH = [os.path.join( ZLIB_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( ZLIB_DIR, "lib")])
+    uniqueCheckLib(conf, "libz")
 
 # ====== FFTW =========
 FFTW_DIR = checkset_var("FFTW_DIR", "")
@@ -256,14 +282,19 @@ env = conf.Finish() # Used to check libraries
 
 
 if env["gpu"] == True:
-    binfwd = env.Program (
-    target = buildpath + '/forward',
-    source = [sourcesPGLISTRGPU, './app/forward.cpp']
-    )
     bininv = env.Program (
+<<<<<<< HEAD
     target = buildpath + '/inverse_gpu',
     source = [sourcesPGLISTRGPU, './app/inverse.cpp']
+=======
+    target = buildpath + '/tusolver',
+    source = [sourcesPGLISTRGPU, './app/tusolver.cpp']
+>>>>>>> dev_alzh-ali
     )
+    bintest = env.Program (
+        target = buildpath + '/test',
+        source = [sourcesPGLISTRGPU, './app/test.cpp']
+    ) 
     env.Alias("bin", bininv)
     staticlib = env.StaticLibrary (
         target = buildpath + '/pglistr',
@@ -271,13 +302,18 @@ if env["gpu"] == True:
     )
     env.Alias("staticlib", staticlib)
 else:
-    binfwd = env.Program (
-    target = buildpath + '/forward',
-    source = [sourcesPGLISTR, './app/forward.cpp']
-    )
     bininv = env.Program (
+<<<<<<< HEAD
         target = buildpath + '/inverse_cpu',
         source = [sourcesPGLISTR, './app/inverse.cpp']
+=======
+        target = buildpath + '/tusolver',
+        source = [sourcesPGLISTR, './app/tusolver.cpp']
+    ) 
+    bintest = env.Program (
+        target = buildpath + '/test',
+        source = [sourcesPGLISTR, './app/test.cpp']
+>>>>>>> dev_alzh-ali
     ) 
     env.Alias("bin", bininv)
     # solib = env.SharedLibrary (
@@ -301,7 +337,7 @@ symlink = env.Command(
 
 # Default(staticlib, bin, symlink)
 #Default(bininv, solib, symlink)
-Default(bininv, staticlib, symlink)
+Default(bininv, bintest, symlink)
 # Default(bininv, symlink)
 AlwaysBuild(symlink)
 

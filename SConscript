@@ -1,8 +1,13 @@
 # This is file Sconscript
 
 sourcesPGLISTR = [
-    f for f in Glob('./src/*.cpp')
-    #if '*.cpp' not in f.path
+    Glob('./src/*.cpp'),
+    Glob('./src/test/*.cpp'),
+    Glob('./src/opt/*.cpp'),
+    Glob('./src/utils/*.cpp'),
+    Glob('./src/pde/*.cpp'),
+    Glob('./src/mat/*.cpp'),
+    Glob('./src/grad/*.cpp'),
 ]
 
 sourcesTHIRDPARTY = [
@@ -10,8 +15,7 @@ sourcesTHIRDPARTY = [
 ]
 
 sourcesDrivers = [
-    Glob('app/forward.cpp'),
-    Glob('app/inverse.cpp')
+    Glob('app/tusolver.cpp')
 ]
 
 sourcesAllNoMain = [
@@ -22,7 +26,8 @@ sourcesAllNoMain = [
 sourcesAllNoMainGPU = [
     sourcesPGLISTR,
     sourcesTHIRDPARTY,
-    Glob('src/*.cu')
+    Glob('src/*.cu'),
+    Glob('src/cuda/*.cu')
 ]
 
 sourcesAll = [
