@@ -11,9 +11,9 @@ submit_job = True;
 scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
 
-kfs = [0.61, 1.01, 2.02, 3.02]
-ks = [0.01]
-Ts = [1.0,2.0]
+kfs = [0.75]
+ks = [0.05]
+Ts = [1.0, 1.5, 2.0]
 rho = 8
 
 
@@ -26,7 +26,7 @@ for kf in kfs:
     for T in Ts:
         p['n'] = 128
 	name = 'k' + str(k) + '-kf' + str(kf) + '-r' + str(rho) + '-T' + str(T) + '/'
-	p['output_dir'] = os.path.join(code_dir, 'results/forward_128_kgm-wm1_k1e-2/' + name);   # results path
+	p['output_dir'] = os.path.join(code_dir, 'results/forward_128_kgm-wm1_k1e-1/' + name);   # results path
 	p['d0_path'] = ""
 	p['d1_path'] = ""
 	p['prediction'] = 0
