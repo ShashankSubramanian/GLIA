@@ -91,6 +91,32 @@ def compute_vol(mat):
   vol *= measure
   return vol
 
+def create_prob_img(img):
+  """
+    Creates a probabilistic image of a series of segmentations
+    Assumes segmentation labels are in standard brats format
+  """
+  shp = list(img.shape)
+  num_atlases = shp[-1]
+  num_props = 6 ## bg, tu, gm, wm, vt, csf
+  sz = shp[:3].copy()
+  sz.append(num_props)
+  prob = np.zeros(tuple(sz))
+  idx_dict = {0:0, 1:1, 2:5, 3:6, 4:7, 5:8}
+  # for each label, compute all the atlases which predict that label and divide by total number of atlases
+  # this gives a probability of each label
+  for idx in range(num_props):
+    prob[:,:,:,idx] = np.count_nonzero(img == idx_dict[idx], axis=3)
+  # resegment using the above probabilites by computing the most likely label
+  #prob_seg = np.sum(prob, axis=3)
+  prob_seg = np.argmax(prob, axis=3)
+  prob_seg_mod = prob_seg.copy()
+  for idx in range(num_props):
+    prob_seg_mod[prob_seg == idx] = idx_dict[idx]
+
+  return prob_seg_mod
+
+
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='script to visualize some stats for mass effect reconstructions',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -132,7 +158,7 @@ if __name__=='__main__':
   ### subselect patients
   ### pats with diff-vol < 0
   patient_list = stats_me.loc[stats_me['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
-  #patient_list = patient_list[0:4]
+#  patient_list = patient_list[0:4]
  # patient_list = stats['PATIENT'].tolist()
   print("selected patients: ")
   for pat in patient_list:
@@ -156,7 +182,7 @@ if __name__=='__main__':
   stat_file = open(args.results_dir + "/inversion_stats.txt", "w")
   stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
   
-  with PdfPages(args.results_dir + "/penn_nomasseffect_stats.pdf") as pdf:
+  with PdfPages(args.results_dir + "/penn_masseffect_stats.pdf") as pdf:
     for pat in patient_list:
       pat_name = pat
       atlases[:] = 0
@@ -208,10 +234,14 @@ if __name__=='__main__':
       max_disp = round(np.max(disp.flatten()),1)
 
       ## first image is probabilistic
-      im_at[:,:,:,0] = atlases.sum(axis=3)/num_atlases
-      im_rec[:,:,:,0] = recon.sum(axis=3)/num_atlases
-      im_disp[:,:,:,0] = disp.sum(axis=3)/num_atlases
-      im_c[:,:,:,0] = c.sum(axis=3)/num_atlases
+      im_at[:,:,:,0] = create_prob_img(atlases[:,:,:,0:num_atlases])
+      im_rec[:,:,:,0] = create_prob_img(recon[:,:,:,0:num_atlases])
+      #im_at[:,:,:,0] = atlases.sum(axis=3)/num_atlases
+      #im_rec[:,:,:,0] = recon.sum(axis=3)/num_atlases
+      #im_disp[:,:,:,0] = disp.sum(axis=3)/num_atlases
+      #im_c[:,:,:,0] = c.sum(axis=3)/num_atlases
+      im_disp[:,:,:,0] = np.median(disp[:,:,:,0:num_atlases], axis=3)
+      im_c[:,:,:,0] = np.median(c[:,:,:,0:num_atlases], axis=3)
 
       ## next is closest to patient vt vol
       im_at[:,:,:,1] = atlases[:,:,:,atlas_names.index(min_at)]

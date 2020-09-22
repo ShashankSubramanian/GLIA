@@ -36,6 +36,30 @@ def compute_dice(x, gt):
   intersection = np.sum(x * gt)
   return (2 * intersection + smooth)/ (np.sum(x) + np.sum(gt) + smooth)
   
+def create_prob_img(img):
+  """
+    Creates a probabilistic image of a series of segmentations
+    Assumes segmentation labels are in standard brats format
+  """
+  shp = list(img.shape)
+  num_atlases = shp[-1]
+  num_props = 6 ## bg, tu, gm, wm, vt, csf
+  sz = shp[:3].copy()
+  sz.append(num_props)
+  prob = np.zeros(tuple(sz))
+  idx_dict = {0:0, 1:1, 2:5, 3:6, 4:7, 5:8}
+  # for each label, compute all the atlases which predict that label and divide by total number of atlases
+  # this gives a probability of each label
+  for idx in range(num_props):
+    prob[:,:,:,idx] = np.count_nonzero(img == idx_dict[idx], axis=3)
+  # resegment using the above probabilites by computing the most likely label
+  #prob_seg = np.sum(prob, axis=3)
+  prob_seg = np.argmax(prob, axis=3)
+  prob_seg_mod = prob_seg.copy()
+  for idx in range(num_props):
+    prob_seg_mod[prob_seg == idx] = idx_dict[idx]
+
+  return prob_seg_mod
 
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
@@ -122,7 +146,7 @@ if __name__=='__main__':
       stats.loc[stats['PATIENT'] == pat, 'std-err-rsc'] = np.std(a_err)
       stats.loc[stats['PATIENT'] == pat, 'mu-dice'] = np.mean(a_dc)
       stats.loc[stats['PATIENT'] == pat, 'std-dice'] = np.std(a_dc)
-
+  
   if 'mu-vt-dice' not in stats:
     stats['mu-vt-dice'] = 0
     stats['std-vt-dice'] = 0
@@ -149,5 +173,51 @@ if __name__=='__main__':
       a_dc  = np.asarray(dice)
       stats.loc[stats['PATIENT'] == pat, 'mu-vt-dice'] = np.mean(a_dc)
       stats.loc[stats['PATIENT'] == pat, 'std-vt-dice'] = np.std(a_dc)
+
+  im_sz = 160
+  recon = np.zeros((im_sz,im_sz,im_sz,16))
+  if 'prob-err-rsc' not in stats:
+    stats['prob-err-rsc'] = 1
+    stats['prob-dice'] = 0
+    stats['prob-vt-dice'] = 0
+    for pat_idx, pat in enumerate(patient_list):
+      print("{}: patient = {}".format(pat_idx, pat))
+      recon[:] = 0
+      inv_dir = os.path.join(*[me_res_dir, pat, "tu/160"])
+      inv_data_dir = os.path.join(*[data_dir, pat, "tu/160"])
+      pat_seg = read_netcdf(os.path.join(inv_data_dir, pat + "_seg_ants_aff2jakob_160.nc"))
+      tc = np.logical_or(pat_seg == 1, pat_seg == 4)
+      vt_pat = (pat_seg == 7) 
+      pat_compute = True
+      c = np.zeros((im_sz, im_sz, im_sz))
+      at_list = []
+      for at in os.listdir(inv_dir):
+        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+        if not os.path.exists(config_file):
+          continue
+        at_list.append(at)
+
+      num_atlases = len(at_list)
+      for idx,at in enumerate(at_list):
+        at_dir = os.path.join(inv_dir, at)
+        c += read_netcdf(os.path.join(at_dir, "c_rec_final.nc"))
+        recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
+        if pat_compute:
+          c_data = read_netcdf(os.path.join(at_dir, "data.nc"))
+          obs    = read_netcdf(os.path.join(at_dir, "obs.nc"))
+          data_norm = la.norm(c_data[:])
+          pat_compute = False
+
+      c /= num_atlases ## avg prob dist of c
+      prob_recon = create_prob_img(recon[:,:,:,0:num_atlases])
+      tu = (prob_recon == 1)
+      vt = (prob_recon == 7)
+      c = obs * c
+      tu = obs * tu
+      vt = obs * vt
+      c_rsc = c / np.max(c[:])
+      stats.loc[stats['PATIENT'] == pat, 'prob-err-rsc'] = la.norm(c_rsc[:] - c_data[:])/data_norm
+      stats.loc[stats['PATIENT'] == pat, 'prob-dice'] = compute_dice(tu, tc) 
+      stats.loc[stats['PATIENT'] == pat, 'prob-vt-dice'] = compute_dice(vt, vt_pat) 
 
 stats.to_csv(args.results_dir + "/penn_stats.csv", index=False)
