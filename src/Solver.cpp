@@ -666,6 +666,20 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
+
+  // compute dice
+  // get tumor seg
+  ierr = VecSet(c1_obs, 0); CHKERRQ(ierr);
+  ierr = tumor_->getTCRecon(c1_obs); CHKERRQ(ierr);
+  ierr = tumor_->obs_->apply(c1_obs, c1_obs, 1); CHKERRQ(ierr);
+  ScalarType dice = 0;
+  ierr = computeDice(c1_obs, tc_seg_, dice); CHKERRQ(ierr);
+  if (dice == -1) ss << " t=1: dice (at observation points): (unable to compute; nullptr detected)";
+  else ss << " t=1: dice (at observation points): " << dice;
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+  ss.str("");
+  ss.clear();
+
   ierr = VecDestroy(&c1_obs); CHKERRQ(ierr);
 
   // c(0): error everywhere
@@ -710,6 +724,7 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
   PetscFunctionBegin;
 
   ScalarType sigma_smooth = params_->tu_->smoothing_factor_patient_ * 2 * M_PI / params_->grid_->n_[0];
+  bool vt_no_smooth = false; // dont smooth the vt if true conc is read in
 
   if (!app_settings_->path_->p_seg_.empty()) {
     ierr = dataIn(tmp_, params_, app_settings_->path_->p_seg_); CHKERRQ(ierr);
@@ -735,7 +750,17 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
       }
     }
     ierr = splitSegmentation(tmp_, p_wm_, p_gm_, p_vt_, p_csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->patient_seg_); CHKERRQ(ierr);
-    // TODO(K): populate to wm, gm, csf, ve
+    if (data_t1_from_seg_) {
+      ierr = VecDuplicate(tmp_, &tc_seg_); CHKERRQ(ierr);
+      ierr = VecCopy(data_t1_, tc_seg_); CHKERRQ(ierr);
+    }
+
+    if (!app_settings_->path_->p_vt_.empty()) {
+      // overwrite p_vt because true conc is known
+      ierr = dataIn(p_vt_, params_, app_settings_->path_->p_vt_); CHKERRQ(ierr);
+      vt_no_smooth = true;
+    }
+
   } else {
     if (!app_settings_->path_->p_wm_.empty()) {
       ierr = VecDuplicate(tmp_, &p_wm_); CHKERRQ(ierr);
@@ -763,12 +788,16 @@ PetscErrorCode InverseMassEffectSolver::readPatient() {
       ierr = spec_ops_->weierstrassSmoother(p_wm_, p_wm_, params_, sigma_smooth); CHKERRQ(ierr);
     }
     if (p_vt_ != nullptr) {
-      ierr = spec_ops_->weierstrassSmoother(p_vt_, p_vt_, params_, sigma_smooth); CHKERRQ(ierr);
+      if (!vt_no_smooth) {
+        ierr = spec_ops_->weierstrassSmoother(p_vt_, p_vt_, params_, sigma_smooth); CHKERRQ(ierr);
+      }
     }
     if (p_csf_ != nullptr) {
       ierr = spec_ops_->weierstrassSmoother(p_csf_, p_csf_, params_, sigma_smooth); CHKERRQ(ierr);
     }
   }
+
+
   
   if (params_->tu_->write_output_) {
     if (p_gm_ != nullptr) dataOut(p_gm_, params_, "p_gm.nc");

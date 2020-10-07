@@ -637,3 +637,44 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
 
   PetscFunctionReturn(ierr);
 }
+
+
+PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  if (truth == nullptr || in == nullptr) {
+    dice = -1;
+    PetscFunctionReturn(ierr);
+  }
+
+  PetscInt sz;
+  ierr = VecGetSize(truth, &sz); CHKERRQ(ierr);
+
+  ScalarType dot, sum_in, sum_truth;
+  ierr = VecDot(in, truth, &dot); CHKERRQ(ierr);
+#ifdef CUDA
+  cublasStatus_t status;
+  cublasHandle_t handle;
+  // cublas for vec scale
+  PetscCUBLASGetHandle(&handle);
+  ScalarType *truth_ptr, *in_ptr;
+  ierr = vecGetArray(truth, &truth_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(in, &in_ptr); CHKERRQ(ierr);
+  status = cublasSum(handle, sz, truth_ptr, 1, &sum_truth);
+  cublasCheckError(status);
+  status = cublasSum(handle, sz, in_ptr, 1, &sum_in);
+  cublasCheckError(status);
+  ierr = vecRestoreArray(truth, &truth_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(in, &in_ptr); CHKERRQ(ierr);
+#else
+  ierr = VecSum(truth, &sum_truth); CHKERRQ(ierr);
+  ierr = VecSum(in, &sum_in); CHKERRQ(ierr);
+#endif
+  ScalarType denom = sum_truth + sum_in;
+  denom = (denom > 0) ? denom : 1E-5; // some small value to avoid division by zero
+  dice = 2. * dot / denom;
+
+  PetscFunctionReturn(ierr);
+}
+

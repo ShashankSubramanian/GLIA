@@ -80,6 +80,7 @@ class SolverInterface {
   Vec obs_filter_;
   Vec p_rec_;
   Vec velocity_;
+  Vec tc_seg_; // in case data_t1 is changed for the inversion; store the tc seg so that we can compute the dice
   std::shared_ptr<Data> data_;
 };
 

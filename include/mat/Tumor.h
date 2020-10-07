@@ -55,6 +55,7 @@ class Tumor {
   PetscErrorCode computeSegmentation();
   PetscErrorCode computeSpeciesNorms();
   PetscErrorCode clipTumor();
+  PetscErrorCode getTCRecon(Vec x);
 
   // mass effect functions
   PetscErrorCode computeForce(Vec c);

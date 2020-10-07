@@ -33,6 +33,7 @@ SolverInterface::SolverInterface()
   data_comps_(nullptr),
   obs_filter_(nullptr),
   velocity_(nullptr),
+  tc_seg_(nullptr),
   data_(nullptr)
 {}
 
@@ -56,6 +57,7 @@ SolverInterface::~SolverInterface() {
   if(obs_filter_ != nullptr) VecDestroy(&obs_filter_);
   if(p_rec_ != nullptr) VecDestroy(&p_rec_);
   if(velocity_ != nullptr) VecDestroy(&velocity_);
+  if(tc_seg_ != nullptr) VecDestroy(&tc_seg_);
 }
 
 
@@ -581,6 +583,9 @@ PetscErrorCode SolverInterface::readData() {
   
   // read t1 data
   if (!app_settings_->path_->data_t1_.empty()) {
+    if (data_t1_ != nullptr) {
+      ierr = VecDestroy(&data_t1_); CHKERRQ(ierr);
+    }
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
     ierr = dataIn(data_t1_, params_, app_settings_->path_->data_t1_); CHKERRQ(ierr);
   } else if(data_t1_from_seg_) { // t=1 data has already been read from segmentation in readAtlas

@@ -117,6 +117,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   // ### data
   if (name == "smoothing_factor") {p->tu_->smoothing_factor_ = std::stod(value); return;}
   if (name == "smoothing_factor_data") {p->tu_->smoothing_factor_data_ = std::stod(value); return;}
+  if (name == "smoothing_factor_data_t0") {p->tu_->smoothing_factor_data_t0_ = std::stod(value); return;}
   if (name == "obs_threshold_1") {p->tu_->obs_threshold_1_ = std::stod(value); return;}
   if (name == "obs_threshold_0") {p->tu_->obs_threshold_0_ = std::stod(value); return;}
   if (name == "obs_threshold_rel") {p->tu_->relative_obs_threshold_ = std::stoi(value) > 0; return;}

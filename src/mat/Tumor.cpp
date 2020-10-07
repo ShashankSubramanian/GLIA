@@ -216,31 +216,45 @@ PetscErrorCode Tumor::computeSegmentation() {
   //         v.clear();
   //     }
   // } else {
-  int my_label = 0;
+  ScalarType max = 0;
+  ScalarType w, g, v, c;
+  int ct = 0;
   for (int i = 0; i < params_->grid_->nl_; i++) {
-    v.push_back(bg_ptr[i]);
-    v.push_back(c_ptr[i]);
-    v.push_back(wm_ptr[i]);
-    v.push_back(gm_ptr[i]);
-    v.push_back(vt_ptr[i]);
-    v.push_back(csf_ptr[i]);
+    max = bg_ptr[i];
+    ct = 0;
+    w = wm_ptr[i] * (1 - c_ptr[i]);
+    g = gm_ptr[i] * (1 - c_ptr[i]);
+    v = csf_ptr[i] * (1 - c_ptr[i]);
+    c = glm_ptr[i] * (1 - c_ptr[i]);
+    if (c_ptr[i] > max) {max = c_ptr[i]; ct = 1;}
+    if (w > max) {max = w; ct = 6;}
+    if (g > max) {max = g; ct = 5;}
+    if (v > max) {max = v; ct = 7;}
+    if (c > max) {max = c; ct = 8;}
+    seg_ptr[i] = ct;
+    //v.push_back(bg_ptr[i]);
+    //v.push_back(c_ptr[i]);
+    //v.push_back(wm_ptr[i]);
+    //v.push_back(gm_ptr[i]);
+    //v.push_back(vt_ptr[i]);
+    //v.push_back(csf_ptr[i]);
 
-    seg_component = std::max_element(v.begin(), v.end());
-    my_label   = std::distance(v.begin(), seg_component);
+    //seg_component = std::max_element(v.begin(), v.end());
+    //my_label   = std::distance(v.begin(), seg_component);
 
-    if (my_label == 2) {
-      my_label = 6;
-    } else if (my_label == 3) {
-      my_label = 5;
-    } else if (my_label == 4) {
-      my_label = 7;
-    } else if (my_label == 5) {
-      my_label = 8;
-    }
+    //if (my_label == 2) {
+    //  my_label = 6;
+    //} else if (my_label == 3) {
+    //  my_label = 5;
+    //} else if (my_label == 4) {
+    //  my_label = 7;
+    //} else if (my_label == 5) {
+    //  my_label = 8;
+    //}
 
-    seg_ptr[i] = my_label;  
+    //seg_ptr[i] = my_label;  
 
-    v.clear();
+    //v.clear();
   }
   // }
 #endif
@@ -256,6 +270,21 @@ PetscErrorCode Tumor::computeSegmentation() {
   ierr = vecRestoreArray(c_t_, &c_ptr); CHKERRQ(ierr);
   // }
   ierr = vecRestoreArray(seg_, &seg_ptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+
+PetscErrorCode Tumor::getTCRecon(Vec x) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType *x_ptr, *seg_ptr;
+  ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(seg_, &seg_ptr); CHKERRQ(ierr);
+  for (int i = 0; i < params_->grid_->nl_; i++) x_ptr[i] = (seg_ptr[i] == 1) ? 1 : 0;
+  ierr = VecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(seg_, &seg_ptr); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }

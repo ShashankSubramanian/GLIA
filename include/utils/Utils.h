@@ -180,5 +180,7 @@ PetscErrorCode computeCenterOfMass(Vec x, int *isize, int *istart, ScalarType *h
 PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec tu, Vec ed, int nl, std::vector<int> &labels);
 PetscErrorCode createEdemaBasedObservationMask(Vec mask, Vec tc, Vec ed, double lambda, int nl, std::vector<int> &labels);
 
+PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice);
+
 
 #endif  // end _UTILS_H
