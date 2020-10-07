@@ -157,9 +157,9 @@ if __name__=='__main__':
 
   ### subselect patients
   ### pats with diff-vol < 0
-  patient_list = stats_me.loc[stats_me['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
-#  patient_list = patient_list[0:4]
- # patient_list = stats['PATIENT'].tolist()
+  #patient_list = stats_me.loc[stats_me['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
+  #patient_list = patient_list[0:4]
+  patient_list = stats['PATIENT'].tolist()
   print("selected patients: ")
   for pat in patient_list:
     print(pat)
@@ -179,10 +179,10 @@ if __name__=='__main__':
   im_disp = im_at.copy()
   im_c = im_at.copy()
 
-  stat_file = open(args.results_dir + "/inversion_stats.txt", "w")
+  stat_file = open(args.results_dir + "/inversion_stats_nm_all.txt", "w")
   stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
   
-  with PdfPages(args.results_dir + "/penn_masseffect_stats.pdf") as pdf:
+  with PdfPages(args.results_dir + "/penn_nomasseffect_stats_all.pdf") as pdf:
     for pat in patient_list:
       pat_name = pat
       atlases[:] = 0

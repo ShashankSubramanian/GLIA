@@ -66,6 +66,7 @@ if __name__=='__main__':
   parser = argparse.ArgumentParser(description='script to perform some post-inversion analysis',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
   r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to masseffect patient reconstructions', required = True) 
+  r_args.add_argument('-pnm', '--patient_dir_nm', type = str, help = 'path to masseffect patient reconstructions using the no-mass-effect model') 
   r_args.add_argument('-d', '--data_dir', type = str, help = 'path to masseffect patient input data (if different from patient_dir)') 
   r_args.add_argument('-x', '--results_dir', type = str, help = 'results path', required = True) 
   r_args.add_argument('-s', '--survival_file', type = str, help = 'path to survival csv', required = True) 
@@ -219,5 +220,37 @@ if __name__=='__main__':
       stats.loc[stats['PATIENT'] == pat, 'prob-err-rsc'] = la.norm(c_rsc[:] - c_data[:])/data_norm
       stats.loc[stats['PATIENT'] == pat, 'prob-dice'] = compute_dice(tu, tc) 
       stats.loc[stats['PATIENT'] == pat, 'prob-vt-dice'] = compute_dice(vt, vt_pat) 
+  
+  if 'mu-ed-ratio' not in stats:
+    if args.patient_dir_nm:
+      if me_res_dir == data_dir:
+        print("WARNING: needs to be run for mass effect model results")
+      nm_dir = args.patient_dir_nm
+      stats['mu-ed-ratio'] = 0
+      stats['std-ed-ratio'] = 0
+      for pat_idx, pat in enumerate(patient_list):
+        print("{}: patient = {}".format(pat_idx, pat))
+        inv_dir = os.path.join(*[me_res_dir, pat, "tu/160"])
+        inv_data_dir = os.path.join(*[data_dir, pat, "tu/160"])
+        pat_seg = read_netcdf(os.path.join(inv_data_dir, pat + "_seg_ants_aff2jakob_160.nc"))
+        ed = (pat_seg == 2)
+        nm_inv_dir = os.path.join(*[nm_dir, pat, "tu/160"])
+        ed_ratio = []
+        for at in os.listdir(inv_dir):
+          config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+          if not os.path.exists(config_file):
+            continue
+          at_dir = os.path.join(inv_dir, at)
+          nm_at_dir = os.path.join(nm_inv_dir, at)
+          seg = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
+          c = (seg == 1) * ed
+          seg = read_netcdf(os.path.join(nm_at_dir, "seg_rec_final.nc"))
+          nm_c = (seg == 1) * ed
+          ed_ratio.append(la.norm(c[:])/la.norm(nm_c[:]))
+        a_ed  = np.asarray(ed_ratio)
+        stats.loc[stats['PATIENT'] == pat, 'mu-ed-ratio'] = np.mean(a_ed)
+        stats.loc[stats['PATIENT'] == pat, 'std-ed-ratio'] = np.std(a_ed)
+    else:
+      print("no-mass-effect model results directory not set; exiting...")
 
 stats.to_csv(args.results_dir + "/penn_stats.csv", index=False)
