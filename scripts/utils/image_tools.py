@@ -6,7 +6,17 @@ import scipy.ndimage as ndimage
 #import utils.file_io as fio
 import file_io as fio
 import nibabel as nib
+import math
 
+###
+### ------------------------------------------------------------------------ ###
+def compute_volume(mat):
+  sz      = mat.shape[0]
+  h       = (2.0 * math.pi) /  sz
+  measure = h * h * h
+  vol = np.sum(mat.flatten())
+  vol *= measure
+  return vol
 
 ###
 ### ------------------------------------------------------------------------ ###

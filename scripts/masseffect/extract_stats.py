@@ -11,17 +11,9 @@ import math
 import re
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
 from file_io import writeNII, createNetCDF
-from image_tools import resizeImage, resizeNIIImage
+from image_tools import resizeImage, resizeNIIImage, compute_volume
 sys.path.append('../')
 
-
-def compute_volume(mat):
-  sz      = mat.shape[0]
-  h       = (2.0 * math.pi) /  sz
-  measure = h * h * h
-  vol = np.sum(mat.flatten())
-  vol *= measure
-  return vol
 
 ###
 ### ------------------------------------------------------------------------ ###

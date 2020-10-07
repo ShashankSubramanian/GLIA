@@ -12,6 +12,8 @@ from netCDF4 import Dataset
 import nibabel as nib
 from numpy import linalg as la
 
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
+from image_tools import compute_volume
 
 def read_netcdf(filename):
   '''
@@ -67,12 +69,14 @@ if __name__=='__main__':
   r_args = parser.add_argument_group('required arguments')
   r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to masseffect patient reconstructions', required = True) 
   r_args.add_argument('-pnm', '--patient_dir_nm', type = str, help = 'path to masseffect patient reconstructions using the no-mass-effect model') 
+  r_args.add_argument('-i', '--input_dir', type = str, help = 'path to all patients', required = True) 
   r_args.add_argument('-d', '--data_dir', type = str, help = 'path to masseffect patient input data (if different from patient_dir)') 
   r_args.add_argument('-x', '--results_dir', type = str, help = 'results path', required = True) 
   r_args.add_argument('-s', '--survival_file', type = str, help = 'path to survival csv', required = True) 
   args = parser.parse_args();
 
   me_res_dir = args.patient_dir
+  in_dir = args.input_dir
   if not args.data_dir:
     data_dir = me_res_dir
   else:
@@ -252,5 +256,53 @@ if __name__=='__main__':
         stats.loc[stats['PATIENT'] == pat, 'std-ed-ratio'] = np.std(a_ed)
     else:
       print("no-mass-effect model results directory not set; exiting...")
+
+  if 'tc-vol' not in stats:
+    stats['tc-vol'] = 0
+    stats['ed-vol'] = 0
+    stats['nec-vol'] = 0
+    stats['en-vol'] = 0
+    for pat_idx, pat in enumerate(patient_list):
+      print("{}: patient = {}".format(pat_idx, pat))
+      pat_data_dir = os.path.join(*[in_dir, pat, "aff2jakob"])
+      pat_seg = nib.load(os.path.join(pat_data_dir, pat + "_seg_ants_aff2jakob.nii.gz")).get_fdata()
+      
+      tc = np.logical_or(pat_seg == 1, pat_seg == 4)
+      stats.loc[stats['PATIENT'] == pat, 'tc-vol'] = compute_volume(tc)
+      stats.loc[stats['PATIENT'] == pat, 'ed-vol'] = compute_volume(pat_seg == 2)
+      stats.loc[stats['PATIENT'] == pat, 'nec-vol'] = compute_volume(pat_seg == 1)
+      stats.loc[stats['PATIENT'] == pat, 'en-vol'] = compute_volume(pat_seg == 4)
+
+  if 'prob-err-vt-vol' not in stats:
+    print("vt vol err\n")
+    stats['prob-err-vt-vol'] = 1
+    for pat_idx, pat in enumerate(patient_list):
+      print("{}: patient = {}".format(pat_idx, pat))
+      recon[:] = 0
+      inv_dir = os.path.join(*[me_res_dir, pat, "tu/160"])
+      inv_data_dir = os.path.join(*[data_dir, pat, "tu/160"])
+      pat_seg = read_netcdf(os.path.join(inv_data_dir, pat + "_seg_ants_aff2jakob_160.nc"))
+      vt_pat = (pat_seg == 7) 
+      pat_compute = True
+      at_list = []
+      for at in os.listdir(inv_dir):
+        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+        if not os.path.exists(config_file):
+          continue
+        at_list.append(at)
+
+      num_atlases = len(at_list)
+      for idx,at in enumerate(at_list):
+        at_dir = os.path.join(inv_dir, at)
+        recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
+        if pat_compute:
+          obs    = read_netcdf(os.path.join(at_dir, "obs.nc"))
+          pat_compute = False
+
+      prob_recon = create_prob_img(recon[:,:,:,0:num_atlases])
+      vt = (prob_recon == 7)
+      vt = obs * vt
+      pat_vt_vol = compute_volume(vt_pat)
+      stats.loc[stats['PATIENT'] == pat, 'prob-err-vt-vol'] = np.abs(pat_vt_vol - compute_volume(vt))/pat_vt_vol 
 
 stats.to_csv(args.results_dir + "/penn_stats.csv", index=False)

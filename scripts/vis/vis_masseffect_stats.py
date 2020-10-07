@@ -91,7 +91,15 @@ def compute_vol(mat):
   vol *= measure
   return vol
 
-def create_prob_img(img):
+def normalize_img(img):
+  #preprocess
+#  img -= img.mean()
+#  img /= img.std()
+#  img = img.clip(-np.percentile(img, 99.9), np.percentile(img, 99.9))
+#  img = (img - np.min(img))/(np.max(img) - np.min(img))
+  return img
+
+def create_prob_img(img, mri):
   """
     Creates a probabilistic image of a series of segmentations
     Assumes segmentation labels are in standard brats format
@@ -105,16 +113,30 @@ def create_prob_img(img):
   idx_dict = {0:0, 1:1, 2:5, 3:6, 4:7, 5:8}
   # for each label, compute all the atlases which predict that label and divide by total number of atlases
   # this gives a probability of each label
+  mri_select = np.zeros(tuple(sz))
+  temp = np.zeros(tuple(sz[:3]))
   for idx in range(num_props):
-    prob[:,:,:,idx] = np.count_nonzero(img == idx_dict[idx], axis=3)
+    mask = (img == idx_dict[idx])
+    prob[:,:,:,idx] = np.count_nonzero(mask, axis=3)
+    # get intensities for each label averaged across the atlases
+    temp = prob[:,:,:,idx]
+    temp[temp == 0] = -1 #avoid division by zero
+    mri_select[:,:,:,idx] = np.sum(mask * mri, axis=3)/temp 
   # resegment using the above probabilites by computing the most likely label
   #prob_seg = np.sum(prob, axis=3)
   prob_seg = np.argmax(prob, axis=3)
   prob_seg_mod = prob_seg.copy()
+  mri_prob = np.zeros(tuple(sz[:3]))
   for idx in range(num_props):
     prob_seg_mod[prob_seg == idx] = idx_dict[idx]
 
-  return prob_seg_mod
+  for k,i in idx_dict.items():
+    # set the intensities only in the correct regions
+    temp = mri_select[:,:,:,k]
+    mri_prob[prob_seg_mod == i] = temp[prob_seg_mod == i]
+
+  mri_prob = ndimage.gaussian_filter(mri_prob, sigma=0.6)
+  return prob_seg_mod, normalize_img(mri_prob)
 
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -122,11 +144,13 @@ if __name__=='__main__':
   parser = argparse.ArgumentParser(description='script to visualize some stats for mass effect reconstructions',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
   r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to masseffect patient reconstructions', required = True) 
+  r_args.add_argument('-a', '--atlas_dir', type = str, help = 'path to atlases', required = True) 
   r_args.add_argument('-d', '--data_dir', type = str, help = 'path to masseffect inversion input data (if different from patient_dir)') 
   r_args.add_argument('-x', '--results_dir', type = str, help = 'results path', required = True) 
   args = parser.parse_args();
 
   me_res_dir = args.patient_dir
+  atlas_dir = args.atlas_dir
   if not args.data_dir:
     data_dir = me_res_dir
   else:
@@ -158,7 +182,7 @@ if __name__=='__main__':
   ### subselect patients
   ### pats with diff-vol < 0
   #patient_list = stats_me.loc[stats_me['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
-  #patient_list = patient_list[0:4]
+  #patient_list = patient_list[0:10]
   patient_list = stats['PATIENT'].tolist()
   print("selected patients: ")
   for pat in patient_list:
@@ -166,6 +190,8 @@ if __name__=='__main__':
   im_sz = 160
   atlases = np.zeros((im_sz,im_sz,im_sz,16))
   recon   = atlases.copy()
+  mris    = atlases.copy()
+  rec_mris = atlases.copy()
   disp    = atlases.copy()
   c       = atlases.copy()
   ### aesthetics
@@ -175,17 +201,20 @@ if __name__=='__main__':
   oy = 10
   cmap_c1 = mpl.cm.get_cmap(plt.cm.rainbow, 4);
   im_at = np.zeros((im_sz,im_sz,im_sz,4))
+  at = im_at.copy()
   im_rec = im_at.copy()
   im_disp = im_at.copy()
   im_c = im_at.copy()
 
-  stat_file = open(args.results_dir + "/inversion_stats_nm_all.txt", "w")
-  stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
+#  stat_file = open(args.results_dir + "/inversion_stats.txt", "w")
+#  stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
   
   with PdfPages(args.results_dir + "/penn_nomasseffect_stats_all.pdf") as pdf:
     for pat in patient_list:
       pat_name = pat
       atlases[:] = 0
+      mris[:]    = 0
+      rec_mris[:] = 0
       recon[:]   = 0
       disp[:]    = 0
       c[:]       = 0
@@ -216,8 +245,13 @@ if __name__=='__main__':
           vt_at.append(compute_vol(atlases[:,:,:,idx] == 7))
           if not pat_compute:
               pat = create_segmentation(root_path = curr_path, is_patient = True)
+              pat[np.logical_and(pat != 2, pat != 3)] = 0 # kill everything that is not tumor
+              pat_mri = read_netcdf(path_to_results + "/tu/160/" + pat_name + "_t1_aff2jakob_160.nc")
+              pat_mri = normalize_img(pat_mri)    
               pat_compute = True
           recon[:,:,:,idx]   = read_netcdf(curr_path + "seg_rec_final.nc")
+          mris[:,:,:,idx]    = normalize_img(read_netcdf(atlas_dir + "/" + atlas + "_t1_aff2jakob_160.nc"))
+          rec_mris[:,:,:,idx] = normalize_img(read_netcdf(curr_path + "mri_rec_final.nc"))
           c[:,:,:,idx]       = read_netcdf(curr_path + "c_rec_final.nc")
           disp[:,:,:,idx]    = read_netcdf(curr_path + "displacement_rec_final.nc")
           
@@ -234,8 +268,9 @@ if __name__=='__main__':
       max_disp = round(np.max(disp.flatten()),1)
 
       ## first image is probabilistic
-      im_at[:,:,:,0] = create_prob_img(atlases[:,:,:,0:num_atlases])
-      im_rec[:,:,:,0] = create_prob_img(recon[:,:,:,0:num_atlases])
+      at[:,:,:,0],im_at[:,:,:,0] = create_prob_img(atlases[:,:,:,0:num_atlases], mris[:,:,:,0:num_atlases])
+      _,im_rec[:,:,:,0] = create_prob_img(recon[:,:,:,0:num_atlases], rec_mris[:,:,:,0:num_atlases])
+      #im_rec[:,:,:,0] = np.median(rec_mris[:,:,:,0:num_atlases],axis=3)
       #im_at[:,:,:,0] = atlases.sum(axis=3)/num_atlases
       #im_rec[:,:,:,0] = recon.sum(axis=3)/num_atlases
       #im_disp[:,:,:,0] = disp.sum(axis=3)/num_atlases
@@ -244,34 +279,37 @@ if __name__=='__main__':
       im_c[:,:,:,0] = np.median(c[:,:,:,0:num_atlases], axis=3)
 
       ## next is closest to patient vt vol
-      im_at[:,:,:,1] = atlases[:,:,:,atlas_names.index(min_at)]
-      im_rec[:,:,:,1] = recon[:,:,:,atlas_names.index(min_at)]
+      im_at[:,:,:,1] = mris[:,:,:,atlas_names.index(min_at)]
+      at[:,:,:,1] = atlases[:,:,:,atlas_names.index(min_at)]
+      im_rec[:,:,:,1] = rec_mris[:,:,:,atlas_names.index(min_at)]
       im_disp[:,:,:,1] = disp[:,:,:,atlas_names.index(min_at)]
       im_c[:,:,:,1] = c[:,:,:,atlas_names.index(min_at)]
 
       ## next is farthest to patient vt vol
-      im_at[:,:,:,2] = atlases[:,:,:,atlas_names.index(max_at)]
-      im_rec[:,:,:,2] = recon[:,:,:,atlas_names.index(max_at)]
+      im_at[:,:,:,2] = mris[:,:,:,atlas_names.index(max_at)]
+      at[:,:,:,2] = atlases[:,:,:,atlas_names.index(max_at)]
+      im_rec[:,:,:,2] = rec_mris[:,:,:,atlas_names.index(max_at)]
       im_disp[:,:,:,2] = disp[:,:,:,atlas_names.index(max_at)]
       im_c[:,:,:,2] = c[:,:,:,atlas_names.index(max_at)]
 
       ## last is median atlas
-      im_at[:,:,:,3] = atlases[:,:,:,atlas_names.index(med_at)]
-      im_rec[:,:,:,3] = recon[:,:,:,atlas_names.index(med_at)]
+      im_at[:,:,:,3] = mris[:,:,:,atlas_names.index(med_at)]
+      at[:,:,:,3] = atlases[:,:,:,atlas_names.index(med_at)]
+      im_rec[:,:,:,3] = rec_mris[:,:,:,atlas_names.index(med_at)]
       im_disp[:,:,:,3] = disp[:,:,:,atlas_names.index(med_at)]
       im_c[:,:,:,3] = c[:,:,:,atlas_names.index(med_at)]
 
-      df_row = stats.loc[stats["PATIENT"] == pat_name]
-      diff_vol = df_row['diff-vol'].values[0]*100
-      diff_l2  = df_row['diff-l2'].values[0]*100
-      prob_vol = compute_vol((np.abs(im_at[:,:,:,0] - 7) < 2.5E-1))
-      min_vol  = compute_vol(im_at[:,:,:,1] == 7)
-      max_vol  = compute_vol(im_at[:,:,:,2] == 7)
-      med_vol  = compute_vol(im_at[:,:,:,3] == 7)
-      param_list = [pat_name, atlas_failed, diff_vol, diff_l2, vt_pat, prob_vol, min_vol, max_vol, med_vol]
-      for item in param_list:
-        stat_file.write(str(item) + ",")
-      stat_file.write("\n")
+#      df_row = stats.loc[stats["PATIENT"] == pat_name]
+#      diff_vol = df_row['diff-vol'].values[0]*100
+#      diff_l2  = df_row['diff-l2'].values[0]*100
+#      prob_vol = compute_vol((np.abs(im_at[:,:,:,0] - 7) < 2.5E-1))
+#      min_vol  = compute_vol(im_at[:,:,:,1] == 7)
+#      max_vol  = compute_vol(im_at[:,:,:,2] == 7)
+#      med_vol  = compute_vol(im_at[:,:,:,3] == 7)
+#      param_list = [pat_name, atlas_failed, diff_vol, diff_l2, vt_pat, prob_vol, min_vol, max_vol, med_vol]
+#      for item in param_list:
+#        stat_file.write(str(item) + ",")
+#      stat_file.write("\n")
 
       tu     = (pat == 2)
       com    = compute_com(tu)
@@ -280,9 +318,12 @@ if __name__=='__main__':
         ax[idx][0].imshow(im_at[:,:,axial,idx].T, cmap='gray', interpolation='none', origin='upper')
         ax[idx][1].imshow(im_rec[:,:,axial,idx].T, cmap='gray', interpolation='none', origin='upper')
         ax[idx][1].imshow(thresh(im_c[:,:,axial,idx].T, cmap_c1, thresh=0.4), cmap=plt.cm.rainbow,interpolation='none', alpha=1) 
-        ax[idx][1].contour(tu[:,:,axial].T,  levels=[1.0],  cmap=plt.cm.gray, linestyles=['--'] ,linewidths=0.8, alpha=0.9)
-        ax[idx][2].imshow(pat[:,:,axial].T, cmap='gray', interpolation='none', origin='upper')
-        im = ax[idx][3].imshow(im_disp[:,:,axial,idx].T, vmin=0, vmax=max_disp,cmap=plt.cm.coolwarm, interpolation='none', origin='upper') #viridis
+        ax[idx][1].contour(tu[:,:,axial].T,  levels=1.0,  cmap=plt.cm.gray, linestyles=['--'] ,linewidths=0.8, alpha=0.9)
+        ax[idx][1].contour((at[:,:,:,idx] == 7)[:,:,axial].T,  levels=1.0,  cmap=plt.cm.binary, linestyles=['--'] ,linewidths=0.8, alpha=0.9)
+        ax[idx][2].imshow(pat_mri[:,:,axial].T, cmap='gray', interpolation='none', origin='upper')
+        ax[idx][2].contour((pat == 2)[:,:,axial].T,  levels=1.0,  cmap=plt.cm.gray, linestyles=['--'] ,linewidths=0.8, alpha=0.9)
+        ax[idx][2].contour((pat == 3)[:,:,axial].T,  levels=1.0,  cmap=plt.cm.binary, linestyles=['--'] ,linewidths=0.8, alpha=0.9)
+        im = ax[idx][3].imshow(im_disp[:,:,axial,idx].T, vmin=0.01, vmax=max_disp,cmap=plt.cm.coolwarm, interpolation='none', origin='upper') #viridis
         
         for ct in range(0,4):
             ax[idx][ct].set_xlim(pad_x,160-pad_x+ox)
@@ -309,8 +350,9 @@ if __name__=='__main__':
       ax[3][0].set_ylabel("Median", fontsize="12", fontweight="bold")
 
       fig.subplots_adjust(left=0.05, right=0.9, bottom=0.05, top=0.95, wspace=0.0, hspace=0.3)
-      fig.suptitle("{}; (vol,l2,status)=({:3G},{:3G},{})".format(pat_name, diff_vol, diff_l2, atlas_failed))
+      fig.suptitle("{}".format(pat_name), fontsize="12", fontweight="bold")
+      #fig.suptitle("{}; (vol,l2,status)=({:3G},{:3G},{})".format(pat_name, diff_vol, diff_l2, atlas_failed))
       pdf.savefig()
       fig.clf()
 
-  stat_file.close()
+  #stat_file.close()
