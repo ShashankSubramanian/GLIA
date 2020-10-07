@@ -83,6 +83,8 @@ def sparsetil_gridcont(input, use_gpu = False):
         k_gm_wm = input['k_gm_wm']
     if 'r_gm_wm' in input:
         r_gm_wm = input['r_gm_wm']
+    if 'sparsity_per_comp' in input:
+        sparsity_per_comp = input['sparsity_per_comp']
 
     r = {}
     scripts_path = os.path.dirname(os.path.realpath(__file__))

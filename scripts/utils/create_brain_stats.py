@@ -45,7 +45,7 @@ if __name__=='__main__':
   f_c    = open(args.patient_dir + "/pat_stats.csv", "w+")
   fail   = []
   for pat in os.listdir(args.patient_dir):
-    if os.path.exists(args.patient_dir + "/" + pat + "/" + pat + "_t1.nii.gz"):
+    if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1_aff2jakob.nii.gz"):
       idx = pat
       print("stating pat ", idx)
       nm = args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"

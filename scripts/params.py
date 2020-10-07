@@ -87,6 +87,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
     p['smoothing_factor_data'] = 1      # 0: no smoothing, otherwise kernel width
+    p['smoothing_factor_data_t0'] = 1   # 0: no smoothing, otherwise kernel width
     p['obs_threshold_1'] = -0.99        # threshold for data d(1): points above threshold are observed
     p['obs_threshold_0'] = -0.99        # threshold for data d(0): points above threshold are observed
     p['obs_threshold_rel'] = 0          # 0: threshold numbers are absolute cell density numbers; 1: relative (percentage of max cell density)
@@ -235,6 +236,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("### data" + "\n");
         f.write("smoothing_factor=" + str(p['smoothing_factor']) + "\n");
         f.write("smoothing_factor_data=" + str(p['smoothing_factor_data']) + "\n");
+        f.write("smoothing_factor_data_t0=" + str(p['smoothing_factor_data_t0']) + "\n");
         f.write("obs_threshold_1=" + str(p['obs_threshold_1']) + "\n");
         f.write("obs_threshold_0=" + str(p['obs_threshold_0']) + "\n");
         f.write("obs_threshold_rel=" + str(p['obs_threshold_rel']) + "\n");
@@ -387,13 +389,13 @@ def write_jobscript_header(tu_params, run_params):
             run_params['mpi_taks'] = 1
 
     if 'wtime_h' not in run_params:
-        run_params['wtime_h'] = 6
+        run_params['wtime_h'] = 10
     if 'wtime_m' not in run_params:
         run_params['wtime_m'] = 0
     if 'log_dir' not in run_params:
         run_params['log_dir'] = tu_params['output_dir']
     if 'log_name' not in run_params:
-        run_params['log_name'] = 'log'
+        run_params['log_name'] = 'solver_log.txt'
     fname = out_dir + '/job.sh'
     job_header = "" #open(fname, 'w+')
     job_header += "#!/bin/bash\n"
