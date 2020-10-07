@@ -1,39 +1,45 @@
 import os, sys
 import params as par
 import subprocess
+import random
 
 ###############
 r = {}
 p = {}
-submit_job = False;
+submit_job = True;
 
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
 
 ############### === define parameters
-p['output_dir']     = os.path.join(code_dir, 'results/check/');       # results path
-p['d1_path']        = code_dir + '/results/syn/atlas-2-tu-case3/c_final.nc'     # tumor data path
-p['d0_path']        = code_dir + '/results/syn/atlas-2-tu-case3/c0_true_syn.nc'     # tumor data path
+### randomize the initial guess between parameter values that represent a patient population
+init_rho                = random.uniform(5,10)
+init_k                  = random.uniform(0.005,0.05)
+init_gamma              = random.uniform(1E4,1E5)
+
+p['output_dir']     = os.path.join(code_dir, 'results/tc-e-atlas-2/');       # results path
+p['d0_path']        = code_dir + "/results/tc-e-til/inversion/nx256/obs-1.0/c0_rec.nc"    # tumor data path
+p['d1_path']        = code_dir + "/results/tc-e/c_final.nc" 
+#p['d1_path']        = "" 
 p['atlas_labels']   = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"              # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['a_seg_path']     = code_dir + "/brain_data/atlas/atlas-2.nc"                # paths to atlas material properties
 p['mri_path']       = code_dir + "/brain_data/atlas/atlas-2-t1.nc"
-p['p_wm_path']      = code_dir + '/results/syn/atlas-2-tu-case3/wm_final.nc'            # patient brain data path
-p['p_gm_path']      = code_dir + '/results/syn/atlas-2-tu-case3/gm_final.nc'
-p['p_csf_path']     = code_dir + '/results/syn/atlas-2-tu-case3/csf_final.nc'
-p['p_vt_path']      = code_dir + '/results/syn/atlas-2-tu-case3/vt_final.nc'
+p['patient_labels'] = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"
+p['p_seg_path']     = code_dir + "/results/tc-e/seg_final.nc"
+p['p_vt_path']      = code_dir + "/results/tc-e/vt_final.nc"  # can give vt path too - seg will be overwritten
+p['smoothing_factor_data'] = 0      # 0: no smoothing, otherwise kernel width
+p['smoothing_factor_data_t0'] = 0   # 0: no smoothing, otherwise kernel width
 p['solver']         = 'mass_effect'             # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effect, multi_species, forward, test
 p['model']          = 4                         # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
 p['regularization'] = "L2"                      # L2, L1
 p['verbosity']      = 1                     # various levels of output density
 p['syn_flag']       = 0                       # create synthetic data
-#p['gaussian_cm_path']   = code_dir + '/results/atlas-2-tu-case3/phi-mesh-forward.txt'                       
-#p['pvec_path']          = code_dir + '/results/atlas-2-tu-case3/p-rec-forward.txt'                        # path to initial guess p vector (if none, use zero)
-p['k_gm_wm']        = 0.25                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
-p['r_gm_wm']        = 1                  # rho ratio gm/wm (if zero, rho=0 in gm)
-p['init_rho']       = 6                     # initial guess rho (reaction in wm)
-p['init_k']         = 0.005                       # initial guess kappa (diffusivity in wm)
-p['init_gamma']     = 1E4                 # initial guess (forcing factor for mass effect)
+p['k_gm_wm']        = 0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
+p['r_gm_wm']        = 0                  # rho ratio gm/wm (if zero, rho=0 in gm)
+p['init_rho']       = init_rho           # initial guess rho (reaction in wm)
+p['init_k']         = init_k                       # initial guess kappa (diffusivity in wm)
+p['init_gamma']     = init_gamma                 # initial guess (forcing factor for mass effect)
 p['nt_inv']         = 25                      # number time steps for inversion
 p['dt_inv']         = 0.04                    # time step size for inversion
 p['time_history_off']   = 0                 # 1: do not allocate time history (only works with forward solver or FD inversion)
