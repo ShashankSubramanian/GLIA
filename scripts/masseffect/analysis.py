@@ -96,16 +96,21 @@ if __name__=='__main__':
     stats['diff-vol'] = stats['mu-vol-err-nm'] - stats['mu-vol-err']
     stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
 
+  ### survival data column names
+#  surv_names = ['ID', 'Survival_days', 'Age_at_MRI']
+  ## if brats
+  surv_names = ['BraTS18ID', 'Survival', 'Age']
+
   ### append survival data
   if 'survival' not in stats:
     survival = pd.read_csv(args.survival_file, header=0)
     stats['survival'] = np.nan
     stats['age'] = np.nan
     for pat in patient_list:
-      data_exists = survival['ID'].str.contains(pat).any()
+      data_exists = survival[surv_names[0]].str.contains(pat).any()
       if data_exists:
-        stats.loc[stats['PATIENT'] == pat, 'survival'] = survival.loc[survival['ID'] == pat]['Survival_days'].values[0]
-        stats.loc[stats['PATIENT'] == pat, 'age'] = survival.loc[survival['ID'] == pat]['Age_at_MRI'].values[0]
+        stats.loc[stats['PATIENT'] == pat, 'survival'] = survival.loc[survival[surv_names[0]] == pat][surv_names[1]].values[0]
+        stats.loc[stats['PATIENT'] == pat, 'age'] = survival.loc[survival[surv_names[0]] == pat][surv_names[2]].values[0]
 
   if 'mu-err-rsc' not in stats:
     stats['mu-err-rsc'] = 1
@@ -255,7 +260,7 @@ if __name__=='__main__':
         stats.loc[stats['PATIENT'] == pat, 'mu-ed-ratio'] = np.mean(a_ed)
         stats.loc[stats['PATIENT'] == pat, 'std-ed-ratio'] = np.std(a_ed)
     else:
-      print("no-mass-effect model results directory not set; exiting...")
+      print("no-mass-effect model results directory not set; not computing ed ratio...")
 
   if 'tc-vol' not in stats:
     stats['tc-vol'] = 0

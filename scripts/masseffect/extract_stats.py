@@ -35,23 +35,22 @@ if __name__=='__main__':
   u_avg = np.zeros((n,n,n))
   suff = ""
   base_dir = os.path.dirname(os.path.realpath(__file__)) + "/../../" 
-  use_mat_prop = True
+  use_mat_prop = True # compute volumes using tumor solver output (because they are smoothed)
   
-  
-  
-  with open(args.patient_dir + "/pat_stats.csv", "r") as f:
-    brats_pats = f.readlines()
-  patient_list = []
-  for l in brats_pats:
-    patient_list.append(l.split(",")[0])
-  if os.path.exists(args.patient_dir + "/failed.txt"): ### some patients have failed gridcont; ignore them
-    with open(args.patient_dir + "/failed.txt", "r") as f:
-      lines = f.readlines()
-    for l in lines:
-      failed_pat = l.strip("\n")
-      print("ignoring failed patient {}".format(failed_pat))
-      if failed_pat in patient_list:
-        patient_list.remove(failed_pat)
+  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"] 
+  if not len(patient_list):
+    with open(args.patient_dir + "/pat_stats.csv", "r") as f:
+      brats_pats = f.readlines()
+    for l in brats_pats:
+      patient_list.append(l.split(",")[0])
+    if os.path.exists(args.patient_dir + "/failed.txt"): ### some patients have failed gridcont; ignore them
+      with open(args.patient_dir + "/failed.txt", "r") as f:
+        lines = f.readlines()
+      for l in lines:
+        failed_pat = l.strip("\n")
+        print("ignoring failed patient {}".format(failed_pat))
+        if failed_pat in patient_list:
+          patient_list.remove(failed_pat)
 
   other_remove = [] #["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
   for others in other_remove:
@@ -64,8 +63,13 @@ if __name__=='__main__':
     patient_list = patient_list[0:50]
 #    patient_list = patient_list[it*num_pats:it*num_pats + num_pats]
   
-  global_stats = ""
+  global_stats = "PATIENT,"
   global_f     = open(results_path + "/tumor_inversion_stats.csv", "w+")
+  attributes = ["g","r","k","u","err","cond","vt-change","vol-err","vol-err-nm","l2-err","l2-err-nm","t"]
+  for at in attributes:
+    global_stats += "mu-" + at + ",std-" + at + ","
+  global_stats = global_stats[0:len(global_stats)-1]
+  global_stats += "\n"
   for pat_name in patient_list:
     c_avg = 0 * c_avg
     u_avg = 0 * u_avg
@@ -198,7 +202,7 @@ if __name__=='__main__':
         
       ### extract timings from logfile
       log_file = inv_path + atlas + "/solver_log.txt"
-      #log_file = inv_path + atlas + "/log"
+#      log_file = inv_path + atlas + "/log"
       if not os.path.exists(log_file):
         print("logfile does not exist!. breaking..")
         continue
