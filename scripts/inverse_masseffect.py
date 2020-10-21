@@ -18,16 +18,16 @@ init_rho                = random.uniform(5,10)
 init_k                  = random.uniform(0.005,0.05)
 init_gamma              = random.uniform(1E4,1E5)
 
-p['output_dir']     = os.path.join(code_dir, 'results/tc-e-atlas-2/');       # results path
-p['d0_path']        = code_dir + "/results/tc-e-til/inversion/nx256/obs-1.0/c0_rec.nc"    # tumor data path
-p['d1_path']        = code_dir + "/results/tc-e/c_final.nc" 
+p['output_dir']     = os.path.join(code_dir, 'results/tc-f-atlas-2/');       # results path
+p['d0_path']        = code_dir + "/results/tc-f-til-c/inversion/nx256/obs-1.0/c0_rec.nc"    # tumor data path
+p['d1_path']        = code_dir + "/results/tc-f/c_final.nc" 
 #p['d1_path']        = "" 
 p['atlas_labels']   = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"              # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['a_seg_path']     = code_dir + "/brain_data/atlas/atlas-2.nc"                # paths to atlas material properties
 p['mri_path']       = code_dir + "/brain_data/atlas/atlas-2-t1.nc"
 p['patient_labels'] = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"
-p['p_seg_path']     = code_dir + "/results/tc-e/seg_final.nc"
-p['p_vt_path']      = code_dir + "/results/tc-e/vt_final.nc"  # can give vt path too - seg will be overwritten
+p['p_seg_path']     = code_dir + "/results/tc-f/seg_final.nc"
+p['p_vt_path']      = code_dir + "/results/tc-f/vt_final.nc"  # can give vt path too - seg will be overwritten
 p['smoothing_factor_data'] = 0      # 0: no smoothing, otherwise kernel width
 p['smoothing_factor_data_t0'] = 0   # 0: no smoothing, otherwise kernel width
 p['solver']         = 'mass_effect'             # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effect, multi_species, forward, test
@@ -49,9 +49,9 @@ p['newton_maxit']   = 50                    # number of iterations for optimizer
 p['kappa_lb']       = 0.005                       # lower bound kappa
 p['kappa_ub']       = 0.05                    # upper bound kappa
 p['rho_lb']         = 0                       # lower bound rho
-p['rho_ub']         = 12                      # upper bound rho
+p['rho_ub']         = 13                      # upper bound rho
 p['gamma_lb']       = 0                         # lower bound gamma
-p['gamma_ub']       = 12E4                    # upper bound gamma
+p['gamma_ub']       = 13E4                    # upper bound gamma
 p['lbfgs_vectors']    = 5                     # number of vectors for lbfgs update
 p['lbfgs_scale_type']   = "scalar"                  # initial hessian approximation
 p['lbfgs_scale_hist']   = 5                         # used vecs for initial hessian approx

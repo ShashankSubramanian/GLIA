@@ -12,7 +12,7 @@ scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
 
 ############### === define parameters
-p['output_dir'] = os.path.join(code_dir, 'results/tc-e/');                                          # results path
+p['output_dir'] = os.path.join(code_dir, 'results/tc-f/');                                          # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['a_seg_path'] = os.path.join(code_dir, 'brain_data/atlas/atlas-2.nc')
 p['mri_path'] = os.path.join(code_dir, 'brain_data/atlas/atlas-2-t1.nc')
@@ -24,7 +24,7 @@ p['verbosity'] = 3                  # various levels of output density
 p['syn_flag'] = 1                   # create synthetic data
 p['user_cms'] = [(137,169,96,1),(141,156,109,1)]     # location of tumor seed (can be multiple; last one is activation of gaussian)
 p['rho_data'] = 8                  # tumor parameters for synthetic data
-p['k_data'] = 0.01
+p['k_data'] = 0.025
 p['gamma_data'] = 1E5
 p['k_gm_wm']            = 0.2         # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm']            = 1         # rho ratio gm/wm (if zero, rho=0 in gm)

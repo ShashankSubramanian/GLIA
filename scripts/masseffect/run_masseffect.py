@@ -33,7 +33,7 @@ def resize_data(img_path, img_path_out, sz, order = 3):
   img_rsz   = resizeNIIImage(img, sz, interp_order = order)
   nib.save(img_rsz, img_path_out)
 
-def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
+def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, is_syn=False):
   r = {}
   p = {}
   submit_job = False;
@@ -53,7 +53,14 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['n']                  = n
     p['multilevel']         = 1                 # rescale p activations according to Gaussian width on each level
     p['output_dir']         = os.path.join(res_dir, atlas + case_str + '/');    # results path
-    p['d1_path']            = ""  # from segmentation directly
+
+    if not is_syn:
+      p['d1_path']            = ""  # from segmentation directly
+    else:
+      p['d1_path']          = pat_dir + pat + '_c1_aff2jakob' + n_str + '.nc'
+      p['p_vt_path']        = pat_dir + pat + '_vt_aff2jakob' + n_str + '.nc'
+      p['smoothing_factor_data'] = 0                    # don't smooth the data since it's already the true concentration 
+
     p['d0_path']            = pat_dir + atlas + "/" + pat + '_c0Recon_transported' + n_str + '.nc'              # path to initial condition for tumor
 #    p['d0_path']            = pat_dir + pat + '_c0Recon_aff2jakob' + n_str + '.nc'              # path to initial condition for tumor
     p['atlas_labels']       = "[wm=6,gm=5,vt=7,csf=8]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
@@ -72,8 +79,12 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['init_gamma']         = init_gamma                # initial guess (forcing factor for mass effect)
     p['nt_inv']             = 25                        # number time steps for inversion
     p['dt_inv']             = 0.04                      # time step size for inversion
-    p['k_gm_wm']            = 0.2                       # kappa ratio gm/wm (if zero, kappa=0 in gm)
-    p['r_gm_wm']            = 1                         # rho ratio gm/wm (if zero, rho=0 in gm)
+    if is_syn:
+      p['k_gm_wm']            = 0                         # kappa ratio gm/wm (if zero, kappa=0 in gm)
+      p['r_gm_wm']            = 0                         # rho ratio gm/wm (if zero, rho=0 in gm)
+    else:
+      p['k_gm_wm']            = 0.2                         # kappa ratio gm/wm (if zero, kappa=0 in gm)
+      p['r_gm_wm']            = 1                         # rho ratio gm/wm (if zero, rho=0 in gm)
     p['time_history_off']   = 0                         # 1: do not allocate time history (only works with forward solver or FD inversion)
     p['beta_p']             = 0E-4                      # regularization parameter
     p['opttol_grad']        = 1E-5                      # relative gradient tolerance
@@ -81,9 +92,9 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir):
     p['kappa_lb']           = 0.005                     # lower bound kappa
     p['kappa_ub']           = 0.05                      # upper bound kappa
     p['rho_lb']             = 2                         # lower bound rho
-    p['rho_ub']             = 12                        # upper bound rho
+    p['rho_ub']             = 13                        # upper bound rho
     p['gamma_lb']           = 0                         # lower bound gamma
-    p['gamma_ub']           = 12E4                      # upper bound gamma
+    p['gamma_ub']           = 13E4                      # upper bound gamma
     p['lbfgs_vectors']      = 5                         # number of vectors for lbfgs update
     p['lbfgs_scale_type']   = "scalar"                  # initial hessian approximation
     p['lbfgs_scale_hist']   = 5                         # used vecs for initial hessian approx
@@ -149,11 +160,14 @@ def write_tuinv(invdir, atlist, bash_file, idx):
   f.close()
   return bash_file
 
-def create_level_specific_data(n, pat, data_dir, res, create = True):
+def create_level_specific_data(n, pat, data_dir, res, create = True, is_syn = False):
   n_dir    = res + "/" + str(n) + "/"
   sz       = n
   if not os.path.exists(n_dir):
     os.makedirs(n_dir)
+
+
+  #TODO repetitive code; use more functions
 
   if create: ### files do not exist
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
@@ -177,6 +191,22 @@ def create_level_specific_data(n, pat, data_dir, res, create = True):
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n, reverse=True)
+    
+    if is_syn: 
+      fname = data_dir + "/" + pat + "_c1_aff2jakob.nii.gz"
+      fname_n = n_dir + pat + "_c1_aff2jakob_" + str(n) + ".nii.gz"
+      if not os.path.exists(fname_n):
+        resize_data(fname, fname_n, sz, order = 1)
+      fname_n_nc = fname_n.replace(".nii.gz", ".nc")
+      if not os.path.exists(fname_n_nc):
+        convert_nifti_to_nc(fname_n_nc, n, reverse=True)
+      fname = data_dir + "/" + pat + "_vt_aff2jakob.nii.gz"
+      fname_n = n_dir + pat + "_vt_aff2jakob_" + str(n) + ".nii.gz"
+      if not os.path.exists(fname_n):
+        resize_data(fname, fname_n, sz, order = 1)
+      fname_n_nc = fname_n.replace(".nii.gz", ".nc")
+      if not os.path.exists(fname_n_nc):
+        convert_nifti_to_nc(fname_n_nc, n, reverse=True)
   else:
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
@@ -199,6 +229,21 @@ def create_level_specific_data(n, pat, data_dir, res, create = True):
     fname_n_nc = fname_n.replace(".nii.gz", ".nc")
     if not os.path.exists(fname_n_nc):
       convert_nifti_to_nc(fname_n_nc, n)
+    if is_syn:
+      fname = data_dir + "/" + pat + "_c1_aff2jakob.nii.gz"
+      fname_n = n_dir + pat + "_c1_aff2jakob_" + str(n) + ".nii.gz"
+      if not os.path.exists(fname_n):
+        shutil.copy(fname, fname_n)
+      fname_n_nc = fname_n.replace(".nii.gz", ".nc")
+      if not os.path.exists(fname_n_nc):
+        convert_nifti_to_nc(fname_n_nc, n)
+      fname = data_dir + "/" + pat + "_vt_aff2jakob.nii.gz"
+      fname_n = n_dir + pat + "_vt_aff2jakob_" + str(n) + ".nii.gz"
+      if not os.path.exists(fname_n):
+        shutil.copy(fname, fname_n)
+      fname_n_nc = fname_n.replace(".nii.gz", ".nc")
+      if not os.path.exists(fname_n_nc):
+        convert_nifti_to_nc(fname_n_nc, n)
 
 def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx):
   """ writes registration cmds """
@@ -453,14 +498,14 @@ def run(args):
 
     ### create data files
     if n is not 256:
-      create_level_specific_data(n, pat, data_dir, res)
+      create_level_specific_data(n, pat, data_dir, res, create=True, is_syn=args.syn)
     else:
-      create_level_specific_data(n, pat, data_dir, res, create=False) ### just copy these files
+      create_level_specific_data(n, pat, data_dir, res, create=False, is_syn=args.syn) ### just copy these files
 
     ### (2)  create tumor solver configs
     pat_dir    = res + "/" + str(n) + "/"
     atlas_dir_level  = atlas_dir + "/" + str(n) + "/"
-    create_tusolver_config(n, pat, pat_dir, atlas_dir_level, pat_dir)
+    create_tusolver_config(n, pat, pat_dir, atlas_dir_level, pat_dir, is_syn=args.syn)
     
     ### (3)  create job files in tusolver results directories
     numatlas = len(at_list)
@@ -500,6 +545,7 @@ if __name__=='__main__':
   r_args.add_argument('-rc', '--claire_dir', type = str, help = 'path to claire bin', default = "") 
   r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
   r_args.add_argument('-submit', action = 'store_true', help = 'submit jobs (after they have been created)') 
+  r_args.add_argument('-syn', action = 'store_true', help = 'the data is synthetic, so true concentrations are known') 
   args = parser.parse_args();
   run(args)
 

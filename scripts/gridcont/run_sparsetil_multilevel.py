@@ -36,11 +36,13 @@ def sparsetil_gridcont(input, use_gpu = False):
     if use_gpu:
       nodes            = 1
       procs            = [1, 1, 1]
+      wtime_h          = [x * patients_per_job for x in [0,1,3]];
+      wtime_m          = [x * patients_per_job for x in [30,0,0]];
     else:
       nodes            = 2;
       procs            = [24, 48, 96];
-    wtime_h            = [x * patients_per_job for x in [0,2,12]];
-    wtime_m            = [x * patients_per_job for x in [30,0,0]];
+      wtime_h          = [x * patients_per_job for x in [0,2,12]];
+      wtime_m          = [x * patients_per_job for x in [30,0,0]];
     # -------------------------------- #
     split_segmentation = False         # pass segmentation directly as input, or split up in tissue labels
     levels             = [64,128,256]  # coarsening levels
@@ -359,7 +361,7 @@ def sparsetil_gridcont(input, use_gpu = False):
         else:
             p['smoothing_factor_data'] = 1
         if 'obs_threshold_1' in input:
-            p['obs_threshold_1'] = -0.99 # input['obs_threshold_1']
+            p['obs_threshold_1'] = input['obs_threshold_1']
         if 'obs_threshold_rel' in input:
             p['obs_threshold_rel'] = 0 #input['obs_threshold_rel']
         if 'thresh_component_weight' in input:

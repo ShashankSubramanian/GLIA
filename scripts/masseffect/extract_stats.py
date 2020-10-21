@@ -37,7 +37,8 @@ if __name__=='__main__':
   base_dir = os.path.dirname(os.path.realpath(__file__)) + "/../../" 
   use_mat_prop = True # compute volumes using tumor solver output (because they are smoothed)
   
-  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"] 
+#  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"] 
+  patient_list = ["tc_f", "tc_g", "tc_h", "tc_i"]
   if not len(patient_list):
     with open(args.patient_dir + "/pat_stats.csv", "r") as f:
       brats_pats = f.readlines()
