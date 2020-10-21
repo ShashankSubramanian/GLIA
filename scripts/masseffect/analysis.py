@@ -63,6 +63,63 @@ def create_prob_img(img):
 
   return prob_seg_mod
 
+def compute_com(img):
+  conv = 0.9 # 256^3 res represents 1 voxel = 0.9 mm
+  return np.asarray([conv*s for s in ndimage.measurements.center_of_mass(img)])
+
+
+def compute_lvd(img, com):
+  img_com = compute_com(img)
+  return la.norm((img_com[:] - com[:]))
+
+def compute_mu(E, nu):
+  return E / (2 * (1 + nu))
+ 
+def compute_lambda(E, nu):
+  return (nu * E) / ((1 + nu) * (1 - 2*nu))
+
+def compute_stress_info(u, v, w, seg):
+  # compute gradient 
+  ux, uy, uz = np.gradient(u)
+  vx, vy, vz = np.gradient(v)
+  wx, wy, wz = np.gradient(w)
+  
+  # material props
+  E_csf = 100
+  E_healthy = 2100
+  E_tumor = 8000
+  E_bg = 15000
+  nu_csf = 0.1
+  nu_healthy = 0.4
+  nu_tumor = 0.45
+  nu_bg = 0.45
+
+  lam = compute_lambda(E_csf, nu_csf) * (np.logical_or(seg==8, seg==7)) + compute_lambda(E_healthy, nu_healthy) * (np.logical_or(seg==5,seg==6)) + compute_lambda(E_tumor, nu_tumor) * (seg == 1) + compute_lambda(E_bg, nu_bg) * (seg == 0)
+  mu = compute_mu(E_csf, nu_csf) * (np.logical_or(seg==8, seg==7)) + compute_mu(E_healthy, nu_healthy) * (np.logical_or(seg==5,seg==6)) + compute_mu(E_tumor, nu_tumor) * (seg == 1) + compute_mu(E_bg, nu_bg) * (seg == 0)
+
+  jac = np.zeros((im_sz,im_sz,im_sz))
+  pr_stress = np.zeros((im_sz,im_sz,im_sz))
+  max_shear_stress = np.zeros((im_sz,im_sz,im_sz))
+  for i in range(0,im_sz):
+    for j in range(0,im_sz):
+      for k in range(0,im_sz):
+        u_point = [ux[i,j,k], uy[i,j,k], uz[i,j,k]]
+        v_point = [vx[i,j,k], vy[i,j,k], vz[i,j,k]]
+        w_point = [wx[i,j,k], wy[i,j,k], wz[i,j,k]]
+        gradu = np.array(u_point, v_point, w_point)
+        I = np.identity(3)
+        F = I + gradu
+        jac[i,j,k] = la.det(F)
+        E = 0.5 * (np.matmul(np.transpose(F),F) - I)
+        stress = lam[i,j,k] * np.trace(E) * I + 2 * mu[i,j,k] * E
+        sigma,_ = la.eig(stress)
+        sigma = sigma[::-1].sort() # decreasing sigma
+        pr_stress[i,j,k] = np.sum(sigma)
+        max_shear_stress[i,j,k] = 0.5 * (sigma[0] - sigma[2])
+
+return jac, pr_stress, max_shear_stress
+
+
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='script to perform some post-inversion analysis',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -73,6 +130,7 @@ if __name__=='__main__':
   r_args.add_argument('-d', '--data_dir', type = str, help = 'path to masseffect patient input data (if different from patient_dir)') 
   r_args.add_argument('-x', '--results_dir', type = str, help = 'results path', required = True) 
   r_args.add_argument('-s', '--survival_file', type = str, help = 'path to survival csv', required = True) 
+  r_args.add_argument('-mni', '--mni_seg', type = str, help = 'path to mni template seg') 
   args = parser.parse_args();
 
   me_res_dir = args.patient_dir
@@ -97,9 +155,9 @@ if __name__=='__main__':
     stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
 
   ### survival data column names
-#  surv_names = ['ID', 'Survival_days', 'Age_at_MRI']
+  surv_names = ['ID', 'Survival_days', 'Age_at_MRI']
   ## if brats
-  surv_names = ['BraTS18ID', 'Survival', 'Age']
+  #surv_names = ['BraTS18ID', 'Survival', 'Age']
 
   ### append survival data
   if 'survival' not in stats:
@@ -310,4 +368,64 @@ if __name__=='__main__':
       pat_vt_vol = compute_volume(vt_pat)
       stats.loc[stats['PATIENT'] == pat, 'prob-err-vt-vol'] = np.abs(pat_vt_vol - compute_volume(vt))/pat_vt_vol 
 
-stats.to_csv(args.results_dir + "/penn_stats.csv", index=False)
+  if 'lvd' not in stats:
+    if args.mni_seg:
+      print("lvd compute\n")
+      stats['lvd'] = 0
+      mni = nib.load(args.mni_seg).get_fdata()
+      vt_mni = (mni == 7)
+      mni_com = compute_com(vt_mni)
+      for pat_idx, pat in enumerate(patient_list):
+        print("{}: patient = {}".format(pat_idx, pat))
+        pat_data_dir = os.path.join(*[in_dir, pat, "aff2jakob"])
+        pat_seg = nib.load(os.path.join(pat_data_dir, pat + "_seg_ants_aff2jakob.nii.gz")).get_fdata()
+        vt_pat = (pat_seg == 7)
+        stats.loc[stats['PATIENT'] == pat, 'lvd'] = compute_lvd(vt_pat, mni_com) 
+  
+  if 'u-l2' not in stats:
+    print("displacements and stress\n")
+    stats['u-l2'] = 0
+    stats['u-linf'] = 0
+    im_sz = 160
+    disp = np.zeros((im_sz,im_sz,im_sz,16))
+    disp_x = disp.copy()
+    disp_y = disp.copy()
+    disp_z = disp.copy()
+    for pat_idx, pat in enumerate(patient_list):
+      print("{}: patient = {}".format(pat_idx, pat))
+      disp[:] = 0
+      disp_x[:] = 0
+      disp_y[:] = 0
+      disp_z[:] = 0
+      recon[:] = 0
+      inv_dir = os.path.join(*[me_res_dir, pat, "tu/160"])
+      inv_data_dir = os.path.join(*[data_dir, pat, "tu/160"])
+      at_list = []
+      for at in os.listdir(inv_dir):
+        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+        if not os.path.exists(config_file):
+          continue
+        at_list.append(at)
+
+      num_atlases = len(at_list)
+      for idx,at in enumerate(at_list):
+        at_dir = os.path.join(inv_dir, at)
+        recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
+        disp[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "displacement_rec_final.nc"))
+        disp_x[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_x_rec_final.nc"))
+        disp_y[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_y_rec_final.nc"))
+        disp_z[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_z_rec_final.nc"))
+
+      prob_seg = create_prob_img(recon[:,:,:,0:num_atlases])
+      disp_median = np.median(disp[:,:,:,0:num_atlases], axis=3)
+      disp_x_median = np.median(disp_x[:,:,:,0:num_atlases], axis=3)
+      disp_y_median = np.median(disp_y[:,:,:,0:num_atlases], axis=3)
+      disp_z_median = np.median(disp_z[:,:,:,0:num_atlases], axis=3)
+      u_l2 = la.norm(disp[:])
+      u_linf = la.norm(disp[:], ord=inf)
+      stats.loc[stats['PATIENT'] == pat, 'u-l2'] = u_l2 
+      stats.loc[stats['PATIENT'] == pat, 'u-linf'] = u_linf 
+
+      pr_stress, max_shear, jac = compute_stress_info(disp_x, disp_y, disp_z, prob_seg)
+
+stats.to_csv(args.results_dir + "/stats.csv", index=False)

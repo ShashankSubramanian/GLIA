@@ -8,6 +8,7 @@ brain_data/
 .*
 *.o
 build
+*.nii.gz
 *.dat
 *.sh
 *.txt
