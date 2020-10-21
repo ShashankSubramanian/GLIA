@@ -31,7 +31,7 @@ def computeMatVolumes(seg):
 
   return vt_vol, wm_vol, gm_vol, csf_vol
 
-def printAtlasStats(atlas, f, idx):
+def print_atlas_stats(atlas, f, idx):
   vt_vol, wm_vol, gm_vol, csf_vol = computeMatVolumes(atlas)
   f.write("{},{},{},{},{}\n".format(idx, vt_vol, wm_vol, gm_vol, csf_vol))
 
@@ -54,7 +54,7 @@ if __name__=='__main__':
         fail.append(pat)
         continue
       p = nib.load(nm).get_fdata()
-      printAtlasStats(p, f_c, idx)
+      print_atlas_stats(p, f_c, idx)
   f_c.close()
   print("failed patients: ", fail)
 

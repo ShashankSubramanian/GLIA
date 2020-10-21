@@ -5,6 +5,7 @@
     defaults defined here.
 """
 import os
+import math
 
 
  ### ________________________________________________________________________ ___
@@ -374,19 +375,19 @@ def write_jobscript_header(tu_params, run_params):
             run_params['nodes'] = 1
         else:
             run_params['nodes'] = 1
-    if 'mpi_taks' not in run_params:
+    if 'mpi_tasks' not in run_params:
         if run_params['compute_sys'] == 'rebels':
-            run_params['mpi_taks'] = 20
+            run_params['mpi_tasks'] = 20
         elif run_params['compute_sys'] == 'stampede2':
-            run_params['mpi_taks'] = 32
+            run_params['mpi_tasks'] = 32
         elif run_params['compute_sys'] == 'longhorn':
-            run_params['mpi_taks'] = 1
+            run_params['mpi_tasks'] = 1
         elif run_params['compute_sys'] == 'maverick2':
-            run_params['mpi_taks'] = 1
+            run_params['mpi_tasks'] = 1
         elif run_params['compute_sys'] == 'frontera':
-            run_params['mpi_taks'] = 32
+            run_params['mpi_tasks'] = 32
         else:
-            run_params['mpi_taks'] = 1
+            run_params['mpi_tasks'] = 1
 
     if 'wtime_h' not in run_params:
         run_params['wtime_h'] = 10
@@ -399,17 +400,32 @@ def write_jobscript_header(tu_params, run_params):
     fname = out_dir + '/job.sh'
     job_header = "" #open(fname, 'w+')
     job_header += "#!/bin/bash\n"
-    job_header += "#SBATCH -J tuinv\n"
-    job_header += "#SBATCH -o " + run_params['log_dir'] + "/" + run_params['log_name'] + "\n"
-    job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
-    job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
-    job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"
-    job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
-    job_header += "source ~/.bashrc\n"
-    job_header += "export OMP_NUM_THREADS=1\n\n"
-    if 'extra_modules' in run_params:
-      job_header += str(run_params['extra_modules']) + "\n"
 
+    if not "cbica" in run_params["compute_sys"]:
+      ### sbatch job scripts for tacc/local
+      job_header += "#SBATCH -J tuinv\n"
+      job_header += "#SBATCH -o " + run_params['log_dir'] + "/" + run_params['log_name'] + "\n"
+      job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
+      job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
+      job_header += "#SBATCH -n " + str(run_params['mpi_tasks']) + "\n"
+      job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
+      job_header += "source ~/.bashrc\n"
+      job_header += "export OMP_NUM_THREADS=1\n\n"
+      if 'extra_modules' in run_params:
+        job_header += str(run_params['extra_modules']) + "\n"
+    else:
+      ### job script on upenn cluster
+      job_header += '#$ -S /bin/bash\n'
+      job_header += '#$ -cwd\n'
+      job_header += '#$ -pe openmpi ' + str(run_params['mpi_tasks']) + '\n'
+      job_header += '#$ -l h_rt=' + str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n"
+      job_header += '#$ -l s_rt=' + str(math.ceil(run_params['wtime_h']/2))+":"+str(run_params['wtime_m'])+":00\n"
+      job_header += '#$ -o ' + run_params['log_dir'] + "/" + run_params['log_name'] + "\n" 
+      job_header += "source ~/.bashrc\n"
+      job_header += "export OMP_NUM_THREADS=1\n\n"
+      if 'extra_modules' in run_params:
+        job_header += str(run_params['extra_modules']) + "\n"
+    
     return job_header
 
 ### ________________________________________________________________________ ___

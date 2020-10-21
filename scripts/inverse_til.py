@@ -28,20 +28,24 @@ input['submit'] = False
 ### == use gpus?
 gpu_flag = True
 ### == if using gpus; specify how many gpus per compute node to use
-num_gpus_per_node = 4  ### this will run num_gpus_per_node patients parallely on the gpus
-### == how many blocks/patients per job
+num_gpus_per_node = 2  ### this will run num_gpus_per_node patients parallely on the gpus
+### == how many patient blocks in a job (will run num_gpus_per_node*patients_per_job in total in a job)
 input['patients_per_job'] = 2
 ### == path to all patients (assumes a brats directory structure)
-path_to_all_patients = '/scratch/05027/shas1693/penn_gbm_survival20/Data/'
-### == custom list of patients; keep empty to simply walk through all patients
+path_to_all_patients = '/scratch/05027/shas1693/pglistr_tumor/realdata/'
+### == custom list of patients (can be a single patient); keep empty to simply walk through all patients
 patient_list = []
-
 ### == path to all the jobs and results
-job_path= "/scratch/05027/shas1693/pglistr_tumor/results/penn_til/"
+job_path= "/scratch/05027/shas1693/pglistr_tumor/results/test_til_gpu/"
 
 # =======================================================================
+#                        END INPUT
 # =======================================================================
 
+
+
+
+# =======================================================================
 if not patient_list:
   if os.path.exists(path_to_all_patients + "/pat_stats.csv"):
     with open(path_to_all_patients + "/pat_stats.csv", "r") as f:
@@ -59,8 +63,8 @@ if not patient_list:
           patient_list.remove(failed_pat)
   else:
     for patient in os.listdir(path_to_all_patients):
-      suffix = ""
-      if not os.path.exists(os.path.join(os.path.join(path_to_all_patients, patient), patient + "_t1" + suffix + ".nii.gz")):
+      suffix = "aff2jakob"
+      if not os.path.exists(os.path.join(*[path_to_all_patients, patient, suffix, patient + "_t1" + "_" + suffix + ".nii.gz"])):
         continue
       patient_list.append(patient) 
 
