@@ -164,12 +164,12 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     for key, value in set_params.items():
         if key in p:
             p[key] = value;
-            print(" Setting {} = {}".format(key, value))
+            #print(" Setting {} = {}".format(key, value))
         else:
             print(" Error: key {} not supported.".format(key))
-    for key, value in p.items():
-        if key not in set_params:
-            print(" Using default {} = {}".format(key, value))
+#    for key, value in p.items():
+#        if key not in set_params:
+#            print(" Using default {} = {}".format(key, value))
     # create dir
     if not os.path.exists(p['output_dir']):
         os.makedirs(p['output_dir'])

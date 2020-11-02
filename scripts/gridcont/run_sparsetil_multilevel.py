@@ -28,7 +28,10 @@ def sparsetil_gridcont(input, use_gpu = False):
     """
     # ########### SETTINGS ########### #
     # -------------------------------- #
-    patients_per_job   = 1;            # specify if multiple cases should be combined in single job script
+    if 'patients_per_job' in input:
+      patients_per_job = input['patients_per_job']
+    else:
+      patients_per_job = 1;            # specify if multiple cases should be combined in single job script
     submit             = input['submit'] if 'submit' in input else False
     dtype              = '.nc'
     # -------------------------------- #

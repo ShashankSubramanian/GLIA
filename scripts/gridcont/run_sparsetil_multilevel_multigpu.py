@@ -38,11 +38,13 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
     if use_gpu:
       nodes            = 1
       procs            = [1, 1, 1]
+      wtime_h          = [x * patients_per_job for x in [0,1,3]];
+      wtime_m          = [x * patients_per_job for x in [30,0,0]];
     else:
       nodes            = 2;
       procs            = [24, 48, 96];
-    wtime_h            = [x * patients_per_job for x in [0,2,12]];
-    wtime_m            = [x * patients_per_job for x in [30,0,0]];
+      wtime_h          = [x * patients_per_job for x in [0,2,12]];
+      wtime_m          = [x * patients_per_job for x in [30,0,0]];
     # -------------------------------- #
     split_segmentation = False         # pass segmentation directly as input, or split up in tissue labels
     levels             = [64,128,256]  # coarsening levels
@@ -73,7 +75,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
     gaussian_mode      = "PHI";        # alternatives: {"D", "PHI", "C0", "C0_RANKED"}
     data_thresh        = [1E-2, 1E-4, 1E-4] if (gaussian_mode in ["PHI","C0"]) else [1E-1, 1E-1, 1E-1];
     sigma_fac          = [1,1,1]       # on every level, sigma = fac * hx
-    gvf                = [0.0,0.0,0.0] # Gaussian volume fraction for Phi selection; ignored for C0_RANKED
+    gvf                = [0.0,0.9,0.9] # Gaussian volume fraction for Phi selection; ignored for C0_RANKED
     # -------------------------------- #
     # ################################ #
 
@@ -85,6 +87,8 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
         k_gm_wm = input['k_gm_wm']
     if 'r_gm_wm' in input:
         r_gm_wm = input['r_gm_wm']
+    if 'sparsity_per_comp' in input:
+        sparsity_per_comp = input['sparsity_per_comp']
 
     r = {}
     scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -363,7 +367,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
         else:
             p['smoothing_factor_data'] = 1
         if 'obs_threshold_1' in input:
-            p['obs_threshold_1'] = -0.99 # input['obs_threshold_1']
+            p['obs_threshold_1'] = input['obs_threshold_1']
         if 'obs_threshold_rel' in input:
             p['obs_threshold_rel'] = 0 #input['obs_threshold_rel']
         if 'thresh_component_weight' in input:
