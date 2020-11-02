@@ -8,8 +8,10 @@ from scipy.ndimage import gaussian_filter
 from netCDF4 import Dataset
 from numpy import linalg as la
 import math
+import time
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
+from create_brain_stats import print_atlas_stats 
 from file_io import writeNII, createNetCDF
 from image_tools import resizeImage, resizeNIIImage
 from register import create_patient_labels, create_atlas_labels, register, transport
@@ -92,9 +94,9 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, is_syn=False):
     p['kappa_lb']           = 0.005                     # lower bound kappa
     p['kappa_ub']           = 0.05                      # upper bound kappa
     p['rho_lb']             = 2                         # lower bound rho
-    p['rho_ub']             = 13                        # upper bound rho
+    p['rho_ub']             = 12                        # upper bound rho
     p['gamma_lb']           = 0                         # lower bound gamma
-    p['gamma_ub']           = 13E4                      # upper bound gamma
+    p['gamma_ub']           = 12E4                      # upper bound gamma
     p['lbfgs_vectors']      = 5                         # number of vectors for lbfgs update
     p['lbfgs_scale_type']   = "scalar"                  # initial hessian approximation
     p['lbfgs_scale_hist']   = 5                         # used vecs for initial hessian approx
@@ -147,11 +149,11 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera'):
   return bash_filename
 
  
-def write_tuinv(invdir, atlist, bash_file, idx):
+def write_tuinv(invdir, atlist, bash_file, idx, ngpu):
   f = open(bash_file, 'a') 
-  n_local = 4 if len(atlist) >= 4*idx + 4 else len(atlist) % 4
+  n_local = ngpu if len(atlist) >= ngpu*idx + ngpu else len(atlist) % ngpu
   for i in range(0,n_local):
-    f.write("results_dir_" + str(i) + "=" + invdir + atlist[4*idx + i] + "\n")
+    f.write("results_dir_" + str(i) + "=" + invdir + atlist[ngpu*idx + i] + "\n")
   for i in range(0,n_local):
     f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 &\n")
   f.write("\n")
@@ -245,15 +247,15 @@ def create_level_specific_data(n, pat, data_dir, res, create = True, is_syn = Fa
       if not os.path.exists(fname_n_nc):
         convert_nifti_to_nc(fname_n_nc, n)
 
-def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx):
+def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx, ngpu):
   """ writes registration cmds """
-  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
+  n_local = ngpu if len(at_list) >= ngpu*idx + ngpu else len(at_list) % ngpu
   ### create template(patient) labels
   if not os.path.exists(reg + pat + "_vt.nii.gz"):
     create_patient_labels(data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", reg, pat)
   ### create reference(atlas) labels
   for i in range(0, n_local):
-    at = at_list[4*idx+i]
+    at = at_list[ngpu*idx+i]
     if not os.path.exists(reg + at + "/" + at + "_vt.nii.gz"):
       create_atlas_labels(atlas_dir + at + "_seg_aff2jakob_ants.nii.gz", reg + at, at) 
     ### register
@@ -264,7 +266,7 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
   
   for i in range(0, n_local):
     ### transport
-    at = at_list[4*idx+i]
+    at = at_list[ngpu*idx+i]
     bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz", pat + "_c0Recon", bash_file, i)    
     bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", pat + "_labels", bash_file, i)    
 
@@ -273,12 +275,12 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
   
   return bash_file
 
-def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx):
-  n_local = 4 if len(at_list) >= 4*idx + 4 else len(at_list) % 4
+def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx, ngpu):
+  n_local = ngpu if len(at_list) >= ngpu*idx + ngpu else len(at_list) % ngpu
   with open(bash_file, "a") as f:
     for i in range(0, n_local):
       ### convert transported c0 to netcdf and mv it
-      at = at_list[4*idx+i]
+      at = at_list[ngpu*idx+i]
       nm = pat + "_c0Recon_transported_" + str(n) + ".nc"
       ###if not os.path.exists(reg + at + "/" + nm):
       f.write("python3 " + scripts_path + "/helpers/convert_to_netcdf.py -i " + reg + at + "/" + pat + "_c0Recon_transported.nii.gz -n " + str(n) + " -resample\n")
@@ -286,7 +288,7 @@ def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx):
     f.write("\n\n")
 
     for i in range(0, n_local):
-      at = at_list[4*idx+i]
+      at = at_list[ngpu*idx+i]
       nm = pat + "_c0Recon_transported_" + str(n) + ".nc"
       f.write("cp " + reg + at + "/" + nm + " " + tu + "/" + at + "/" + nm + "\n") 
 
@@ -355,7 +357,29 @@ def find_k_closest(atlas_dict, k, elem, leave_out=[]):
   return at_list
 
 def run(args):
+  
   #patient_list = os.listdir(args.patient_dir)
+
+  if not os.path.exists(args.patient_dir + "/pat_stats.csv"):
+    # create stats for each patient first
+    print("patient statistics do not exist; creating them...")
+    f_c    = open(args.patient_dir + "/pat_stats.csv", "w+")
+    fail   = []
+    for pat in os.listdir(args.patient_dir):
+      if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1_aff2jakob.nii.gz"):
+        idx = pat
+        print("computing stats for pat ", idx)
+        nm = args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"
+        if not os.path.exists(nm):
+          print("pat {} does not exist; skipping...".format(pat))
+          fail.append(pat)
+          continue
+        p = nib.load(nm).get_fdata()
+        print_atlas_stats(p, f_c, idx)
+    f_c.close()
+
+  print("Creating data preprocessing pipeline and job scripts...")
+
   with open(args.patient_dir + "/pat_stats.csv", "r") as f:
     brats_pats = f.readlines()
   patient_list = []
@@ -369,6 +393,12 @@ def run(args):
       print("ignoring failed patient {}".format(failed_pat))
       if failed_pat in patient_list:
         patient_list.remove(failed_pat)
+
+    for failed_pat in fail:
+      print("ignoring failed patient {}".format(failed_pat))
+      if failed_pat in patient_list:
+        patient_list.remove(failed_pat)
+
 
   other_remove = []
   #other_remove = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"]
@@ -416,6 +446,7 @@ def run(args):
   all_at_names = [k for k,v in at_dict.items()]
 
   for pat in patient_list:
+    print("PATIENT: ", pat)
     data_dir  = os.path.join(os.path.join(in_dir, pat), "aff2jakob")
     res = results_dir + "/" + pat + "/tu/"
     respat = results_dir + "/" + pat
@@ -494,7 +525,7 @@ def run(args):
         lines = f.readlines()
       for l in lines:
         at_list.append(l.strip("\n"))
-  
+ 
 
     ### create data files
     if n is not 256:
@@ -509,7 +540,7 @@ def run(args):
     
     ### (3)  create job files in tusolver results directories
     numatlas = len(at_list)
-    numjobs  = math.ceil(numatlas/4)
+    numjobs  = math.ceil(numatlas/args.num_gpus)
     bin_path = code_dir + "build/last/tusolver" 
     scripts_path = code_dir + "scripts/"
     if not args.submit:
@@ -523,14 +554,31 @@ def run(args):
         ### create tumor_inv stats
         res_level = res + "/" + str(n) + "/"
         if reg_flag: ### perform registration first
-          bash_file = write_reg(reg, pat, data_dir, atlas_dir + "/nifti/", at_list, claire_dir, bash_file, i)
-        bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i)
-        bash_file = write_tuinv(res_level, at_list, bash_file, i) 
+          bash_file = write_reg(reg, pat, data_dir, atlas_dir + "/nifti/", at_list, claire_dir, bash_file, i, args.num_gpus)
+        bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i, args.num_gpus)
+        bash_file = write_tuinv(res_level, at_list, bash_file, i, args.num_gpus) 
     else:
       for i in range(0,numjobs):
         bash_file = respat + "/job" + str(i) + ".sh"
         subprocess.call(['sbatch', bash_file])
 
+  print("Finished")
+
+class Args:
+  def __init__(self):
+    self.patient_dir = ""
+    self.atlas_dir = ""
+    self.results_dir = ""
+    self.code_dir = ""
+    self.n_resample = 160
+    self.reg = 1
+    self.claire_dir = ""
+    self.compute_sys = "longhorn"
+    self.submit = False
+    self.syn = False
+    self.num_pat_per_job = 4
+    self.num_gpus = 4
+    self.job_dir = ""
 
 #--------------------------------------------------------------------------------------------------------------------------
 if __name__=='__main__':

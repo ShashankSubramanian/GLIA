@@ -46,17 +46,8 @@ def write_sbatch_header(job_file, results_path, idx, compute_sys='frontera'):
   bash_file.write("\n\n")
   bash_file.close()
 
-#--------------------------------------------------------------------------------------------------------------------------
-if __name__=='__main__':
-  parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  r_args = parser.add_argument_group('required arguments')
-  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to patients (brats format)', required = True) 
-  r_args.add_argument('-x', '--results_dir', type = str, help = 'path to results', required = True) 
-  r_args.add_argument('-j', '--job_dir', type = str, help = 'path to output jobs', required = True) 
-  r_args.add_argument('-c', '--code_dir', type = str, help = 'path to tumor solver code', required = True) 
-  r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
-  args = parser.parse_args();
 
+def batch_jobs_and_run(args):
   #patient_list = os.listdir(args.patient_dir)
   with open(args.patient_dir + "/pat_stats.csv", "r") as f:
     brats_pats = f.readlines()
@@ -77,7 +68,7 @@ if __name__=='__main__':
   for others in other_remove:
     patient_list.remove(others)
 
-  block_job = True
+  block_job = False
   if block_job:
     it = 0
     num_pats = 50
@@ -87,8 +78,8 @@ if __name__=='__main__':
 
   for item in patient_list:
     print(item)
-  print(len(patient_list))
-  input("press enter to submit all jobs...")
+
+  print("setup complete, submitting jobs...")
 
   submit_job  = True
   in_dir      = args.patient_dir
@@ -99,8 +90,8 @@ if __name__=='__main__':
 
   code_dir    = args.code_dir
   num_pats    = len(patient_list)
-  num_pat_per_job = 4
-  num_jobs        = 4
+  num_pat_per_job = args.num_pat_per_job
+  num_jobs        = int(16/args.num_gpus)
   
   for ct in range(0,math.ceil(num_pats/num_pat_per_job)):
     job_bundle_dir = job_dir + "/job-" + str(ct) + "/"
@@ -133,3 +124,16 @@ if __name__=='__main__':
         if job_file.find("job") is not -1:
           subprocess.call(['sbatch', job_bundle_dir + job_file])
 
+
+#--------------------------------------------------------------------------------------------------------------------------
+if __name__=='__main__':
+  parser = argparse.ArgumentParser(description='Mass effect inversion',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  r_args = parser.add_argument_group('required arguments')
+  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to patients (brats format)', required = True) 
+  r_args.add_argument('-x', '--results_dir', type = str, help = 'path to results', required = True) 
+  r_args.add_argument('-j', '--job_dir', type = str, help = 'path to output jobs', required = True) 
+  r_args.add_argument('-c', '--code_dir', type = str, help = 'path to tumor solver code', required = True) 
+  r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'frontera') 
+  args = parser.parse_args();
+
+  batch_jobs_and_run(args)
