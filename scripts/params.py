@@ -312,7 +312,10 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         ibman = r['ibrun_man']
     cmd = ""
     if use_gpu:
-      cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " "
+      if r['compute_sys'] == "cbica":
+        cmd += "export CUDA_VISIBLE_DEVICES=$(get_CUDA_VISIBLE_DEVICES) || exit\n"
+      else:
+        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " "
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
         if r['mpi_tasks'] < 24:
