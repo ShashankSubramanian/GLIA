@@ -320,6 +320,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         cmd = cmd + "aprun -n " + str(r['mpi_tasks']) + " -N " + str(ppn) + " ";
     elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
         cmd = cmd + "ibrun " + ibman;
+    elif r['compute_sys'] == 'cbica':
+        cmd = cmd + "mpirun -np $NSLOTS ";
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + r['code_path'] + "/build/last/tusolver "
