@@ -9,10 +9,12 @@ from netCDF4 import Dataset
 from numpy import linalg as la
 import math
 
+
 sys.path.append('../utils/')
 from file_io import writeNII, createNetCDF
 from image_tools import resizeImage, resizeNIIImage
 sys.path.append('../')
+import params as par
 
 def create_patient_labels(patient_image_path, results_path, patient_name):
   nii = nib.load(patient_image_path)
@@ -57,39 +59,41 @@ def create_atlas_labels(atlas_image_path, results_path, atlas_name):
   writeNII(altas_mat_img, results_path + "/" + atlas_name + "_wm_csf.nii.gz", ref_image=nii)
     
 
-def register(claire_bin_path, results_path, atlas_name, pat_path, patient_name, bash_filename, idx, multigpu = True):
+def register(claire_bin_path, results_path, atlas_name, pat_path, patient_name, bash_filename, idx, multigpu = True, r = {}):
   bash_file = open(bash_filename, 'a')
   if multigpu:
     cmd = "CUDA_VISIBLE_DEVICES=" + str(idx) + " "
   else:
     cmd = ""
 
+  rcmd = par.runcmd(r)
   ##cmd += "ibrun " + claire_bin_path + "/claire -mrc 3 " + results_path + "/" + atlas_name + "_vt.nii.gz " + results_path + "/" + atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm_csf.nii.gz " + "-mtc 3 " + pat_path + "/" + patient_name + "_vt.nii.gz " + pat_path + "/" + patient_name + "_gm.nii.gz " + pat_path + "/" + patient_name + "_wm_csf.nii.gz " + "-mask " + pat_path + "/" + patient_name + "_mask.nii.gz " + "-nx 256 -train binary -jbound 0.2 -regnorm h1s-div -opttol 5e-2 -maxit 25 -krylovmaxit 50 -beta-div 1e-4 -velocity -detdefgrad -deffield -defmap -residual -x " + results_path + "/" + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " > " + results_path + "/registration_log.txt &";
-  cmd += "ibrun " + claire_bin_path + "/claire -mrc 3 " + results_path + "/" + atlas_name + "_vt.nii.gz " + results_path + "/" + atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm_csf.nii.gz " + "-mtc 3 " + pat_path + "/" + patient_name + "_vt.nii.gz " + pat_path + "/" + patient_name + "_gm.nii.gz " + pat_path + "/" + patient_name + "_wm_csf.nii.gz " + "-mask " + pat_path + "/" + patient_name + "_mask.nii.gz " + "-nx 256 -train binary -jbound 0.2 -regnorm h1s-div -opttol 5e-2 -maxit 25 -krylovmaxit 50 -beta-div 1e-4 -velocity -deffield -x " + results_path + "/" + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " > " + results_path + "/registration_log.txt &";
+  cmd += rcmd + claire_bin_path + "/claire -mrc 3 " + results_path + "/" + atlas_name + "_vt.nii.gz " + results_path + "/" + atlas_name + "_gm.nii.gz " + results_path + "/" + atlas_name + "_wm_csf.nii.gz " + "-mtc 3 " + pat_path + "/" + patient_name + "_vt.nii.gz " + pat_path + "/" + patient_name + "_gm.nii.gz " + pat_path + "/" + patient_name + "_wm_csf.nii.gz " + "-mask " + pat_path + "/" + patient_name + "_mask.nii.gz " + "-nx 256 -train binary -jbound 0.2 -regnorm h1s-div -opttol 5e-2 -maxit 25 -krylovmaxit 50 -beta-div 1e-4 -velocity -deffield -x " + results_path + "/" + " -monitordefgrad -verbosity 1 -disablerescaling -format nifti -sigma 2" + " > " + results_path + "/registration_log.txt &";
   bash_file.write(cmd)
   bash_file.write("\n\n")
   bash_file.close()
   return bash_filename
 
 # transport
-def transport(claire_bin_path, results_path, trans_image, name, bash_filename, idx, r2t=False, multigpu=True):
+def transport(claire_bin_path, results_path, trans_image, name, bash_filename, idx, r2t=False, multigpu=True, r = {}):
   bash_file = open(bash_filename, 'a')
   if multigpu:
     cmd = "CUDA_VISIBLE_DEVICES=" + str(idx) + " "
   else:
     cmd = ""
 
+  rcmd = par.runcmd(r)
   transport_image = results_path + "/" + name + "_transported.nii.gz"
 
   if r2t == True:
     if name.find("labels") is not -1:
-      cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -r2t -tlabelmap -labels 0,1,2,4,5,6,7,8 -ifile " + trans_image + " -xfile " + transport_image + " -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
+      cmd += rcmd + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -r2t -tlabelmap -labels 0,1,2,4,5,6,7,8 -ifile " + trans_image + " -xfile " + transport_image + " -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
   else:
 ### enable -r2t if reference to transport is needed. keep disabled for now.
     if name.find("labels") is not -1:
-      cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -tlabelmap -labels 0,1,2,4,5,6,7,8 -ifile " + trans_image + " -xfile " + transport_image + " -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
+      cmd += rcmd + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -tlabelmap -labels 0,1,2,4,5,6,7,8 -ifile " + trans_image + " -xfile " + transport_image + " -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
     else:
-      cmd += "ibrun " + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile " + trans_image + " -xfile " + transport_image + " -deformimage -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
+      cmd += rcmd + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile " + trans_image + " -xfile " + transport_image + " -deformimage -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
 
   bash_file.write(cmd)
   bash_file.write("\n\n")

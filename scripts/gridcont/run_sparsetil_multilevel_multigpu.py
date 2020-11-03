@@ -315,7 +315,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
 
         ############### === define parameters
         r['nodes']     = nodes
-        r['mpi_taks']  = procs[-1]
+        r['mpi_tasks']  = procs[-1]
         r['wtime_h']   = wtime_h[-1]
         r['wtime_m']   = wtime_m[-1]
         r['log_dir']   = job_path
@@ -404,7 +404,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
         fname_job = os.path.join(job_path, 'job_' + str(job_idx) + '.sh')
         job_file = open(fname_job, 'w+')
         # get header, config and run str
-        job_header = par.write_jobscript_header(p, r)
+        job_header = par.write_jobscript_header(p, r, use_gpu)
         # write
         job_file.write(job_header)
         job_file.write(JOBfile)

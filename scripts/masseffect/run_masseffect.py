@@ -108,54 +108,36 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, is_syn=False):
 ###############=== write config to write_path and submit job
     par.submit(p, r, submit_job);
 
-def create_sbatch_header(results_path, idx, compute_sys='frontera'):
+def create_sbatch_header(results_path, idx, compute_sys='frontera', run_params = {}):
   bash_filename = results_path + "/job" + str(idx) + ".sh"
-  print("creating job file in ", results_path)
-
-  if compute_sys == 'frontera':
-      queue = "rtx"
-      num_nodes = str(1)
-      num_cores = str(1)
-  elif compute_sys == 'maverick2':
-      queue = "v100"
-      num_nodes = str(1)
-      num_cores = str(1)
-  elif compute_sys == 'longhorn':
-      queue = "v100"
-      num_nodes = str(1)
-      num_cores = str(1)
-  elif compute_sys == 'stampede2':
-      queue = "skx-normal"
-      num_nodes = str(6)
-      num_cores = str(128)
-  else:
-      queue = "normal"
-      num_nodes = str(1)
-      num_cores = str(1)
-
+#
   bash_file = open(bash_filename, 'w')
-  bash_file.write("#!/bin/bash\n\n");
-  bash_file.write("#SBATCH -J tumor-inv\n");
-  bash_file.write("#SBATCH -o " + results_path + "/log_" + str(idx) + ".txt\n")
-  bash_file.write("#SBATCH -p " + queue + "\n")
-  bash_file.write("#SBATCH -N " + num_nodes + "\n")
-  bash_file.write("#SBATCH -n " + num_cores + "\n")
-  bash_file.write("#SBATCH -t 03:00:00\n\n")
-  bash_file.write("source ~/.bashrc\n")
-
-  bash_file.write("\n\n")
+  ############### === define parameters
+  p = {}
+  r = {}
+  r['nodes']     = 1
+  r['mpi_tasks']  = 1
+  r['compute_sys'] = compute_sys
+  r['wtime_h']   = 3
+  r['wtime_m']   = 0
+  r['log_dir']   = results_path
+  r['log_name']  = 'log_' + str(idx)
+#  bash_file.write("#!/bin/bash\n\n");
+  job_header = par.write_jobscript_header(p, run_params, use_gpu=True)
+  bash_file.write(job_header)
   bash_file.close()
 
   return bash_filename
 
- 
-def write_tuinv(invdir, atlist, bash_file, idx, ngpu):
+
+def write_tuinv(invdir, atlist, bash_file, idx, ngpu, run_params):
   f = open(bash_file, 'a') 
   n_local = ngpu if len(atlist) >= ngpu*idx + ngpu else len(atlist) % ngpu
   for i in range(0,n_local):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[ngpu*idx + i] + "\n")
+  cmd = par.runcmd(run_params)
   for i in range(0,n_local):
-    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " ibrun ${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 &\n")
+    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " " + cmd + "${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 &\n")
   f.write("\n")
   f.write("wait\n")
 
@@ -247,7 +229,7 @@ def create_level_specific_data(n, pat, data_dir, res, create = True, is_syn = Fa
       if not os.path.exists(fname_n_nc):
         convert_nifti_to_nc(fname_n_nc, n)
 
-def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx, ngpu):
+def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx, ngpu, r):
   """ writes registration cmds """
   n_local = ngpu if len(at_list) >= ngpu*idx + ngpu else len(at_list) % ngpu
   ### create template(patient) labels
@@ -259,7 +241,7 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
     if not os.path.exists(reg + at + "/" + at + "_vt.nii.gz"):
       create_atlas_labels(atlas_dir + at + "_seg_aff2jakob_ants.nii.gz", reg + at, at) 
     ### register
-    bash_file = register(claire_dir, reg+at, at, reg, pat, bash_file, i)
+    bash_file = register(claire_dir, reg+at, at, reg, pat, bash_file, i, r = r)
   
   with open(bash_file, "a") as f:
     f.write("\n\nwait\n\n")
@@ -267,8 +249,8 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
   for i in range(0, n_local):
     ### transport
     at = at_list[ngpu*idx+i]
-    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz", pat + "_c0Recon", bash_file, i)    
-    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", pat + "_labels", bash_file, i)    
+    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz", pat + "_c0Recon", bash_file, i, r = r)    
+    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", pat + "_labels", bash_file, i, r = r)    
 
   with open(bash_file, "a") as f:
     f.write("\n\nwait\n\n")
@@ -543,9 +525,11 @@ def run(args):
     numjobs  = math.ceil(numatlas/args.num_gpus)
     bin_path = code_dir + "build/last/tusolver" 
     scripts_path = code_dir + "scripts/"
+    r = {}
+    r['compute_sys'] = args.compute_sys
     if not args.submit:
       for i in range(0,numjobs):
-        bash_file = create_sbatch_header(respat, i, compute_sys = args.compute_sys)
+        bash_file = create_sbatch_header(respat, i, compute_sys = args.compute_sys, run_params = r)
         with open(bash_file, 'a') as f:
           f.write("bin_path=" + bin_path + "\n")
           if reg_flag:
@@ -554,9 +538,9 @@ def run(args):
         ### create tumor_inv stats
         res_level = res + "/" + str(n) + "/"
         if reg_flag: ### perform registration first
-          bash_file = write_reg(reg, pat, data_dir, atlas_dir + "/nifti/", at_list, claire_dir, bash_file, i, args.num_gpus)
+          bash_file = write_reg(reg, pat, data_dir, atlas_dir + "/nifti/", at_list, claire_dir, bash_file, i, args.num_gpus, r)
         bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i, args.num_gpus)
-        bash_file = write_tuinv(res_level, at_list, bash_file, i, args.num_gpus) 
+        bash_file = write_tuinv(res_level, at_list, bash_file, i, args.num_gpus, r) 
     else:
       for i in range(0,numjobs):
         bash_file = respat + "/job" + str(i) + ".sh"

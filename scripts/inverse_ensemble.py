@@ -26,7 +26,7 @@ args.compute_sys = "longhorn"
 
 ### system settings
 ### submit the jobs
-submit               = False
+submit               = True
 ### directory to store all the batched jobs; can change if different from results
 args.job_dir         = args.results_dir
 ### number of gpus per node

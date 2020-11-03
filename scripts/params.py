@@ -331,10 +331,24 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
 
     return run_str
 
+#### temp
+def runcmd(r):
+  ibman = ""
+  cmd = ""
+  if 'compute_sys' in r:
+    if r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
+        cmd = cmd + "ibrun " + ibman;
+    elif r['compute_sys'] == 'cbica':
+        cmd = cmd + "mpirun -np $NSLOTS ";
+    else:
+        cmd = cmd + "mpirun ";
+  else:
+    cmd = cmd + "mpirun ";
 
+  return cmd
 ### ________________________________________________________________________ ___
 ### //////////////////////////////////////////////////////////////////////// ###
-def write_jobscript_header(tu_params, run_params):
+def write_jobscript_header(tu_params, run_params, use_gpu=False):
     """ writes the header for the job script to string.
     """
     scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -396,11 +410,13 @@ def write_jobscript_header(tu_params, run_params):
     if 'wtime_m' not in run_params:
         run_params['wtime_m'] = 0
     if 'log_dir' not in run_params:
-        run_params['log_dir'] = tu_params['output_dir']
+        if 'output_dir' in tu_params:
+          run_params['log_dir'] = tu_params['output_dir']
+        else:
+          run_params['log_dir'] = scripts_path
     if 'log_name' not in run_params:
         run_params['log_name'] = 'solver_log.txt'
-    fname = out_dir + '/job.sh'
-    job_header = "" #open(fname, 'w+')
+    job_header = "" 
     job_header += "#!/bin/bash\n"
 
     if not "cbica" in run_params["compute_sys"]:
@@ -420,6 +436,8 @@ def write_jobscript_header(tu_params, run_params):
       job_header += '#$ -S /bin/bash\n'
       job_header += '#$ -cwd\n'
       job_header += '#$ -pe openmpi ' + str(run_params['mpi_tasks']) + '\n'
+      if use_gpu:
+        job_header += '#$ -l gpu\n#$ -l h_vmem=14G\n'
       job_header += '#$ -l h_rt=' + str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n"
       job_header += '#$ -l s_rt=' + str(math.ceil(run_params['wtime_h']/2))+":"+str(run_params['wtime_m'])+":00\n"
       job_header += '#$ -o ' + run_params['log_dir'] + "/" + run_params['log_name'] + "\n" 

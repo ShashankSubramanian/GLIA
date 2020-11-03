@@ -313,7 +313,7 @@ def sparsetil_gridcont(input, use_gpu = False):
 
         ############### === define parameters
         r['nodes']     = nodes
-        r['mpi_taks']  = procs[-1]
+        r['mpi_tasks']  = procs[-1]
         r['wtime_h']   = wtime_h[-1]
         r['wtime_m']   = wtime_m[-1]
         r['log_dir']   = output_path_tumor
@@ -399,7 +399,7 @@ def sparsetil_gridcont(input, use_gpu = False):
         fname_job = os.path.join(output_path_tumor, 'job.sh')
         job_file = open(fname_job, 'w+')
         # get header, config and run str
-        job_header = par.write_jobscript_header(p, r)
+        job_header = par.write_jobscript_header(p, r, use_gpu)
         # write
         job_file.write(job_header)
         job_file.write(JOBfile)

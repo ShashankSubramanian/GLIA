@@ -11,39 +11,21 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../')
 import params as par
 import shutil
 
-def write_sbatch_header(job_file, results_path, idx, compute_sys='frontera'):
-  if compute_sys == 'frontera':
-      queue = "rtx"
-      num_nodes = str(1)
-      num_cores = str(1)
-  elif compute_sys == 'maverick2':
-      queue = "v100"
-      num_nodes = str(1)
-      num_cores = str(1)
-  elif compute_sys == 'longhorn':
-      queue = "v100"
-      num_nodes = str(1)
-      num_cores = str(1)
-  elif compute_sys == 'stampede2':
-      queue = "skx-normal"
-      num_nodes = str(6)
-      num_cores = str(128)
-  else:
-      queue = "normal"
-      num_nodes = str(1)
-      num_cores = str(1)
-
+def write_sbatch_header(job_file, results_path, idx, compute_sys='frontera', num_pat_per_job = 1):
   bash_file = open(job_file, 'w')
-  bash_file.write("#!/bin/bash\n\n");
-  bash_file.write("#SBATCH -J tumor-inv\n");
-  bash_file.write("#SBATCH -o " + results_path + "/log_" + str(idx) + ".txt\n")
-  bash_file.write("#SBATCH -p " + queue + "\n")
-  bash_file.write("#SBATCH -N " + num_nodes + "\n")
-  bash_file.write("#SBATCH -n " + num_cores + "\n")
-  bash_file.write("#SBATCH -t 10:00:00\n\n")
-  bash_file.write("source ~/.bashrc\n")
-
-  bash_file.write("\n\n")
+  ############### === define parameters
+  p = {}
+  r = {}
+  r['nodes']     = 1
+  r['mpi_tasks']  = 1
+  r['compute_sys'] = compute_sys
+  r['wtime_h']   = 3 * num_pat_per_job
+  r['wtime_m']   = 0
+  r['log_dir']   = results_path
+  r['log_name']  = 'log_' + str(idx)
+#  bash_file.write("#!/bin/bash\n\n");
+  job_header = par.write_jobscript_header(p, r, use_gpu=True)
+  bash_file.write(job_header)
   bash_file.close()
 
 
@@ -110,7 +92,7 @@ def batch_jobs_and_run(args):
           if item.find("job") is not -1:
             job_file = job_bundle_dir + "/job-" + str(n_j) + ".sh"
             if header_write[n_j]: 
-              write_sbatch_header(job_file, job_bundle_dir, n_j, args.compute_sys)
+              write_sbatch_header(job_file, job_bundle_dir, n_j, args.compute_sys, num_pat_per_job)
               header_write[n_j] = False
             with open(cur_dir + item, "r") as f:
               lines = f.readlines()
