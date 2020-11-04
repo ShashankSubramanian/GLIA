@@ -18,6 +18,7 @@ class DiffCoef {
   DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
 
   ScalarType k_scale_;         // (= k_f * k_wm),    k_wm  := 1 (fixed)      INVERSION for k_f, k_gm, k_glm
+  ScalarType kf_scale_;
   ScalarType k_gm_wm_ratio_;   // (= k_f * k_gm),    k_gm  := ratio_gm_wm
   ScalarType k_glm_wm_ratio_;  // (= k_f * k_glm),   k_glm := ratio_glm_wm
   int smooth_flag_;

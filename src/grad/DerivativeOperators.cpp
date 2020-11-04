@@ -231,17 +231,19 @@ PetscErrorCode DerivativeOperators::gradDiffusion(Vec dJ) {
     ierr = VecDot(tumor_->mat_prop_->wm_, temp_, &dj_ptr[params_->tu_->np_]); CHKERRQ(ierr);
     dj_ptr[params_->tu_->np_] *= params_->grid_->lebesgue_measure_;
 
+    ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar); CHKERRQ(ierr);
+    temp_scalar *= params_->grid_->lebesgue_measure_;
+    temp_scalar *= params_->tu_->k_gm_wm_ratio_;  // this ratio will control the diffusivity in gm
+    dj_ptr[params_->tu_->np_] += temp_scalar;
     if (params_->tu_->nk_ == 1) {
       // Inverting for only one parameters a.k.a diffusivity in WM. Provide user with the option of setting a diffusivity for
       // other tissue types using params - Hence, the gradient will change accordingly.
       // Implicitly assuming there's no glm. TODO: remove glm from all subsequent iterations of the solver.
-      ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &temp_scalar); CHKERRQ(ierr);
-      temp_scalar *= params_->grid_->lebesgue_measure_;
-      temp_scalar *= params_->tu_->k_gm_wm_ratio_;  // this ratio will control the diffusivity in gm
-      dj_ptr[params_->tu_->np_] += temp_scalar;
     }
 
     if (params_->tu_->nk_ > 1) {
+       
+       
       ierr = VecDot(tumor_->mat_prop_->gm_, temp_, &dj_ptr[params_->tu_->np_ + 1]); CHKERRQ(ierr);
       dj_ptr[params_->tu_->np_ + 1] *= params_->grid_->lebesgue_measure_;
     }
@@ -326,14 +328,16 @@ PetscErrorCode DerivativeOperators::updateReactionAndDiffusion(Vec x) {
 
   ScalarType r1, r2, r3, k1, k2, k3;
   const ScalarType *x_ptr;
+  std::stringstream s;
 
   ScalarType scale_rho = params_->opt_->rho_scale_;
   ScalarType scale_kap = params_->opt_->k_scale_;
-
+  ScalarType scale_kap_f = params_->opt_->kf_scale_;
+  
   ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
   if (params_->opt_->diffusivity_inversion_ || params_->opt_->flag_reaction_inv_) {
     k1 = x_ptr[params_->tu_->np_] * scale_kap;
-    k2 = (params_->tu_->nk_ > 1) ? x_ptr[params_->tu_->np_ + 1] * scale_kap : 0;
+    k2 = (params_->tu_->nk_ > 1) ? x_ptr[params_->tu_->np_ + 1] * scale_kap_f : 0;
     k3 = (params_->tu_->nk_ > 2) ? x_ptr[params_->tu_->np_ + 2] * scale_kap : 0;
     ierr = tumor_->k_->updateIsotropicCoefficients(k1, k2, k3, tumor_->mat_prop_, params_); CHKERRQ(ierr);
     // need to update prefactors for diffusion KSP preconditioner, as k changed
@@ -347,7 +351,7 @@ PetscErrorCode DerivativeOperators::updateReactionAndDiffusion(Vec x) {
   }
   ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
 
-  std::stringstream s;
+  //std::stringstream s;
   if (params_->tu_->verbosity_ >= 3) {
     if (params_->opt_->diffusivity_inversion_ || params_->opt_->flag_reaction_inv_) {
       s << " Diffusivity guess = (" << k1 << ", " << k2 << ", " << k3 << ")";

@@ -32,6 +32,7 @@ PetscErrorCode RDOptimizer::initialize(
     
     // set scales for inversion variables
     params->opt_->k_scale_ = (params->opt_->k_scale_ != 1) ? params->opt_->k_scale_ : 1E-1;
+    params->opt_->kf_scale_ = (params->opt_->kf_scale_ != 1) ? params->opt_->kf_scale_ : 1;
     // params->opt_->rho_scale_ = 1;
     PetscFunctionReturn(ierr);
 }
@@ -110,7 +111,8 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ (ierr);
   x_ptr[off_in + 0] = init_ptr[off];                           // kappa
   k_init_ = x_ptr[off_in + 0];
-  if (nk > 1) x_ptr[off_in + 1] = init_ptr[off + 1];           // k2
+  //if (nk > 1) x_ptr[off_in + 1] = init_ptr[off + 1];           // k2
+  if (nk > 1) kf_init_ = init_ptr[off + 1];           // k2
   if (nk > 2) x_ptr[off_in + 2] = init_ptr[off + 2];           // k3
   x_ptr[off_in + nk] = init_ptr[off + nk];                     // rho
   rho_init_ = x_ptr[off_in + nk];
@@ -141,8 +143,11 @@ PetscErrorCode RDOptimizer::setInitialGuess(Vec x_init) {
     ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ (ierr);
     ss << "rho estimated; ";
   }
-
+  if (nk < 2) {
   ss << " rho_init="<<rho_init_<<"; k_init="<<k_init_;
+  } else {
+  ss << " rho_init="<<rho_init_<<"; k_init="<<k_init_<<"; kf_init="<<kf_init_;
+  }
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   // create xout_ vec
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ (ierr);
@@ -279,6 +284,9 @@ PetscErrorCode RDOptimizer::solve() {
   // === update diffusivity and reaction in coefficients
   ierr = VecGetArray (xrec_, &x_ptr); CHKERRQ (ierr);
   ctx_->params_->tu_->k_   = x_ptr[0];
+  if (nk > 1) {
+  ctx_->params_->tu_->kf_   = x_ptr[1];
+  }
   ctx_->params_->tu_->rho_ = x_ptr[nk];
   ierr = VecRestoreArray (xrec_, &x_ptr); CHKERRQ (ierr);
   PetscReal r1, r2, r3, k1, k2, k3;
@@ -286,7 +294,10 @@ PetscErrorCode RDOptimizer::solve() {
   r2 = (nr > 1) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_gm_wm_ratio_ * ctx_->params_->opt_->rho_scale_  : 0;
   r3 = (nr > 2) ? ctx_->params_->tu_->rho_ * ctx_->params_->tu_->r_glm_wm_ratio_ * ctx_->params_->opt_->rho_scale_ : 0;
   k1 = ctx_->params_->tu_->k_ * ctx_->params_->opt_->k_scale_;
-  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  * ctx_->params_->opt_->k_scale_: 0;
+  ierr = tuMSG(ss.str()); CHKERRQ (ierr);
+  k2 = (nk > 1) ? ctx_->params_->tu_->kf_  * ctx_->params_->opt_->kf_scale_: 0;
+  ierr = tuMSG(ss.str()); CHKERRQ (ierr);
+  //k2 = (nk > 1) ? ctx_->params_->tu_->kf_   * ctx_->params_->tu_->k_gm_wm_ratio_  * ctx_->params_->opt_->kf_scale_: 0;
   k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ * ctx_->params_->opt_->k_scale_: 0;
   ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
   ierr = ctx_->tumor_->rho_->updateIsotropicCoefficients (r1, r2, r3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
@@ -327,7 +338,7 @@ PetscErrorCode RDOptimizer::setVariableBounds() {
   // upper bound
   ierr = VecGetArray(upper_bound, &ptr);CHKERRQ (ierr);
   ptr[0] = ctx_->params_->opt_->k_ub_; // k1
-  if (nk > 1) ptr[1] = ctx_->params_->opt_->k_ub_; // k2
+  if (nk > 1) ptr[1] = ctx_->params_->opt_->kf_ub_; // k2
   if (nk > 2) ptr[2] = ctx_->params_->opt_->k_ub_; // k3
   ptr[nk] = ctx_->params_->opt_->rho_ub_; // r1
   if (nr > 1) ptr[nk + 1] = ctx_->params_->opt_->rho_ub_; // r2
@@ -336,7 +347,7 @@ PetscErrorCode RDOptimizer::setVariableBounds() {
   // lower bound
   ierr = VecGetArray(lower_bound, &ptr);CHKERRQ (ierr);
   ptr[0] = ctx_->params_->opt_->k_lb_; // k1
-  if (nk > 1) ptr[1] = ctx_->params_->opt_->k_lb_; // k2
+  if (nk > 1) ptr[1] = ctx_->params_->opt_->kf_lb_; // k2
   if (nk > 2) ptr[2] = ctx_->params_->opt_->k_lb_; // k3
   ptr[nk] = ctx_->params_->opt_->rho_lb_; // r1
   if (nr > 1) ptr[nk + 1] = ctx_->params_->opt_->rho_lb_; // r2

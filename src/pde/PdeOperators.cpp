@@ -561,6 +561,13 @@ PetscErrorCode PdeOperatorsRDAdv::solveState(int linearized) {
         ierr = adv_solver_->solve(tumor_->mat_prop_->gm_, tumor_->velocity_, dt); CHKERRQ(ierr);
         ierr = adv_solver_->solve(tumor_->mat_prop_->wm_, tumor_->velocity_, dt); CHKERRQ(ierr);
         ierr = adv_solver_->solve(tumor_->mat_prop_->vt_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->kfxx_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->kfxy_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->kfxz_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->kfyy_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->kfyz_, tumor_->velocity_, dt); CHKERRQ(ierr);
+        ierr = adv_solver_->solve(tumor_->mat_prop_->kfzz_, tumor_->velocity_, dt); CHKERRQ(ierr);
+    
         if(tumor_->mat_prop_->csf_ != nullptr) {
           ierr = adv_solver_->solve(tumor_->mat_prop_->csf_, tumor_->velocity_, dt); CHKERRQ(ierr);
         }

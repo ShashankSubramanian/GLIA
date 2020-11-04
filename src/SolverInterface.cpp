@@ -175,7 +175,7 @@ PetscErrorCode SolverInterface::run() {
   PetscFunctionBegin;
   std::stringstream ss;
 
-  ss << " Inversion with tumor parameters: rho = " << params_->tu_->rho_ << " k = " << params_->tu_->k_ << " dt = " << params_->tu_->dt_ << " Nt = " << params_->tu_->nt_;
+  ss << " Inversion with tumor parameters: rho = " << params_->tu_->rho_ << " k = " << params_->tu_->k_ << " kf = " << params_->tu_->kf_ << " dt = " << params_->tu_->dt_ << " Nt = " << params_->tu_->nt_;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
@@ -711,7 +711,8 @@ PetscErrorCode SolverInterface::readVelocity() {
     ierr = readVecField(tumor_->velocity_.get(), app_settings_->path_->velocity_x1_, app_settings_->path_->velocity_x2_, app_settings_->path_->velocity_x3_, params_); CHKERRQ(ierr);
     ierr = tumor_->velocity_->scale(-1); CHKERRQ(ierr);
     Vec mag;
-    ierr = VecDuplicate(data_->dt1(), &mag); CHKERRQ(ierr);
+    //ierr = VecDuplicate(data_->dt1(), &mag); CHKERRQ(ierr);
+    ierr = VecDuplicate(tmp_, &mag); CHKERRQ(ierr);
     ierr = tumor_->velocity_->computeMagnitude(mag); CHKERRQ(ierr);
     ierr = dataOut(mag, params_, "velocity_mag.nc"); CHKERRQ(ierr);
     ScalarType vnorm;
@@ -790,7 +791,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   std::stringstream ss;
 
   // save parameters
-  ScalarType rho_temp = params_->tu_->rho_, k_temp = params_->tu_->k_, dt_temp = params_->tu_->dt_;
+  ScalarType rho_temp = params_->tu_->rho_, k_temp = params_->tu_->k_, kf_temp = params_->tu_->kf_, dt_temp = params_->tu_->dt_;
   ScalarType forcing_factor_temp = params_->tu_->forcing_factor_;
   int nt_temp = params_->tu_->nt_;
   // set to synthetic parameters
@@ -818,6 +819,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   ScalarType scale = 1;
   int count = 0;
   // insert user defined tumor foci
+  if (app_settings_->syn_->enabled_) {
   for (auto &cm : app_settings_->syn_->user_cms_) {
     count++;
     ierr = VecSet(tmp_, 0.); CHKERRQ(ierr);
@@ -838,7 +840,10 @@ PetscErrorCode SolverInterface::createSynthetic() {
     ss.str("");
     ss.clear();
   }
-
+  } else {
+  ierr = dataIn(data_t0_, params_, app_settings_->path_->data_t0_); CHKERRQ(ierr);
+  }
+  
   ScalarType max, min;
   if (params_->tu_->write_output_) {
     ierr = dataOut(data_t0_, params_, "c0_true_syn" + params_->tu_->ext_); CHKERRQ(ierr);
@@ -851,7 +856,6 @@ PetscErrorCode SolverInterface::createSynthetic() {
   ss.clear();
 
   std::map<std::string, Vec> species;
-  ierr = dataOut(tumor_->k_->kyz_, params_, "kyz_creSyn.nc"); CHKERRQ(ierr);
   if (params_->tu_->model_ == 5) {
     ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
     ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
@@ -871,7 +875,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   if (params_->tu_->write_output_) {
     ierr = dataOut(data_t1_, params_, "c1_true_syn_before_observation" + params_->tu_->ext_); CHKERRQ(ierr);
   }
-  ss << " Synthetic data solve parameters: r = " << params_->tu_->rho_ << ", k = " << params_->tu_->k_;
+  ss << " Synthetic data solve parameters: r = " << params_->tu_->rho_ << ", k = " << params_->tu_->k_<< ", kf = " << params_->tu_->kf_;
   if (params_->tu_->model_ >= 4)
     ss << ", g = " << params_->tu_->forcing_factor_;
   ss << ", nt = " << params_->tu_->nt_;
@@ -882,6 +886,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   // restore parameters
   params_->tu_->rho_ = rho_temp;
   params_->tu_->k_ = k_temp;
+  params_->tu_->kf_ = kf_temp;
   params_->tu_->dt_ = dt_temp;
   params_->tu_->nt_ = nt_temp;
   params_->tu_->forcing_factor_ = forcing_factor_temp;

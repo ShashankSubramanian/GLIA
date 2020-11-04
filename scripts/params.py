@@ -55,12 +55,14 @@ def write_config(set_params, run):
     p['ce_loss'] = 0                    # cross-entropy or L2 loss
     p['regularization'] = "L2"          # L2, L1
     p['beta_p'] = 1E-4                  # regularization parameter
-    p['opttol_grad'] = 1E-5             # relative gradient tolerance
+    p['opttol_grad'] = 1E-6             # relative gradient tolerance
     p['newton_maxit'] = 50              # number of iterations for optimizer
     p['krylov_maxit'] = 1               # if GN: number krylov iterations
     p['gist_maxit'] = 2                 # number iterations for L1 CoSaMp solver
     p['kappa_lb'] = 0.0001              # lower bound kappa
     p['kappa_ub'] = 1                 # upper bound kappa
+    p['kappaf_lb'] = 0.0001              # lower bound kappa
+    p['kappaf_ub'] = 1                 # upper bound kappa
     p['rho_lb'] = 0                     # lower bound rho
     p['rho_ub'] = 15                    # upper bound rho
     p['gamma_lb'] = 0                   # lower bound gamma
@@ -392,7 +394,7 @@ def write_jobscript_header(tu_params, run_params):
             run_params['mpi_taks'] = 1
 
     if 'wtime_h' not in run_params:
-        run_params['wtime_h'] = 6
+        run_params['wtime_h'] = 48
     if 'wtime_m' not in run_params:
         run_params['wtime_m'] = 0
     if 'log_dir' not in run_params:
@@ -405,6 +407,7 @@ def write_jobscript_header(tu_params, run_params):
     job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
     job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
     job_header += "#SBATCH -n " + str(run_params['mpi_taks']) + "\n"
+    #job_header += "#SBATCH --exclude=luke"
     job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
     job_header += "source ~/.bashrc\n"
     job_header += "export OMP_NUM_THREADS=1\n\n"

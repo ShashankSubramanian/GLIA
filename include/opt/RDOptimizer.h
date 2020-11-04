@@ -33,6 +33,7 @@ public :
 
 private:
   ScalarType k_init_;
+  ScalarType kf_init_; 
   ScalarType rho_init_;
 };
 
