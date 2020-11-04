@@ -24,8 +24,8 @@ public:
     ftol_ (1E-3),
     ls_minstep_(1E-16),
     gtolbound_ (0.8),
-    grtol_ (1E-5),
-    gatol_ (1E-4),
+    grtol_ (1E-6),
+    gatol_ (1E-5),
     newton_maxit_ (30),
     newton_minit_ (1),
     gist_maxit_ (5),
@@ -54,11 +54,14 @@ public:
     prune_components_(true),
     k_lb_ (1E-3),
     k_ub_ (1),
+    kf_lb_ (1E-3),
+    kf_ub_ (5),
     gamma_lb_(0),
     gamma_ub_(15),
     rho_lb_(1),
     rho_ub_(15),
-    k_scale_(1),
+    k_scale_(1E-1),
+    kf_scale_(1),
     rho_scale_(1),
     gamma_scale_(1)
   {}
@@ -98,11 +101,14 @@ public:
   bool prune_components_;       /// @brief prunes L2 solution based on components
   ScalarType k_lb_;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
   ScalarType k_ub_;             /// @brief upper bound on kappa
+  ScalarType kf_lb_;             /// @brief lower bound on kappa_f - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
+  ScalarType kf_ub_;             /// @brief upper bound on kappa_f
   ScalarType gamma_lb_;         /// @brief lower bound on gamma
   ScalarType gamma_ub_;         /// @brief upper bound on gamma
   ScalarType rho_lb_;           /// @brief lower bound on rho
   ScalarType rho_ub_;           /// @brief upper bound on rho
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
+  ScalarType kf_scale_;          /// @brief if FD grad model, scaling of kappa
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
   std::array<ScalarType, 3> bounds_array_;
@@ -160,14 +166,14 @@ public:
                                           // 4: mass effect
                                           // 5: multi-species
   , np_ (1)                               // Number of gaussians for bounding box
-  , nk_ (1)                               // Number of k_i that we like to invert for (1-3)
+  , nk_ (2)                               // Number of k_i that we like to invert for (1-3)
   , nr_ (1)                               // number of rho_i that we like to invert for (1-3)
   , nt_(1)                                // Total number of time steps
   , dt_ (0.5)                             // Time step
   , k_ (0E-1)                             // Isotropic diffusion coefficient
   , kf_(0.0)                              // Anisotropic diffusion coefficient
   , rho_ (10)                             // Reaction coefficient
-  , k_gm_wm_ratio_ (0.0 / 1.0)            // gm to wm diffusion coeff ratio
+  , k_gm_wm_ratio_ (1.0 / 1.0)            // gm to wm diffusion coeff ratio
   , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
@@ -513,8 +519,8 @@ class Parameters {
           fft_plan *plan, MPI_Comm c_comm, int *c_dims) {
       grid_ = std::make_shared<Grid>(n, isize, osize, istart, ostart, plan, c_comm, c_dims);
     }
-    // inline int get_nk() {return opt_->diffusivity_inversion_ ? tu_->nk_ : 0;}
-    inline int get_nk() {return (opt_->diffusivity_inversion_ || opt_->reaction_inversion_) ? tu_->nk_ : 0;} // TODO is this correct always? I think yes bc we never invert for rho and not for k
+    inline int get_nk() {return tu_->nk_;}
+    // inline int get_nk() {return (opt_->diffusivity_inversion_ || opt_->reaction_inversion_) ? tu_->nk_ : 0;} // TODO is this correct always? I think yes bc we never invert for rho and not for k
     inline int get_nr() {return opt_->reaction_inversion_ ? tu_->nr_ : 0;}
 
     virtual ~Parameters() {}
@@ -581,6 +587,7 @@ public:
     enabled_(false),
     rho_(10),
     k_(1E-2),
+    kf_(0),
     forcing_factor_(1E5),
     dt_(0.01),
     nt_(100),

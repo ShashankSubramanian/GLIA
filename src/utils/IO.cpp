@@ -97,6 +97,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "gist_maxit") {p->opt_->gist_maxit_ = std::stoi(value); return;}
   if (name == "kappa_lb") {p->opt_->k_lb_ = std::stod(value); return;}
   if (name == "kappa_ub") {p->opt_->k_ub_ = std::stod(value); return;}
+  if (name == "kappaf_lb") {p->opt_->kf_lb_ = std::stod(value); return;}
+  if (name == "kappaf_ub") {p->opt_->kf_ub_ = std::stod(value); return;}
   if (name == "rho_lb") {p->opt_->rho_lb_ = std::stod(value); return;}
   if (name == "rho_ub") {p->opt_->rho_ub_ = std::stod(value); return;}
   if (name == "gamma_lb") {p->opt_->gamma_lb_ = std::stod(value); return;}
@@ -109,6 +111,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "model") {p->tu_->model_ = std::stoi(value); return;}
   if (name == "init_rho") {p->tu_->rho_ = std::stod(value); return;}
   if (name == "init_k") {p->tu_->k_ = std::stod(value); return;}
+  if (name == "init_kf") {p->tu_->kf_ = std::stod(value); return;}
   if (name == "init_gamma") {p->tu_->forcing_factor_ = std::stod(value); return;}
   if (name == "nt_inv") {p->tu_->nt_ = std::stoi(value); return;}
   if (name == "dt_inv") {p->tu_->dt_ = std::stod(value); return;}
@@ -172,6 +175,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "thresh_component_weight") {p->tu_->thresh_component_weight_ = std::stod(value); return;}
   if (name == "gaussian_selection_mode") {a->gaussian_selection_mode_ = std::stoi(value); return;}
   if (name == "number_gaussians") {p->tu_->np_ = std::stoi(value); return;}
+  if (name == "number_diffusions") {p->tu_->nk_ = std::stoi(value); return;}
   if (name == "sigma_factor") {
     ScalarType factor = (2.0 * M_PI) / p->grid_->n_[0];
     p->tu_->phi_sigma_ = std::stod(value) * factor; p->tu_->phi_sigma_data_driven_ = std::stod(value) * factor; return;}

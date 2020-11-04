@@ -339,7 +339,7 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   std::stringstream ss;
-
+  
   ierr = tuMSGwarn(" Beginning Reaction/Diffusion Inversion."); CHKERRQ(ierr);
   if (!warmstart_p_ && app_settings_->path_->data_t0_.empty()) {
     ss << " Error: c(0) needs to be set, read in p and Gaussians. Exiting.";
@@ -353,6 +353,10 @@ PetscErrorCode InverseReactionDiffusionSolver::run() {
   ScalarType *x_ptr;  // TODO(K): if read in vector has nonzero rho/kappa values, take those
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   x_ptr[0] = params_->tu_->k_;
+  
+  if (params_->get_nk() == 2) {
+  x_ptr[1] = params_->tu_->kf_;
+  }
   x_ptr[params_->get_nk()] = params_->tu_->rho_;
   ierr = VecRestoreArray (p_rec_, &x_ptr); CHKERRQ (ierr);
 
@@ -652,8 +656,8 @@ PetscErrorCode InverseMassEffectSolver::finalize() {
   if (procid == 0) {
     std::ofstream opfile;
     opfile.open(params_->tu_->writepath_ + "reconstruction_info.dat");
-    opfile << "rho k gamma c1_rel c0_rel \n";
-    opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << params_->tu_->forcing_factor_ << " " << error_norm << " " << error_norm_0 << std::endl;
+    opfile << "rho k kf gamma c1_rel c0_rel \n";
+    opfile << params_->tu_->rho_ << " " << params_->tu_->k_ << " " << params_->tu_->kf_ << " "<< params_->tu_->forcing_factor_ << " " << error_norm << " " << error_norm_0 << std::endl;
     opfile.flush();
     opfile.close();
   }

@@ -224,7 +224,7 @@ PetscErrorCode TILOptimizer::solve() {
   ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ (ierr);
   PetscReal  k1, k2, k3;
   k1 = ctx_->params_->tu_->k_;
-  k2 = (nk > 1) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_gm_wm_ratio_  : 0;
+  k2 = (nk > 1) ? ctx_->params_->tu_->kf_ : 0;
   k3 = (nk > 2) ? ctx_->params_->tu_->k_   * ctx_->params_->tu_->k_glm_wm_ratio_ : 0;
   ierr = ctx_->tumor_->k_->updateIsotropicCoefficients (k1, k2, k3, ctx_->tumor_->mat_prop_, ctx_->params_); CHKERRQ (ierr);
   ierr = tuMSGstd ("");                                                     CHKERRQ (ierr);
@@ -256,13 +256,13 @@ PetscErrorCode TILOptimizer::setVariableBounds() {
   if (ctx_->params_->opt_->diffusivity_inversion_) {
     ierr = VecGetArray (upper_bound, &ptr); CHKERRQ (ierr);
     ptr[ctx_->params_->tu_->np_] = ctx_->params_->opt_->k_ub_;
-    if (ctx_->params_->tu_->nk_ > 1) ptr[ctx_->params_->tu_->np_ + 1] = ctx_->params_->opt_->k_ub_;
+    if (ctx_->params_->tu_->nk_ > 1) ptr[ctx_->params_->tu_->np_ + 1] = ctx_->params_->opt_->kf_ub_;
     if (ctx_->params_->tu_->nk_ > 2) ptr[ctx_->params_->tu_->np_ + 2] = ctx_->params_->opt_->k_ub_;
     ierr = VecRestoreArray (upper_bound, &ptr); CHKERRQ (ierr);
 
     ierr = VecGetArray (lower_bound, &ptr); CHKERRQ (ierr);
     ptr[ctx_->params_->tu_->np_] = ctx_->params_->opt_->k_lb_;
-    if (ctx_->params_->tu_->nk_ > 1) ptr[ctx_->params_->tu_->np_ + 1] = ctx_->params_->opt_->k_lb_;
+    if (ctx_->params_->tu_->nk_ > 1) ptr[ctx_->params_->tu_->np_ + 1] = ctx_->params_->opt_->kf_lb_;
     if (ctx_->params_->tu_->nk_ > 2) ptr[ctx_->params_->tu_->np_ + 2] = ctx_->params_->opt_->k_lb_;
     ierr = VecRestoreArray (lower_bound, &ptr); CHKERRQ (ierr);
   }

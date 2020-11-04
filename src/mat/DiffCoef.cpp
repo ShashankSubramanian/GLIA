@@ -1,7 +1,7 @@
 #include "DiffCoef.h"
 
 DiffCoef::DiffCoef(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops)
-    : spec_ops_(spec_ops), k_scale_(1E-2), k_gm_wm_ratio_(1.0 / 5.0), k_glm_wm_ratio_(3.0 / 5.0), smooth_flag_(0), filter_avg_(0.0) {
+    : spec_ops_(spec_ops), k_scale_(1), kf_scale_(1), k_gm_wm_ratio_(1.0 / 5.0), k_glm_wm_ratio_(3.0 / 5.0), smooth_flag_(0), filter_avg_(0.0) {
   PetscErrorCode ierr;
   ierr = VecCreate(PETSC_COMM_WORLD, &kxx_);
   ierr = VecSetSizes(kxx_, params->grid_->nl_, params->grid_->ng_);
@@ -66,11 +66,12 @@ PetscErrorCode DiffCoef::updateIsotropicCoefficients(ScalarType k1, ScalarType k
   /*       k_3 = dk_dm_glm = k_scale * k_glm_wm_ratio_;       GLM             */
   // compute new ratios
   k_scale_ = k1;
-  k_gm_wm_ratio_ = (params->tu_->nk_ == 1) ? params->tu_->k_gm_wm_ratio_ : k2 / k1;    // if we want to invert for just one parameter (a.k.a diffusivity in WM), then
+  kf_scale_ = k2;
+  k_gm_wm_ratio_ = (params->tu_->nk_ != 3) ? params->tu_->k_gm_wm_ratio_ : k2 / k1;    // if we want to invert for just one parameter (a.k.a diffusivity in WM), then
                                                                                        // provide user with option to control the diffusivity in others from params
-  k_glm_wm_ratio_ = (params->tu_->nk_ == 1) ? params->tu_->k_glm_wm_ratio_ : k3 / k1;  // glm is always zero. TODO:  take it out in new iterations of the solver
+  k_glm_wm_ratio_ = (params->tu_->nk_ != 3) ? params->tu_->k_glm_wm_ratio_ : k3 / k1;  // glm is always zero. TODO:  take it out in new iterations of the solver
   // and set the values
-  ierr = setValues(k_scale_, params->tu_->kf_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, params);
+  ierr = setValues(k_scale_, kf_scale_, k_gm_wm_ratio_, k_glm_wm_ratio_, mat_prop, params);
   PetscFunctionReturn(ierr);
 }
 
@@ -78,12 +79,13 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   PetscFunctionBegin;
   PetscErrorCode ierr;
   k_scale_ = k_scale;
+  kf_scale_ = kf_scale;
   k_gm_wm_ratio_ = k_gm_wm_ratio;
   k_glm_wm_ratio_ = k_glm_wm_ratio;
   params->tu_->k_gm_wm_ratio_ = k_gm_wm_ratio_;  // update values in params
   params->tu_->k_glm_wm_ratio_ = k_glm_wm_ratio_;
   params->tu_->k_ = k_scale_;
-
+  params->tu_->kf_ = kf_scale_;
   ScalarType dk_dm_gm = k_scale * k_gm_wm_ratio_;    // GM
   ScalarType dk_dm_wm = k_scale;                     // WM
   ScalarType dk_dm_glm = k_scale * k_glm_wm_ratio_;  // GLM
@@ -102,7 +104,7 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   
   ierr = VecCopy(kxx_, kyy_); CHKERRQ(ierr);
   ierr = VecCopy(kxx_, kzz_); CHKERRQ(ierr);
-  ScalarType alpha = params->tu_->kf_ - params->tu_->k_;
+  ScalarType alpha = params->tu_->kf_;
   /*
   ierr = VecAXPY(kxx_, alpha, mat_prop->kfxx_); CHKERRQ(ierr);
   ierr = VecAXPY(kxy_, alpha, mat_prop->kfxy_); CHKERRQ(ierr);
@@ -173,6 +175,9 @@ PetscErrorCode DiffCoef::setValues(ScalarType k_scale, ScalarType kf_scale, Scal
   ierr = dataOut(kxy_, params, "kxy.nc"); CHKERRQ(ierr);    
   ierr = dataOut(kxz_, params, "kxz.nc"); CHKERRQ(ierr);    
   ierr = dataOut(kyz_, params, "kyz.nc"); CHKERRQ(ierr);    
+  ierr = dataOut(kxx_, params, "kxx.nc"); CHKERRQ(ierr);    
+  ierr = dataOut(kyy_, params, "kyy.nc"); CHKERRQ(ierr);    
+  ierr = dataOut(kzz_, params, "kzz.nc"); CHKERRQ(ierr);    
   
   // Average diff coeff values for preconditioner for diffusion solve
   ierr = VecSum(kxx_, &kxx_avg_); CHKERRQ(ierr);
@@ -387,6 +392,7 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   XYZ[0] = 1;
   XYZ[1] = 1;
   XYZ[2] = 1;
+  std::cout <<"Using compute_dkdm in SpecOperator"<<std::endl;
   // clear work fields
   for (int i = 1; i < 7; i++) {
     ierr = VecSet(temp_[i], 0); CHKERRQ(ierr);
@@ -405,6 +411,7 @@ PetscErrorCode DiffCoef::compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4
   ScalarType dk_dm_gm = k_scale_ * k_gm_wm_ratio_;    // GM
   ScalarType dk_dm_wm = k_scale_;                     // WM
   ScalarType dk_dm_glm = k_scale_ * k_glm_wm_ratio_;  // GLM
+  
   // if ratios <= 0, only diffuse in white matter
   dk_dm_gm = (dk_dm_gm <= 0) ? 0.0 : dk_dm_gm;
   dk_dm_glm = (dk_dm_glm <= 0) ? 0.0 : dk_dm_glm;

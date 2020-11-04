@@ -74,6 +74,7 @@ PetscErrorCode DerivativeOperatorsRDOnlyFD::evaluateGradient (Vec dJ, Vec x, std
   ierr = VecGetSize (x, &sz); CHKERRQ (ierr);
   ierr = VecGetArray (dJ, &dj_ptr); CHKERRQ (ierr);
   std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+  std::stringstream s;
   //std::array<ScalarType, 3> characteristic_scale = {scale_kap * 1, scale_rho * 1, 1};
   #ifdef SINGLE
   ScalarType small = 3.45266983e-04F;
@@ -131,6 +132,7 @@ PetscErrorCode DerivativeOperatorsRDOnlyFD::evaluateObjectiveAndGradient (PetscR
   ierr = VecGetArray (dJ, &dj_ptr); CHKERRQ (ierr);
 
   ScalarType scale = 1;
+  // std::array<ScalarType, 3> characteristic_scale = {params_->opt_->k_scale_, params_->opt_->kf_scale_, params_->opt_->rho_scale_};
   std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
   //std::array<ScalarType, 3> characteristic_scale = {scale_kap * 1, scale_rho * 1, 1};
   #ifdef SINGLE

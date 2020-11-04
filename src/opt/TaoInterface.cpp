@@ -326,7 +326,7 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   ierr = tuMSGwarn (s.str()); CHKERRQ(ierr); s.str ("");s.clear ();
 
   // print the model coefficients
-  ScalarType r, k, g;
+  ScalarType r, k, g, kf;
   ScalarType *x_ptr;
   ierr = VecGetArray(tao_x, &x_ptr); CHKERRQ(ierr);
   if (itctx->params_->tu_->model_ == 4) {
@@ -337,10 +337,19 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
                                                         << std::scientific << std::setprecision(8) << k << ", "
                                                         << std::scientific << std::setprecision(8) << g << ")";
   } else {
+    //r = (itctx->params_->opt_->flag_reaction_inv_ == true) ? x_ptr[itctx->params_->get_nk()] : itctx->params_->tu_->rho_;
+    //k = (itctx->params_->opt_->diffusivity_inversion_ == true) ? x_ptr[itctx->params_->tu_->np_] : itctx->params_->tu_->k_;
     r = (itctx->params_->opt_->flag_reaction_inv_ == true) ? x_ptr[itctx->params_->get_nk()] : itctx->params_->tu_->rho_;
-    k = (itctx->params_->opt_->diffusivity_inversion_ == true) ? x_ptr[itctx->params_->tu_->np_] : itctx->params_->tu_->k_;
+    k = (itctx->params_->opt_->diffusivity_inversion_ == true) ? x_ptr[0] : itctx->params_->tu_->k_;
     g = 0;
+    if (itctx->params_->get_nk() == 1){
+    
     s << "  Scalar parameters: (rho, kappa) = (" << r << ", " <<  k << ")";
+    } else if (itctx->params_->get_nk() == 2) {
+    kf =  x_ptr[1]; 
+    s << " Thiss is runing in the TaoInterface "; 
+    s << "  Scalar parameters: (rho, kappa, kappa_f) = (" << r << ", " <<  k << ", " << kf << ")"; 
+    }
   }
   ierr = tuMSGwarn (s.str()); CHKERRQ(ierr); s.str ("");s.clear ();
   ierr = VecRestoreArray(tao_x, &x_ptr); CHKERRQ(ierr);
