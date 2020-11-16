@@ -969,7 +969,7 @@ PetscErrorCode Phi::setGaussians(Vec data) {
   ScalarType free = static_cast<ScalarType>(free_mem) / 1048576.0;
   ScalarType size_of_vector_256 = 68.;
   // insufficient memory for even restricted subspace; +1 because there is a temp vector created in TILOptimzer (might have to check if there are more like this)
-  if (std::floor(free / size_of_vector_256) <= num_phi_store + 1) {
+  if (std::floor(free / size_of_vector_256) <= num_phi_store + 3) {
     params_->tu_->force_phi_compute_ = true;
     ss << "Insufficient memory for gaussians on restricted subspace = " << std::floor(free / size_of_vector_256) << " <= " << num_phi_store + 1 << " ; all computations performed on the fly";
     ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
