@@ -353,7 +353,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
         p['newton_solver']      = "QN"
         p['line_search']        = ls_type[ii]
         p['lbfgs_vectors'] 		= 50
-
+        p['store_adjoint']    = 1           # 1: store adjoint time history
         p['gaussian_volume_fraction'] = gvf[ii]
         p['threshold_data_driven']    = data_thresh[ii]
         p['sigma_factor']             = sigma_fac[ii]
