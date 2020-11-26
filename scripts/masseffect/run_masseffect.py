@@ -250,8 +250,15 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
     ### transport
     at = at_list[ngpu*idx+i]
     bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_c0Recon_aff2jakob.nii.gz", pat + "_c0Recon", bash_file, i, r = r)    
-    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", pat + "_labels", bash_file, i, r = r)    
 
+  with open(bash_file, "a") as f:
+    f.write("\n\nwait\n\n")
+  
+  for i in range(0, n_local):
+    ### transport
+    at = at_list[ngpu*idx+i]
+    bash_file = transport(claire_dir, reg+at, data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", pat + "_labels", bash_file, i, r = r)    
+  
   with open(bash_file, "a") as f:
     f.write("\n\nwait\n\n")
   
