@@ -137,7 +137,6 @@ PetscErrorCode PdeOperatorsRD::preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mr
   PetscFunctionReturn (ierr);
 }
 
-
 PetscErrorCode PdeOperatorsRD::reaction(int linearized, int iter) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;

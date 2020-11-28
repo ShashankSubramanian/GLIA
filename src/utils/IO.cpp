@@ -114,6 +114,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "dt_inv") {p->tu_->dt_ = std::stod(value); return;}
   if (name == "k_gm_wm") {p->tu_->k_gm_wm_ratio_ = std::stod(value); return;}
   if (name == "r_gm_wm") {p->tu_->r_gm_wm_ratio_ = std::stod(value); return;}
+  if (name == "r_gm_wm") {p->tu_->r_gm_wm_ratio_ = std::stod(value); return;}
   // ### data
   if (name == "smoothing_factor") {p->tu_->smoothing_factor_ = std::stod(value); return;}
   if (name == "smoothing_factor_data") {p->tu_->smoothing_factor_data_ = std::stod(value); return;}
@@ -251,6 +252,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "store_phi") {p->tu_->phi_store_ = std::stoi(value) > 0; return;}
   if (name == "store_adjoint") {p->tu_->adjoint_store_ = std::stoi(value) > 0; return;}
   if (name == "write_output") {p->tu_->write_output_ = std::stoi(value) > 0; return;}
+  // misc
+  if (name == "feature_compute") {p->tu_->feature_compute_ = std::stoi(value) > 0; return;}
 }
 
 // Error handling for IO

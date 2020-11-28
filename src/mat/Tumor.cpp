@@ -183,8 +183,8 @@ PetscErrorCode Tumor::computeSegmentation() {
 
   ierr = VecSet(seg_, 0); CHKERRQ(ierr);
   // compute seg_ of gm, wm, vt, bg, tumor
-  std::vector<ScalarType> v;
-  std::vector<ScalarType>::iterator seg_component;
+//  std::vector<ScalarType> v;
+//  std::vector<ScalarType>::iterator seg_component;
   ScalarType *bg_ptr, *gm_ptr, *wm_ptr, *vt_ptr, *c_ptr, *csf_ptr, *seg_ptr, *p_ptr, *n_ptr, *ed_ptr;
   ierr = vecGetArray(mat_prop_->bg_, &bg_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(mat_prop_->gm_, &gm_ptr); CHKERRQ(ierr);
@@ -224,8 +224,8 @@ PetscErrorCode Tumor::computeSegmentation() {
     ct = 0;
     w = wm_ptr[i] * (1 - c_ptr[i]);
     g = gm_ptr[i] * (1 - c_ptr[i]);
-    v = csf_ptr[i] * (1 - c_ptr[i]);
-    c = glm_ptr[i] * (1 - c_ptr[i]);
+    v = vt_ptr[i] * (1 - c_ptr[i]);
+    c = csf_ptr[i] * (1 - c_ptr[i]);
     if (c_ptr[i] > max) {max = c_ptr[i]; ct = 1;}
     if (w > max) {max = w; ct = 6;}
     if (g > max) {max = g; ct = 5;}

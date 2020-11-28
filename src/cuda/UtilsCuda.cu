@@ -150,6 +150,19 @@ void vecMaxCuda (ScalarType *x, int *loc, ScalarType *val, int sz) {
 	cudaDeviceSynchronize();
 }
 
+void vecSortCuda(ScalarType *f, int64_t sz) {
+	// use thrust for sort
+	try {
+		thrust::device_ptr<ScalarType> f_thrust;
+		f_thrust = thrust::device_pointer_cast (f);
+		thrust::sort (f_thrust, f_thrust + sz);
+	} catch (thrust::system_error &e) {
+		std::cerr << "Thrust sorting error: " << e.what() << std::endl;
+	}
+
+	cudaDeviceSynchronize();
+}
+
 void vecSumCuda(ScalarType *f, ScalarType *sum, int64_t sz) {
 	// use thrust for reduction
 	try {

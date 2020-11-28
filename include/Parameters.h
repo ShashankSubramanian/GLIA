@@ -237,6 +237,7 @@ public:
   , readpath_()
   , ext_(".nc")
   , force_phi_compute_ (false)             // forces the computation of gaussians on the fly because of insufficient memory on the device 
+  , feature_compute_ (false)      // computes temporal biophysical features in the forward solver
   {
     time_horizon_ = nt_ * dt_;
     // SRI-atlas
@@ -284,7 +285,6 @@ public:
   ScalarType r_glm_wm_ratio_;
 
   // mass effect
-  ScalarType invasive_threshold_;
   ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
   ScalarType nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
   ScalarType screen_low_, screen_high_;
@@ -295,6 +295,7 @@ public:
   int num_species_;
   ScalarType ox_source_, ox_consumption_;
   ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
+  ScalarType invasive_threshold_;
 
   // initial condition (inversion)
   int sparsity_level_;            // should this go to opt?
@@ -349,6 +350,7 @@ public:
   std::fstream outfile_sol_;
   std::fstream outfile_grad_;
   std::fstream outfile_glob_grad_;
+  bool feature_compute_; // computes temporal biophysical features 
 
   // io paths
   std::string writepath_;

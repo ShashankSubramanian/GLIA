@@ -525,21 +525,40 @@ PetscErrorCode setupVec(Vec x, int type) {
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode vecSum(Vec x, PetscScalar *val) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+#ifdef CUDA
+    ScalarType *x_ptr;
+    int sz;
+    ierr = vecGetArray (x, &x_ptr); CHKERRQ (ierr);
+    ierr = VecGetSize (x, &sz); CHKERRQ (ierr);
+    vecSumCuda (x_ptr, val, sz);
+    ierr = vecRestoreArray (x, &x_ptr); CHKERRQ (ierr);
+#else
+  ierr = VecSum(x, val); CHKERRQ(ierr);
+#endif
+
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode vecMax(Vec x, PetscInt *p, PetscReal *val) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  // TODO: thrust max fails in frontera rtx queue; hence commented: has to be fixed
-  // #ifdef CUDA
-  //   ScalarType *x_ptr;
-  //   int sz;
-  //   ierr = vecGetArray (x, &x_ptr);       CHKERRQ (ierr);
-  //   ierr = VecGetSize (x, &sz);           CHKERRQ (ierr);
-  //   vecMaxCuda (x_ptr, p, val, sz);
-  //   ierr = vecRestoreArray (x, &x_ptr);   CHKERRQ (ierr);
-  // #else
+  // TODO: thrust max fails in frontera rtx queue somtimes; not sure why. revist if it happens again
+  // cause NaNs to appear after vecMax
+#ifdef CUDA
+    ScalarType *x_ptr;
+    int sz;
+    ierr = vecGetArray (x, &x_ptr); CHKERRQ (ierr);
+    ierr = VecGetSize (x, &sz); CHKERRQ (ierr);
+    vecMaxCuda (x_ptr, p, val, sz);
+    ierr = vecRestoreArray (x, &x_ptr); CHKERRQ (ierr);
+#else
   ierr = VecMax(x, p, val); CHKERRQ(ierr);
-  // #endif
+#endif
 
   PetscFunctionReturn(ierr);
 }
@@ -678,3 +697,51 @@ PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice) {
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode computeVolume(Vec x, ScalarType measure, ScalarType *vol, ScalarType *sum) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ierr = vecSum(x, sum); CHKERRQ(ierr);
+  (*vol) = (*sum) * measure;
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode vecSort (Vec xin, Vec xout, int64_t sz) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ierr = VecCopy(xin, xout); CHKERRQ(ierr);
+  ScalarType *x_ptr, *y_ptr;
+  ierr = vecGetArray(xout, &y_ptr); CHKERRQ(ierr);
+#ifdef CUDA
+  vecSortCuda(y_ptr, sz); 
+#else
+  // TODO implement parallel merge sort
+  // return -1 for now
+  ierr = VecSet(xout, -1); CHKERRQ(ierr);
+#endif
+  ierr = vecRestoreArray(xout, &y_ptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode computeQuantile(Vec x, Vec temp, ScalarType *val, ScalarType quantile) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  PetscInt sz;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  ScalarType *x_ptr;
+  ierr = vecSort(x, temp, sz); CHKERRQ(ierr);
+  ierr = vecGetArray(temp, &x_ptr); CHKERRQ(ierr);
+  int index = std::floor(quantile * sz);
+#ifdef CUDA
+  cudaMemcpy(val, &x_ptr[index], sizeof(ScalarType), cudaMemcpyDeviceToHost);
+#else
+  (*val) = x_ptr[index];
+#endif
+  ierr = vecRestoreArray(temp, &x_ptr); CHKERRQ(ierr); 
+
+  PetscFunctionReturn(ierr);
+}

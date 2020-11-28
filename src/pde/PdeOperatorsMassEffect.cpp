@@ -112,6 +112,100 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients(Vec seg, st
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode PdeOperatorsMassEffect::computeTumorQuants(std::shared_ptr<Tumor> tumor, Vec dcdt, Vec gradc) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  std::array<double, 7> t = {0};
+  // gradc
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
+
+  // gradc mag 
+  Vec c = tumor->c_t_;
+  std::shared_ptr<VecField> work_field = tumor->work_field_;
+  ierr = spec_ops_->computeGradient(work_field->x_, work_field->y_, work_field->z_, c, &XYZ, t.data());
+  ierr = work_field->computeMagnitude(gradc); CHKERRQ(ierr);
+
+  // dcdt = Rc + Dc - Ac
+  ierr = VecCopy(c, dcdt); CHKERRQ(ierr);
+  // dcdt = Dc
+  ierr = tumor_->k_->applyD(dcdt, dcdt); CHKERRQ(ierr); // because applyD uses temp vectors always use pdeop's work for temp here
+  ierr = VecPointwiseMult(work_[2], c, c); CHKERRQ(ierr);
+  ierr = VecAYPX(work_[2], -1.0, c); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(work_[2], work_[2], tumor_->rho_->rho_vec_); CHKERRQ(ierr);
+  // work[2] is Rc
+  ierr = VecAXPY(dcdt, 1.0, work_[2]); CHKERRQ(ierr);
+  // dcdt = Rc + Dc here; add -Ac = -div (cv)
+  // compute cv
+  ierr = VecPointwiseMult(work_field->x_, c, tumor->velocity_->x_); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(work_field->y_, c, tumor->velocity_->y_); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(work_field->z_, c, tumor->velocity_->z_); CHKERRQ(ierr);
+  // compute div(cv)
+  ierr = spec_ops_->computeDivergence(work_[2], work_field->x_, work_field->y_, work_field->z_, t.data());
+  ierr = VecAXPY(dcdt, -1.0, work_[2]); CHKERRQ(ierr);
+ 
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode PdeOperatorsMassEffect::writeStats(Vec x, std::stringstream &feature_stream) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType vol, sum, mean, std, quart;
+  // compute \integral (x)
+  ierr = computeVolume(x, params_->grid_->lebesgue_measure_, &vol, &sum); CHKERRQ(ierr);
+  feature_stream << vol << ",";
+  // compute std in x
+  mean = sum / params_->grid_->ng_;
+  ierr = VecPointwiseMult(work_[2], x, x); CHKERRQ(ierr);
+  ierr = vecSum(work_[2], &sum); CHKERRQ(ierr);
+  sum /= params_->grid_->ng_;
+  std = std::sqrt(sum - mean * mean); // sqrt(E(x^2) - E(x)^2)
+  feature_stream << std << ",";
+  // compute 75% quantile
+  ierr = computeQuantile(x, work_[2], &quart, 0.75); CHKERRQ(ierr);
+  feature_stream << quart << ",";
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstream &feature_stream, int time_step) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e("tumor-solve-feature-compute");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
+
+  std::vector<std::string> feature_list{"c","dcdt","gradc","u","trT","tau","jac","vel"};
+
+  if (time_step == 0) {
+    feature_stream << "timestep,";
+    for (auto feature : feature_list) {
+      feature_stream << "vol_" << feature << "," << "std_" << feature << "," << "quart_" << feature << ",";
+    }
+  }
+
+  feature_stream << "\n" << time_step << ",";
+  // concentration-based features
+  Vec c = tumor_->c_t_;
+  Vec dcdt = work_[0];
+  Vec gradc = work_[1];
+  ierr = computeTumorQuants(tumor_, dcdt, gradc); CHKERRQ(ierr);
+  ierr = writeStats(c, feature_stream); CHKERRQ(ierr);
+  ierr = writeStats(dcdt, feature_stream); CHKERRQ(ierr);
+  ierr = writeStats(gradc, feature_stream); CHKERRQ(ierr);
+
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
@@ -154,6 +248,9 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
 
   ScalarType max_cfl = 14;
 
+  std::ofstream feature_file;
+  std::stringstream feature_stream;
+      
   for (int i = 0; i < nt + 1; i++) {
     if (params_->tu_->verbosity_ > 1) {
       s << "Time step = " << i;
@@ -161,7 +258,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
       s.str("");
       s.clear();
     }
-
+    
     // compute CFL
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
     ierr = tumor_->velocity_->computeMagnitude(magnitude_);
@@ -182,7 +279,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && params_->tu_->verbosity_ > 1 && i % 5 == 0) || write_output_and_break) {
+    if (((!params_->tu_->feature_compute_) && (params_->tu_->write_output_ && params_->tu_->verbosity_ > 1 && i % 5 == 0)) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());
@@ -258,6 +355,10 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     ierr = diff_solver_->precFactor(); CHKERRQ(ierr);
 
+    if (params_->tu_->feature_compute_) {
+      // compute biophysical temporal features
+      ierr = computeBiophysicalFeatures(feature_stream, i);
+    }
     // Advection of tumor and healthy tissue
     // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
     adv_solver_->trajectoryIsComputed_ = false;
@@ -378,6 +479,14 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
       dataOut(tumor_->mat_prop_->mri_, params_, ss.str().c_str());
       ss.str(std::string());
       ss.clear();
+    }
+  }
+
+
+  if (params_->tu_->feature_compute_) {
+    if (procid == 0) {
+      feature_file.open(params_->tu_->writepath_ + "biophysical_features.csv", std::ios_base::out);
+      feature_file.close();
     }
   }
 

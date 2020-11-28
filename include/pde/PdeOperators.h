@@ -37,6 +37,7 @@ class PdeOperators {
   virtual PetscErrorCode resizeTimeHistory(std::shared_ptr<Parameters> params) = 0;
   virtual PetscErrorCode reset(std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor = {}) = 0;
   virtual PetscErrorCode getModelSpecificVector(Vec *x) { PetscFunctionReturn(0); }
+  virtual PetscErrorCode computeBiophysicalFeatures(std::stringstream &) {PetscFunctionReturn(0);}
 
   virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {PetscFunctionReturn(0);};
 
@@ -87,6 +88,14 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
     for (int i = 0; i < 3; i++) {
       temp_[i] = tumor->work_[11 - i];
     }
+    work_ = new Vec[num_work_vecs_];
+    for (int i = 0; i < num_work_vecs_; i++) work_[i] = nullptr;
+    if (params->tu_->feature_compute_) {
+      for (int i = 0; i < num_work_vecs_; i++) {
+        VecDuplicate(tumor->c_t_, &work_[i]);
+        VecSet(work_[i], 0);
+      }
+    }
   }
 
   std::shared_ptr<AdvectionSolver> adv_solver_;
@@ -94,6 +103,9 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
   std::shared_ptr<VecField> displacement_old_;
 
   Vec *temp_;
+  const int num_work_vecs_ = 3;
+  Vec *work_; // only for tumor feature compute stats; else nullptrs
+  std::shared_ptr<VecField> work_field_;
   Vec magnitude_;
 
   virtual PetscErrorCode solveState(int linearized);
@@ -104,11 +116,22 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
     *x = magnitude_;
     PetscFunctionReturn(0);
   }
+  // stats member functions
+  // @brief these functions are helpers to compute biophysical features for this forward model
+  PetscErrorCode computeBiophysicalFeatures(std::stringstream &feature_stream, int time_step);
+  PetscErrorCode writeStats(Vec x, std::stringstream &feature_stream);
+  PetscErrorCode computeTumorQuants(std::shared_ptr<Tumor> tumor, Vec dcdt, Vec gradc);
 
   virtual ~PdeOperatorsMassEffect() {
     PetscErrorCode ierr = 0;
     ierr = VecDestroy(&magnitude_);
     delete[] temp_;
+    for (int i = 0; i < num_work_vecs_; i++) {
+      if (work_[i] != nullptr) {
+        ierr = VecDestroy(&work_[i]);
+      }
+    }
+    delete[] work_;
   }
 };
 

@@ -124,6 +124,7 @@ inline int cufftAssert (cufftResult code, const char *file, int line, bool abort
 void initCudaConstants (int *isize, int *osize, int *istart, int *ostart, int *n);
 void vecMaxCuda (ScalarType *x, int *loc, ScalarType *val, int sz);
 void vecSumCuda(ScalarType *f, ScalarType *sum, int64_t sz);
+void vecSortCuda(ScalarType *f, int64_t sz);
 void computeMagnitudeCuda (ScalarType *mag_ptr, ScalarType *x_ptr, ScalarType *y_ptr, ScalarType *z_ptr, int64_t sz);
 void hadamardComplexProductCuda (CudaComplexType *y, CudaComplexType *x, int *sz);
 void hadamardComplexProductCuda (CudaComplexType *y, ScalarType *x, int *sz);

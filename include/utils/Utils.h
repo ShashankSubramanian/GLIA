@@ -153,6 +153,7 @@ PetscErrorCode vecRestoreArray(Vec x, ScalarType **x_ptr);
 
 /* custom vec routines */
 PetscErrorCode vecMax(Vec x, PetscInt *p, PetscReal *val);
+PetscErrorCode vecSum(Vec x, PetscScalar *val);
 PetscErrorCode vecSign(Vec x);                            // signum of petsc vector
 PetscErrorCode vecSparsity(Vec x, ScalarType &sparsity);  // Hoyer measure for sparsity of vector
 PetscErrorCode setupVec(Vec x, int type = MPIVEC);
@@ -181,6 +182,8 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
 PetscErrorCode createEdemaBasedObservationMask(Vec mask, Vec tc, Vec ed, double lambda, int nl, std::vector<int> &labels);
 
 PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice);
+PetscErrorCode computeVolume(Vec x, ScalarType measure, ScalarType *vol, ScalarType *sum);
+PetscErrorCode computeQuantile(Vec x, Vec temp, ScalarType *val, ScalarType quantile = 0.5);
 
 
 #endif  // end _UTILS_H
