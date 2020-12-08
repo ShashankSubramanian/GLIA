@@ -133,4 +133,5 @@ void clipVectorCuda (ScalarType *x_ptr, int64_t sz);
 void clipVectorAboveCuda (ScalarType *x_ptr, int64_t sz);
 void copyDoubleToFloatCuda (float *dst, double *src, int64_t sz);
 void copyFloatToDoubleCuda (double *dst, float *src, int64_t sz);
+void computeIndicatorFunctionCuda(ScalarType *i_ptr, ScalarType *x_ptr, ScalarType x_star, ScalarType threshold, int64_t size);
 #endif

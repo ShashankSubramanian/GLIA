@@ -201,10 +201,31 @@ __global__ void copyFloatToDouble(double *dst, float *src, int64_t sz) {
         }
 }
 
+__global__ void computeIndicatorFunction(ScalarType *i_ptr, ScalarType *x_ptr, ScalarType x_star, ScalarType threshold, int64_t sz) {
+
+  int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+  if (i < sz) {
+    if (abs(x_ptr[i] - x_star) < threshold) {
+      i_ptr[i] = 1;
+    } else {
+      i_ptr[i] = 0;
+    }
+  }
+}
+  
 void copyFloatToDoubleCuda (double *dst, float *src, int64_t sz) {
     int n_th = N_THREADS;
 
     copyFloatToDouble <<<  (sz + n_th - 1) / n_th, n_th >>> (dst, src, sz);
+
+    cudaDeviceSynchronize();
+    cudaCheckKernelError();
+}
+
+void computeIndicatorFunctionCuda(ScalarType *i_ptr, ScalarType *x_ptr, ScalarType x_star, ScalarType threshold, int64_t sz) {
+    int n_th = N_THREADS;
+
+    computeIndicatorFunction <<<  (sz + n_th - 1) / n_th, n_th >>> (i_ptr, x_ptr, x_star, threshold, sz);
 
     cudaDeviceSynchronize();
     cudaCheckKernelError();

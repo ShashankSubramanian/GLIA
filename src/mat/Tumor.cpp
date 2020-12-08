@@ -280,11 +280,15 @@ PetscErrorCode Tumor::getTCRecon(Vec x) {
   PetscErrorCode ierr = 0;
 
   ScalarType *x_ptr, *seg_ptr;
-  ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
-  ierr = VecGetArray(seg_, &seg_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(seg_, &seg_ptr); CHKERRQ(ierr);
+#ifdef CUDA
+  getTCReconCuda(seg_ptr, x_ptr, params_->grid_->nl_);
+#else
   for (int i = 0; i < params_->grid_->nl_; i++) x_ptr[i] = (seg_ptr[i] == 1) ? 1 : 0;
-  ierr = VecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
-  ierr = VecRestoreArray(seg_, &seg_ptr); CHKERRQ(ierr);
+#endif
+  ierr = vecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(seg_, &seg_ptr); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }

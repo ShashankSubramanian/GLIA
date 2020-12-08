@@ -111,6 +111,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['prediction'] = 1                 # enable prediction
     p['pred_times'] = [1.0, 1.2, 1.5]   # times for prediction
     p['dt_pred'] = 0.01                 # time step size for prediction
+    p['feature_compute'] = 0            # enable biophysical feature computation during forward solve
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### synthetic data
     p['syn_flag'] = 1                   # create synthetic data
@@ -262,6 +263,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("prediction=" + str(p['prediction']) + "\n");
         f.write("pred_times=" + str(p['pred_times']) + "\n");
         f.write("dt_pred=" + str(p['dt_pred']) + "\n");
+        f.write("feature_compute=" + str(p['feature_compute']) + "\n");
 
         f.write("\n");
         f.write("### synthetic data" + "\n");

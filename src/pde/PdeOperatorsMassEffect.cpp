@@ -112,7 +112,7 @@ PetscErrorCode PdeOperatorsMassEffect::updateReacAndDiffCoefficients(Vec seg, st
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode PdeOperatorsMassEffect::computeTumorQuants(std::shared_ptr<Tumor> tumor, Vec dcdt, Vec gradc) {
+PetscErrorCode PdeOperatorsMassEffect::computeTumorQuants(std::shared_ptr<Tumor> tumor, Vec dcdt, Vec gradc, ScalarType *c_star) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
@@ -146,6 +146,22 @@ PetscErrorCode PdeOperatorsMassEffect::computeTumorQuants(std::shared_ptr<Tumor>
   // compute div(cv)
   ierr = spec_ops_->computeDivergence(work_[2], work_field->x_, work_field->y_, work_field->z_, t.data());
   ierr = VecAXPY(dcdt, -1.0, work_[2]); CHKERRQ(ierr);
+
+  // compute location of max gradient
+  ierr = VecCopy(gradc, work_[2]); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(work_[2], gradc, tc_atlas_); CHKERRQ(ierr);
+  ierr = VecAYPX(work_[2], -1.0, gradc); CHKERRQ(ierr); //work is now gradc(1-tc)
+  PetscInt max_loc;
+  ScalarType max_gradc;
+  ierr = VecMax(work_[2], &max_loc, &max_gradc); CHKERRQ(ierr);
+  ScalarType *c_ptr;
+  ierr = vecGetArray(c, &c_ptr); CHKERRQ(ierr);
+#ifdef CUDA
+  cudaMemcpy(c_star, &c_ptr[max_loc], sizeof(ScalarType), cudaMemcpyDeviceToHost);
+#else
+  (*c_star) = c_ptr[max_loc];
+#endif
+  ierr = vecRestoreArray(c, &c_ptr); CHKERRQ(ierr);
  
   PetscFunctionReturn(ierr);
 }
@@ -172,31 +188,181 @@ PetscErrorCode PdeOperatorsMassEffect::writeStats(Vec x, std::stringstream &feat
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode PdeOperatorsMassEffect::computeStress(Vec *gradu, Vec jacobian, Vec trace_stress, Vec max_shear) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e("tumor-solve-stress-compute");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
+
+  ScalarType **gradu_ptr = new ScalarType*[9];
+  ScalarType *jac_ptr, *trace_ptr, *max_shear_ptr, *mu_ptr, *lam_ptr;
+
+  CtxElasticity *ctx;
+  ierr = MatShellGetContext(elasticity_solver_->A_, &ctx); CHKERRQ(ierr);
+  Vec mu = ctx->mu_;
+  Vec lam = ctx->lam_;
+
+  for (int i = 0; i < 9; i++) {
+    ierr = VecGetArray(gradu[i], &gradu_ptr[i]); CHKERRQ(ierr);
+  }
+  ierr = VecGetArray(jacobian, &jac_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(trace_stress, &trace_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(max_shear, &max_shear_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(mu, &mu_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(lam, &lam_ptr); CHKERRQ(ierr);
+
+  std::array<ScalarType, 9> F; //deformation gradient
+  std::array<ScalarType, 9> E; //strain tensor
+  std::array<ScalarType, 9> S; //stress tensor
+  
+  /*
+  // use petsc to compute eigenvalues because Eigen has issues with xlc compilers
+  // characteristic polynomial method for CUDA is TODO; need to check numerical stability
+  // setup a ksp object for eigenvalues
+  KSP ksp = nullptr;
+  Mat A = nullptr;
+  Vec rhs = nullptr;
+  Vec sol = nullptr;
+  ierr = setupKSPEigenvalues(&ksp, &A, &rhs, &sol); CHKERRQ(ierr);
+
+  PetscScalar *a = new PetscScalar[9];
+  PetscReal r[3], c[3];
+  const int id[3] = {0,1,2};
+  int size = 3;
+  std::vector<PetscScalar> eigenvalues(3);
+  */
+
+  for (int i = 0; i < params_->grid_->nl_; i++) {
+    for (int j = 0; j < F.size(); j++) F[j] = gradu_ptr[j][i];
+    F[0] += 1; 
+    F[4] += 1;
+    F[8] += 1; // F = I + \gradu
+
+    jac_ptr[i] = computeDeterminant(F);
+    E = computeStrainTensor(F);
+    S = computeStressTensor(E, mu_ptr[i], lam_ptr[i]); 
+    trace_ptr[i] = S[0] + S[4] + S[8]; // trace of stress tensor
+    /*
+    // compute eigenvalues
+    for (int i = 0; i < 9; i++) a[i] = S[i];
+    // set stress tensor into petsc mat object
+    ierr = MatSetValues(A, size, id, size, id, a, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    // eigenvalues into real and complex arrays
+    ierr = KSPComputeEigenvaluesExplicitly(ksp, 3, r, c); CHKERRQ(ierr);
+    for (int i = 0; i < 3; i++) eigenvalues[i] = r[i];
+    std::sort(eigenvalues.begin(), eigenvalues.end());
+    max_shear_ptr[i] = 0.5 * (eigenvalues[2] - eigenvalues[0]);
+    TU_assert(std::accumulate(eigenvalues.begin(), eigenvalues.end(), decltype(eigenvalues)::value_type(0)) == trace_ptr[i], "Sum of eigenvalues not equal to trace");
+    */
+  }
+
+  for (int i = 0; i < 9; i++) {
+    ierr = VecRestoreArray(gradu[i], &gradu_ptr[i]); CHKERRQ(ierr);
+  }
+  ierr = VecRestoreArray(jacobian, &jac_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(trace_stress, &trace_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(max_shear, &max_shear_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(mu, &mu_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(lam, &lam_ptr); CHKERRQ(ierr);
+
+
+  delete[] gradu_ptr;
+  /*
+  delete[] a;
+
+  if (ksp != nullptr) {
+    ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+  }
+  if (A != nullptr) {
+    ierr = MatDestroy(&A); CHKERRQ(ierr);
+  }
+  if (rhs != nullptr) {
+    ierr = VecDestroy(&rhs); CHKERRQ(ierr);
+  }
+  if (sol != nullptr) {
+    ierr = VecDestroy(&sol); CHKERRQ(ierr);
+  }
+  */
+  
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
+}
+  
+
 PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstream &feature_stream, int time_step) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   Event e("tumor-solve-feature-compute");
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime();
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
 
   std::vector<std::string> feature_list{"c","dcdt","gradc","u","trT","tau","jac","vel"};
 
   if (time_step == 0) {
     feature_stream << "timestep,";
     for (auto feature : feature_list) {
-      feature_stream << "vol_" << feature << "," << "std_" << feature << "," << "quart_" << feature << ",";
+      feature_stream << "vol_" << feature << "," << "sa_" << feature << "," << "std_" << feature << "," << "quart_" << feature;
     }
   }
+
+  // compute tc 
+  tc_atlas_ = work_[5];
+  ierr = tumor_->getTCRecon(tc_atlas_); CHKERRQ(ierr);
 
   feature_stream << "\n" << time_step << ",";
   // concentration-based features
   Vec c = tumor_->c_t_;
   Vec dcdt = work_[0];
   Vec gradc = work_[1];
-  ierr = computeTumorQuants(tumor_, dcdt, gradc); CHKERRQ(ierr);
+  ScalarType c_star = 0; // value of c at max gradient 
+  ierr = computeTumorQuants(tumor_, dcdt, gradc, &c_star); CHKERRQ(ierr);
+  std::stringstream s;
+  s << "c(x) at location of max gradient outside TC = " << c_star;
+  ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+  s.str("");
+  s.clear();
+  Vec indicator = work_[4];
+  // compute |c - c_star| < epsilon --> used for surface integrals computed thro' vol integrals
+  ierr = computeIndicatorFunction(indicator, c, c_star); CHKERRQ(ierr);
+
   ierr = writeStats(c, feature_stream); CHKERRQ(ierr);
   ierr = writeStats(dcdt, feature_stream); CHKERRQ(ierr);
   ierr = writeStats(gradc, feature_stream); CHKERRQ(ierr);
+  
+  // displacement-based features
+  // work is done; can be resued
+  ierr = tumor_->displacement_->computeMagnitude(work_[2]); CHKERRQ(ierr); //work is mag of disp
+  ierr = writeStats(work_[2], feature_stream); CHKERRQ(ierr);
+  // stresses
+  // compute gradu 
+  Vec *tumor_work = tumor_->work_; // reuse tumor work here; 12 work vectors
+  ierr = spec_ops_->computeGradient(tumor_work[0], tumor_work[1], tumor_work[2], tumor_->displacement_->x_, &XYZ, t.data());
+  ierr = spec_ops_->computeGradient(tumor_work[3], tumor_work[4], tumor_work[5], tumor_->displacement_->y_, &XYZ, t.data());
+  ierr = spec_ops_->computeGradient(tumor_work[6], tumor_work[7], tumor_work[8], tumor_->displacement_->z_, &XYZ, t.data());
+ 
+  Vec jacobian = work_[0];
+  Vec trace_stress = work_[1];
+  Vec max_shear = work_[2];
+
+  ierr = computeStress(tumor_work, jacobian, trace_stress, max_shear); CHKERRQ(ierr);
+  ierr = writeStats(jacobian, feature_stream); CHKERRQ(ierr);
+  ierr = writeStats(trace_stress, feature_stream); CHKERRQ(ierr);
+  ierr = writeStats(max_shear, feature_stream); CHKERRQ(ierr);
 
   self_exec_time += MPI_Wtime();
   // accumulateTimers (t, t, self_exec_time);
@@ -357,6 +523,10 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
 
     if (params_->tu_->feature_compute_) {
       // compute biophysical temporal features
+      s << "computing biophysical features for time step " << i;
+      ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+      s.str("");
+      s.clear();
       ierr = computeBiophysicalFeatures(feature_stream, i);
     }
     // Advection of tumor and healthy tissue
@@ -486,6 +656,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
   if (params_->tu_->feature_compute_) {
     if (procid == 0) {
       feature_file.open(params_->tu_->writepath_ + "biophysical_features.csv", std::ios_base::out);
+      feature_file << feature_stream.str() << std::endl;
       feature_file.close();
     }
   }

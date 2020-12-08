@@ -589,7 +589,6 @@ PetscErrorCode createEdemaBasedObservationMask(Vec mask, Vec tc, Vec ed, double 
   PetscFunctionReturn(ierr);
 }
 
-
 PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec tu, Vec ed, int nl, std::vector<int> &labels) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
@@ -745,3 +744,122 @@ PetscErrorCode computeQuantile(Vec x, Vec temp, ScalarType *val, ScalarType quan
 
   PetscFunctionReturn(ierr);
 }
+
+ScalarType computeDeterminant(std::array<ScalarType, 9> matrix) {
+  // computes determinant of a 3x3 matrix
+  ScalarType *a = matrix.data();
+  return a[0] * (a[4]*a[8] - a[7]*a[5]) - a[1] * (a[3]*a[8] - a[6]*a[5]) + a[2] * (a[3]*a[7] - a[6]*a[4]);
+}
+
+void matMult(ScalarType **c, ScalarType **a, ScalarType **b, int m, int n, int o) {
+  // multiplies mxn and nxo
+  for (int i = 0; i < m; i++)
+    for (int j = 0; j < o; j++)
+      for (int k = 0; k < n; k++) {
+        c[i][j] += a[i][k] * b[k][j];
+      }
+}
+
+std::array<ScalarType, 9> computeStrainTensor(std::array<ScalarType, 9> F) {
+  // computes the strain tensor given a deformation gradient
+  // E = 0.5* (FTF - I); or 0.5 * (FT + F) - I if high order terms are dropped
+  std::array<ScalarType, 9> E, Ft;
+  ScalarType *e = E.data();
+  ScalarType *f = F.data();
+  ScalarType *ft = Ft.data();
+
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      ft[i*3+j] = f[j*3+i];
+    }
+
+//  matMult(e, ft, f, 3, 3, 3);
+  for (int i = 0; i < 9; i++) e[i] = 0.5 * (ft[i] + f[i]);
+  e[0] -= 1;
+  e[4] -= 1;
+  e[8] -= 1;
+
+//  for (auto& x: E) x *= 0.5;
+
+  return E;
+}
+
+std::array<ScalarType, 9> computeStressTensor(std::array<ScalarType, 9> E, ScalarType mu, ScalarType lam) {
+  // computes stress tensor
+  // S = lam tr(E) I + 2 mu E
+  std::array<ScalarType, 9> S;
+  ScalarType *e = E.data();
+  ScalarType *s = S.data();
+  ScalarType trE = e[0] + e[4] + e[8]; 
+
+  for (int i = 0; i < 9; i++) s[i] = 2 * mu * e[i];
+  s[0] += lam * trE;
+  s[4] += lam * trE;
+  s[8] += lam * trE;
+
+  return S;
+}
+
+ PetscErrorCode setupKSPEigenvalues(KSP *ksp, Mat *A, Vec *rhs, Vec *sol) {
+  // setup a ksp object with some dummy values so that it can be used for eigenvalue computations later
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  int size = 3;
+  ierr = MatCreate(PETSC_COMM_SELF, A); CHKERRQ(ierr);
+  ierr = MatSetSizes(*A,size,size,size,size); CHKERRQ(ierr);
+  ierr = MatSetType(*A,MATSEQDENSE); CHKERRQ(ierr);
+  ierr = MatSetUp(*A); CHKERRQ(ierr);
+
+  ierr = KSPCreate(PETSC_COMM_SELF, ksp); CHKERRQ(ierr);
+  ierr = KSPSetOperators(*ksp, *A, *A); CHKERRQ(ierr);
+  ierr = KSPSetTolerances(*ksp, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, 1); CHKERRQ(ierr);
+  ierr = KSPSetType(*ksp, KSPCG); CHKERRQ(ierr);
+  ierr = KSPSetFromOptions(*ksp); CHKERRQ(ierr);
+
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3, rhs); CHKERRQ(ierr);
+  ierr = VecSetFromOptions(*rhs); CHKERRQ(ierr);
+  ierr = VecSet(*rhs, 0); CHKERRQ(ierr);
+  ierr = VecDuplicate(*rhs, sol); CHKERRQ(ierr);
+  ierr = VecSet(*sol, 0); CHKERRQ(ierr);
+  
+  PetscScalar a[9] = {1,0,0,0,1,0,0,0,1}; // gen id matrix
+  const int id[3] = {0,1,2};
+  ierr = MatSetValues(*A, size, id, size, id, a, INSERT_VALUES); CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(*A,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(*A,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    
+  ierr = KSPSolve(*ksp, *rhs, *sol); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+ }
+
+
+ PetscErrorCode computeIndicatorFunction(Vec i, Vec x, ScalarType x_star) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType *x_ptr, *i_ptr;
+  ScalarType threshold = 1E-3;
+  PetscInt size;
+  ierr = VecGetSize(x, &size); CHKERRQ(ierr);
+  ierr = vecGetArray(i, &i_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(x, &x_ptr); CHKERRQ(ierr);
+
+#ifdef CUDA
+  computeIndicatorFunctionCuda(i_ptr, x_ptr, x_star, threshold, size);
+#else
+  for (int i = 0; i < size; i++) {
+    if (PetscAbsReal(x_ptr[i] - x_star) < threshold) {
+      i_ptr[i] = 1;
+    } else {
+      i_ptr[i] = 0;
+    }
+  }
+#endif
+  ierr = vecRestoreArray(i, &i_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+
+
+  PetscFunctionReturn(ierr);
+ }

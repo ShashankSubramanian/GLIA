@@ -37,7 +37,8 @@ class PdeOperators {
   virtual PetscErrorCode resizeTimeHistory(std::shared_ptr<Parameters> params) = 0;
   virtual PetscErrorCode reset(std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor = {}) = 0;
   virtual PetscErrorCode getModelSpecificVector(Vec *x) { PetscFunctionReturn(0); }
-  virtual PetscErrorCode computeBiophysicalFeatures(std::stringstream &) {PetscFunctionReturn(0);}
+  virtual PetscErrorCode setTC(Vec tc) {PetscFunctionReturn(0);}
+  virtual PetscErrorCode computeBiophysicalFeatures(std::stringstream &feature_stream, int time_step) {PetscFunctionReturn(0);}
 
   virtual PetscErrorCode preAdvection (Vec &wm, Vec &gm, Vec &csf, Vec &mri, ScalarType adv_time) {PetscFunctionReturn(0);};
 
@@ -96,6 +97,8 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
         VecSet(work_[i], 0);
       }
     }
+    tc_ = nullptr;
+    tc_atlas_ = nullptr;
   }
 
   std::shared_ptr<AdvectionSolver> adv_solver_;
@@ -103,10 +106,12 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
   std::shared_ptr<VecField> displacement_old_;
 
   Vec *temp_;
-  const int num_work_vecs_ = 3;
+  const int num_work_vecs_ = 6;
   Vec *work_; // only for tumor feature compute stats; else nullptrs
   std::shared_ptr<VecField> work_field_;
   Vec magnitude_;
+  Vec tc_; // mem managed from outside; it is data
+  Vec tc_atlas_; // tc in atlas space; mem managed elsewhere, just pointers
 
   virtual PetscErrorCode solveState(int linearized);
   PetscErrorCode conserveHealthyTissues();
@@ -116,11 +121,13 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
     *x = magnitude_;
     PetscFunctionReturn(0);
   }
+  virtual PetscErrorCode setTC(Vec tc) {tc_ = tc; PetscFunctionReturn(0);}
   // stats member functions
   // @brief these functions are helpers to compute biophysical features for this forward model
-  PetscErrorCode computeBiophysicalFeatures(std::stringstream &feature_stream, int time_step);
+  virtual PetscErrorCode computeBiophysicalFeatures(std::stringstream &feature_stream, int time_step);
   PetscErrorCode writeStats(Vec x, std::stringstream &feature_stream);
-  PetscErrorCode computeTumorQuants(std::shared_ptr<Tumor> tumor, Vec dcdt, Vec gradc);
+  PetscErrorCode computeTumorQuants(std::shared_ptr<Tumor> tumor, Vec dcdt, Vec gradc, ScalarType *c_star);
+  PetscErrorCode computeStress(Vec *gradu, Vec jacobian, Vec trace_stress, Vec max_shear);
 
   virtual ~PdeOperatorsMassEffect() {
     PetscErrorCode ierr = 0;

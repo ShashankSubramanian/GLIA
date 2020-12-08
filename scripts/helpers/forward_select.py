@@ -21,6 +21,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, atlas, recon_par
 
   atlas                   = atlas.strip("\n")
 
+  p['feature_compute']    = 1 # enables feature comp
   p['n']                  = n
   p['multilevel']         = 1                 # rescale p activations according to Gaussian width on each level
   p['output_dir']         = os.path.join(res_dir, atlas + case_str + '/');    # results path
@@ -68,9 +69,12 @@ if __name__=='__main__':
 
     print("forward select for pat ", pat)
     stats = os.path.join(*[inv_path, "stat", "stats.csv"])
-    with open(stats, "r") as f:
-      rep_line = f.readlines()[-1]
-      rep_atlas = rep_line.split(" = ")[1].strip()
+    if (os.path.exists(stats)):
+      with open(stats, "r") as f:
+        rep_line = f.readlines()[-1]
+        rep_atlas = rep_line.split(" = ")[1].strip()
+    else:
+      rep_atlas = ""
 
     src_dir = os.path.join(*[inv_path, "tu", str(sz)])
     dst_dir = os.path.join(*[args.res_dir, pat, "tu", str(sz)])
@@ -84,7 +88,17 @@ if __name__=='__main__':
       if not os.path.exists(dst_file):
         shutil.copy(src_file, dst_file)
 
-    recon_parameters = get_recon_parameters(os.path.join(*[src_dir, rep_atlas, "reconstruction_info.dat"]))
+    atlist = os.listdir(src_dir)
+    for a in atlist:
+      if os.path.exists(os.path.join(*[src_dir, a, "reconstruction_info.dat"])):
+        rep_atlas = a
+
+    recon_file = os.path.join(*[src_dir, rep_atlas, "reconstruction_info.dat"])
+    if not os.path.exists(recon_file):
+      print("recon file does not exist... moving on.")
+      continue
+
+    recon_parameters = get_recon_parameters(recon_file)
     atlas_dir_level = atlas_dir + "/" + str(sz) + "/"
     create_tusolver_config(sz, pat, dst_dir, atlas_dir_level, dst_dir, rep_atlas, recon_parameters)
 

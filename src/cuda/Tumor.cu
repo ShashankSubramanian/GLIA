@@ -32,6 +32,15 @@ __global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr
     }
 }
 
+__global__ void getTCRecon(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < sz) {
+    if (seg_ptr[i] == 1) x_ptr[i] = 1;
+    else x_ptr[i] = 0;
+  }
+}
+
 void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
@@ -45,6 +54,15 @@ void computeTumorSegmentationCuda (ScalarType *bg_ptr, ScalarType *gm_ptr, Scala
 	int n_th = N_THREADS;
 
 	computeTumorSegmentation <<< (sz + n_th - 1) / n_th, n_th >>> (bg_ptr, gm_ptr, wm_ptr, csf_ptr, glm_ptr, c_ptr, seg_ptr, sz);
+
+	cudaDeviceSynchronize ();
+	cudaCheckKernelError ();
+}
+
+void getTCReconCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	getTCRecon <<< (sz + n_th - 1) / n_th, n_th >>> (seg_ptr, x_ptr, sz);
 
 	cudaDeviceSynchronize ();
 	cudaCheckKernelError ();

@@ -66,4 +66,5 @@ class Tumor {
 // Cuda helpers
 void nonlinearForceScalingCuda(ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz);
 void computeTumorSegmentationCuda(ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr, int64_t sz);
+void getTCReconCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz);
 #endif

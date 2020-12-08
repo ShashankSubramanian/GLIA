@@ -8,6 +8,7 @@
 #include <mpi.h>
 #include <omp.h>
 #include <petsc.h>
+#include <petscmat.h>
 #include <pnetcdf.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -185,5 +186,10 @@ PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice);
 PetscErrorCode computeVolume(Vec x, ScalarType measure, ScalarType *vol, ScalarType *sum);
 PetscErrorCode computeQuantile(Vec x, Vec temp, ScalarType *val, ScalarType quantile = 0.5);
 
+ScalarType computeDeterminant(std::array<ScalarType, 9> matrix);
+std::array<ScalarType, 9> computeStressTensor(std::array<ScalarType, 9> E, ScalarType mu, ScalarType lam);
+std::array<ScalarType, 9> computeStrainTensor(std::array<ScalarType, 9> F);
+PetscErrorCode setupKSPEigenvalues(KSP *ksp, Mat *A, Vec *rhs, Vec *sol);
+PetscErrorCode computeIndicatorFunction(Vec i, Vec x, ScalarType x_star);
 
 #endif  // end _UTILS_H
