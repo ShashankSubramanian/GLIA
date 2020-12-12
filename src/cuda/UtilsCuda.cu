@@ -150,14 +150,50 @@ void vecMaxCuda (ScalarType *x, int *loc, ScalarType *val, int sz) {
 	cudaDeviceSynchronize();
 }
 
+void vecScatterCuda(ScalarType *f, ScalarType *f_scatter, ScalarType *seq, int64_t sz) {
+	try {
+		thrust::device_ptr<ScalarType> f_thrust;
+		f_thrust = thrust::device_pointer_cast (f);
+		thrust::device_ptr<ScalarType> f_scat_thrust;
+		f_scat_thrust = thrust::device_pointer_cast (f_scatter);
+    thrust::device_ptr<ScalarType> seq_thrust;
+    seq_thrust = thrust::device_pointer_cast (seq);
+		thrust::scatter(f_thrust, f_thrust + sz, seq_thrust, f_scat_thrust);
+	} catch (thrust::system_error &e) {
+		std::cerr << "Thrust scatter error: " << e.what() << std::endl;
+	}
+
+	cudaDeviceSynchronize();
+
+}
+
 void vecSortCuda(ScalarType *f, int64_t sz) {
 	// use thrust for sort
 	try {
 		thrust::device_ptr<ScalarType> f_thrust;
 		f_thrust = thrust::device_pointer_cast (f);
+//		if (seq == NULL) {
 		thrust::sort (f_thrust, f_thrust + sz);
+//		} else {
+//      thrust::device_ptr<ScalarType> seq_thrust;
+//      seq_thrust = thrust::device_pointer_cast (seq);
+//		  thrust::sort_by_key(f_thrust, f_thrust + sz, seq_thrust);
+//    }
 	} catch (thrust::system_error &e) {
 		std::cerr << "Thrust sorting error: " << e.what() << std::endl;
+	}
+
+	cudaDeviceSynchronize();
+}
+
+void setSequenceCuda(ScalarType *f, int64_t sz) {
+	// use thrust for to set sequence
+	try {
+		thrust::device_ptr<ScalarType> f_thrust;
+		f_thrust = thrust::device_pointer_cast (f);
+		thrust::sequence(f_thrust, f_thrust + sz);
+	} catch (thrust::system_error &e) {
+		std::cerr << "Thrust sequence set error: " << e.what() << std::endl;
 	}
 
 	cudaDeviceSynchronize();

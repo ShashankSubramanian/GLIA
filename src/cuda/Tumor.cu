@@ -32,6 +32,18 @@ __global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr
     }
 }
 
+__global__ void getHealthyBrain(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	int tc, bg;
+	if (i < sz) {
+    if (seg_ptr[i] == 1) tc = 1;
+    else tc = 0;
+    if (seg_ptr[i] == 0) bg = 1;
+    else bg = 0;
+    x_ptr[i] = 1 - bg - tc;
+  }
+}
 __global__ void getTCRecon(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -68,3 +80,11 @@ void getTCReconCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
 	cudaCheckKernelError ();
 }
 
+void getHealthyBrainCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+
+	getHealthyBrain <<< (sz + n_th - 1) / n_th, n_th >>> (seg_ptr, x_ptr, sz);
+
+	cudaDeviceSynchronize ();
+	cudaCheckKernelError ();
+}

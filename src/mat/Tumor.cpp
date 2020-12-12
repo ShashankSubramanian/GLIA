@@ -274,6 +274,28 @@ PetscErrorCode Tumor::computeSegmentation() {
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode Tumor::getHealthyBrain(Vec x) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType *x_ptr, *seg_ptr;
+  ierr = vecGetArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(seg_, &seg_ptr); CHKERRQ(ierr);
+#ifdef CUDA
+  getHealthyBrainCuda(seg_ptr, x_ptr, params_->grid_->nl_);
+#else
+  int tc, bg
+  for (int i = 0; i < params_->grid_->nl_; i++) {
+    tc = (seg_ptr[i] == 1) ? 1 : 0;
+    bg = (seg_ptr[i] == 0) ? 1 : 0;
+    x_ptr[i] = 1 - bg - tc;
+  }
+#endif
+  ierr = vecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(seg_, &seg_ptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
 
 PetscErrorCode Tumor::getTCRecon(Vec x) {
   PetscFunctionBegin;

@@ -183,9 +183,14 @@ PetscErrorCode splitSegmentation(Vec seg, Vec wm, Vec gm, Vec vt, Vec csf, Vec t
 PetscErrorCode createEdemaBasedObservationMask(Vec mask, Vec tc, Vec ed, double lambda, int nl, std::vector<int> &labels);
 
 PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice);
-PetscErrorCode computeVolume(Vec x, ScalarType measure, ScalarType *vol, ScalarType *sum);
+PetscErrorCode computeVolume(Vec x, Vec roi, Vec temp, ScalarType measure, ScalarType *vol_roi, ScalarType *sum_roi=nullptr);
+PetscErrorCode computeVolume(Vec x, ScalarType measure, ScalarType *vol, ScalarType *sum=nullptr);
+PetscErrorCode computeStd(Vec x, Vec temp, Vec roi, PetscInt n_roi, ScalarType mean_roi, ScalarType *std_roi); 
+PetscErrorCode computeStd(Vec x, Vec temp, PetscInt n, ScalarType mean, ScalarType *std);
+PetscErrorCode computeQuantile(Vec x, Vec roi, Vec temp, Vec roi_temp, ScalarType *val, PetscInt roi_size, ScalarType quantile = 0.5, bool sort = true);
 PetscErrorCode computeQuantile(Vec x, Vec temp, ScalarType *val, ScalarType quantile = 0.5);
-
+PetscErrorCode vecScatter(Vec x, Vec x_scatter, Vec seq); 
+PetscErrorCode setSequence(Vec x);
 ScalarType computeDeterminant(std::array<ScalarType, 9> matrix);
 std::array<ScalarType, 9> computeStressTensor(std::array<ScalarType, 9> E, ScalarType mu, ScalarType lam);
 std::array<ScalarType, 9> computeStrainTensor(std::array<ScalarType, 9> F);

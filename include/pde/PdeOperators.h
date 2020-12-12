@@ -78,40 +78,25 @@ class PdeOperatorsRD : public PdeOperators {
 
 class PdeOperatorsMassEffect : public PdeOperatorsRD {
  public:
-  PdeOperatorsMassEffect(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) : PdeOperatorsRD(tumor, params, spec_ops) {
-    PetscErrorCode ierr = 0;
-    adv_solver_ = std::make_shared<SemiLagrangianSolver>(params, tumor, spec_ops);
-    // adv_solver_ = std::make_shared<TrapezoidalSolver> (params, tumor, spec_ops);
-    elasticity_solver_ = std::make_shared<VariableLinearElasticitySolver>(params, tumor, spec_ops);
-    displacement_old_ = std::make_shared<VecField>(params_->grid_->nl_, params_->grid_->ng_);
-    ierr = VecDuplicate(tumor->work_[0], &magnitude_);
-    temp_ = new Vec[3];
-    for (int i = 0; i < 3; i++) {
-      temp_[i] = tumor->work_[11 - i];
-    }
-    work_ = new Vec[num_work_vecs_];
-    for (int i = 0; i < num_work_vecs_; i++) work_[i] = nullptr;
-    if (params->tu_->feature_compute_) {
-      for (int i = 0; i < num_work_vecs_; i++) {
-        VecDuplicate(tumor->c_t_, &work_[i]);
-        VecSet(work_[i], 0);
-      }
-    }
-    tc_ = nullptr;
-    tc_atlas_ = nullptr;
-  }
+  PdeOperatorsMassEffect(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
 
   std::shared_ptr<AdvectionSolver> adv_solver_;
   std::shared_ptr<ElasticitySolver> elasticity_solver_;
   std::shared_ptr<VecField> displacement_old_;
 
   Vec *temp_;
-  const int num_work_vecs_ = 6;
+  const int num_work_vecs_ = 8;
   Vec *work_; // only for tumor feature compute stats; else nullptrs
   std::shared_ptr<VecField> work_field_;
   Vec magnitude_;
+
+  // variables for feature computation
   Vec tc_; // mem managed from outside; it is data
   Vec tc_atlas_; // tc in atlas space; mem managed elsewhere, just pointers
+  Vec healthy_brain_;
+  Vec indicator_; // indicator function; mem managed elsewhere
+  PetscScalar num_tc_voxels_; // roi sum
+  PetscScalar num_healthy_voxels_; // roi sum
 
   virtual PetscErrorCode solveState(int linearized);
   PetscErrorCode conserveHealthyTissues();
@@ -138,6 +123,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
         ierr = VecDestroy(&work_[i]);
       }
     }
+
     delete[] work_;
   }
 };

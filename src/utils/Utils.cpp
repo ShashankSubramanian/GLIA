@@ -696,12 +696,57 @@ PetscErrorCode computeDice(Vec in, Vec truth, ScalarType &dice) {
   PetscFunctionReturn(ierr);
 }
 
+PetscErrorCode computeVolume(Vec x, Vec roi, Vec temp, ScalarType measure, ScalarType *vol_roi, ScalarType *sum_roi) {
+  // computes volume in an roi
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  PetscScalar x_sum = 0;
+  //  compute roi specific volumes through masking
+  ierr = VecPointwiseMult(temp, roi, x); CHKERRQ(ierr);
+  ierr = vecSum(temp, &x_sum); CHKERRQ(ierr);
+  (*vol_roi) = x_sum * measure;
+  if (sum_roi != nullptr) (*sum_roi) = x_sum;
+
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode computeVolume(Vec x, ScalarType measure, ScalarType *vol, ScalarType *sum) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  ierr = vecSum(x, sum); CHKERRQ(ierr);
-  (*vol) = (*sum) * measure;
+  PetscScalar x_sum = 0;
+  ierr = vecSum(x, &x_sum); CHKERRQ(ierr);
+  (*vol) = x_sum * measure;
+  if (sum != nullptr) (*sum) = x_sum;
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode computeStd(Vec x, Vec temp, Vec roi, PetscInt n_roi, ScalarType mean_roi, ScalarType *std_roi) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType sum = 0;
+  // in roi
+  ierr = VecPointwiseMult(temp, x, x); CHKERRQ(ierr);
+  ierr = VecPointwiseMult(temp, temp, roi); CHKERRQ(ierr); // temp is x^2 * roi
+  ierr = vecSum(temp, &sum); CHKERRQ(ierr);
+  sum /= n_roi;
+  *std_roi = std::sqrt(sum - mean_roi * mean_roi); // sqrt(E(x^2) - E(x)^2)
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode computeStd(Vec x, Vec temp, PetscInt n, ScalarType mean, ScalarType *std) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  ScalarType sum = 0;
+  ierr = VecPointwiseMult(temp, x, x); CHKERRQ(ierr);
+  ierr = vecSum(temp, &sum); CHKERRQ(ierr);
+  sum /= n;
+  *std = std::sqrt(sum - mean * mean); // sqrt(E(x^2) - E(x)^2)
 
   PetscFunctionReturn(ierr);
 }
@@ -711,7 +756,7 @@ PetscErrorCode vecSort (Vec xin, Vec xout, int64_t sz) {
   PetscErrorCode ierr = 0;
 
   ierr = VecCopy(xin, xout); CHKERRQ(ierr);
-  ScalarType *x_ptr, *y_ptr;
+  ScalarType *y_ptr;
   ierr = vecGetArray(xout, &y_ptr); CHKERRQ(ierr);
 #ifdef CUDA
   vecSortCuda(y_ptr, sz); 
@@ -721,6 +766,105 @@ PetscErrorCode vecSort (Vec xin, Vec xout, int64_t sz) {
   ierr = VecSet(xout, -1); CHKERRQ(ierr);
 #endif
   ierr = vecRestoreArray(xout, &y_ptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode setSequence(Vec x) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  PetscInt sz;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  ScalarType *x_ptr;
+  ierr = vecGetArray(x, &x_ptr); CHKERRQ(ierr);
+#ifdef CUDA
+  setSequenceCuda(x_ptr, sz);
+#else
+  // TODO: MPI not implemented
+  TU_assert(false, "vecSequence not implemented for CPUs.")
+#endif
+  ierr = vecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode vecScatter(Vec x, Vec x_scatter, Vec seq) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  // TODO MPI not implemented
+  PetscInt sz;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  ScalarType *x_ptr, *seq_ptr, *x_scatter_ptr;
+  ierr = vecGetArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(x_scatter, &x_scatter_ptr); CHKERRQ(ierr);
+  ierr = vecGetArray(seq, &seq_ptr); CHKERRQ(ierr);
+#ifdef CUDA
+  vecScatterCuda(x_ptr, x_scatter_ptr, seq_ptr, sz); CHKERRQ(ierr);
+#else
+  // TODO: MPI not implemented
+  TU_assert(false, "vecScatter not implemented for CPUs.")
+#endif
+  ierr = vecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(seq, &seq_ptr); CHKERRQ(ierr);
+  ierr = vecRestoreArray(x_scatter, &x_scatter_ptr); CHKERRQ(ierr);
+
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode computeQuantile(Vec x, Vec roi, Vec temp, Vec roi_temp, ScalarType *val, PetscInt roi_size, ScalarType quantile, bool sort) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+
+  PetscInt sz;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  ScalarType *x_ptr, *roi_ptr, *roi_ptr_t;
+  ierr = VecGetArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(roi, &roi_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(roi_temp, &roi_ptr_t); CHKERRQ(ierr);
+  int count = 0;
+  for (int i = 0; i < sz; i++) {
+    if (roi_ptr[i]) {
+      roi_ptr_t[count] = x_ptr[i];
+      count++;
+    }
+  }
+  ierr = VecRestoreArray(x, &x_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(roi, &roi_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(roi_temp, &roi_ptr_t); CHKERRQ(ierr);
+ 
+  ierr = vecSort(roi_temp, temp, roi_size);
+  ierr = vecGetArray(temp, &x_ptr); CHKERRQ(ierr);
+  int index = std::floor(quantile * roi_size);
+  cudaMemcpy(val, &x_ptr[index], sizeof(ScalarType), cudaMemcpyDeviceToHost);
+  ierr = vecRestoreArray(temp, &x_ptr); CHKERRQ(ierr); 
+
+  // this method isnt working; not sure why, test later
+  // scatter roi according to sorted x--> the reason to do it this way is to avoid re-sorting everytime (problematic if there are many rois)
+//  ierr = vecScatter(roi, roi_temp, seq); CHKERRQ(ierr);
+//  ierr = VecGetArray(temp, &x_ptr); CHKERRQ(ierr);
+//  ierr = VecGetArray(roi_temp, &roi_ptr); CHKERRQ(ierr);
+//  int index = std::floor(quantile * roi_size);
+//  int count = 0;
+//#ifdef CUDA
+//  //TODO parallelize this (use prefix scan and find_if?)
+//  for (int i = 0; i < sz; i++) {
+//    if (roi_ptr[i]) {
+//      if (count == index) {
+//        (*val) = x_ptr[i];
+//        break;
+//      }
+//      count++;
+//    }
+//  }
+//#else
+//  // TODO: MPI not implemented
+//  TU_assert(false, "roi quantiles not implemented for CPUs.")
+//#endif
+  
+//  ierr = VecRestoreArray(temp, &x_ptr); CHKERRQ(ierr);
+//  ierr = VecRestoreArray(roi_temp, &roi_ptr); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }
@@ -840,7 +984,7 @@ std::array<ScalarType, 9> computeStressTensor(std::array<ScalarType, 9> E, Scala
   PetscErrorCode ierr = 0;
 
   ScalarType *x_ptr, *i_ptr;
-  ScalarType threshold = 1E-3;
+  ScalarType threshold = 1E-1;
   PetscInt size;
   ierr = VecGetSize(x, &size); CHKERRQ(ierr);
   ierr = vecGetArray(i, &i_ptr); CHKERRQ(ierr);
