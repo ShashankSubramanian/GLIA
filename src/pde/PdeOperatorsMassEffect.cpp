@@ -360,7 +360,7 @@ PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstr
   std::vector<std::string> feature_list{"c","dcdt","gradc","u","jac","trT","tau","vel"};
   std::vector<std::string> stats{"vol","sa","std","quart"};
   if (time_step == 0) {
-    feature_stream << "t,";
+    feature_stream << "t,volc/volb,";
     for (auto feature : feature_list) {
       for (auto stat: stats) {
         if (stat == "sa") feature_stream << stat << "_" << feature << ",";
@@ -379,6 +379,7 @@ PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstr
   ierr = vecSum(healthy_brain_, &num_healthy_voxels_); CHKERRQ(ierr);
 
   feature_stream << "\n" << time_step * params_->tu_->dt_  << ",";
+  feature_stream << num_tc_voxels_/ (num_healthy_voxels_ + num_tc_voxels_) << ",";
   // concentration-based features
   Vec c = tumor_->c_t_;
   Vec dcdt = work_[0];
