@@ -104,6 +104,66 @@ __global__ void precFactorElasticity (CudaComplexType *ux_hat, CudaComplexType *
 	}
 }
 
+// computes the jacobian, stress tensors
+__global__ void computeStressQuants(ScalarType **gradu_ptr, ScalarType *jac_ptr, ScalarType *trace_ptr, ScalarType *max_shear_ptr, ScalarType *mu_ptr, ScalarType *lam_ptr, int64_t sz) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if (i < sz) {
+    ScalarType F0,F1,F2,F3,F4,F5,F6,F7,F8;
+    ScalarType S0,S1,S2,S3,S4,S5,S6,S7,S8;
+    ScalarType trE;
+
+    F0 = gradu_ptr[0][i] + 1;
+    F1 = gradu_ptr[1][i];
+    F2 = gradu_ptr[2][i];
+    F3 = gradu_ptr[3][i];
+    F4 = gradu_ptr[4][i] + 1;
+    F5 = gradu_ptr[5][i];
+    F6 = gradu_ptr[6][i];
+    F7 = gradu_ptr[7][i];
+    F8 = gradu_ptr[8][i] + 1;
+
+    // determinant of F
+    jac_ptr[i] = F0 * (F4*F8 - F7*F5) - F1 * (F3*F8 - F6*F5) + F2 * (F3*F7 - F6*F4);
+
+    // E = 0.5* (FTF - I); or 0.5 * (FT + F) - I if high order terms are dropped
+    S0 = 0.5 * (F0 + F0) - 1; 
+    S1 = 0.5 * (F3 + F1);
+    S2 = 0.5 * (F6 + F2);
+    S3 = 0.5 * (F1 + F3);
+    S4 = 0.5 * (F4 + F4) - 1;
+    S5 = 0.5 * (F7 + F5);
+    S6 = 0.5 * (F2 + F6);
+    S7 = 0.5 * (F5 + F7);
+    S8 = 0.5 * (F8 + F8) - 1;
+   
+    trE = S0 + S4 + S8;
+    // S = lam tr(E) I + 2 mu E
+    S0 = lam_ptr[i] * trE + 2 * mu_ptr[i] * S0;
+    S1 = 2 * mu_ptr[i] * S1;
+    S2 = 2 * mu_ptr[i] * S2;
+    S3 = 2 * mu_ptr[i] * S3;
+    S4 = lam_ptr[i] * trE + 2 * mu_ptr[i] * S4;
+    S5 = 2 * mu_ptr[i] * S5;
+    S6 = 2 * mu_ptr[i] * S6;
+    S7 = 2 * mu_ptr[i] * S7;
+    S8 = lam_ptr[i] * trE + 2 * mu_ptr[i] * S8;
+    
+    trace_ptr[i] = S0 + S4 + S8; // trace of stress tensor
+
+    // snafu
+    gradu_ptr[0][i] = S0;
+    gradu_ptr[1][i] = S1;
+    gradu_ptr[2][i] = S2;
+    gradu_ptr[3][i] = S3;
+    gradu_ptr[4][i] = S4;
+    gradu_ptr[5][i] = S5;
+    gradu_ptr[6][i] = S6;
+    gradu_ptr[7][i] = S7;
+    gradu_ptr[8][i] = S8;
+  }
+}
+
 void computeScreeningCuda (ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz) {
 	int n_th = N_THREADS;
 
@@ -130,6 +190,15 @@ void precFactorElasticityCuda (CudaComplexType *ux_hat, CudaComplexType *uy_hat,
 	dim3 n_blocks ((sz[0] + n_th_x - 1) / n_th_x, (sz[1] + n_th_y - 1) / n_th_y, (sz[2] + n_th_z - 1) / n_th_z);
 
 	precFactorElasticity <<< n_blocks, n_threads >>> (ux_hat, uy_hat, uz_hat, fx_hat, fy_hat, fz_hat, lam_avg, mu_avg, screen_avg);
+
+	cudaDeviceSynchronize();
+	cudaCheckKernelError ();
+}
+  
+void computeStressQuantsCuda(ScalarType **gradu_ptr, ScalarType *jac_ptr, ScalarType *trace_ptr, ScalarType *max_shear_ptr, ScalarType *mu_ptr, ScalarType *lam_ptr, int64_t sz) {
+	int n_th = N_THREADS;
+	
+	computeStressQuants <<< (sz + n_th - 1) / n_th, n_th >>> (gradu_ptr, jac_ptr, trace_ptr, max_shear_ptr, mu_ptr, lam_ptr, sz);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

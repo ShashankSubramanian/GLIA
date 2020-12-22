@@ -94,5 +94,6 @@ void initElasticityCudaConstants(int *n, int *ostart, int *osize);
 void precFactorElasticityCuda(CudaComplexType *ux_hat, CudaComplexType *uy_hat, CudaComplexType *uz_hat, CudaComplexType *fx_hat, CudaComplexType *fy_hat, CudaComplexType *fz_hat, ScalarType lam_avg, ScalarType mu_avg, ScalarType screen_avg, int *sz);
 void computeScreeningCuda(ScalarType *screen_ptr, ScalarType *c_ptr, ScalarType *bg_ptr, ScalarType screen_low, ScalarType screen_high, int64_t sz);
 void computeTumorLameCuda(ScalarType *mu_ptr, ScalarType *lam_ptr, ScalarType *c_ptr, ScalarType mu_tumor, ScalarType lam_tumor, int64_t sz);
+void computeStressQuantsCuda(ScalarType **gradu_ptr, ScalarType *jac_ptr, ScalarType *trace_ptr, ScalarType *max_shear_ptr, ScalarType *mu_ptr, ScalarType *lam_ptr, int64_t sz);
 #endif
 #endif
