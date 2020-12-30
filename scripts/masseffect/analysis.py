@@ -157,21 +157,24 @@ if __name__=='__main__':
     stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
 
   ### survival data column names
-  surv_names = ['ID', 'Survival_days', 'Age_at_MRI']
+  surv_names = ['id', 'survival', 'age', 'GTR>90%']
+  #surv_names = ['ID', 'Survival_days', 'Age_at_MRI']
   ## if brats
   #surv_names = ['BraTS18ID', 'Survival', 'Age']
 
   ### append survival data
   if args.survival_file:
-    if 'survival' not in stats:
+    if 'gtr' not in stats:
       survival = pd.read_csv(args.survival_file, header=0)
       stats['survival'] = np.nan
       stats['age'] = np.nan
+      stats['gtr'] = np.nan
       for pat in patient_list:
         data_exists = survival[surv_names[0]].str.contains(pat).any()
         if data_exists:
           stats.loc[stats['PATIENT'] == pat, 'survival'] = survival.loc[survival[surv_names[0]] == pat][surv_names[1]].values[0]
           stats.loc[stats['PATIENT'] == pat, 'age'] = survival.loc[survival[surv_names[0]] == pat][surv_names[2]].values[0]
+          stats.loc[stats['PATIENT'] == pat, 'gtr'] = survival.loc[survival[surv_names[0]] == pat][surv_names[3]].values[0]
 
   if 'mu-err-rsc' not in stats:
     stats['mu-err-rsc'] = 1
@@ -384,49 +387,52 @@ if __name__=='__main__':
         vt_pat = (pat_seg == 7)
         stats.loc[stats['PATIENT'] == pat, 'lvd'] = compute_lvd(vt_pat, mni_com) 
   
-#  if 'u-l2' not in stats:
-#    print("displacements and stress\n")
-#    stats['u-l2'] = 0
-#    stats['u-linf'] = 0
-#    disp = np.zeros((im_sz,im_sz,im_sz,16))
-#    disp_x = disp.copy()
-#    disp_y = disp.copy()
-#    disp_z = disp.copy()
-#    for pat_idx, pat in enumerate(patient_list):
-#      print("{}: patient = {}".format(pat_idx, pat))
-#      disp[:] = 0
-#      disp_x[:] = 0
-#      disp_y[:] = 0
-#      disp_z[:] = 0
-#      recon[:] = 0
-#      inv_dir = os.path.join(*[me_res_dir, pat, "tu/"+str(im_sz)+""])
-#      inv_data_dir = os.path.join(*[data_dir, pat, "tu/"+str(im_sz)+""])
-#      at_list = []
-#      for at in os.listdir(inv_dir):
-#        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
-#        if not os.path.exists(config_file):
-#          continue
-#        at_list.append(at)
-#
-#      num_atlases = len(at_list)
-#      for idx,at in enumerate(at_list):
-#        at_dir = os.path.join(inv_dir, at)
-#        recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
-#        disp[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "displacement_rec_final.nc"))
-#        disp_x[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_x_rec_final.nc"))
-#        disp_y[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_y_rec_final.nc"))
-#        disp_z[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_z_rec_final.nc"))
-#
+  if 'u-l2' not in stats:
+    print("displacements and stress\n")
+    stats['u-l2'] = 0
+    stats['u-vol'] = 0
+    stats['u-linf'] = 0
+    disp = np.zeros((im_sz,im_sz,im_sz,16))
+    disp_x = disp.copy()
+    disp_y = disp.copy()
+    disp_z = disp.copy()
+    for pat_idx, pat in enumerate(patient_list):
+      print("{}: patient = {}".format(pat_idx, pat))
+      disp[:] = 0
+      disp_x[:] = 0
+      disp_y[:] = 0
+      disp_z[:] = 0
+      recon[:] = 0
+      inv_dir = os.path.join(*[me_res_dir, pat, "tu/"+str(im_sz)+""])
+      inv_data_dir = os.path.join(*[data_dir, pat, "tu/"+str(im_sz)+""])
+      at_list = []
+      for at in os.listdir(inv_dir):
+        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+        if not os.path.exists(config_file):
+          continue
+        at_list.append(at)
+
+      num_atlases = len(at_list)
+      for idx,at in enumerate(at_list):
+        at_dir = os.path.join(inv_dir, at)
+        recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
+        disp[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "displacement_rec_final.nc"))
+        disp_x[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_x_rec_final.nc"))
+        disp_y[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_y_rec_final.nc"))
+        disp_z[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_z_rec_final.nc"))
+
 #      prob_seg = create_prob_img(recon[:,:,:,0:num_atlases])
-#      disp_median = np.median(disp[:,:,:,0:num_atlases], axis=3)
-#      disp_x_median = np.median(disp_x[:,:,:,0:num_atlases], axis=3)
-#      disp_y_median = np.median(disp_y[:,:,:,0:num_atlases], axis=3)
-#      disp_z_median = np.median(disp_z[:,:,:,0:num_atlases], axis=3)
-#      u_l2 = la.norm(disp[:])
-#      u_linf = la.norm(disp[:], ord=inf)
-#      stats.loc[stats['PATIENT'] == pat, 'u-l2'] = u_l2 
-#      stats.loc[stats['PATIENT'] == pat, 'u-linf'] = u_linf 
-#
+      disp_median = np.median(disp[:,:,:,0:num_atlases], axis=3)
+      disp_x_median = np.median(disp_x[:,:,:,0:num_atlases], axis=3)
+      disp_y_median = np.median(disp_y[:,:,:,0:num_atlases], axis=3)
+      disp_z_median = np.median(disp_z[:,:,:,0:num_atlases], axis=3)
+      u_l2 = la.norm(disp[:])
+      u_linf = la.norm(disp.flatten(), ord=np.inf)
+      u_vol = compute_volume(disp)
+      stats.loc[stats['PATIENT'] == pat, 'u-l2'] = u_l2 
+      stats.loc[stats['PATIENT'] == pat, 'u-linf'] = u_linf 
+      stats.loc[stats['PATIENT'] == pat, 'u-vol'] = u_vol 
+
 #      pr_stress, max_shear, jac = compute_stress_info(disp_x, disp_y, disp_z, prob_seg)
 
 stats.to_csv(args.results_dir + "/stats.csv", index=False)
