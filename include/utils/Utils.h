@@ -148,6 +148,20 @@ class VecField {
 };
 
 
+//// eigenvalue solver through KSP
+//class KSPEigenSolver {
+// public:
+//  KSP ksp_;
+//  Mat A_;
+//  Vec rhs_;
+//  Vec sol_;
+//
+//  KSPEigenSolver();
+//  ~KSPEigenSolver() {
+//    if (ksp_ != nullptr) KSPDestroy(&ksp_);
+//  }
+//};
+
 /* custom getters/restorers for cuda and cpu pointers */
 PetscErrorCode vecGetArray(Vec x, ScalarType **x_ptr);
 PetscErrorCode vecRestoreArray(Vec x, ScalarType **x_ptr);
@@ -196,5 +210,6 @@ std::array<ScalarType, 9> computeStressTensor(std::array<ScalarType, 9> E, Scala
 std::array<ScalarType, 9> computeStrainTensor(std::array<ScalarType, 9> F);
 PetscErrorCode setupKSPEigenvalues(KSP *ksp, Mat *A, Vec *rhs, Vec *sol);
 PetscErrorCode computeIndicatorFunction(Vec i, Vec x, ScalarType x_star);
-
+void matMult(ScalarType *c, ScalarType *a, ScalarType *b, int m, int n, int o); 
+void computeEigenValues(ScalarType *A, ScalarType *eigen);
 #endif  // end _UTILS_H

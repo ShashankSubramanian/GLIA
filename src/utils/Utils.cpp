@@ -895,12 +895,68 @@ ScalarType computeDeterminant(std::array<ScalarType, 9> matrix) {
   return a[0] * (a[4]*a[8] - a[7]*a[5]) - a[1] * (a[3]*a[8] - a[6]*a[5]) + a[2] * (a[3]*a[7] - a[6]*a[4]);
 }
 
-void matMult(ScalarType **c, ScalarType **a, ScalarType **b, int m, int n, int o) {
+void computeEigenValues(ScalarType *A, ScalarType *eigen) {
+  //Given a real symmetric 3x3 matrix A, compute the eigenvalues
+  //Note that acos and cos operate on angles in radians
+
+  ScalarType p1 = A[1]*A[1] + A[2]*A[2] + A[5]*A[5]; // upper triangle
+  ScalarType trA = A[0] + A[4] + A[8]; // trace
+  ScalarType q, p2, p, r, phi, eig1, eig2, eig3;
+  std::array<ScalarType, 9> b;
+  ScalarType *B = b.data();
+  ScalarType invp;
+
+  if (p1 == 0) {
+    // A is diagonal.
+    eigen[0] = A[0];
+    eigen[1] = A[4];
+    eigen[2] = A[8];
+  } else {
+    q = trA/3;
+    p2 = (A[0] - q)*(A[0] - q) + (A[4] - q)*(A[4] - q) + (A[8] - q)*(A[8] - q) + 2 * p1;
+    p = std::sqrt(p2 / 6);
+    invp = (1 / p);
+    // B = (1 / p) * (A - q * I; I is the identity matrix
+    B[0] = (A[0] - q);
+    B[1] = A[1];
+    B[2] = A[2];
+    B[3] = A[3];
+    B[4] = (A[4] - q);
+    B[5] = A[5];
+    B[6] = A[6];
+    B[7] = A[7];
+    B[8] = (A[8] - q);
+    // r = det(B)/2
+    r = invp * invp * invp * 0.5 * (B[0] * (B[4]*B[8] - B[7]*B[5]) - B[1] * (B[3]*B[8] - B[6]*B[5]) + B[2]*(B[3]*B[7] - B[6]*B[4]));
+
+    // In exact arithmetic for a symmetric matrix  -1 <= r <= 1
+    // but computation error can leave it slightly outside this range.
+    if (r <= -1) { 
+      phi = M_PI / 3;
+    } else if (r >= 1) {
+      phi = 0;
+    } else {
+      phi = std::acos(r) / 3;
+    }
+
+    // the eigenvalues satisfy eig3 <= eig2 <= eig1
+    eigen[0] = q + 2 * p * std::cos(phi);
+    eigen[1] = q + 2 * p * std::cos(phi + (2*M_PI/3));
+    eigen[2] = 3 * q - eigen[0] - eigen[1];     //since trace(A) = eig1 + eig2 + eig3
+  }
+}
+
+void matMult(ScalarType *c, ScalarType *a, ScalarType *b, int m, int n, int o) {
   // multiplies mxn and nxo
+  int ptr1, ptr2, ptr3;
   for (int i = 0; i < m; i++)
     for (int j = 0; j < o; j++)
       for (int k = 0; k < n; k++) {
-        c[i][j] += a[i][k] * b[k][j];
+//        c[i][j] += a[i][k] * b[k][j];
+        ptr1 = m*i + j;
+        ptr2 = m*i + k;
+        ptr3 = n*k + j;
+        c[ptr1] += a[ptr2] * b[ptr3];
       }
 }
 
@@ -917,7 +973,7 @@ std::array<ScalarType, 9> computeStrainTensor(std::array<ScalarType, 9> F) {
       ft[i*3+j] = f[j*3+i];
     }
 
-//  matMult(e, ft, f, 3, 3, 3);
+  //matMult(e, ft, f, 3, 3, 3);
   for (int i = 0; i < 9; i++) e[i] = 0.5 * (ft[i] + f[i]);
   e[0] -= 1;
   e[4] -= 1;
@@ -943,6 +999,30 @@ std::array<ScalarType, 9> computeStressTensor(std::array<ScalarType, 9> E, Scala
 
   return S;
 }
+
+//KSPEigenSolver::KSPEigenSolver() {
+//  KSPCreate(PETSC_COMM_SELF, &ksp_);
+//  A_ = nullptr;
+//  rhs_ = nullptr;
+//  sol_ = nullptr;
+//}
+//
+//PetscErrorCode KSPEigenSolver::setup(Mat A, Vec rhs, Vec sol) {
+//  PetscFunctionBegin;
+//  PetscErrorCode ierr = 0;
+//
+//  A_ = A;
+//  rhs_ = rhs;
+//  sol_ = sol;
+//  
+//  ierr = KSPSetOperators(ksp_, A_, A_); CHKERRQ(ierr);
+//  ierr = KSPSetTolerances(ksp, 1e-6, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+//  ierr = KSPSetType(ksp, KSPCG); CHKERRQ(ierr);
+//  ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+//
+//  PetscFunctionReturn(ierr);
+//}
+
 
  PetscErrorCode setupKSPEigenvalues(KSP *ksp, Mat *A, Vec *rhs, Vec *sol) {
   // setup a ksp object with some dummy values so that it can be used for eigenvalue computations later

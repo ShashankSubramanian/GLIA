@@ -3,6 +3,7 @@
 /* #### --------------------------------------------------------------------------- #### */
 /* #### ========                 PDE Ops. Mass effect model.               ======== #### */
 /* #### --------------------------------------------------------------------------- #### */
+
 PdeOperatorsMassEffect::PdeOperatorsMassEffect(std::shared_ptr<Tumor> tumor, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops) : PdeOperatorsRD(tumor, params, spec_ops) {
   adv_solver_ = std::make_shared<SemiLagrangianSolver>(params, tumor, spec_ops);
   // adv_solver_ = std::make_shared<TrapezoidalSolver> (params, tumor, spec_ops);
@@ -168,23 +169,10 @@ PetscErrorCode PdeOperatorsMassEffect::computeStress(Vec *gradu, Vec jacobian, V
   std::array<ScalarType, 9> E; //strain tensor
   std::array<ScalarType, 9> S; //stress tensor
   
-  /*
-  // use petsc to compute eigenvalues because Eigen has issues with xlc compilers
-  // characteristic polynomial method for CUDA is TODO; need to check numerical stability
-  // setup a ksp object for eigenvalues
-  KSP ksp = nullptr;
-  Mat A = nullptr;
-  Vec rhs = nullptr;
-  Vec sol = nullptr;
-  ierr = setupKSPEigenvalues(&ksp, &A, &rhs, &sol); CHKERRQ(ierr);
-
-  PetscScalar *a = new PetscScalar[9];
-  PetscReal r[3], c[3];
-  const int id[3] = {0,1,2};
-  int size = 3;
-  std::vector<PetscScalar> eigenvalues(3);
-  */
-
+  std::array<ScalarType, 3> eigenvalues;
+//#ifdef CUDA
+//  computeStressQuantsCuda(gradu_ptr, jac_ptr, trace_ptr, max_shear_ptr, mu_ptr, lam_ptr, params_->grid_->nl_);
+//#else
   for (int i = 0; i < params_->grid_->nl_; i++) {
     for (int j = 0; j < F.size(); j++) F[j] = gradu_ptr[j][i];
     F[0] += 1; 
@@ -195,21 +183,14 @@ PetscErrorCode PdeOperatorsMassEffect::computeStress(Vec *gradu, Vec jacobian, V
     E = computeStrainTensor(F);
     S = computeStressTensor(E, mu_ptr[i], lam_ptr[i]); 
     trace_ptr[i] = S[0] + S[4] + S[8]; // trace of stress tensor
-    /*
-    // compute eigenvalues
-    for (int i = 0; i < 9; i++) a[i] = S[i];
-    // set stress tensor into petsc mat object
-    ierr = MatSetValues(A, size, id, size, id, a, INSERT_VALUES); CHKERRQ(ierr);
-    ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-    ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-    // eigenvalues into real and complex arrays
-    ierr = KSPComputeEigenvaluesExplicitly(ksp, 3, r, c); CHKERRQ(ierr);
-    for (int i = 0; i < 3; i++) eigenvalues[i] = r[i];
+
+    computeEigenValues(S.data(), eigenvalues.data());
     std::sort(eigenvalues.begin(), eigenvalues.end());
+    eigenvalues[0] = eigenvalues[0] > 0 ? eigenvalues[0] : 0;
     max_shear_ptr[i] = 0.5 * (eigenvalues[2] - eigenvalues[0]);
-    TU_assert(std::accumulate(eigenvalues.begin(), eigenvalues.end(), decltype(eigenvalues)::value_type(0)) == trace_ptr[i], "Sum of eigenvalues not equal to trace");
-    */
+//    max_shear_ptr[i] = (std::isnan(max_shear_ptr[i]) || std::isinf(max_shear_ptr[i])) ? 0 : max_shear_ptr[i];
   }
+//#endif
 
   for (int i = 0; i < 9; i++) {
     ierr = VecRestoreArray(gradu[i], &gradu_ptr[i]); CHKERRQ(ierr);
@@ -220,24 +201,7 @@ PetscErrorCode PdeOperatorsMassEffect::computeStress(Vec *gradu, Vec jacobian, V
   ierr = VecRestoreArray(mu, &mu_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(lam, &lam_ptr); CHKERRQ(ierr);
 
-
   delete[] gradu_ptr;
-  /*
-  delete[] a;
-
-  if (ksp != nullptr) {
-    ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-  }
-  if (A != nullptr) {
-    ierr = MatDestroy(&A); CHKERRQ(ierr);
-  }
-  if (rhs != nullptr) {
-    ierr = VecDestroy(&rhs); CHKERRQ(ierr);
-  }
-  if (sol != nullptr) {
-    ierr = VecDestroy(&sol); CHKERRQ(ierr);
-  }
-  */
   
   self_exec_time += MPI_Wtime();
   // accumulateTimers (t, t, self_exec_time);
@@ -425,7 +389,6 @@ PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstr
   ierr = writeStats(jacobian, feature_stream); CHKERRQ(ierr);
   ierr = writeStats(trace_stress, feature_stream); CHKERRQ(ierr);
   ierr = writeStats(max_shear, feature_stream); CHKERRQ(ierr);
-
   // velocity
   ierr = tumor_->velocity_->computeMagnitude(work_[3]); CHKERRQ(ierr); //work is mag of disp
   ierr = writeStats(work_[3], feature_stream); CHKERRQ(ierr);
