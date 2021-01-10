@@ -51,10 +51,11 @@ def batch_til_and_run(input):
       if (job+1)%input['patients_per_job'] == 0:
         job_idx += 1
 
-      if (job+1)*num_gpus_per_node > total_no_patients:
+      if (job+1)*num_gpus_per_node >= total_no_patients:
         ### no more patients; end the job
         input['batch_end'] = True
-        job_idx += 1
+        if (job+1)%input['patients_per_job'] is not 0:
+          job_idx += 1
         patient_local_list = patient_list[job*num_gpus_per_node:]
       else:
         patient_local_list = patient_list[job*num_gpus_per_node:(job+1)*num_gpus_per_node]
@@ -69,7 +70,7 @@ def batch_til_and_run(input):
   else:
     for pat in patient_list:
       # == define path to patient segmentation
-      input['patient_path'] = os.path.join(path_to_all_patients, pat) + "/" + pat + "_seg_tu.nii.gz"
+      input['patient_path'] = os.path.join(path_to_all_patients, pat) + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"
       # == define path to output dir
       input['output_base_path'] = '/scratch/05027/shas1693/pglistr_tumor/results/gridcont-test/' + pat
       gridcont.sparsetil_gridcont(input, use_gpu = False);

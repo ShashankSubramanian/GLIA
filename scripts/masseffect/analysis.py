@@ -134,6 +134,7 @@ if __name__=='__main__':
   r_args.add_argument('-mni', '--mni_seg', type = str, help = 'path to mni template seg') 
   args = parser.parse_args();
 
+  mode = "nme"
   im_sz = int(args.n_inversion_size)
   me_res_dir = args.patient_dir
   in_dir = args.input_dir
@@ -175,8 +176,10 @@ if __name__=='__main__':
           stats.loc[stats['PATIENT'] == pat, 'survival'] = survival.loc[survival[surv_names[0]] == pat][surv_names[1]].values[0]
           stats.loc[stats['PATIENT'] == pat, 'age'] = survival.loc[survival[surv_names[0]] == pat][surv_names[2]].values[0]
           stats.loc[stats['PATIENT'] == pat, 'gtr'] = survival.loc[survival[surv_names[0]] == pat][surv_names[3]].values[0]
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
 
   if 'mu-err-rsc' not in stats:
+    print("mu-err:")
     stats['mu-err-rsc'] = 1
     stats['std-err-rsc'] = 1
     stats['mu-dice'] = 0
@@ -221,7 +224,9 @@ if __name__=='__main__':
       stats.loc[stats['PATIENT'] == pat, 'mu-dice'] = np.mean(a_dc)
       stats.loc[stats['PATIENT'] == pat, 'std-dice'] = np.std(a_dc)
   
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
   if 'mu-vt-dice' not in stats:
+    print("mu-vt-dice:")
     stats['mu-vt-dice'] = 0
     stats['std-vt-dice'] = 0
     for pat_idx, pat in enumerate(patient_list):
@@ -248,8 +253,10 @@ if __name__=='__main__':
       stats.loc[stats['PATIENT'] == pat, 'mu-vt-dice'] = np.mean(a_dc)
       stats.loc[stats['PATIENT'] == pat, 'std-vt-dice'] = np.std(a_dc)
 
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
   recon = np.zeros((im_sz,im_sz,im_sz,16))
   if 'prob-err-rsc' not in stats:
+    print("prob-err-rsc:")
     stats['prob-err-rsc'] = 1
     stats['prob-dice'] = 0
     stats['prob-vt-dice'] = 0
@@ -293,10 +300,10 @@ if __name__=='__main__':
       stats.loc[stats['PATIENT'] == pat, 'prob-dice'] = compute_dice(tu, tc) 
       stats.loc[stats['PATIENT'] == pat, 'prob-vt-dice'] = compute_dice(vt, vt_pat) 
   
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
   if 'mu-ed-ratio' not in stats:
-    if args.patient_dir_nm:
-      if me_res_dir == data_dir:
-        print("WARNING: needs to be run for mass effect model results")
+    print("mu-ed:")
+    if args.patient_dir_nm and mode is not "nme":
       nm_dir = args.patient_dir_nm
       stats['mu-ed-ratio'] = 0
       stats['std-ed-ratio'] = 0
@@ -326,6 +333,7 @@ if __name__=='__main__':
       print("no-mass-effect model results directory not set; not computing ed ratio...")
 
   if 'tc-vol' not in stats:
+    print("tc-vol")
     stats['tc-vol'] = 0
     stats['ed-vol'] = 0
     stats['nec-vol'] = 0
@@ -341,6 +349,7 @@ if __name__=='__main__':
       stats.loc[stats['PATIENT'] == pat, 'nec-vol'] = compute_volume(pat_seg == 1)
       stats.loc[stats['PATIENT'] == pat, 'en-vol'] = compute_volume(pat_seg == 4)
 
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
   if 'prob-err-vt-vol' not in stats:
     print("vt vol err\n")
     stats['prob-err-vt-vol'] = 1
@@ -373,8 +382,9 @@ if __name__=='__main__':
       pat_vt_vol = compute_volume(vt_pat)
       stats.loc[stats['PATIENT'] == pat, 'prob-err-vt-vol'] = np.abs(pat_vt_vol - compute_volume(vt))/pat_vt_vol 
 
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
   if 'lvd' not in stats:
-    if args.mni_seg:
+    if args.mni_seg and mode is not "nme":
       print("lvd compute\n")
       stats['lvd'] = 0
       mni = nib.load(args.mni_seg).get_fdata()
@@ -387,52 +397,54 @@ if __name__=='__main__':
         vt_pat = (pat_seg == 7)
         stats.loc[stats['PATIENT'] == pat, 'lvd'] = compute_lvd(vt_pat, mni_com) 
   
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)
   if 'u-l2' not in stats:
     print("displacements and stress\n")
     stats['u-l2'] = 0
     stats['u-vol'] = 0
     stats['u-linf'] = 0
-    disp = np.zeros((im_sz,im_sz,im_sz,16))
-    disp_x = disp.copy()
-    disp_y = disp.copy()
-    disp_z = disp.copy()
-    for pat_idx, pat in enumerate(patient_list):
-      print("{}: patient = {}".format(pat_idx, pat))
-      disp[:] = 0
-      disp_x[:] = 0
-      disp_y[:] = 0
-      disp_z[:] = 0
-      recon[:] = 0
-      inv_dir = os.path.join(*[me_res_dir, pat, "tu/"+str(im_sz)+""])
-      inv_data_dir = os.path.join(*[data_dir, pat, "tu/"+str(im_sz)+""])
-      at_list = []
-      for at in os.listdir(inv_dir):
-        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
-        if not os.path.exists(config_file):
-          continue
-        at_list.append(at)
+    if mode is not "nme":
+      disp = np.zeros((im_sz,im_sz,im_sz,16))
+      disp_x = disp.copy()
+      disp_y = disp.copy()
+      disp_z = disp.copy()
+      for pat_idx, pat in enumerate(patient_list):
+        print("{}: patient = {}".format(pat_idx, pat))
+        disp[:] = 0
+        disp_x[:] = 0
+        disp_y[:] = 0
+        disp_z[:] = 0
+        recon[:] = 0
+        inv_dir = os.path.join(*[me_res_dir, pat, "tu/"+str(im_sz)+""])
+        inv_data_dir = os.path.join(*[data_dir, pat, "tu/"+str(im_sz)+""])
+        at_list = []
+        for at in os.listdir(inv_dir):
+          config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+          if not os.path.exists(config_file):
+            continue
+          at_list.append(at)
 
-      num_atlases = len(at_list)
-      for idx,at in enumerate(at_list):
-        at_dir = os.path.join(inv_dir, at)
-        recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
-        disp[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "displacement_rec_final.nc"))
-        disp_x[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_x_rec_final.nc"))
-        disp_y[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_y_rec_final.nc"))
-        disp_z[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_z_rec_final.nc"))
+        num_atlases = len(at_list)
+        for idx,at in enumerate(at_list):
+          at_dir = os.path.join(inv_dir, at)
+          recon[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "seg_rec_final.nc"))
+          disp[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "displacement_rec_final.nc"))
+          disp_x[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_x_rec_final.nc"))
+          disp_y[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_y_rec_final.nc"))
+          disp_z[:,:,:,idx] = read_netcdf(os.path.join(at_dir, "disp_z_rec_final.nc"))
 
 #      prob_seg = create_prob_img(recon[:,:,:,0:num_atlases])
-      disp_median = np.median(disp[:,:,:,0:num_atlases], axis=3)
-      disp_x_median = np.median(disp_x[:,:,:,0:num_atlases], axis=3)
-      disp_y_median = np.median(disp_y[:,:,:,0:num_atlases], axis=3)
-      disp_z_median = np.median(disp_z[:,:,:,0:num_atlases], axis=3)
-      u_l2 = la.norm(disp[:])
-      u_linf = la.norm(disp.flatten(), ord=np.inf)
-      u_vol = compute_volume(disp)
-      stats.loc[stats['PATIENT'] == pat, 'u-l2'] = u_l2 
-      stats.loc[stats['PATIENT'] == pat, 'u-linf'] = u_linf 
-      stats.loc[stats['PATIENT'] == pat, 'u-vol'] = u_vol 
+        disp_median = np.median(disp[:,:,:,0:num_atlases], axis=3)
+        disp_x_median = np.median(disp_x[:,:,:,0:num_atlases], axis=3)
+        disp_y_median = np.median(disp_y[:,:,:,0:num_atlases], axis=3)
+        disp_z_median = np.median(disp_z[:,:,:,0:num_atlases], axis=3)
+        u_l2 = la.norm(disp[:])
+        u_linf = la.norm(disp.flatten(), ord=np.inf)
+        u_vol = compute_volume(disp)
+        stats.loc[stats['PATIENT'] == pat, 'u-l2'] = u_l2 
+        stats.loc[stats['PATIENT'] == pat, 'u-linf'] = u_linf 
+        stats.loc[stats['PATIENT'] == pat, 'u-vol'] = u_vol 
 
 #      pr_stress, max_shear, jac = compute_stress_info(disp_x, disp_y, disp_z, prob_seg)
 
-stats.to_csv(args.results_dir + "/stats.csv", index=False)
+  stats.to_csv(args.results_dir + "/stats.csv", index=False)

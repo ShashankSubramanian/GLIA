@@ -98,7 +98,7 @@ def batch_jobs_and_run(args):
               lines = f.readlines()
             with open(job_file, "a") as f:
               f.write("\n ######## PATIENT: " + str(pat) + " ######## \n")
-              f.writelines(lines[12:])
+              f.writelines(lines[11:])
               f.write("\n\n")
             n_j += 1
     if submit_job:

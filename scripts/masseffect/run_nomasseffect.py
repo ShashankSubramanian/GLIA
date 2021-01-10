@@ -119,6 +119,8 @@ def run_nome(args):
       numjobs  = math.ceil(numatlas/4)
       bin_path = code_dir + "build/last/tusolver" 
       scripts_path = code_dir + "scripts/"
+      r = {}
+      r['compute_sys'] = args.compute_sys
       if not args.submit:
         for i in range(0,numjobs):
           bash_file = create_sbatch_header(respat, i, compute_sys = args.compute_sys)
@@ -127,7 +129,7 @@ def run_nome(args):
           ### create tumor_inv stats
           res_level = res + "/" + str(n) + "/"
           ###bash_file = convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, res_level, i)
-          bash_file = write_tuinv(res_level, at_list, bash_file, i) 
+          bash_file = write_tuinv(res_level, at_list, bash_file, i, args.num_gpus, r) 
       else:
         for i in range(0,numjobs):
           bash_file = respat + "/job" + str(i) + ".sh"
@@ -151,6 +153,7 @@ if __name__=='__main__':
   r_args.add_argument('-csys', '--compute_sys', type = str, help = 'compute system', default = 'longhorn') 
   r_args.add_argument('-submit', action = 'store_true', help = 'submit jobs (after they have been created)') 
   args = parser.parse_args();
+  args.num_gpus = 4
 
   in_dir      = args.patient_dir
   results_dir = args.results_dir

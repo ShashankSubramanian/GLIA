@@ -4,23 +4,27 @@
 import os, sys
 import params as par
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/utils/')
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/helpers/')
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/masseffect/')
 from masseffect import run_masseffect as ensemble
 from masseffect import run_multiple_patients as batch_ensemble
+from helpers import copy_til
 
 
 args = ensemble.Args()
 
 ### path to patients [requires affine to jakob; directory structure is {ID}/aff2jakob/{data}]
-args.patient_dir = "/scratch/05027/shas1693/pglistr_tumor/realdata/"
+args.patient_dir = '/scratch/05027/shas1693/penn_survival_additional/Data/'
 ### path to atlases [adni]
 args.atlas_dir   = "/scratch/05027/shas1693/adni-nc/"
+### path to TIL results
+args.til_dir     = "/scratch/05027/shas1693/pglistr_tumor/results/penn_til_additional/"
 ### path to tumor solver code
 args.code_dir    = "/scratch/05027/shas1693/pglistr_tumor/"
 ### path to registration solver code binaries
 args.claire_dir  = "/scratch/05027/shas1693/claire-dev/bingpu/"
 ### path to results [solver will make this]
-args.results_dir = os.path.join(args.code_dir, "results/ensemble_results/")
+args.results_dir = os.path.join(args.code_dir, "results/penn_ensemble_additional_nome/")
 ### compute system [TACC systems are: maverick2, frontera, stampede2, longhorn]; others [rebels]
 args.compute_sys = "longhorn"
 
@@ -30,12 +34,15 @@ submit               = True
 ### directory to store all the batched jobs; can change if different from results
 args.job_dir         = args.results_dir
 ### number of gpus per node
-args.num_gpus        = 2
+args.num_gpus        = 4
 ### number of patients per job; this will serially place patients in the same job; suggest to set
 ### it to 16/num_gpus
-args.num_pat_per_job = 2
+args.num_pat_per_job = 4
 
 ### ----------------------------------------  INPUT END ------------------------------------------
+
+### copy til locations 
+copy_til.copy_inv_til(args)
 
 ### sets up the ensemble inversion by preselecting atlases and creating images for registration
 ### and tumor inversion ~ (if on tacc, run on a compute node)
