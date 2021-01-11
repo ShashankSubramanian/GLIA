@@ -151,16 +151,76 @@ __global__ void computeStressQuants(ScalarType **gradu_ptr, ScalarType *jac_ptr,
     
     trace_ptr[i] = S0 + S4 + S8; // trace of stress tensor
 
-    // snafu
-    gradu_ptr[0][i] = S0;
-    gradu_ptr[1][i] = S1;
-    gradu_ptr[2][i] = S2;
-    gradu_ptr[3][i] = S3;
-    gradu_ptr[4][i] = S4;
-    gradu_ptr[5][i] = S5;
-    gradu_ptr[6][i] = S6;
-    gradu_ptr[7][i] = S7;
-    gradu_ptr[8][i] = S8;
+    // compute eigenvalues
+    //Given a real symmetric 3x3 matrix A, compute the eigenvalues
+    //Note that acos and cos operate on angles in radians
+
+    // Reuse F, no loops
+    // F6, F7, F8 are eigenvalues
+
+    F0 = S1*S1 + S2*S2 + S5*S5; // upper triangle
+
+    if (F0 == 0) {
+      // A is diagonal.
+      F6 = S0;
+      F7 = S4;
+      F8 = S8;
+    } else {
+      F1 = trace_ptr[i]/3;
+      F2 = (S0 - F1)*(S0 - F1) + (S4 - F1)*(S4 - F1) + (S8 - F1)*(S8 - F1) + 2*F0;
+      F2 = std::sqrt(F2 / 6);
+      F3 = (1 / F2);
+      // B = (1 / p) * (A - q * I; I is the identity matrix
+      S0 = (S0 - F1);
+      S1 = S1;
+      S2 = S2;
+      S3 = S3;
+      S4 = (S4 - F1);
+      S5 = S5;
+      S6 = S6;
+      S7 = S7;
+      S8 = (S8 - F1);
+      // r = det(B)/2
+      F4 = F3 * F3 * F3 * 0.5 * (S0 * (S4*S8 - S7*S5) - S1 * (S3*S8 - S6*S5) + S2 * (S3*S7 - S6*S4));
+
+      // In exact arithmetic for a symmetric matrix  -1 <= r <= 1
+      // but computation error can leave it slightly outside this range.
+      if (F4 <= -1) { 
+        F5 = M_PI / 3;
+      } else if (F4 >= 1) {
+        F5 = 0;
+      } else {
+        F5 = acos(F4) / 3;
+      }
+
+      // the eigenvalues satisfy eig3 <= eig2 <= eig1
+      F6 = F1 + 2 * F2 * cos(F5);
+      F7 = F1 + 2 * F2 * cos(F5 + (2*CUDART_PI/3));
+      F8 = 3 * F1 - F6 - F7;     //since trace(A) = eig1 + eig2 + eig3
+    }
+
+    // insertion sort eigenvalues
+    // reuse trE as temp, no loops
+    if (F7 < F6) {
+      // swap
+      trE = F6;
+      F6 = F7;
+      F7 = trE;
+    }
+    if (F8 < F7) {
+      trE = F7;
+      F7 = F8;
+      F8 = trE;
+
+      if (F7 < F6) {
+        trE = F6;
+        F6 = F7;
+        F7 = trE;
+      }
+    }
+
+    // max_shear
+    max_shear_ptr[i] = 0.5 * (F8 - F6);
   }
 }
 

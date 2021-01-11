@@ -170,9 +170,9 @@ PetscErrorCode PdeOperatorsMassEffect::computeStress(Vec *gradu, Vec jacobian, V
   std::array<ScalarType, 9> S; //stress tensor
   
   std::array<ScalarType, 3> eigenvalues;
-//#ifdef CUDA
-//  computeStressQuantsCuda(gradu_ptr, jac_ptr, trace_ptr, max_shear_ptr, mu_ptr, lam_ptr, params_->grid_->nl_);
-//#else
+#ifdef CUDA
+  computeStressQuantsCuda(gradu_ptr, jac_ptr, trace_ptr, max_shear_ptr, mu_ptr, lam_ptr, params_->grid_->nl_);
+#else
   for (int i = 0; i < params_->grid_->nl_; i++) {
     for (int j = 0; j < F.size(); j++) F[j] = gradu_ptr[j][i];
     F[0] += 1; 
@@ -186,11 +186,11 @@ PetscErrorCode PdeOperatorsMassEffect::computeStress(Vec *gradu, Vec jacobian, V
 
     computeEigenValues(S.data(), eigenvalues.data());
     std::sort(eigenvalues.begin(), eigenvalues.end());
-    eigenvalues[0] = eigenvalues[0] > 0 ? eigenvalues[0] : 0;
+//    eigenvalues[0] = eigenvalues[0] > 0 ? eigenvalues[0] : 0;
     max_shear_ptr[i] = 0.5 * (eigenvalues[2] - eigenvalues[0]);
 //    max_shear_ptr[i] = (std::isnan(max_shear_ptr[i]) || std::isinf(max_shear_ptr[i])) ? 0 : max_shear_ptr[i];
   }
-//#endif
+#endif
 
   for (int i = 0; i < 9; i++) {
     ierr = VecRestoreArray(gradu[i], &gradu_ptr[i]); CHKERRQ(ierr);
@@ -306,6 +306,16 @@ PetscErrorCode PdeOperatorsMassEffect::writeStats(Vec x, std::stringstream &feat
   ierr = computeQuantile(x, roi, work_[2], work_[7], &quart_roi, n_roi, 0.875, false); CHKERRQ(ierr);
   ierr = computeQuantile(x, roi_c, work_[2], work_[7], &quart_roi_c, n_roi_c, 0.875, false); CHKERRQ(ierr);
   feature_stream << quart << "," << quart_roi << "," << quart_roi_c << ",";
+  // compute quantile
+  ierr = computeQuantile(x, work_[2], &quart, 0.95); CHKERRQ(ierr);
+  ierr = computeQuantile(x, roi, work_[2], work_[7], &quart_roi, n_roi, 0.95, false); CHKERRQ(ierr);
+  ierr = computeQuantile(x, roi_c, work_[2], work_[7], &quart_roi_c, n_roi_c, 0.95, false); CHKERRQ(ierr);
+  feature_stream << quart << "," << quart_roi << "," << quart_roi_c << ",";
+  // compute quantile
+  ierr = computeQuantile(x, work_[2], &quart, 0.99); CHKERRQ(ierr);
+  ierr = computeQuantile(x, roi, work_[2], work_[7], &quart_roi, n_roi, 0.99, false); CHKERRQ(ierr);
+  ierr = computeQuantile(x, roi_c, work_[2], work_[7], &quart_roi_c, n_roi_c, 0.99, false); CHKERRQ(ierr);
+  feature_stream << quart << "," << quart_roi << "," << quart_roi_c << ",";
 
   PetscFunctionReturn(ierr);
 } 
@@ -322,7 +332,7 @@ PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstr
   XYZ[2] = 1;
 
   std::vector<std::string> feature_list{"c","dcdt","gradc","u","jac","trT","tau","vel"};
-  std::vector<std::string> stats{"vol","sa","std","quart"};
+  std::vector<std::string> stats{"vol","sa","std","quartmed","95","99"};
   if (time_step == 0) {
     feature_stream << "t,volc/volb,";
     for (auto feature : feature_list) {
@@ -389,6 +399,13 @@ PetscErrorCode PdeOperatorsMassEffect::computeBiophysicalFeatures(std::stringstr
   ierr = writeStats(jacobian, feature_stream); CHKERRQ(ierr);
   ierr = writeStats(trace_stress, feature_stream); CHKERRQ(ierr);
   ierr = writeStats(max_shear, feature_stream); CHKERRQ(ierr);
+//    std::stringstream ss;
+//    if (time_step%5==0) {
+//      ss << "max_shear_t[" << time_step << "].nc";
+//      dataOut(max_shear, params_, ss.str().c_str());
+//      ss.str(std::string());
+//      ss.clear();
+//    }
   // velocity
   ierr = tumor_->velocity_->computeMagnitude(work_[3]); CHKERRQ(ierr); //work is mag of disp
   ierr = writeStats(work_[3], feature_stream); CHKERRQ(ierr);
@@ -436,6 +453,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
 
   std::stringstream ss;
   ScalarType vel_max;
+  ScalarType tu_ratio;
   ScalarType cfl;
   std::stringstream s;
   ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];
@@ -559,6 +577,19 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
       s.str("");
       s.clear();
       ierr = computeBiophysicalFeatures(feature_stream, i);
+      // kill solver if volume of tumor is larger than 10% of the brain
+      tu_ratio = num_tc_voxels_ / (num_healthy_voxels_ + num_tc_voxels_);
+      s << "tumor ratio with brain = " << tu_ratio;
+      ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+      s.str("");
+      s.clear();
+      if (std::abs(tu_ratio - 0.1) < 5E-3 || tu_ratio > 0.1) { 
+        s << "tumor is large, ratio = " << tu_ratio << ", with diff from 10% = " << std::abs(tu_ratio-0.1) << "; exiting solver...";
+        ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+        s.str("");
+        s.clear();
+        break;
+      } 
     }
     // Advection of tumor and healthy tissue
     // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
