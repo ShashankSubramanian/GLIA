@@ -7,6 +7,7 @@ inverse.py --> runs a inverse TIL solver
 inverse_masseffect.py --> runs a inverse masseffect solver
 
 ## MAIN SCRIPTS ##
+forward.py --> runs a forward solver for tumor simulation
 inverse_til.py --> runs the inverse TIL solver on list of patients (or single patient)
 inverse_ensemble.py --> runs the ensemble mass effect inversion on list of patients (or single patient)
 

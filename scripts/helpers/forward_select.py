@@ -41,7 +41,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, atlas, recon_par
   p['rho_data']           = recon_params[0]           # tumor parameters for synthetic data
   p['k_data']             = recon_params[1]
   p['gamma_data']         = recon_params[2]
-  p['nt_data']            = 25
+  p['nt_data']            = 100
   p['dt_data']            = 0.04
   p['k_gm_wm']            = 0.2                         # kappa ratio gm/wm (if zero, kappa=0 in gm)
   p['r_gm_wm']            = 1                         # rho ratio gm/wm (if zero, rho=0 in gm)
