@@ -729,11 +729,19 @@ PetscErrorCode computeStd(Vec x, Vec temp, Vec roi, PetscInt n_roi, ScalarType m
 
   ScalarType sum = 0;
   // in roi
-  ierr = VecPointwiseMult(temp, x, x); CHKERRQ(ierr);
-  ierr = VecPointwiseMult(temp, temp, roi); CHKERRQ(ierr); // temp is x^2 * roi
-  ierr = vecSum(temp, &sum); CHKERRQ(ierr);
-  sum /= n_roi;
-  *std_roi = std::sqrt(sum - mean_roi * mean_roi); // sqrt(E(x^2) - E(x)^2)
+  // use two-pass variance for numerical stability
+  ierr = VecCopy(x, temp); CHKERRQ(ierr);
+  ierr = VecShift(temp, -1.0 * mean_roi); CHKERRQ(ierr); 
+  ierr = VecPointwiseMult(temp, temp, roi); CHKERRQ(ierr); // mask the roi
+  ierr = VecPointwiseMult(temp, temp, temp); CHKERRQ(ierr);
+  ierr = vecSum(temp, std_roi); CHKERRQ(ierr);
+  (*std_roi) /= (n_roi - 1); // unbiased estimate
+  (*std_roi) = std::sqrt(*std_roi);
+//  ierr = VecPointwiseMult(temp, x, x); CHKERRQ(ierr);
+//  ierr = VecPointwiseMult(temp, temp, roi); CHKERRQ(ierr); // temp is x^2 * roi
+//  ierr = vecSum(temp, &sum); CHKERRQ(ierr);
+//  sum /= n_roi;
+//  *std_roi = std::sqrt(sum - mean_roi * mean_roi); // sqrt(E(x^2) - E(x)^2)
 
   PetscFunctionReturn(ierr);
 }
@@ -743,10 +751,14 @@ PetscErrorCode computeStd(Vec x, Vec temp, PetscInt n, ScalarType mean, ScalarTy
   PetscErrorCode ierr = 0;
 
   ScalarType sum = 0;
-  ierr = VecPointwiseMult(temp, x, x); CHKERRQ(ierr);
-  ierr = vecSum(temp, &sum); CHKERRQ(ierr);
-  sum /= n;
-  *std = std::sqrt(sum - mean * mean); // sqrt(E(x^2) - E(x)^2)
+  // use two-pass variance for numerical stability
+  ierr = VecCopy(x, temp); CHKERRQ(ierr);
+  ierr = VecShift(temp, -1.0 * mean); CHKERRQ(ierr); 
+  ierr = VecPointwiseMult(temp, temp, temp); CHKERRQ(ierr);
+  ierr = vecSum(temp, std); CHKERRQ(ierr);
+  (*std) /= (n - 1); // unbiased estimate
+  (*std) = std::sqrt(*std);
+//  *std = std::sqrt(sum - mean * mean); // sqrt(E(x^2) - E(x)^2)
 
   PetscFunctionReturn(ierr);
 }
