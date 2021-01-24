@@ -6,6 +6,24 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../')
 import params as par
 
+
+def update_tu_config(config_file):
+  with open(config_file, "r") as f: 
+    lines = f.readlines()
+
+  # modify some params
+  smooth = 1
+  k = 0.01
+  with open(config_file, "w+") as f: 
+    for line in lines:
+      if "smoothing_factor=" in line:
+        f.write("smoothing_factor="+str(smooth)+"\n")
+        continue
+      if "k_data=" in line:
+        f.write("k_data="+str(k)+"\n")
+        continue
+      f.write(line)
+
 if __name__=='__main__':
   parser = argparse.ArgumentParser(description='runs several forward solves',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
@@ -31,8 +49,21 @@ if __name__=='__main__':
     os.makedirs(args.job_dir)
 
   pat_list = []
-  for pat in os.listdir(args.run_dir):
+  run_list = []
+  fail_string = ""
+  #fail_string = "fail_"
+  if len(fail_string) > 0:
+    with open(os.path.join(args.run_dir, "failed.txt"), "r") as f:
+      lines = f.readlines()
+    for l in lines:
+      run_list.append(l.strip("\n"))
+  else:
+    run_list = os.listdir(args.run_dir)
+
+  for pat in run_list:
     fwd_path = os.path.join(*[args.run_dir, pat, "tu", str(args.sz)])
+    if not os.path.exists(fwd_path):
+      continue
     subdirs = os.listdir(fwd_path)
     for a in subdirs:
       if os.path.exists(os.path.join(*[fwd_path, a, "reconstruction_info.dat"])):
@@ -40,7 +71,13 @@ if __name__=='__main__':
         break
     if not os.path.exists(os.path.join(*[fwd_path, rep_atlas, "solver_config.txt"])):
       continue
-    pat_list.append((pat,a))
+
+    if len(fail_string) > 0:
+      # update tu config to try other variations
+      print("updating config in ", fwd_path)
+      update_tu_config(os.path.join(*[fwd_path, rep_atlas, "solver_config.txt"]))
+
+    pat_list.append((pat,rep_atlas))
 
   total_pats = len(pat_list)
   num_jobs = int(np.ceil(total_pats/num_pats_per_job))
@@ -55,7 +92,7 @@ if __name__=='__main__':
     local_len = len(local_list)
     num_local_grps = int(np.ceil(local_len/num_gpus))
     run_params["log_name"] = "log_" + str(idx)
-    with open(args.job_dir + "/job_" + str(idx) + ".sh", "w+") as f:
+    with open(args.job_dir + "/job_" + fail_string + str(idx) + ".sh", "w+") as f:
       header = par.write_jobscript_header(tu_params, run_params, use_gpu=True) 
       f.write(header)
       f.write("\nbin_path=" + args.code_dir + "/build/last/tusolver\n\n")

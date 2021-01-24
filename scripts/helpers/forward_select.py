@@ -47,6 +47,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, atlas, recon_par
   p['r_gm_wm']            = 1                         # rho ratio gm/wm (if zero, rho=0 in gm)
   p['time_history_off']   = 1                         # 1: do not allocate time history (only works with forward solver or FD inversion)
   p['smoothing_factor_data_t0'] = 0
+  p['smoothing_factor'] = 1                         # kernel width for smoothing of data and material properties
 
 ###############=== write config to write_path and submit job
   par.submit(p, r, submit_job);
