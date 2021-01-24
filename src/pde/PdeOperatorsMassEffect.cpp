@@ -434,6 +434,15 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
 
   ierr = VecCopy(tumor_->c_0_, tumor_->c_t_); CHKERRQ(ierr);
   ierr = displacement_old_->set(0); CHKERRQ(ierr);
+  
+//  ScalarType *ptr;
+//  ierr = vecGetArray(tumor_->c_t_, &ptr); CHKERRQ(ierr);
+//#ifdef CUDA
+//  clipVectorCuda(ptr, params_->grid_->nl_);
+//#else
+//  for (int i = 0; i < params_->grid_->nl_; i++) ptr[i] = (ptr[i] <= 0.) ? 0. : ptr[i];
+//#endif
+//  ierr = vecRestoreArray(tumor_->c_t_, &ptr); CHKERRQ(ierr);
 
   ScalarType k1, k2, k3, r1, r2, r3;
   k1 = params_->tu_->k_;
@@ -464,6 +473,8 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
 
   std::ofstream feature_file;
   std::stringstream feature_stream;
+
+  ScalarType max_tu_vol_ratio = 0.05; // don't push the solver more than this
 
       
   for (int i = 0; i < nt + 1; i++) {
@@ -579,12 +590,12 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
       ierr = computeBiophysicalFeatures(feature_stream, i);
       // kill solver if volume of tumor is larger than 10% of the brain
       tu_ratio = num_tc_voxels_ / (num_healthy_voxels_ + num_tc_voxels_);
-      s << "tumor ratio with brain = " << tu_ratio;
+      s << "tumor ratio with brain = " << tu_ratio << "; (tc, healthy) " << num_tc_voxels_ << ", " << num_healthy_voxels_;
       ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
       s.str("");
       s.clear();
-      if (std::abs(tu_ratio - 0.1) < 5E-3 || tu_ratio > 0.1) { 
-        s << "tumor is large, ratio = " << tu_ratio << ", with diff from 10% = " << std::abs(tu_ratio-0.1) << "; exiting solver...";
+      if ((std::abs(tu_ratio - max_tu_vol_ratio) < 5E-3 || tu_ratio > max_tu_vol_ratio) && (i * dt >= 1)) { 
+        s << "tumor is large, ratio = " << tu_ratio << ", with diff from max ratio (" << max_tu_vol_ratio << ") = " << std::abs(tu_ratio - max_tu_vol_ratio) << "; exiting solver...";
         ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
         s.str("");
         s.clear();
@@ -664,7 +675,7 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
   if (params_->tu_->verbosity_ > 1) cudaPrintDeviceMemory();
 #endif
 
-  if ((params_->tu_->write_output_ && params_->tu_->verbosity_ > 1 && !write_output_and_break)) {
+  if ((params_->tu_->write_output_ && params_->tu_->verbosity_ > 1)) {
     // for mass-effect inversion, write the very last one too. TODO: change loc of print statements instead.
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
     ss.str(std::string());
