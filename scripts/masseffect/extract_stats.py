@@ -38,9 +38,10 @@ if __name__=='__main__':
   use_mat_prop = True # compute volumes using tumor solver output (because they are smoothed)
   
 #  patient_list = ["Brats18_CBICA_ABO_1", "Brats18_CBICA_AMH_1", "Brats18_CBICA_ALU_1", "Brats18_CBICA_AAP_1"] 
-  patient_list = ["tc_f", "tc_g", "tc_h", "tc_i"]
+#  patient_list = ["tc_f", "tc_g", "tc_h", "tc_i"]
+  patient_list = []
   if not len(patient_list):
-    with open(args.patient_dir + "/pat_stats.csv", "r") as f:
+    with open(pat_stat_path, "r") as f:
       brats_pats = f.readlines()
     for l in brats_pats:
       patient_list.append(l.split(",")[0])
@@ -125,8 +126,13 @@ if __name__=='__main__':
     for l in lines:
       at_list.append(l.strip('\n'))
 
+    ## random perm
+#    at_list = np.random.permutation(at_list)
+#    nn = 8
+#    num_atlases = nn if len(at_list) > nn else len(at_list)
+#    at_list = at_list[0:num_atlases]
+
     patient_compute = False
-#    num_atlases = 8 if len(at_list) > 8 else len(at_list)
     for atlas in at_list:
       exist = True
       print("reading recon dat file from atlas " + atlas)
@@ -205,8 +211,10 @@ if __name__=='__main__':
       log_file = inv_path + atlas + "/solver_log.txt"
 #      log_file = inv_path + atlas + "/log"
       if not os.path.exists(log_file):
-        print("logfile does not exist!. breaking..")
-        continue
+        log_file = inv_path + atlas + "/log"  ### some older runs have this name inconsistency
+        if not os.path.exists(log_file):
+          print("logfile does not exist!. breaking..")
+          continue
 
       with open(log_file, 'r') as f:
         lines = f.readlines()
@@ -287,30 +295,6 @@ if __name__=='__main__':
       row_csv += str(vt_l2_nome_err) + ","
       row_csv += str(t) + "\n"
 
-#  for idx in range(1,num_cases+1):
-#    if n == 256:
-#      atlas = "atlas-" + str(idx) + suff
-#    else:
-#      atlas = "atlas-" + str(idx) + "_" + str(n)
-#    if idx in failed_atlas:
-#      print('skipping failed atlas {}'.format(idx))
-#      continue
-#
-#    inv_results = base_dir + "results/inv-" + pat + "/" + atlas + "/"
-#    file = Dataset(inv_results + "c_rec_final.nc", mode='r', format="NETCDF3_CLASSIC")
-#    c_avg += np.transpose(file.variables['data'])
-#    file = Dataset(inv_results + "displacement_rec_final.nc", mode='r', format="NETCDF3_CLASSIC")
-#    u_avg += np.transpose(file.variables['data'])
-#
-#  c_avg /= num_cases
-#  u_avg /= num_cases
-#  nii = nib.load(base_dir + "brain_data/real_data/" + pat + "/data/" + pat + "_seg_tu_aff2jakob.nii.gz")
-#  if n == 256:
-#    writeNII(c_avg, res_path + "c_avg_" + str(n) + suff + ".nii.gz", ref_image = nii)
-#    writeNII(u_avg, res_path + "u_avg_" + str(n) + suff + ".nii.gz", ref_image = nii)
-#  else:
-#    writeNII(c_avg, res_path + "c_avg_" + str(n) + ".nii.gz")
-#    writeNII(u_avg, res_path + "u_avg_" + str(n) + ".nii.gz")
 
     row += "\n\n ######################################################## \n\n "
 
@@ -358,6 +342,28 @@ if __name__=='__main__':
       row_means += str(np.mean(vt_l2_nome_err_arr)) + "," + str(np.std(vt_l2_nome_err_arr)) + ","
       row_means += str(np.mean(time_arr)) + "," + str(np.std(time_arr)) + "\n"
       row_csv += row_means
+
+
+      ### find most representative atlas as nearest to the median
+      med_gam = np.median(gam_arr)
+      med_rho = np.median(rho_arr)
+      med_kappa = np.median(kappa_arr)
+      med_param = np.array([med_gam, med_rho, med_kappa])
+      min_dist = 1E3
+      scale_vector = np.array([1E-5,1E-1,1E1]) # rescale to similar vals
+      med_param *= scale_vector
+      atlas_rep_id = 0
+      for i in range(0,len(gam_arr)):
+        vector_param = np.array([gam_arr[i], rho_arr[i], kappa_arr[i]])
+        vector_param *= scale_vector
+        diff = vector_param - med_param
+        dist = LA.norm(diff)
+        if dist < min_dist:
+          atlas_rep_id = i
+          min_dist = dist
+
+    row += "\nMedian representative atlas id = " + at_list[atlas_rep_id] + "\n"
+    row_csv += "\nMedian representative atlas id = " + at_list[atlas_rep_id] + "\n"
 
     statfile.write(row)
     statfile.close()
