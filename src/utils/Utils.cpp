@@ -829,6 +829,7 @@ PetscErrorCode computeQuantile(Vec x, Vec roi, Vec temp, Vec roi_temp, ScalarTyp
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
+#ifdef CUDA
   PetscInt sz;
   ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
   ScalarType *x_ptr, *roi_ptr, *roi_ptr_t;
@@ -870,10 +871,10 @@ PetscErrorCode computeQuantile(Vec x, Vec roi, Vec temp, Vec roi_temp, ScalarTyp
 //      count++;
 //    }
 //  }
-//#else
-//  // TODO: MPI not implemented
-//  TU_assert(false, "roi quantiles not implemented for CPUs.")
-//#endif
+#else
+  // TODO: MPI not implemented
+  TU_assert(false, "roi quantiles not implemented for CPUs.")
+#endif
   
 //  ierr = VecRestoreArray(temp, &x_ptr); CHKERRQ(ierr);
 //  ierr = VecRestoreArray(roi_temp, &roi_ptr); CHKERRQ(ierr);

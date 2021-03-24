@@ -284,7 +284,7 @@ PetscErrorCode Tumor::getHealthyBrain(Vec x) {
 #ifdef CUDA
   getHealthyBrainCuda(seg_ptr, x_ptr, params_->grid_->nl_);
 #else
-  int tc, bg
+  int tc, bg;
   for (int i = 0; i < params_->grid_->nl_; i++) {
     tc = (seg_ptr[i] == 1) ? 1 : 0;
     bg = (seg_ptr[i] == 0) ? 1 : 0;
