@@ -89,10 +89,10 @@ if __name__=='__main__':
       if not os.path.exists(dst_file):
         shutil.copy(src_file, dst_file)
 
-    atlist = os.listdir(src_dir)
-    for a in atlist:
-      if os.path.exists(os.path.join(*[src_dir, a, "reconstruction_info.dat"])):
-        rep_atlas = a
+#    atlist = os.listdir(src_dir)
+#    for a in atlist:
+#      if os.path.exists(os.path.join(*[src_dir, a, "reconstruction_info.dat"])):
+#        rep_atlas = a
 
     recon_file = os.path.join(*[src_dir, rep_atlas, "reconstruction_info.dat"])
     if not os.path.exists(recon_file):
