@@ -134,7 +134,8 @@ if __name__=='__main__':
   r_args.add_argument('-mni', '--mni_seg', type = str, help = 'path to mni template seg') 
   args = parser.parse_args();
 
-  mode = "nme"
+  random_perm = False  # random_perm subselection of templates for sensitivity analsys
+  mode = "me" # me or nme
   im_sz = int(args.n_inversion_size)
   me_res_dir = args.patient_dir
   in_dir = args.input_dir
@@ -271,12 +272,26 @@ if __name__=='__main__':
       pat_compute = True
       c = np.zeros((im_sz, im_sz, im_sz))
       at_list = []
-      for at in os.listdir(inv_dir):
-        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
-        if not os.path.exists(config_file):
-          continue
-        at_list.append(at)
+#      for at in os.listdir(inv_dir):
+#        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+#        if not os.path.exists(config_file):
+#          continue
+#        at_list.append(at)
+      listfile = os.path.join(*[me_res_dir, pat, "atlas-list.txt"])
+      with open(listfile, 'r') as f:
+        lines = f.readlines()
+      for l in lines:
+        at_list.append(l.strip('\n'))
 
+      if random_perm:
+        ## random perm
+        np.random.seed(0)
+        at_list = np.random.permutation(at_list)
+        ## subselect few atlases
+        nn = 8
+        num_atlases = nn if len(at_list) > nn else len(at_list)
+        at_list = at_list[0:num_atlases]
+      
       num_atlases = len(at_list)
       for idx,at in enumerate(at_list):
         at_dir = os.path.join(inv_dir, at)
@@ -362,11 +377,25 @@ if __name__=='__main__':
       vt_pat = (pat_seg == 7) 
       pat_compute = True
       at_list = []
-      for at in os.listdir(inv_dir):
-        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
-        if not os.path.exists(config_file):
-          continue
-        at_list.append(at)
+#      for at in os.listdir(inv_dir):
+#        config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+#        if not os.path.exists(config_file):
+#          continue
+#        at_list.append(at)
+      listfile = os.path.join(*[me_res_dir, pat, "atlas-list.txt"])
+      with open(listfile, 'r') as f:
+        lines = f.readlines()
+      for l in lines:
+        at_list.append(l.strip('\n'))
+
+      if random_perm:
+        ## random perm
+        np.random.seed(0)
+        at_list = np.random.permutation(at_list)
+        ## subselect few atlases
+        nn = 8
+        num_atlases = nn if len(at_list) > nn else len(at_list)
+        at_list = at_list[0:num_atlases]
 
       num_atlases = len(at_list)
       for idx,at in enumerate(at_list):
@@ -418,11 +447,25 @@ if __name__=='__main__':
         inv_dir = os.path.join(*[me_res_dir, pat, "tu/"+str(im_sz)+""])
         inv_data_dir = os.path.join(*[data_dir, pat, "tu/"+str(im_sz)+""])
         at_list = []
-        for at in os.listdir(inv_dir):
-          config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
-          if not os.path.exists(config_file):
-            continue
-          at_list.append(at)
+#        for at in os.listdir(inv_dir):
+#          config_file = os.path.join(inv_dir, at) + "/solver_config.txt"
+#          if not os.path.exists(config_file):
+#            continue
+#          at_list.append(at)
+        listfile = os.path.join(*[me_res_dir, pat, "atlas-list.txt"])
+        with open(listfile, 'r') as f:
+          lines = f.readlines()
+        for l in lines:
+          at_list.append(l.strip('\n'))
+
+        if random_perm:
+          ## random perm
+          np.random.seed(0)
+          at_list = np.random.permutation(at_list)
+          ## subselect few atlases
+          nn = 8
+          num_atlases = nn if len(at_list) > nn else len(at_list)
+          at_list = at_list[0:num_atlases]
 
         num_atlases = len(at_list)
         for idx,at in enumerate(at_list):

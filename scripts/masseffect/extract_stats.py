@@ -126,7 +126,8 @@ if __name__=='__main__':
     for l in lines:
       at_list.append(l.strip('\n'))
 
-    ## random perm
+#    ## random perm
+#    np.random.seed(0)
 #    at_list = np.random.permutation(at_list)
 #    nn = 8
 #    num_atlases = nn if len(at_list) > nn else len(at_list)
