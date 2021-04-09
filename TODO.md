@@ -4,7 +4,6 @@
 ### Solver
 
 ### gen/
-- scons clean does not clean cuda files - fix.
 - create a build-libs script to build all dependencies like CLAIRE
 
 ### opt/
