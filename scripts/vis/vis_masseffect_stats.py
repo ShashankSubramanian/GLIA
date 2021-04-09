@@ -175,15 +175,20 @@ if __name__=='__main__':
     stats_me = stats 
 
   ### add some important columns
-  if not 'diff-vol' in stats:
-    stats['diff-vol'] = stats['mu-vol-err-nm'] - stats['mu-vol-err']
-    stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
+#  if not 'diff-vol' in stats:
+#    stats['diff-vol'] = stats['mu-vol-err-nm'] - stats['mu-vol-err']
+#    stats['diff-l2'] = stats['mu-l2-err-nm'] - stats['mu-l2-err']
 
   ### subselect patients
   ### pats with diff-vol < 0
   #patient_list = stats_me.loc[stats_me['diff-vol'] < 0].sort_values(by=['diff-vol'])['PATIENT'].tolist()
-  #patient_list = patient_list[0:10]
   patient_list = stats['PATIENT'].tolist()
+  q1 = np.quantile(stats_me["mu-u"], 0.34)
+  q2 = np.quantile(stats_me["mu-u"], 0.67)
+  patient_list = stats_me.loc[stats_me['mu-u'] >= q2]['PATIENT'].tolist()
+  #patient_list = stats_me.loc[np.logical_and(stats_me['mu-u'] >= q1, stats_me['mu-u'] < q2)]['PATIENT'].tolist()
+  #patient_list = patient_list[0:10]
+  
   print("selected patients: ")
   for pat in patient_list:
     print(pat)
@@ -209,7 +214,7 @@ if __name__=='__main__':
 #  stat_file = open(args.results_dir + "/inversion_stats.txt", "w")
 #  stat_file.write("PATIENT,atlas-status,diff-vol,diff-l2,pat-vol,prob-vol,min-vol,max-vol,med-vol\n")
   
-  with PdfPages(args.results_dir + "/penn_nomasseffect_stats_all.pdf") as pdf:
+  with PdfPages(args.results_dir + "/penn_masseffect_stats_high.pdf") as pdf:
     for pat in patient_list:
       pat_name = pat
       atlases[:] = 0
