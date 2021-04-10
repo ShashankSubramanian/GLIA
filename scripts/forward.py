@@ -34,7 +34,8 @@ p['time_history_off'] = 1             # 1: do not allocate time history (only wo
 ############### === define run configuration if job submit is needed; else run from results folder directly
 r['code_path'] = code_dir;
 r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn
-r['mpi_tasks'] = 1                    # mpi tasks (other job params like nodes, waittime are defaulted from params.py; overwrite here if needed)
+r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
+r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
 
 ###############=== write config to write_path and submit job
 par.submit(p, r, submit_job);

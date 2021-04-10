@@ -13,18 +13,18 @@ from helpers import copy_til
 
 args = ensemble.Args()
 
-### path to patients [requires affine to jakob; directory structure is {ID}/aff2jakob/{data}]
-args.patient_dir = '/scratch/05027/shas1693/penn_survival_additional/Data/'
+### path to patients [requires affine to jakob; directory structure is args.patient_dir/{patient_ID}/aff2jakob/{data}]
+args.patient_dir = '/scratch/05027/shas1693/pglistr_tumor/checkreal/'
 ### path to atlases [adni]
 args.atlas_dir   = "/scratch/05027/shas1693/adni-nc/"
-### path to TIL results
-args.til_dir     = "/scratch/05027/shas1693/pglistr_tumor/results/penn_til_additional/"
+### path to TIL results; results directory from inverse_til.py script; assumes a directory structure
+args.til_dir     = "/scratch/05027/shas1693/pglistr_tumor/results/test_til_gpu"
 ### path to tumor solver code
 args.code_dir    = "/scratch/05027/shas1693/pglistr_tumor/"
 ### path to registration solver code binaries
 args.claire_dir  = "/scratch/05027/shas1693/claire-dev/bingpu/"
 ### path to results [solver will make this]
-args.results_dir = os.path.join(args.code_dir, "results/penn_ensemble_additional_nome/")
+args.results_dir = os.path.join(args.code_dir, "results/test_me_gpu/")
 ### compute system [TACC systems are: maverick2, frontera, stampede2, longhorn]; others [rebels]
 args.compute_sys = "longhorn"
 
@@ -37,11 +37,11 @@ args.job_dir         = args.results_dir
 args.num_gpus        = 4
 ### number of patients per job; this will serially place patients in the same job; suggest to set
 ### it to 16/num_gpus
-args.num_pat_per_job = 4
+args.num_pat_per_job = 1
 
 ### ----------------------------------------  INPUT END ------------------------------------------
 
-### copy til locations 
+### copy til locations
 copy_til.copy_inv_til(args)
 
 ### sets up the ensemble inversion by preselecting atlases and creating images for registration

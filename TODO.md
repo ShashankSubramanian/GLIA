@@ -1,44 +1,33 @@
-# TODOS CLEANUP
----
+# TODOS
 
-### Solver
-
-### gen/
-- create a build-libs script to build all dependencies like CLAIRE
+### build/
+- create a build-libs script to build all dependencies
+- remove accfft, fftw from scons for gpus. Code also needs to be refactored for this.
 
 ### opt/
-- inconcsisten use of params->tu->nk and params->get_nk(), I think almost everywhere params->get_nk() should be used.
-- dirty allocation of x_L1 in SparseTILOptimizer, revisit restrict/prolongate subspace
-- test RD inverion (write test)
-- test ME inverion (write test)
-- test TIL inversion (write test)
-- test grid cont (write test)
-- cuda: performance is poor (gpu util < 30%) for full subspace solve ~ need to figure out why
 
 ### pde/
 
-### test/
-- implement integration test for ME inversion: compare rho, kappa, gamma
-- implement integration test for RD inversion: compare rho, kappa
-- implement integration test for TIL inversion: compare error c1, c0, kappa, p
-- implement integration test for sparse TIL inversion:  compare error c1, c0, TIL, rho, kappa, gamma
-- implement integration test for grid-cont integration (with coarse solution injection):  compare error c1, c0, TIL, rho, kappa, gamma
-- implement unit test objective evaluation (all models)
-- implement unit test gradient evaluation (all models)
-- implement unit test hessian evaluation
-- implement unit test adjoint solve
+### utils
+- on frontera, thrust max produces NaNs on some rtx GPUs (current fix is to do max on cpu). But unsure what the problem is
 
+### mat/
+- Remove glm ratios
+- can we remove the functions DiffCoef::compute_dKdm_gradc_gradp and ReacCoef::applydRdm? What are they needed for? Needed for SIBIA (unused for the time being)
+
+### test/
+- see discussion in src/test/
+- most unit tests are remaining using catch
 
 ### doc/
 - write documentation
 
 ### scripts/
+- extract_stats and analysis (masseffect scripts) should be merged. all useless stats need to be commented out
 
 ### External functionality:
+- cython functionality (most of it is done in sibia-py; needs to be refactored)
 
-### inverse/Solver
+### app/
 
-### DiffCoef, ReacCoef
-- Remove glm ratios?
-- can we remove the functions DiffCoef::compute_dKdm_gradc_gradp and ReacCoef::applydRdm? What are they needed for? Needed for SIBIA (unused for the time being)
 
