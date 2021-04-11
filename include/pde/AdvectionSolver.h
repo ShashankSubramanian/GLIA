@@ -74,10 +74,10 @@ class SemiLagrangianSolver : public AdvectionSolver {
   ScalarType *scalar_field_ghost_;  // local scalar field with ghost points
   ScalarType *vector_field_ghost_;  // local vector field with ghost points
 
+#ifdef MPICUDA
   std::shared_ptr<InterpPlan> interp_plan_vector_;  // plans for interpolation on multi-GPU
   std::shared_ptr<InterpPlan> interp_plan_scalar_;  // plans for interpolation on multi-GPU
-
-  std::shared_ptr<InterpPlan> interp_plan_;  // plan for interpolation on the cpu
+#endif
 
   float *temp_interpol1_;  // temporary floats for more efficient GPU interpolation
   float *temp_interpol2_;
@@ -86,6 +86,8 @@ class SemiLagrangianSolver : public AdvectionSolver {
 
 #ifdef CUDA
   cudaTextureObject_t m_texture_;  //  cuda texture object for interp - only defined in cuda header files
+#else
+  std::shared_ptr<InterpPlan> interp_plan_;  // plan for interpolation on the cpu
 #endif
 
   virtual PetscErrorCode solve(Vec scalar, std::shared_ptr<VecField> velocity, ScalarType dt);  // solve transport equation

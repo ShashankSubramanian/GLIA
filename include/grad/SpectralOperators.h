@@ -5,7 +5,10 @@
 
 class SpectralOperators {
  public:
-  SpectralOperators(int fft_mode = ACCFFT) { fft_mode_ = fft_mode; }
+  SpectralOperators(int fft_mode = ACCFFT) { 
+    fft_mode_ = fft_mode; 
+    plan_ = nullptr;
+  }
 
   int fft_mode_;
   fft_plan *plan_;
@@ -39,6 +42,7 @@ class SpectralOperators {
 
 // initialization routines are part of spectral operators because accfft controls the memory distribution
 PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops);
+int64_t get_local_sizes_single(int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm); // single processor (used for single GPU)
 // cuda helpers
 #ifdef CUDA
 void initSpecOpsCudaConstants(int *n, int *istart, int *ostart, int *isize, int *osize);

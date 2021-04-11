@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
 
   // === create distributed compute grid
   std::shared_ptr<SpectralOperators> spec_ops;
-  #if defined(CUDA) && !defined(MPICUDA)
+  #if defined(CUDA)
       spec_ops = std::make_shared<SpectralOperators> (CUFFT);
   #else
       spec_ops = std::make_shared<SpectralOperators> (ACCFFT);

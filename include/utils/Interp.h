@@ -3,8 +3,8 @@
 
 #include "TypeDefs.h"
 
+/*  MPICUDA is deprecated; uncomment to start accfft multigpu use
 #ifdef MPICUDA
-
 	#include "petsc.h"
 	#include <accfft.h>
 	#include <accfftf.h>
@@ -119,23 +119,16 @@
 			int* isize, int* isize_g, const int N_pts, pvfmm::Iterator<Real> Q_);
 
 #else
-	#include "petsc.h"
-	#include <accfft.h>
-	#include <accfftf.h>
+*/
+#ifndef CUDA
 	#define FAST_INTERP
-
 	#if defined(SINGLE)
 		#define FAST_INTERPV // enable ONLY for single precision
 	#endif
-
 	#define FAST_INTERP_BINNING
-	//#define HASWELL
-	//#define KNL
-
 	#if defined(KNL)
 		#define INTERP_USE_MORE_MEM_L1
 	#endif
-
 
 	#if defined(SINGLE)
 		typedef float Real;
@@ -154,41 +147,8 @@
 	#endif
 
 	#define COORD_DIM 3
-	#include <mpi.h>
-	#include <vector>
 	#include <set>
 	#include <compact_mem_mgr.hpp>
-
-	#ifdef CUDA
-		// use cuda routines
-		#include "petsccuda.h"
-		#include <cuda.h>
-		#include <cuda_runtime.h>
-		#include "UtilsCuda.h"
-		
-		void gpuInterp3D(
-           float* yi,
-           const PetscScalar* xq1,
-           const PetscScalar* xq2,
-           const PetscScalar* xq3,
-           float* yo,
-           float *tmp1, float* tmp2,
-           int*  nx,
-           cudaTextureObject_t yi_tex,
-           int iporder,
-           float* interp_time);
-
-		void gpuInterpVec3D(
-           float* yi1, float* yi2, float* yi3,
-           const PetscScalar* xq1, const PetscScalar* xq2, const PetscScalar* xq3,
-           float* yo1, float* yo2, float* yo3,
-           float *tmp1, float* tmp2,
-           int*  nx, cudaTextureObject_t yi_tex, int iporder, float* interp_time);
-
-		extern "C" cudaTextureObject_t gpuInitEmptyTexture(int* nx);
-
-		void interp0(float* m, float* q1, float *q2, float *q3, float *q, int nx[3]);
-	#endif
 
 	void rescale_xyz(const int g_size, int* N_reg, int* N_reg_g, int* istart,
 			int* isize, int* isize_g, const int N_pts, Real* Q_);
@@ -326,7 +286,36 @@
 			Real* data, Real* ghost_data);
 	//void accfft_get_ghost_xyz(accfft_plan_gpu* plan, int g_size, int* isize_g,
 	//		Real* data, Real* ghost_data);
+#else
+    // single GPU
+		// use cuda routines
+		#include "petsccuda.h"
+		#include <cuda.h>
+		#include <cuda_runtime.h>
+		#include "UtilsCuda.h"
+		
+		void gpuInterp3D(
+           float* yi,
+           const PetscScalar* xq1,
+           const PetscScalar* xq2,
+           const PetscScalar* xq3,
+           float* yo,
+           float *tmp1, float* tmp2,
+           int*  nx,
+           cudaTextureObject_t yi_tex,
+           int iporder,
+           float* interp_time);
 
-	#endif
+		void gpuInterpVec3D(
+           float* yi1, float* yi2, float* yi3,
+           const PetscScalar* xq1, const PetscScalar* xq2, const PetscScalar* xq3,
+           float* yo1, float* yo2, float* yo3,
+           float *tmp1, float* tmp2,
+           int*  nx, cudaTextureObject_t yi_tex, int iporder, float* interp_time);
+
+		extern "C" cudaTextureObject_t gpuInitEmptyTexture(int* nx);
+
+		void interp0(float* m, float* q1, float *q2, float *q3, float *q, int nx[3]);
+#endif
 
 #endif

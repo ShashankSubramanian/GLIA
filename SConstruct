@@ -63,11 +63,11 @@ vars = Variables(None, ARGUMENTS)
 vars.Add(PathVariable("builddir", "Directory holding build files.", "build", PathVariable.PathAccept))
 vars.Add(EnumVariable('build', 'Build type, either release or debug', "debug", allowed_values=('release', 'debug')))
 vars.Add("compiler", "Compiler to use.", "mpicxx")
-vars.Add("platform", "Specify platform.", "local")
+vars.Add("platform", "Specify platform.", "frontera")
 vars.Add(BoolVariable("niftiio", "enable/disable nifti.", False))
-vars.Add(BoolVariable("gpu", "Enables build for GPU support.", False))
+vars.Add(BoolVariable("gpu", "Enables build for GPU support.", True))
 vars.Add(BoolVariable("multi_gpu", "Enables build for multi-GPU support.", False))
-vars.Add(BoolVariable("single_precision", "Enables single precision computation.", False))
+vars.Add(BoolVariable("single_precision", "Enables single precision computation.", True))
 
 env = Environment(variables = vars, ENV = os.environ)   # For configuring build variables
 conf = Configure(env) # For checking libraries, headers, ...
@@ -98,9 +98,6 @@ env.Append(CCFLAGS= ['-std=c++11'])
 WARN='-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror -Wno-unused'
 #env.Append(CCFLAGS= [WARN])
 
-#if not conf.CheckHeader('mpi.h'):
-#  errorMissingHeader('mpi.h', 'MPI')
-
 # ====== Compiler Settings ======
 
 # Produce position independent code for dynamic linking
@@ -126,9 +123,6 @@ elif real_compiler == "g++-mp-4.9":
     # See https://github.com/precice/precice/issues/2
     env.Append(LIBS = ['libstdc++.6'])
     env.AppendUnique(LIBPATH = ['/opt/local/lib/'])
-
-#env.Append(LINKFLAGS = ["-lf2clapack", "-lf2cblas"])
-#env.Append(LINKFLAGS = ['-O3', '-std=c++11', '-fopenmp',  '-DREG_HAS_PNETCDF',  '-DGAUSS_NEWTON', '-march=native'])
 
 # set compiler variables
 env.Replace(CXX = env["compiler"])
@@ -183,26 +177,30 @@ if env["gpu"] == True:
     uniqueCheckLib(conf, "cufft")
     uniqueCheckLib(conf, "cublas")
     uniqueCheckLib(conf, "cudart")
+else:
+# ====== FFTW =========
+    FFTW_DIR = checkset_var("FFTW_DIR", "")
+    env.Append(CPPPATH = [os.path.join( FFTW_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( FFTW_DIR, "lib")])
+    uniqueCheckLib(conf, "fftw3_threads")
+    uniqueCheckLib(conf, "fftw3")
+    uniqueCheckLib(conf, "fftw3f_threads")
+    uniqueCheckLib(conf, "fftw3f")
+    uniqueCheckLib(conf, "fftw3_omp")
+    uniqueCheckLib(conf, "fftw3f_omp")
+# ====== ACCFFT =======
+    ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
+    env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( ACCFFT_DIR, "lib")])
+    uniqueCheckLib(conf, "accfft")
+    uniqueCheckLib(conf, "accfft_utils")
+    if env["gpu"] == True:
+        uniqueCheckLib(conf, "accfft_gpu")
+        uniqueCheckLib(conf, "accfft_utils_gpu")
 # MPI
 MPI_DIR = checkset_var("MPI_DIR", "")
 env.Append(CPPPATH = [os.path.join( MPI_DIR, "include")])
 env.Append(LIBPATH = [os.path.join( MPI_DIR, "lib")])
-
-# ====== ACCFFT =======
-ACCFFT_DIR = checkset_var("ACCFFT_DIR", "")
-env.Append(CPPPATH = [os.path.join( ACCFFT_DIR, "include")])
-env.Append(LIBPATH = [os.path.join( ACCFFT_DIR, "lib")])
-uniqueCheckLib(conf, "accfft")
-uniqueCheckLib(conf, "accfft_utils")
-if env["gpu"] == True:
-    uniqueCheckLib(conf, "accfft_gpu")
-    uniqueCheckLib(conf, "accfft_utils_gpu")
-
-# ====== PNETCDF ======
-PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
-env.Append(CPPPATH = [os.path.join( PNETCDF_DIR, "include")])
-env.Append(LIBPATH = [os.path.join( PNETCDF_DIR, "lib")])
-uniqueCheckLib(conf, "pnetcdf")
 
 # ====== NIFTI ======
 if env["niftiio"] == True:
@@ -218,17 +216,12 @@ if env["niftiio"] == True:
     env.Append(CPPPATH = [os.path.join( ZLIB_DIR, "include")])
     env.Append(LIBPATH = [os.path.join( ZLIB_DIR, "lib")])
     uniqueCheckLib(conf, "libz")
-
-# ====== FFTW =========
-FFTW_DIR = checkset_var("FFTW_DIR", "")
-env.Append(CPPPATH = [os.path.join( FFTW_DIR, "include")])
-env.Append(LIBPATH = [os.path.join( FFTW_DIR, "lib")])
-uniqueCheckLib(conf, "fftw3_threads")
-uniqueCheckLib(conf, "fftw3")
-uniqueCheckLib(conf, "fftw3f_threads")
-uniqueCheckLib(conf, "fftw3f")
-uniqueCheckLib(conf, "fftw3_omp")
-uniqueCheckLib(conf, "fftw3f_omp")
+# ====== PNETCDF ======
+else:
+    PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
+    env.Append(CPPPATH = [os.path.join( PNETCDF_DIR, "include")])
+    env.Append(LIBPATH = [os.path.join( PNETCDF_DIR, "lib")])
+    uniqueCheckLib(conf, "pnetcdf")
 
 # ====== PETSc ========
 PETSC_DIR = checkset_var("PETSC_DIR", "")
@@ -258,7 +251,7 @@ env = conf.Finish() # Used to check libraries
 
 #--------------------------------------------- Define sources and build targets
 
-(sourcesPGLISTR, sourcesPGLISTRGPU, sourcesSIBIAapp) = SConscript (
+(sourcesTumor, sourcesTumorGPU, sourcesSIBIAapp) = SConscript (
     'SConscript',
     variant_dir = buildpath,
     duplicate = 0
@@ -268,36 +261,36 @@ env = conf.Finish() # Used to check libraries
 if env["gpu"] == True:
     bininv = env.Program (
     target = buildpath + '/tusolver',
-    source = [sourcesPGLISTRGPU, './app/tusolver.cpp']
+    source = [sourcesTumorGPU, './app/tusolver.cpp']
     )
     bintest = env.Program (
         target = buildpath + '/test',
-        source = [sourcesPGLISTRGPU, './app/test.cpp']
+        source = [sourcesTumorGPU, './app/test.cpp']
     ) 
     env.Alias("bin", bininv)
     staticlib = env.StaticLibrary (
         target = buildpath + '/pglistr',
-        source = [sourcesPGLISTRGPU],
+        source = [sourcesTumorGPU],
     )
     env.Alias("staticlib", staticlib)
 else:
     bininv = env.Program (
         target = buildpath + '/tusolver',
-        source = [sourcesPGLISTR, './app/tusolver.cpp']
+        source = [sourcesTumor, './app/tusolver.cpp']
     ) 
     bintest = env.Program (
         target = buildpath + '/test',
-        source = [sourcesPGLISTR, './app/test.cpp']
+        source = [sourcesTumor, './app/test.cpp']
     ) 
     env.Alias("bin", bininv)
     # solib = env.SharedLibrary (
     # target = buildpath + '/pglistr',
-    #     source = [sourcesPGLISTR],
+    #     source = [sourcesTumor],
     # )
     # env.Alias("solib", solib)
     staticlib = env.StaticLibrary (
         target = buildpath + '/pglistr',
-        source = [sourcesPGLISTR],
+        source = [sourcesTumor],
     )
     env.Alias("staticlib", staticlib)
 

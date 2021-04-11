@@ -2,14 +2,12 @@
 #define _UTILS_H
 
 /* General Utilies */
-#include <accfft_utils.h>
 #include <assert.h>
 #include <math.h>
 #include <mpi.h>
 #include <omp.h>
 #include <petsc.h>
 #include <petscmat.h>
-#include <pnetcdf.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,11 +26,13 @@
 #include <queue>
 #include <sstream>
 #include <vector>
+#include <petsctao.h>
 #include "EventTimings.hpp"
-#include "petsctao.h"
 #include "TypeDefs.h"
 #ifdef NIFTIIO
-#include "nifti1_io.h"
+#include <nifti1_io.h>
+#else
+#include <pnetcdf.h>
 #endif
 #ifdef CUDA
 #include "UtilsCuda.h"

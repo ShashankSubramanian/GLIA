@@ -289,9 +289,6 @@ SemiLagrangianSolver::SemiLagrangianSolver(std::shared_ptr<Parameters> params, s
   temp_1_ = NULL;
   temp_2_ = NULL;
   temp_3_ = NULL;
-  interp_plan_scalar_ = nullptr;
-  interp_plan_vector_ = nullptr;
-  interp_plan_ = nullptr;
 
 // three versions of interpolation - multi-CPU, single-GPU, and multi-GPU (<none>, CUDA, MPICUDA)
 #if defined(CUDA) && !defined(MPICUDA)

@@ -3,7 +3,8 @@
 #include <Interp.h>
 
 
-
+#ifdef MPICUDA
+// multi-gpu interpolation. this is deprecated now.
 
 
 /*
@@ -415,4 +416,4 @@ void gpu_interp3_p( Real* reg_grid_vals_d, int data_dof,
 
 }
 
-
+#endif

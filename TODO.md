@@ -2,7 +2,6 @@
 
 ### build/
 - create a build-libs script to build all dependencies
-- remove accfft, fftw from scons for gpus. Code also needs to be refactored for this.
 - pnetcdf vs nifti check libs
 
 ### opt/

@@ -452,23 +452,30 @@ PetscErrorCode DerivativeOperators::checkGradient(Vec p, std::shared_ptr<Data> d
 PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> data_inv) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  int procid, nprocs;
-  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
-  PCOUT << "\n\n----- Hessian check with taylor expansion ----- " << std::endl;
+  std::stringstream s;
+  s << "----- Hessian check with taylor expansion ----- ";
+  ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+  s.str("");
+  s.clear();
 
   Vec data = data_inv->dt1();
   ScalarType norm;
   ierr = VecNorm(p, NORM_2, &norm); CHKERRQ(ierr);
 
-  PCOUT << "Hessian check performed at x with norm: " << norm << std::endl;
+  s << "Hessian check performed at x with norm: " << norm;
+  ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+  s.str("");
+  s.clear();
   ScalarType *x_ptr, k1, k2, k3;
   if (params_->opt_->diffusivity_inversion_) {
     ierr = VecGetArray(p, &x_ptr); CHKERRQ(ierr);
     k1 = x_ptr[params_->tu_->np_];
     k2 = (params_->tu_->nk_ > 1) ? x_ptr[params_->tu_->np_ + 1] : 0;
     k3 = (params_->tu_->nk_ > 2) ? x_ptr[params_->tu_->np_ + 2] : 0;
-    PCOUT << "k1: " << k1 << " k2: " << k2 << " k3: " << k3 << std::endl;
+    s << "k1: " << k1 << " k2: " << k2 << " k3: " << k3;
+    ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
     ierr = VecRestoreArray(p, &x_ptr); CHKERRQ(ierr);
   }
 
@@ -477,7 +484,10 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> da
     k1 = x_ptr[params_->tu_->np_ + params_->tu_->nk_];
     k2 = (params_->tu_->nr_ > 1) ? x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 1] : 0;
     k3 = (params_->tu_->nr_ > 2) ? x_ptr[params_->tu_->np_ + params_->tu_->nk_ + 2] : 0;
-    PCOUT << "r1: " << k1 << " r2: " << k2 << " r3: " << k3 << std::endl;
+    s << "r1: " << k1 << " r2: " << k2 << " r3: " << k3;
+    ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
     ierr = VecRestoreArray(p, &x_ptr); CHKERRQ(ierr);
   }
 
@@ -515,9 +525,11 @@ PetscErrorCode DerivativeOperators::checkHessian(Vec p, std::shared_ptr<Data> da
     hess_term *= 0.5 * h[i] * h[i];
     J_taylor += hess_term;
     diff = std::abs(J - J_taylor);
-    PCOUT << "|J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
+    s << "|J - J_taylor|: " << diff << "  log10(diff) : " << log10(diff) << std::endl;
+    ierr = tuMSGwarn(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
   }
-  PCOUT << "\n\n";
 
   ierr = VecDestroy(&dJ); CHKERRQ(ierr);
   ierr = VecDestroy(&temp); CHKERRQ(ierr);

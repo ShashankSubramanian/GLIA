@@ -1,7 +1,28 @@
 #include "SpectralOperators.h"
 
+int64_t get_local_sizes_single(int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm) {
+  isize[0] = n[0];
+  isize[1] = n[1];
+  isize[2] = n[2];
+  osize[0] = n[0];
+  osize[1] = n[1];
+  osize[2] = n[2]/2 + 1;
+  istart[0] = 0;
+  istart[1] = 0;
+  istart[2] = 0;
+  ostart[0] = 0;
+  ostart[1] = 0;
+  ostart[2] = 0;
+  return osize[0]*osize[1]*osize[2]*2*sizeof(ScalarType);
+}
+
 void SpectralOperators::setup(int *n, int *isize, int *istart, int *osize, int *ostart, MPI_Comm c_comm) {
+#ifdef CUDA
+  // only single gpu here; multigpu deprecated now. Use accfft_gpu if needed.
+  alloc_max_ = get_local_sizes_single(n, isize, istart, osize, ostart, c_comm);
+#else
   alloc_max_ = fft_local_size_dft_r2c(n, isize, istart, osize, ostart, c_comm);
+#endif
   memcpy(n_, n, 3 * sizeof(int));
   memcpy(isize_, isize, 3 * sizeof(int));
   memcpy(osize_, osize, 3 * sizeof(int));
@@ -15,7 +36,8 @@ void SpectralOperators::setup(int *n, int *isize, int *istart, int *osize, int *
   cudaMalloc((void **)&wx_hat_, alloc_max_);
   cudaMalloc((void **)&d1_ptr_, alloc_max_);
 
-  plan_ = fft_plan_dft_3d_r2c(n, d1_ptr_, (ScalarType *)x_hat_, c_comm, ACCFFT_MEASURE);
+//  plan_ = fft_plan_dft_3d_r2c(n, d1_ptr_, (ScalarType *)x_hat_, c_comm, ACCFFT_MEASURE);
+  plan_ = new fft_plan(alloc_max_); //no accfft; only single GPU support for now. multigpu is deprecated
   if (fft_mode_ == CUFFT) {
 #ifdef SINGLE
     cufft_status = cufftPlan3d(&plan_r2c_, n[0], n[1], n[2], CUFFT_R2C);
@@ -46,9 +68,10 @@ void SpectralOperators::setup(int *n, int *isize, int *istart, int *osize, int *
 void SpectralOperators::executeFFTR2C(ScalarType *f, ComplexType *f_hat) {
 #ifdef CUDA
   cufftResult cufft_status;
-  if (fft_mode_ == ACCFFT)
-    fft_execute_r2c(plan_, f, f_hat);
-  else {
+  if (fft_mode_ == ACCFFT) {
+    TU_assert(false, "ACCFFT is switched off for CUDA (only single GPU support)");
+//    fft_execute_r2c(plan_, f, f_hat);
+  } else {
     cufft_status = cufftExecuteR2C(plan_r2c_, (CufftScalarType *)f, (CufftComplexType *)f_hat);
     cufftCheckError(cufft_status);
     cudaDeviceSynchronize();
@@ -61,9 +84,10 @@ void SpectralOperators::executeFFTR2C(ScalarType *f, ComplexType *f_hat) {
 void SpectralOperators::executeFFTC2R(ComplexType *f_hat, ScalarType *f) {
 #ifdef CUDA
   cufftResult cufft_status;
-  if (fft_mode_ == ACCFFT)
-    fft_execute_c2r(plan_, f_hat, f);
-  else {
+  if (fft_mode_ == ACCFFT) {
+    TU_assert(false, "ACCFFT is switched off for CUDA (only single GPU support)");
+//    fft_execute_c2r(plan_, f_hat, f);
+  } else {
     cufft_status = cufftExecuteC2R(plan_c2r_, (CufftComplexType *)f_hat, (CufftScalarType *)f);
     cufftCheckError(cufft_status);
     cudaDeviceSynchronize();
@@ -83,9 +107,10 @@ PetscErrorCode SpectralOperators::computeGradient(Vec grad_x, Vec grad_y, Vec gr
   ierr = VecCUDAGetArrayReadWrite(grad_z, &grad_z_ptr); CHKERRQ(ierr);
   ierr = VecCUDAGetArrayReadWrite(x, &x_ptr); CHKERRQ(ierr);
 
-  if (fft_mode_ == ACCFFT)
-    accfftGrad(grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
-  else {
+  if (fft_mode_ == ACCFFT) {
+    TU_assert(false, "ACCFFT is switched off for CUDA (only single GPU support)");
+//    accfftGrad(grad_x_ptr, grad_y_ptr, grad_z_ptr, x_ptr, plan_, pXYZ, timers);
+  } else {
     cufftResult cufft_status;
 
     // compute forward transform
@@ -162,7 +187,8 @@ PetscErrorCode SpectralOperators::computeDivergence(Vec div, Vec dx, Vec dy, Vec
   ierr = VecCUDAGetArrayReadWrite(dz, &dz_ptr); CHKERRQ(ierr);
 
   if (fft_mode_ == ACCFFT) {
-    accfftDiv(div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
+    TU_assert(false, "ACCFFT is switched off for CUDA (only single GPU support)");
+//    accfftDiv(div_ptr, dx_ptr, dy_ptr, dz_ptr, plan_, timers);
   } else {
     cufftResult cufft_status;
     // cublas for axpy
@@ -355,8 +381,6 @@ int SpectralOperators::weierstrassSmoother(ScalarType *Wc, ScalarType *c, std::s
 }
 
 SpectralOperators::~SpectralOperators() {
-  accfft_destroy_plan(plan_);
-
   fft_free(x_hat_);
   fft_free(d1_ptr_);
   fft_free(wx_hat_);
@@ -364,9 +388,11 @@ SpectralOperators::~SpectralOperators() {
 #ifdef CUDA
   cufftDestroy(plan_r2c_);
   cufftDestroy(plan_c2r_);
-#endif
-
+  if (plan_ != nullptr) delete plan_;
+#else
+  accfft_destroy_plan(plan_);
   accfft_cleanup();
+#endif
 }
 
 void accfftCreateComm(MPI_Comm in_comm, int *c_dims, MPI_Comm *c_comm) {
@@ -407,7 +433,10 @@ PetscErrorCode initializeGrid(int n, std::shared_ptr<Parameters> params, std::sh
   int c_dims[2] = {0};
   MPI_Comm c_comm;
 
+#ifdef CUDA
+#else
   accfft_init();
+#endif
   accfftCreateComm(MPI_COMM_WORLD, c_dims, &c_comm);
   spec_ops->setup(N, isize, istart, osize, ostart, c_comm);
   int64_t alloc_max = spec_ops->alloc_max_;

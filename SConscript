@@ -1,6 +1,6 @@
 # This is file Sconscript
 
-sourcesPGLISTR = [
+sourcesTumor = [
     Glob('./src/*.cpp'),
     Glob('./src/test/*.cpp'),
     Glob('./src/opt/*.cpp'),
@@ -19,12 +19,12 @@ sourcesDrivers = [
 ]
 
 sourcesAllNoMain = [
-    sourcesPGLISTR,
+    sourcesTumor,
     sourcesTHIRDPARTY,
 ]
 
 sourcesAllNoMainGPU = [
-    sourcesPGLISTR,
+    sourcesTumor,
     sourcesTHIRDPARTY,
     Glob('src/*.cu'),
     Glob('src/cuda/*.cu')
