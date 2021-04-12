@@ -11,7 +11,6 @@ PetscErrorCode parseConfig(std::string s, std::shared_ptr<Parameters> params, st
 void setParameter(std::string name, std::string value, std::shared_ptr<Parameters> p, std::shared_ptr<ApplicationSettings> a, RunMode *runmode);
 
 //pnetcdf error handling
-PetscErrorCode NCERRQ (int cerr);
 PetscErrorCode throwErrorMsg(std::string msg, int line, const char *file);
 PetscErrorCode myAssert(bool condition, std::string msg);
 
@@ -19,6 +18,8 @@ PetscErrorCode myAssert(bool condition, std::string msg);
 #ifdef NIFTIIO
 	template<typename T> PetscErrorCode readNifti(nifti_image* image, ScalarType *data_global, std::shared_ptr<Parameters> params);
 	PetscErrorCode writeNifti(nifti_image** image, ScalarType *p_x, std::shared_ptr<Parameters> params, const char* fname);
+#else
+  PetscErrorCode NCERRQ (int cerr);
 #endif
 PetscErrorCode dataIn (ScalarType *A, std::shared_ptr<Parameters> params, const char *fname);
 PetscErrorCode dataIn (Vec A, std::shared_ptr<Parameters> params, const char *fname);

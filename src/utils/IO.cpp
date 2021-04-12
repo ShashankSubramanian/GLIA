@@ -283,22 +283,6 @@ PetscErrorCode myAssert(bool condition, std::string msg) {
   PetscFunctionReturn(ierr);
 }
 
-PetscErrorCode NCERRQ(int cerr) {
-  int rank;
-  PetscErrorCode ierr = 0;
-  std::stringstream ss;
-  PetscFunctionBegin;
-
-  MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-
-  if (cerr != NC_NOERR) {
-    ss << ncmpi_strerror(cerr);
-    ierr = throwError(ss.str()); CHKERRQ(ierr);
-  }
-
-  PetscFunctionReturn(ierr);
-}
-
 // Function definitions for netcdf and nifti IO
 #ifdef NIFTIIO
 template <typename T>
@@ -508,6 +492,22 @@ PetscErrorCode dataOut(ScalarType *p_x, std::shared_ptr<Parameters> params, cons
 }
 
 #else
+PetscErrorCode NCERRQ(int cerr) {
+  int rank;
+  PetscErrorCode ierr = 0;
+  std::stringstream ss;
+  PetscFunctionBegin;
+
+  MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+  if (cerr != NC_NOERR) {
+    ss << ncmpi_strerror(cerr);
+    ierr = throwError(ss.str()); CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
 PetscErrorCode dataIn(ScalarType *p_x, std::shared_ptr<Parameters> params, const char *fname) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
