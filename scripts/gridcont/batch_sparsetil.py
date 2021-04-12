@@ -68,11 +68,16 @@ def batch_til_and_run(input):
         output_base_paths.append(job_path + pat) 
       gridcont_gpu.sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_path, job_idx, use_gpu = True);
   else:
-    for pat in patient_list:
+    job_idx = 0
+    for idx,pat in enumerate(patient_list):
+      if idx%input['patients_per_job'] == 0:
+        job_idx += 1
+      if (idx+1) >= total_no_patients:
+        input['batch_end'] = True
       # == define path to patient segmentation
       input['patient_path'] = os.path.join(path_to_all_patients, pat) + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"
       # == define path to output dir
-      input['output_base_path'] = '/scratch/05027/shas1693/pglistr_tumor/results/gridcont-test/' + pat
-      gridcont.sparsetil_gridcont(input, use_gpu = False);
+      input['output_base_path'] = os.path.join(job_path, pat)
+      gridcont.sparsetil_gridcont(input, job_path, job_idx, use_gpu = False);
 
   print("Finished")

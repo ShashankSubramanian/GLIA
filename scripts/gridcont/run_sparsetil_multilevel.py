@@ -22,7 +22,7 @@ JOBfile = "";
 
 ### ________________________________________________________________________ ___
 ### //////////////////////////////////////////////////////////////////////// ###
-def sparsetil_gridcont(input, use_gpu = False):
+def sparsetil_gridcont(input, job_path, job_idx, use_gpu = False):
     """ Creates tumor solver input files, config files, and submits grid continuation
         jobs for sparse TIL tumor inversion.
     """
@@ -110,6 +110,9 @@ def sparsetil_gridcont(input, use_gpu = False):
     global cases_per_jobfile_counter;
     cases_per_jobfile_counter = cases_per_jobfile_counter + 1 if cases_per_jobfile_counter < patients_per_job else 1;
     batch_end = cases_per_jobfile_counter == patients_per_job
+    if 'batch_end' in input:
+      if input['batch_end'] == True:
+        batch_end = True
     submit    = submit and batch_end;
     new_job   = cases_per_jobfile_counter == 1
     global JOBfile;
@@ -147,7 +150,9 @@ def sparsetil_gridcont(input, use_gpu = False):
             print(" Warning: Multiple segmentation files found in patient directory: \n {} \n .. please specify filename (first one is selected for now).".format(segmentation_files))
         ext = ".n" + segmentation_files[0].split(".n")[-1]
         fname = os.path.join(patient_path, segmentation_files[0])
-    filename = fname.split('/')[-1].split('.')[0]
+#    filename = fname.split('/')[-1].split('.')[0]
+    filename = fname.split('/')[-1].replace(ext, "")
+    cmd_command ="\n#===================================== PATIENT = " + filename + " ====================================================#"
 
     cp_cmd = ''
     reference_img = dataimg = None
@@ -303,7 +308,7 @@ def sparsetil_gridcont(input, use_gpu = False):
         # cmd_postproc += " -analyze_concomps ";
         # cmd_postproc += " -generate_slices " + "\n";
 
-        cmd_command = "\n\n\n" + "# ### LEVEL {} ###\n# ==================\n".format(level)
+        cmd_command += "\n\n\n" + "# ### LEVEL {} ###\n# ==================\n".format(level)
         cmd_command += cp_cmd
         cmd_command += resample_cmd
         cmd_command += symlink_cmd
@@ -396,7 +401,7 @@ def sparsetil_gridcont(input, use_gpu = False):
 
     ### write config to write_path and submit job
     if batch_end:
-        fname_job = os.path.join(output_path_tumor, 'job.sh')
+        fname_job = os.path.join(job_path, 'job_' + str(job_idx) + '.sh')
         job_file = open(fname_job, 'w+')
         # get header, config and run str
         job_header = par.write_jobscript_header(p, r, use_gpu)
