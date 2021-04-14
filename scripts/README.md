@@ -3,7 +3,7 @@ Run scripts for the solver
 ## TEST SCRIPTS ##
 These scripts can be used to test the code using the saved test data in ../testdata/
 forward.py --> runs a forward solver with mass effect
-inverse.py --> runs a inverse TIL solver
+inverse.py --> runs a inverse TIL (tumor initial location) solver
 inverse_masseffect.py --> runs a inverse masseffect solver
 
 ## MAIN SCRIPTS ##

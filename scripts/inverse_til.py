@@ -1,6 +1,7 @@
 """ 
     This script runs sparse TIL reconstruction for a block/list of patients 
-    on GPUs/CPUs based on available resources
+    on GPUs based on available resources
+    Currently, minor mods are needed for CPUs in this script: TODO
 """
 import os, sys
 import params as par
