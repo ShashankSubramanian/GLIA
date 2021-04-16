@@ -5,10 +5,12 @@ GLIA runs on CPUs and GPUs. This doc outlines the installation process for both 
 For medical imaging resolutions, a single GPU (16GB) is sufficient
 
 ### 1. Dependencies
+* **C++11** compatible compiler
 * **CUDA** (<= 10.2 tested) and associated libs (cufft, cublas, thrust)
 * **MPI**
-* install **PETSc** (version <= 3.11 tested)
-* install **pnetCDF** (if netcdf input files; recommended) or **niftilib** and **zlib** (if nifti input files)
+* install **PETSc** (3.7 <= version <= 3.11 tested; 3.11 recommended): [petsc 3.11](https://www.mcs.anl.gov/petsc/mirror/release-snapshots/petsc-lite-3.11.4.tar.gz)
+* install **pnetCDF** (if netcdf input files; recommended): [pnetcdf 1.11](http://cucis.ece.northwestern.edu/projects/PnetCDF/Release/pnetcdf-1.11.1.tar.gz)
+* install **niftilib** and **zlib** (if nifti input files): [nifti 2.0](https://sourceforge.net/projects/niftilib/files/nifticlib/nifticlib_2_0_0/nifticlib-2.0.0.tar.gz/download)
 
 ### 2. Environment variables
 * set CUDA_DIR
@@ -33,11 +35,13 @@ For medical imaging resolutions, a single GPU (16GB) is sufficient
 Perfect scaling up to about 4000 cores. For medical imaging resolution, 256 mpi tasks should suffice
 
 ### 1. Dependencies
+* **C++11** compatible compiler
 * **MPI**
-* install **PETSc** (version <= 3.11 tested)
-* install **pnetCDF** (if netcdf input files; recommended) or **niftilib** and **zlib** (if nifti input files)
-* install **FFTW**
-* install **accFFT** (scalable FFTs for multicore CPU machines)
+* install **PETSc** (3.7 <= version <= 3.11 tested; 3.11 recommended): [petsc 3.11](https://www.mcs.anl.gov/petsc/mirror/release-snapshots/petsc-lite-3.11.4.tar.gz)
+* install **pnetCDF** (if netcdf input files; recommended): [pnetcdf 1.11](http://cucis.ece.northwestern.edu/projects/PnetCDF/Release/pnetcdf-1.11.1.tar.gz)
+* install **niftilib** and **zlib** (if nifti input files): [nifti 2.0](https://sourceforge.net/projects/niftilib/files/nifticlib/nifticlib_2_0_0/nifticlib-2.0.0.tar.gz/download)
+* install **FFTW**: see [http://accfft.org/articles/install/](http://accfft.org/articles/install/)
+* install **accFFT** (scalable FFTs for multicore CPU machines): see [http://accfft.org/articles/install/](http://accfft.org/articles/install/)
 
 ### 2. Environment variables
 * set MPI_DIR
