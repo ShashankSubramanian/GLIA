@@ -18,7 +18,7 @@ See doc/install.md for guide to install
 ## Authors
 Shashank Subramanian, Klaudius Scheufele, George Biros
 
-Other contributors: Naveen Himthani, Amir Gholami, Miriam Mehl, Andreas Mang
+*Other contributors*: Naveen Himthani, Amir Gholami, Miriam Mehl, Andreas Mang
 
 ## References
 If you use GLIA or presented algorithms in your research, please cite:
