@@ -1,9 +1,35 @@
-## PGLISTR
+## GLIA
+Glioblastoma Image Analysis for calibrating brain tumor growth models is a framework to integrate biophysical models of tumor growth with medical imaging data. 
+It uses novel mathematical algorithms to efficiently solve large-scale PDE-constrained optimizatin problems as well as optimized high-performance software that explots multicore CPUs and GPUs.
 
-Parallel GLISTR is a parallel implementation of GLioma Image SegmenTation and Registration (GLISTR). It is a framework to integrate biophysical tumor growth models with medical imaging.
-It uses novel mathematical algorithms to speedup the convergence, as well as highly optimized
-parallel codes that are designed to have good scalability in modern supercomputers. It also has support to 
-run on GPUs
+<p align="center">
+<img src="doc/figs/GLIA.pdf" alt="GLIA"  width="800"/>
+</p>
+
+## Installation
+See docs/install.md for guide to install
+
+## Authors
+Shashank Subramanian, Klaudius Scheufele, George Biros
+Other contributors: Naveen Himthani, Amir Gholami, Miriam Mehl, Andreas Mang
+
+## References
+If you use GLIA or presented algorithms in your research, please cite:
+* Forward tumor growth models: S. Subramanian, A. Gholami & G. Biros. **Simulation of glioblastoma growth using a 3D multispecies tumor model with mass effect**. Journal of Mathematical Biology 2019 [[arxiv](https://arxiv.org/abs/1810.05370), [jomb](https://link.springer.com/article/10.1007/s00285-019-01383-y)].
+
+* TIL inversion algorithms: S. Subramanian, K. Scheufele, M. Mehl & G. Biros. **Where did the tumor start? An inverse solver with sparse localization for tumor growth models**. Inverse Problems 2020 [[arxiv](https://arxiv.org/abs/1907.06564), [ip](https://iopscience.iop.org/article/10.1088/1361-6420/ab649c/meta)].
+
+K. Scheufele, S. Subramanian & G Biros. **Fully-automatic calibration of tumor-growth models using a single mpMRI scan**. IEEE Transactions in Medical Imaging 2020 [[arxiv](https://arxiv.org/abs/2001.09173), [tmi](https://ieeexplore.ieee.org/abstract/document/9197710)].
+
+* Mass effect inversion algorithms: S. Subramanian, K. Scheufele, N. Himthani & G. Biros. **Multiatlas calibration of brain tumor growth models with mass effect**. MICCAI 2020 [[arxiv](https://arxiv.org/abs/2006.09932), [miccai](https://link.springer.com/chapter/10.1007/978-3-030-59713-9_53)].
+
+## License
+GLIA is distributed under GNU GENERAL PUBLIC LICENSE Version 2.
+Please see LICENSE file.
+
+
+## old (remove)
+
 
 ## Installation
 
@@ -22,9 +48,3 @@ run on GPUs
 
 Scons will create binaries in build/last. Use /scripts/TumorParams.py to set input parameters for the code.
 Use /scripts/submit.py to submit jobs 
-
-## License
-
-PGLISTR is distributed under GNU GENERAL PUBLIC LICENSE Version 2.
-Please see LICENSE file.
-
