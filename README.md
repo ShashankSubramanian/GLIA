@@ -3,11 +3,12 @@ Glioblastoma Image Analysis for calibrating brain tumor growth models is a frame
 It uses novel mathematical algorithms to efficiently solve large-scale PDE-constrained optimizatin problems as well as optimized high-performance software that explots multicore CPUs and GPUs.
 
 <p align="center">
-<embed src="doc/figs/GLIA.pdf" alt="GLIA"  width="800"/>
+<embed src="doc/figs/GLIA.pdf">
+</embed>
 </p>
 
 ## Installation
-See docs/install.md for guide to install
+See doc/install.md for guide to install
 
 ## Authors
 Shashank Subramanian, Klaudius Scheufele, George Biros
