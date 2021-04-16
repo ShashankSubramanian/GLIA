@@ -2,10 +2,7 @@
 Glioblastoma Image Analysis for calibrating brain tumor growth models is a framework to integrate biophysical models of tumor growth with medical imaging data. 
 It uses novel mathematical algorithms to efficiently solve large-scale PDE-constrained optimizatin problems as well as optimized high-performance software that explots multicore CPUs and GPUs.
 
-<p align="center">
-<embed src="doc/figs/GLIA.pdf">
-</embed>
-</p>
+![](doc/figs/GLIA.pdf)
 
 ## Installation
 See doc/install.md for guide to install
