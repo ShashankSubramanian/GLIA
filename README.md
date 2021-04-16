@@ -1,12 +1,14 @@
 ## GLIA
-Glioblastoma Image Analysis for calibrating brain tumor growth models is a framework to integrate biophysical models of tumor growth with medical imaging data. 
-It uses novel mathematical algorithms to efficiently solve large-scale PDE-constrained optimizatin problems as well as optimized high-performance software that exploits multicore CPUs and GPUs.
+*GL*ioblastoma *I*mage *A*nalysis for calibrating brain tumor growth models is a suite of high-performance algorithms and software to integrate biophysical models of tumor growth with medical imaging data to advance personalized medicine.
 
 GLIA has the following features:
 
-* Complex forward models for tumor growth simulation with mass effect and multiple tumor species
-* Inversion algorithms for tumor initiation location(s) or TIL(s) reconstruction, tumor dynamics (proliferation, infiltration) and mechanical effects (mass effect) quantification/reconstruction from a single mpMRI patient imaging scan
-* Fast solution times through efficient parallel execution on CPUs/GPUs
+* 3D tumor growth simulation using complex growth models with mass effect and multiple tumor species
+* Inversion algorithms for reconstructing the following using a ***single*** mpMRI patient imaging scan:
+  * Tumor initiation location(s) or TILs 
+  * Tumor dynamics parameters representing cancer proliferation and infiltration
+  * Tumor-induced biomechanical effects or mass effect 
+* Novel numerical schemes with parallelized execution that exploits mulitcore CPU and GPU architectures for fast solution times on medical imaging data resolutions (256x256x256)
 
 ![](doc/figs/GLIA.png)
 
