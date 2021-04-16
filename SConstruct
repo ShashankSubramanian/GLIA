@@ -194,9 +194,9 @@ else:
     env.Append(LIBPATH = [os.path.join( ACCFFT_DIR, "lib")])
     uniqueCheckLib(conf, "accfft")
     uniqueCheckLib(conf, "accfft_utils")
-    if env["gpu"] == True:
-        uniqueCheckLib(conf, "accfft_gpu")
-        uniqueCheckLib(conf, "accfft_utils_gpu")
+#    if env["gpu"] == True:
+#        uniqueCheckLib(conf, "accfft_gpu")
+#        uniqueCheckLib(conf, "accfft_utils_gpu")
 # MPI
 MPI_DIR = checkset_var("MPI_DIR", "")
 env.Append(CPPPATH = [os.path.join( MPI_DIR, "include")])
