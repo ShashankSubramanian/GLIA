@@ -5,8 +5,8 @@ GLIA runs on CPUs and GPUs. This doc outlines the installation process for both 
 For medical imaging resolutions, a single GPU (16GB) is sufficient
 
 ### 1. Dependencies
-* CUDA (<= 10.2 tested) and associated libs (cufft, cublas, thrust)
-* MPI
+* **CUDA** (<= 10.2 tested) and associated libs (cufft, cublas, thrust)
+* **MPI**
 * install **PETSc** (version <= 3.11 tested)
 * install **pnetCDF** (if netcdf input files; recommended) or **niftilib** and **zlib** (if nifti input files)
 
@@ -22,14 +22,18 @@ For medical imaging resolutions, a single GPU (16GB) is sufficient
   * other options are defaulted
 * scons --help to see all compile options
 
-### 3. Clean binaries
+### 4. Run
+* binary is build/last/tusolver
+* see scripts/README on example run scripts
+
+### 5. Clean binaries
 * use clean.sh
 
 ## CPUs
 Perfect scaling up to about 4000 cores. For medical imaging resolution, 256 mpi tasks should suffice
 
 ### 1. Dependencies
-* MPI
+* **MPI**
 * install **PETSc** (version <= 3.11 tested)
 * install **pnetCDF** (if netcdf input files; recommended) or **niftilib** and **zlib** (if nifti input files)
 * install **FFTW**
@@ -47,5 +51,9 @@ Perfect scaling up to about 4000 cores. For medical imaging resolution, 256 mpi 
   * other options are defaulted
 * scons --help to see all compile options
 
-### 3. Clean binaries
+### 4. Run
+* binary is build/last/tusolver
+* see scripts/README on example run scripts
+
+### 5. Clean binaries
 * use clean.sh
