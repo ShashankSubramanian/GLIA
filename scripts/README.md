@@ -45,12 +45,27 @@ The subfolders are utilty functions for these run scripts
 These provide important how-to details of each script (note that the description of all important input data and parameters is also in comments in each script): 
 1. forward.py: 
   * Input data: A template (healthy/atlas) brain image segmented into its constituent tissues: white matter (wm), gray matter (gm), ventricles (vt), and cerebrospinal fluid (csf) and an optional T1 MRI for visualization purposes. These are the "atlas_labels" in the script
-  * Input config: Tumor seed location(s) called "user_cms", parameter values for different coefficients (rho is reaction, k/kappa is diffusion, gamma is mass effect intensity). Other parameters are outlined in the script comments. User also defines an "output_dir" to store all results. 
+  * Input parameters: Tumor seed location(s) called "user_cms", parameter values for different coefficients (rho is reaction, k/kappa is diffusion, gamma is mass effect intensity). Other parameters are outlined in the script comments. User also defines an "output_dir" to store all results. 
   * Output: the log file solver_log.txt logs the course of the solver. The solver outputs the time history of each tissue, each tumor, and additional fields such as displacement, velocity, mass effect forcing function, screening and Lame coefficients, reaction and diffusion coefficients for each time step. Please refer the the forward solver [paper](https://link.springer.com/article/10.1007/s00285-019-01383-y) for all notations, models used, algorithms etc.
 2. inverse_til.py
+  * Input data: A patient/diseased brain image(s) segmented into its constituent tissues: white matter (wm), gray matter (gm), ventricles (vt), cerebrospinal fluid (csf), enhancing tumor (en), necrotic tumor (nec), and edema (ed).  
+  These are the "segmentation_labels" in the script. We assume all imaging scans to be affinely registered to some template in this solver
+  The script can run on multiple patients simulataneously depending on the input resources (for example: number of gpus in each system). A patient directory structure is assumed for the input (we use the [BraTS](http://braintumorsegmentation.org/) structure) where each patient's data is in a separate folder with the segmentation file name as /path/to/all_patients/patient_name/aff2jakob/{patient_name}_seg_ants_aff2jakob.nii.gz. See our [example real data](https://drive.google.com/drive/folders/1QtC6R8b_sQoB0BGUumoz9NqWtfKXndre?usp=sharing) to understand the directory structure.
+  * Input parameters: All parameters are chosen by the solver. User only sets the computational resources such as number of gpus.
+  * Output: The script runs a grid continuation scheme and saves each mesh resolution results in output_dir/inversion/nx{mesh_size}/obs-1.0/. All final resolution results are in output_dir/inversion/nx256/obs-1.0/. See the solver_log.txt at any resolution to track the progress of inversion and important metrics, parameters, and errors. Alternatively, the job script log file can be tracked for a high-level progress status. The other important outputs are c0_rec.nii.gz and c1_rec.nii.gz which show the reconstructed tumor IC and final tumor concentration. All reconstructed parameter values and errors are in reconstruction_info.dat (and in the solver_log.txt additionally). See the inverse solver [paper](https://arxiv.org/abs/1907.06564) for all notations, models, inversion algorithms etc.
 3. inverse_ensemble.py
+  * Input data: 
+    - This script is run after inverse_til.py to reconstruct mass effect deformations with a more complex model.
+    - It requires the patient segmentation labels as before. Additionally, it requires a data directory of several healthy template brain images (we recommend using the [ADNI](http://adni.loni.usc.edu/data-samples/access-data/) dataset of normal control brains). The templates also must be segmented (and affinely registered like the patient). 
+    - Our templates are named {ID}_seg_aff2jakob_ants.nii.gz and {ID}_t1_aff2jakob.nii.gz (for the optional T1 MRI).
+  See our [example real data/templates](https://drive.google.com/drive/folders/1QtC6R8b_sQoB0BGUumoz9NqWtfKXndre?usp=sharing) to understand the template structure.
+    - The script can run on multiple patients simulataneously depending on the input resources (for example: number of gpus in each system). The path to all patients is an input as before
+    - It requires binaries of a registration solver. We use and recommend [CLAIRE](https://github.com/andreasmang/claire)
+    - Last, it requires the path to the tumor TILs (the output dir from inverse_til) 
+  * Input parameters: All parameters are chosen by the solver. User only sets the computational resources such as number of gpus.
+  * Output: 
 
-## Post-solve analysis scripts
+## TODO: Post-solve analysis scripts
 visualization scripts are in vis/
 extracting statistics from ensemble inversion is in masseffect/extract_stats.py
 running futher analysis for ensemble inversion is in masseffect/analysis.py

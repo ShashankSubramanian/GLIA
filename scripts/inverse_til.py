@@ -18,7 +18,7 @@ input = {}
 
 ### == compute system
 input['system']              = 'longhorn'
-### == define lambda for observation operator
+### == define lambda for observation operator (for devs)
 input['obs_lambda']          = 1
 ### == define segmentation labels
 input['segmentation_labels'] = "0=bg,1=nec,4=en,2=ed,8=csf,7=vt,5=gm,6=wm"
