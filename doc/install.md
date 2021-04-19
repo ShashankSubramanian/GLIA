@@ -26,7 +26,7 @@ For medical imaging resolutions, a single GPU (16GB) is sufficient
 
 ### 4. Run
 * binary is build/last/tusolver
-* see scripts/README on example run scripts
+* see [run scripts](../scripts/README.md) for example run scripts
 
 ### 5. Clean binaries
 * use clean.sh
@@ -57,7 +57,7 @@ Perfect scaling up to about 4000 cores. For medical imaging resolution, 256 mpi 
 
 ### 4. Run
 * binary is build/last/tusolver
-* see scripts/README on example run scripts
+* see [run scripts](../scripts/README.md) for example run scripts
 
 ### 5. Clean binaries
 * use clean.sh

@@ -15,6 +15,9 @@ GLIA has the following features:
 ## Installation
 See [installation](doc/install.md)
 
+## Execution
+See [run scripts](scripts/README.md) for example run scripts
+
 ## Authors
 Shashank Subramanian, Klaudius Scheufele, George Biros
 
