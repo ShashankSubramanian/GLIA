@@ -33,7 +33,7 @@ For medical imaging resolutions, a single GPU (16GB) is sufficient
 * use clean.sh
 
 ## CPUs
-Good strong scaling (> 95% parallel efficieny) up to about 4000 cores. For medical imaging resolution, 256 mpi tasks should suffice
+Good strong scaling (> 95% parallel efficiency) up to about 4000 cores. For medical imaging resolution, 256 mpi tasks should suffice
 
 ### 1. Dependencies
 * **C++11** compatible compiler
