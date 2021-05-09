@@ -2,7 +2,6 @@
 
 ### build/
 - create a build-libs script to build all dependencies
-- pnetcdf vs nifti check libs
 
 ### opt/
 
@@ -20,7 +19,7 @@
 - most unit tests are remaining using catch
 
 ### doc/
-- write documentation
+- additional details in docs might be needed
 
 ### scripts/
 - extract_stats and analysis (masseffect scripts) should be merged. all useless stats need to be commented out
