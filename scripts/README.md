@@ -64,7 +64,7 @@ These provide important how-to details of each script (note that the description
     - Our templates are named {ID}_seg_aff2jakob_ants.nii.gz and {ID}_t1_aff2jakob.nii.gz (for the optional T1 MRI).
   See our [example real data/templates](https://drive.google.com/drive/folders/1QtC6R8b_sQoB0BGUumoz9NqWtfKXndre?usp=sharing) to understand the template structure.
     - The script can run on multiple patients simulataneously depending on the input resources (for example: number of gpus in each system). The path to all patients is an input as before
-    - It requires binaries of a registration solver. We use [CLAIRE](https://github.com/andreasmang/claire)
+    - It requires binaries of a registration solver. We use [CLAIRE](https://github.com/andreasmang/claire); see [install.md](../doc/install.md) for installation details
     - Last, it requires the path to the tumor TILs (the output dir from inverse_til) 
   * Input parameters: All parameters are chosen by the solver. User only sets the computational resources such as number of gpus.
   * Output: 

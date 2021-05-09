@@ -8,9 +8,10 @@ For medical imaging resolutions, a single GPU (16GB) is sufficient
 * **C++11** compatible compiler
 * **CUDA** (<= 10.2 tested) and associated libs (cufft, cublas, thrust)
 * **MPI**
-* install **PETSc** (3.7 <= version <= 3.11 tested; 3.11 recommended): [petsc 3.11](https://www.mcs.anl.gov/petsc/mirror/release-snapshots/petsc-lite-3.11.4.tar.gz)
-* install **pnetCDF** (if netcdf input files; recommended): [pnetcdf 1.11](http://cucis.ece.northwestern.edu/projects/PnetCDF/Release/pnetcdf-1.11.1.tar.gz)
+* install **PETSc** (3.7 <= version <= 3.11 tested; 3.11 recommended): [petsc 3.11](https://www.mcs.anl.gov/petsc/mirror/release-snapshots/petsc-lite-3.11.4.tar.gz); for example config/install, see [configs folder](configs/)
+* install **pnetCDF** (if netcdf input files; recommended): [pnetcdf 1.11](http://cucis.ece.northwestern.edu/projects/PnetCDF/Release/pnetcdf-1.11.1.tar.gz); for installation instruction, see the [accfft dependencies section](http://accfft.org/articles/install/#installing-dependencies)
 * install **niftilib** and **zlib** (if nifti input files): [nifti 2.0](https://sourceforge.net/projects/niftilib/files/nifticlib/nifticlib_2_0_0/nifticlib-2.0.0.tar.gz/download)
+* [optional dependency for mass effect inversion, see [reference paper](https://link.springer.com/chapter/10.1007/978-3-030-59713-9_53)] **CLAIRE** image registration tool; install from [github](https://github.com/andreasmang/claire)
 
 ### 2. Environment variables
 * set CUDA_DIR
@@ -32,16 +33,17 @@ For medical imaging resolutions, a single GPU (16GB) is sufficient
 * use clean.sh
 
 ## CPUs
-Perfect scaling up to about 4000 cores. For medical imaging resolution, 256 mpi tasks should suffice
+Good strong scaling (> 95% parallel efficieny) up to about 4000 cores. For medical imaging resolution, 256 mpi tasks should suffice
 
 ### 1. Dependencies
 * **C++11** compatible compiler
 * **MPI**
-* install **PETSc** (3.7 <= version <= 3.11 tested; 3.11 recommended): [petsc 3.11](https://www.mcs.anl.gov/petsc/mirror/release-snapshots/petsc-lite-3.11.4.tar.gz)
-* install **pnetCDF** (if netcdf input files; recommended): [pnetcdf 1.11](http://cucis.ece.northwestern.edu/projects/PnetCDF/Release/pnetcdf-1.11.1.tar.gz)
+* install **PETSc** (3.7 <= version <= 3.11 tested; 3.11 recommended): [petsc 3.11](https://www.mcs.anl.gov/petsc/mirror/release-snapshots/petsc-lite-3.11.4.tar.gz); for example config/install, see [configs folder](configs/)
+* install **pnetCDF** (if netcdf input files; recommended): [pnetcdf 1.11](http://cucis.ece.northwestern.edu/projects/PnetCDF/Release/pnetcdf-1.11.1.tar.gz); for installation instruction, see the [accfft dependencies section](http://accfft.org/articles/install/#installing-dependencies)
 * install **niftilib** and **zlib** (if nifti input files): [nifti 2.0](https://sourceforge.net/projects/niftilib/files/nifticlib/nifticlib_2_0_0/nifticlib-2.0.0.tar.gz/download)
 * install **FFTW**: see [http://accfft.org/articles/install/](http://accfft.org/articles/install/)
 * install **accFFT** (scalable FFTs for multicore CPU machines): see [http://accfft.org/articles/install/](http://accfft.org/articles/install/)
+* [optional dependency for mass effect inversion, see [reference paper](https://link.springer.com/chapter/10.1007/978-3-030-59713-9_53)] **CLAIRE** image registration tool; install from [github](https://github.com/andreasmang/claire)
 
 ### 2. Environment variables
 * set MPI_DIR
