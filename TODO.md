@@ -23,6 +23,7 @@
 
 ### scripts/
 - extract_stats and analysis (masseffect scripts) should be merged. all useless stats need to be commented out
+- add survival jupyter notebooks from masseffect analysis repo
 
 ### External functionality:
 - cython functionality (most of it is done in sibia-py; needs to be refactored)
