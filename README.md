@@ -19,7 +19,7 @@ See [installation](doc/install.md)
 See [run scripts](scripts/README.md)
 
 ## Authors
-Shashank Subramanian, Klaudius Scheufele, George Biros
+[Shashank Subramanian](mailto:shashanksubramanian@utexas.edu), Klaudius Scheufele, [George Biros](mailto:biros@oden.utexas.edu)
 
 *Other contributors*: Naveen Himthani, Amir Gholami, Miriam Mehl, Andreas Mang
 
@@ -31,9 +31,6 @@ If you use GLIA or contained algorithms in your research, please cite:
 
 3. Mass effect inversion algorithms: S. Subramanian, K. Scheufele, N. Himthani & G. Biros. **Multiatlas calibration of brain tumor growth models with mass effect**. MICCAI 2020 [[arxiv](https://arxiv.org/abs/2006.09932), [miccai](https://link.springer.com/chapter/10.1007/978-3-030-59713-9_53)].
 
-## Contact
-<shashanksubramanian@utexas.edu>, <biros@oden.utexas.edu>
-
 ## License
 GLIA is distributed under GNU GENERAL PUBLIC LICENSE Version 2.
-Please see [LICENSE](LICENSE.md) file. Please contact authors (above) if any issues with the license.
+Please see [LICENSE](LICENSE.md) file. Please contact authors if any issues with the license.
