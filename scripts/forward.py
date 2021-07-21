@@ -6,7 +6,7 @@ import subprocess
 r = {}
 p = {}
 submit_job = False;
-
+use_gpu = True;
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
@@ -33,9 +33,9 @@ p['time_history_off'] = 1             # 1: do not allocate time history (only wo
 
 ############### === define run configuration if job submit is needed; else run from results folder directly
 r['code_path'] = code_dir;
-r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn
+r['compute_sys'] = 'cbica'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
 r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
 r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
 
 ###############=== write config to write_path and submit job
-par.submit(p, r, submit_job);
+par.submit(p, r, submit_job, use_gpu);
