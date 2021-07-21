@@ -7,6 +7,7 @@ import random
 r = {}
 p = {}
 submit_job = False;
+use_gpu = True;
 
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -60,7 +61,7 @@ p['prediction']         = 0                     # enable prediction
 
 ############### === define run configuration
 r['code_path']      = code_dir;
-r['compute_sys']    = 'longhorn'                # TACC systems are: maverick2, frontera, stampede2, longhorn
+r['compute_sys']    = 'cbica'                # TACC systems are: maverick2, frontera, stampede2, longhorn; UPENN system : cbica
 
 ###############=== write config to write_path and submit job
-par.submit(p, r, submit_job);
+par.submit(p, r, submit_job, use_gpu);
