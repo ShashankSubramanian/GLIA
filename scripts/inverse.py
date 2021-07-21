@@ -6,6 +6,7 @@ import subprocess
 r = {}
 p = {}
 submit_job = False;
+use_gpu = True;
 
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -40,9 +41,9 @@ p['lbfgs_vectors'] = 50				          # number of vectors for lbfgs update
 
 ############### === define run configuration
 r['code_path'] 			= code_dir;
-r['compute_sys'] 		= 'longhorn'    		# TACC systems are: maverick2, frontera, stampede2, longhorn
+r['compute_sys'] 		= 'cbica'    		# TACC systems are: maverick2, frontera, stampede2, longhorn; UPENN system : cbica
 
 ###############=== write config to write_path and submit job
-par.submit(p, r, submit_job);
+par.submit(p, r, submit_job, use_gpu);
 
 ### -tao_blmvm_mat_lmvm_num_vecs 50 -tao_blmvm_mat_lmvm_scale_type diagonal -tumor_tao_ls_max_funcs 10
