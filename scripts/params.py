@@ -444,12 +444,12 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       if use_gpu :
         job_header += '#$ -l gpu\n#$ -l h_vmem=64G\n'
       job_header += '#$ -pe openmpi ' + str(run_params['mpi_tasks']) + '\n'
-       
+      job_header += '#$ -p 10 \n' 
       job_header += '#$ -l h_rt=' + str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n"
       job_header += '#$ -l s_rt=' + str(run_params['wtime_h']-1)+":"+str(run_params['wtime_m'])+":00\n"
       job_header += '#$ -o ' + run_params['log_dir'] + "/" + run_params['log_name'] + "\n" 
-      job_header += '#$ -e ' + run_params['log_dir'] + "/log_error \n" 
-      
+      job_header += '#$ -e ' + run_params['log_dir'] + "/" + run_params['log_name'] + "_err \n" 
+ 
       job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
       if 'extra_modules' in run_params:
