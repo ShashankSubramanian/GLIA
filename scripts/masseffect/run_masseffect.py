@@ -68,7 +68,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, is_syn=False):
     p['atlas_labels']       = "[wm=6,gm=5,vt=7,csf=8]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['patient_labels']     = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"# brats'[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
     p['a_seg_path']         = atlas_dir + "/" + atlas + "_seg_aff2jakob_ants" + n_str + ".nc"
-    p['p_seg_path']         = pat_dir + pat + '_seg_ants_aff2jakob' + n_str + '.nc'
+    p['p_seg_path']         = pat_dir + pat + '_seg_aff2jakob' + n_str + '.nc'
     p['mri_path']           = atlas_dir + "/" + atlas + "_t1_aff2jakob" + n_str + ".nc"
     p['solver']             = 'mass_effect'
     p['model']              = 4                         # mass effect model
@@ -551,7 +551,10 @@ def run(args):
     else:
       for i in range(0,numjobs):
         bash_file = respat + "/job" + str(i) + ".sh"
-        subprocess.call(['sbatch', bash_file])
+        if args.compute_sys == 'cbica':
+          subprocess.call(['qsub', bash_file])
+        else:
+          subprocess.call(['sbatch', bash_file])
 
   print("Finished")
 
