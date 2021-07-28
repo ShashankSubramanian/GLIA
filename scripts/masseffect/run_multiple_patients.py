@@ -104,10 +104,7 @@ def batch_jobs_and_run(args):
     if submit_job:
       for job_file in os.listdir(job_bundle_dir):
         if job_file.find("job") is not -1:
-          if args.compute_sys == 'cbica':
-            subprocess.call(['qsub', job_bundle_dir + job_file])
-          else:
-            subprocess.call(['sbatch', job_bundle_dir + job_file])
+          subprocess.call(['sbatch', job_bundle_dir + job_file])
 
 
 #--------------------------------------------------------------------------------------------------------------------------
