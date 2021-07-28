@@ -344,7 +344,7 @@ def runcmd(r):
     if r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
         cmd = cmd + "ibrun " + ibman;
     elif r['compute_sys'] == 'cbica':
-        cmd = cmd + "mpirun --mca btl vader -np $NSLOTS ";
+        cmd = cmd + "mpirun --mca btl vader,self -np $NSLOTS ";
     else:
         cmd = cmd + "mpirun ";
   else:
