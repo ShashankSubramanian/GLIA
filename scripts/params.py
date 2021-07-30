@@ -317,7 +317,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
       if r['compute_sys'] == "cbica":
         cmd += "export CUDA_VISIBLE_DEVICES=$(get_CUDA_VISIBLE_DEVICES) || exit\n"
       else:
-        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " "
+        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " \n"
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
         if r['mpi_tasks'] < 24:
@@ -326,7 +326,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
         cmd = cmd + "ibrun " + ibman;
     elif r['compute_sys'] == 'cbica':
-        cmd = cmd + "mpirun --mca btl vader,self -np $NSLOTS ";
+        cmd = cmd + "\n mpirun --mca btl vader,self -np $NSLOTS ";
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + r['code_path'] + "/build/last/tusolver "
@@ -344,7 +344,7 @@ def runcmd(r):
     if r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
         cmd = cmd + "ibrun " + ibman;
     elif r['compute_sys'] == 'cbica':
-        cmd = cmd + "mpirun --mca btl vader,self -np $NSLOTS ";
+        cmd = cmd + "\nmpirun --mca btl vader,self -np $NSLOTS ";
     else:
         cmd = cmd + "mpirun ";
   else:
@@ -446,11 +446,11 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += '#$ -pe openmpi ' + str(run_params['mpi_tasks']) + '\n'
       job_header += '#$ -p 10 \n' 
       job_header += '#$ -l h_rt=' + str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n"
-      job_header += '#$ -l s_rt=' + str(run_params['wtime_h']-1)+":"+str(run_params['wtime_m'])+":00\n"
+      job_header += '#$ -l s_rt=' + str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n"
       job_header += '#$ -o ' + run_params['log_dir'] + "/" + run_params['log_name'] + "\n" 
       job_header += '#$ -e ' + run_params['log_dir'] + "/" + run_params['log_name'] + "_err \n" 
  
-      job_header += "source ~/.bashrc\n"
+      #job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"
