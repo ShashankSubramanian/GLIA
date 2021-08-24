@@ -136,8 +136,9 @@ def write_tuinv(invdir, atlist, bash_file, idx, ngpu, run_params):
   for i in range(0,n_local):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[ngpu*idx + i] + "\n")
   cmd = par.runcmd(run_params)
+  flag = 0 if run_params['compute_sys'] == 'cbica' else 1
   for i in range(0,n_local):
-    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " " + cmd + "${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 &\n")
+    f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " " + cmd + "${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 " + "&"*flag + "\n")
   f.write("\n")
   f.write("wait\n")
 
@@ -501,7 +502,7 @@ def run(args):
         ##input("Press enter to continue...")
             
 
-      n_samples = 16 if len(at_list) > 16 else len(at_list)
+      n_samples = 8 if len(at_list) > 8 else len(at_list)
       at_list = at_list[0:n_samples] ###random.sample(at_list, n_samples) ### take a random subset
       for item in at_list:
         f.write(item + "\n")
@@ -517,7 +518,7 @@ def run(args):
  
 
     ### create data files
-    if n is not 256:
+    if n != 256:
       create_level_specific_data(n, pat, data_dir, res, create=True, is_syn=args.syn)
     else:
       create_level_specific_data(n, pat, data_dir, res, create=False, is_syn=args.syn) ### just copy these files
@@ -551,7 +552,10 @@ def run(args):
     else:
       for i in range(0,numjobs):
         bash_file = respat + "/job" + str(i) + ".sh"
-        subprocess.call(['sbatch', bash_file])
+        if arg.compute_sys == 'cbica':
+          subprocess.call(['qsub', bash_file])
+        else:
+          subprocess.call(['sbatch', bash_file])
 
   print("Finished")
 
