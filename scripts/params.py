@@ -442,7 +442,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += '#$ -cwd\n'
       job_header += '#$ -V\n'
       if use_gpu :
-        job_header += '#$ -l gpu\n#$ -l h_vmem=64G\n'
+        job_header += '#$ -l V100\n#$ -l h_vmem=64G\n'
       job_header += '#$ -pe openmpi ' + str(run_params['mpi_tasks']) + '\n'
       job_header += '#$ -p 10 \n' 
       job_header += '#$ -l h_rt=' + str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n"
