@@ -47,7 +47,7 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::computeMisfitBrain(PetscRreal *J
 }
 
 
-PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
+PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, ScalarType *x_ptr, std::shared_ptr<Data> data_inv) {
 
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
@@ -107,10 +107,59 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
     s.str("");
     s.clear();
+    s << " Hypoxia threshold at current guess    = " << params_->tu_->ox_hypoxia_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Deathrate at current guess    = " << params_->tu_->death_rate_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Transition rate from p to i at current guess    = " << params_->tu_->alpha_0_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Oxygen consumption at current guess    = " << params_->tu_->ox_consumption_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Oxygen source at current guess    = " << params_->tu_->ox_source_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Transition rate from i to p at current guess    = " << params_->tu_->beta_0_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
   }
 
-
+  // Rest mat-props and parameters, tumor IC does not change
+  ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->velocity_->set(0);
+  ierr = tumor_->displacement_->set(0);
   
+  ierr = pde_operators_->solveState(0);
+  ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
+  ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
+  ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
+  (*J) *= 0.5 * params_->grid_->lebesgue_measure_;
+  ierr = computeMisfitBrain (&misfit_brain);
+  misfit_brain *= 0.5 * params_->grid_->lebesgue_measure_;
+  if (!disable_verbose_) {
+    s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+  }
+  
+  (*J) += misfit_brain;
+
+  PetscFunctionReturn(ierr);
+
+}
+
 
 
 

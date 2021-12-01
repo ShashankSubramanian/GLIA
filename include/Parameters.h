@@ -61,6 +61,12 @@ public:
     k_scale_(1),
     rho_scale_(1),
     gamma_scale_(1)
+    ox_hypoxia_scale_(1)
+    death_rate_scale_(1)
+    alpha_0_scale_(1)
+    ox_consumption_scale_(1)
+    ox_source_scale_(1)
+    beta_0_scale_(1)
   {}
   ScalarType beta_;
   ScalarType regularization_norm_;
@@ -105,7 +111,13 @@ public:
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
-  std::array<ScalarType, 3> bounds_array_;
+  ScalarType ox_hypoxia_scale_  /// @brief if MultiSpec model, scalaing of hypoxia threshold
+  ScalarType death_rate_scale_  /// @brief if MultiSpec model, scalaing of deathrate 
+  ScalarType alpha_0_scale_     /// @brief if MultiSpec model, scalaing of trans rate from p to i
+  ScalarType ox_consumption_scale_  /// @brief if MultiSpec model, scalaing of oxygen consumption
+  ScalarType ox_source_scale_       /// @brief if MultiSpec model, scalaing of oxygen source 
+  ScalarType beta_0_scale_          /// @brief if MultiSpec model, scalaing of trans rate from i to p
+  std::array<ScalarType, 3> bounds_array_;  
 };
 
 struct OptimizerFeedback {

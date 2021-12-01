@@ -46,7 +46,7 @@ public:
 
 
 class MultiSpeciesOptimizer {
-public : 
+ public : 
   Optimizer()
   :
     initialized_(false)
@@ -66,7 +66,29 @@ public :
 
   virtual ~MultiSpeciesOptimizer() {};
 
-  
+ private:
+  int n_g_;
+  ScalarType k_init_;
+  ScalarType rho_init_;
+  ScalarType gamma_init_;
+  ScalarType ox_hypoxia_;
+  ScalarType death_rate_;
+  ScalarType alpha_0_;
+  ScalarType ox_consumption_;
+  ScalarType ox_source_;
+  ScalarType beta_0_;
+
+
+  ScalarType k_scale_;
+  ScalarType rho_scale_;
+  ScalarType gamma_scale_;
+  ScalarType ox_hypoxia_scale_; 
+  ScalarType death_rate_scale_;
+  ScalarType alpha_0_scale_;
+  ScalarType ox_consumption_scale_;
+  ScalarType ox_source_scale_;
+  ScalarType beta_0_scale_;
+
 
 };
 
