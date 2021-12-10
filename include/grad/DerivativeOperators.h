@@ -60,6 +60,8 @@ class DerivativeOperators {
 };
 
 
+
+
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========  Deriv. Ops.: Adjoints {rho,kappa,p} for RD Model ======== #### */
 /* #### ------------------------------------------------------------------- #### */
@@ -238,6 +240,42 @@ class DerivativeOperatorsRDObj : public DerivativeOperators {
   // / number of components in objective function
   int nc_;
 };
+
+class DerivativeOperatorsMultiSpecies : public DerivativeOperators {
+ public:
+  DerivativeOperatorsMultiSpecies(std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor)
+ : DerivativeOperators(pde_operators, params, tumor) {
+    tuMSGstd(" ----- Setting RD derivative operators with mass effect objective --------");
+    int n_inv;
+    if (params->opt_->invert_mass_effect_) n_inv = 3 + 5;
+    else n_inv = 2 + 5;
+    VecCreateSeq(PETSC_COMM_SELF, n_inv, &delta_);
+    setupVec(delta_, SEQ);
+    VecSet(delta_, 0.);
+    disable_verbose_ = false;
+  }
+  
+  Vec delta_;
+
+  PetscErrorCode evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode computeMisfitBrain(PetscReal *J);
+  PetscErrorCode evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data);
+  PetscErrorCode evaluateHessian(Vec y, Vec x);
+  PetscErrorCode setMaterialProperties(Vec gm, Vec wm, Vec vt, Vec csf) {
+    gm_ = gm;
+    wm_ = wm;
+    vt_ = vt;
+    csf_ = csf;
+    PetscFunctionReturn(0);
+  }
+  virtual PetscErrorCode reset(Vec p, std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor);
+  ~DerivativeOperatorsMultiSpecies() { VecDestroy(&delta_); }
+
+ private:
+  Vec gm_, wm_, vt_, csf_;
+};
+
 
 // Derivative obj helpers
 /// @brief computes geometric tumor coupling m1 = m0(1-c(1))

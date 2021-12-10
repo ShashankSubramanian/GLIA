@@ -66,6 +66,101 @@ public:
     }
 };
 
+struct CtxInvCMA {
+
+public:
+    ScalarType jvalold;                  // old value of the objective function
+    ScalarType cma_sigma;                // variance for the cma optimizer
+
+    Vec tmp;
+    Vec c0_old;                          // previous solution
+    Vec x_old;                           // previous test solution
+    std::shared_ptr<Data> data;           // data for tumor inversion
+    /// @brief evalJ evalDJ, eval D2J
+    std::shared_ptr<DerivativeOperators> derivative_operators_;
+    /// @brief required to reset derivative_operators_
+    std::shared_ptr<PdeOperators> pde_operators_;
+    /// @brief common settings/ parameters
+    std::shared_ptr<Parameters> params_;
+    /// @brief accumulates all tumor related fields and methods
+    std::shared_ptr<Tumor> tumor_;
+
+    CtxInvCMA()
+    :
+      jvalold(0)
+    , cma_sigma(1.0)
+    , tmp(nullptr)
+    , c0_old(nullptr)
+    , x_old(nullptr)
+    , data(nullptr)
+    , derivative_operators_()
+    , params_()
+    , tumor_()
+    {}
+
+    ~CtxInvCMA () {
+        if (x_old != nullptr) {VecDestroy(&x_old); x_old = nullptr;}
+        if (c0_old != nullptr) {VecDestroy(&c0_old); c0_old = nullptr;}
+        if (tmp != nullptr) {VecDestroy(&tmp); tmp = nullptr;}
+    }
+};
+
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========              CMA Optimizer Class                  ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+class CMAOptimizer {
+public :
+
+  CMAOptimizer()
+  :
+    initialized_(false)
+  , n_inv_(0)
+  , data_(nullptr)
+  , cma_ctx_(nullptr)
+  , xrec_(nullptr)
+  , xin_(nullptr)
+  , xout_(nullptr)
+ {}
+
+  virtual PetscErrorCode initialize (
+            std::shared_ptr <DerivativeOperators> derivative_operators,
+            std::shared_ptr <PdeOperators> pde_operators,
+            std::shared_ptr <Parameters> params,
+            std::shared_ptr <Tumor> tumor);
+
+  virtual PetscErrorCode solve() = 0;
+  //virtual PetscErrorCode resetOperators(Vec p);
+  virtual PetscErrorCode setInitialGuess(Vec x_init) = 0;
+  //virtual PetscErrorCode setVariableBounds() = 0;
+  
+  void setData(std::shared_ptr<Data> d) {data_ = d;}
+  void setData(Vec d1, Vec d0={}) {data_->set(d1, d0);}
+  void setDataT1(Vec d1) {data_->setT1(d1);}
+  void setDataT0(Vec d0) {data_->setT1(d0);}
+  
+  bool initialized() {return initialized_;}
+  Vec getSolution() {return xout_;}
+
+  virtual ~CMAOptimizer();
+  inline PetscErrorCode evalObjective (Vec x, PetscReal *J) {
+      PetscFunctionBegin; PetscErrorCode ierr = 0;
+      ierr = cma_ctx_->derivative_operators_->evaluateObjective (J, x, data_);
+      PetscFunctionReturn(0);
+  }
+
+  std::shared_ptr<CtxInvCMA> cma_ctx_;
+  
+protected:
+  bool initialized_;
+  
+  int n_inv_;
+  std::shared_ptr<Data> data_;
+  Vec xrec_;
+  Vec xin_;
+  Vec xout_;
+
+};
 
 
 

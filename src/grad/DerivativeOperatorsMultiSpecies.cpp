@@ -3,9 +3,8 @@
 #include <petsc/private/vecimpl.h>
 
 
-
-
-PetscErrorCode DerivativeOperatorMultiSpecies::reset(Vec p, std::shared_ptr<PdeOperators>, pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor)
+/*
+PetscErrorCode DerivativeOperatorsMultiSpecies::reset(Vec p, std::shared_ptr<PdeOperators> pde_operators, std::shared_ptr<Parameters> params, std::shared_ptr<Tumor> tumor)
  {
 
   PetscFunctionBegin; 
@@ -27,19 +26,20 @@ PetscErrorCode DerivativeOperatorMultiSpecies::reset(Vec p, std::shared_ptr<PdeO
   PetscFunctionReturn(ierr);
   
 }
+*/
 
 
-PetscErrorCode DerivativeOperatorsMultiSpecies::computeMisfitBrain(PetscRreal *J) { 
+PetscErrorCode DerivativeOperatorsMultiSpecies::computeMisfitBrain(PetscReal *J) { 
 
-  PetscFunctionBegign;
+  PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   
   PetscReal ms = 0;
   *J = 0;
 
-  ierr = VecCopyy(tumor_->mat_prop_->vt_, temp_); CHKERRQ(ierr);
+  ierr = VecCopy(tumor_->mat_prop_->vt_, temp_); CHKERRQ(ierr);
   ierr = VecAXPY(temp_, -1.0, vt_); CHKERRQ(ierr);
-  ierr = VecDot(temp_, temp_, &ms); CHKERR(ierr);
+  ierr = VecDot(temp_, temp_, &ms); CHKERRQ(ierr);
   *J += ms;
 
   PetscFunctionReturn(ierr);
@@ -47,14 +47,14 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::computeMisfitBrain(PetscRreal *J
 }
 
 
-PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, ScalarType *x_ptr, std::shared_ptr<Data> data_inv) {
+PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, Vec x, std::shared_ptr<Data> data_inv) {
 
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
   params_->tu_->statistics_.nb_obj_evals++;
   const ScalarType *x_ptr;
   
-  Vec data = data_inv->dt1;
+  Vec data = data_inv->dt1();
    
  
   std::stringstream s;
@@ -145,6 +145,7 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
   ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
   (*J) *= 0.5 * params_->grid_->lebesgue_measure_;
+  PetscReal misfit_brain = 0.;
   ierr = computeMisfitBrain (&misfit_brain);
   misfit_brain *= 0.5 * params_->grid_->lebesgue_measure_;
   if (!disable_verbose_) {
@@ -161,19 +162,122 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
 }
 
 
+PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  params_->tu_->statistics_.nb_grad_evals++;
 
+  Vec data = data_inv->dt1();
+  disable_verbose_ = true;
+  // Finite difference gradient -- forward for now
+  ScalarType h, dx;
+  ScalarType volatile xph;
+  PetscReal J_f, J_b;
 
+  ierr = evaluateObjective(&J_b, x, data_inv); CHKERRQ(ierr);
+  int sz;
+  ScalarType *delta_ptr, *dj_ptr;
+  ScalarType const *x_ptr;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  ierr = VecGetArray(dJ, &dj_ptr); CHKERRQ(ierr);
+  std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+  ScalarType small = 1E-5;//PETSC_SQRT_MACHINE_EPSILON;
+  for (int i = 0; i < sz; i++) {
+    ierr = VecCopy(x, delta_); CHKERRQ(ierr);
+    ierr = VecGetArray(delta_, &delta_ptr); CHKERRQ(ierr);
+    ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
+    h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
+    xph = x_ptr[i] + h;
+    dx = xph - x_ptr[i];
+    delta_ptr[i] = xph;
+    ierr = VecRestoreArray(delta_, &delta_ptr); CHKERRQ(ierr);
+    ierr = evaluateObjective(&J_f, delta_, data_inv); CHKERRQ(ierr);
+    dj_ptr[i] = (J_f - J_b) / dx;
+    ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
+  }
+  ierr = VecRestoreArray(dJ, &dj_ptr); CHKERRQ(ierr);
 
+  disable_verbose_ = false;
 
-
-
-
-
-
-
-
-
-
-
-
+  PetscFunctionReturn(ierr);
 }
+
+PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjectiveAndGradient(PetscReal *J, Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  params_->tu_->statistics_.nb_obj_evals++;
+  params_->tu_->statistics_.nb_grad_evals++;
+
+  Vec data = data_inv->dt1();
+  ierr = evaluateObjective(J, x, data_inv); CHKERRQ(ierr);
+  // Finite difference gradient -- forward for now
+  ScalarType h, dx;
+  ScalarType volatile xph;
+  PetscReal J_f;
+
+  disable_verbose_ = true;
+  int sz;
+  ScalarType *delta_ptr, *dj_ptr;
+  ScalarType const *x_ptr;
+  ierr = VecGetSize(x, &sz); CHKERRQ(ierr);
+  ierr = VecGetArray(dJ, &dj_ptr); CHKERRQ(ierr);
+
+  ScalarType scale = 1;
+  std::array<ScalarType, 3> characteristic_scale = {1, 1, 1};
+
+
+  ScalarType J_b = (*J);
+  ScalarType small = 1E-5;
+  for (int i = 0; i < sz; i++) {
+    ierr = VecCopy(x, delta_); CHKERRQ(ierr);
+    ierr = VecGetArray(delta_, &delta_ptr); CHKERRQ(ierr);
+    ierr = VecGetArrayRead(x, &x_ptr); CHKERRQ(ierr);
+    h = (x_ptr[i] == 0) ? small * characteristic_scale[i] : small * x_ptr[i] * characteristic_scale[i];
+    xph = x_ptr[i] + h;
+    dx = xph - x_ptr[i];
+    delta_ptr[i] = xph;
+    ierr = VecRestoreArray(delta_, &delta_ptr); CHKERRQ(ierr);
+    ierr = evaluateObjective(&J_f, delta_, data_inv); CHKERRQ(ierr);
+    dj_ptr[i] = (J_f - J_b) / dx;
+    ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
+  }
+
+  ierr = VecRestoreArray(dJ, &dj_ptr); CHKERRQ(ierr);
+
+  disable_verbose_ = false;
+
+  PetscFunctionReturn(ierr);
+}
+
+
+
+PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateHessian(Vec y, Vec x) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  params_->tu_->statistics_.nb_hessian_evals++;
+
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
+  Event e("tumor-eval-hessian");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
+
+  ierr = VecCopy(x, y); CHKERRQ(ierr);
+
+  self_exec_time += MPI_Wtime();
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
+}
+
+
+
+
+
+  
+
+
+

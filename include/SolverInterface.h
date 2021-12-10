@@ -58,6 +58,7 @@ class SolverInterface {
   std::shared_ptr<SpectralOperators> spec_ops_;
   std::shared_ptr<Tumor> tumor_;
   std::shared_ptr<Optimizer> optimizer_;
+  std::shared_ptr<CMAOptimizer> cma_optimizer_;
 
   bool custom_obs_;
   bool warmstart_p_;

@@ -11,10 +11,10 @@
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode MEOptimizer::initialize(
-  std::shared_ptr<DerivativeOperators> derivative_operators,
-  std::shared_ptr<PdeOperators> pde_operators,
-  std::shared_ptr<Parameters> params,
-  std::shared_ptr<Tumor> tumor) {
+  std::shared_ptr <DerivativeOperators> derivative_operators,
+  std::shared_ptr <PdeOperators> pde_operators,
+  std::shared_ptr <Parameters> params,
+  std::shared_ptr <Tumor> tumor) {
 
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;

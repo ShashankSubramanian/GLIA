@@ -52,20 +52,33 @@ public:
     cross_entropy_loss_(false),
     invert_mass_effect_(false),
     prune_components_(true),
+    sigma_inv_(1.0),
     k_lb_ (1E-3),
     k_ub_ (1),
     gamma_lb_(0),
     gamma_ub_(15),
     rho_lb_(1),
     rho_ub_(15),
+    ox_hypoxia_lb_(1E-3),
+    ox_hypoxia_ub_(1E-3),
+    death_rate_lb_(0.5),
+    death_rate_ub_(1.5),
+    alpha_0_lb_(1E-3),
+    alpha_0_ub_(1.0),
+    ox_consumption_lb_(1E-3),
+    ox_consumption_ub_(20.0),
+    ox_source_lb_(1E-3),
+    ox_source_ub_(100),
+    beta_0_lb_(1E-3),
+    beta_0_ub_(1.0),
     k_scale_(1),
     rho_scale_(1),
-    gamma_scale_(1)
-    ox_hypoxia_scale_(1)
-    death_rate_scale_(1)
-    alpha_0_scale_(1)
-    ox_consumption_scale_(1)
-    ox_source_scale_(1)
+    gamma_scale_(1),
+    ox_hypoxia_scale_(1),
+    death_rate_scale_(1),
+    alpha_0_scale_(1),
+    ox_consumption_scale_(1),
+    ox_source_scale_(1),
     beta_0_scale_(1)
   {}
   ScalarType beta_;
@@ -102,21 +115,34 @@ public:
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
   bool invert_mass_effect_;     /// @brief if true invert for mass-effect parameters {rho,k,gamma}
   bool prune_components_;       /// @brief prunes L2 solution based on components
+  ScalarType sigma_inv_;        /// @brief sigma for CMA inversion of MultiSpecies model
   ScalarType k_lb_;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
   ScalarType k_ub_;             /// @brief upper bound on kappa
   ScalarType gamma_lb_;         /// @brief lower bound on gamma
   ScalarType gamma_ub_;         /// @brief upper bound on gamma
   ScalarType rho_lb_;           /// @brief lower bound on rho
   ScalarType rho_ub_;           /// @brief upper bound on rho
+  ScalarType ox_hypoxia_lb_;
+  ScalarType ox_hypoxia_ub_;
+  ScalarType death_rate_lb_;
+  ScalarType death_rate_ub_;
+  ScalarType alpha_0_lb_;
+  ScalarType alpha_0_ub_;
+  ScalarType ox_consumption_lb_;
+  ScalarType ox_consumption_ub_;
+  ScalarType ox_source_lb_;
+  ScalarType ox_source_ub_;
+  ScalarType beta_0_lb_;
+  ScalarType beta_0_ub_;
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
-  ScalarType ox_hypoxia_scale_  /// @brief if MultiSpec model, scalaing of hypoxia threshold
-  ScalarType death_rate_scale_  /// @brief if MultiSpec model, scalaing of deathrate 
-  ScalarType alpha_0_scale_     /// @brief if MultiSpec model, scalaing of trans rate from p to i
-  ScalarType ox_consumption_scale_  /// @brief if MultiSpec model, scalaing of oxygen consumption
-  ScalarType ox_source_scale_       /// @brief if MultiSpec model, scalaing of oxygen source 
-  ScalarType beta_0_scale_          /// @brief if MultiSpec model, scalaing of trans rate from i to p
+  ScalarType ox_hypoxia_scale_;  /// @brief if MultiSpec model, scalaing of hypoxia threshold
+  ScalarType death_rate_scale_;  /// @brief if MultiSpec model, scalaing of deathrate 
+  ScalarType alpha_0_scale_;     /// @brief if MultiSpec model, scalaing of trans rate from p to i
+  ScalarType ox_consumption_scale_;  /// @brief if MultiSpec model, scalaing of oxygen consumption
+  ScalarType ox_source_scale_;       /// @brief if MultiSpec model, scalaing of oxygen source 
+  ScalarType beta_0_scale_;          /// @brief if MultiSpec model, scalaing of trans rate from i to p
   std::array<ScalarType, 3> bounds_array_;  
 };
 

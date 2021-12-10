@@ -11,7 +11,7 @@
 #include "SparseTILOptimizer.h"
 #include "RDOptimizer.h"
 #include "MEOptimizer.h"
-
+#include "MultiSpeciesOptimizer.h"
 
 /* #### ------------------------------------------------------------------- #### */
 /* #### ========                   ForwardSolver                   ======== #### */
@@ -984,7 +984,7 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
-PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std:shared_ptr<ApplicationSettings> app_settings) {
+PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   std::stringstream ss;
@@ -1026,9 +1026,9 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   
   // === create optimizer 
-  optimizer_ = std::make_shared<MultiSpeciesOptimizer>();
-  ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
-  ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, tumor_); CHKERRQ(ierr);
+  cma_optimizer_ = std::make_shared<MultiSpeciesOptimizer>();
+  ierr = cma_optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
+  //ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, tumor_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
   
@@ -1054,39 +1054,39 @@ PetscErrorCode InverseMultiSpeciesSolver::run() {
   ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ(ierr);
   std::random_device rd; // obtain a random number from hardware
   std::mt19937 eng(rd()); // seed the generator
-  std::uniform_real_distribution<> distg(0.1, 0.1); // define the range
-  std::uniform_real_distribution<> distg(5, 10); // define the range
+  //std::uniform_real_distribution<> distg(0.1, 0.1); // define the range
+  //std::uniform_real_distribution<> distg(5, 10); // define the range
   std::uniform_real_distribution<> distg(0.5, 5); // define the range
   if (params_->opt_->invert_mass_effect_) {
     x_ptr[0] = params_->tu_->forcing_factor_;
     x_ptr[1] = params_->tu_->rho_;  
     x_ptr[2] = params_->tu_->k_;
-    x_ptr[3] = params_->tu_->ox_hypoxia_
-    x_ptr[4] = params_->tu_->death_rate_
-    x_ptr[5] = params_->tu_->alpha_0_
-    x_ptr[6] = params_->tu_->ox_consumption_
-    x_ptr[7] = params_->tu_->ox_source_
-    x_ptr[8] = params_->tu_->beta_0_
+    x_ptr[3] = params_->tu_->ox_hypoxia_;
+    x_ptr[4] = params_->tu_->death_rate_;
+    x_ptr[5] = params_->tu_->alpha_0_;
+    x_ptr[6] = params_->tu_->ox_consumption_;
+    x_ptr[7] = params_->tu_->ox_source_;
+    x_ptr[8] = params_->tu_->beta_0_;
   } else {
 
     x_ptr[0] = params_->tu_->rho_;  
     x_ptr[1] = params_->tu_->k_;
-    x_ptr[2] = params_->tu_->ox_hypoxia_
-    x_ptr[3] = params_->tu_->death_rate_
-    x_ptr[4] = params_->tu_->alpha_0_
-    x_ptr[5] = params_->tu_->ox_consumption_
-    x_ptr[6] = params_->tu_->ox_source_
-    x_ptr[7] = params_->tu_->beta_0_
+    x_ptr[2] = params_->tu_->ox_hypoxia_;
+    x_ptr[3] = params_->tu_->death_rate_;
+    x_ptr[4] = params_->tu_->alpha_0_;
+    x_ptr[5] = params_->tu_->ox_consumption_;
+    x_ptr[6] = params_->tu_->ox_source_;
+    x_ptr[7] = params_->tu_->beta_0_;
 
   }
   // TODO: add the inversion for the ic coeffs
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
-  optimizer_->setData(data_); // set data before intiial guess
-  ierr = optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
-  ierr = optimizer_->solve(); CHKERRQ(ierr);
-  ierr = VecCopy(optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+  cma_optimizer_->setData(data_); // set data before intiial guess
+  ierr = cma_optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
+  ierr = cma_optimizer_->solve(); CHKERRQ(ierr);
+  ierr = VecCopy(cma_optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
   
-  ierr = tumor_mat_prop_->resetValues(); CHKERRQ(ierr);
+  ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->velocity_->set(0.);
@@ -1143,7 +1143,7 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
   ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
   
-  ScalarTyoe mag_norm, mm;
+  ScalarType mag_norm, mm;
   
   if (params_->tu_->write_output_) {
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);

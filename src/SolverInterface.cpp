@@ -963,8 +963,8 @@ PetscErrorCode SolverInterface::initializeOperators() {
     case 6: {
       pde_operators_ = std::make_shared<PdeOperatorsMultiSpecies>(tumor_, params_, spec_ops_);
       derivative_operators_ = std::make_shared<DerivativeOperatorsMultiSpecies>(pde_operators_, params_, tumor_);
-      break
-
+      break;
+    }
   }
   PetscFunctionReturn(ierr);
 }

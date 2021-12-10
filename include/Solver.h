@@ -97,4 +97,29 @@ class MultiSpeciesSolver : public SolverInterface {
 
   virtual ~MultiSpeciesSolver() {}
 };
+
+class InverseMultiSpeciesSolver : public SolverInterface {
+  public:
+  InverseMultiSpeciesSolver() : SolverInterface() {p_wm_ = nullptr; p_gm_ = nullptr; p_vt_ = nullptr; p_csf_ = nullptr;}
+  
+  virtual PetscErrorCode finalize();
+  virtual PetscErrorCode initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr <Parameters> params, std::shared_ptr<ApplicationSettings> app_settings);
+  virtual PetscErrorCode run();
+  PetscErrorCode readPatient();
+
+  virtual ~InverseMultiSpeciesSolver() {
+    if (p_wm_ != nullptr) VecDestroy(&p_wm_);
+    if (p_gm_ != nullptr) VecDestroy(&p_gm_);
+    if (p_vt_ != nullptr) VecDestroy(&p_vt_);
+    if (p_csf_ != nullptr) VecDestroy(&p_csf_);
+  }
+
+ private:
+  Vec p_wm_;
+  Vec p_gm_;
+  Vec p_vt_;
+  Vec p_csf_;
+};
+    
+
 #endif

@@ -23,6 +23,15 @@ Optimizer::~Optimizer() {
   if(xout_ != nullptr) VecDestroy(&xout_);
 }
 
+CMAOptimizer::~CMAOptimizer() {
+  if(xrec_ != nullptr) VecDestroy (&xrec_);
+  if(xin_  != nullptr) VecDestroy (&xin_);
+  if(xout_ != nullptr) VecDestroy (&xout_);
+}
+
+
+
+
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode Optimizer::initialize(
@@ -45,6 +54,30 @@ PetscErrorCode Optimizer::initialize(
   initialized_ = true;
   PetscFunctionReturn (ierr);
 }
+
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode CMAOptimizer::initialize(
+  std::shared_ptr<DerivativeOperators> derivative_operators,
+  std::shared_ptr <PdeOperators> pde_operators,
+  std::shared_ptr <Parameters> params,
+  std::shared_ptr <Tumor> tumor) {
+
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  if (initialized_) PetscFunctionReturn(ierr);
+
+  cma_ctx_ = std::make_shared<CtxInvCMA> ();
+  cma_ctx_->derivative_operators_ = derivative_operators;
+  cma_ctx_->pde_operators_ = pde_operators;
+  cma_ctx_->params_ = params;
+  cma_ctx_->tumor_ = tumor;
+
+  initialized_ = true;
+  PetscFunctionReturn (ierr);
+}
+
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -110,6 +143,19 @@ PetscErrorCode Optimizer::resetOperators(Vec p) {
   PetscFunctionReturn (ierr);
 }
 
+/*
+PetscErrorCode CMAOptimizer::resetOperators(Vec p) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  // reset tumor_ object, re-size solution vector and copy p into tumor_->p_
+  ierr = ctx_->tumor_->setParams(p, ctx_->params_, true); CHKERRQ (ierr);
+  // reset derivative operators, re-size vectors
+  ierr = ctx_->derivative_operators_->reset(p, ctx_->pde_operators_, ctx_->params_, ctx_->tumor_); CHKERRQ(ierr);
+  if (ctx_->x_old != nullptr) {ierr = VecDestroy(&ctx_->x_old); CHKERRQ(ierr); ctx_->x_old = nullptr;} // TODO(K): destroy or nullptr?
+  // ctx_->x_old = nullptr; // re-allocate memory
+  PetscFunctionReturn (ierr);
+}
+*/
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###

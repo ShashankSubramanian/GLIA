@@ -92,7 +92,7 @@ buildpath = os.path.join(env["builddir"], "") # Ensures to have a trailing slash
 
 print
 env.Append(LIBPATH = [('#' + buildpath)])
-env.Append(CCFLAGS= ['-std=c++11'])
+#env.Append(CCFLAGS= ['-std=c++11'])
 #env.Append(CCFLAGS= ['-Wall', '-std=c++11'])
 
 WARN='-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror -Wno-unused'
@@ -162,7 +162,7 @@ if env["niftiio"] == True:
     env.Append(CCFLAGS = ['-DNIFTIIO'])
 
 # avx
-if env["platform"] != "frontera":
+if env["platform"] != "frontera" and env["platform"] != "longhorn":
     env.Append(CCFLAGS = ['-march=native'])
 elif env["platform"] == "frontera" and env["gpu"] == False:
     env.Append(CCFLAGS = ['-march=native'])
@@ -173,8 +173,8 @@ if env["gpu"] == True:
     CUDA_DIR = checkset_var("CUDA_DIR", "")
     env.Append(CPPPATH = [os.path.join( CUDA_DIR, "include")])
     env.Append(LIBPATH = [os.path.join( CUDA_DIR, "lib64")])
-    uniqueCheckLib(conf, "cusparse")
     uniqueCheckLib(conf, "cufft")
+    uniqueCheckLib(conf, "cusparse")
     uniqueCheckLib(conf, "cublas")
     uniqueCheckLib(conf, "cudart")
 else:
@@ -224,7 +224,7 @@ else:
     uniqueCheckLib(conf, "pnetcdf")
 
 # ====== PETSc ========
-PETSC_DIR = checkset_var("PETSC_DIR", "")
+PETSC_DIR = checkset_var("PETSC_GLIA_DIR", "")
 PETSC_ARCH = checkset_var("PETSC_ARCH", "")
 env.Append(CPPPATH = [os.path.join( PETSC_DIR, "include"),
                       os.path.join( PETSC_DIR, PETSC_ARCH, "include")])
@@ -245,6 +245,28 @@ else:
 env.Append(CPPPATH = [os.path.join( "3rdparty")])
 env.Append(CPPPATH = [os.path.join( "3rdparty", "pvfmm", "include")])
 
+
+# ====== CMA-ES ======
+
+CMA_DIR = checkset_var("CMA_DIR", "")
+EIGEN_LIB = checkset_var("EIGEN_LIB", "")
+
+env.Append(CPPPATH = [os.path.join(CMA_DIR, "include")])
+env.Append(CPPPATH = [os.path.join(CMA_DIR, "include/libcmaes")])
+env.Append(LIBPATH = [os.path.join(CMA_DIR, "lib")])
+# Eigen for CMA-ES
+env.Append(CPPPATH = [os.path.join(EIGEN_LIB)])
+
+env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "lib")])
+env.Append(CCFLAGS = ['-I' + os.path.join(CMA_DIR, "lib")])
+env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "include")])
+env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "include/libcmaes")])
+env.Append(CCFLAGS = ['-L' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
+env.Append(CCFLAGS = ['-I' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
+
+uniqueCheckLib(conf, "cmaes")
+
+
 print
 env = conf.Finish() # Used to check libraries
 
@@ -258,7 +280,21 @@ env = conf.Finish() # Used to check libraries
 )
 
 
-if env["gpu"] == True:
+if env["gpu"] == True: 
+    env.Append(CPPPATH = [os.path.join(CMA_DIR, "include")])
+    env.Append(CPPPATH = [os.path.join(CMA_DIR, "include/libcmaes")])
+    env.Append(LIBPATH = [os.path.join(CMA_DIR, "lib")])
+    # Eigen for CMA-ES
+    env.Append(CPPPATH = [os.path.join(EIGEN_LIB)])
+    env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "lib")])
+    env.Append(CCFLAGS = ['-I' + os.path.join(CMA_DIR, "lib")])
+    env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "include")])
+    env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "include/libcmaes")])
+    env.Append(CCFLAGS = ['-L' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
+    env.Append(CCFLAGS = ['-I' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
+    env.Append(CCFLAGS = ['-lcmaes']) 
+    env.Append(CCFLAGS = ['-lstdc++'])
+    
     bininv = env.Program (
     target = buildpath + '/tusolver',
     source = [sourcesTumorGPU, './app/tusolver.cpp']
@@ -299,7 +335,7 @@ else:
 symlink = env.Command(
     target = "Symlink",
     source = None,
-    action = "ln -fns {0} {1}".format(os.path.split(buildpath)[-1], os.path.join(os.path.split(buildpath)[0], "last"))
+    action = "ln -fns {0} {1} ".format(os.path.split(buildpath)[-1], os.path.join(os.path.split(buildpath)[0], "last"))
 )
 
 # Default(staticlib, bin, symlink)
