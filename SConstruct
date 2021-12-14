@@ -205,7 +205,7 @@ env.Append(LIBPATH = [os.path.join( MPI_DIR, "lib")])
 # ====== NIFTI ======
 if env["niftiio"] == True:
     NIFTI_DIR = checkset_var("NIFTI_DIR", "")
-    env.Append(CPPPATH = [os.path.join( NIFTI_DIR, "include/nifti")])
+    env.Append(CPPPATH = [os.path.join( NIFTI_DIR, "include")])
     env.Append(LIBPATH = [os.path.join( NIFTI_DIR, "lib")])
     uniqueCheckLib(conf, "niftiio")
     uniqueCheckLib(conf, "nifticdf")

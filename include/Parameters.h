@@ -580,6 +580,12 @@ public:
     rho_(10),
     k_(1E-2),
     forcing_factor_(1E5),
+    ox_hypoxia_(0.65),
+    death_rate_(0.9),
+    alpha_0_(0.15),
+    ox_consumption_(8),
+    ox_source_(55),
+    beta_0_(0.02),
     dt_(0.01),
     nt_(100),
     testcase_(0),
@@ -592,6 +598,12 @@ public:
   ScalarType rho_;
   ScalarType k_;
   ScalarType forcing_factor_;
+  ScalarType ox_hypoxia_;
+  ScalarType death_rate_;
+  ScalarType alpha_0_;
+  ScalarType ox_consumption_;
+  ScalarType ox_source_;
+  ScalarType beta_0_;
   ScalarType dt_;
   int nt_;
   int testcase_;

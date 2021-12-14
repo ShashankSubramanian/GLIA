@@ -80,6 +80,13 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['init_rho'] = 8                   # initial guess rho (reaction in wm)
     p['init_k'] = 1E-2                  # initial guess kappa (diffusivity in wm)
     p['init_gamma'] = 12E4              # initial guess (forcing factor for mass effect)
+    p['init_ox_hypoxia'] = 0.65         # inital guess ox_hypoxia (Hypoxia oxygen threshold) 
+    p['init_death_rate'] = 1.0          # intial guess death_rate (Death rate)
+    p['init_alpha_0'] = 0.15            # intial guess alpha_0 (trans rate from p to i)
+    p['init_ox_consumption'] = 8.0      # initial guess ox_consumption 
+    p['init_ox_source'] = 55.0          # initial guess ox_source (oxygen supply)
+    p['init_beta_0'] = 0.02             # initial guess beta_0 (trans rate from i to p)
+     
     p['nt_inv'] = 40                    # number time steps
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
@@ -119,6 +126,12 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['rho_data'] = 10                  # tumor parameters for synthetic data
     p['k_data'] = 0.025
     p['gamma_data'] = 12E4
+    p['ox_hypoxia_data'] = 0.65
+    p['death_rate_data'] = 1.0
+    p['alpha_0_data'] = 0.15
+    p['ox_consumption_data'] = 8.0
+    p['ox_source_data'] = 55.0
+    p['beta_0_data'] = 0.02
     p['nt_data'] = 25
     p['dt_data'] = 0.04
     p['testcase'] = 0                   # 0: brain single focal synthetic
@@ -434,6 +447,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
       job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
+      job_header += "source activate glia\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"
     else:
