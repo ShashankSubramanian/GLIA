@@ -129,6 +129,7 @@ public :
             std::shared_ptr <Parameters> params,
             std::shared_ptr <Tumor> tumor);
 
+  virtual PetscErrorCode allocateObjects();
   virtual PetscErrorCode solve() = 0;
   //virtual PetscErrorCode resetOperators(Vec p);
   virtual PetscErrorCode setInitialGuess(Vec x_init) = 0;

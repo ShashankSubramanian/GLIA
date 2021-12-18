@@ -50,9 +50,18 @@ public:
     estimate_rho_init_guess_(false),
     multilevel_(false),
     cross_entropy_loss_(false),
-    invert_mass_effect_(false),
+    invert_mass_effect_(true),
     prune_components_(true),
-    sigma_inv_(1.0),
+    sigma_inv_(0.5),
+    sigma_cma_gamma_(3.0E4),
+    sigma_cma_rho_(3),
+    sigma_cma_k_(0.1),
+    sigma_cma_ox_hypoxia_(0.25),
+    sigma_cma_death_rate_(0.25),
+    sigma_cma_alpha_0_(0.25),
+    sigma_cma_ox_consumption_(5.0),
+    sigma_cma_ox_source_(14.0),
+    sigma_cma_beta_0_(0.25),
     k_lb_ (1E-3),
     k_ub_ (1),
     gamma_lb_(0),
@@ -68,18 +77,18 @@ public:
     ox_consumption_lb_(1E-3),
     ox_consumption_ub_(20.0),
     ox_source_lb_(1E-3),
-    ox_source_ub_(100),
+    ox_source_ub_(100.0),
     beta_0_lb_(1E-3),
     beta_0_ub_(1.0),
-    k_scale_(1),
-    rho_scale_(1),
-    gamma_scale_(1),
-    ox_hypoxia_scale_(1),
-    death_rate_scale_(1),
-    alpha_0_scale_(1),
-    ox_consumption_scale_(1),
-    ox_source_scale_(1),
-    beta_0_scale_(1)
+    k_scale_(1.0),
+    rho_scale_(1.0),
+    gamma_scale_(1.0),
+    ox_hypoxia_scale_(1.0),
+    death_rate_scale_(1.0),
+    alpha_0_scale_(1.0),
+    ox_consumption_scale_(1.0),
+    ox_source_scale_(1.0),
+    beta_0_scale_(1.0)
   {}
   ScalarType beta_;
   ScalarType regularization_norm_;
@@ -134,6 +143,15 @@ public:
   ScalarType ox_source_ub_;
   ScalarType beta_0_lb_;
   ScalarType beta_0_ub_;
+  ScalarType sigma_cma_gamma_;
+  ScalarType sigma_cma_rho_;
+  ScalarType sigma_cma_k_;
+  ScalarType sigma_cma_ox_hypoxia_;
+  ScalarType sigma_cma_death_rate_;
+  ScalarType sigma_cma_alpha_0_;
+  ScalarType sigma_cma_ox_consumption_;
+  ScalarType sigma_cma_ox_source_;
+  ScalarType sigma_cma_beta_0_;
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
@@ -209,7 +227,7 @@ public:
   , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-  , invasive_threshold_ (0.001)           // invasive threshold for edema
+  , invasive_threshold_ (0.01)           // invasive threshold for edema
   , E_csf_ (100)                          // Young's modulus of CSF
   , E_healthy_ (2100)                     // Young's modulus of wm and gm
   , E_tumor_ (8000)                       // Young's modulus of tumor
@@ -227,9 +245,9 @@ public:
   , ox_consumption_ (5)                   // consumption of oxygen
   , alpha_0_ (0.1)                        // conversion btw inv and proliferative
   , beta_0_ (0.01)                        // conversion btw inv and proliferative
-  , ox_inv_ (0.8)                         // invasive oxygen conc
+  , ox_inv_ (0.7)                         // invasive oxygen conc
   , death_rate_ (4)                       // death rate
-  , ox_hypoxia_ (0.6)                     // hypoxia threshold
+  , ox_hypoxia_ (0.65)                     // hypoxia threshold
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
   , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
   , support_()                            // // support of compressive sampling guess

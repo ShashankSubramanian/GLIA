@@ -1015,7 +1015,7 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
     p_rec_ = nullptr;
   }
   int n_g = (params_->opt_->invert_mass_effect_) ? 1: 0;
-  n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 5 + n_g;
+  n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 6;
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
 
@@ -1024,6 +1024,12 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); 
   // reset p vec in tumor and pde_operators
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+ 
+  if (has_dt0_) {
+    ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
+  } else {
+    ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
+  }
   
   // === create optimizer 
   cma_optimizer_ = std::make_shared<MultiSpeciesOptimizer>();
@@ -1083,13 +1089,22 @@ PetscErrorCode InverseMultiSpeciesSolver::run() {
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
   cma_optimizer_->setData(data_); // set data before intiial guess
   ierr = cma_optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" ------------ pass 0 ------------ "); CHKERRQ(ierr);
   ierr = cma_optimizer_->solve(); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" ------------ pass 1 ------------ "); CHKERRQ(ierr);
+  ierr = VecView (p_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
+ 
   ierr = VecCopy(cma_optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" ------------- pass 2 ----------- "); CHKERRQ(ierr);
   
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" ------------- pass 3 ----------- "); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tuMSGwarn(" ------------- pass 4 ----------- "); CHKERRQ(ierr);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->velocity_->set(0.);
+  ierr = tuMSGwarn(" ------------- pass 5 ----------- "); CHKERRQ(ierr);
+  //ierr = tumor_->velocity_->set(0.);
+  ierr = tuMSGwarn(" ------------- pass 6 ----------- "); CHKERRQ(ierr);
   
   PetscFunctionReturn(ierr);
 }  

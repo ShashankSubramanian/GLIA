@@ -66,6 +66,27 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['rho_ub'] = 15                    # upper bound rho
     p['gamma_lb'] = 0                   # lower bound gamma
     p['gamma_ub'] = 15E4                # upper bound gamma
+    p['ox_hypoxia_lb'] = 0.001          # lower bound ox_hypoxia
+    p['ox_hypoxia_ub'] = 1.0            # upper bound ox_hypoxia
+    p['death_rate_lb'] = 0.001          # lower bound death_rate
+    p['death_rate_ub'] = 1.0            # upper bound death_rate
+    p['alpha_0_lb'] = 0.001             # lower bound trans rate p to i
+    p['alpha_0_ub'] = 1.0               # upper bound trans rate p to i
+    p['ox_consumption_lb'] = 0.1        # lower bound ox consumptions
+    p['ox_consumption_ub'] = 20.0       # upper bound ox consumptions
+    p['ox_source_lb'] = 1.0             # lower bound ox supply
+    p['ox_source_ub'] = 70.0            # upper bound ox suuply
+    p['beta_0_lb'] = 0.001              # lower bound trans rate i to p
+    p['beta_0_ub'] = 1.0                # upper bound trans rate i to p
+    p['sigma_gamma'] = 3E4              # init sigma of gamma for cmaes
+    p['sigma_rho'] = 3.0                # init sigma of rho for cmaes
+    p['sigma_k'] = 0.1                  # init sigma of kappa for cmaes
+    p['sigma_ox_hypoxia'] = 0.25        # init sigma of ox hypoxia for cmaes
+    p['sigma_death_rate'] = 0.25        # init sigma of deathrate for cmaes
+    p['sigma_alpha_0'] = 0.25           # init sigma of alpha_0 for cmaes
+    p['sigma_ox_consumption'] = 5.0     # init sigma of ox consume for cmaes 
+    p['sigma_ox_source'] = 14.0         # init sigma of ox supply for cmaes
+    p['sigma_beta_0'] = 0.25            # init sigma of beta_0 for cmaes
     p['lbfgs_vectors'] = 10             # number of vectors for lbfgs update
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
@@ -86,7 +107,6 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['init_ox_consumption'] = 8.0      # initial guess ox_consumption 
     p['init_ox_source'] = 55.0          # initial guess ox_source (oxygen supply)
     p['init_beta_0'] = 0.02             # initial guess beta_0 (trans rate from i to p)
-     
     p['nt_inv'] = 40                    # number time steps
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
@@ -226,6 +246,27 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("rho_ub=" + str(p['rho_ub']) + "\n");
         f.write("gamma_lb=" + str(p['gamma_lb']) + "\n");
         f.write("gamma_ub=" + str(p['gamma_ub']) + "\n");
+        f.write("ox_hypoxia_lb=" + str(p['ox_hypoxia_lb']) + "\n");
+        f.write("ox_hypoxia_ub=" + str(p['ox_hypoxia_ub']) + "\n");
+        f.write("death_rate_lb=" + str(p['death_rate_lb']) + "\n");
+        f.write("death_rate_ub=" + str(p['death_rate_ub']) + "\n");
+        f.write("alpha_0_lb=" + str(p['alpha_0_lb']) + "\n");
+        f.write("alpha_0_ub=" + str(p['alpha_0_ub']) + "\n");
+        f.write("ox_consumption_lb=" + str(p['ox_consumption_lb']) + "\n");
+        f.write("ox_consumption_ub=" + str(p['ox_consumption_ub']) + "\n");
+        f.write("ox_source_lb=" + str(p['ox_source_lb']) + "\n");
+        f.write("ox_source_ub=" + str(p['ox_source_ub']) + "\n");
+        f.write("beta_0_lb=" + str(p['beta_0_lb']) + "\n");
+        f.write("beta_0_ub=" + str(p['beta_0_ub']) + "\n");
+        f.write("sigma_gamma=" + str(p['sigma_gamma']) + "\n");
+        f.write("sigma_rho=" + str(p['sigma_rho']) + "\n");
+        f.write("sigma_k=" + str(p['sigma_k']) + "\n");
+        f.write("sigma_ox_hypoxia=" + str(p['sigma_ox_hypoxia']) + "\n");
+        f.write("sigma_death_rate=" + str(p['sigma_death_rate']) + "\n");
+        f.write("sigma_alpha_0=" + str(p['sigma_alpha_0']) + "\n");
+        f.write("sigma_ox_consumption=" + str(p['sigma_ox_consumption']) + "\n");
+        f.write("sigma_ox_source=" + str(p['sigma_ox_source']) + "\n");
+        f.write("sigma_beta_0=" + str(p['sigma_beta_0']) + "\n");
         f.write("lbfgs_vectors=" + str(p['lbfgs_vectors']) + "\n");
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
@@ -242,6 +283,12 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("init_rho=" + str(p['init_rho']) + "\n");
         f.write("init_k=" + str(p['init_k']) + "\n");
         f.write("init_gamma=" + str(p['init_gamma']) + "\n");
+        f.write("init_ox_hypoxia=" + str(p['init_ox_hypoxia']) + "\n");
+        f.write("init_death_rate=" + str(p['init_death_rate']) + "\n");
+        f.write("init_alpha_0=" + str(p['init_alpha_0']) + "\n");
+        f.write("init_ox_consumption=" + str(p['init_ox_consumption']) + "\n");
+        f.write("init_ox_source=" + str(p['init_ox_source']) + "\n");
+        f.write("init_beta_0=" + str(p['init_beta_0']) + "\n");
         f.write("nt_inv=" + str(p['nt_inv']) + "\n");
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
         f.write("k_gm_wm=" + str(p['k_gm_wm']) + "\n");
@@ -330,7 +377,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
       if r['compute_sys'] == "cbica":
         cmd += "export CUDA_VISIBLE_DEVICES=$(get_CUDA_VISIBLE_DEVICES) || exit\n"
       else:
-        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " \n"
+        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " "
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
         if r['mpi_tasks'] < 24:
@@ -391,7 +438,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'longhorn':
             run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'maverick2':
-            run_params['queue'] = 'gtx'
+            run_params['queue'] = 'p100'
         elif run_params['compute_sys'] == 'frontera':
             run_params['queue'] = 'normal'
         else:
@@ -447,7 +494,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
       job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
-      job_header += "source activate glia\n\n"
+      job_header += "source activate gen\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"
     else:

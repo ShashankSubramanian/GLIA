@@ -119,6 +119,9 @@ int main(int argc, char **argv) {
     case MULTI_SPECIES:
       solver = std::make_shared<MultiSpeciesSolver>();
       break;
+    case INVERSE_MS:
+      solver = std::make_shared<InverseMultiSpeciesSolver>();
+      break; 
     default:
       ierr = tuMSGwarn("Configuration invalid: solver mode not recognized. Exiting."); CHKERRQ(ierr);
       PetscFunctionReturn(ierr);

@@ -76,6 +76,11 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
       p->tu_->time_history_off_ = true;  // @K: wont this be reset from the params?
       return;
     }
+    if(value == "inverse_multi_species") {
+      (*run_mode) = INVERSE_MS;
+      p->opt_->invert_mass_effect_ = true;
+      return;
+    }
   }
   // parse all other parameters
   // ### inversion scheme
@@ -113,8 +118,15 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "ox_source_ub") {p->opt_->ox_source_ub_ = std::stod(value); return;}
   if (name == "beta_0_lb") {p->opt_->beta_0_lb_ = std::stod(value); return;}
   if (name == "beta_0_ub") {p->opt_->beta_0_ub_ = std::stod(value); return;}
-
-
+  if (name == "sigma_gamma") {p->opt_->sigma_cma_gamma_ = std::stod(value); return;}
+  if (name == "sigma_rho") {p->opt_->sigma_cma_rho_ = std::stod(value); return;}
+  if (name == "sigma_k") {p->opt_->sigma_cma_k_ = std::stod(value); return;}
+  if (name == "sigma_ox_hypoxia") {p->opt_->sigma_cma_ox_hypoxia_ = std::stod(value); return;}
+  if (name == "sigma_death_rate") {p->opt_->sigma_cma_death_rate_ = std::stod(value); return;}
+  if (name == "sigma_alpha_0") {p->opt_->sigma_cma_alpha_0_ = std::stod(value); return;}
+  if (name == "sigma_ox_consumption") {p->opt_->sigma_cma_ox_consumption_ = std::stod(value); return;}
+  if (name == "sigma_ox_source") {p->opt_->sigma_cma_ox_source_ = std::stod(value); return;}
+  if (name == "sigma_beta_0") {p->opt_->sigma_cma_beta_0_ = std::stod(value); return;}
   if (name == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value); return;}
   if (name == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type_ = value; return;}
   if (name == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist_ = std::stoi(value); return;}

@@ -32,16 +32,16 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   ierr = VecDuplicate(c_t_, &seg_);
   ierr = VecSet(seg_, 0);
 
-  if(params_->tu_->adv_velocity_set_ || params_->tu_->model_ == 4 || params_->tu_->model_ == 5) {
+  if(params_->tu_->adv_velocity_set_ || params_->tu_->model_ == 4 || params_->tu_->model_ == 5 || params_->tu_->model_ == 6) {
     velocity_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
     work_field_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
   }
-  if (params->tu_->model_ == 4 || params_->tu_->model_ == 5) {  // mass effect model -- allocate space for more variables
+  if (params->tu_->model_ == 4 || params_->tu_->model_ == 5 || params_->tu_->model_ == 6) {  // mass effect model -- allocate space for more variables
     force_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
     displacement_ = std::make_shared<VecField>(params->grid_->nl_, params->grid_->ng_);
   }
 
-  if (params_->tu_->model_ == 5) {
+  if (params_->tu_->model_ == 5 || params_->tu_->model_ == 6) {
     std::vector<Vec> c(params->tu_->num_species_);
     for (int i = 0; i < c.size(); i++) {
       ierr = VecDuplicate(c_t_, &c[i]);
@@ -322,7 +322,7 @@ PetscErrorCode Tumor::computeSpeciesNorms() {
   ScalarType nrm;
   std::stringstream s;
 
-  if (params_->tu_->model_ == 5) {
+  if (params_->tu_->model_ == 5 || params_->tu_->model_ == 6) {
     ierr = VecNorm(species_["proliferative"], NORM_2, &nrm); CHKERRQ(ierr);
     s << "Proliferative cell concentration norm = " << nrm;
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
@@ -350,7 +350,7 @@ PetscErrorCode Tumor::clipTumor() {
   ScalarType *c_ptr;
   ierr = vecGetArray(c_t_, &c_ptr); CHKERRQ(ierr);
 
-  if (params_->tu_->model_ == 5) {
+  if (params_->tu_->model_ == 5|| params_->tu_->model_ == 6) {
     ScalarType *p_ptr, *i_ptr, *n_ptr;
     ierr = vecGetArray(species_["proliferative"], &p_ptr); CHKERRQ(ierr);
     ierr = vecGetArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);

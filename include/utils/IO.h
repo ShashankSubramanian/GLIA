@@ -6,7 +6,7 @@
 
 class Phi; // forward declaration for phi mesh I/O
 
-enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, TEST};
+enum RunMode {FORWARD, INVERSE_L2, INVERSE_L1, INVERSE_RD, INVERSE_ME, MULTI_SPECIES, INVERSE_MS, TEST};
 PetscErrorCode parseConfig(std::string s, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings, std::shared_ptr<SpectralOperators> spec_ops, RunMode *run_mode);
 void setParameter(std::string name, std::string value, std::shared_ptr<Parameters> p, std::shared_ptr<ApplicationSettings> a, RunMode *runmode);
 

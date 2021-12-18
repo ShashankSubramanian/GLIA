@@ -114,6 +114,28 @@ PetscErrorCode Optimizer::allocateTaoObjects() {
   PetscFunctionReturn (ierr);
 }
 
+PetscErrorCode CMAOptimizer::allocateObjects() {
+  PetscErrorCode ierr =0;
+  PetscFunctionBegin;
+
+  if(xrec_ != nullptr) {
+    ierr = VecDestroy(&xrec_); CHKERRQ(ierr); xrec_ = nullptr;
+  }
+  
+  ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv_, &xrec_); CHKERRQ(ierr);
+  ierr = setupVec(xrec_, SEQ); CHKERRQ(ierr);
+  ierr = VecSet (xrec_, 0.0); CHKERRQ(ierr); 
+
+  PetscFunctionReturn (ierr);
+
+}
+
+
+
+
+
+
+
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
 PetscErrorCode Optimizer::resetTao () {

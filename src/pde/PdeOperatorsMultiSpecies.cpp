@@ -322,7 +322,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && i % 5 == 0) || write_output_and_break) {
+    if ((params_->tu_->write_output_ && i % 20 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());

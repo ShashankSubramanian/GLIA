@@ -3,7 +3,10 @@
 
 #include "Optimizer.h"
 #include "Parameters.h" 
-#include <libcmaes/cmaes.h>
+#include <cmaes.h>
+//#include <libcmaes/esoptimizer.h>
+//#include <libcmaes/cmastrategy.h>
+//#include <libcmaes/llogging.h>
 
 class MultiSpeciesOptimizer : public CMAOptimizer {
  public : 
@@ -16,9 +19,10 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
           std::shared_ptr <PdeOperators> pde_operators, 
           std::shared_ptr <Parameters> params, 
           std::shared_ptr <Tumor> tumor);
-
+  virtual PetscErrorCode allocateObjects();
   virtual PetscErrorCode solve();
   virtual PetscErrorCode setInitialGuess(Vec x_init);
+  virtual PetscErrorCode runforward(const double *xtest_, double* J);
   //virtual PetscErrorCode setVariableBounds();
 
   virtual ~MultiSpeciesOptimizer() {};
