@@ -199,8 +199,11 @@ else:
 #        uniqueCheckLib(conf, "accfft_utils_gpu")
 # MPI
 MPI_DIR = checkset_var("MPI_DIR", "")
-env.Append(CPPPATH = [os.path.join( MPI_DIR, "include")])
-env.Append(LIBPATH = [os.path.join( MPI_DIR, "lib")])
+MPI_INC = checkset_var("MPI_INC", "")
+MPI_LIB = checkset_var("MPI_LIB", "")
+
+env.Append(CPPPATH = [os.path.join( MPI_INC, "include")])
+env.Append(LIBPATH = [os.path.join( MPI_LIB, "lib")])
 
 # ====== NIFTI ======
 if env["niftiio"] == True:
@@ -224,7 +227,7 @@ else:
     uniqueCheckLib(conf, "pnetcdf")
 
 # ====== PETSc ========
-PETSC_DIR = checkset_var("PETSC_GLIA_DIR", "")
+PETSC_DIR = checkset_var("PETSC_DIR", "")
 PETSC_ARCH = checkset_var("PETSC_ARCH", "")
 env.Append(CPPPATH = [os.path.join( PETSC_DIR, "include"),
                       os.path.join( PETSC_DIR, PETSC_ARCH, "include")])
@@ -263,8 +266,22 @@ env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "include")])
 env.Append(CCFLAGS = ['-L' + os.path.join(CMA_DIR, "include/libcmaes")])
 env.Append(CCFLAGS = ['-L' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
 env.Append(CCFLAGS = ['-I' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
+env.Append(CCFLAGS = ['-I' + os.path.join(MPI_INC, "")])
+env.Append(CCFLAGS = ['-L' + os.path.join(MPI_LIB, "")])
 
 uniqueCheckLib(conf, "cmaes")
+uniqueCheckLib(conf, "rt")
+uniqueCheckLib(conf, "m")
+uniqueCheckLib(conf, "pthread")
+#env.Append(CCFLAGS = ['-lmfma'])
+env.Append(CCFLAGS = ['-lcmaes']) 
+#env.Append(CCFLAGS = ['-lstdc++'])
+#env.Append(CCFLAGS = ['-lpthread'])
+env.Append(CCFLAGS = ['-l:libcmaes.so.0.0.0'])
+env.Append(CCFLAGS = ['-lmavx'])
+env.Append(CCFLAGS = ['-lrt -lm'])
+env.Append(CCFLAGS = ['-std=gnu++11'])
+env.Append(CCFLAGS = ['-mfma'])
 
 
 print
@@ -293,8 +310,13 @@ if env["gpu"] == True:
     env.Append(CCFLAGS = ['-L' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
     env.Append(CCFLAGS = ['-I' + os.path.join(EIGEN_LIB, "include/eigen3/Eigen")])
     env.Append(CCFLAGS = ['-lcmaes']) 
-    env.Append(CCFLAGS = ['-lstdc++'])
-    
+    env.Append(CCFLAGS = ['-l:libcmaes.so.0.0.0'])
+    env.Append(CCFLAGS = ['-std=gnu++11'])
+    #env.Append(CCFLAGS = ['-lmfma'])
+    #env.Append(CCFLAGS = ['-lmavx'])
+    env.Append(CCFLAGS = ['-lrt -lm'])
+    env.Append(CCFLAGS = ['-mfma'])
+        
     bininv = env.Program (
     target = buildpath + '/tusolver',
     source = [sourcesTumorGPU, './app/tusolver.cpp']
