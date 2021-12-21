@@ -84,7 +84,6 @@ public:
     std::shared_ptr<Parameters> params_;
     /// @brief accumulates all tumor related fields and methods
     std::shared_ptr<Tumor> tumor_;
-
     CtxInvCMA()
     :
       jvalold(0)
@@ -151,7 +150,6 @@ public :
   }
 
   std::shared_ptr<CtxInvCMA> cma_ctx_;
-  
 protected:
   bool initialized_;
   
@@ -160,7 +158,6 @@ protected:
   Vec xrec_;
   Vec xin_;
   Vec xout_;
-
 };
 
 

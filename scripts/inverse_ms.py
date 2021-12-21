@@ -13,7 +13,7 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 256                           # grid resolution in each dimension
-p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms/');                          # results path
+p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms2/');                          # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['patient_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['a_seg_path'] = os.path.join(code_dir, 'results/seg_t[60].nc')
@@ -22,7 +22,7 @@ p['a_gm_path'] = ""
 p['a_wm_path'] = ""
 p['a_csf_path'] = ""
 p['a_vt_path'] = ""
-p['d1_path'] = os.path.join(code_dir, 'results/forward_ms5/c_t[100].nc');
+p['d1_path'] = os.path.join(code_dir, 'results/syn_forward_ms2/c_t[100].nc');
 p['d0_path'] = os.path.join(code_dir, 'results/c_t[60].nc')
 p['mri_path'] = ""
 
@@ -50,6 +50,8 @@ p['init_alpha_0'] = 0.2
 p['init_ox_consumption'] = 5.0
 p['init_ox_source'] = 40.0
 p['init_beta_0'] = 0.1
+p['init_sigma_b'] = 0.9
+p['init_ox_inv'] = 0.7
 
 
 p['gamma_lb'] = 0
@@ -70,6 +72,11 @@ p['ox_source_lb'] = 1.0
 p['ox_source_ub'] = 70.0
 p['beta_0_lb'] = 0.001
 p['beta_0_ub'] = 1.0
+p['sigma_b_lb'] = 0.001 
+p['sigma_b_ub'] = 1.0 
+p['ox_inv_lb'] = 0.001
+p['ox_inv_ub'] = 1.0
+
 
 p['sigma_gamma'] = 3E4
 p['sigma_rho'] = 3.0
@@ -80,13 +87,15 @@ p['sigma_alpha_0'] = 0.25
 p['sigma_ox_consumption'] = 5.0
 p['sigma_ox_source'] = 14.0
 p['sigma_beta_0'] = 0.25
+p['sigma_thres'] = 0.25
+p['sigma_ox_inv'] = 0.25
 
 p['prediction'] = 0
 #p['write_output'] = 0
 p['k_gm_wm'] = 0.0                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
 
-p['nt_inv'] = 100
+p['nt_inv'] = 40
 p['dt_inv'] = 0.01
 p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 

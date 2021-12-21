@@ -13,9 +13,10 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 256                           # grid resolution in each dimension
-p['output_dir'] = os.path.join(code_dir, 'results/forward_ms5/');                          # results path
+p['output_dir'] = os.path.join(code_dir, 'results/syn_forward_ms1/');                          # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
-p['a_seg_path'] = os.path.join(code_dir, 'results/seg_t[60].nc')
+#p['a_seg_path'] = os.path.join(code_dir, 'results/seg_t[60].nc')
+p['a_seg_path'] = ""
 p['a_gm_path'] = ""
 p['a_wm_path'] = ""
 p['a_csf_path'] = ""
@@ -31,21 +32,24 @@ p['syn_flag'] = 1                     # create synthetic data
 p['user_cms'] = [(132,69,148,0.8),(132,64,148,0.5),(132,69,144,0.3)]      # location of tumor seed (can be multiple; [(x1,y1,z1,activation1),(x2,y2,z2,activation2)])
 
 ####### tumor params for synthetic data
-p['rho_data'] = 6
+p['rho_data'] = 10
 p['k_data'] = 0.1
-p['gamma_data'] = 5.0E4
-p['ox_hypoxia_data'] = 0.65
-p['death_rate_data'] = 0.4
-p['alpha_0_data'] = 0.4
-p['ox_consumption_data'] = 8.0
-p['ox_source_data'] = 55.0
-p['beta_0_data'] = 0.3
+p['gamma_data'] = 8.0E4
+p['ox_hypoxia_data'] = 0.4
+p['death_rate_data'] = 0.1
+p['alpha_0_data'] = 0.3
+p['ox_consumption_data'] = 5.0
+p['ox_source_data'] = 40.0
+p['beta_0_data'] = 0.2
+p['sigma_b_data'] = 0.8
+p['ox_inv_data'] = 0.5
 p['prediction'] = 1
+p['sigma_factor'] = 3
 #p['write_output'] = 0
-p['k_gm_wm'] = 0.2                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
+p['k_gm_wm'] = 0                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
 
-p['nt_data'] = 100
+p['nt_data'] = 200
 p['dt_data'] = 0.01
 p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 

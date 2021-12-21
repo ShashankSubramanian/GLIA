@@ -52,7 +52,6 @@ public:
     cross_entropy_loss_(false),
     invert_mass_effect_(true),
     prune_components_(true),
-    sigma_inv_(0.5),
     sigma_cma_gamma_(3.0E4),
     sigma_cma_rho_(3),
     sigma_cma_k_(0.1),
@@ -62,6 +61,8 @@ public:
     sigma_cma_ox_consumption_(5.0),
     sigma_cma_ox_source_(14.0),
     sigma_cma_beta_0_(0.25),
+    sigma_cma_sigma_b_(0.25),
+    sigma_cma_ox_inv_(0.25),
     k_lb_ (1E-3),
     k_ub_ (1),
     gamma_lb_(0),
@@ -74,21 +75,27 @@ public:
     death_rate_ub_(1.5),
     alpha_0_lb_(1E-3),
     alpha_0_ub_(1.0),
+    sigma_b_lb_(1E-3),
+    sigma_b_ub_(1.0),
     ox_consumption_lb_(1E-3),
     ox_consumption_ub_(20.0),
     ox_source_lb_(1E-3),
     ox_source_ub_(100.0),
     beta_0_lb_(1E-3),
     beta_0_ub_(1.0),
-    k_scale_(1.0),
+    ox_inv_lb_(1E-3),
+    ox_inv_ub_(1.0),
+    k_scale_(1E-2),
     rho_scale_(1.0),
-    gamma_scale_(1.0),
-    ox_hypoxia_scale_(1.0),
-    death_rate_scale_(1.0),
-    alpha_0_scale_(1.0),
+    gamma_scale_(1E4),
+    ox_hypoxia_scale_(1E-1),
+    death_rate_scale_(1E-1),
+    alpha_0_scale_(1E-1),
+    sigma_b_scale_(1E-1),
     ox_consumption_scale_(1.0),
-    ox_source_scale_(1.0),
-    beta_0_scale_(1.0)
+    ox_source_scale_(1E1),
+    beta_0_scale_(1E-1),
+    ox_inv_scale_(1E-1)
   {}
   ScalarType beta_;
   ScalarType regularization_norm_;
@@ -137,31 +144,43 @@ public:
   ScalarType death_rate_ub_;
   ScalarType alpha_0_lb_;
   ScalarType alpha_0_ub_;
+  ScalarType sigma_b_lb_;
+  ScalarType sigma_b_ub_;
   ScalarType ox_consumption_lb_;
   ScalarType ox_consumption_ub_;
   ScalarType ox_source_lb_;
   ScalarType ox_source_ub_;
   ScalarType beta_0_lb_;
   ScalarType beta_0_ub_;
+  ScalarType ox_inv_lb_;
+  ScalarType ox_inv_ub_;
   ScalarType sigma_cma_gamma_;
   ScalarType sigma_cma_rho_;
   ScalarType sigma_cma_k_;
   ScalarType sigma_cma_ox_hypoxia_;
   ScalarType sigma_cma_death_rate_;
   ScalarType sigma_cma_alpha_0_;
+  ScalarType sigma_cma_sigma_b_;
   ScalarType sigma_cma_ox_consumption_;
   ScalarType sigma_cma_ox_source_;
   ScalarType sigma_cma_beta_0_;
+  ScalarType sigma_cma_ox_inv_;
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
   ScalarType ox_hypoxia_scale_;  /// @brief if MultiSpec model, scalaing of hypoxia threshold
   ScalarType death_rate_scale_;  /// @brief if MultiSpec model, scalaing of deathrate 
   ScalarType alpha_0_scale_;     /// @brief if MultiSpec model, scalaing of trans rate from p to i
+  ScalarType sigma_b_scale_;
   ScalarType ox_consumption_scale_;  /// @brief if MultiSpec model, scalaing of oxygen consumption
   ScalarType ox_source_scale_;       /// @brief if MultiSpec model, scalaing of oxygen source 
   ScalarType beta_0_scale_;          /// @brief if MultiSpec model, scalaing of trans rate from i to p
-  std::array<ScalarType, 3> bounds_array_;  
+  ScalarType ox_inv_scale_;
+  std::array<ScalarType, 3> bounds_array_;
+  std::array<ScalarType, 11> cma_scales_array_;  
+  std::array<ScalarType, 11> cma_lb_array_;
+  std::array<ScalarType, 11> cma_ub_array_;
+  std::array<ScalarType, 11> cma_variance_array_;
 };
 
 struct OptimizerFeedback {
@@ -244,6 +263,7 @@ public:
   , ox_source_ (1)                        // source of oxygen
   , ox_consumption_ (5)                   // consumption of oxygen
   , alpha_0_ (0.1)                        // conversion btw inv and proliferative
+  , sigma_b_ (0.9)                        // conversion threshold bwn inv and proliferative
   , beta_0_ (0.01)                        // conversion btw inv and proliferative
   , ox_inv_ (0.7)                         // invasive oxygen conc
   , death_rate_ (4)                       // death rate
@@ -350,7 +370,7 @@ public:
   // multi-species
   int num_species_;
   ScalarType ox_source_, ox_consumption_;
-  ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
+  ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_, sigma_b_;
   ScalarType invasive_threshold_;
 
   // initial condition (inversion)
@@ -601,9 +621,11 @@ public:
     ox_hypoxia_(0.65),
     death_rate_(0.9),
     alpha_0_(0.15),
+    sigma_b_(0.9),
     ox_consumption_(8),
     ox_source_(55),
     beta_0_(0.02),
+    ox_inv_(0.7),
     dt_(0.01),
     nt_(100),
     testcase_(0),
@@ -619,9 +641,11 @@ public:
   ScalarType ox_hypoxia_;
   ScalarType death_rate_;
   ScalarType alpha_0_;
+  ScalarType sigma_b_;
   ScalarType ox_consumption_;
   ScalarType ox_source_;
   ScalarType beta_0_;
+  ScalarType ox_inv_;
   ScalarType dt_;
   int nt_;
   int testcase_;

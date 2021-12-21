@@ -1015,7 +1015,7 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
     p_rec_ = nullptr;
   }
   int n_g = (params_->opt_->invert_mass_effect_) ? 1: 0;
-  n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 6;
+  n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 8;
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
 

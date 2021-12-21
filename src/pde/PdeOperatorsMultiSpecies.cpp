@@ -51,7 +51,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
   double self_exec_time = -MPI_Wtime();
 
   ScalarType *ox_ptr, *alpha_ptr, *beta_ptr, *p_ptr, *i_ptr;
-  ScalarType thres = 0.9;
+  ScalarType thres = params_->tu_->sigma_b_;
   ierr = vecGetArray(alpha, &alpha_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(beta, &beta_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->species_["oxygen"], &ox_ptr); CHKERRQ(ierr);

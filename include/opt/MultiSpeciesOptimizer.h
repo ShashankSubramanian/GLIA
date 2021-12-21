@@ -26,7 +26,6 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
   //virtual PetscErrorCode setVariableBounds();
 
   virtual ~MultiSpeciesOptimizer() {};
- 
  private:
   int n_g_;
   ScalarType k_init_;
@@ -38,8 +37,9 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
   ScalarType ox_consumption_init_;
   ScalarType ox_source_init_;
   ScalarType beta_0_init_;
-
-
+  ScalarType sigma_b_init_;
+  ScalarType ox_inv_init_;
+  
   ScalarType k_scale_;
   ScalarType rho_scale_;
   ScalarType gamma_scale_;
@@ -49,8 +49,9 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
   ScalarType ox_consumption_scale_;
   ScalarType ox_source_scale_;
   ScalarType beta_0_scale_;
-
-
+  ScalarType sigma_b_scale_;
+  ScalarType ox_inv_scale_;
+   
 };
 
 #endif 

@@ -112,21 +112,27 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "death_rate_ub") {p->opt_->death_rate_ub_ = std::stod(value); return;}
   if (name == "alpha_0_lb") {p->opt_->alpha_0_lb_ = std::stod(value); return;}
   if (name == "alpha_0_ub") {p->opt_->alpha_0_ub_ = std::stod(value); return;}
+  if (name == "sigma_b_lb") {p->opt_->sigma_b_lb_ = std::stod(value); return;}
+  if (name == "sigma_b_ub") {p->opt_->sigma_b_ub_ = std::stod(value); return;}
   if (name == "ox_consumption_lb") {p->opt_->ox_consumption_lb_ = std::stod(value); return;}
   if (name == "ox_consumption_ub") {p->opt_->ox_consumption_ub_ = std::stod(value); return;}
   if (name == "ox_source_lb") {p->opt_->ox_source_lb_ = std::stod(value); return;}
   if (name == "ox_source_ub") {p->opt_->ox_source_ub_ = std::stod(value); return;}
   if (name == "beta_0_lb") {p->opt_->beta_0_lb_ = std::stod(value); return;}
   if (name == "beta_0_ub") {p->opt_->beta_0_ub_ = std::stod(value); return;}
+  if (name == "ox_inv_lb") {p->opt_->ox_inv_lb_ = std::stod(value); return;}
+  if (name == "ox_inv_ub") {p->opt_->ox_inv_ub_ = std::stod(value); return;}
   if (name == "sigma_gamma") {p->opt_->sigma_cma_gamma_ = std::stod(value); return;}
   if (name == "sigma_rho") {p->opt_->sigma_cma_rho_ = std::stod(value); return;}
   if (name == "sigma_k") {p->opt_->sigma_cma_k_ = std::stod(value); return;}
   if (name == "sigma_ox_hypoxia") {p->opt_->sigma_cma_ox_hypoxia_ = std::stod(value); return;}
   if (name == "sigma_death_rate") {p->opt_->sigma_cma_death_rate_ = std::stod(value); return;}
   if (name == "sigma_alpha_0") {p->opt_->sigma_cma_alpha_0_ = std::stod(value); return;}
+  if (name == "sigma_thres") {p->opt_->sigma_cma_sigma_b_ = std::stod(value); return;}
   if (name == "sigma_ox_consumption") {p->opt_->sigma_cma_ox_consumption_ = std::stod(value); return;}
   if (name == "sigma_ox_source") {p->opt_->sigma_cma_ox_source_ = std::stod(value); return;}
   if (name == "sigma_beta_0") {p->opt_->sigma_cma_beta_0_ = std::stod(value); return;}
+  if (name == "sigma_ox_inv") {p->opt_->sigma_cma_ox_inv_ = std::stod(value); return;}
   if (name == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value); return;}
   if (name == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type_ = value; return;}
   if (name == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist_ = std::stoi(value); return;}
@@ -139,9 +145,11 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "init_ox_hypoxia") {p->tu_->ox_hypoxia_ = std::stod(value); return;} 
   if (name == "init_death_rate") {p->tu_->death_rate_ = std::stod(value); return;} 
   if (name == "init_alpha_0") {p->tu_->alpha_0_ = std::stod(value); return;} 
+  if (name == "init_sigma_b") {p->tu_->sigma_b_ = std::stod(value); return;} 
   if (name == "init_ox_consumption") {p->tu_->ox_consumption_ = std::stod(value); return;} 
   if (name == "init_ox_source") {p->tu_->ox_source_ = std::stod(value); return;} 
   if (name == "init_beta_0") {p->tu_->beta_0_ = std::stod(value); return;} 
+  if (name == "init_ox_inv") {p->tu_->ox_inv_ = std::stod(value); return;} 
   if (name == "nt_inv") {p->tu_->nt_ = std::stoi(value); return;}
   if (name == "dt_inv") {p->tu_->dt_ = std::stod(value); return;}
   if (name == "k_gm_wm") {p->tu_->k_gm_wm_ratio_ = std::stod(value); return;}
@@ -251,12 +259,14 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "rho_data") {a->syn_->rho_ = std::stod(value); return;}
   if (name == "k_data") {a->syn_->k_ = std::stod(value); return;}
   if (name == "gamma_data") {a->syn_->forcing_factor_ = std::stod(value); return;}
-  if (name == "ox_hypoxia") {a->syn_->ox_hypoxia_ = std::stod(value); return;}
-  if (name == "death_rate") {a->syn_->death_rate_ =std::stod(value); return;}
-  if (name == "alpha_0") {a->syn_->alpha_0_ =std::stod(value); return;}
-  if (name == "ox_consumption") {a->syn_->ox_consumption_ =std::stod(value); return;}
-  if (name == "ox_source") {a->syn_->ox_source_ =std::stod(value); return;}
-  if (name == "beta_0") {a->syn_->beta_0_ =std::stod(value); return;}
+  if (name == "ox_hypoxia_data") {a->syn_->ox_hypoxia_ = std::stod(value); return;}
+  if (name == "death_rate_data") {a->syn_->death_rate_ =std::stod(value); return;}
+  if (name == "alpha_0_data") {a->syn_->alpha_0_ =std::stod(value); return;}
+  if (name == "sigma_b_data") {a->syn_->sigma_b_ =std::stod(value); return;}
+  if (name == "ox_consumption_data") {a->syn_->ox_consumption_ =std::stod(value); return;}
+  if (name == "ox_source_data") {a->syn_->ox_source_ =std::stod(value); return;}
+  if (name == "beta_0_data") {a->syn_->beta_0_ =std::stod(value); return;}
+  if (name == "ox_inv_data") {a->syn_->ox_inv_ =std::stod(value); return;}
   if (name == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
   if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
   if (name == "testcase") {a->syn_->testcase_ = std::stod(value); return;}

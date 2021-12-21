@@ -70,7 +70,9 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     // x[6] : ox_consumption 
     // x[7] : ox_source
     // x[8] : beta_0 (trans from i to p)
-  
+    // x[9] : sigma_b
+    // x[10] : ox_inv
+
     params_->tu_->forcing_factor_ = x_ptr[0];
     params_->tu_->rho_ = x_ptr[1];
     params_->tu_->k_ = x_ptr[2];
@@ -80,6 +82,9 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     params_->tu_->ox_consumption_ = x_ptr[6];
     params_->tu_->ox_source_ = x_ptr[7];
     params_->tu_->beta_0_ = x_ptr[8];
+    params_->tu_->sigma_b_ = x_ptr[9];
+    params_->tu_->ox_inv_ = x_ptr[10];
+
   } else {
     params_->tu_->rho_ = x_ptr[0];
     params_->tu_->k_ = x_ptr[1];
@@ -89,6 +94,8 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     params_->tu_->ox_consumption_ = x_ptr[5];
     params_->tu_->ox_source_ = x_ptr[6];
     params_->tu_->beta_0_ = x_ptr[7];
+    params_->tu_->sigma_b_ = x_ptr[8];
+    params_->tu_->ox_inv_ = x_ptr[9];
   }
 
   ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
@@ -128,6 +135,14 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     s.str("");
     s.clear();
     s << " Transition rate from i to p at current guess    = " << params_->tu_->beta_0_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Transition thres from i to p at current guess    = " << params_->tu_->sigma_b_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Invasive Oxygen thres at current guess   = " << params_->tu_->ox_inv_;
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
     s.str("");
     s.clear();

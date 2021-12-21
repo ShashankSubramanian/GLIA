@@ -78,6 +78,10 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['ox_source_ub'] = 70.0            # upper bound ox suuply
     p['beta_0_lb'] = 0.001              # lower bound trans rate i to p
     p['beta_0_ub'] = 1.0                # upper bound trans rate i to p
+    p['sigma_b_lb'] = 0.001             # lower bound of trans thres i to p
+    p['sigma_b_ub'] = 1.0               # upper bound of trans thres i to p
+    p['ox_inv_lb'] = 0.001              # lower bound of invasive oxygen thres 
+    p['ox_inv_ub'] = 1.0                # upper bound of invasive oxygen thres  
     p['sigma_gamma'] = 3E4              # init sigma of gamma for cmaes
     p['sigma_rho'] = 3.0                # init sigma of rho for cmaes
     p['sigma_k'] = 0.1                  # init sigma of kappa for cmaes
@@ -87,6 +91,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['sigma_ox_consumption'] = 5.0     # init sigma of ox consume for cmaes 
     p['sigma_ox_source'] = 14.0         # init sigma of ox supply for cmaes
     p['sigma_beta_0'] = 0.25            # init sigma of beta_0 for cmaes
+    p['sigma_thres'] = 0.9              # init sigma of sigma_b_ for cmaes
+    p['sigma_ox_inv'] = 0.7             # init sigma of invasive oxygen thres for cmaes
     p['lbfgs_vectors'] = 10             # number of vectors for lbfgs update
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
@@ -107,6 +113,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['init_ox_consumption'] = 8.0      # initial guess ox_consumption 
     p['init_ox_source'] = 55.0          # initial guess ox_source (oxygen supply)
     p['init_beta_0'] = 0.02             # initial guess beta_0 (trans rate from i to p)
+    p['init_sigma_b'] = 0.9             # initial guess sigma_b (trans thres from i to p)
+    p['init_ox_inv'] = 0.7             # initial guess ox_inv (invasive oxygen)
     p['nt_inv'] = 40                    # number time steps
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
@@ -152,6 +160,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['ox_consumption_data'] = 8.0
     p['ox_source_data'] = 55.0
     p['beta_0_data'] = 0.02
+    p['sigma_b_data'] = 0.9
+    p['ox_inv_data'] = 0.7
     p['nt_data'] = 25
     p['dt_data'] = 0.04
     p['testcase'] = 0                   # 0: brain single focal synthetic
@@ -258,6 +268,10 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("ox_source_ub=" + str(p['ox_source_ub']) + "\n");
         f.write("beta_0_lb=" + str(p['beta_0_lb']) + "\n");
         f.write("beta_0_ub=" + str(p['beta_0_ub']) + "\n");
+        f.write("sigma_b_lb=" + str(p['sigma_b_lb']) + "\n");
+        f.write("sigma_b_ub=" + str(p['sigma_b_ub']) + "\n");
+        f.write("ox_inv_lb=" + str(p['ox_inv_lb']) + "\n");
+        f.write("ox_inv_ub=" + str(p['ox_inv_ub']) + "\n");
         f.write("sigma_gamma=" + str(p['sigma_gamma']) + "\n");
         f.write("sigma_rho=" + str(p['sigma_rho']) + "\n");
         f.write("sigma_k=" + str(p['sigma_k']) + "\n");
@@ -267,6 +281,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("sigma_ox_consumption=" + str(p['sigma_ox_consumption']) + "\n");
         f.write("sigma_ox_source=" + str(p['sigma_ox_source']) + "\n");
         f.write("sigma_beta_0=" + str(p['sigma_beta_0']) + "\n");
+        f.write("sigma_thres=" + str(p['sigma_thres']) + "\n");
+        f.write("sigma_ox_inv=" + str(p['sigma_ox_inv']) + "\n");
         f.write("lbfgs_vectors=" + str(p['lbfgs_vectors']) + "\n");
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
@@ -289,6 +305,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("init_ox_consumption=" + str(p['init_ox_consumption']) + "\n");
         f.write("init_ox_source=" + str(p['init_ox_source']) + "\n");
         f.write("init_beta_0=" + str(p['init_beta_0']) + "\n");
+        f.write("init_sigma_b=" + str(p['init_sigma_b']) + "\n");
+        f.write("init_ox_inv=" + str(p['init_ox_inv']) + "\n");
         f.write("nt_inv=" + str(p['nt_inv']) + "\n");
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
         f.write("k_gm_wm=" + str(p['k_gm_wm']) + "\n");
@@ -332,6 +350,14 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("rho_data=" + str(p['rho_data']) + "\n");
         f.write("k_data=" + str(p['k_data']) + "\n");
         f.write("gamma_data=" + str(p['gamma_data']) + "\n");
+        f.write("death_rate_data=" + str(p['death_rate_data']) + "\n");
+        f.write("ox_hypoxia_data=" + str(p['ox_hypoxia_data']) + "\n");
+        f.write("alpha_0_data=" + str(p['alpha_0_data']) + "\n");
+        f.write("ox_consumption_data=" + str(p['ox_consumption_data']) + "\n");
+        f.write("ox_source_data=" + str(p['ox_source_data']) + "\n");
+        f.write("beta_0_data=" + str(p['beta_0_data']) + "\n");
+        f.write("sigma_b_data=" + str(p['sigma_b_data']) + "\n");
+        f.write("ox_inv_data=" + str(p['ox_inv_data']) + "\n");
         f.write("nt_data=" + str(p['nt_data']) + "\n");
         f.write("dt_data=" + str(p['dt_data']) + "\n");
         f.write("testcase=" + str(p['testcase']) + "\n");
