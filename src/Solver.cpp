@@ -517,6 +517,12 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("proliferative", tumor_->species_["proliferative"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("infilterative", tumor_->species_["infilterative"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("necrotic", tumor_->species_["necrotic"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("oxygen", tumor_->species_["oxygen"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("edema", tumor_->species_["edema"]));
+
   PetscFunctionReturn(ierr);
 }
 
@@ -547,6 +553,7 @@ PetscErrorCode InverseMassEffectSolver::run() {
     x_ptr[1] = params_->tu_->k_;
     params_->tu_->forcing_factor_ = 0;
   }
+
   ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ (ierr);
   
   optimizer_->setData(data_); // set data before initial guess
@@ -888,13 +895,79 @@ PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators>
 
   params->tu_->time_history_off_ = true;
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+  if (!app_settings_->path_->p_seg_.empty()) {
+    ierr = readPatient(); CHKERRQ(ierr);
+    ierr = pde_operators_->setTC(tc_seg_); CHKERRQ(ierr);
+  }
 
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  //ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
   PetscFunctionReturn(ierr);
 }
+
+PetscErrorCode MultiSpeciesSolver::readPatient() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  if (!app_settings_->path_->p_seg_.empty()) {
+    ierr = dataIn(tmp_, params_, app_settings_->path_->p_seg_); CHKERRQ(ierr);
+    if(app_settings_->patient_seg_[0] <= 0 || app_settings_->patient_seg_[1] <= 0 || app_settings_->patient_seg_[2] <= 0) {
+      ierr = tuMSGwarn(" Error: Patient segmentation must at least have WM, GM, VT."); CHKERRQ(ierr);
+      exit(0);
+    } else {
+      ierr = VecDuplicate(tmp_, &p_wm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_gm_); CHKERRQ(ierr);
+      ierr = VecDuplicate(tmp_, &p_vt_); CHKERRQ(ierr);
+      csf_ = nullptr; data_t1_ = nullptr; ed_ = nullptr;
+      if (app_settings_->patient_seg_[3] > 0) {
+        ierr = VecDuplicate(tmp_, &p_csf_); CHKERRQ(ierr);
+      }
+      // tc exists as label, or necrotic core + enhancing rim exist as labels
+      if (app_settings_->patient_seg_[4] > 0 || (app_settings_->patient_seg_[5] > 0 && app_settings_->patient_seg_[6] > 0)) {
+        ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
+        data_t1_from_seg_ = true;
+        // edema exists as label
+        if (app_settings_->patient_seg_[7] > 0) {
+          ierr = VecDuplicate(tmp_, &ed_); CHKERRQ(ierr);
+        }
+      }
+    }
+    ierr = splitSegmentation(tmp_, p_wm_, p_gm_, p_vt_, p_csf_, data_t1_, ed_, params_->grid_->nl_, app_settings_->patient_seg_); CHKERRQ(ierr);
+    if (data_t1_from_seg_) {
+      ierr = VecDuplicate(tmp_, &tc_seg_); CHKERRQ(ierr);
+      ierr = VecCopy(data_t1_, tc_seg_); CHKERRQ(ierr);
+    }
+
+    if (!app_settings_->path_->p_vt_.empty()) {
+      // overwrite p_vt because true conc is known
+      ierr = dataIn(p_vt_, params_, app_settings_->path_->p_vt_); CHKERRQ(ierr);
+    }
+
+  } else {
+    if (!app_settings_->path_->p_wm_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_wm_); CHKERRQ(ierr);
+      ierr = dataIn(p_wm_, params_, app_settings_->path_->p_wm_); CHKERRQ(ierr);
+    }
+    if (!app_settings_->path_->p_gm_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_gm_); CHKERRQ(ierr);
+      ierr = dataIn(p_gm_, params_, app_settings_->path_->p_gm_); CHKERRQ(ierr);
+    }
+    if (!app_settings_->path_->p_vt_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_vt_); CHKERRQ(ierr);
+      ierr = dataIn(p_vt_, params_, app_settings_->path_->p_vt_); CHKERRQ(ierr);
+    }
+    if (!app_settings_->path_->p_csf_.empty()) {
+      ierr = VecDuplicate(tmp_, &p_csf_); CHKERRQ(ierr);
+      ierr = dataIn(p_csf_, params_, app_settings_->path_->p_csf_); CHKERRQ(ierr);
+    }
+  }
+  
+  PetscFunctionReturn(ierr);
+}
+
+
 
 // ### ______________________________________________________________________ ___
 // ### ////////////////////////////////////////////////////////////////////// ###
@@ -902,15 +975,19 @@ PetscErrorCode MultiSpeciesSolver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
 
+
+  /*
   if (has_dt0_) {
     ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
   } else {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
+  */
 
   ierr = tuMSGwarn(" Beginning Multi Species Forward Solve."); CHKERRQ(ierr);
-  // TODO(K): call multi species solver
-  ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
+  ierr = createSynthetic(); CHKERRQ(ierr);
+  
+  //ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
 }
 
@@ -921,7 +998,7 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Finalizing Multi Species Forward Solve."); CHKERRQ(ierr);
-  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
+  //ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   std::stringstream ss;
   if (params_->tu_->write_output_) {
@@ -1015,6 +1092,7 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
     p_rec_ = nullptr;
   }
   int n_g = (params_->opt_->invert_mass_effect_) ? 1: 0;
+  params_->opt_->use_multispec_obj_ = true;
   n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 8;
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);

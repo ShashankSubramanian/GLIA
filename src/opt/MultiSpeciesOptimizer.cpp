@@ -222,6 +222,7 @@ PetscErrorCode MultiSpeciesOptimizer::runforward(const double *xtest_, double* J
   ierr = VecGetArray(x_petsc, &x_petsc_ptr); CHKERRQ(ierr);
   for (int i=0; i < n_inv_; i++) x_petsc_ptr[i] = xtest_[i] * cma_ctx_->params_->opt_->cma_scales_array_[i];
   ierr = VecRestoreArray(x_petsc, &x_petsc_ptr); CHKERRQ(ierr);
+
   ierr = cma_ctx_->derivative_operators_->evaluateObjective(&J_solve, x_petsc, cma_ctx_->data); CHKERRQ(ierr); 
   *J = J_solve;
   PetscFunctionReturn(ierr);
@@ -363,7 +364,7 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
     bool outofbounds = false;
 
     for (int i= 0; i < n_inv_; i++) {
-      if (xeval_ptr[i] < lbounds[i] || xeval_ptr[i] > ubounds[i]) outofbounds= true;
+      if (xeval_ptr[i] < lbounds[i] || xeval_ptr[i] > ubounds[i] || xeval_ptr[10] < xeval_ptr[4]) outofbounds= true;
       if (outofbounds) {
         std::cout << "----------------  Out of bounds for p[" << i << "] ----------------- \n";
         break;

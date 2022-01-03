@@ -156,20 +156,41 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   ierr = tumor_->displacement_->set(0);
   
   ierr = pde_operators_->solveState(0);
-  ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
-  s << "data_tmp";
-  ierr = dataOut(data, params_, s.str() + params_->tu_->ext_); CHKERRQ(ierr);
-  s.str(std::string());
-  s.clear();
-  s << "temp_";
-  ierr = dataOut(temp_, params_, s.str() + params_->tu_->ext_); CHKERRQ(ierr);
-  s.str(std::string());
-  s.clear();
-  ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
-  ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
+  
+  if (params_->opt_->use_multispec_obj_){
+    
+    PetscReal *J_tmp;
+    (*J_tmp) = 0.0;
+    ierr = VecCopy(temp_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
+    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["proliferative"]); CHKERRQ(ierr);
+    ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
+                    
+    ierr = VecCopy(temp_, tumor_->species_["infilterative"]); CHKERRQ(ierr);
+    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["infilterative"]); CHKERRQ(ierr);
+    ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
+    (*J) += *J_tmp;
+          
+    ierr = VecCopy(temp_, tumor_->species_["necrotic"]); CHKERRQ(ierr);
+    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["necrotic"]); CHKERRQ(ierr);
+    ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
+    (*J) += *J_tmp;
+                  
+    ierr = VecCopy(temp_, tumor_->species_["edema"]); CHKERRQ(ierr);
+    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["edema"]); CHKERRQ(ierr);
+    ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
+    (*J) += *J_tmp;                      
+    
+  } else {
+
+      ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
+      ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
+      ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
+   
+  }
   
   (*J) *= 0.5 * params_->grid_->lebesgue_measure_;
   PetscReal misfit_brain = 0.;
+
   //ierr = computeMisfitBrain (&misfit_brain);
   misfit_brain *= 0.5 * params_->grid_->lebesgue_measure_;
   if (!disable_verbose_) {
@@ -184,6 +205,7 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   PetscFunctionReturn(ierr);
 
 }
+
 
 
 PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateGradient(Vec dJ, Vec x, std::shared_ptr<Data> data_inv) {

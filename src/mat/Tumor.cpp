@@ -53,8 +53,14 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
     species_.insert(std::pair<std::string, Vec>("necrotic", c[2]));
     species_.insert(std::pair<std::string, Vec>("oxygen", c[3]));
     species_.insert(std::pair<std::string, Vec>("edema", c[4]));
+    data_species_.insert(std::pair<std::string, Vec>("proliferative", c[0]));
+    data_species_.insert(std::pair<std::string, Vec>("infiltrative", c[1]));
+    data_species_.insert(std::pair<std::string, Vec>("necrotic", c[2]));
+    data_species_.insert(std::pair<std::string, Vec>("oxygen", c[3]));
+    data_species_.insert(std::pair<std::string, Vec>("edema", c[4])); 
   }
 }
+
 
 PetscErrorCode Tumor::initialize(Vec p, std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Phi> phi, std::shared_ptr<MatProp> mat_prop) {
   PetscFunctionBegin;
