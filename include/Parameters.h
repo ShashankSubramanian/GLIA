@@ -52,6 +52,7 @@ public:
     cross_entropy_loss_(false),
     invert_mass_effect_(true),
     prune_components_(true),
+    use_multispec_obj_(false),
     sigma_cma_gamma_(3.0E4),
     sigma_cma_rho_(3),
     sigma_cma_k_(0.1),
@@ -85,9 +86,12 @@ public:
     beta_0_ub_(1.0),
     ox_inv_lb_(1E-3),
     ox_inv_ub_(1.0),
-    k_scale_(1E-2),
+    //k_scale_(1E-2),
+    //rho_scale_(1.0),
+    //gamma_scale_(1E4),
+    k_scale_(1.0),
     rho_scale_(1.0),
-    gamma_scale_(1E4),
+    gamma_scale_(1.0),
     ox_hypoxia_scale_(1E-1),
     death_rate_scale_(1E-1),
     alpha_0_scale_(1E-1),
@@ -131,6 +135,7 @@ public:
   bool cross_entropy_loss_;     /// @brief cross-entropy is used instead of L2 loss
   bool invert_mass_effect_;     /// @brief if true invert for mass-effect parameters {rho,k,gamma}
   bool prune_components_;       /// @brief prunes L2 solution based on components
+  bool use_multispec_obj_;       /// @brief use multispecies objective function for multispecies inversion
   ScalarType sigma_inv_;        /// @brief sigma for CMA inversion of MultiSpecies model
   ScalarType k_lb_;             /// @brief lower bound on kappa - depends on mesh; 1E-3 for 128^3 1E-4 for 256^3
   ScalarType k_ub_;             /// @brief upper bound on kappa

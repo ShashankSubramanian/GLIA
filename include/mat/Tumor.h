@@ -40,6 +40,7 @@ class Tumor {
 
   // For multiple species
   std::map<std::string, Vec> species_;
+  std::map<std::string, Vec> data_species_;
 
   // mass effect parameters
   // velocity
