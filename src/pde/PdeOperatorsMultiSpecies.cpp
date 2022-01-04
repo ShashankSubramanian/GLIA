@@ -253,7 +253,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   ierr = VecCopy(tumor_->c_0_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_0_, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
   // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
-  ierr = VecScale(tumor_->species_["infiltrative"], 0); CHKERRQ(ierr);
+  ierr = VecScale(tumor_->species_["infiltrative"], params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
+  ierr = VecScale(tumor_->species_["proliferative"], 1-params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
 
   ierr = VecSet(tumor_->species_["oxygen"], 1.); CHKERRQ(ierr);
 

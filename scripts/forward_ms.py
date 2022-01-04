@@ -13,43 +13,48 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 256                           # grid resolution in each dimension
-p['output_dir'] = os.path.join(code_dir, 'results/syn_forward_ms1/');                          # results path
+p['output_dir'] = os.path.join(code_dir, 'results/syn_forward_ms4/');            # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
-#p['a_seg_path'] = os.path.join(code_dir, 'results/seg_t[60].nc')
-p['a_seg_path'] = ""
+p['a_seg_path'] = os.path.join(code_dir, 'results/syn_forward_ms/seg_t[20].nc')
+#p['a_seg_path'] = os.path.join(code_dir, 'data/51566_seg_aff2jakob_ants.nc')
 p['a_gm_path'] = ""
 p['a_wm_path'] = ""
 p['a_csf_path'] = ""
 p['a_vt_path'] = ""
 p['d1_path'] = ""
-p['d0_path'] = os.path.join(code_dir, 'results/c_t[60].nc')
+#p['d0_path'] = os.path.join(code_dir, 'results/c_t[60].nc')
+#p['d0_path'] = ""
+p['d0_path'] = os.path.join(code_dir, 'results/syn_forward_ms/c_t[20].nc')
+
 #p['mri_path'] = os.path.join(code_dir, 'data/51566_t1_aff2jakob.nc')
 p['mri_path'] = ""
-p['solver'] = 'forward'               # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
+p['solver'] = 'multi_species'               # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
 p['model'] = 5                        # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
 p['verbosity'] = 3                    # various levels of output density
-p['syn_flag'] = 1                     # create synthetic data
-p['user_cms'] = [(132,69,148,0.8),(132,64,148,0.5),(132,69,144,0.3)]      # location of tumor seed (can be multiple; [(x1,y1,z1,activation1),(x2,y2,z2,activation2)])
+p['syn_flag'] = 0                     # create synthetic data
+p['user_cms'] = [(129,74,149,0.8),(129,75,145,0.5),(129,70,150,0.4)]      # location of tumor seed (can be multiple; [(x1,y1,z1,activation1),(x2,y2,z2,activation2)])
 
 ####### tumor params for synthetic data
-p['rho_data'] = 10
+p['rho_data'] = 8.0
 p['k_data'] = 0.1
-p['gamma_data'] = 8.0E4
+p['gamma_data'] = 4.0E4
 p['ox_hypoxia_data'] = 0.4
-p['death_rate_data'] = 0.1
-p['alpha_0_data'] = 0.3
-p['ox_consumption_data'] = 5.0
-p['ox_source_data'] = 40.0
-p['beta_0_data'] = 0.2
-p['sigma_b_data'] = 0.8
-p['ox_inv_data'] = 0.5
+p['death_rate_data'] = 0.2
+p['alpha_0_data'] = 0.15
+p['ox_consumption_data'] = 8.0
+p['ox_source_data'] = 55.0
+p['beta_0_data'] = 0.02
+p['sigma_b_data'] = 0.9
+p['ox_inv_data'] = 0.7
 p['prediction'] = 1
-p['sigma_factor'] = 3
+p['sigma_factor'] = 1
+#p['sigma_spacing'] = 1
 #p['write_output'] = 0
 p['k_gm_wm'] = 0                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
+p['ratio_i0_c0'] = 0.05
 
-p['nt_data'] = 200
+p['nt_data'] = 140
 p['dt_data'] = 0.01
 p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 

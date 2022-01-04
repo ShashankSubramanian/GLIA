@@ -251,6 +251,7 @@ public:
   , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
+  , i0_c0_ratio_(0.1)                    // i0 to c0 ratio for multispec solver
   , invasive_threshold_ (0.01)           // invasive threshold for edema
   , E_csf_ (100)                          // Young's modulus of CSF
   , E_healthy_ (2100)                     // Young's modulus of wm and gm
@@ -364,6 +365,7 @@ public:
   ScalarType k_glm_wm_ratio_;
   ScalarType r_gm_wm_ratio_;
   ScalarType r_glm_wm_ratio_;
+  ScalarType i0_c0_ratio_;
 
   // mass effect
   ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
