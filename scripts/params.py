@@ -119,6 +119,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm'] = 0.0                  # rho ratio gm/wm (if zero, rho=0 in gm)
+    p['ratio_i0_c0'] = 0.05               # infilterative (i_0) to c_0 (i_0+p_0)
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
@@ -311,6 +312,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
         f.write("k_gm_wm=" + str(p['k_gm_wm']) + "\n");
         f.write("r_gm_wm=" + str(p['r_gm_wm']) + "\n");
+        f.write("ratio_i0_c0" + str(p['ratio_i0_c0']) + "\n");
 
         f.write("\n");
         f.write("### data" + "\n");
@@ -467,7 +469,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'longhorn':
             run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'maverick2':
-            run_params['queue'] = 'p100'
+            run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'frontera':
             run_params['queue'] = 'normal'
         else:

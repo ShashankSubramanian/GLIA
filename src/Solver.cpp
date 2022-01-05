@@ -904,6 +904,19 @@ PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators>
   // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
 
+  params_->tu_->beta_0_ = app_settings_->syn_->beta_0_;
+  params_->tu_->rho_ = app_settings_->syn_-> rho_;
+  params_->tu_->k_ = app_settings_->syn_->k_;
+  params_->tu_->forcing_factor_ = app_settings_->syn_->forcing_factor_;
+  params_->tu_->ox_hypoxia_ = app_settings_->syn_->ox_hypoxia_;
+  params_->tu_->death_rate_ = app_settings_->syn_->death_rate_;
+  params_->tu_->alpha_0_ = app_settings_->syn_->alpha_0_;
+  params_->tu_->sigma_b_ = app_settings_->syn_->sigma_b_;
+  params_->tu_->ox_consumption_ = app_settings_->syn_->ox_consumption_;
+  params_->tu_->ox_source_ = app_settings_->syn_->ox_source_;
+  params_->tu_->beta_0_ = app_settings_->syn_->beta_0_;
+  params_->tu_->ox_inv_ = app_settings_->syn_->ox_inv_;
+
   PetscFunctionReturn(ierr);
 }
 
