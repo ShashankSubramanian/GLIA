@@ -466,7 +466,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'longhorn':
             run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'maverick2':
-            run_params['queue'] = 'p100'
+            run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'frontera':
             run_params['queue'] = 'normal'
         else:

@@ -235,6 +235,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::updateReacAndDiffCoefficients(Vec seg, 
 PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
+  std::stringstream ss;
   Event e("tumor-solve-state");
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime();
@@ -247,6 +248,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+
 
   ierr = displacement_old_->set(0); CHKERRQ(ierr);
 
@@ -290,7 +292,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   diff_ksp_itr_state_ = 0;
   ScalarType vel_max;
   ScalarType cfl;
-  std::stringstream ss;
   ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
   std::stringstream s;
 
@@ -323,7 +324,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && i % 20 == 0) || write_output_and_break) {
+    if ((params_->tu_->write_output_ && i % 50 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());
