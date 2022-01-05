@@ -16,14 +16,14 @@ p['n'] = 256                           # grid resolution in each dimension
 p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms2/');                          # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['patient_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
-p['a_seg_path'] = os.path.join(code_dir, 'results/seg_t[60].nc')
-p['p_seg_path'] = os.path.join(code_dir, 'results/seg_t[60].nc')
+p['a_seg_path'] = os.path.join(code_dir, 'results/forward_ms1/seg_t[100].nii.gz')
+p['p_seg_path'] = os.path.join(code_dir, 'results/forward_ms1/seg_t[100].nii.gz')
 p['a_gm_path'] = ""
 p['a_wm_path'] = ""
 p['a_csf_path'] = ""
 p['a_vt_path'] = ""
-p['d1_path'] = os.path.join(code_dir, 'results/syn_forward_ms2/c_t[100].nc');
-p['d0_path'] = os.path.join(code_dir, 'results/c_t[60].nc')
+p['d1_path'] = os.path.join(code_dir, 'results/forward_ms1/c_t[100].nii.gz');
+p['d0_path'] = os.path.join(code_dir, 'results/forward_ms1/c_t[0].nii.gz')
 p['mri_path'] = ""
 
 
@@ -55,7 +55,7 @@ p['init_ox_inv'] = 0.7
 
 
 p['gamma_lb'] = 0
-p['gamma_ub'] = 13E4
+p['gamma_ub'] = 20E4
 p['rho_lb'] = 0 
 p['rho_ub'] = 13.0
 p['kappa_lb'] = 0.005 
@@ -63,7 +63,7 @@ p['kappa_ub'] = 0.4
 p['ox_hypoxia_lb'] = 0.001 
 p['ox_hypoxia_ub'] = 1.0
 p['death_rate_lb'] = 0.001
-p['death_rate_ub'] = 1.0
+p['death_rate_ub'] = 2.0
 p['alpha_0_lb'] = 0.001
 p['alpha_0_ub'] = 1.0
 p['ox_consumption_lb'] = 0.1
@@ -77,12 +77,12 @@ p['sigma_b_ub'] = 1.0
 p['ox_inv_lb'] = 0.001
 p['ox_inv_ub'] = 1.0
 
-
+p['ratio_i0_c0'] = 0.1
 p['sigma_gamma'] = 3E4
 p['sigma_rho'] = 3.0
 p['sigma_k'] = 0.1
 p['sigma_ox_hypoxia'] = 0.25
-p['sigma_death_rate'] = 0.25
+p['sigma_death_rate'] = 0.5
 p['sigma_alpha_0'] = 0.25
 p['sigma_ox_consumption'] = 5.0
 p['sigma_ox_source'] = 14.0
@@ -95,13 +95,13 @@ p['prediction'] = 0
 p['k_gm_wm'] = 0.0                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
 
-p['nt_inv'] = 40
+p['nt_inv'] = 100
 p['dt_inv'] = 0.01
 p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 
 ############### === define run configuration if job submit is needed; else run from results folder directly
 r['code_path'] = code_dir;
-r['compute_sys'] = 'maverick2'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
 r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
 r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
 

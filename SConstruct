@@ -281,7 +281,7 @@ env.Append(CCFLAGS = ['-l:libcmaes.so.0.0.0'])
 env.Append(CCFLAGS = ['-lmavx'])
 env.Append(CCFLAGS = ['-lrt -lm'])
 env.Append(CCFLAGS = ['-std=gnu++11'])
-env.Append(CCFLAGS = ['-mfma'])
+#env.Append(CCFLAGS = ['-mfma'])
 
 
 print
@@ -315,7 +315,7 @@ if env["gpu"] == True:
     #env.Append(CCFLAGS = ['-lmfma'])
     #env.Append(CCFLAGS = ['-lmavx'])
     env.Append(CCFLAGS = ['-lrt -lm'])
-    env.Append(CCFLAGS = ['-mfma'])
+    #env.Append(CCFLAGS = ['-mfma'])
         
     bininv = env.Program (
     target = buildpath + '/tusolver',

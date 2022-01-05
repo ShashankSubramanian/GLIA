@@ -410,7 +410,10 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
             ppn = r['mpi_tasks'];
         cmd = cmd + "aprun -n " + str(r['mpi_tasks']) + " -N " + str(ppn) + " ";
     elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
-        cmd = cmd + "ibrun " + ibman;
+        if r['compute_sys'] == 'longhorn' and (p['model'] == 6 or p['model'] == 5):
+            cmd = cmd + "mpirun " + ibman;
+        else:
+            cmd = cmd + "ibrun " + ibman;
     elif r['compute_sys'] == 'cbica':
         cmd = cmd + "\n mpirun --mca btl vader,self -np $NSLOTS ";
     else:
@@ -520,7 +523,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
       job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
-      job_header += "source activate gen\n\n"
+      job_header += "source /work/07544/ghafouri/longhorn/gits/deps.sh\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"
     else:
