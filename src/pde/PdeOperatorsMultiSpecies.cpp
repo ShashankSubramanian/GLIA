@@ -324,7 +324,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && i % 50 == 0) || write_output_and_break) {
+    if ((params_->tu_->write_output_ && i % 1000 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());
@@ -472,7 +472,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       ierr = VecScale(tumor_->velocity_->z_, (1.0 / dt)); CHKERRQ(ierr);
 
       // smooth the velocity
-      if (flag_smooth_velocity) {
+      //if (flag_smooth_velocity) {
+      if (false) {
         ierr = spec_ops_->weierstrassSmoother(tumor_->velocity_->x_, tumor_->velocity_->x_, params_, sigma_smooth); CHKERRQ(ierr);
         ierr = spec_ops_->weierstrassSmoother(tumor_->velocity_->y_, tumor_->velocity_->y_, params_, sigma_smooth); CHKERRQ(ierr);
         ierr = spec_ops_->weierstrassSmoother(tumor_->velocity_->z_, tumor_->velocity_->z_, params_, sigma_smooth); CHKERRQ(ierr);

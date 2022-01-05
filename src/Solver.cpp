@@ -517,11 +517,6 @@ PetscErrorCode InverseMassEffectSolver::initialize(std::shared_ptr<SpectralOpera
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
-  tumor_->data_species_.insert(std::pair<std::string, Vec>("proliferative", tumor_->species_["proliferative"]));
-  tumor_->data_species_.insert(std::pair<std::string, Vec>("infilterative", tumor_->species_["infilterative"]));
-  tumor_->data_species_.insert(std::pair<std::string, Vec>("necrotic", tumor_->species_["necrotic"]));
-  tumor_->data_species_.insert(std::pair<std::string, Vec>("oxygen", tumor_->species_["oxygen"]));
-  tumor_->data_species_.insert(std::pair<std::string, Vec>("edema", tumor_->species_["edema"]));
 
   PetscFunctionReturn(ierr);
 }
@@ -1132,6 +1127,13 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
+  
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("proliferative", tumor_->species_["proliferative"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("infilterative", tumor_->species_["infilterative"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("necrotic", tumor_->species_["necrotic"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("oxygen", tumor_->species_["oxygen"]));
+  tumor_->data_species_.insert(std::pair<std::string, Vec>("edema", tumor_->species_["edema"]));
+  
   PetscFunctionReturn(ierr);
 }
 

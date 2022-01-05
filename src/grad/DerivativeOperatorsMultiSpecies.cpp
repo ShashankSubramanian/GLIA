@@ -157,14 +157,26 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   
   ierr = pde_operators_->solveState(0);
   
-  if (params_->opt_->use_multispec_obj_){
+  //if (params_->opt_->use_multispec_obj_){
+  if (false){
     
-    PetscReal *J_tmp;
-    (*J_tmp) = 0.0;
+    ScalarType *J_tmp;
+    //*J_tmp = 0.0;
     ierr = VecCopy(temp_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
+      s << "temp_" << ".nc";
+      dataOut(temp_, params_, s.str().c_str());
+      s.str(std::string());
+      s.clear();
     ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["proliferative"]); CHKERRQ(ierr);
+      s << "temp2_" << ".nc";
+      dataOut(temp_, params_, s.str().c_str());
+      s.str(std::string());
+      s.clear();
+    
+    //ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
+    //ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
     ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
-                    
+    /*                  
     ierr = VecCopy(temp_, tumor_->species_["infilterative"]); CHKERRQ(ierr);
     ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["infilterative"]); CHKERRQ(ierr);
     ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
@@ -174,7 +186,8 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["necrotic"]); CHKERRQ(ierr);
     ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
     (*J) += *J_tmp;
-    /*              
+    */
+    /*                  
     ierr = VecCopy(temp_, tumor_->species_["edema"]); CHKERRQ(ierr);
     ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["edema"]); CHKERRQ(ierr);
     ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
