@@ -1,4 +1,4 @@
-## Output Description of TIL Solver
+## Description of outputs for TIL solver
   **Input (directory) : provides resampled images of segmentation, data components and target data at 64, 128 and 256 resolution**
   
   **Inversion (directory) : inversion results for three resolutions 64, 128, 256**
