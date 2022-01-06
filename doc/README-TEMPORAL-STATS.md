@@ -1,0 +1,141 @@
+**Description of temporal extracted features**
+  
+  - File names are temporal_stats_vol_[Percentrage of tumor growth].csv 
+
+        - PATIENT             : Patient's ID
+        - t                   : Time horizon of the solver 
+        - volc/volb           : Ratio of tumor concentration volume to the whole brain volume 
+        - vol_c               : Observed tumor concentration volume 
+        - vol_tc_c            : Volume of tumor core in observed tumor concentration region
+        - vol_b_c             : Volume of healthy brain in the observed tumor concentration region
+        - sa_c                : Surface area of observed tumor concentration region
+        - std_c               : Standard deviation of observed tumor concentration
+        - std_tc_c            : Standard deviation of tumor core in the observed tumor concentration region
+        - std_b_c             : Standard deviation of healthy brain in the observed tumor concentration region
+        - quartmed_c          : 87.5th percentile of tumor concentration 
+        - quartmed_tc_c       : 87.5th percentile of tumor core in the observed tumor concentration region
+        - quartmed_b_c        : 87.5th percentile 
+        - 95_c                : 95th percentile of tumor concentration
+        - 95_tc_c             : 95th percentile of tumor core in the observed tumor concetration region
+        - 95_b_c              : 95th percentile of healthy brain in the observed tumor concetration region
+        - 99_c                : 99th percentile of tumor concentration
+        - 99_tc_c             : 99th percentile of tumor core in the tumor concentration region
+        - 99_b_c              : 99th percentile of healthy brain in the tumor concentration region
+        - vol_dcdt            : Volume of tumor concentration derivative respect to time (dc/dt)
+        - vol_tc_dcdt         : Volume of tumor core in dc/dt region
+        - vol_b_dcdt          : Volume of healthy brain in dc/dt region
+        - sa_dcdt             : Surface area of dc/dt region
+        - std_dcdt            : Standard deviation of dc/dt region
+        - std_tc_dcdt         : Standard deviation of tumor core in dc/dt region
+        - std_b_dcdt          : Standard deviation of healthy brain in dc/dt region
+        - quartmed_dcdt       : 87.5th percentile of dc/dt region
+        - quartmed_tc_dcdt    : 87.5th percentile of tumor core in dc/dt region
+        - quartmed_b_dcdt     : 87.5th percentile of healthy brain in dc/dt region
+        - 95_dcdt             : 95th percentile of dc/dt region
+        - 95_tc_dcdt          : 95th percentile of tumor core in dc/dt region
+        - 95_b_dcdt           : 95th percentile of healthy brain in dc/dt region
+        - 99_dcdt             : 99th percentile of dc/dt region
+        - 99_tc_dcdt          : 99th percentile of tumor core in dc/dt region
+        - 99_b_dcdt           : 99th percentile of healthy brain in dc/dt region
+        - vol_gradc           : Volume for norm of tumor concentration gradient (||grad c||)
+        - vol_tc_gradc        : Volume of tumor core in ||grad c|| region
+        - vol_b_gradc         : Volume of healthy brain in ||grad c|| region
+        - sa_gradc            : Surface area of ||grad c|| region
+        - std_gradc           : Standard deviation of ||grad c|| region
+        - std_tc_gradc        : Standard deviation of tumor core in the ||grad c|| region
+        - std_b_gradc         : Standard deviation of healthy brain in the ||grad c|| region
+        - quartmed_gradc      : 87.5th percentile of ||grad c|| region
+        - quartmed_tc_gradc   : 87.5th percentile of tumor core in the ||grad c|| region
+        - quartmed_b_gradc    : 87.5th percentile of healthy brain in the ||grad c|| region
+        - 95_gradc            : 95th percentile of ||grad c|| region
+        - 95_tc_gradc         : 95th percentile of tumor core in ||grad c|| region
+        - 95_b_gradc          : 95th percentile of healthy brain in ||grad c|| region
+        - 99_gradc            : 99th percentile of ||grad c|| region
+        - 99_tc_gradc         : 99th percentile of tumor core in ||grad c|| region 
+        - 99_b_gradc          : 99th percentile of healthy brain in ||grad c|| region
+        - vol_u               : Volume of displacement region (||u||) 
+        - vol_tc_u            : Volume of tumor core in ||u|| region
+        - vol_b_u             : Volume of healthy brain in ||u|| region
+        - sa_u                : Surface area of ||u|| region
+        - std_u               : Standard deviation of ||u|| region 
+        - std_tc_u            : Standard deviation of tumor core in ||u|| region
+        - std_b_u             : Standard deviation of healthy brain in ||u|| region
+        - quartmed_u          : 87.5th percentile of ||u|| region
+        - quartmed_tc_u       : 87.5th percentile of tumor core in ||u|| region
+        - quartmed_b_u        : 87.5th percentile of healthy brain in ||u|| region
+        - 95_u                : 95th percentile of ||u|| region
+        - 95_tc_u             : 95th percentile of tumor core in ||u|| region
+        - 95_b_u              : 95th percentile of healthy brain in ||u|| region
+        - 99_u                : 99th percentile of ||u|| region
+        - 99_tc_u             : 99th percentile of tumor core in ||u|| region
+        - 99_b_u              : 99th percentile of healthy brain in ||u|| region
+        - vol_jac             : Volume of jacobian region
+        - vol_tc_jac          : Volume of tumor core in jacobian region
+        - vol_b_jac           : Volume of healthy brain in jacobian region
+        - sa_jac              : Surface area of jacobian region
+        - std_jac             : Standard deviation of jacobian region
+        - std_tc_jac          : Standard deviation of tumor core in jacobian region
+        - std_b_jac           : Standard deviation of healthy brain in jacobian region
+        - quartmed_jac        : 87.5th percentile of jacobian region
+        - quartmed_tc_jac     : 87.5th percentile of tumor core in jacobian region 
+        - quartmed_b_jac      : 87.5th percentile of healthy brain in jacobian region
+        - 95_jac              : 95th percentile of jacobian region
+        - 95_tc_jac           : 95th percentile of tumor core in jacobian region
+        - 95_b_jac            : 95th percentile of healthy brain in jacobian region
+        - 99_jac              : 99th percentile of jacobian region 
+        - 99_tc_jac           : 99th percentile of tumor core in jacobian region
+        - 99_b_jac            : 99th percentile of healthy brain in jacobian region
+        - vol_trT             : Volume for trace of stress tensor ( tr(T) ) region
+        - vol_tc_trT          : Volume of tumor core in tr(T) region 
+        - vol_b_trT           : Volume of healthy brain in tr(T) region
+        - sa_trT              : Surface area of tr(T) region
+        - std_trT             : Standard deviation of tr(T) region
+        - std_tc_trT          : Standard deviation of tumor core in tr(T) region
+        - std_b_trT           : Standard deviation of healthy brain in tr(T) region
+        - quartmed_trT        : 87.5th percentile of tr(T) region
+        - quartmed_tc_trT     : 87.5th percentile of tumor core in tr(T) region
+        - quartmed_b_trT      : 87.5th percentile of healthy brain in tr(T) region
+        - 95_trT              : 95th percentile of tr(T) region
+        - 95_tc_trT           : 95th percentile tumor core in tr(T) region
+        - 95_b_trT            : 95th percentile healthy brain in tr(T) region
+        - 99_trT              : 99th percentile of tr(T) region
+        - 99_tc_trT           : 99th percentile of tumor core in tr(T) region
+        - 99_b_trT            : 99th percentile of healthy brain in tr(T) region
+        - vol_tau             : Volume of maximum shear stress region
+        - vol_tc_tau          : Volume of tumor core in maximum shear stress region
+        - vol_b_tau           : Volume of healthy brain in maximum shear stress region
+        - sa_tau              : Surface area of maximum shear stress region
+        - std_tau             : Standard deviation of maximum shear stress region
+        - std_tc_tau          : Standard deviation of tumor core in maximum shear stress region
+        - std_b_tau           : Standard deviation of healthy brain in maximum shear stress region
+        - quartmed_tau        : 87.5th percentile of maximum shear stress region
+        - quartmed_tc_tau     : 87.5th percentile of tumor core in maximum shear stress region
+        - quartmed_b_tau      : 87.5th percentile of healthy brain in maximum shear stress region
+        - 95_tau              : 95th percentile of maximum shear stress region
+        - 95_tc_tau           : 95th percentile of tumor core in maximum shear stress region
+        - 95_b_tau            : 95th percentile of healthy brain in maximum shear stress region
+        - 99_tau              : 99th percentile of maximum shear stress region
+        - 99_tc_tau           : 99th percentile of tumor code in maximum shear stress region
+        - 99_b_tau            : 99th percentile of healthy brain in maximum shear stress region
+        - vol_vel             : Volume for norm of velocity field (||v||) region
+        - vol_tc_vel          : Volume for tumor core in ||v|| region
+        - vol_b_vel           : Volume for healthy brain in ||v|| region 
+        - sa_vel              : Surface area for ||v|| region 
+        - std_vel             : Standard deviation for ||v|| region 
+        - std_tc_vel          : Standard deviation for tumor core in ||v|| region 
+        - std_b_vel           : Standard deviation for healthy brain in ||v|| region 
+        - quartmed_vel        : 87.5th percentile of ||v|| region 
+        - quartmed_tc_vel     : 87.5th percentile of healthy brain in ||v|| region 
+        - quartmed_b_vel      : 87.5th percentile of healthy brain in ||v|| region 
+        - 95_vel              : 95th percentile of ||v|| region 
+        - 95_tc_vel           : 95th percentile of tumor core in ||v|| region 
+        - 95_b_vel            : 95th percentile of healthy brain ||v|| region 
+        - 99_vel              : 99th percentile of ||v|| region 
+        - 99_tc_vel           : 99th percentile of tumor core in ||v|| region
+        - 99_b_vel            : 99th percentile of healthy in ||v|| region
+
+    
+  
+  
+     
+  
