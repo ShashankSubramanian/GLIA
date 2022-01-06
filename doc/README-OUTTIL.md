@@ -1,7 +1,7 @@
 ## Output Description of TIL Solver
-  ** Input (directory) : provides resampled images of segmentation, data components and target data at 64, 128 and 256 resolution
+  **Input (directory) : provides resampled images of segmentation, data components and target data at 64, 128 and 256 resolution**
   
-  ** Inversion (directory) : inversion results for three resolutions 64, 128, 256
+  **Inversion (directory) : inversion results for three resolutions 64, 128, 256**
   
     - nx256 (directory) : 
       > init (directory)           : Input for solver at each resolution
