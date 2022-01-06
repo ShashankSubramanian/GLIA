@@ -1,4 +1,4 @@
-** Description of the extracted features for all the given patients over the used templates (tumor-inversion-stats.csv)
+**Description of features extracted from the used templates (tumor-inversion-stats.csv)**
 
     - PATIENT                 : Patient's ID
     - mu-g                    : Average of forcing parameter (mass effect, gamma) 
