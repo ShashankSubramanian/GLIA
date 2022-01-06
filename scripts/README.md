@@ -56,6 +56,7 @@ These provide important how-to details of each script (note that the description
     - The script runs a grid continuation scheme and saves each mesh resolution results in output_dir/inversion/nx{mesh_size}/obs-1.0/. All final resolution results are in output_dir/inversion/nx256/obs-1.0/. 
     - See the solver_log.txt at any resolution to track the progress of inversion and important metrics, parameters, and errors. Alternatively, the job script log file can be tracked for a high-level progress status. 
     - The other important outputs are c0_rec.nii.gz and c1_rec.nii.gz which show the reconstructed tumor IC and final tumor concentration. All reconstructed parameter values and errors are in reconstruction_info.dat (and in the solver_log.txt additionally). See the inverse solver [paper](https://arxiv.org/abs/1907.06564) for all notations, models, inversion algorithms etc.
+    - See [README-OUT-TIL.md](../doc/README-OUT-TIL.md) for full description of outputs
 3. inverse_ensemble.py
   * Input data: 
     - This script is run after inverse_til.py to reconstruct mass effect deformations with a more complex model.
@@ -69,6 +70,7 @@ These provide important how-to details of each script (note that the description
   * Output: 
     - The script saves registration and tumor inversion results in output_dir/reg and output_dir/tu
     - The inversion on each template is saved within subfolders with template ID
+    - See [README-OUT-INV-ENSEMBLE.md](../doc/README-OUT-INV-ENSEMBLE.md) for full description of outputs
     - See next section on scripts to extract important reconstruction statistics
 
 ## Post-solve analysis scripts
