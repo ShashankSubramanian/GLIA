@@ -3,7 +3,7 @@
     
     -- Input (directory)              : provides resampled images of segmentation, data components and target data at 64, 128 and 256 resolution
     -- Inversion (directory)          : inversion results for three [MESH-SIZE] 64, 128, 256
-       - nx[MESH-SIZE] (directory)  
+      - nx[MESH-SIZE] (directory)  
          > init (directory)           : Input for solver at each resolution
          > obs-1.0 (directory)        : Observed results with threshold 1.0 
            ++ bg.nc                   : Background image 
