@@ -50,8 +50,18 @@
         ++ wm_rec_final.nc                       : Estimated white matter at time = 1
       > stats (directory)                        : Contains analysis of paramters and fields 
         ++ stats.csv                             : Cotains inverted paramters and outputs of all templates 
-          ^ atlas.                               : Atlas ID 
+          ^ atlas                                : Atlas ID 
           ^ gam                                  : Forcing parameter (Mass Effect)
           ^ rho                                  : Reaction parameter 
           ^ k                                    : Diffusion parameter 
-          ^ u                                    : 
+          ^ u                                    : Maximum displacement
+          ^ err                                  : Relative error of tumor estimation from solver wrt data at time = 1
+          ^ cond                                 : Condition number of solver 
+          ^ vt_change                            : Relative change of solver's ventricles with masseffect wrt no masseffect at time = 1
+          ^ vt_err                               : Relative error of solver's ventricles at time = 1 wrt patient's ventricles 
+          ^ vt_nome_err                          : Relative error of solver's ventricles without masseffect wrt patient's ventricles 
+          ^ vt_l2                                : Relative L2 norm difference of solver's ventricles wrt patient's ventricles
+          ^ vt_l2_nome                           : Relative L2 norm difference of solver's ventricles without masseffect wrt patient's ventricles
+          ^ time                                 : Runtime in sec
+        ++ stats.txt                             : Same as stats.csv but in latex format 
+        
