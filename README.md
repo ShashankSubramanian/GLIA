@@ -1,13 +1,14 @@
 ## GLIA
 *GL*ioblastoma *I*mage *A*nalysis for calibrating brain tumor growth models is a suite of high-performance algorithms and software to integrate biophysical models of tumor growth with medical imaging data to advance personalized medicine.
 
-GLIA has the following features:
+GLIA  provides the following functionalities:
 
 * 3D tumor growth simulation using complex growth models with mass effect and multiple tumor species
-* Inversion algorithms for reconstructing the following using a ***single*** mpMRI patient imaging scan:
+* Inversion algorithms for reconstructing the following parameters using a ***single*** mpMRI patient imaging scan:
   * Tumor initiation location(s) or TILs 
-  * Tumor dynamics parameters representing cancer proliferation and infiltration
+  * Tumor growth parameters representing cancer proliferation and infiltration
   * Tumor-induced biomechanical effects or mass effect 
+  * Aggregate and localized biophysically driven imaging features
 * Novel numerical schemes with parallelized execution that exploits mulitcore CPU and GPU architectures for fast solution times on medical imaging data resolutions (256x256x256)
 
 ![](doc/figs/GLIA.png)
