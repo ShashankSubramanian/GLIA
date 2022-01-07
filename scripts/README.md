@@ -19,8 +19,12 @@ mpirun/ibrun -np $NUMPROCS build/last/tusolver -config /path/to/solver_config.tx
 These scripts run the solver for some sample low-resolution test data stores in testdata/
 to test all core functionalities
 1. forward.py: runs a forward tumor simulation with mass effect 
-2. inverse.py: runs an inverse TIL (tumor initiation location) solver
-3. inverse_masseffect.py: runs an inverse tumor parameter prediction for models with mass effect using the reconstructed TIL from inverse.py
+2. inverse.py: runs inverse solver to compute tumor initial location (TIL) and tumor growth parameters
+3. inverse_masseffect.py: runs inverse solver using an ensemble procedure to estimate mass-effect in addition to TIL and growth parameters
+
+Once the inversion solvers have reconstructed parameters, additional post-processing scripts can be used to compute biophysically derived features that can be used for downstream visulization, analysis, and machine learning tasks. 
+
+There are also additional scripts that should be of interest to developers. 
 
 Each individual script contains an output directory that logs the solver results in solver_log.txt and writes out important paraview data
 
