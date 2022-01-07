@@ -8,14 +8,13 @@ job0.sh : ASCII file that is a TACC frontera SLURM, which we refer as "job" file
 reg : directory th CLAIRE...
 
 ### Output files
-tu : directory that containts all the GLIA output files all the subquent files are contained in tu (created automatically by GLIA)
-tu/template_id : for each template in atlas-list.txt we have a separate directory
-tu/template_id/bg.nifti: label for background: it has 1 for background and 0 for the brain region
-tu/template_id/cfs.nifti: ask image that has 1 for background and 0 for the brain region
-tu/reconstruction_info.dat: ASCII that containts
-        rho : blab
-        D : blah
-
+tu : directory that containts all the GLIA output files all the subquent files are contained in tu (created automatically by GLIA) 
+tu/template_id : for each template in atlas-list.txt we have a separate directory 
+tu/template_id/bg.nifti: label for background: it has 1 for background and 0 for the brain region 
+tu/template_id/cfs.nifti: ask image that has 1 for background and 0 for the brain region 
+tu/reconstruction_info.dat: ASCII that containts 
+        rho : blab 
+        D : blah 
 
 
  
