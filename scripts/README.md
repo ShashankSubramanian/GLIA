@@ -74,6 +74,6 @@ These provide important how-to details of each script (note that the description
     - See next section on scripts to extract important reconstruction statistics
 
 ## Post-solve analysis scripts
-1. Reconstruction statistics for mass effect inversion: masseffect/extract_stats.py extracts important statistics and saves them in output_dir/stat. Use --help for all options
+1. Reconstruction statistics for mass effect inversion: masseffect/extract_stats.py extracts important statistics and saves them in output_dir/stat. Use --help for all options. See [README-OUT-INV-ENSEMBLE.md](../doc/README-OUT-INV-ENSEMBLE.md) in *stats directory* for full description of outputs
 2. (devs) Post-mass effect inversion analysis: masseffect/analysis.py performs additional analysis. Use --help for options
 3. (devs) Visualzation helper scripts are in vis/
