@@ -16,7 +16,7 @@ GLIA  provides the following functionalities:
 ## Installation
 See [installation](doc/install.md)
 
-## Execution
+## Usage
 See [run scripts](scripts/README.md)
 
 ## Authors
