@@ -36,8 +36,8 @@ To run any script:
 python3 {name_of_script}.py
 ```
 1. forward.py: runs a forward tumor simulation
-2. inverse_til.py: runs the inverse TIL solver on a list of patients
-3. inverse_ensemble.py: runs an ensembled mass effect inversion on a list of patients
+2. inverse_nomasseffect.py: runs the inverse solver without masseffect on a list of patients to infer the TIL 
+3. inverse_masseffect.py: runs an ensembled mass effect inversion on a list of patients
 
 Others (for devs):
 1. inverse_gridcont.py: runs the inverse TIL solver for a single patient (used for synthetic testing)
