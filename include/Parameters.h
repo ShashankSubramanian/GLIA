@@ -159,6 +159,8 @@ public:
   ScalarType beta_0_ub_;
   ScalarType ox_inv_lb_;
   ScalarType ox_inv_ub_;
+  ScalarType invasive_thres_lb_;
+  ScalarType invasive_thres_ub_;
   ScalarType sigma_cma_gamma_;
   ScalarType sigma_cma_rho_;
   ScalarType sigma_cma_k_;
@@ -170,6 +172,7 @@ public:
   ScalarType sigma_cma_ox_source_;
   ScalarType sigma_cma_beta_0_;
   ScalarType sigma_cma_ox_inv_;
+  ScalarType sigma_cma_invasive_thres_;
   ScalarType k_scale_;          /// @brief if FD grad model, scaling of kappa
   ScalarType rho_scale_;        /// @brief if FD grad model, scaling of rho
   ScalarType gamma_scale_;      /// @brief if FD grad model, scaling of gamma
@@ -252,7 +255,6 @@ public:
   , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   , i0_c0_ratio_(0.1)                    // i0 to c0 ratio for multispec solver
-  , invasive_threshold_ (0.01)           // invasive threshold for edema
   , E_csf_ (100)                          // Young's modulus of CSF
   , E_healthy_ (2100)                     // Young's modulus of wm and gm
   , E_tumor_ (8000)                       // Young's modulus of tumor
@@ -274,6 +276,7 @@ public:
   , ox_inv_ (0.7)                         // invasive oxygen conc
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.65)                     // hypoxia threshold
+  , invasive_thres_ (0.01)           // invasive threshold for edema
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
   , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
   , support_()                            // // support of compressive sampling guess
@@ -376,9 +379,15 @@ public:
 
   // multi-species
   int num_species_;
-  ScalarType ox_source_, ox_consumption_;
-  ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_, sigma_b_;
-  ScalarType invasive_threshold_;
+  ScalarType ox_source_; 
+  ScalarType ox_consumption_;
+  ScalarType alpha_0_;
+  ScalarType beta_0_; 
+  ScalarType ox_inv_;
+  ScalarType death_rate_; 
+  ScalarType ox_hypoxia_;
+  ScalarType sigma_b_;
+  ScalarType invasive_thres_;
 
   // initial condition (inversion)
   int sparsity_level_;            // should this go to opt?
@@ -581,7 +590,8 @@ struct FilePaths {
     FilePaths() :
       seg_(), wm_(), gm_(), vt_(), csf_(),
       p_seg_(), p_wm_(), p_gm_(), p_vt_(), p_csf_(),
-      data_t1_(), data_t0_(), data_support_(), data_support_data_(),
+      data_t1_(), data_en_t1_(), data_nec_t1_(), data_ed_t1_(), 
+      data_t0_(), data_support_(), data_support_data_(),
       data_comps_(), data_comps_data_(), obs_filter_(), mri_(),
       velocity_x1_(), velocity_x2_(), velocity_x3_(),
       pvec_(), phi_()
@@ -601,6 +611,9 @@ struct FilePaths {
     std::string p_csf_;
     // data
     std::string data_t1_;
+    std::string data_en_t1_;
+    std::string data_nec_t1_;
+    std::string data_ed_t1_;
     std::string data_t0_;
     std::string data_support_;
     std::string data_support_data_;
@@ -633,6 +646,7 @@ public:
     ox_source_(55),
     beta_0_(0.02),
     ox_inv_(0.7),
+    invasive_thres_(0.02),
     dt_(0.01),
     nt_(100),
     testcase_(0),
@@ -653,6 +667,7 @@ public:
   ScalarType ox_source_;
   ScalarType beta_0_;
   ScalarType ox_inv_;
+  ScalarType invasive_thres_;
   ScalarType dt_;
   int nt_;
   int testcase_;

@@ -51,6 +51,7 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
   ScalarType beta_0_scale_;
   ScalarType sigma_b_scale_;
   ScalarType ox_inv_scale_;
+  int counter;
    
 };
 

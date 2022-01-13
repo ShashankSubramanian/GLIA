@@ -29,6 +29,12 @@ class Tumor {
   // state variables
   Vec c_t_;
   Vec c_0_;
+  Vec en_t_;
+  Vec nec_t_;
+  Vec ed_t_;
+  Vec en_t_temp_;  
+  Vec nec_t_temp_;  
+  Vec ed_t_temp_;  
   // adjoint Variables
   Vec p_t_;
   Vec p_0_;
@@ -40,7 +46,7 @@ class Tumor {
 
   // For multiple species
   std::map<std::string, Vec> species_;
-  std::map<std::string, Vec> data_species_;
+  //std::map<std::string, Vec> data_species_;
 
   // mass effect parameters
   // velocity

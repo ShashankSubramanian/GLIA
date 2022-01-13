@@ -156,37 +156,69 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   ierr = tumor_->displacement_->set(0);
   
   ierr = pde_operators_->solveState(0);
+	PetscReal J_tmp1, J_tmp2;
+	J_tmp1 = 0.0;
+	J_tmp2 = 0.0;
   
-  //if (params_->opt_->use_multispec_obj_){
-  if (false){
+  if (params_->opt_->use_multispec_obj_){
+  //if (false){
     
-    ScalarType *J_tmp;
+ 
     //*J_tmp = 0.0;
-    ierr = VecCopy(temp_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
-      s << "temp_" << ".nc";
-      dataOut(temp_, params_, s.str().c_str());
-      s.str(std::string());
-      s.clear();
-    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["proliferative"]); CHKERRQ(ierr);
-      s << "temp2_" << ".nc";
-      dataOut(temp_, params_, s.str().c_str());
-      s.str(std::string());
-      s.clear();
-    
+    //ierr = VecCopy(temp_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
+    //ierr = tumor_->obs_->apply(temp_, tumor_->species_["proliferative"], 1); CHKERRQ(ierr);
+    ierr = VecCopy(temp_, tumor_->ed_t_temp_); CHKERRQ(ierr);
+    /*
+    s << "temp1_" << ".nc";
+    dataOut(temp_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+    */
+    ierr = VecSet(temp_, 0.0); CHKERRQ(ierr); 
+    ierr = tumor_->obs_->apply(temp_, tumor_->en_t_temp_, 1); CHKERRQ(ierr);
+    /*
+    s << "temp_" << ".nc";
+    dataOut(temp_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+    */
+    //ierr = VecAXPY(temp_, -1.0, data_inv->ent1()); CHKERRQ(ierr);
+    ierr = VecAXPY(temp_, -1.0, tumor_->en_t_); CHKERRQ(ierr);
+    /*
+    s << "temp2_" << ".nc";
+    dataOut(temp_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+    */
     //ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
     //ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
-    ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
+    ierr = VecDot(temp_, temp_, &J_tmp1); CHKERRQ(ierr);
     /*                  
     ierr = VecCopy(temp_, tumor_->species_["infilterative"]); CHKERRQ(ierr);
     ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["infilterative"]); CHKERRQ(ierr);
     ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
     (*J) += *J_tmp;
           
-    ierr = VecCopy(temp_, tumor_->species_["necrotic"]); CHKERRQ(ierr);
-    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["necrotic"]); CHKERRQ(ierr);
-    ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
-    (*J) += *J_tmp;
     */
+    ierr = VecSet(temp_, 0.0); CHKERRQ(ierr); 
+    ierr = tumor_->obs_->apply(temp_, tumor_->nec_t_temp_, 1); CHKERRQ(ierr);
+    //ierr = VecCopy(temp_, tumor_->species_["necrotic"]); CHKERRQ(ierr);
+    /*
+    s << "temp3_" << ".nc";
+    dataOut(temp_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+    */
+    ierr = VecAXPY(temp_, -1.0, tumor_->nec_t_); CHKERRQ(ierr);
+    //ierr = VecAXPY(temp_, -1.0, data_inv->nect1()); CHKERRQ(ierr);
+    /*
+    s << "temp4_" << ".nc";
+    dataOut(temp_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+    */
+    ierr = VecDot(temp_, temp_, &J_tmp2); CHKERRQ(ierr);
+    (*J) = J_tmp1 + J_tmp2;
     /*                  
     ierr = VecCopy(temp_, tumor_->species_["edema"]); CHKERRQ(ierr);
     ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["edema"]); CHKERRQ(ierr);
@@ -194,7 +226,6 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     (*J) += *J_tmp;                      
     */
   } else {
-
       ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
       ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
       ierr = VecDot(temp_, temp_, J); CHKERRQ(ierr);
@@ -202,12 +233,18 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   }
   
   (*J) *= 0.5 * params_->grid_->lebesgue_measure_;
+  J_tmp1 *= 0.5 * params_->grid_->lebesgue_measure_;
+  J_tmp2 *= 0.5 * params_->grid_->lebesgue_measure_;
   PetscReal misfit_brain = 0.;
 
   //ierr = computeMisfitBrain (&misfit_brain);
   misfit_brain *= 0.5 * params_->grid_->lebesgue_measure_;
   if (!disable_verbose_) {
-    s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    if (params_->opt_->use_multispec_obj_){
+      s << "J = misfit_tu(en) + misfit_tu(nec) + misfit_brain = " << std::setprecision(12) << J_tmp1 << " + " << J_tmp2  << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    } else {
+      s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+    }
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
     s.str("");
     s.clear();

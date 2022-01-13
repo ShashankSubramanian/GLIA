@@ -251,20 +251,24 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
 
 
   ierr = displacement_old_->set(0); CHKERRQ(ierr);
-
-  ierr = VecCopy(tumor_->c_0_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
-  ierr = VecCopy(tumor_->c_0_, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
-  // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
-  ierr = VecScale(tumor_->species_["infiltrative"], params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
-  ierr = VecScale(tumor_->species_["proliferative"], 1-params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
-
-  ierr = VecSet(tumor_->species_["oxygen"], 1.); CHKERRQ(ierr);
-
   ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];
-  // smooth i_t to keep aliasing to a minimum
-  // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], params_, sigma_smooth);     CHKERRQ (ierr);
 
-  ierr = tumor_->clipTumor(); CHKERRQ(ierr);
+  if (params_->tu_->model_ == 5) {
+    
+    ierr = VecCopy(tumor_->c_0_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
+    ierr = VecCopy(tumor_->c_0_, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
+    // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
+    ierr = VecScale(tumor_->species_["infiltrative"], params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
+    ierr = VecScale(tumor_->species_["proliferative"], 1-params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
+    
+    ierr = VecSet(tumor_->species_["oxygen"], 1.); CHKERRQ(ierr);
+    
+    // smooth i_t to keep aliasing to a minimum
+    // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], params_, sigma_smooth);     CHKERRQ (ierr);
+    
+    ierr = tumor_->clipTumor(); CHKERRQ(ierr);
+  }
+ 
 
   // no healthy cells where tumor is maximum
   ierr = VecWAXPY(tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["infiltrative"]); CHKERRQ(ierr);
@@ -324,7 +328,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && i % 1000 == 0) || write_output_and_break) {
+    if ((params_->tu_->write_output_ && i % 40 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());
@@ -405,6 +409,11 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
         ss.str(std::string());
         ss.clear();
       }
+    }
+    if (params_->tu_->model_ == 6 && i == nt) {
+      ierr = VecCopy(tumor_->species_["proliferative"], tumor_->en_t_temp_); CHKERRQ(ierr);
+      ierr = VecCopy(tumor_->species_["necrotic"], tumor_->nec_t_temp_); CHKERRQ(ierr);
+      ierr = VecCopy(tumor_->species_["edema"], tumor_->ed_t_temp_); CHKERRQ(ierr);
     }
 
     if (write_output_and_break) break;
@@ -498,6 +507,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     s.str("");
     s.clear();
   }
+  // copy the data for multispecies inversion
+
 
 #ifdef CUDA
   cudaPrintDeviceMemory();

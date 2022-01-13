@@ -75,6 +75,9 @@ class SolverInterface {
   Vec mri_;
   Vec tmp_;
   Vec data_t1_;
+  Vec data_en_t1_;
+  Vec data_nec_t1_;
+  Vec data_ed_t1_;
   Vec data_t0_;
   Vec data_support_;
   Vec data_comps_;

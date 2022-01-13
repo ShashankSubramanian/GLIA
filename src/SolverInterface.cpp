@@ -27,6 +27,9 @@ SolverInterface::SolverInterface()
   mri_(nullptr),
   tmp_(nullptr),
   data_t1_(nullptr),
+  data_en_t1_(nullptr),
+  data_nec_t1_(nullptr),
+  data_ed_t1_(nullptr),
   data_t0_(nullptr),
   p_rec_(nullptr),
   data_support_(nullptr),
@@ -49,6 +52,9 @@ SolverInterface::~SolverInterface() {
   if(mri_ != nullptr) VecDestroy(&mri_);
   if(tmp_ != nullptr) VecDestroy(&tmp_);
   if(data_t1_ != nullptr) {VecDestroy(&data_t1_); data_t1_ = nullptr;}
+  if(data_en_t1_ != nullptr) {VecDestroy(&data_en_t1_); data_en_t1_ = nullptr;}
+  if(data_nec_t1_ != nullptr) {VecDestroy(&data_nec_t1_); data_nec_t1_ = nullptr;}
+  if(data_ed_t1_ != nullptr) {VecDestroy(&data_ed_t1_); data_ed_t1_ = nullptr;}
   if(data_t0_ != nullptr) {VecDestroy(&data_t0_); data_t0_ = nullptr;}
   if(!app_settings_->syn_->enabled_ && !app_settings_->path_->data_support_.empty()) {
     if(data_support_ != nullptr) VecDestroy(&data_support_);
@@ -648,6 +654,30 @@ PetscErrorCode SolverInterface::readData() {
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
     ss.str("");
     ss.clear();
+  }
+
+  if (!app_settings_->path_->data_en_t1_.empty()) {
+    if (data_en_t1_ != nullptr) {
+      ierr = VecDestroy(&data_en_t1_); CHKERRQ(ierr);
+    }
+    ierr = VecDuplicate(tmp_, &data_en_t1_); CHKERRQ(ierr);
+    ierr = dataIn(data_en_t1_, params_, app_settings_->path_->data_en_t1_); CHKERRQ(ierr);
+  }
+
+  if (!app_settings_->path_->data_nec_t1_.empty()) {
+    if (data_nec_t1_ != nullptr) {
+      ierr = VecDestroy(&data_nec_t1_); CHKERRQ(ierr);
+    }
+    ierr = VecDuplicate(tmp_, &data_nec_t1_); CHKERRQ(ierr);
+    ierr = dataIn(data_nec_t1_, params_, app_settings_->path_->data_nec_t1_); CHKERRQ(ierr);
+  }
+
+  if (!app_settings_->path_->data_ed_t1_.empty()) {
+    if (data_ed_t1_ != nullptr) {
+      ierr = VecDestroy(&data_ed_t1_); CHKERRQ(ierr);
+    }
+    ierr = VecDuplicate(tmp_, &data_ed_t1_); CHKERRQ(ierr);
+    ierr = dataIn(data_ed_t1_, params_, app_settings_->path_->data_ed_t1_); CHKERRQ(ierr);
   }
 
   ScalarType *ptr;

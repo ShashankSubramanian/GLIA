@@ -137,6 +137,7 @@ public :
   void setData(std::shared_ptr<Data> d) {data_ = d;}
   void setData(Vec d1, Vec d0={}) {data_->set(d1, d0);}
   void setDataT1(Vec d1) {data_->setT1(d1);}
+  void setDataMultiSpec(Vec en, Vec nec, Vec ed) {data_->setMultispecT1(en, nec, ed);}
   void setDataT0(Vec d0) {data_->setT1(d0);}
   
   bool initialized() {return initialized_;}

@@ -14,6 +14,12 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   ierr = VecDuplicate(c_t_, &c_0_);
   ierr = VecDuplicate(c_t_, &p_0_);
   ierr = VecDuplicate(c_0_, &p_t_);
+  ierr = VecDuplicate(c_t_, &nec_t_);
+  ierr = VecDuplicate(c_t_, &ed_t_);
+  ierr = VecDuplicate(c_t_, &en_t_);
+  ierr = VecDuplicate(c_t_, &nec_t_temp_);
+  ierr = VecDuplicate(c_t_, &ed_t_temp_);
+  ierr = VecDuplicate(c_t_, &en_t_temp_);
 
   // allocating memory for work vectors
   work_ = new Vec[12];
@@ -28,6 +34,12 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   ierr = VecSet(c_0_, 0);
   ierr = VecSet(p_0_, 0);
   ierr = VecSet(p_t_, 0);
+  ierr = VecSet(nec_t_, 0);
+  ierr = VecSet(ed_t_, 0);
+  ierr = VecSet(en_t_, 0);
+  ierr = VecSet(nec_t_temp_, 0);
+  ierr = VecSet(ed_t_temp_, 0);
+  ierr = VecSet(en_t_temp_, 0);
 
   ierr = VecDuplicate(c_t_, &seg_);
   ierr = VecSet(seg_, 0);
@@ -53,11 +65,13 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
     species_.insert(std::pair<std::string, Vec>("necrotic", c[2]));
     species_.insert(std::pair<std::string, Vec>("oxygen", c[3]));
     species_.insert(std::pair<std::string, Vec>("edema", c[4]));
+    /* 
     data_species_.insert(std::pair<std::string, Vec>("proliferative", c[0]));
     data_species_.insert(std::pair<std::string, Vec>("infiltrative", c[1]));
     data_species_.insert(std::pair<std::string, Vec>("necrotic", c[2]));
     data_species_.insert(std::pair<std::string, Vec>("oxygen", c[3]));
     data_species_.insert(std::pair<std::string, Vec>("edema", c[4])); 
+    */
   }
 }
 
@@ -171,7 +185,7 @@ PetscErrorCode Tumor::computeEdema() {
   ierr = VecGetArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(species_["edema"], &ed_ptr); CHKERRQ(ierr);
 
-  for (int i = 0; i < params_->grid_->nl_; i++) ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_threshold_) ? 1.0 : 0.0;
+  for (int i = 0; i < params_->grid_->nl_; i++) ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_thres_) ? 1.0 : 0.0;
 
   ierr = VecRestoreArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(species_["edema"], &ed_ptr); CHKERRQ(ierr);

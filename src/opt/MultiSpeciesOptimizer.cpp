@@ -26,7 +26,7 @@ PetscErrorCode MultiSpeciesOptimizer::initialize(
 	n_inv_ = params->get_nr() + params->get_nk() + 8 + n_g_; // # of inverting parameters: kappa, rho, forcing factor, gamma(death rate), alpha_0, ox_consumption, ox 
 	// number of dofs
 	ss << " Initializing multi-species optimizer with =" << n_inv_ << " = " << params-> get_nr() << " + " << params->get_nk() << " + 5 dof."; 
-
+  counter = 0;
 	ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 	// initialize super class 
 	ierr = CMAOptimizer::initialize(derivative_operators, pde_operators, params, tumor); CHKERRQ(ierr);
@@ -44,6 +44,7 @@ PetscErrorCode MultiSpeciesOptimizer::initialize(
   cma_ctx_->params_->opt_->cma_scales_array_[8] = params->opt_->beta_0_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[9] = params->opt_->sigma_b_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[10] = params->opt_->ox_inv_scale_;
+  cma_ctx_->params_->opt_->cma_scales_array_[11] = params->opt_->ox_inv_scale_;
 
    
   cma_ctx_->params_->opt_->cma_lb_array_[0] = params->opt_->gamma_lb_;
@@ -210,7 +211,8 @@ PetscErrorCode MultiSpeciesOptimizer::runforward(const double *xtest_, double* J
 
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
-  std::cout << "----------------------------------- Running MultiSpecies Forward ---------------------------------------------- \n";
+  counter++;
+  std::cout << "----------------------------------- Running MultiSpecies Forward [" << counter << "] ---------------------------------------------- \n";
   PetscReal J_solve;
 	Vec x_petsc;
 	PetscReal *x_petsc_ptr;
@@ -298,8 +300,8 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   ierr = tuMSGstd(""); CHKERRQ(ierr);
   ierr = tuMSG ("### MultiSpecies inversion : initial guess ###"); CHKERRQ(ierr);
   ierr = tuMSGstd("### ----------------------- ###"); CHKERRQ(ierr);
-  if (procid == 0) {ierr = VecView (xin_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
-  ierr = tuMSGstd ("### ---------------------- ###"); CHKERRQ(ierr);
+  //if (procid == 0) {ierr = VecView (xin_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);}
+  //ierr = tuMSGstd ("### ---------------------- ###"); CHKERRQ(ierr);
   /* 
   // fitting function for cma-es
   FitFunc runforward = [&](const double *xeval_ptr, const int N) -> double {
@@ -366,7 +368,7 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
     for (int i= 0; i < n_inv_; i++) {
       if (xeval_ptr[i] < lbounds[i] || xeval_ptr[i] > ubounds[i] || xeval_ptr[10] < xeval_ptr[4]) outofbounds= true;
       if (outofbounds) {
-        std::cout << "----------------  Out of bounds for p[" << i << "] ----------------- \n";
+        std::cout << "----------------  Out of bounds for p[" << i << "] " << xeval_ptr[10] << " " << xeval_ptr[4] << " ----------------- \n";
         break;
       }
     }

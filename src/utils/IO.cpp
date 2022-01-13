@@ -114,6 +114,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "alpha_0_ub") {p->opt_->alpha_0_ub_ = std::stod(value); return;}
   if (name == "sigma_b_lb") {p->opt_->sigma_b_lb_ = std::stod(value); return;}
   if (name == "sigma_b_ub") {p->opt_->sigma_b_ub_ = std::stod(value); return;}
+  if (name == "invasive_thres_lb") {p->opt_->invasive_thres_lb_ = std::stod(value); return;}
+  if (name == "invasive_thres_ub") {p->opt_->invasive_thres_ub_ = std::stod(value); return;}
   if (name == "ox_consumption_lb") {p->opt_->ox_consumption_lb_ = std::stod(value); return;}
   if (name == "ox_consumption_ub") {p->opt_->ox_consumption_ub_ = std::stod(value); return;}
   if (name == "ox_source_lb") {p->opt_->ox_source_lb_ = std::stod(value); return;}
@@ -133,6 +135,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "sigma_ox_source") {p->opt_->sigma_cma_ox_source_ = std::stod(value); return;}
   if (name == "sigma_beta_0") {p->opt_->sigma_cma_beta_0_ = std::stod(value); return;}
   if (name == "sigma_ox_inv") {p->opt_->sigma_cma_ox_inv_ = std::stod(value); return;}
+  if (name == "sigma_invasive_thres") {p->opt_->sigma_cma_invasive_thres_ = std::stod(value); return;}
   if (name == "lbfgs_vectors") {p->opt_->lbfgs_vectors_ = std::stoi(value); return;}
   if (name == "lbfgs_scale_type") {p->opt_->lbfgs_scale_type_ = value; return;}
   if (name == "lbfgs_scale_hist") {p->opt_->lbfgs_scale_hist_ = std::stoi(value); return;}
@@ -150,6 +153,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "init_ox_source") {p->tu_->ox_source_ = std::stod(value); return;} 
   if (name == "init_beta_0") {p->tu_->beta_0_ = std::stod(value); return;} 
   if (name == "init_ox_inv") {p->tu_->ox_inv_ = std::stod(value); return;} 
+  if (name == "init_invasive_thres") {p->tu_->invasive_thres_ = std::stod(value); return;} 
   if (name == "nt_inv") {p->tu_->nt_ = std::stoi(value); return;}
   if (name == "dt_inv") {p->tu_->dt_ = std::stod(value); return;}
   if (name == "k_gm_wm") {p->tu_->k_gm_wm_ratio_ = std::stod(value); return;}
@@ -267,6 +271,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "ox_source_data") {a->syn_->ox_source_ =std::stod(value); return;}
   if (name == "beta_0_data") {a->syn_->beta_0_ =std::stod(value); return;}
   if (name == "ox_inv_data") {a->syn_->ox_inv_ =std::stod(value); return;}
+  if (name == "invasive_thres_data") {a->syn_->invasive_thres_ =std::stod(value); return;}
   if (name == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
   if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
   if (name == "testcase") {a->syn_->testcase_ = std::stod(value); return;}
@@ -274,6 +279,9 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "output_dir") {p->tu_->writepath_ = value; return;}
   if (name == "input_dir") {p->tu_->readpath_ = value; return;}
   if (name == "d1_path") {a->path_->data_t1_ = value; return;}
+  if (name == "d1_en_path") {a->path_->data_en_t1_ = value; return;}
+  if (name == "d1_nec_path") {a->path_->data_nec_t1_ = value; return;}
+  if (name == "d1_ed_path") {a->path_->data_ed_t1_ = value; return;}
   if (name == "d0_path") {a->path_->data_t0_ = value; return;}
   if (name == "a_seg_path") {a->path_->seg_ = value; return;}
   if (name == "a_wm_path") {a->path_->wm_ = value; return;}

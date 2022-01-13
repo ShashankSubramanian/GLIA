@@ -1081,6 +1081,9 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   // read or generate data, sets and applies observation operator
   ierr = readPatient(); CHKERRQ(ierr);
   ierr = setupData(); CHKERRQ(ierr);
+  ierr = VecCopy(data_en_t1_, tumor_->en_t_); CHKERRQ(ierr);  
+  ierr = VecCopy(data_nec_t1_, tumor_->nec_t_); CHKERRQ(ierr);
+  ierr = VecCopy(data_ed_t1_, tumor_->ed_t_); CHKERRQ(ierr);
 
   // if TIL is given as parameterization Phi(p): set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
@@ -1127,13 +1130,13 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   if (!warmstart_p_) {
     ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
   }
-  
+  /*
   tumor_->data_species_.insert(std::pair<std::string, Vec>("proliferative", tumor_->species_["proliferative"]));
   tumor_->data_species_.insert(std::pair<std::string, Vec>("infilterative", tumor_->species_["infilterative"]));
   tumor_->data_species_.insert(std::pair<std::string, Vec>("necrotic", tumor_->species_["necrotic"]));
   tumor_->data_species_.insert(std::pair<std::string, Vec>("oxygen", tumor_->species_["oxygen"]));
   tumor_->data_species_.insert(std::pair<std::string, Vec>("edema", tumor_->species_["edema"]));
-  
+  */ 
   PetscFunctionReturn(ierr);
 }
 
