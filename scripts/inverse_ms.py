@@ -13,17 +13,20 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 256                           # grid resolution in each dimension
-p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms2/');                          # results path
+p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms/');                          # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['patient_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
-p['a_seg_path'] = os.path.join(code_dir, 'results/forward_ms1/seg_t[100].nii.gz')
-p['p_seg_path'] = os.path.join(code_dir, 'results/forward_ms1/seg_t[100].nii.gz')
+p['a_seg_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/seg_t[0].nii.gz')
+p['p_seg_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/seg_t[0].nii.gz')
 p['a_gm_path'] = ""
 p['a_wm_path'] = ""
 p['a_csf_path'] = ""
 p['a_vt_path'] = ""
-p['d1_path'] = os.path.join(code_dir, 'results/forward_ms1/c_t[100].nii.gz');
-p['d0_path'] = os.path.join(code_dir, 'results/forward_ms1/c_t[0].nii.gz')
+p['d1_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/c_t[40].nii.gz');
+p['d1_nec_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/n_t[40].nii.gz');
+p['d1_ed_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/ed_t[40].nii.gz');
+p['d1_en_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/p_t[40].nii.gz');
+p['d0_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/c_t[0].nii.gz')
 p['mri_path'] = ""
 
 
@@ -41,9 +44,9 @@ p['user_cms'] = [(132,69,148,0.8),(132,64,148,0.5),(132,69,144,0.3)]      # loca
 p['regularization'] = "L2"
 
 ####### tumor params for synthetic data
-p['init_gamma'] = 2.0E4
-p['init_rho'] = 8.0
-p['init_k'] = 0.02
+p['init_gamma'] = 5.0E4
+p['init_rho'] = 5.0
+p['init_k'] = 0.05
 p['init_ox_hypoxia'] = 0.2
 p['init_death_rate'] = 0.6
 p['init_alpha_0'] = 0.2
@@ -52,11 +55,11 @@ p['init_ox_source'] = 40.0
 p['init_beta_0'] = 0.1
 p['init_sigma_b'] = 0.9
 p['init_ox_inv'] = 0.7
+p['obs_threshold_1'] = 0.005
 
-
-p['gamma_lb'] = 0
+p['gamma_lb'] = 1E4
 p['gamma_ub'] = 20E4
-p['rho_lb'] = 0 
+p['rho_lb'] = 1.0 
 p['rho_ub'] = 13.0
 p['kappa_lb'] = 0.005 
 p['kappa_ub'] = 0.4
@@ -78,7 +81,7 @@ p['ox_inv_lb'] = 0.001
 p['ox_inv_ub'] = 1.0
 
 p['ratio_i0_c0'] = 0.1
-p['sigma_gamma'] = 3E4
+p['sigma_gamma'] = 5E4
 p['sigma_rho'] = 3.0
 p['sigma_k'] = 0.1
 p['sigma_ox_hypoxia'] = 0.25
@@ -95,8 +98,8 @@ p['prediction'] = 0
 p['k_gm_wm'] = 0.0                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
 
-p['nt_inv'] = 100
-p['dt_inv'] = 0.01
+p['nt_inv'] = 40
+p['dt_inv'] = 0.025
 p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 
 ############### === define run configuration if job submit is needed; else run from results folder directly
@@ -104,7 +107,7 @@ r['code_path'] = code_dir;
 r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
 r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
 r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
-
+r['wtime_h'] = 48
 ###############=== write config to write_path and submit job
 par.submit(p, r, submit_job, use_gpu);
 

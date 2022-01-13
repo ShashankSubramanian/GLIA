@@ -81,7 +81,9 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['sigma_b_lb'] = 0.001             # lower bound of trans thres i to p
     p['sigma_b_ub'] = 1.0               # upper bound of trans thres i to p
     p['ox_inv_lb'] = 0.001              # lower bound of invasive oxygen thres 
-    p['ox_inv_ub'] = 1.0                # upper bound of invasive oxygen thres  
+    p['ox_inv_ub'] = 1.0                # upper bound of invasive oxygen thres 
+    p['invasive_thres_lb'] = 0.001      # lower bound of invasive threshold for edema
+    p['invasive_thres_ub'] = 1.0        # upper bound of invasive threshold for edema
     p['sigma_gamma'] = 3E4              # init sigma of gamma for cmaes
     p['sigma_rho'] = 3.0                # init sigma of rho for cmaes
     p['sigma_k'] = 0.1                  # init sigma of kappa for cmaes
@@ -93,6 +95,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['sigma_beta_0'] = 0.25            # init sigma of beta_0 for cmaes
     p['sigma_thres'] = 0.9              # init sigma of sigma_b_ for cmaes
     p['sigma_ox_inv'] = 0.7             # init sigma of invasive oxygen thres for cmaes
+    p['sigma_invasive_thres'] = 0.2     # init sigma of invasive threshold for edema 
     p['lbfgs_vectors'] = 10             # number of vectors for lbfgs update
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
@@ -114,7 +117,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['init_ox_source'] = 55.0          # initial guess ox_source (oxygen supply)
     p['init_beta_0'] = 0.02             # initial guess beta_0 (trans rate from i to p)
     p['init_sigma_b'] = 0.9             # initial guess sigma_b (trans thres from i to p)
-    p['init_ox_inv'] = 0.7             # initial guess ox_inv (invasive oxygen)
+    p['init_ox_inv'] = 0.7              # initial guess ox_inv (invasive oxygen)
+    p['init_invasive_thres'] = 0.02     # initial guess invasive threshold for edema         
     p['nt_inv'] = 40                    # number time steps
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
@@ -163,6 +167,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['beta_0_data'] = 0.02
     p['sigma_b_data'] = 0.9
     p['ox_inv_data'] = 0.7
+    p['invasive_thres_data'] = 0.01     # invasive threshold for edema
     p['nt_data'] = 25
     p['dt_data'] = 0.04
     p['testcase'] = 0                   # 0: brain single focal synthetic
@@ -175,6 +180,9 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['output_dir'] = r['code_path'] + '/results/';
     p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
     p['d0_path'] = ""                   # path to initial condition for tumor
+    p['d1_en_path'] = ""                # path to enhacing tumor of d1                  
+    p['d1_nec_path'] = ""               # path to nec tumor 
+    p['d1_ed_path'] = ""                # path to edema of tumor  
     p['a_seg_path'] = ""                # paths to atlas material properties
     p['a_wm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/white_matter.nc'
     p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/gray_matter.nc'
@@ -312,7 +320,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
         f.write("k_gm_wm=" + str(p['k_gm_wm']) + "\n");
         f.write("r_gm_wm=" + str(p['r_gm_wm']) + "\n");
-        f.write("ratio_i0_c0" + str(p['ratio_i0_c0']) + "\n");
+        f.write("ratio_i0_c0=" + str(p['ratio_i0_c0']) + "\n");
 
         f.write("\n");
         f.write("### data" + "\n");
@@ -368,6 +376,12 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("### paths" + "\n");
         f.write("output_dir=" + str(p['output_dir']) + "\n");
         f.write("d1_path=" + str(p['d1_path']) + "\n");
+        if p['d1_en_path'] != "":
+          f.write("d1_en_path=" + str(p['d1_en_path']) + "\n");
+        if p['d1_nec_path'] != "":
+          f.write("d1_nec_path=" + str(p['d1_nec_path']) + "\n");
+        if p['d1_ed_path'] != "":
+          f.write("d1_ed_path=" + str(p['d1_ed_path']) + "\n"); 
         f.write("d0_path=" + str(p['d0_path']) + "\n");
         f.write("a_seg_path=" + str(p['a_seg_path']) + "\n");
         f.write("a_wm_path=" + str(p['a_wm_path']) + "\n");
@@ -468,6 +482,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
             run_params['queue'] = 'skx-normal'
         elif run_params['compute_sys'] == 'longhorn':
             run_params['queue'] = 'v100'
+            #run_params['queue'] = 'development'
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'v100'
         elif run_params['compute_sys'] == 'frontera':
