@@ -43,7 +43,7 @@ __global__ void conserveHealthyTissues (ScalarType *gm_ptr, ScalarType *wm_ptr, 
 	}
 }
 
-
+/*
 __global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -56,17 +56,34 @@ __global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, Scal
 		m_ptr[i] = rho_ptr[i] * (1 / (1 + exp(-100 * (ox_ptr[i] - ox_hypoxia))));
 	}
 }
+*/
 
-__global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres, int64_t sz) {
+
+__global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz, ScalarType ox_inv) {
+	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+  ScalarType ox_mit = (ox_hypoxia + ox_inv)/2;
+	if (i < sz) {
+		if (ox_ptr[i] > ox_inv) m_ptr[i] = rho_ptr[i];
+    if (ox_ptr[i] <= ox_inv && ox_ptr[i] >= ox_mit) m_ptr[i] = rho_ptr[i] * (ox_ptr[i] - ox_mit) / (ox_inv - ox_mit);
+    if (ox_ptr[i] <= ox_mit) m_ptr[i] = 0;
+		//m_ptr[i] = rho_ptr[i] * (1 / (1 + exp(-100 * (ox_ptr[i] - ox_hypoxia))));
+	}
+}
+
+__global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType sigma_b, int64_t sz) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
 		// alpha_ptr[i] = alpha_0 * 0.5 * (1 + tanh (500 * (ox_inv - ox_ptr[i])));
   //       beta_ptr[i] = beta_0 * 0.5 * (1 + tanh (500 * (thres - p_ptr[i] - i_ptr[i]))) * ox_ptr[i];
 		alpha_ptr[i] = alpha_0 * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
-        beta_ptr[i] = beta_0 * ox_ptr[i];
+    //    beta_ptr[i] = beta_0 * ox_ptr[i];
+    beta_ptr[i] = beta_0 * ox_ptr[i] * (1 / (1 + exp(100 * (i_ptr[i] + p_ptr[i] - sigma_b))));
 	}
 }
+
+
 
 __global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
@@ -144,19 +161,23 @@ void conserveHealthyTissuesCuda (ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarT
 	cudaCheckKernelError ();
 }
 
-void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz) {
+void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType *rho_ptr, ScalarType ox_hypoxia, int64_t sz, ScalarType ox_inv) {
 	int n_th = N_THREADS;
 
-	computeReactionRate <<< (sz + n_th - 1) / n_th, n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_hypoxia, sz);
+	computeReactionRate <<< (sz + n_th - 1) / n_th, n_th >>> (m_ptr, ox_ptr, rho_ptr, ox_hypoxia, sz, ox_inv);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
-void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType thres, int64_t sz) {
+
+
+
+
+void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType sigma_b, int64_t sz) {
 	int n_th = N_THREADS;
 
-	computeTransition <<< (sz + n_th - 1) / n_th, n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, thres, sz);
+	computeTransition <<< (sz + n_th - 1) / n_th, n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, sigma_b, sz);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();

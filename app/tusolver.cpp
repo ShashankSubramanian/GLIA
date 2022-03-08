@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
   PetscFunctionBegin;
 
   ierr = PetscInitialize(&argc, &argv, reinterpret_cast<char*>(NULL), reinterpret_cast<char*>(NULL)); CHKERRQ(ierr);
+  ierr = tuMSG("### ----------------------------------------------------------------------------------------------------- ###"); CHKERRQ (ierr);
 
   { // begin local scope for all shared pointers (all MPI/PETSC finalize should be out of this scope to allow for
     // safe destruction of all petsc vectors

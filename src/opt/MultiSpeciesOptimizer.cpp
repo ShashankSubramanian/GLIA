@@ -23,9 +23,9 @@ PetscErrorCode MultiSpeciesOptimizer::initialize(
 	std::stringstream ss;
 
   n_g_ = (params->opt_->invert_mass_effect_) ? 1 : 0; 
-	n_inv_ = params->get_nr() + params->get_nk() + 8 + n_g_; // # of inverting parameters: kappa, rho, forcing factor, gamma(death rate), alpha_0, ox_consumption, ox 
+	n_inv_ = params->get_nr() + params->get_nk() + 9 + n_g_; // # of inverting parameters: kappa, rho, forcing factor, gamma(death rate), alpha_0, ox_consumption, ox 
 	// number of dofs
-	ss << " Initializing multi-species optimizer with =" << n_inv_ << " = " << params-> get_nr() << " + " << params->get_nk() << " + 5 dof."; 
+	ss << " Initializing multi-species optimizer with =" << n_inv_ << " = " << params-> get_nr() << " + " << params->get_nk() << " + 6 dof."; 
   counter = 0;
 	ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
 	// initialize super class 
@@ -36,54 +36,56 @@ PetscErrorCode MultiSpeciesOptimizer::initialize(
   cma_ctx_->params_->opt_->cma_scales_array_[0] = params->opt_->gamma_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[1] = params->opt_->rho_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[2] = params->opt_->k_scale_;
-  cma_ctx_->params_->opt_->cma_scales_array_[3] = params->opt_->death_rate_scale_;
-  cma_ctx_->params_->opt_->cma_scales_array_[4] = params->opt_->ox_hypoxia_scale_;
+  cma_ctx_->params_->opt_->cma_scales_array_[3] = params->opt_->ox_hypoxia_scale_;
+  cma_ctx_->params_->opt_->cma_scales_array_[4] = params->opt_->death_rate_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[5] = params->opt_->alpha_0_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[6] = params->opt_->ox_consumption_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[7] = params->opt_->ox_source_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[8] = params->opt_->beta_0_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[9] = params->opt_->sigma_b_scale_;
   cma_ctx_->params_->opt_->cma_scales_array_[10] = params->opt_->ox_inv_scale_;
-  cma_ctx_->params_->opt_->cma_scales_array_[11] = params->opt_->ox_inv_scale_;
-
+  cma_ctx_->params_->opt_->cma_scales_array_[11] = params->opt_->invasive_thres_scale_;
    
   cma_ctx_->params_->opt_->cma_lb_array_[0] = params->opt_->gamma_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[1] = params->opt_->rho_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[2] = params->opt_->k_lb_;
-  cma_ctx_->params_->opt_->cma_lb_array_[3] = params->opt_->death_rate_lb_;
-  cma_ctx_->params_->opt_->cma_lb_array_[4] = params->opt_->ox_hypoxia_lb_;
+  cma_ctx_->params_->opt_->cma_lb_array_[3] = params->opt_->ox_hypoxia_lb_;
+  cma_ctx_->params_->opt_->cma_lb_array_[4] = params->opt_->death_rate_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[5] = params->opt_->alpha_0_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[6] = params->opt_->ox_consumption_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[7] = params->opt_->ox_source_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[8] = params->opt_->beta_0_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[9] = params->opt_->sigma_b_lb_;
   cma_ctx_->params_->opt_->cma_lb_array_[10] = params->opt_->ox_inv_lb_;
+  cma_ctx_->params_->opt_->cma_lb_array_[11] = params->opt_->invasive_thres_lb_;
 
 
   cma_ctx_->params_->opt_->cma_ub_array_[0] = params->opt_->gamma_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[1] = params->opt_->rho_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[2] = params->opt_->k_ub_;
-  cma_ctx_->params_->opt_->cma_ub_array_[3] = params->opt_->death_rate_ub_;
-  cma_ctx_->params_->opt_->cma_ub_array_[4] = params->opt_->ox_hypoxia_ub_;
+  cma_ctx_->params_->opt_->cma_ub_array_[3] = params->opt_->ox_hypoxia_ub_;
+  cma_ctx_->params_->opt_->cma_ub_array_[4] = params->opt_->death_rate_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[5] = params->opt_->alpha_0_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[6] = params->opt_->ox_consumption_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[7] = params->opt_->ox_source_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[8] = params->opt_->beta_0_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[9] = params->opt_->sigma_b_ub_;
   cma_ctx_->params_->opt_->cma_ub_array_[10] = params->opt_->ox_inv_ub_;
+  cma_ctx_->params_->opt_->cma_ub_array_[11] = params->opt_->invasive_thres_ub_;
  
   
   cma_ctx_->params_->opt_->cma_variance_array_[0] = params->opt_->sigma_cma_gamma_;
   cma_ctx_->params_->opt_->cma_variance_array_[1] = params->opt_->sigma_cma_rho_;
   cma_ctx_->params_->opt_->cma_variance_array_[2] = params->opt_->sigma_cma_k_;
-  cma_ctx_->params_->opt_->cma_variance_array_[3] = params->opt_->sigma_cma_death_rate_;
-  cma_ctx_->params_->opt_->cma_variance_array_[4] = params->opt_->sigma_cma_ox_hypoxia_;
+  cma_ctx_->params_->opt_->cma_variance_array_[3] = params->opt_->sigma_cma_ox_hypoxia_;
+  cma_ctx_->params_->opt_->cma_variance_array_[4] = params->opt_->sigma_cma_death_rate_;
   cma_ctx_->params_->opt_->cma_variance_array_[5] = params->opt_->sigma_cma_alpha_0_;
   cma_ctx_->params_->opt_->cma_variance_array_[6] = params->opt_->sigma_cma_ox_consumption_;
   cma_ctx_->params_->opt_->cma_variance_array_[7] = params->opt_->sigma_cma_ox_source_;
   cma_ctx_->params_->opt_->cma_variance_array_[8] = params->opt_->sigma_cma_beta_0_;
   cma_ctx_->params_->opt_->cma_variance_array_[9] = params->opt_->sigma_cma_sigma_b_;
   cma_ctx_->params_->opt_->cma_variance_array_[10] = params->opt_->sigma_cma_ox_inv_;
+  cma_ctx_->params_->opt_->cma_variance_array_[11] = params->opt_->sigma_cma_invasive_thres_;
  
   
 	PetscFunctionReturn(ierr);
@@ -102,7 +104,6 @@ PetscErrorCode MultiSpeciesOptimizer::setInitialGuess(Vec x_init) {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
   if (!initialized_) {
-    ierr = tuMSGwarn("Error: Optimizer not initialized."); CHKERRQ(ierr);
     PetscFunctionReturn(ierr);
   }
   int procid, nprocs;
@@ -112,18 +113,17 @@ PetscErrorCode MultiSpeciesOptimizer::setInitialGuess(Vec x_init) {
   int nr = cma_ctx_->params_->tu_->nr_;
   int np = cma_ctx_->params_->tu_->np_;
   int in_size;
-  ierr = VecGetSize(x_init, &in_size); CHKERRQ(ierr);
+  //ierr = VecGetSize(x_init, &in_size); CHKERRQ(ierr);
   ScalarType *init_ptr, *x_ptr;
   
-  if(xin_ != nullptr) {ierr = VecDestroy(&xin_); CHKERRQ(ierr);}
   if(xout_ != nullptr) {ierr = VecDestroy(&xout_); CHKERRQ(ierr);}
   
   ss << " Setting initial guess: ";
-  int off = 0, off_in = 0;
+  //int off = 0, off_in = 0;
   PetscReal ic_max = 0.;
-  // 1. TIL not given as parameterozation
   if (cma_ctx_->params_->tu_->use_c0_) {
-    ierr = VecCreateSeq (PETSC_COMM_SELF, nk + nr + n_g_ + 8, &xin_); CHKERRQ (ierr);
+    
+    ierr = VecCreateSeq (PETSC_COMM_SELF, nk + nr + n_g_ + 9, &xin_); CHKERRQ (ierr);
     ierr = VecMax(cma_ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ(ierr);
     ss << "TIL as d0 (max=" << ic_max << "); ";
     if (cma_ctx_->params_->opt_->rescale_init_cond_){
@@ -134,17 +134,18 @@ PetscErrorCode MultiSpeciesOptimizer::setInitialGuess(Vec x_init) {
       //ss << "rescaled; ";
     }
     // copy back to data
-    ierr = VecCopy(cma_ctx_->tumor_->c_0_, data_->dt0()); CHKERRQ(ierr);
-    off = (in_size > n_g_ + nr + nk) ? np : 0; // offset in x_init vec
-    off_in = 0;
+    //ierr = VecCopy(cma_ctx_->tumor_->c_0_, data_->dt0()); CHKERRQ(ierr);
+    //off = (in_size > n_g_ + nr + nk) ? np : 0; // offset in x_init vec
+    //off_in = 0;
   // 2. TIL given as parameterization 
   } else {
 
-    ierr = VecCreateSeq (PETSC_COMM_SELF, nr + np + nk + n_g_ + 8, &xin_); CHKERRQ(ierr);
-    std::cout << "# inv params = " << np+nk + n_g_ + 8 << " \n\n";
+    ierr = VecCreateSeq (PETSC_COMM_SELF, nr + np + nk + n_g_ + 9, &xin_); CHKERRQ(ierr);
+    std::cout << "# inv params = " << np+nk + n_g_ + 9 << " \n\n";
     std::cout << "# k params = " << nk << " \n\n";
     std::cout << "# p params = " << np << " \n\n";
     std::cout << "# r params = " << nr << " \n\n";
+
     ierr = setupVec (xin_, SEQ); CHKERRQ(ierr);
     ierr = VecSet (xin_, 0.0); CHKERRQ(ierr);
     ierr = VecCopy(x_init, xin_); CHKERRQ(ierr);
@@ -153,53 +154,42 @@ PetscErrorCode MultiSpeciesOptimizer::setInitialGuess(Vec x_init) {
     ierr = VecMax(cma_ctx_->tumor_->c_0_, NULL, &ic_max); CHKERRQ(ierr);
     ss << "TIL as Phi(p) (max =" << ic_max << "); ";
     if (cma_ctx_->params_->tu_->write_p_checkpoint_) {writeCheckpoint(xin_, cma_ctx_->tumor_->phi_, cma_ctx_->params_->tu_->writepath_, std::string("til-init"));}
-    off = off_in = np;
+    //off = off_in = np;
   } 
 
   // === gamma, rho, kappa, ox_hypoxia, death_rate, alpha_0, ox_consumption, ox_source, beta_0
-  ierr = VecGetArray(x_init, &init_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(xin_, &x_ptr); CHKERRQ(ierr);
 
 
   x_ptr[0] = cma_ctx_->params_->tu_->forcing_factor_;
   x_ptr[1] = cma_ctx_->params_->tu_->rho_; 
   x_ptr[2] = cma_ctx_->params_->tu_->k_ ;
-  x_ptr[3] = cma_ctx_->params_->tu_->death_rate_ ; 
-  x_ptr[4] = cma_ctx_->params_->tu_->ox_hypoxia_; 
+  x_ptr[3] = cma_ctx_->params_->tu_->ox_hypoxia_; 
+  x_ptr[4] = cma_ctx_->params_->tu_->death_rate_ ; 
   x_ptr[5] = cma_ctx_->params_->tu_->alpha_0_ ;
   x_ptr[6] = cma_ctx_->params_->tu_->ox_consumption_ ;
   x_ptr[7] = cma_ctx_->params_->tu_->ox_source_; 
   x_ptr[8] = cma_ctx_->params_->tu_->beta_0_ ;
   x_ptr[9] = cma_ctx_->params_->tu_->sigma_b_ ;
   x_ptr[10] = cma_ctx_->params_->tu_->ox_inv_;
+  x_ptr[11] = cma_ctx_->params_->tu_->invasive_thres_;
 
-  gamma_init_ = x_ptr[0];
-  rho_init_ = x_ptr[1];
-  k_init_ = x_ptr[2];
-  ox_hypoxia_init_ = x_ptr[3];
-  death_rate_init_ = x_ptr[4];
-  alpha_0_init_ = x_ptr[5];
-  ox_consumption_init_ = x_ptr[6];
-  ox_source_init_ = x_ptr[7];
-  beta_0_init_ = x_ptr[8];
-  sigma_b_init_ = x_ptr[9];
-  ox_inv_init_ = x_ptr[10];
 
-  ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ(ierr);
-  ierr = VecRestoreArray(x_init, &init_ptr); CHKERRQ(ierr);
 
-  ss << " gamma_init = " << gamma_init_ << " ; rho_init = " << rho_init_ << " ;k_init = " << k_init_;
+
+  ss << " gamma_init = " << x_ptr[0] << " ; rho_init = " << x_ptr[1] << " ;k_init = " << x_ptr[2] ;
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
   
-  ss << " ox_hypoxia_init = " << ox_hypoxia_init_ << " ; deathrate_init = " << death_rate_init_ << " ;alpha_0_init = " << alpha_0_init_;
+  ss << " ox_hypoxia_init = " << x_ptr[3] << " ; deathrate_init = " << x_ptr[4] << " ;alpha_0_init = " << x_ptr[5];
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
-  ss << " ox_consumption_init = " << ox_consumption_init_ << " ; ox_source_init = " << ox_source_init_ << " ;beta_0_init = " << beta_0_init_;
-  ss << " sigma_b_init = " << sigma_b_init_ << " ; ox_inv_init = " << ox_inv_init_ ;
+  ss << " ox_consumption_init = " << x_ptr[6] << " ; ox_source_init = " << x_ptr[7] << " ;beta_0_init = " << x_ptr[8];
+  ss << " sigma_b_init = " << x_ptr[9] << " ; ox_inv_init = " << x_ptr[10]  << " ; invasive_thres_init = " << x_ptr[11];
     ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
 
 
   // create xout_ vec
+  ierr = VecRestoreArray(xin_, &x_ptr); CHKERRQ(ierr);
   ierr = VecDuplicate(xin_, &xout_); CHKERRQ(ierr);
   ierr = VecSet(xout_, 0.0); CHKERRQ(ierr);
 
@@ -227,6 +217,12 @@ PetscErrorCode MultiSpeciesOptimizer::runforward(const double *xtest_, double* J
 
   ierr = cma_ctx_->derivative_operators_->evaluateObjective(&J_solve, x_petsc, cma_ctx_->data); CHKERRQ(ierr); 
   *J = J_solve;
+  
+
+  //ierr = VecDestroy(x_petsc_ptr); CHKERRQ(ierr);
+  ierr = VecDestroy(&x_petsc); CHKERRQ(ierr);
+
+
   PetscFunctionReturn(ierr);
 
 }
@@ -259,9 +255,9 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   cma_ctx_->data = data_; 
   n_g_ = (cma_ctx_->params_->opt_->invert_mass_effect_) ? 1 : 0;
   TU_assert(n_inv_ == nr + nk + n_g_ + 6, "MultiSpecies : n_inv is inconsistent.");
- 
+   
   if (cma_ctx_->c0_old == nullptr) {
-    ierr = VecDuplicate(data_->dt1(), &cma_ctx_->c0_old); CHKERRQ(ierr);
+    ierr = VecDuplicate(cma_ctx_->tumor_->c_0_, &cma_ctx_->c0_old); CHKERRQ(ierr);
   }
 
   ierr = VecSet (cma_ctx_->c0_old, 0.0); CHKERRQ(ierr);
@@ -273,30 +269,16 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
     ierr = VecDestroy(&cma_ctx_->x_old); CHKERRQ(ierr);
     cma_ctx_->x_old = nullptr;
   }
-  ierr = VecCreateSeq (PETSC_COMM_SELF, n_inv_, &xrec_); CHKERRQ(ierr);
-  ierr = setupVec (xrec_, SEQ); CHKERRQ(ierr);
-  ierr = VecSet (xrec_, 0.0); CHKERRQ(ierr); 
 
-
-
-  //ierr = allocateObjects(); CHKERRQ(ierr);
-
-  //ierr = VecDuplicate(xrec_, &cma_ctx_->x_old); CHKERRQ(ierr);
-  //TU_assert(xrec_ != nullptr, "MultiSpeciesOptimizer requires non-null xrec_ vector to be set. ");
-  //TU_assert(cma_ctx_->x_old != nullptr, "MultiSpeciesOptimizer requires non-null x_old vector to be set. ");
-  //ierr = VecCopy(xrec_, cma_ctx_->x_old); CHKERRQ(ierr);
 
   // initial guess 
 
-  PetscReal *xin_ptr, *xout_ptr, *x_ptr; int in_size;
+  PetscReal *xin_ptr, *xout_ptr; int in_size;
   //ierr = VecGetSize(xin_, &in_size); CHKERRQ(ierr);
-  ierr = VecGetArray(xrec_, &x_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(xin_, &xin_ptr); CHKERRQ(ierr);
  
-  for(int i = 0; i < n_inv_; ++i) x_ptr[i] = xin_ptr[i];
+  //for(int i = 0; i < n_inv_; ++i) x_ptr[i] = xin_ptr[i];
   
-  ierr = VecRestoreArray(xin_, &xin_ptr); CHKERRQ(ierr);
-  ierr = VecRestoreArray(xrec_, &x_ptr); CHKERRQ(ierr);
   ierr = tuMSGstd(""); CHKERRQ(ierr);
   ierr = tuMSG ("### MultiSpecies inversion : initial guess ###"); CHKERRQ(ierr);
   ierr = tuMSGstd("### ----------------------- ###"); CHKERRQ(ierr);
@@ -336,9 +318,6 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   */
 
    
-  std::vector<double> x0(n_inv_, 1.0);
-  ierr = VecGetArray(xin_, &xin_ptr); CHKERRQ(ierr);
-
  
   int dim = n_inv_;
   
@@ -346,12 +325,12 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   double tmp = 0.0;
 
   std::vector<double> xcma_ptr(n_inv_);
-
   std::vector<double> sigma(n_inv_, 1.0);
   
-  int lambda = -1;
+  //int lambda = -1;
 
   for (int i=0; i<n_inv_; i++) { 
+    //std::cout << " problem is " << i;
     xcma_ptr[i] = xin_ptr[i] / cma_ctx_->params_->opt_->cma_scales_array_[i];
     sigma[i] = cma_ctx_->params_->opt_->cma_variance_array_[i] / cma_ctx_->params_->opt_->cma_scales_array_[i];  
     lbounds[i] = cma_ctx_->params_->opt_->cma_lb_array_[i] / cma_ctx_->params_->opt_->cma_scales_array_[i];
@@ -366,9 +345,9 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
     bool outofbounds = false;
 
     for (int i= 0; i < n_inv_; i++) {
-      if (xeval_ptr[i] < lbounds[i] || xeval_ptr[i] > ubounds[i] || xeval_ptr[10] < xeval_ptr[4]) outofbounds= true;
+      if (xeval_ptr[i] < lbounds[i] || xeval_ptr[i] > ubounds[i] || xeval_ptr[10] < xeval_ptr[3]) outofbounds= true;
       if (outofbounds) {
-        std::cout << "----------------  Out of bounds for p[" << i << "] " << xeval_ptr[10] << " " << xeval_ptr[4] << " ----------------- \n";
+        std::cout << "----------------  Out of bounds for p[" << i << "] " << xeval_ptr[10] << " " << xeval_ptr[3] << " ----------------- \n";
         break;
       }
     }
@@ -388,13 +367,11 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   }
 
    /* 
-  //GenoPheno<pwqBoundStrategy> gp(lbounds,ubounds,dim);
 
   //GenoPheno<pwqBoundStrategy,linScalingStrategy> gp(lbounds,ubounds,dim); 
   //GenoPheno<pwqBoundStrategy,linScalingStrategy> gp(&lbounds.at(0),&ubounds.at(0),dim); 
   //GenoPheno<pwqBoundStrategy> gp(lbounds,ubounds, dim); 
   std::cout << "best solution: \n";
-  CMAParameters<GenoPheno<pwqBoundStrategy>> cmaparams(xcma_ptr,sigma,-1,0,gp);
   std::cout << "best solution: \n";
   cmaparams.set_algo(aCMAES);
   std::cout << "best solution: \n";
@@ -409,7 +386,6 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   /* 
   //CMAParameters<GenoPheno<pwqBoundStrategy,linScalingStrategy>> cmaparams(dim, &xcma_ptr.front(), sigma,-1,0,gp);
   std::cout << "best solution: \n";
-  //ESOptimizer<CMAStrategy<CovarianceUpdate>,CMAParameters<>> cmaes<GenoPheno<pwqBoundStrategy>>(runtest,cmaparams);
   CMASolutions cmasols = cmaes<GenoPheno<pwqBoundStrategy,linScalingStrategy>>(runforward,cmaparams);
   std::cout << "best solution: \n";
   Eigen::VectorXd bestparameters = gp.pheno(cmasols.get_best_seen_candidate().get_x_dvec());
@@ -419,14 +395,36 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   std::cout << std::endl;
   std::cout << "optimization took " << cmasols.elapsed_time() / 1000.0 << " seconds\n";
   */
-   
+
+  double sigma_tmp = 1.0;
+
+  // bound in CMA
+  GenoPheno<pwqBoundStrategy,linScalingStrategy> gp(lbounds,ubounds,dim);
+  CMAParameters<GenoPheno<pwqBoundStrategy,linScalingStrategy>> cmaparams(xcma_ptr,sigma_tmp,-1,0,gp);
+  cmaparams.set_algo(aCMAES);
+  CMASolutions cmasols = cmaes<GenoPheno<pwqBoundStrategy,linScalingStrategy>>(runforward,cmaparams);
+
+  //ESOptimizer<CMAStrategy<CovarianceUpdate>,CMAParameters<>> cmaes<GenoPheno<pwqBoundStrategy,linScalingStrategy>>(runtest,cmaparams);
+  //CMASolutions cmasols = cmaes<GenoPheno<pwqBoundStrategy>>(runforward,cmaparams);
+
+  std::cout << "best solution: ";
+  cmasols.print(std::cout,0,gp);
+  std::cout << std::endl;
+
+ 
+
+  // bound externally  
+  /*
   CMAParameters<> cmaparams(xcma_ptr, sigma);
   //CMASolutions cmasols = cmaes<>(runforward, cmaparams);
   ESOptimizer<CMAStrategy<CovarianceUpdate>,CMAParameters<>> cmaes(runforward,cmaparams);
   cmaes.optimize();
+  */
   
-  const double *xcma = cmaes.get_solutions().best_candidate().get_x_ptr();
+ 
+  const double *xcma; //= cmaes.get_solutions().best_candidate().get_x_ptr();
 
+  ierr = VecRestoreArray(xin_, &xin_ptr); CHKERRQ(ierr);
   
   ierr = VecCopy(xin_, xout_); CHKERRQ(ierr);
   ierr = VecGetArray(xout_, &xout_ptr); CHKERRQ(ierr);
@@ -448,6 +446,7 @@ PetscErrorCode MultiSpeciesOptimizer::solve() {
   cma_ctx_->params_->tu_->beta_0_ = xcma[8] * cma_ctx_->params_->opt_->cma_scales_array_[8];
   cma_ctx_->params_->tu_->sigma_b_ = xcma[9] * cma_ctx_->params_->opt_->cma_scales_array_[9];
   cma_ctx_->params_->tu_->ox_inv_ = xcma[10] * cma_ctx_->params_->opt_->cma_scales_array_[10];
+  cma_ctx_->params_->tu_->invasive_thres_ = xcma[11] * cma_ctx_->params_->opt_->cma_scales_array_[11];
    
   ierr = VecRestoreArray(xout_, &xout_ptr); CHKERRQ(ierr);
     

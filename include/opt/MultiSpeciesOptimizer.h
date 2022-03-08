@@ -28,17 +28,6 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
   virtual ~MultiSpeciesOptimizer() {};
  private:
   int n_g_;
-  ScalarType k_init_;
-  ScalarType rho_init_;
-  ScalarType gamma_init_;
-  ScalarType ox_hypoxia_init_;
-  ScalarType death_rate_init_;
-  ScalarType alpha_0_init_;
-  ScalarType ox_consumption_init_;
-  ScalarType ox_source_init_;
-  ScalarType beta_0_init_;
-  ScalarType sigma_b_init_;
-  ScalarType ox_inv_init_;
   
   ScalarType k_scale_;
   ScalarType rho_scale_;
@@ -51,6 +40,8 @@ class MultiSpeciesOptimizer : public CMAOptimizer {
   ScalarType beta_0_scale_;
   ScalarType sigma_b_scale_;
   ScalarType ox_inv_scale_;
+  ScalarType invasive_thres_scale_;
+
   int counter;
    
 };

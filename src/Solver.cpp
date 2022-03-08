@@ -909,8 +909,8 @@ PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators>
   params_->tu_->sigma_b_ = app_settings_->syn_->sigma_b_;
   params_->tu_->ox_consumption_ = app_settings_->syn_->ox_consumption_;
   params_->tu_->ox_source_ = app_settings_->syn_->ox_source_;
-  params_->tu_->beta_0_ = app_settings_->syn_->beta_0_;
   params_->tu_->ox_inv_ = app_settings_->syn_->ox_inv_;
+  params_->tu_->invasive_thres_ = app_settings_->syn_->invasive_thres_;
 
   PetscFunctionReturn(ierr);
 }
@@ -1081,11 +1081,18 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   // read or generate data, sets and applies observation operator
   ierr = readPatient(); CHKERRQ(ierr);
   ierr = setupData(); CHKERRQ(ierr);
+  
   ierr = VecCopy(data_en_t1_, tumor_->en_t_); CHKERRQ(ierr);  
   ierr = VecCopy(data_nec_t1_, tumor_->nec_t_); CHKERRQ(ierr);
   ierr = VecCopy(data_ed_t1_, tumor_->ed_t_); CHKERRQ(ierr);
 
-  // if TIL is given as parameterization Phi(p): set c(0), no phi apply in RD inversion
+  
+
+
+
+
+
+// if TIL is given as parameterization Phi(p): set c(0), no phi apply in RD inversion
   if(!has_dt0_) {
     // set gaussians from p_rec_ read and then apply phi
     ierr = initializeGaussians(); CHKERRQ(ierr);
@@ -1102,9 +1109,13 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
     ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
     p_rec_ = nullptr;
   }
+
+  //} else {
+  //  ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
+  //}
   int n_g = (params_->opt_->invert_mass_effect_) ? 1: 0;
   params_->opt_->use_multispec_obj_ = true;
-  n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 8;
+  n_inv_ = n_g +  params_->get_nk() + params_->get_nr() + 9;
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
   ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
 
@@ -1113,17 +1124,45 @@ PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOpe
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); 
   // reset p vec in tumor and pde_operators
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
- 
+
+  if (!app_settings_->path_->data_t0_.empty()) {
+    if (data_t0_ == nullptr) {
+      ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
+    }
+    ierr = dataIn(data_t0_, params_, app_settings_->path_->data_t0_); CHKERRQ(ierr);
+    ScalarType sig_data_t0 = params_->tu_->smoothing_factor_data_t0_ * 2 * M_PI / params_->grid_->n_[0];
+    if (params_->tu_->smoothing_factor_data_t0_ > 0) {
+      ierr = spec_ops_->weierstrassSmoother(data_t0_, data_t0_, params_, sig_data_t0); CHKERRQ(ierr);
+      ss << " smoothing c(0) with factor: " << params_->tu_->smoothing_factor_data_t0_ << ", and sigma: " << sig_data_t0;
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
+    }
+  } else {
+    data_t0_ = nullptr;
+  }
+
+  
   if (has_dt0_) {
-    ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
+    //ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
+    ierr = dataIn(tumor_->c_0_, params_, app_settings_->path_->data_t0_); CHKERRQ(ierr);
+    //ierr = VecCopy(data_t0_, tumor_->c_0_); CHKERRQ(ierr);
+    PetscReal ic_max = 0.;
+    ierr = VecMax(data_t0_, NULL, &ic_max); CHKERRQ(ierr);
+     ss << "TIL Solver as d0 (max=" << ic_max << "); ";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear();
   } else {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
   
+    
+
+ 
   // === create optimizer 
   cma_optimizer_ = std::make_shared<MultiSpeciesOptimizer>();
   ierr = cma_optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
-  //ierr = derivative_operators_->setMaterialProperties(p_gm_, p_wm_, p_vt_, tumor_); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
   
@@ -1158,49 +1197,36 @@ PetscErrorCode InverseMultiSpeciesSolver::run() {
   std::mt19937 eng(rd()); // seed the generator
   //std::uniform_real_distribution<> distg(0.1, 0.1); // define the range
   //std::uniform_real_distribution<> distg(5, 10); // define the range
-  std::uniform_real_distribution<> distg(0.5, 5); // define the range
-  if (params_->opt_->invert_mass_effect_) {
-    x_ptr[0] = params_->tu_->forcing_factor_;
-    x_ptr[1] = params_->tu_->rho_;  
-    x_ptr[2] = params_->tu_->k_;
-    x_ptr[3] = params_->tu_->ox_hypoxia_;
-    x_ptr[4] = params_->tu_->death_rate_;
-    x_ptr[5] = params_->tu_->alpha_0_;
-    x_ptr[6] = params_->tu_->ox_consumption_;
-    x_ptr[7] = params_->tu_->ox_source_;
-    x_ptr[8] = params_->tu_->beta_0_;
-  } else {
-
-    x_ptr[0] = params_->tu_->rho_;  
-    x_ptr[1] = params_->tu_->k_;
-    x_ptr[2] = params_->tu_->ox_hypoxia_;
-    x_ptr[3] = params_->tu_->death_rate_;
-    x_ptr[4] = params_->tu_->alpha_0_;
-    x_ptr[5] = params_->tu_->ox_consumption_;
-    x_ptr[6] = params_->tu_->ox_source_;
-    x_ptr[7] = params_->tu_->beta_0_;
-
-  }
+  //std::uniform_real_distribution<> distg(0.5, 5); // define the range
+	x_ptr[0] = params_->tu_->forcing_factor_;
+	x_ptr[1] = params_->tu_->rho_;  
+	x_ptr[2] = params_->tu_->k_;
+	x_ptr[3] = params_->tu_->ox_hypoxia_;
+	x_ptr[4] = params_->tu_->death_rate_;
+	x_ptr[5] = params_->tu_->alpha_0_;
+	x_ptr[6] = params_->tu_->ox_consumption_;
+	x_ptr[7] = params_->tu_->ox_source_;
+	x_ptr[8] = params_->tu_->beta_0_;
+	x_ptr[9] = params_->tu_->sigma_b_;
+	x_ptr[10] = params_->tu_->ox_inv_;
+	x_ptr[11] = params_->tu_->invasive_thres_;
+ 
+ 
+  ierr = tuMSGwarn(" Beginning MultiSpecies Inversion. "); CHKERRQ(ierr);
   // TODO: add the inversion for the ic coeffs
-  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
   cma_optimizer_->setData(data_); // set data before intiial guess
+
   ierr = cma_optimizer_->setInitialGuess(p_rec_); CHKERRQ(ierr);
-  ierr = tuMSGwarn(" ------------ pass 0 ------------ "); CHKERRQ(ierr);
   ierr = cma_optimizer_->solve(); CHKERRQ(ierr);
-  ierr = tuMSGwarn(" ------------ pass 1 ------------ "); CHKERRQ(ierr);
   ierr = VecView (p_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
  
   ierr = VecCopy(cma_optimizer_->getSolution(), p_rec_); CHKERRQ(ierr);
-  ierr = tuMSGwarn(" ------------- pass 2 ----------- "); CHKERRQ(ierr);
   
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
-  ierr = tuMSGwarn(" ------------- pass 3 ----------- "); CHKERRQ(ierr);
   ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tuMSGwarn(" ------------- pass 4 ----------- "); CHKERRQ(ierr);
   ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tuMSGwarn(" ------------- pass 5 ----------- "); CHKERRQ(ierr);
   //ierr = tumor_->velocity_->set(0.);
-  ierr = tuMSGwarn(" ------------- pass 6 ----------- "); CHKERRQ(ierr);
   
   PetscFunctionReturn(ierr);
 }  

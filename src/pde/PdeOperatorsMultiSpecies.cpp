@@ -27,7 +27,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate(Vec m) {
   ierr = vecGetArray(tumor_->species_["oxygen"], &ox_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->rho_->rho_vec_, &rho_ptr); CHKERRQ(ierr);
 #ifdef CUDA
-  computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_);
+  //computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_);
+  computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_, params_->tu_->ox_inv_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) m_ptr[i] = rho_ptr[i] * (1 / (1 + std::exp(-100 * (ox_ptr[i] - params_->tu_->ox_hypoxia_))));
 #endif
@@ -51,7 +52,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
   double self_exec_time = -MPI_Wtime();
 
   ScalarType *ox_ptr, *alpha_ptr, *beta_ptr, *p_ptr, *i_ptr;
-  ScalarType thres = params_->tu_->sigma_b_;
   ierr = vecGetArray(alpha, &alpha_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(beta, &beta_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->species_["oxygen"], &ox_ptr); CHKERRQ(ierr);
@@ -59,7 +59,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
   ierr = vecGetArray(tumor_->species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
 
 #ifdef CUDA
-  computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, thres, params_->grid_->nl_);
+  computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, params_->tu_->sigma_b_, params_->grid_->nl_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) {
     alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
@@ -243,7 +243,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   ScalarType dt = params_->tu_->dt_;
   int nt = params_->tu_->nt_;
 
+  std::stringstream s;
   params_->tu_->statistics_.nb_state_solves++;
+
 
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -252,22 +254,75 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
 
   ierr = displacement_old_->set(0); CHKERRQ(ierr);
   ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];
-
-  if (params_->tu_->model_ == 5) {
-    
+  
+  if (params_->tu_->model_ == 5 || params_->tu_->model_ ==6) {
+   
     ierr = VecCopy(tumor_->c_0_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
     ierr = VecCopy(tumor_->c_0_, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
     // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
     ierr = VecScale(tumor_->species_["infiltrative"], params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
-    ierr = VecScale(tumor_->species_["proliferative"], 1-params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
-    
+    ScalarType p0_c0_ratio_ = 1 - params_->tu_->i0_c0_ratio_;
+    ierr = VecScale(tumor_->species_["proliferative"], p0_c0_ratio_); CHKERRQ(ierr);
+ 
     ierr = VecSet(tumor_->species_["oxygen"], 1.); CHKERRQ(ierr);
+    ierr = VecSet(tumor_->species_["necrotic"], 0.); CHKERRQ(ierr);
+    ierr = VecSet(tumor_->species_["edema"], 0.); CHKERRQ(ierr);
     
     // smooth i_t to keep aliasing to a minimum
     // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], params_, sigma_smooth);     CHKERRQ (ierr);
     
     ierr = tumor_->clipTumor(); CHKERRQ(ierr);
   }
+      s << " Forcing factor at current guess = " << params_->tu_->forcing_factor_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Reaction at current guess       = " << params_->tu_->rho_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Diffusivity at current guess    = " << params_->tu_->k_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Hypoxia threshold at current guess    = " << params_->tu_->ox_hypoxia_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Deathrate at current guess    = " << params_->tu_->death_rate_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Transition rate from p to i at current guess    = " << params_->tu_->alpha_0_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Oxygen consumption at current guess    = " << params_->tu_->ox_consumption_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Oxygen source at current guess    = " << params_->tu_->ox_source_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Transition rate from i to p at current guess    = " << params_->tu_->beta_0_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Transition thres from i to p at current guess    = " << params_->tu_->sigma_b_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Invasive Oxygen thres at current guess   = " << params_->tu_->ox_inv_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+    s << " Infiltrative thres for edema at current guess   = " << params_->tu_->invasive_thres_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+
+  
  
 
   // no healthy cells where tumor is maximum
@@ -297,7 +352,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   ScalarType vel_max;
   ScalarType cfl;
   ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
-  std::stringstream s;
 
   bool flag_smooth_velocity = true;
   bool write_output_and_break = false;
@@ -309,9 +363,15 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
     s.str("");
     s.clear();
+
+
+
     // compute CFL
     ierr = tumor_->computeEdema(); CHKERRQ(ierr);
+
+
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
+
     ierr = tumor_->velocity_->computeMagnitude(magnitude_);
     ierr = VecMax(magnitude_, NULL, &vel_max); CHKERRQ(ierr);
     cfl = dt * vel_max / params_->grid_->h_[0];
@@ -328,7 +388,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && i % 40 == 0) || write_output_and_break) {
+
+
+    if ((params_->tu_->write_output_ && i % 50 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());
@@ -410,18 +472,16 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
         ss.clear();
       }
     }
-    if (params_->tu_->model_ == 6 && i == nt) {
-      ierr = VecCopy(tumor_->species_["proliferative"], tumor_->en_t_temp_); CHKERRQ(ierr);
-      ierr = VecCopy(tumor_->species_["necrotic"], tumor_->nec_t_temp_); CHKERRQ(ierr);
-      ierr = VecCopy(tumor_->species_["edema"], tumor_->ed_t_temp_); CHKERRQ(ierr);
-    }
-
+    
+    
     if (write_output_and_break) break;
     // ------------------------------------------------ advection  ------------------------------------------------
 
     // Update diffusivity and reaction coefficient
     ierr = updateReacAndDiffCoefficients(tumor_->seg_, tumor_); CHKERRQ(ierr);
+
     ierr = tumor_->k_->updateIsotropicCoefficients(k1, k2, k3, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+
 
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     ierr = diff_solver_->precFactor(); CHKERRQ(ierr);
@@ -444,14 +504,17 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     // All solves complete except elasticity: clip values to ensure positivity
     // clip healthy tissues
     ierr = tumor_->mat_prop_->clipHealthyTissues(); CHKERRQ(ierr);
+
     // clip tumor : single-precision advection seems to have issues if this is not clipped.
     ierr = tumor_->clipTumor(); CHKERRQ(ierr);
+
 
     // smooth infiltrative to avoid aliasing
     ierr = spec_ops_->weierstrassSmoother(tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], params_, sigma_smooth); CHKERRQ(ierr);
 
     // compute Di to be used for healthy cell evolution equations: make sure work[11] is not used till sources are computed
     ierr = VecCopy(tumor_->species_["infiltrative"], tumor_->work_[11]); CHKERRQ(ierr);
+
     ierr = tumor_->k_->applyD(tumor_->work_[11], tumor_->work_[11]); CHKERRQ(ierr);
 
     // ------------------------------------------------ diffusion  ------------------------------------------------
@@ -501,6 +564,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     }
   }
 
+	  if (params_->tu_->model_ == 6) {  
+			ierr = VecCopy(tumor_->species_["necrotic"],  tumor_->work_[9]); CHKERRQ(ierr);
+			ierr = VecCopy(tumor_->species_["proliferative"], tumor_->work_[10]); CHKERRQ(ierr);
+			ierr = VecCopy(tumor_->species_["edema"],  tumor_->work_[11]); CHKERRQ(ierr); 
+		}
+
+
+
   if (params_->tu_->verbosity_ >= 3) {
     s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
@@ -508,6 +579,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     s.clear();
   }
   // copy the data for multispecies inversion
+  // reset the params at the end
 
 
 #ifdef CUDA

@@ -72,6 +72,7 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     // x[8] : beta_0 (trans from i to p)
     // x[9] : sigma_b
     // x[10] : ox_inv
+    // x[11] : invasive_thres
 
     params_->tu_->forcing_factor_ = x_ptr[0];
     params_->tu_->rho_ = x_ptr[1];
@@ -84,7 +85,8 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     params_->tu_->beta_0_ = x_ptr[8];
     params_->tu_->sigma_b_ = x_ptr[9];
     params_->tu_->ox_inv_ = x_ptr[10];
-
+    params_->tu_->invasive_thres_ = x_ptr[11];
+    
   } else {
     params_->tu_->rho_ = x_ptr[0];
     params_->tu_->k_ = x_ptr[1];
@@ -96,6 +98,7 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     params_->tu_->beta_0_ = x_ptr[7];
     params_->tu_->sigma_b_ = x_ptr[8];
     params_->tu_->ox_inv_ = x_ptr[9];
+    params_->tu_->invasive_thres_ = x_ptr[10];
   }
 
   ierr = VecRestoreArrayRead(x, &x_ptr); CHKERRQ(ierr);
@@ -146,84 +149,59 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
     ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
     s.str("");
     s.clear();
+    s << " Infiltrative thres for edema at current guess   = " << params_->tu_->invasive_thres_;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
   }
 
   // Rest mat-props and parameters, tumor IC does not change
   ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
-  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
-  ierr = tumor_->velocity_->set(0);
-  ierr = tumor_->displacement_->set(0);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_); CHKERRQ(ierr);
+  ierr = tumor_->velocity_->set(0); CHKERRQ(ierr);
+  ierr = tumor_->displacement_->set(0); CHKERRQ(ierr);
   
-  ierr = pde_operators_->solveState(0);
-	PetscReal J_tmp1, J_tmp2;
+  ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
+	PetscReal J_tmp1, J_tmp2, J_tmp3;
 	J_tmp1 = 0.0;
 	J_tmp2 = 0.0;
+  J_tmp3 = 0.0;
   
   if (params_->opt_->use_multispec_obj_){
   //if (false){
     
  
-    //*J_tmp = 0.0;
-    //ierr = VecCopy(temp_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
-    //ierr = tumor_->obs_->apply(temp_, tumor_->species_["proliferative"], 1); CHKERRQ(ierr);
-    ierr = VecCopy(temp_, tumor_->ed_t_temp_); CHKERRQ(ierr);
-    /*
-    s << "temp1_" << ".nc";
-    dataOut(temp_, params_, s.str().c_str());
-    s.str(std::string());
-    s.clear();
-    */
+    //ierr = VecCopy(temp_, tumor_->ed_t_temp_); CHKERRQ(ierr);
+    
     ierr = VecSet(temp_, 0.0); CHKERRQ(ierr); 
-    ierr = tumor_->obs_->apply(temp_, tumor_->en_t_temp_, 1); CHKERRQ(ierr);
-    /*
-    s << "temp_" << ".nc";
-    dataOut(temp_, params_, s.str().c_str());
-    s.str(std::string());
-    s.clear();
-    */
-    //ierr = VecAXPY(temp_, -1.0, data_inv->ent1()); CHKERRQ(ierr);
+    //ierr = tumor_->obs_->apply(temp_, tumor_->en_t_temp_, 1); CHKERRQ(ierr);
+    //ierr = VecCopy(tumor_->en_t_temp_, temp_); CHKERRQ(ierr);
+    ierr = VecCopy(tumor_->work_[10], temp_); CHKERRQ(ierr);
     ierr = VecAXPY(temp_, -1.0, tumor_->en_t_); CHKERRQ(ierr);
-    /*
-    s << "temp2_" << ".nc";
-    dataOut(temp_, params_, s.str().c_str());
-    s.str(std::string());
-    s.clear();
-    */
-    //ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
-    //ierr = VecAXPY(temp_, -1.0, data); CHKERRQ(ierr);
     ierr = VecDot(temp_, temp_, &J_tmp1); CHKERRQ(ierr);
-    /*                  
-    ierr = VecCopy(temp_, tumor_->species_["infilterative"]); CHKERRQ(ierr);
-    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["infilterative"]); CHKERRQ(ierr);
-    ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
-    (*J) += *J_tmp;
-          
-    */
+       
+    
     ierr = VecSet(temp_, 0.0); CHKERRQ(ierr); 
-    ierr = tumor_->obs_->apply(temp_, tumor_->nec_t_temp_, 1); CHKERRQ(ierr);
-    //ierr = VecCopy(temp_, tumor_->species_["necrotic"]); CHKERRQ(ierr);
-    /*
-    s << "temp3_" << ".nc";
-    dataOut(temp_, params_, s.str().c_str());
-    s.str(std::string());
-    s.clear();
-    */
+    //ierr = tumor_->obs_->apply(temp_, tumor_->nec_t_temp_, 1); CHKERRQ(ierr);
+    //ierr = VecCopy(tumor_->nec_t_temp_, temp_); CHKERRQ(ierr);
+    ierr = VecCopy(tumor_->work_[9], temp_); CHKERRQ(ierr);
     ierr = VecAXPY(temp_, -1.0, tumor_->nec_t_); CHKERRQ(ierr);
-    //ierr = VecAXPY(temp_, -1.0, data_inv->nect1()); CHKERRQ(ierr);
-    /*
-    s << "temp4_" << ".nc";
-    dataOut(temp_, params_, s.str().c_str());
-    s.str(std::string());
-    s.clear();
-    */
     ierr = VecDot(temp_, temp_, &J_tmp2); CHKERRQ(ierr);
-    (*J) = J_tmp1 + J_tmp2;
+
+
+    ierr = VecSet(temp_, 0.0); CHKERRQ(ierr); 
+    //ierr = tumor_->obs_->apply(temp_, tumor_->ed_t_temp_, 1); CHKERRQ(ierr);
+    //ierr = VecCopy(tumor_->ed_t_temp_, temp_); CHKERRQ(ierr);
+    ierr = VecCopy(tumor_->work_[11], temp_); CHKERRQ(ierr);
+    ierr = VecAXPY(temp_, -1.0, tumor_->ed_t_); CHKERRQ(ierr);
+    ierr = VecDot(temp_, temp_, &J_tmp3); CHKERRQ(ierr);
+
+
+
+    //(*J) = J_tmp1 + J_tmp2 + J_tmp3;
+    (*J) = J_tmp1 + J_tmp2 + J_tmp3 * 0.01;
     /*                  
-    ierr = VecCopy(temp_, tumor_->species_["edema"]); CHKERRQ(ierr);
-    ierr = VecAXPY(temp_, -1.0, tumor_->data_species_["edema"]); CHKERRQ(ierr);
-    ierr = VecDot(temp_, temp_, J_tmp); CHKERRQ(ierr);
-    (*J) += *J_tmp;                      
     */
   } else {
       ierr = tumor_->obs_->apply(temp_, tumor_->c_t_, 1); CHKERRQ(ierr);
@@ -235,13 +213,14 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   (*J) *= 0.5 * params_->grid_->lebesgue_measure_;
   J_tmp1 *= 0.5 * params_->grid_->lebesgue_measure_;
   J_tmp2 *= 0.5 * params_->grid_->lebesgue_measure_;
+  J_tmp3 *= 0.5 * params_->grid_->lebesgue_measure_;
   PetscReal misfit_brain = 0.;
 
   //ierr = computeMisfitBrain (&misfit_brain);
   misfit_brain *= 0.5 * params_->grid_->lebesgue_measure_;
   if (!disable_verbose_) {
     if (params_->opt_->use_multispec_obj_){
-      s << "J = misfit_tu(en) + misfit_tu(nec) + misfit_brain = " << std::setprecision(12) << J_tmp1 << " + " << J_tmp2  << " + " << misfit_brain << " = " << (*J) + misfit_brain;
+      s << "J = misfit_tu(en) + misfit_tu(nec) + misfit_tu(ed)+ misfit_brain = " << std::setprecision(12) << J_tmp1 << " + " << J_tmp2  << " + " <<  J_tmp3 << " + " << misfit_brain << " = " << (*J) + misfit_brain;
     } else {
       s << "J = misfit_tu + misfit_brain = " << std::setprecision(12) << *J << " + " << misfit_brain << " = " << (*J) + misfit_brain;
     }
@@ -251,6 +230,13 @@ PetscErrorCode DerivativeOperatorsMultiSpecies::evaluateObjective(PetscReal *J, 
   }
   
   (*J) += misfit_brain;
+
+  //ierr = VecDestroy(&temp_); CHKERRQ(ierr);
+  //ierr = VecDestroy(&tumor_->c_t_); CHKERRQ(ierr);
+  //ierr = VecDestroy(&tumor_->nec_t_temp_); CHKERRQ(ierr);
+  //ierr = VecDestroy(&tumor_->en_t_temp_); CHKERRQ(ierr);
+  //ierr = VecDestroy(&tumor_->ed_t_temp_); CHKERRQ(ierr);
+  
 
   PetscFunctionReturn(ierr);
 

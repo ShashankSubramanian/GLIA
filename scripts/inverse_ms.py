@@ -13,20 +13,20 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 256                           # grid resolution in each dimension
-p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms/');                          # results path
+p['output_dir'] = os.path.join(code_dir, 'results/inverse_ms12_sc3/');                          # results path
 p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
 p['patient_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
-p['a_seg_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/seg_t[0].nii.gz')
-p['p_seg_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/seg_t[0].nii.gz')
+p['a_seg_path'] = os.path.join(code_dir, 'results/syn_ic25/seg_t[0].nii.gz')
+p['p_seg_path'] = os.path.join(code_dir, 'results/syn_ic25/seg_t[0].nii.gz')
 p['a_gm_path'] = ""
 p['a_wm_path'] = ""
 p['a_csf_path'] = ""
 p['a_vt_path'] = ""
-p['d1_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/c_t[40].nii.gz');
-p['d1_nec_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/n_t[40].nii.gz');
-p['d1_ed_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/ed_t[40].nii.gz');
-p['d1_en_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/p_t[40].nii.gz');
-p['d0_path'] = os.path.join(code_dir, 'results/syn_forward_ms12/c_t[0].nii.gz')
+p['d1_path'] = os.path.join(code_dir, 'results/syn_ic25/c_t[200].nii.gz');
+p['d1_nec_path'] = os.path.join(code_dir, 'results/syn_ic25/n_t[200].nii.gz');
+p['d1_ed_path'] = os.path.join(code_dir, 'results/syn_ic25/ed_t[200].nii.gz');
+p['d1_en_path'] = os.path.join(code_dir, 'results/syn_ic25/p_t[200].nii.gz');
+p['d0_path'] = os.path.join(code_dir, 'results/syn_ic25/c_t[0].nii.gz')
 p['mri_path'] = ""
 
 
@@ -44,62 +44,74 @@ p['user_cms'] = [(132,69,148,0.8),(132,64,148,0.5),(132,69,144,0.3)]      # loca
 p['regularization'] = "L2"
 
 ####### tumor params for synthetic data
-p['init_gamma'] = 5.0E4
-p['init_rho'] = 5.0
-p['init_k'] = 0.05
-p['init_ox_hypoxia'] = 0.2
-p['init_death_rate'] = 0.6
+p['init_gamma'] = 6.5E4
+p['init_rho'] = 8.0
+p['init_k'] = 0.1
+p['init_ox_hypoxia'] = 0.4
+p['init_death_rate'] = 0.9
 p['init_alpha_0'] = 0.2
-p['init_ox_consumption'] = 5.0
-p['init_ox_source'] = 40.0
-p['init_beta_0'] = 0.1
-p['init_sigma_b'] = 0.9
-p['init_ox_inv'] = 0.7
+p['init_ox_consumption'] = 4.0
+p['init_ox_source'] = 55.0
+p['init_beta_0'] = 0.02
+p['init_sigma_b'] = 0.8
+p['init_ox_inv'] = 0.5
+p['init_invasive_thres'] = 0.02
 p['obs_threshold_1'] = 0.005
 
-p['gamma_lb'] = 1E4
-p['gamma_ub'] = 20E4
-p['rho_lb'] = 1.0 
-p['rho_ub'] = 13.0
+#p['gamma_lb'] = 3E4
+#p['gamma_ub'] = 8.0E4
+p['gamma_lb'] = p['init_gamma'] * 0.9999
+p['gamma_ub'] = p['init_gamma'] * 1.0001
+p['rho_lb'] = 4.0 
+p['rho_ub'] = 12.0
 p['kappa_lb'] = 0.005 
-p['kappa_ub'] = 0.4
+p['kappa_ub'] = 0.3
+#p['kappa_lb'] = p['init_k'] * 0.9999
+#p['kappa_ub'] = p['init_k'] * 1.0001
 p['ox_hypoxia_lb'] = 0.001 
 p['ox_hypoxia_ub'] = 1.0
 p['death_rate_lb'] = 0.001
 p['death_rate_ub'] = 2.0
-p['alpha_0_lb'] = 0.001
-p['alpha_0_ub'] = 1.0
+#p['alpha_0_lb'] = 0.001
+#p['alpha_0_ub'] = 1.0
+p['alpha_0_lb'] = p['init_alpha_0'] * 0.9999
+p['alpha_0_ub'] = p['init_alpha_0'] * 1.0001
 p['ox_consumption_lb'] = 0.1
-p['ox_consumption_ub'] = 20.0
-p['ox_source_lb'] = 1.0
-p['ox_source_ub'] = 70.0
-p['beta_0_lb'] = 0.001
-p['beta_0_ub'] = 1.0
+p['ox_consumption_ub'] = 6.0
+p['ox_source_lb'] = 40.0
+p['ox_source_ub'] = 80.0
+#p['beta_0_lb'] = 0.001
+#p['beta_0_ub'] = 1.0
+p['beta_0_lb'] = p['init_beta_0'] * 0.9999
+p['beta_0_ub'] = p['init_beta_0'] * 1.0001
 p['sigma_b_lb'] = 0.001 
 p['sigma_b_ub'] = 1.0 
 p['ox_inv_lb'] = 0.001
 p['ox_inv_ub'] = 1.0
+p['invasive_thres_lb'] = 0.001
+p['invasive_thres_ub'] = 1.0
 
-p['ratio_i0_c0'] = 0.1
-p['sigma_gamma'] = 5E4
-p['sigma_rho'] = 3.0
-p['sigma_k'] = 0.1
-p['sigma_ox_hypoxia'] = 0.25
-p['sigma_death_rate'] = 0.5
-p['sigma_alpha_0'] = 0.25
-p['sigma_ox_consumption'] = 5.0
-p['sigma_ox_source'] = 14.0
-p['sigma_beta_0'] = 0.25
-p['sigma_thres'] = 0.25
-p['sigma_ox_inv'] = 0.25
+p['ratio_i0_c0'] = 0.0
+p['sigma_gamma'] = 3E4
+p['sigma_rho'] = 4.0
+p['sigma_k'] = 0.2
+p['sigma_ox_hypoxia'] = 0.4
+p['sigma_death_rate'] = 0.6
+p['sigma_alpha_0'] = 0.3
+p['sigma_ox_consumption'] = 2.0
+p['sigma_ox_source'] = 20.0
+p['sigma_beta_0'] = 0.2
+p['sigma_thres'] = 0.2
+p['sigma_ox_inv'] = 0.2
+p['sigma_invasive_thres'] = 0.3
 
 p['prediction'] = 0
 #p['write_output'] = 0
 p['k_gm_wm'] = 0.0                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
 p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
 
-p['nt_inv'] = 40
-p['dt_inv'] = 0.025
+p['nt_inv'] = 200
+p['dt_inv'] = 0.01
 p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 
 ############### === define run configuration if job submit is needed; else run from results folder directly

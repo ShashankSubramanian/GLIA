@@ -281,6 +281,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("sigma_b_ub=" + str(p['sigma_b_ub']) + "\n");
         f.write("ox_inv_lb=" + str(p['ox_inv_lb']) + "\n");
         f.write("ox_inv_ub=" + str(p['ox_inv_ub']) + "\n");
+        f.write("invasive_thres_lb=" + str(p['invasive_thres_lb']) + "\n");
+        f.write("invasive_thres_ub=" + str(p['invasive_thres_ub']) + "\n");
         f.write("sigma_gamma=" + str(p['sigma_gamma']) + "\n");
         f.write("sigma_rho=" + str(p['sigma_rho']) + "\n");
         f.write("sigma_k=" + str(p['sigma_k']) + "\n");
@@ -292,6 +294,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("sigma_beta_0=" + str(p['sigma_beta_0']) + "\n");
         f.write("sigma_thres=" + str(p['sigma_thres']) + "\n");
         f.write("sigma_ox_inv=" + str(p['sigma_ox_inv']) + "\n");
+        f.write("sigma_invasive_thres=" + str(p['sigma_invasive_thres']) + "\n");
         f.write("lbfgs_vectors=" + str(p['lbfgs_vectors']) + "\n");
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
@@ -316,6 +319,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("init_beta_0=" + str(p['init_beta_0']) + "\n");
         f.write("init_sigma_b=" + str(p['init_sigma_b']) + "\n");
         f.write("init_ox_inv=" + str(p['init_ox_inv']) + "\n");
+        f.write("init_invasive_thres=" + str(p['init_invasive_thres']) + "\n");
         f.write("nt_inv=" + str(p['nt_inv']) + "\n");
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
         f.write("k_gm_wm=" + str(p['k_gm_wm']) + "\n");
@@ -368,6 +372,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("beta_0_data=" + str(p['beta_0_data']) + "\n");
         f.write("sigma_b_data=" + str(p['sigma_b_data']) + "\n");
         f.write("ox_inv_data=" + str(p['ox_inv_data']) + "\n");
+        f.write("invasive_thres_data=" + str(p['invasive_thres_data']) + "\n");
         f.write("nt_data=" + str(p['nt_data']) + "\n");
         f.write("dt_data=" + str(p['dt_data']) + "\n");
         f.write("testcase=" + str(p['testcase']) + "\n");
@@ -481,7 +486,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'stampede2':
             run_params['queue'] = 'skx-normal'
         elif run_params['compute_sys'] == 'longhorn':
-            run_params['queue'] = 'v100'
+            run_params['queue'] = 'v100-lm'
             #run_params['queue'] = 'development'
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'v100'

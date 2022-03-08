@@ -64,6 +64,7 @@ public:
     sigma_cma_beta_0_(0.25),
     sigma_cma_sigma_b_(0.25),
     sigma_cma_ox_inv_(0.25),
+    sigma_cma_invasive_thres_(0.02),
     k_lb_ (1E-3),
     k_ub_ (1),
     gamma_lb_(0),
@@ -86,6 +87,8 @@ public:
     beta_0_ub_(1.0),
     ox_inv_lb_(1E-3),
     ox_inv_ub_(1.0),
+    invasive_thres_lb_(0.001),
+    invasive_thres_ub_(1.0),
     k_scale_(1E-2),
     rho_scale_(1.0),
     gamma_scale_(1E4),
@@ -99,7 +102,8 @@ public:
     ox_consumption_scale_(1.0),
     ox_source_scale_(1E1),
     beta_0_scale_(1E-1),
-    ox_inv_scale_(1E-1)
+    ox_inv_scale_(1E-1),
+    invasive_thres_scale_(1E-2)
   {}
   ScalarType beta_;
   ScalarType regularization_norm_;
@@ -184,11 +188,12 @@ public:
   ScalarType ox_source_scale_;       /// @brief if MultiSpec model, scalaing of oxygen source 
   ScalarType beta_0_scale_;          /// @brief if MultiSpec model, scalaing of trans rate from i to p
   ScalarType ox_inv_scale_;
+  ScalarType invasive_thres_scale_;
   std::array<ScalarType, 3> bounds_array_;
-  std::array<ScalarType, 11> cma_scales_array_;  
-  std::array<ScalarType, 11> cma_lb_array_;
-  std::array<ScalarType, 11> cma_ub_array_;
-  std::array<ScalarType, 11> cma_variance_array_;
+  std::array<ScalarType, 12> cma_scales_array_;  
+  std::array<ScalarType, 12> cma_lb_array_;
+  std::array<ScalarType, 12> cma_ub_array_;
+  std::array<ScalarType, 12> cma_variance_array_;
 };
 
 struct OptimizerFeedback {
@@ -276,7 +281,7 @@ public:
   , ox_inv_ (0.7)                         // invasive oxygen conc
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.65)                     // hypoxia threshold
-  , invasive_thres_ (0.01)           // invasive threshold for edema
+  , invasive_thres_ (0.01)                // invasive threshold for edema
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
   , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
   , support_()                            // // support of compressive sampling guess

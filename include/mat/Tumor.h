@@ -32,9 +32,10 @@ class Tumor {
   Vec en_t_;
   Vec nec_t_;
   Vec ed_t_;
-  Vec en_t_temp_;  
-  Vec nec_t_temp_;  
-  Vec ed_t_temp_;  
+  //Vec en_t_temp_;
+  //Vec nec_t_temp_;
+  //Vec ed_t_temp_;
+  
   // adjoint Variables
   Vec p_t_;
   Vec p_0_;
