@@ -171,7 +171,8 @@ public:
   , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-  , invasive_threshold_ (0.001)           // invasive threshold for edema
+  //, invasive_threshold_ (0.001)           // invasive threshold for edema
+  , i0_c0_ratio_ (0.0)           // invasive threshold for edema
   , E_csf_ (100)                          // Young's modulus of CSF
   , E_healthy_ (2100)                     // Young's modulus of wm and gm
   , E_tumor_ (8000)                       // Young's modulus of tumor
@@ -188,10 +189,12 @@ public:
   , ox_source_ (1)                        // source of oxygen
   , ox_consumption_ (5)                   // consumption of oxygen
   , alpha_0_ (0.1)                        // conversion btw inv and proliferative
+  , sigma_b_ (0.9)                        // conversion threshold bwn inv and proliferative
   , beta_0_ (0.01)                        // conversion btw inv and proliferative
   , ox_inv_ (0.8)                         // invasive oxygen conc
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.6)                     // hypoxia threshold
+  , invasive_thres_ (0.01)                // invasive thres for edema
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
   , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
   , support_()                            // // support of compressive sampling guess
@@ -220,6 +223,7 @@ public:
   , interpolation_order_ (3)               // interpolation order for SL
   , order_ (2)                             // Order of accuracy for PDE solves
   , write_output_ (1)                      // Print flag for paraview visualization
+  , write_multispec_output_ (1)            // Print flag for multispec inversion
   , phi_store_ (false)                     // Flag to store phis
   , adjoint_store_ (false)                  // Flag to store half-step concentrations for adjoint solve to speed up time to solution
   , time_history_off_(false)               // if true, time history is not stored (forward solve, or finite-differences)
@@ -283,6 +287,7 @@ public:
   ScalarType k_glm_wm_ratio_;
   ScalarType r_gm_wm_ratio_;
   ScalarType r_glm_wm_ratio_;
+  ScalarType i0_c0_ratio_;
 
   // mass effect
   ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
@@ -294,8 +299,8 @@ public:
   // multi-species
   int num_species_;
   ScalarType ox_source_, ox_consumption_;
-  ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_;
-  ScalarType invasive_threshold_;
+  ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_, sigma_b_;
+  ScalarType invasive_thres_;
 
   // initial condition (inversion)
   int sparsity_level_;            // should this go to opt?
@@ -331,7 +336,8 @@ public:
   int order_;
 
   // performance settings
-  bool write_output_;
+  bool write_output_; 
+  bool write_multispec_output_;
   bool phi_store_;
   bool adjoint_store_;
   bool time_history_off_;
@@ -499,6 +505,7 @@ struct FilePaths {
       seg_(), wm_(), gm_(), vt_(), csf_(),
       p_seg_(), p_wm_(), p_gm_(), p_vt_(), p_csf_(),
       data_t1_(), data_t0_(), data_support_(), data_support_data_(),
+      data_en_t1_(), data_nec_t1_(), data_ed_t1_(),
       data_comps_(), data_comps_data_(), obs_filter_(), mri_(),
       velocity_x1_(), velocity_x2_(), velocity_x3_(),
       pvec_(), phi_()
@@ -518,6 +525,9 @@ struct FilePaths {
     std::string p_csf_;
     // data
     std::string data_t1_;
+    std::string data_en_t1_;
+    std::string data_nec_t1_;
+    std::string data_ed_t1_;
     std::string data_t0_;
     std::string data_support_;
     std::string data_support_data_;
@@ -542,6 +552,15 @@ public:
     rho_(10),
     k_(1E-2),
     forcing_factor_(1E5),
+    ox_hypoxia_(0.65),
+    death_rate_(0.9),
+    alpha_0_(0.15),
+    sigma_b_(0.9),
+    ox_consumption_(8),
+    ox_source_(55),
+    beta_0_(0.02),
+    ox_inv_(0.7),
+    invasive_thres_(0.02),
     dt_(0.01),
     nt_(100),
     testcase_(0),
@@ -554,6 +573,15 @@ public:
   ScalarType rho_;
   ScalarType k_;
   ScalarType forcing_factor_;
+  ScalarType ox_hypoxia_;
+  ScalarType death_rate_;
+  ScalarType alpha_0_;
+  ScalarType sigma_b_;
+  ScalarType ox_consumption_;
+  ScalarType ox_source_;
+  ScalarType beta_0_;
+  ScalarType invasive_thres_;
+  ScalarType ox_inv_;
   ScalarType dt_;
   int nt_;
   int testcase_;

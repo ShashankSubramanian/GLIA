@@ -101,6 +101,9 @@ class Data {
   Data() :
   t1(nullptr),
   t0(nullptr),
+  t1_en(nullptr),
+  t1_nec(nullptr),
+  t1_ed(nullptr),
   two_snapshot(false)
   {}
   void set(Vec dt1, Vec dt0){
@@ -108,6 +111,11 @@ class Data {
       if (dt0 != nullptr) {
           t0 = dt0; two_snapshot = true;
       }
+  }
+  void setMultispecT1(Vec ent1, Vec nect1, Vec edt1) {
+      t1_en = ent1;
+      t1_nec = nect1;
+      t1_ed = edt1;
   }
   void setT1(Vec dt1) {
       t1 = dt1;
@@ -117,9 +125,15 @@ class Data {
       two_snapshot = true;
   }
   Vec dt1() {return t1;}
+  Vec ent1() {return t1_en;}
+  Vec nect1() {return t1_nec;}
+  Vec edt1() {return t1_ed;}
   Vec dt0() {return (two_snapshot) ? t0 : nullptr;}
   Vec t1;
   Vec t0;
+  Vec t1_en;
+  Vec t1_nec;
+  Vec t1_ed;
   bool two_snapshot;
 };
 

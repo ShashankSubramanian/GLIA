@@ -84,6 +84,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm'] = 0.0                  # rho ratio gm/wm (if zero, rho=0 in gm)
+    p['ratio_i0_c0'] = 0.05
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
@@ -121,6 +122,15 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['gamma_data'] = 12E4
     p['nt_data'] = 25
     p['dt_data'] = 0.04
+    p['ox_hypoxia_data'] = 0.65
+    p['death_rate_data'] = 1.0
+    p['alpha_0_data'] = 0.15
+    p['ox_consumption_data'] = 8.0
+    p['ox_source_data'] = 55.0
+    p['beta_0_data'] = 0.02
+    p['sigma_b_data'] = 0.9
+    p['ox_inv_data'] = 0.7
+    p['invasive_thres_data'] = 0.01
     p['testcase'] = 0                   # 0: brain single focal synthetic
                                         # 1: No-brain constant coefficients
                                         # 2: No-brain sinusoidal coefficients
@@ -131,6 +141,10 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['output_dir'] = r['code_path'] + '/results/';
     p['d1_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/cpl/c1p.nc'
     p['d0_path'] = ""                   # path to initial condition for tumor
+    p['d1_en_path'] = ""
+    p['d1_ed_path'] = ""
+    p['d1_nec_path'] = ""
+   
     p['a_seg_path'] = ""                # paths to atlas material properties
     p['a_wm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/white_matter.nc'
     p['a_gm_path'] = r['code_path'] + '/brain_data/' + str(p['n']) +'/gray_matter.nc'
@@ -157,6 +171,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['store_phi']        = 0           # 1: store every Gaussian as 3d image
     p['store_adjoint']    = 1           # 1: store adjoint time history
     p['write_output']     = 1           # 1: write .nc and .nii.gz output
+    p['write_multispecies_output']     = 1           # 1: write .nc and .nii.gz output
 
     #############################################################################
     #############################################################################
@@ -217,7 +232,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
         f.write("ls_max_func_evals=" + str(p['ls_max_func_evals']) + "\n");
-
+        f.write("ratio_i0_c0=" + str(p['ratio_i0_c0']) + "\n");
         f.write("\n");
         f.write("### forward solver" + "\n");
         f.write("accuracy_order=" + str(p['accuracy_order']) + "\n");
@@ -257,8 +272,14 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("sigma_spacing=" + str(p['sigma_spacing']) + "\n");
         f.write("threshold_data_driven=" + str(p['threshold_data_driven']) + "\n");
         f.write("gaussian_volume_fraction=" + str(p['gaussian_volume_fraction']) + "\n");
-
         f.write("\n");
+        if p['d1_en_path'] != "":
+          f.write("d1_en_path=" + str(p['d1_en_path']) + "\n");
+        if p['d1_nec_path'] != "":
+          f.write("d1_nec_path=" + str(p['d1_nec_path']) + "\n");
+        if p['d1_ed_path'] != "":
+          f.write("d1_ed_path=" + str(p['d1_ed_path']) + "\n");
+
         f.write("### prediction" + "\n");
         f.write("prediction=" + str(p['prediction']) + "\n");
         f.write("pred_times=" + str(p['pred_times']) + "\n");
@@ -272,6 +293,15 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("rho_data=" + str(p['rho_data']) + "\n");
         f.write("k_data=" + str(p['k_data']) + "\n");
         f.write("gamma_data=" + str(p['gamma_data']) + "\n");
+        f.write("death_rate_data=" + str(p['death_rate_data']) + "\n");
+        f.write("ox_hypoxia_data=" + str(p['ox_hypoxia_data']) + "\n");
+        f.write("alpha_0_data=" + str(p['alpha_0_data']) + "\n");
+        f.write("ox_consumption_data=" + str(p['ox_consumption_data']) + "\n");
+        f.write("ox_source_data=" + str(p['ox_source_data']) + "\n");
+        f.write("beta_0_data=" + str(p['beta_0_data']) + "\n");
+        f.write("sigma_b_data=" + str(p['sigma_b_data']) + "\n");
+        f.write("ox_inv_data=" + str(p['ox_inv_data']) + "\n");
+        f.write("invasive_thres_data=" + str(p['invasive_thres_data']) + "\n");
         f.write("nt_data=" + str(p['nt_data']) + "\n");
         f.write("dt_data=" + str(p['dt_data']) + "\n");
         f.write("testcase=" + str(p['testcase']) + "\n");
@@ -308,6 +338,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("store_phi=" + str(p['store_phi']) + "\n");
         f.write("store_adjoint=" + str(p['store_adjoint']) + "\n");
         f.write("write_output=" + str(p['write_output']) + "\n");
+        f.write("write_multispecies_output=" + str(p['write_multispecies_output']) + "\n");
 
     ibman = ""
     if 'ibrun_man' in r and r['ibrun_man']:
@@ -317,7 +348,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
       if r['compute_sys'] == "cbica":
         cmd += "export CUDA_VISIBLE_DEVICES=$(get_CUDA_VISIBLE_DEVICES) || exit\n"
       else:
-        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " \n"
+        cmd += "CUDA_VISIBLE_DEVICES=" + str(gpu_device_id) + " "
     if r['compute_sys'] == 'hazelhen':
         ppn = 24;
         if r['mpi_tasks'] < 24:
@@ -380,7 +411,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
-            run_params['queue'] = 'normal'
+            run_params['queue'] = 'rtx-dev'
         else:
             run_params['queue'] = 'normal'
     if 'nodes' not in run_params:
@@ -406,7 +437,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['mpi_tasks'] = 1
         elif run_params['compute_sys'] == 'frontera':
-            run_params['mpi_tasks'] = 32
+            run_params['mpi_tasks'] = 1
         else:
             run_params['mpi_tasks'] = 1
 
@@ -434,6 +465,8 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
       job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
+      
+      job_header += "source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"
     else:

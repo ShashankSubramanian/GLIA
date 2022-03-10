@@ -14,7 +14,9 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   ierr = VecDuplicate(c_t_, &c_0_);
   ierr = VecDuplicate(c_t_, &p_0_);
   ierr = VecDuplicate(c_0_, &p_t_);
-
+  ierr = VecDuplicate(c_t_, &nec_t_);
+  ierr = VecDuplicate(c_t_, &ed_t_);
+  ierr = VecDuplicate(c_t_, &en_t_);
   // allocating memory for work vectors
   work_ = new Vec[12];
   for (int i = 0; i < 12; i++) {
@@ -28,6 +30,9 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   ierr = VecSet(c_0_, 0);
   ierr = VecSet(p_0_, 0);
   ierr = VecSet(p_t_, 0);
+  ierr = VecSet(nec_t_, 0);
+  ierr = VecSet(ed_t_, 0);
+  ierr = VecSet(en_t_, 0);
 
   ierr = VecDuplicate(c_t_, &seg_);
   ierr = VecSet(seg_, 0);
@@ -161,14 +166,18 @@ PetscErrorCode Tumor::computeEdema() {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
 
-  ScalarType *i_ptr, *ed_ptr;
+  ScalarType *i_ptr, *ed_ptr, *p_ptr, *n_ptr;
   ierr = VecGetArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(species_["edema"], &ed_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(species_["proliferative"], &p_ptr); CHKERRQ(ierr);
+  ierr = VecGetArray(species_["necrotic"], &n_ptr); CHKERRQ(ierr);
 
-  for (int i = 0; i < params_->grid_->nl_; i++) ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_threshold_) ? 1.0 : 0.0;
+  for (int i = 0; i < params_->grid_->nl_; i++) ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_thres_ && i_ptr[i] > p_ptr[i] && i_ptr[i] > n_ptr[i]) ? 1.0 : 0.0;
 
   ierr = VecRestoreArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(species_["edema"], &ed_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(species_["proliferative"], &p_ptr); CHKERRQ(ierr);
+  ierr = VecRestoreArray(species_["necrotic"], &n_ptr); CHKERRQ(ierr);
 
   // smooth
   ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];

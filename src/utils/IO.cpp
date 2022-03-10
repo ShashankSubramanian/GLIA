@@ -219,6 +219,16 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "rho_data") {a->syn_->rho_ = std::stod(value); return;}
   if (name == "k_data") {a->syn_->k_ = std::stod(value); return;}
   if (name == "gamma_data") {a->syn_->forcing_factor_ = std::stod(value); return;}
+  if (name == "ox_hypoxia_data") {a->syn_->ox_hypoxia_ = std::stod(value); return;}
+  if (name == "death_rate_data") {a->syn_->death_rate_ = std::stod(value); return;}
+  if (name == "alpha_0_data") {a->syn_->alpha_0_ = std::stod(value); return;}
+  if (name == "sigma_b_data") {a->syn_->sigma_b_ = std::stod(value); return;}
+  if (name == "ox_consumption_data") {a->syn_->ox_consumption_ = std::stod(value); return;}
+  if (name == "ox_source_data") {a->syn_->ox_source_ = std::stod(value); return;}
+  if (name == "beta_0_data") {a->syn_->beta_0_ = std::stod(value); return;}
+  if (name == "ox_inv_data") {a->syn_->ox_inv_ = std::stod(value); return;}
+  if (name == "invasive_thres_data") {a->syn_->invasive_thres_ = std::stod(value); return;}
+
   if (name == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
   if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
   if (name == "testcase") {a->syn_->testcase_ = std::stod(value); return;}
@@ -226,6 +236,9 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "output_dir") {p->tu_->writepath_ = value; return;}
   if (name == "input_dir") {p->tu_->readpath_ = value; return;}
   if (name == "d1_path") {a->path_->data_t1_ = value; return;}
+  if (name == "d1_en_path") {a->path_->data_en_t1_ = value; return;}
+  if (name == "d1_nec_path") {a->path_->data_nec_t1_ = value; return;}
+  if (name == "d1_ed_path") {a->path_->data_ed_t1_ = value; return;}
   if (name == "d0_path") {a->path_->data_t0_ = value; return;}
   if (name == "a_seg_path") {a->path_->seg_ = value; return;}
   if (name == "a_wm_path") {a->path_->wm_ = value; return;}
@@ -252,6 +265,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "store_phi") {p->tu_->phi_store_ = std::stoi(value) > 0; return;}
   if (name == "store_adjoint") {p->tu_->adjoint_store_ = std::stoi(value) > 0; return;}
   if (name == "write_output") {p->tu_->write_output_ = std::stoi(value) > 0; return;}
+  if (name == "write_multispecies_output") {p->tu_->write_multispec_output_ = std::stoi(value) > 0; return;}
   // misc
   if (name == "feature_compute") {p->tu_->feature_compute_ = std::stoi(value) > 0; return;}
 }

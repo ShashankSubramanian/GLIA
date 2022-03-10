@@ -27,7 +27,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate(Vec m) {
   ierr = vecGetArray(tumor_->species_["oxygen"], &ox_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->rho_->rho_vec_, &rho_ptr); CHKERRQ(ierr);
 #ifdef CUDA
-  computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_);
+  //computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_);
+  computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_, params_->tu_->ox_inv_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) m_ptr[i] = rho_ptr[i] * (1 / (1 + std::exp(-100 * (ox_ptr[i] - params_->tu_->ox_hypoxia_))));
 #endif
@@ -51,7 +52,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
   double self_exec_time = -MPI_Wtime();
 
   ScalarType *ox_ptr, *alpha_ptr, *beta_ptr, *p_ptr, *i_ptr;
-  ScalarType thres = 0.9;
+  //ScalarType thres = 0.9;
   ierr = vecGetArray(alpha, &alpha_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(beta, &beta_ptr); CHKERRQ(ierr);
   ierr = vecGetArray(tumor_->species_["oxygen"], &ox_ptr); CHKERRQ(ierr);
@@ -59,7 +60,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
   ierr = vecGetArray(tumor_->species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
 
 #ifdef CUDA
-  computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, thres, params_->grid_->nl_);
+  //computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, thres, params_->grid_->nl_);
+  computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, params_->tu_->sigma_b_, params_->grid_->nl_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) {
     alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
@@ -235,6 +237,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::updateReacAndDiffCoefficients(Vec seg, 
 PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   PetscFunctionBegin;
   PetscErrorCode ierr = 0;
+  std::stringstream ss;
+  std::stringstream s;
   Event e("tumor-solve-state");
   std::array<double, 7> t = {0};
   double self_exec_time = -MPI_Wtime();
@@ -253,9 +257,17 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   ierr = VecCopy(tumor_->c_0_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_0_, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
   // set infiltrative as a small fraction of proliferative; oxygen is max everywhere in the beginning - consider changing to (max - p) if needed
-  ierr = VecScale(tumor_->species_["infiltrative"], 0); CHKERRQ(ierr);
+  //ierr = VecScale(tumor_->species_["infiltrative"], 0); CHKERRQ(ierr);
 
+  ierr = VecScale(tumor_->species_["infiltrative"], params_->tu_->i0_c0_ratio_); CHKERRQ(ierr);
+  ScalarType p0_c0_ratio_ = 1 - params_->tu_->i0_c0_ratio_;
+  ierr = VecScale(tumor_->species_["proliferative"], p0_c0_ratio_); CHKERRQ(ierr);
+  
   ierr = VecSet(tumor_->species_["oxygen"], 1.); CHKERRQ(ierr);
+  ierr = VecSet(tumor_->species_["necrotic"], 0.); CHKERRQ(ierr);
+  ierr = VecSet(tumor_->species_["edema"], 0.); CHKERRQ(ierr);
+  
+
 
   ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params_->grid_->n_[0];
   // smooth i_t to keep aliasing to a minimum
@@ -289,9 +301,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   diff_ksp_itr_state_ = 0;
   ScalarType vel_max;
   ScalarType cfl;
-  std::stringstream ss;
   ScalarType vel_x_norm, vel_y_norm, vel_z_norm;
-  std::stringstream s;
 
   bool flag_smooth_velocity = true;
   bool write_output_and_break = false;
@@ -322,7 +332,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       write_output_and_break = true;
     }
 
-    if ((params_->tu_->write_output_ && i % 5 == 0) || write_output_and_break) {
+    if ((params_->tu_->write_output_ && i % 50 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());

@@ -231,9 +231,10 @@ PetscErrorCode SolverInterface::finalize() {
       }
     }
   }
-  ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
-  ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
-
+  if (params_->tu_->model_ < 5){
+    ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
+    ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
+  }
   ScalarType max, min;
   ierr = VecMax(tmp_, NULL, &max); CHKERRQ(ierr);
   ierr = VecMin(tmp_, NULL, &min); CHKERRQ(ierr);
@@ -649,6 +650,10 @@ PetscErrorCode SolverInterface::readData() {
     ss.str("");
     ss.clear();
   }
+ 
+
+
+
 
   ScalarType *ptr;
   if (!app_settings_->path_->data_t0_.empty()) {
@@ -837,9 +842,21 @@ PetscErrorCode SolverInterface::createSynthetic() {
     ierr = dataOut(data_t1_, params_, "c1_true_syn_before_observation" + params_->tu_->ext_); CHKERRQ(ierr);
   }
   ss << " Synthetic data solve parameters: r = " << params_->tu_->rho_ << ", k = " << params_->tu_->k_;
-  if (params_->tu_->model_ >= 4)
-    ss << ", g = " << params_->tu_->forcing_factor_;
+  if (params_->tu_->model_ >= 5){
+
+    ss << "\n, death_rate = " << params_->tu_->death_rate_;
+    ss << "\n, death_rate = " << params_->tu_->death_rate_;
+    ss << "\n, ox_hypoxia = " << params_->tu_->ox_hypoxia_;
+    ss << "\n, alpha_0 = " << params_->tu_->alpha_0_;
+    ss << "\n, ox_consumption = " << params_->tu_->ox_consumption_;
+    ss << "\n, ox_source = " << params_->tu_->ox_source_;
+    ss << "\n, beta_0 = " << params_->tu_->beta_0_;
+    ss << "\n, sigma_b = " << params_->tu_->sigma_b_;
+    ss << "\n, ox_inv = " << params_->tu_->ox_inv_;
+  }
+  ss << ", g = " << params_->tu_->forcing_factor_;
   ss << ", nt = " << params_->tu_->nt_;
+  
   ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
   ss.str("");
   ss.clear();
