@@ -155,7 +155,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
       diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
-      J = diff_en + diff_nec + diff_ed
+      J = diff_en + diff_nec #+ diff_ed
       J_vec.append(J) 
       out = "Objective function (En + Nec + Ed = J) : %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, J)
       print(out)

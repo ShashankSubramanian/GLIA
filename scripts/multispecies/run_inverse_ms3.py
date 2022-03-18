@@ -51,7 +51,10 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
   cma_init = (cma_init - cma_lb)/(cma_ub - cma_lb) 
   fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars)
 
-  es = cma.CMAEvolutionStrategy(cma_init, 0.3, {'bounds': [0, 1]}) 
+  es = cma.CMAEvolutionStrategy(cma_init, 0.3, {'bounds': [0, 1]})
+  opts = cma.CMAOptions()
+  opts.set('tolfunc',1e-2) 
+  opts.set('popsize', 12)
   
   while not es.stop():
     solutions = es.ask()
@@ -72,10 +75,15 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
   en_t1 = os.path.join(pat_dir, 'en_t1.nc')
   ed_t1 = os.path.join(pat_dir, 'ed_t1.nc')
   nec_t1 = os.path.join(pat_dir, 'nec_t1.nc')
+  seg_t1 = os.path.join(pat_dir, 'seg_t1.nc')
 
   dat_en_true = readNetCDF(en_t1) 
   dat_ed_true = readNetCDF(ed_t1) 
   dat_nec_true = readNetCDF(nec_t1) 
+  dat_seg_true = readNetCDF(seg_t1) 
+  dat_vt_true = dat_seg_true.copy()
+  dat_vt_true[dat_vt_true != 7] = 0
+  dat_vt_true[dat_vt_true == 7] = 1
 
   num_devices = 4
   J_vec = []
@@ -96,12 +104,14 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       x = x * (ub_vec - lb_vec) + lb_vec;
        
       forward_params = {}
-
+      str_disp = "Forward params (%d) : "%j
       for (k, param) in enumerate(inv_params):
         forward_params[param] = x[k]
+        str_disp += param + " = " + str(x[k]) + ", "
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
           forward_params[param] = init_vec[k]
+      print(str_disp)
       '''
       forward_params['rho'] = x[0]
       forward_params['k'] = x[1] 
@@ -137,27 +147,36 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       en_rec_path = os.path.join(res_forward_dir, 'en_rec_final.nc')
       ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
       nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
+      seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
         
       dat_en_rec = readNetCDF(en_rec_path)
       dat_ed_rec = readNetCDF(ed_rec_path)
       dat_nec_rec = readNetCDF(nec_rec_path)
-  
-      px_en = np.sum((dat_en_true>0))
-      px_nec = np.sum((dat_nec_true>0))
-      px_ed = np.sum((dat_ed_true>0))
+      dat_seg_rec = readNetCDF(seg_rec_path)
+      dat_vt_rec = dat_seg_rec.copy()
+      dat_vt_rec[dat_vt_rec != 7] = 0 
+      dat_vt_rec[dat_vt_rec == 7] = 1 
  
+      px_en = np.linalg.norm((dat_en_true).flatten())
+      px_nec = np.linalg.norm((dat_nec_true).flatten())
+      px_ed = np.sum((dat_ed_true>0))
+      px_vt = np.sum((dat_vt_true > 0))
+      
       tot = px_en + px_nec + px_ed
       
-      w_en = tot/px_en
-      w_nec = tot/px_nec
-      w_ed = tot/px_ed
+      w_en = 1/px_en
+      w_nec = 1/px_nec
+      #w_ed = 1/px_ed
+      w_ed = 1/px_ed
+      w_vt = 1/px_vt
 
       diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
       diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
-      J = diff_en + diff_nec + diff_ed
+      diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
+      J = diff_en + diff_nec + diff_ed + diff_vt
       J_vec.append(J) 
-      out = "Objective function (En + Nec + Ed = J) : %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, J)
+      out = "Objective function (En + Nec + Ed + Misfit[VT]= J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, J)
       print(out)
       
       os.remove(en_rec_path)

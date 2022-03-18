@@ -1,5 +1,5 @@
 import os,sys
-from run_multispecies import create_tusolver_config
+from run_multispecies_no_elas import create_tusolver_config
 import argparse
 import subprocess 
 
@@ -18,7 +18,7 @@ import cma
 
 
 
-def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn=False):
+def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn, sigma, v_dir):
  
   #list_vars = ['rho', 'k', 'gamma', 'ox_hypoxia', 'death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0', 'sigma_b', 'ox_inv', 'invasive_thres']
   '''
@@ -43,15 +43,19 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
       cma_init.append(init_vec[i])
       
       
-  
+  print(sigma)
+  print(v_dir) 
   cma_init = np.array(cma_init)
   cma_lb = np.array(cma_lb)
   cma_ub = np.array(cma_ub)
 
   cma_init = (cma_init - cma_lb)/(cma_ub - cma_lb) 
-  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars)
+  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars, v_dir)
 
-  es = cma.CMAEvolutionStrategy(cma_init, 0.3, {'bounds': [0, 1]}) 
+  opts = cma.CMAOptions()
+  opts.set('tolfunc',1e-2) 
+  opts.set('popsize', 12)
+  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1]})
   
   while not es.stop():
     solutions = es.ask()
@@ -64,7 +68,7 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
 
 
 
-def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars):
+def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars, v_dir):
  
   print("Testing ")
   
@@ -72,10 +76,15 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
   en_t1 = os.path.join(pat_dir, 'en_t1.nc')
   ed_t1 = os.path.join(pat_dir, 'ed_t1.nc')
   nec_t1 = os.path.join(pat_dir, 'nec_t1.nc')
+  seg_t1 = os.path.join(pat_dir, 'seg_t1.nc')
 
   dat_en_true = readNetCDF(en_t1) 
   dat_ed_true = readNetCDF(ed_t1) 
   dat_nec_true = readNetCDF(nec_t1) 
+  dat_seg_true = readNetCDF(seg_t1) 
+  dat_vt_true = dat_seg_true.copy()
+  dat_vt_true[dat_vt_true != 7] = 0
+  dat_vt_true[dat_vt_true == 7] = 1
 
   num_devices = 4
   J_vec = []
@@ -96,12 +105,14 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       x = x * (ub_vec - lb_vec) + lb_vec;
        
       forward_params = {}
-
+      str_disp = "Forward params (%d) : "%j
       for (k, param) in enumerate(inv_params):
         forward_params[param] = x[k]
+        str_disp += param + " = " + str(x[k]) + ", "
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
           forward_params[param] = init_vec[k]
+      print(str_disp)
       '''
       forward_params['rho'] = x[0]
       forward_params['k'] = x[1] 
@@ -116,7 +127,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       forward_params['ox_inv'] = x[10] 
       forward_params['invasive_thres'] = x[11] 
       '''
-      create_tusolver_config(pat_dir, res_forward_dir, forward_params)
+      create_tusolver_config(pat_dir, res_forward_dir, forward_params, True, v_dir)
       config_path = os.path.join(res_forward_dir, 'solver_config.txt') 
       tmp = i * num_devices + j 
       log_path = os.path.join(res_forward_dir, 'solver_log_%d.txt'%tmp) 
@@ -130,6 +141,15 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     excmd(cmd)
     #subprocess.Popen(['wait'])
     #os.wait()
+    px_en = np.linalg.norm((dat_en_true).flatten())**2
+    px_nec = np.linalg.norm((dat_nec_true).flatten())**2
+    px_ed = np.linalg.norm((dat_ed_true).flatten())**2 
+    px_vt = np.linalg.norm((dat_vt_true).flatten())**2  
+
+    w_en = 1/px_en
+    w_nec = 1/px_nec
+    w_ed = 1/px_ed
+    w_vt = 1/px_vt
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
@@ -137,27 +157,24 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       en_rec_path = os.path.join(res_forward_dir, 'en_rec_final.nc')
       ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
       nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
+      seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
         
       dat_en_rec = readNetCDF(en_rec_path)
       dat_ed_rec = readNetCDF(ed_rec_path)
       dat_nec_rec = readNetCDF(nec_rec_path)
-  
-      px_en = np.sum((dat_en_true>0))
-      px_nec = np.sum((dat_nec_true>0))
-      px_ed = np.sum((dat_ed_true>0))
+      dat_seg_rec = readNetCDF(seg_rec_path)
+      dat_vt_rec = dat_seg_rec.copy()
+      dat_vt_rec[dat_vt_rec != 7] = 0 
+      dat_vt_rec[dat_vt_rec == 7] = 1 
  
-      tot = px_en + px_nec + px_ed
-      
-      w_en = tot/px_en
-      w_nec = tot/px_nec
-      w_ed = tot/px_ed
 
       diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
       diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
-      J = diff_en + diff_nec + diff_ed
+      diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
+      J = diff_en + diff_nec + diff_ed + diff_vt
       J_vec.append(J) 
-      out = "Objective function (En + Nec + Ed = J) : %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, J)
+      out = "Objective function (En + Nec + Ed + Misfit[VT]= J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, J)
       print(out)
       
       os.remove(en_rec_path)
@@ -185,6 +202,8 @@ if __name__ == "__main__":
   r_args.add_argument('-i', '--init_vals', nargs="+", type=float, help = 'list of initial guess', required = True)
   r_args.add_argument('-inv', '--inv_params', nargs="+", type=str, help = 'list of initial guess', required = True)
   r_args.add_argument('-total', '--total_params', nargs="+", type=str, help = 'list of initial guess', required = True)
+  r_args.add_argument('-sigma', '--sigma_cma', type=float, help = 'list of initial guess', required = True)
+  r_args.add_argument('-vel', '--vel_dir', type=str, help = 'list of initial guess', required = True)
   args = parser.parse_args();
 
   pat_dir = args.patient_dir
@@ -197,8 +216,11 @@ if __name__ == "__main__":
   init_vec = args.init_vals
   inv_params = args.inv_params 
   list_vars = args.total_params
-   
-  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars)    
+  sigma = args.sigma_cma
+  
+  v_dir = args.vel_dir
+  print(sigma) 
+  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, True, sigma, v_dir) 
    
   
 
