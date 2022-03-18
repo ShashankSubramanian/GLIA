@@ -29,9 +29,9 @@ class Tumor {
   // state variables
   Vec c_t_;
   Vec c_0_;
-  Vec en_t_;
-  Vec nec_t_;
-  Vec ed_t_;
+  //Vec en_t_;
+  //Vec nec_t_;
+  //Vec ed_t_;
   // adjoint Variables
   Vec p_t_;
   Vec p_0_;

@@ -351,6 +351,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   ierr = tuMSGwarn (s.str()); CHKERRQ(ierr); s.str ("");s.clear ();
   ierr = VecRestoreArray(tao_x, &x_ptr); CHKERRQ(ierr);
 
+  s << " Done !"; 
+  ierr = tuMSGwarn (s.str()); CHKERRQ(ierr); s.str ("");s.clear ();
   PetscFunctionReturn (ierr);
 }
 

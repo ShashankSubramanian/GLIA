@@ -665,17 +665,25 @@ PetscErrorCode SolverInterface::readData() {
       ierr = tuMSGwarn(ss.str()); CHKERRQ(ierr);
       ss.str("");
       ss.clear();
-      ierr = vecGetArray(data_t0_, &ptr); CHKERRQ(ierr);
 #ifdef CUDA
+      ierr = vecGetArray(data_t0_, &ptr); CHKERRQ(ierr);
       clipVectorCuda(ptr, params_->grid_->nl_);
-#else
-      for (int i = 0; i < params_->grid_->nl_; i++) ptr[i] = (ptr[i] <= 0.) ? 0. : ptr[i];
-#endif
       ierr = vecRestoreArray(data_t0_, &ptr); CHKERRQ(ierr);
+#else
+      ierr = vecGetArray(data_t0_, &ptr); CHKERRQ(ierr);
+      for (int i = 0; i < params_->grid_->nl_; i++) ptr[i] = (ptr[i] <= 0.) ? 0. : ptr[i];
+      ierr = vecRestoreArray(data_t0_, &ptr); CHKERRQ(ierr);
+#endif
     }
     // smooth a little bit because sometimes registration outputs have high gradients
     if (data_t0_ != nullptr) {
+      
+    ss << " Smooth " << params_->tu_->smoothing_factor_data_t0_; CHKERRQ(ierr);
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
       if (params_->tu_->smoothing_factor_data_t0_ > 0) {
+        
         ierr = spec_ops_->weierstrassSmoother(data_t0_, data_t0_, params_, sig_data_t0); CHKERRQ(ierr);
         ss << " smoothing c(0) with factor: " << params_->tu_->smoothing_factor_data_t0_ << ", and sigma: " << sig_data_t0;
         ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
@@ -684,6 +692,11 @@ PetscErrorCode SolverInterface::readData() {
       }
     }
     ierr = VecMax(data_t0_, NULL, &max); CHKERRQ(ierr);
+    ss << " MAX C0 " << max; CHKERRQ(ierr);
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+     
     ierr = VecScale(data_t0_, (1.0 / max)); CHKERRQ(ierr);
     ierr = dataOut(data_t0_, params_, "c0_input.nc"); CHKERRQ(ierr);
     params_->tu_->use_c0_ = true; // optimizers will use c0 data
@@ -765,6 +778,11 @@ PetscErrorCode SolverInterface::createSynthetic() {
   }
   // if data_t0_ path is set; use that
   if (!app_settings_->path_->data_t0_.empty()) {
+    ss << "Assigning data_t0_ ";
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str("");
+    ss.clear();
+    
     if (data_t0_ == nullptr) {
       ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
     }
@@ -845,7 +863,6 @@ PetscErrorCode SolverInterface::createSynthetic() {
   if (params_->tu_->model_ >= 5){
 
     ss << "\n, death_rate = " << params_->tu_->death_rate_;
-    ss << "\n, death_rate = " << params_->tu_->death_rate_;
     ss << "\n, ox_hypoxia = " << params_->tu_->ox_hypoxia_;
     ss << "\n, alpha_0 = " << params_->tu_->alpha_0_;
     ss << "\n, ox_consumption = " << params_->tu_->ox_consumption_;
@@ -853,6 +870,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
     ss << "\n, beta_0 = " << params_->tu_->beta_0_;
     ss << "\n, sigma_b = " << params_->tu_->sigma_b_;
     ss << "\n, ox_inv = " << params_->tu_->ox_inv_;
+    ss << "\n, invasive_thres = " << params_->tu_->invasive_thres_;
   }
   ss << ", g = " << params_->tu_->forcing_factor_;
   ss << ", nt = " << params_->tu_->nt_;

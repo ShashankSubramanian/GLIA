@@ -887,15 +887,18 @@ PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators>
   ierr = tuMSGwarn(" Initializing Multi Species Forward Solver."); CHKERRQ(ierr);
 
   params->tu_->time_history_off_ = true;
+  ierr = tuMSGwarn(" SolverIntraface initialize"); CHKERRQ(ierr);
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
    
   ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  ierr = tuMSGwarn(" Reset done"); CHKERRQ(ierr);
   // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
   if (!app_settings_->path_->p_seg_.empty()) {
     ierr = readPatient(); CHKERRQ(ierr);
     ierr = pde_operators_->setTC(tc_seg_); CHKERRQ(ierr);
   }
+  ierr = tuMSGwarn(" Assigning the params"); CHKERRQ(ierr);
 
   params_->tu_->beta_0_ = app_settings_->syn_->beta_0_;
   params_->tu_->rho_ = app_settings_->syn_-> rho_;
@@ -977,6 +980,7 @@ PetscErrorCode MultiSpeciesSolver::readPatient() {
     }
   }
 
+  ierr = tuMSGwarn(" Done with reading the patient"); CHKERRQ(ierr);
 
 
   PetscFunctionReturn(ierr);
@@ -989,10 +993,15 @@ PetscErrorCode MultiSpeciesSolver::readPatient() {
 PetscErrorCode MultiSpeciesSolver::run() {
   PetscErrorCode ierr = 0;
   PetscFunctionBegin;
-
+  /*
   if (has_dt0_) {
     ierr = VecCopy(data_->dt0(), tumor_->c_0_); CHKERRQ(ierr);
   } else {
+    ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
+  }
+  */
+
+  if (!has_dt0_) {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
 
@@ -1075,7 +1084,10 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
     ierr = dataOut(tumor_->species_["edema"], params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
     ss.str(std::string());
     ss.clear();
-
+    ss << "i_rec_final";
+    ierr = dataOut(tumor_->species_["infiltrative"], params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
   } 
 
   PetscFunctionReturn(ierr);

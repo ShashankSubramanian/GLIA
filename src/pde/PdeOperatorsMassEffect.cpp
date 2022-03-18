@@ -660,6 +660,25 @@ PetscErrorCode PdeOperatorsMassEffect::solveState(int linearized) {
       s.clear();
     }
 
+    if (params_->tu_->write_all_velocities_){
+      
+        ss << "vel_x_t[" << i << "].nc";
+        dataOut(tumor_->velocity_->x_, params_, ss.str().c_str());
+        ss.str(std::string());
+        ss.clear();
+
+        ss << "vel_y_t[" << i << "].nc";
+        dataOut(tumor_->velocity_->z_, params_, ss.str().c_str());
+        ss.str(std::string());
+        ss.clear();
+
+        ss << "vel_z_t[" << i << "].nc";
+        dataOut(tumor_->velocity_->y_, params_, ss.str().c_str());
+        ss.str(std::string());
+        ss.clear();
+    }
+
+
     // copy displacement to old vector
     ierr = displacement_old_->copy(tumor_->displacement_);
   }

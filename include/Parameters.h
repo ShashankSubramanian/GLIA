@@ -224,6 +224,8 @@ public:
   , order_ (2)                             // Order of accuracy for PDE solves
   , write_output_ (1)                      // Print flag for paraview visualization
   , write_multispec_output_ (1)            // Print flag for multispec inversion
+  , given_velocities_(false)
+  , write_all_velocities_(false)
   , phi_store_ (false)                     // Flag to store phis
   , adjoint_store_ (false)                  // Flag to store half-step concentrations for adjoint solve to speed up time to solution
   , time_history_off_(false)               // if true, time history is not stored (forward solve, or finite-differences)
@@ -240,6 +242,7 @@ public:
   , writepath_()
   , readpath_()
   , ext_(".nc")
+  , velocity_prefix_()
   , force_phi_compute_ (false)             // forces the computation of gaussians on the fly because of insufficient memory on the device 
   , feature_compute_ (false)      // computes temporal biophysical features in the forward solver
   {
@@ -338,6 +341,8 @@ public:
   // performance settings
   bool write_output_; 
   bool write_multispec_output_;
+  bool write_all_velocities_;
+  bool given_velocities_;
   bool phi_store_;
   bool adjoint_store_;
   bool time_history_off_;
@@ -363,7 +368,7 @@ public:
   std::string readpath_;
   // .nc or nifty output
   std::string ext_; // extension ".nc" or ".nii.gz"
-
+  std::string velocity_prefix_;
   bool force_phi_compute_;
 
   #ifdef NIFTIIO

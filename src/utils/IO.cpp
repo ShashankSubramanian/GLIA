@@ -235,6 +235,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   // ### paths
   if (name == "output_dir") {p->tu_->writepath_ = value; return;}
   if (name == "input_dir") {p->tu_->readpath_ = value; return;}
+  if (name == "velocity_prefix") {p->tu_->velocity_prefix_ = value; return;}
   if (name == "d1_path") {a->path_->data_t1_ = value; return;}
   if (name == "d1_en_path") {a->path_->data_en_t1_ = value; return;}
   if (name == "d1_nec_path") {a->path_->data_nec_t1_ = value; return;}
@@ -266,6 +267,8 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "store_adjoint") {p->tu_->adjoint_store_ = std::stoi(value) > 0; return;}
   if (name == "write_output") {p->tu_->write_output_ = std::stoi(value) > 0; return;}
   if (name == "write_multispecies_output") {p->tu_->write_multispec_output_ = std::stoi(value) > 0; return;}
+  if (name == "write_all_velocities") {p->tu_->write_all_velocities_ = std::stoi(value) > 0; return;}
+  if (name == "given_velocities") {p->tu_->given_velocities_ = std::stoi(value) > 0; return;}
   // misc
   if (name == "feature_compute") {p->tu_->feature_compute_ = std::stoi(value) > 0; return;}
 }

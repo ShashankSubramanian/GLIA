@@ -64,6 +64,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
   computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, params_->tu_->sigma_b_, params_->grid_->nl_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) {
+    //alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
+    //beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
     alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
     beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
   }
@@ -151,8 +153,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources(Vec p, Vec i, Vec n, Vec
     i_temp = i_ptr[i];
     p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - params_->tu_->death_rate_ * h_ptr[i] * p_ptr[i]);
     i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - death_ratio * params_->tu_->death_rate_ * h_ptr[i] * i_ptr[i]);
-    n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
-    ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
+    //n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
+    n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp));
+    //ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
+    ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (1 - n_ptr[i]));
     ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
     // conserve healthy cells
@@ -165,8 +169,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources(Vec p, Vec i, Vec n, Vec
     }
     frac_1 = (std::isnan(frac_1)) ? 0. : frac_1;
     frac_2 = (std::isnan(frac_2)) ? 0. : frac_2;
-    gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]) + h_ptr[i] * params_->tu_->death_rate_ * gm_ptr[i]);
-    wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]) + h_ptr[i] * params_->tu_->death_rate_ * wm_ptr[i]);
+    //gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]) + h_ptr[i] * params_->tu_->death_rate_ * gm_ptr[i]);
+    //wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]) + h_ptr[i] * params_->tu_->death_rate_ * wm_ptr[i]);
+    gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]));
+    wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]));
   }
 #endif
 
@@ -331,7 +337,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       s.clear();
       write_output_and_break = true;
     }
-
+    
     if ((params_->tu_->write_output_ && i % 50 == 0) || write_output_and_break) {
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
@@ -414,14 +420,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
         ss.clear();
       }
     }
-
+    
     if (write_output_and_break) break;
     // ------------------------------------------------ advection  ------------------------------------------------
 
     // Update diffusivity and reaction coefficient
     ierr = updateReacAndDiffCoefficients(tumor_->seg_, tumor_); CHKERRQ(ierr);
     ierr = tumor_->k_->updateIsotropicCoefficients(k1, k2, k3, tumor_->mat_prop_, params_); CHKERRQ(ierr);
-
+    
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     ierr = diff_solver_->precFactor(); CHKERRQ(ierr);
 
@@ -497,6 +503,45 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       // copy displacement to old vector
       ierr = displacement_old_->copy(tumor_->displacement_);
     }
+
+    if (params_->tu_->given_velocities_){
+
+      //s << app_settings_->path_->velocity_x1_ << "[" << i << "].nc"; 
+      s << params_->tu_->velocity_prefix_ << "_x_t[" << i << "].nc"; 
+      ierr = dataIn(tumor_->velocity_->x_, params_, s.str().c_str());
+      s.str(std::string());
+      s.clear();
+
+      //s << app_settings_->path_->velocity_x2_ << "[" << i << "].nc"; 
+      s << params_->tu_->velocity_prefix_ << "_y_t[" << i << "].nc"; 
+      ierr = dataIn(tumor_->velocity_->y_, params_, s.str().c_str());
+      s.str(std::string());
+      s.clear();
+      
+      s << params_->tu_->velocity_prefix_ << "_z_t[" << i << "].nc"; 
+      ierr = dataIn(tumor_->velocity_->z_, params_, s.str().c_str());
+      s.str(std::string());
+      s.clear();
+
+      ierr = VecNorm(tumor_->velocity_->x_, NORM_2, &vel_x_norm); CHKERRQ(ierr);
+      ierr = VecNorm(tumor_->velocity_->y_, NORM_2, &vel_y_norm); CHKERRQ(ierr);
+      ierr = VecNorm(tumor_->velocity_->z_, NORM_2, &vel_z_norm); CHKERRQ(ierr);
+      s << "Norm of velocity (x,y,z) = (" << vel_x_norm << ", " << vel_y_norm << ", " << vel_z_norm << ")";
+      ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+      s.str("");
+      s.clear();
+    }
+
+
+
+
+
+
+
+
+
+
+
   }
 
   if (params_->tu_->verbosity_ >= 3) {
