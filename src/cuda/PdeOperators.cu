@@ -83,7 +83,8 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
   //alpha_ptr[i] = alpha_0 * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
   //beta_ptr[i] = beta_0 * ox_ptr[i] * (1 / (1 + exp(100 * (i_ptr[i] + p_ptr[i] - sigma_b))));
   alpha_ptr[i] = alpha_0 * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
-  beta_ptr[i] = beta_0 * ox_ptr[i] ;
+  //beta_ptr[i] = beta_0 * ox_ptr[i] ;
+  beta_ptr[i] = beta_0 * (1 / (1 + exp(100 * (ox_inv - ox_ptr[i])))) ;
 	}
 }
 

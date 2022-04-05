@@ -153,10 +153,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources(Vec p, Vec i, Vec n, Vec
     i_temp = i_ptr[i];
     p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - params_->tu_->death_rate_ * h_ptr[i] * p_ptr[i]);
     i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - death_ratio * params_->tu_->death_rate_ * h_ptr[i] * i_ptr[i]);
-    //n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
-    n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp));
-    //ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-    ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (1 - n_ptr[i]));
+    n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
+    //n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp));
+    ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
+    //ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (1 - n_ptr[i]));
     ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
     // conserve healthy cells
