@@ -18,8 +18,8 @@ Tumor::Tumor(std::shared_ptr<Parameters> params, std::shared_ptr<SpectralOperato
   //ierr = VecDuplicate(c_t_, &ed_t_);
   //ierr = VecDuplicate(c_t_, &en_t_);
   // allocating memory for work vectors
-  work_ = new Vec[12];
-  for (int i = 0; i < 12; i++) {
+  work_ = new Vec[13];
+  for (int i = 0; i < 13; i++) {
     ierr = VecDuplicate(c_t_, &work_[i]);
     ierr = VecSet(work_[i], 0);
   }
@@ -419,7 +419,7 @@ Tumor::~Tumor() {
   if (p_ != nullptr)
     ierr = VecDestroy(&p_);
 
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 13; i++) {
     ierr = VecDestroy(&work_[i]);
   }
   delete[] work_;

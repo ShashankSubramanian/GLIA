@@ -42,7 +42,7 @@ def create_tusolver_config(pat_dir, res_dir, forward_params, is_syn, v_dir):
   
   p['rho_data'] = forward_params['rho'] 
   p['k_data'] = forward_params['k'] 
-  p['gamma_data'] = 0 
+  p['gamma_data'] = forward_params['gamma']
   p['ox_hypoxia_data'] = forward_params['ox_hypoxia'] 
   p['death_rate_data'] = forward_params['death_rate'] 
   p['alpha_0_data'] = forward_params['alpha_0']
@@ -54,14 +54,18 @@ def create_tusolver_config(pat_dir, res_dir, forward_params, is_syn, v_dir):
   p['invasive_thres_data'] = forward_params['invasive_thres']
   p['write_multispecies_output'] = 1 
   p['write_output'] = 1
-  p['nt_data'] = 50
-  p['dt_data'] = 0.02
+  p['nt_data'] = 80
+  p['dt_data'] = 0.0125
   p['k_gm_wm'] = 0.2
   p['r_gm_wm'] = 0
   p['ratio_i0_c0'] = 0.0
   p['time_history_off'] = 1
-  p['given_velocities'] = 1
-  p['velocity_prefix'] = v_dir
+  if forward_params['gamma'] == 0:
+    p['given_velocities'] = 1
+    p['velocity_prefix'] = v_dir
+  else:
+    p['given_velocities'] = 0
+    
 
   r['code_path'] = code_dir;
   r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system

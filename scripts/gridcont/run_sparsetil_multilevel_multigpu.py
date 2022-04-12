@@ -103,7 +103,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
 
     cmd_command = ''
     symlink_cmd = ''
-    pythoncmd = "python3 "
+    pythoncmd = "python "
 
     # handle submit if multiple cases per job file
     global cases_per_jobfile_counter;

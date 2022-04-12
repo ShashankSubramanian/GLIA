@@ -7,11 +7,11 @@ def copy_inv_til(args):
     if not os.path.exists(os.path.join(*[args.patient_dir, pat, "aff2jakob", pat + "_t1_aff2jakob.nii.gz"])):
       continue
     '''
-    til = os.path.join(*[args.til_dir, pat, "inversion/nx256/obs-1.0/c0_rec_256256256.nii.gz"]) 
+    til = os.path.join(*[args.til_dir, "inversion/nx256/obs-1.0/c0_rec_256256256.nii.gz"]) 
     if not os.path.exists(til):
       print("ERROR! pat {} does not have til at loc {}".format(pat, til))
     else:
-      dst = os.path.join(*[args.patient_dir, pat, "aff2jakob", pat + "_c0Recon_aff2jakob.nii.gz"])
+      dst = os.path.join(*[args.patient_dir, pat + "_c0Recon_aff2jakob.nii.gz"])
       print("copying TIL {} to DIR {}".format(til, dst)) 
       shutil.copy(til, dst) 
 

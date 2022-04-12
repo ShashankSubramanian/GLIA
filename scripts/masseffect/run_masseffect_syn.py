@@ -79,8 +79,8 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, is_syn=False):
     p['init_rho']           = init_rho                  # initial guess rho (reaction in wm)
     p['init_k']             = init_k                    # initial guess kappa (diffusivity in wm)
     p['init_gamma']         = init_gamma                # initial guess (forcing factor for mass effect)
-    p['nt_inv']             = 25                        # number time steps for inversion
-    p['dt_inv']             = 0.04                      # time step size for inversion
+    p['nt_inv']             = 100                        # number time steps for inversion
+    p['dt_inv']             = 0.01                      # time step size for inversion
     if is_syn:
       p['k_gm_wm']            = 0                         # kappa ratio gm/wm (if zero, kappa=0 in gm)
       p['r_gm_wm']            = 0                         # rho ratio gm/wm (if zero, rho=0 in gm)
@@ -96,7 +96,7 @@ def create_tusolver_config(n, pat, pat_dir, atlas_dir, res_dir, is_syn=False):
     p['rho_lb']             = 2                         # lower bound rho
     p['rho_ub']             = 12                        # upper bound rho
     p['gamma_lb']           = 0                         # lower bound gamma
-    p['gamma_ub']           = 12E4                      # upper bound gamma
+    p['gamma_ub']           = 13E4                      # upper bound gamma
     p['lbfgs_vectors']      = 5                         # number of vectors for lbfgs update
     p['lbfgs_scale_type']   = "scalar"                  # initial hessian approximation
     p['lbfgs_scale_hist']   = 5                         # used vecs for initial hessian approx
@@ -121,7 +121,6 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera', run_params =
   r['wtime_h']   = 3
   r['wtime_m']   = 0
   r['log_dir']   = results_path
-  r['output_dir']   = results_path
   r['log_name']  = 'log_' + str(idx)
 #  bash_file.write("#!/bin/bash\n\n");
   job_header = par.write_jobscript_header(p, run_params, use_gpu=True)
@@ -348,21 +347,19 @@ def find_k_closest(atlas_dict, k, elem, leave_out=[]):
   return at_list
 
 def run(args):
-  print(os.path.exists(args.patient_dir + "/pat_stats.csv"))
-  print(args.patient_dir + "/pat_stats.csv") 
+  
   #patient_list = os.listdir(args.patient_dir)
+
   if not os.path.exists(args.patient_dir + "/pat_stats.csv"):
     # create stats for each patient first
     print("patient statistics do not exist; creating them...")
     f_c    = open(args.patient_dir + "/pat_stats.csv", "w+")
     fail   = []
     for pat in os.listdir(args.patient_dir):
-      #if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1_aff2jakob.nii.gz"):
-      #if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"):
-      if os.path.exists(args.patient_dir + "/" + pat +"/" + "seg_t1.nii.gz"):
+      if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1_aff2jakob.nii.gz"):
         idx = pat
         print("computing stats for pat ", idx)
-        nm = args.patient_dir + "/" + pat + +"/" + "seg_t1.nii.gz" 
+        nm = args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"
         if not os.path.exists(nm):
           print("pat {} does not exist; skipping...".format(pat))
           fail.append(pat)

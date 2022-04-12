@@ -162,6 +162,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['pvec_path'] = ""                 # [optional] path to initial guess p vector (if none, use zero)
     p['data_comp_path'] = ""            # [optional] path to label image of connected components of target data
     p['data_comp_data_path'] = ""       # [optional] path to .dat file for connected components of target data
+    p['velocity_prefix'] = ""           # [optional] prefix for velocity files
     p['velocity_x1'] = ""               # [optional] path to velocity for meterial transport
     p['velocity_x2'] = ""
     p['velocity_x3'] = ""
@@ -172,7 +173,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['store_adjoint']    = 1           # 1: store adjoint time history
     p['write_output']     = 1           # 1: write .nc and .nii.gz output
     p['write_multispecies_output']     = 1           # 1: write .nc and .nii.gz output
-
+    p['given_velocities'] = 0           # velocities are given
+    p['write_all_velocities'] = 0       # write_all_velocities
     #############################################################################
     #############################################################################
 
@@ -331,6 +333,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("velocity_x1=" + str(p['velocity_x1']) + "\n");
         f.write("velocity_x2=" + str(p['velocity_x2']) + "\n");
         f.write("velocity_x3=" + str(p['velocity_x3']) + "\n");
+        f.write("velocity_prefix=" + str(p['velocity_prefix']) + "\n");
 
         f.write("\n");
         f.write("### performance" + "\n");
@@ -339,6 +342,8 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("store_adjoint=" + str(p['store_adjoint']) + "\n");
         f.write("write_output=" + str(p['write_output']) + "\n");
         f.write("write_multispecies_output=" + str(p['write_multispecies_output']) + "\n");
+        f.write("write_all_velocities=" + str(p['write_all_velocities']) + "\n");
+        f.write("given_velocities=" + str(p['given_velocities']) + "\n");
 
     ibman = ""
     if 'ibrun_man' in r and r['ibrun_man']:
@@ -411,7 +416,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
         elif run_params['compute_sys'] == 'maverick2':
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
-            run_params['queue'] = 'rtx-dev'
+            run_params['queue'] = 'rtx'
         else:
             run_params['queue'] = 'normal'
     if 'nodes' not in run_params:
@@ -466,6 +471,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
       
+      job_header += "conda activate mriseg\n\n"
       job_header += "source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"

@@ -14,25 +14,25 @@ from helpers import copy_til
 
 
 args = ensemble.Args()
-
+syn = 'case1'
 ### path to patients [requires affine to jakob; directory structure is args.patient_dir/{patient_ID}/aff2jakob/{data}]
-args.patient_dir = '/scratch/05027/shas1693/pglistr_tumor/checkreal/'
+args.patient_dir = '/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/syndata/'+syn+'/256' 
 ### path to atlases [adni]
-args.atlas_dir   = "/scratch/05027/shas1693/adni-nc/"
+args.atlas_dir   = "/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/syndata/"+syn+"/256"
 ### path to TIL results; results directory from inverse_til.py script; assumes a directory structure
-args.til_dir     = "/scratch/05027/shas1693/pglistr_tumor/results/test_til_gpu"
+args.til_dir     = "/scratch1/07544/ghafouri/results/syn_results/til_inv/"+syn+"/"
 ### path to tumor solver code
-args.code_dir    = "/scratch/05027/shas1693/pglistr_tumor/"
+args.code_dir    = "/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/"
 ### path to registration solver code binaries
-args.claire_dir  = "/scratch/05027/shas1693/claire-dev/bingpu/"
+args.claire_dir  = "/work2/07544/ghafouri/frontera/gits/claire/"
 ### path to results [solver will make this]
-args.results_dir = os.path.join(args.code_dir, "results/test_me_gpu/")
+args.results_dir = "/scratch1/07544/ghafouri/results/syn_results/me_inv/"+syn+"/" 
 ### compute system [TACC systems are: maverick2, frontera, stampede2, longhorn]; others [rebels]
-args.compute_sys = "longhorn"
+args.compute_sys = "frontera"
 
 ### system settings
 ### submit the jobs
-submit               = True
+submit               = False
 ### directory to store all the batched jobs; can change if different from results
 args.job_dir         = args.results_dir
 ### number of gpus per node

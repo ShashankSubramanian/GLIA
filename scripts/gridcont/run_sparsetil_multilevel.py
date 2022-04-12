@@ -70,7 +70,7 @@ def sparsetil_gridcont(input, job_path, job_idx, use_gpu = False):
     kappa_ub           = [.5, .5, .5]; # kappa bounds per level
     rho_lb             = [1, 1, 1];    #
     rho_ub             = [18, 18, 18]; # rho bounds per level
-    k_gm_wm            = 0             # kappa ratio wm to gm
+    k_gm_wm            = 0.2             # kappa ratio wm to gm
     rho_gm_wm          = 0             # rho ratio wm to gm
     # -------------------------------- #
     gaussian_mode      = "PHI";        # alternatives: {"D", "PHI", "C0", "C0_RANKED"}
@@ -104,7 +104,7 @@ def sparsetil_gridcont(input, job_path, job_idx, use_gpu = False):
 
     cmd_command = ''
     symlink_cmd = ''
-    pythoncmd = "python3 "
+    pythoncmd = "python "
 
     # handle submit if multiple cases per job file
     global cases_per_jobfile_counter;

@@ -67,7 +67,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
     //alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
     //beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
     alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
-    beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
+    //beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
+    beta_ptr[i] = params_->tu_->beta_0_ * (1 / (1 + std::exp(-100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
   }
 #endif
 
@@ -294,7 +295,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   r3 = 0;
 
   // force compute
-  ierr = VecCopy(tumor_->species_["proliferative"], tumor_->c_t_); CHKERRQ(ierr);
+  //ierr = VecCopy(tumor_->species_["proliferative"], tumor_->c_t_); CHKERRQ(ierr);
 
   if (params_->tu_->forcing_factor_ > 0) {
     ierr = tumor_->computeForce(tumor_->c_t_);
@@ -370,6 +371,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       ss.clear();
       ss << "o_t[" << i << "].nc";
       dataOut(tumor_->species_["oxygen"], params_, ss.str().c_str());
+      ss.str(std::string());
+      ss.clear();
+      ss << "bg_t[" << i << "].nc";
+      dataOut(tumor_->mat_prop_->bg_, params_, ss.str().c_str());
       ss.str(std::string());
       ss.clear();
       if (params_->tu_->verbosity_ > 2) {
@@ -500,6 +505,28 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       s.str("");
       s.clear();
 
+     // Normalize species s.t. sum = 1
+     // make sure work_[12] is not used 
+     
+     ierr = VecCopy(tumor_->mat_prop_->bg_, tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->wm_); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->gm_); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->csf_); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->vt_); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["proliferative"]); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
+     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["necrotic"]); CHKERRQ(ierr);
+ 
+     ierr = VecPointwiseDivide(tumor_->mat_prop_->bg_, tumor_->mat_prop_->bg_,  tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->mat_prop_->wm_, tumor_->mat_prop_->wm_,  tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->mat_prop_->gm_, tumor_->mat_prop_->gm_,  tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->mat_prop_->csf_, tumor_->mat_prop_->csf_,  tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->mat_prop_->vt_, tumor_->mat_prop_->vt_,  tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->species_["proliferative"], tumor_->species_["proliferative"], tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->species_["necrotic"], tumor_->species_["necrotic"], tumor_->work_[12]); CHKERRQ(ierr);
+     ierr = VecPointwiseDivide(tumor_->c_t_, tumor_->c_t_, tumor_->work_[12]); CHKERRQ(ierr);
+     
       // copy displacement to old vector
       ierr = displacement_old_->copy(tumor_->displacement_);
     }

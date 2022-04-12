@@ -87,8 +87,8 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
   dat_vt_true[dat_vt_true == 7] = 1
 
   num_devices = 4
-  J_vec = []
   num_eval = int(len(solutions))
+  J_vec = np.zeros(num_eval)
   num_batch = int(np.ceil(num_eval / num_devices))
 
   for i in range(num_batch):
@@ -106,6 +106,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
        
       forward_params = {}
       str_disp = "Forward params (%d) : "%j
+      
       for (k, param) in enumerate(inv_params):
         forward_params[param] = x[k]
         str_disp += param + " = " + str(x[k]) + ", "
@@ -127,6 +128,13 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       forward_params['ox_inv'] = x[10] 
       forward_params['invasive_thres'] = x[11] 
       '''
+       
+      if forward_params['ox_inv'] < forward_params['ox_hypoxia']:
+        J_vec[i * num_devices + j] = 8.0
+        continue  
+
+
+
       create_tusolver_config(pat_dir, res_forward_dir, forward_params, True, v_dir)
       config_path = os.path.join(res_forward_dir, 'solver_config.txt') 
       tmp = i * num_devices + j 
@@ -153,6 +161,10 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
+      if J_vec[i * num_devices + j] != 0:
+        out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : = %.4f "%(J_vec[i * num_devices + j])
+        print(out)
+        continue
       res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
       en_rec_path = os.path.join(res_forward_dir, 'en_rec_final.nc')
       ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
@@ -173,8 +185,9 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
       diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
       J = diff_en + diff_nec + diff_ed + diff_vt
-      J_vec.append(J) 
-      out = "Objective function (En + Nec + Ed + Misfit[VT]= J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, J)
+      
+      J_vec[i * num_devices + j] = J 
+      out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, J)
       print(out)
       
       os.remove(en_rec_path)

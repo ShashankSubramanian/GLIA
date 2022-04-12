@@ -106,14 +106,31 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 	    ScalarType reac_ratio = 1;
 	    ScalarType death_ratio = 1;		
 
+
 	    p_temp = p_ptr[i]; i_temp = i_ptr[i];
-        p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
-                            death_rate * h_ptr[i] * p_ptr[i]);
-        i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
-                            death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
+
+        //p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
+        //                    death_rate * h_ptr[i] * p_ptr[i]);
+        p_ptr[i] += dt * (m_ptr[i] * p_temp * (1. - p_temp) - al_ptr[i] * p_temp + bet_ptr[i] * i_temp - 
+                            death_rate * h_ptr[i] * p_temp);
+        if (p_ptr[i] < 0.0) p_ptr[i] = 0.0;
+        if (p_ptr[i] > 1.0) p_ptr[i] = 1.0;
+
+        //i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
+        //                    death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
+        i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + al_ptr[i] * p_temp - bet_ptr[i] * i_temp - 
+                            death_ratio * death_rate * h_ptr[i] * i_temp);
+        if (i_ptr[i] < 0.0) i_ptr[i] = 0.0;
+        if (i_ptr[i] > 1.0) i_ptr[i] = 1.0;
+
         n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
+        if (n_ptr[i] < 0.0) n_ptr[i] = 0.0;
+        if (n_ptr[i] > 1.0) n_ptr[i] = 1.0;
+
         ox_ptr[i] += dt * (-ox_consumption * p_temp + ox_source * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
         ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
+        if (ox_ptr[i] < 0.0) ox_ptr[i] = 0.0;
+        if (ox_ptr[i] > 1.0) ox_ptr[i] = 1.0;
 
         // conserve healthy cells
         if (gm_ptr[i] > 0.01 || wm_ptr[i] > 0.01) {
@@ -125,8 +142,15 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
         frac_2 = (isnan(frac_2)) ? 0. : frac_2;
         gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i])
                          + h_ptr[i] * death_rate * gm_ptr[i]); 
+
+        if (gm_ptr[i] < 0.0) gm_ptr[i] = 0.0;
+        if (gm_ptr[i] > 1.0) gm_ptr[i] = 1.0;
+
         wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i])
-                         + h_ptr[i] * death_rate * wm_ptr[i]); 
+                         + h_ptr[i] * death_rate * wm_ptr[i]);
+        if (wm_ptr[i] < 0.0) wm_ptr[i] = 0.0;
+        if (wm_ptr[i] > 1.0) wm_ptr[i] = 1.0;
+        
 	}
 }
 

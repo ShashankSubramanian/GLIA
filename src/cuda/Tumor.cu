@@ -29,6 +29,7 @@ __global__ void computeTumorSegmentation (ScalarType *bg_ptr, ScalarType *gm_ptr
         if (v > max) {max = v; ct = 7;}
         if (c > max) {max = c; ct = 8;}
         seg_ptr[i] = ct;
+
     }
 }
 
