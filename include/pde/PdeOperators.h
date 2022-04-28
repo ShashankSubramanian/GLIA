@@ -85,7 +85,7 @@ class PdeOperatorsMassEffect : public PdeOperatorsRD {
   std::shared_ptr<VecField> displacement_old_;
 
   Vec *temp_;
-  const int num_work_vecs_ = 8;
+  const int num_work_vecs_ = 13;
   Vec *work_; // only for tumor feature compute stats; else nullptrs
   std::shared_ptr<VecField> work_field_;
   Vec magnitude_;
@@ -159,6 +159,20 @@ class PdeOperatorsMultiSpecies : public PdeOperatorsRD {
   virtual ~PdeOperatorsMultiSpecies() {
     PetscErrorCode ierr = 0;
     ierr = VecDestroy(&magnitude_);
+
+    if (displacement_old_->x_ != nullptr) VecDestroy(&displacement_old_->x_);
+    if (displacement_old_->y_ != nullptr) VecDestroy(&displacement_old_->y_);
+    if (displacement_old_->z_ != nullptr) VecDestroy(&displacement_old_->z_);    
+
+    /*
+    const int num_work_vecs_ = 13;
+     
+    for (int i = 0; i < num_work_vecs_; i++) {
+      if (work_[i] != nullptr) {
+        ierr = VecDestroy(&work_[i]);
+      }
+    }
+    */
   }
 };
 

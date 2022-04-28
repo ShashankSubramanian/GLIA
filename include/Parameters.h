@@ -195,6 +195,7 @@ public:
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.6)                     // hypoxia threshold
   , invasive_thres_ (0.01)                // invasive thres for edema
+  , new_changes_ (false)                // invasive thres for edema
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
   , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
   , support_()                            // // support of compressive sampling guess
@@ -304,6 +305,7 @@ public:
   ScalarType ox_source_, ox_consumption_;
   ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_, sigma_b_;
   ScalarType invasive_thres_;
+  bool new_changes_;
 
   // initial condition (inversion)
   int sparsity_level_;            // should this go to opt?
@@ -566,6 +568,7 @@ public:
     beta_0_(0.02),
     ox_inv_(0.7),
     invasive_thres_(0.02),
+    new_changes_(false),
     dt_(0.01),
     nt_(100),
     testcase_(0),
@@ -586,6 +589,7 @@ public:
   ScalarType ox_source_;
   ScalarType beta_0_;
   ScalarType invasive_thres_;
+  bool new_changes_;
   ScalarType ox_inv_;
   ScalarType dt_;
   int nt_;

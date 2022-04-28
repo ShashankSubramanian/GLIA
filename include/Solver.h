@@ -102,7 +102,12 @@ class MultiSpeciesSolver : public SolverInterface {
     if (p_gm_ != nullptr) VecDestroy(&p_gm_);
     if (p_vt_ != nullptr) VecDestroy(&p_vt_);
     if (p_csf_ != nullptr) VecDestroy(&p_csf_);
-
+    if (tc_seg_ != nullptr) VecDestroy(&tc_seg_);
+    if (tmp_ != nullptr) VecDestroy(&tmp_);
+    if (p_rec_ != nullptr) VecDestroy(&p_rec_);
+    if (data_t1_ != nullptr) VecDestroy(&data_t1_);
+    if (data_t0_ != nullptr) VecDestroy(&data_t0_);
+    
   }
   private:
     Vec p_wm_;
