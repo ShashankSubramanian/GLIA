@@ -524,5 +524,7 @@ PdeOperatorsRD::~PdeOperatorsRD() {
       if (c_half_.size() > 0 && i != nt_) ierr = VecDestroy(&c_half_[i]);
     }
   }
+
+
 }
 

@@ -776,6 +776,7 @@ PetscErrorCode SolverInterface::createSynthetic() {
   if (data_t1_ == nullptr) {
     ierr = VecDuplicate(tmp_, &data_t1_); CHKERRQ(ierr);
   }
+  
   // if data_t0_ path is set; use that
   if (!app_settings_->path_->data_t0_.empty()) {
     ss << "Assigning data_t0_ ";
@@ -786,6 +787,9 @@ PetscErrorCode SolverInterface::createSynthetic() {
     if (data_t0_ == nullptr) {
       ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
     }
+
+
+
     ierr = dataIn(data_t0_, params_, app_settings_->path_->data_t0_); CHKERRQ(ierr);
     ScalarType sig_data_t0 = params_->tu_->smoothing_factor_data_t0_ * 2 * M_PI / params_->grid_->n_[0];
     if (params_->tu_->smoothing_factor_data_t0_ > 0) {
@@ -798,6 +802,9 @@ PetscErrorCode SolverInterface::createSynthetic() {
   } else {
     data_t0_ = nullptr;
   }
+
+
+
   if (data_t0_ == nullptr) {
     ierr = VecDuplicate(tmp_, &data_t0_); CHKERRQ(ierr);
     ierr = VecSet(data_t0_, 0.); CHKERRQ(ierr);

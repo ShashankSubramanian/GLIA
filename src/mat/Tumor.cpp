@@ -428,4 +428,21 @@ Tumor::~Tumor() {
   for (std::map<std::string, Vec>::iterator it = species_.begin(); it != species_.end(); it++) {
     ierr = VecDestroy(&it->second);
   }
+  
+  if (params_->tu_->model_ == 5){
+    ierr = VecDestroy(&velocity_->x_);
+    ierr = VecDestroy(&velocity_->y_);
+    ierr = VecDestroy(&velocity_->z_);
+    
+    ierr = VecDestroy(&force_->x_);
+    ierr = VecDestroy(&force_->y_);
+    ierr = VecDestroy(&force_->z_);
+
+    ierr = VecDestroy(&displacement_->x_);
+    ierr = VecDestroy(&displacement_->y_);
+    ierr = VecDestroy(&displacement_->z_);
+  }
+  
+
+
 }

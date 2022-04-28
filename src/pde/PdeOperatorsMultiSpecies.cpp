@@ -255,11 +255,12 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
 
   params_->tu_->statistics_.nb_state_solves++;
 
+
+
   int procid, nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &procid);
 
-  ierr = displacement_old_->set(0); CHKERRQ(ierr);
 
   ierr = VecCopy(tumor_->c_0_, tumor_->species_["proliferative"]); CHKERRQ(ierr);
   ierr = VecCopy(tumor_->c_0_, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
@@ -298,12 +299,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   //ierr = VecCopy(tumor_->species_["proliferative"], tumor_->c_t_); CHKERRQ(ierr);
 
   if (params_->tu_->forcing_factor_ > 0) {
+    ierr = displacement_old_->set(0); CHKERRQ(ierr);
     ierr = tumor_->computeForce(tumor_->c_t_);
     // displacement compute through elasticity solve
     ierr = elasticity_solver_->solve(tumor_->displacement_, tumor_->force_);
     // copy displacement to old vector
     ierr = displacement_old_->copy(tumor_->displacement_);
   }
+
 
   diff_ksp_itr_state_ = 0;
   ScalarType vel_max;
@@ -435,7 +438,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     
     // need to update prefactors for diffusion KSP preconditioner, as k changed
     ierr = diff_solver_->precFactor(); CHKERRQ(ierr);
-
+    
     if (params_->tu_->forcing_factor_ > 0) {
       // Advection of tumor and healthy tissue
       // first compute trajectories for semi-Lagrangian solve as velocity is changing every itr
@@ -466,8 +469,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
 
     // ------------------------------------------------ diffusion  ------------------------------------------------
     ierr = diff_solver_->solve(tumor_->species_["infiltrative"], dt);
-    diff_ksp_itr_state_ += diff_solver_->ksp_itr_; CHKERRQ(ierr);
-    // ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
+    //diff_ksp_itr_state_ += diff_solver_->ksp_itr_; CHKERRQ(ierr);
+    //ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
 
     // ------------------------------------------------ explicit source terms for all equations (includes reaction source)  ------------------------------------------------
     ierr = computeSources(tumor_->species_["proliferative"], tumor_->species_["infiltrative"], tumor_->species_["necrotic"], tumor_->species_["oxygen"], dt); CHKERRQ(ierr);
@@ -505,51 +508,52 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       s.str("");
       s.clear();
 
-     // Normalize species s.t. sum = 1
-     // make sure work_[12] is not used 
-     
-     ierr = VecCopy(tumor_->mat_prop_->bg_, tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->wm_); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->gm_); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->csf_); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->vt_); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["proliferative"]); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
-     ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["necrotic"]); CHKERRQ(ierr);
- 
-     ierr = VecPointwiseDivide(tumor_->mat_prop_->bg_, tumor_->mat_prop_->bg_,  tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->mat_prop_->wm_, tumor_->mat_prop_->wm_,  tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->mat_prop_->gm_, tumor_->mat_prop_->gm_,  tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->mat_prop_->csf_, tumor_->mat_prop_->csf_,  tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->mat_prop_->vt_, tumor_->mat_prop_->vt_,  tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->species_["proliferative"], tumor_->species_["proliferative"], tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->species_["necrotic"], tumor_->species_["necrotic"], tumor_->work_[12]); CHKERRQ(ierr);
-     ierr = VecPointwiseDivide(tumor_->c_t_, tumor_->c_t_, tumor_->work_[12]); CHKERRQ(ierr);
      
       // copy displacement to old vector
       ierr = displacement_old_->copy(tumor_->displacement_);
     }
 
+    // Normalize species s.t. sum = 1
+    // make sure work_[12] is not used 
+    
+    ierr = VecCopy(tumor_->mat_prop_->bg_, tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->wm_); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->gm_); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->csf_); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->vt_); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["proliferative"]); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
+    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["necrotic"]); CHKERRQ(ierr);
+
+    ierr = VecPointwiseDivide(tumor_->mat_prop_->bg_, tumor_->mat_prop_->bg_,  tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->mat_prop_->wm_, tumor_->mat_prop_->wm_,  tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->mat_prop_->gm_, tumor_->mat_prop_->gm_,  tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->mat_prop_->csf_, tumor_->mat_prop_->csf_,  tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->mat_prop_->vt_, tumor_->mat_prop_->vt_,  tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->species_["proliferative"], tumor_->species_["proliferative"], tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->species_["necrotic"], tumor_->species_["necrotic"], tumor_->work_[12]); CHKERRQ(ierr);
+    ierr = VecPointwiseDivide(tumor_->c_t_, tumor_->c_t_, tumor_->work_[12]); CHKERRQ(ierr);
+
     if (params_->tu_->given_velocities_){
 
       //s << app_settings_->path_->velocity_x1_ << "[" << i << "].nc"; 
-      s << params_->tu_->velocity_prefix_ << "_x_t[" << i << "].nc"; 
+      s << params_->tu_->velocity_prefix_ << "vel_x_t[" << i << "].nc"; 
       ierr = dataIn(tumor_->velocity_->x_, params_, s.str().c_str());
       s.str(std::string());
       s.clear();
 
       //s << app_settings_->path_->velocity_x2_ << "[" << i << "].nc"; 
-      s << params_->tu_->velocity_prefix_ << "_y_t[" << i << "].nc"; 
+      s << params_->tu_->velocity_prefix_ << "vel_y_t[" << i << "].nc"; 
       ierr = dataIn(tumor_->velocity_->y_, params_, s.str().c_str());
       s.str(std::string());
       s.clear();
       
-      s << params_->tu_->velocity_prefix_ << "_z_t[" << i << "].nc"; 
+      s << params_->tu_->velocity_prefix_ << "vel_z_t[" << i << "].nc"; 
       ierr = dataIn(tumor_->velocity_->z_, params_, s.str().c_str());
       s.str(std::string());
       s.clear();
-
+       
       ierr = VecNorm(tumor_->velocity_->x_, NORM_2, &vel_x_norm); CHKERRQ(ierr);
       ierr = VecNorm(tumor_->velocity_->y_, NORM_2, &vel_y_norm); CHKERRQ(ierr);
       ierr = VecNorm(tumor_->velocity_->z_, NORM_2, &vel_z_norm); CHKERRQ(ierr);
@@ -559,17 +563,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       s.clear();
     }
 
-
-
-
-
-
-
-
-
-
-
   }
+
 
   if (params_->tu_->verbosity_ >= 3) {
     s << " Accumulated KSP itr for state eqn = " << diff_ksp_itr_state_;
@@ -578,9 +573,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     s.clear();
   }
 
-#ifdef CUDA
-  cudaPrintDeviceMemory();
-#endif
 
   self_exec_time += MPI_Wtime();
   t[5] = self_exec_time;
@@ -588,3 +580,4 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   e.stop();
   PetscFunctionReturn(ierr);
 }
+

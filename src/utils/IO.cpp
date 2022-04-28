@@ -228,6 +228,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "beta_0_data") {a->syn_->beta_0_ = std::stod(value); return;}
   if (name == "ox_inv_data") {a->syn_->ox_inv_ = std::stod(value); return;}
   if (name == "invasive_thres_data") {a->syn_->invasive_thres_ = std::stod(value); return;}
+  if (name == "new_changes") {a->syn_->new_changes_ = std::stod(value); return;}
 
   if (name == "nt_data") {a->syn_->nt_ = std::stoi(value); return;}
   if (name == "dt_data") {a->syn_->dt_ = std::stod(value); return;}
