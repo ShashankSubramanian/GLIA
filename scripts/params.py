@@ -131,6 +131,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['sigma_b_data'] = 0.9
     p['ox_inv_data'] = 0.7
     p['invasive_thres_data'] = 0.01
+    p['new_changes'] = 0
     p['testcase'] = 0                   # 0: brain single focal synthetic
                                         # 1: No-brain constant coefficients
                                         # 2: No-brain sinusoidal coefficients
@@ -307,6 +308,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("nt_data=" + str(p['nt_data']) + "\n");
         f.write("dt_data=" + str(p['dt_data']) + "\n");
         f.write("testcase=" + str(p['testcase']) + "\n");
+        f.write("new_changes=" + str(p['new_changes']) + "\n");
 
         f.write("\n");
         f.write("### paths" + "\n");

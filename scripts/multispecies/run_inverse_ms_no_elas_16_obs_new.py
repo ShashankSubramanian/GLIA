@@ -55,14 +55,14 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
   opts = cma.CMAOptions()
   #opts.set('tolfunc',1e-2) 
   #opts.set('popsize', 12)
-  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 1e-3})
+  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 5e-2, 'tolfunrel': 1e-2})
   
   while not es.stop():
     solutions = es.ask()
     es.tell(solutions, fun(solutions))
     es.disp()
   
-  res = es.result()
+  res = es.result_pretty()
   print(res)
 
 
@@ -111,7 +111,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
-       
+    
       res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
       if not os.path.exists(res_forward_dir):
         os.mkdir(res_forward_dir)
@@ -123,14 +123,14 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       str_disp = "Forward params (%d) : "%j
       
       for (k, param) in enumerate(inv_params):
-        if param == "invasive_thres":
-          x[k] = 10**(x[k]);
+        if param == 'invasive_thres':
+          x[k] = 10**(x[k])
         forward_params[param] = x[k]
         str_disp += param + " = " + str(x[k]) + ", "
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
-          if param == "invasive_thres":
-            init_vec[k] = 10**(init_vec[k]);
+          if param == 'invasive_thres':
+            init_vec[k] = 10**(init_vec[k])
           forward_params[param] = init_vec[k]
       print(str_disp)
       '''
@@ -189,18 +189,49 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
       nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
       seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
+      i_rec_path = os.path.join(res_forward_dir, 'i_rec_final.nc')
         
       dat_en_rec = readNetCDF(en_rec_path)
       dat_ed_rec = readNetCDF(ed_rec_path)
       dat_nec_rec = readNetCDF(nec_rec_path)
       dat_seg_rec = readNetCDF(seg_rec_path)
+      dat_i_rec = readNetCDF(i_rec_path)
+      
       dat_vt_rec = dat_seg_rec.copy()
-      dat_vt_rec[dat_vt_rec != 7] = 0 
-      dat_vt_rec[dat_vt_rec == 7] = 1 
- 
+      tmp = (dat_vt_rec != 7)
+      dat_vt_rec[tmp] = 0 
+      dat_vt_rec[tmp == 0] = 1 
+      
+       
+      max_tmp = np.maximum(dat_en_rec, dat_nec_rec)
+      max_tmp = np.maximum(dat_i_rec, max_tmp)
+      
+      seg_p_tmp = dat_seg_rec.copy()
+      tmp = (seg_p_tmp != 1)
+      seg_p_tmp[tmp] = 0
+      seg_p_tmp[max_tmp != dat_en_rec] == 0
+      
+      seg_n_tmp = dat_seg_rec.copy()
+      tmp = (seg_n_tmp != 1)
+      seg_n_tmp[tmp] = 0
+      seg_n_tmp[max_tmp != dat_nec_rec] == 0
+      
+      
+      
 
-      diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
-      diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
+      # Observation operator for n, p, ed 
+      dat_en_rec[dat_en_rec < 0.01] = 0.0
+      dat_nec_rec[dat_nec_true == 0] = 0.0
+      dat_ed_rec[dat_ed_rec < 0.01] = 0.0
+      
+      
+      
+      
+      
+      #diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
+      diff_en = w_en * np.linalg.norm((dat_en_true - seg_p_tmp).flatten())**2
+      #diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
+      diff_nec = w_nec * np.linalg.norm((dat_nec_true - seg_n_tmp).flatten())**2
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
       diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
       J = diff_en + diff_nec + diff_ed + diff_vt

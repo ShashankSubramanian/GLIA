@@ -95,6 +95,7 @@ def transport(claire_bin_path, results_path, trans_image, name, bash_filename, i
     else:
       cmd += rcmd + claire_bin_path + "/clairetools -v1 " + results_path + "/velocity-field-x1.nii.gz -v2 " + results_path + "/velocity-field-x2.nii.gz -v3 " + results_path + "/velocity-field-x3.nii.gz -ifile " + trans_image + " -xfile " + transport_image + " -deformimage -iporder 1" + " > " + results_path + "/transport_log_" + name + ".txt &";
 
+  bash_file.write('source /work2/07544/ghafouri/frontera/gits/claire/deps/env_source.sh\n\n')
   bash_file.write(cmd)
   bash_file.write("\n\n")
   bash_file.close()

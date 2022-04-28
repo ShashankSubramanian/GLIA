@@ -55,14 +55,14 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
   opts = cma.CMAOptions()
   #opts.set('tolfunc',1e-2) 
   #opts.set('popsize', 12)
-  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 1e-3})
+  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 5e-2, 'tolfunrel': 1e-2})
   
   while not es.stop():
     solutions = es.ask()
     es.tell(solutions, fun(solutions))
     es.disp()
   
-  res = es.result()
+  res = es.result_pretty()
   print(res)
 
 
@@ -87,19 +87,22 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
   dat_en_true = dat_seg_true.copy()
   dat_ed_true = dat_seg_true.copy()
   dat_nec_true =  dat_seg_true.copy()
-
-  dat_en_true[dat_en_true != 4] = 0  
-  dat_en_true[dat_en_true == 4] = 1
-
-  dat_ed_true[dat_ed_true != 2] = 0  
-  dat_ed_true[dat_ed_true == 2] = 1
-  
-  dat_nec_true[dat_nec_true != 1] = 0  
-  dat_nec_true[dat_nec_true == 1] = 1
-
   dat_vt_true = dat_seg_true.copy()
-  dat_vt_true[dat_vt_true != 7] = 0
-  dat_vt_true[dat_vt_true == 7] = 1
+
+
+  dat_en_true = (dat_seg_true == 4)
+  dat_nec_true = (dat_seg_true == 1)
+  dat_ed_true = (dat_seg_true == 2)
+  dat_vt_true = (dat_seg_true == 7)
+   
+
+  
+  dat_vt_true = dat_vt_true.astype(np.float32)
+  dat_en_true = dat_ed_true.astype(np.float32)
+  dat_nec_true = dat_nec_true.astype(np.float32)
+  dat_ed_true = dat_ed_true.astype(np.float32)
+
+  dat_tc_true = dat_en_true + dat_nec_true
   
   num_devices = 4
   num_eval = int(len(solutions))
@@ -111,7 +114,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
-       
+    
       res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
       if not os.path.exists(res_forward_dir):
         os.mkdir(res_forward_dir)
@@ -123,14 +126,14 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       str_disp = "Forward params (%d) : "%j
       
       for (k, param) in enumerate(inv_params):
-        if param == "invasive_thres":
-          x[k] = 10**(x[k]);
+        if param == 'invasive_thres':
+          x[k] = 10**(x[k])
         forward_params[param] = x[k]
         str_disp += param + " = " + str(x[k]) + ", "
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
-          if param == "invasive_thres":
-            init_vec[k] = 10**(init_vec[k]);
+          if param == 'invasive_thres':
+            init_vec[k] = 10**(init_vec[k])
           forward_params[param] = init_vec[k]
       print(str_disp)
       '''
@@ -149,7 +152,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       '''
        
       if forward_params['ox_inv'] < forward_params['ox_hypoxia']:
-        J_vec[i * num_devices + j] = 8.0
+        J_vec[i * num_devices + j] = 64.0
         continue  
 
 
@@ -171,12 +174,15 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     px_en = np.linalg.norm((dat_en_true).flatten())**2
     px_nec = np.linalg.norm((dat_nec_true).flatten())**2
     px_ed = np.linalg.norm((dat_ed_true).flatten())**2 
-    px_vt = np.linalg.norm((dat_vt_true).flatten())**2  
+    px_vt = np.linalg.norm((dat_vt_true).flatten())**2
+    px_tc = np.linalg.norm((dat_tc_true).flatten())**2
+
 
     w_en = 1/px_en
     w_nec = 1/px_nec
     w_ed = 1/px_ed
     w_vt = 1/px_vt
+    w_tc = 1/px_tc
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
@@ -189,24 +195,53 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
       nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
       seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
-        
+      c_rec_path = os.path.join(res_forward_dir, 'c_rec_final.nc')
+      
       dat_en_rec = readNetCDF(en_rec_path)
       dat_ed_rec = readNetCDF(ed_rec_path)
       dat_nec_rec = readNetCDF(nec_rec_path)
       dat_seg_rec = readNetCDF(seg_rec_path)
-      dat_vt_rec = dat_seg_rec.copy()
-      dat_vt_rec[dat_vt_rec != 7] = 0 
-      dat_vt_rec[dat_vt_rec == 7] = 1 
+      dat_c_rec = readNetCDF(c_rec_path)
+      
+      dat_c_rec[dat_c_rec < 0.01] = 0.0
+     
+      dat_vt_rec = (dat_seg_rec == 7)
+
+      dat_ed_rec[dat_vt_rec] = 0.0
+
+      dat_vt_rec = dat_vt_rec.astype(np.float32)
+      
+      print(dat_vt_rec.shape)     
  
+      # Observation operator for n 
+
+      dat_nec_rec[dat_nec_true == 0] = 0.0
+      tmp = (dat_nec_rec < 0.01)
+      dat_nec_rec[tmp] = 0.0   
+   
+      dat_en_rec[dat_en_rec < 0.01] = 0.0
+      
+
+      tmp = (dat_ed_rec < 0.01)
+      dat_ed_rec[tmp] = 0.0
+      
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_en.nc'), dat_en_rec.shape, dat_en_rec)
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_nec.nc'), dat_nec_rec.shape, dat_nec_rec)
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_ed.nc'), dat_ed_rec.shape, dat_ed_rec)
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_vt.nc'), dat_vt_rec.shape, dat_vt_rec)
+
 
       diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
       diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
       diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
-      J = diff_en + diff_nec + diff_ed + diff_vt
+      diff_tc =  w_tc * np.linalg.norm((dat_tc_true - dat_c_rec).flatten())**2
+       
+      #J = diff_en + diff_nec + diff_ed + diff_vt
+      J = diff_en + diff_nec + diff_ed + diff_vt + diff_tc
       
       J_vec[i * num_devices + j] = J 
-      out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, J)
+      out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : %.4f + %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, diff_tc, J)
       print(out)
       
       os.remove(en_rec_path)

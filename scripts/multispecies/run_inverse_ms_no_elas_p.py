@@ -18,7 +18,7 @@ import cma
 
 
 
-def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn, sigma, v_dir, n):
+def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn, sigma, v_dir):
  
   #list_vars = ['rho', 'k', 'gamma', 'ox_hypoxia', 'death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0', 'sigma_b', 'ox_inv', 'invasive_thres']
   '''
@@ -50,12 +50,12 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
   cma_ub = np.array(cma_ub)
 
   cma_init = (cma_init - cma_lb)/(cma_ub - cma_lb) 
-  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars, v_dir, n)
+  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars, v_dir)
 
   opts = cma.CMAOptions()
   #opts.set('tolfunc',1e-2) 
   #opts.set('popsize', 12)
-  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 1e-3})
+  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16})
   
   while not es.stop():
     solutions = es.ask()
@@ -68,39 +68,24 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
 
 
 
-def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars, v_dir, n):
+def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars, v_dir):
  
   print("Testing ")
   
-  if n == 256:
-    #en_t1 = os.path.join(pat_dir, 'en_t1.nc')
-    #ed_t1 = os.path.join(pat_dir, 'ed_t1.nc')
-    #nec_t1 = os.path.join(pat_dir, 'nec_t1.nc')
-    seg_t1 = os.path.join(pat_dir, 'seg_all_t1.nc')
-  else:
-    #en_t1 = os.path.join(pat_dir, 'en_t1_nx%d.nc'%n)
-    #ed_t1 = os.path.join(pat_dir, 'ed_t1_nx%d.nc'%n)
-    #nec_t1 = os.path.join(pat_dir, 'nec_t1_nx%d.nc'%n)
-    seg_t1 = os.path.join(pat_dir, 'seg_all_t1_nx%d.nc'%n)
   
-  dat_seg_true = readNetCDF(seg_t1)
-  dat_en_true = dat_seg_true.copy()
-  dat_ed_true = dat_seg_true.copy()
-  dat_nec_true =  dat_seg_true.copy()
+  en_t1 = os.path.join(pat_dir, 'en_t1.nc')
+  ed_t1 = os.path.join(pat_dir, 'ed_t1.nc')
+  nec_t1 = os.path.join(pat_dir, 'nec_t1.nc')
+  seg_t1 = os.path.join(pat_dir, 'seg_t1.nc')
 
-  dat_en_true[dat_en_true != 4] = 0  
-  dat_en_true[dat_en_true == 4] = 1
-
-  dat_ed_true[dat_ed_true != 2] = 0  
-  dat_ed_true[dat_ed_true == 2] = 1
-  
-  dat_nec_true[dat_nec_true != 1] = 0  
-  dat_nec_true[dat_nec_true == 1] = 1
-
+  dat_en_true = readNetCDF(en_t1) 
+  dat_ed_true = readNetCDF(ed_t1) 
+  dat_nec_true = readNetCDF(nec_t1) 
+  dat_seg_true = readNetCDF(seg_t1) 
   dat_vt_true = dat_seg_true.copy()
   dat_vt_true[dat_vt_true != 7] = 0
   dat_vt_true[dat_vt_true == 7] = 1
-  
+
   num_devices = 4
   num_eval = int(len(solutions))
   J_vec = np.zeros(num_eval)
@@ -111,7 +96,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
-       
+    
       res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
       if not os.path.exists(res_forward_dir):
         os.mkdir(res_forward_dir)
@@ -123,14 +108,10 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       str_disp = "Forward params (%d) : "%j
       
       for (k, param) in enumerate(inv_params):
-        if param == "invasive_thres":
-          x[k] = 10**(x[k]);
         forward_params[param] = x[k]
         str_disp += param + " = " + str(x[k]) + ", "
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
-          if param == "invasive_thres":
-            init_vec[k] = 10**(init_vec[k]);
           forward_params[param] = init_vec[k]
       print(str_disp)
       '''
@@ -154,7 +135,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
 
 
 
-      create_tusolver_config(pat_dir, res_forward_dir, forward_params, True, v_dir, n)
+      create_tusolver_config(pat_dir, res_forward_dir, forward_params, True, v_dir)
       config_path = os.path.join(res_forward_dir, 'solver_config.txt') 
       tmp = i * num_devices + j 
       log_path = os.path.join(res_forward_dir, 'solver_log_%d.txt'%tmp) 
@@ -197,9 +178,13 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       dat_vt_rec = dat_seg_rec.copy()
       dat_vt_rec[dat_vt_rec != 7] = 0 
       dat_vt_rec[dat_vt_rec == 7] = 1 
- 
 
-      diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
+      dat_en_rec_seg = np.zeros(dat_en_rec.shape)
+      dat_en_rec_seg[dat_en_rec > dat_nec_rec] = 1
+      dat_en_rec_seg[dat_seg_rec != 1] = 0
+
+      #diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
+      diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec_seg).flatten())**2
       diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
       diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
@@ -236,7 +221,6 @@ if __name__ == "__main__":
   r_args.add_argument('-total', '--total_params', nargs="+", type=str, help = 'list of initial guess', required = True)
   r_args.add_argument('-sigma', '--sigma_cma', type=float, help = 'list of initial guess', required = True)
   r_args.add_argument('-vel', '--vel_dir', type=str, help = 'list of initial guess', required = True)
-  r_args.add_argument('-n', '--resolution', type=int, help = 'resolution', required = True)
   args = parser.parse_args();
 
   pat_dir = args.patient_dir
@@ -250,10 +234,10 @@ if __name__ == "__main__":
   inv_params = args.inv_params 
   list_vars = args.total_params
   sigma = args.sigma_cma
-  n = args.resolution
+  
   v_dir = args.vel_dir
   print(sigma) 
-  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, True, sigma, v_dir, n) 
+  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, True, sigma, v_dir) 
    
   
 

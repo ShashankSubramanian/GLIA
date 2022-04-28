@@ -31,11 +31,11 @@ input['num_gpus_per_node']   = 4  ### this will run num_gpus_per_node patients p
 ### == how many patient blocks in a job (will run num_gpus_per_node*patients_per_job in total in a job)
 input['patients_per_job']    = 1
 ### == path to all patients (assumes a brats directory structure)
-input['path_to_all_patients'] = '/scratch/05027/shas1693/pglistr_tumor/checkreal/'
+input['path_to_all_patients'] = '/scratch1/07544/ghafouri/results/syndata/brats_dir/'
 ### == custom list of patients (can be a single patient); keep empty to simply walk through all patients
 input['patient_list']        = []
 ### == path to all the jobs and results
-input['job_path']            = "/scratch/05027/shas1693/pglistr_tumor/results/test_til_gpu/"
+input['job_path']            = "/scratch1/07544/ghafouri/results/syn_results/C1_me/til_inv/"
 
 
 

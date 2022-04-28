@@ -121,8 +121,11 @@ def create_sbatch_header(results_path, idx, compute_sys='frontera', run_params =
   r['wtime_h']   = 3
   r['wtime_m']   = 0
   r['log_dir']   = results_path
+  run_params['log_dir']   = results_path
   r['output_dir']   = results_path
   r['log_name']  = 'log_' + str(idx)
+  run_params['log_name']  = 'log_' + str(idx)
+  
 #  bash_file.write("#!/bin/bash\n\n");
   job_header = par.write_jobscript_header(p, run_params, use_gpu=True)
   bash_file.write(job_header)
@@ -138,6 +141,7 @@ def write_tuinv(invdir, atlist, bash_file, idx, ngpu, run_params):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[ngpu*idx + i] + "\n")
   cmd = par.runcmd(run_params)
   flag = 0 if run_params['compute_sys'] == 'cbica' else 1
+  f.write("source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n")
   for i in range(0,n_local):
     f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " " + cmd + "${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 " + "&"*flag + "\n")
   f.write("\n")
@@ -156,13 +160,15 @@ def create_level_specific_data(n, pat, data_dir, res, create = True, is_syn = Fa
   #TODO repetitive code; use more functions
 
   if create: ### files do not exist
+    
     fname = data_dir + "/" + pat + "_t1_aff2jakob.nii.gz"
-    fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
-    if not os.path.exists(fname_n):
-      resize_data(fname, fname_n, sz, order = 1)
-    fname_n_nc = fname_n.replace(".nii.gz", ".nc")
-    if not os.path.exists(fname_n_nc):
-      convert_nifti_to_nc(fname_n_nc, n, reverse=True) ## reverse for files resized through nibabel
+    if os.path.exists(fname):
+      fname_n = n_dir + pat + "_t1_aff2jakob_" + str(n) + ".nii.gz"
+      if not os.path.exists(fname_n):
+        resize_data(fname, fname_n, sz, order = 1)
+      fname_n_nc = fname_n.replace(".nii.gz", ".nc")
+      if not os.path.exists(fname_n_nc):
+        convert_nifti_to_nc(fname_n_nc, n, reverse=True) ## reverse for files resized through nibabel
     fname = data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz"
     fname_n = n_dir + pat + "_seg_ants_aff2jakob_" + str(n) + ".nii.gz"
     if not os.path.exists(fname_n):
@@ -238,16 +244,20 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
   if not os.path.exists(reg + pat + "_vt.nii.gz"):
     create_patient_labels(data_dir + "/" + pat + "_seg_ants_aff2jakob.nii.gz", reg, pat)
   ### create reference(atlas) labels
+ 
+  with open(bash_file, "a") as f:
+    f.write("\n\nsource /work2/07544/ghafouri/frontera/gits/claire/deps/env_source.sh\n\n")
+ 
   for i in range(0, n_local):
     at = at_list[ngpu*idx+i]
     if not os.path.exists(reg + at + "/" + at + "_vt.nii.gz"):
       create_atlas_labels(atlas_dir + at + "_seg_aff2jakob_ants.nii.gz", reg + at, at) 
     ### register
+    
     bash_file = register(claire_dir, reg+at, at, reg, pat, bash_file, i, r = r)
   
   with open(bash_file, "a") as f:
     f.write("\n\nwait\n\n")
-  
   for i in range(0, n_local):
     ### transport
     at = at_list[ngpu*idx+i]
@@ -269,12 +279,13 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
 def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx, ngpu):
   n_local = ngpu if len(at_list) >= ngpu*idx + ngpu else len(at_list) % ngpu
   with open(bash_file, "a") as f:
+    f.write("conda activate mriseg\n\n")
     for i in range(0, n_local):
       ### convert transported c0 to netcdf and mv it
       at = at_list[ngpu*idx+i]
       nm = pat + "_c0Recon_transported_" + str(n) + ".nc"
       ###if not os.path.exists(reg + at + "/" + nm):
-      f.write("python3 " + scripts_path + "/helpers/convert_to_netcdf.py -i " + reg + at + "/" + pat + "_c0Recon_transported.nii.gz -n " + str(n) + " -resample\n")
+      f.write("python " + scripts_path + "/helpers/convert_to_netcdf.py -i " + reg + at + "/" + pat + "_c0Recon_transported.nii.gz -n " + str(n) + " -resample\n")
 
     f.write("\n\n")
 
@@ -358,11 +369,12 @@ def run(args):
     fail   = []
     for pat in os.listdir(args.patient_dir):
       #if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_t1_aff2jakob.nii.gz"):
-      #if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"):
-      if os.path.exists(args.patient_dir + "/" + pat +"/" + "seg_t1.nii.gz"):
+      if os.path.exists(args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"):
+        #if os.path.exists(args.patient_dir + "/" + pat +"/" + "seg_t1.nii.gz"):
         idx = pat
         print("computing stats for pat ", idx)
-        nm = args.patient_dir + "/" + pat + +"/" + "seg_t1.nii.gz" 
+        #nm = args.patient_dir + "/" + pat + +"/" + "seg_t1.nii.gz" 
+        nm = args.patient_dir + "/" + pat + "/aff2jakob/" + pat + "_seg_ants_aff2jakob.nii.gz"
         if not os.path.exists(nm):
           print("pat {} does not exist; skipping...".format(pat))
           fail.append(pat)
@@ -469,7 +481,7 @@ def run(args):
         if float(vals[1]) >= vt_pat and float(vals[1]) < 1.3*vt_pat: ### choose atlases whose vt vol is greater than pat
           at_list.append(vals[0])
 
-      min_at_needed = 4
+      min_at_needed = 8
       if len(at_list) < min_at_needed:
         at_list_err = True
         print("at_list selection failed for patient {}; finding nearest neighbors instead".format(pat))

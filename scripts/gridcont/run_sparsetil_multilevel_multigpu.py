@@ -51,7 +51,7 @@ def sparsetil_gridcont_gpu(input, patient_data_paths, output_base_paths, job_pat
     invert_diffusivity = [1,1,1];      # enable kappa inversion per level
     inject_coarse_sol  = True;
     pre_reacdiff_solve = True;         # performs a reaction/diffusion solve before sparse TIL solve
-    sparsity_per_comp  = 5;            # allowed sparsity per tumor component
+    sparsity_per_comp  = 6;            # allowed sparsity per tumor component
     predict            = [0,0,1]       # enable predict flag on level
     # -------------------------------- #
     rho_init           = 8;            # initial guess rho on coarsest level

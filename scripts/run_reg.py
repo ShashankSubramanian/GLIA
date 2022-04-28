@@ -15,7 +15,7 @@ from helpers import copy_til
 
 args = ensemble.Args()
 
-for i in range(1,5):
+for i in range(8,9):
 
   syn = 'case%d'%i
 
@@ -40,7 +40,7 @@ for i in range(1,5):
 
   ### system settings
   ### submit the jobs
-  submit               = False
+  submit               = True
   ### directory to store all the batched jobs; can change if different from results
   args.job_dir         = args.results_dir
   ### number of gpus per node
@@ -61,7 +61,7 @@ for i in range(1,5):
   cmd += '-at_name '+syn+' '
   cmd += '-x '+args.results_dir+' '
   cmd += '-c '+args.code_dir+' '
-  cmd += '-n '+str(160)+' '
+  cmd += '-n '+str(256)+' '
   cmd += '-r '+str(1)+' '
   cmd += '-til '+args.til_dir+ ' '
   cmd += '-rc '+args.claire_dir+' '

@@ -9,15 +9,15 @@ sys.path.append(os.path.join(code_dir, 'scripts', 'multispecies'))
 from run_inverse_ms_no_elas import run_multispecies_inversion as run
 
 
-for i in range(1,5):
+for i in range(1,9):
 
   syn = 'case%d'%i
   resolution = 160
   scratch = os.getenv('SCRATCH')
   pat_dir = os.path.join(scratch, 'results/syndata/'+syn+'/C1_me/') 
   #pat_fwd_dir = os.path.join(scratch, 'results/syn_results/me_inv_160/'+syn+'/fwd_me/') 
-  pat_fwd_dir = os.path.join(scratch, 'results/syn_results/true_p_true_m/me_inv_160/'+syn+'/fwd_me/') 
-  res_dir = os.path.join(scratch, 'results/syn_results/true_p_true_m/ms_inv_160/'+syn+'/')
+  pat_fwd_dir = os.path.join(scratch, 'results/syn_results/me_inv_160/'+syn+'/fwd_me/') 
+  res_dir = os.path.join(scratch, 'results/syn_results/ms_inv_160/'+syn+'/')
   #res_dir = os.path.join(scratch, 'results/syn_results/tmp/'+'')
 
   v_dir = pat_fwd_dir
@@ -34,17 +34,17 @@ for i in range(1,5):
 
   params_in = {}
   params_in['k'] = (0.4, 0.01, 0.8)
-  params_in['rho'] = (14.0, 1.0, 30.0)
+  params_in['rho'] = (10.0, 1.0, 17.0)
   #params_in['rho'] = (true_params['rho'], 4.0, 20.0)
   params_in['gamma'] = (0, 0, 1.3E5)
   #params_in['ox_hypoxia'] = (0.5, 0.3, 0.7)
   #params_in['ox_hypoxia'] = (true_params['ox_hypoxia'], 0.3, 1.0)
   params_in['ox_hypoxia'] = (0.5, 0.1, 0.7)
-  params_in['death_rate'] = (3.0, 0.1, 10.0)
-  params_in['alpha_0'] = (0.5, 0.01, 2.0)
-  params_in['ox_consumption'] = (10.0, 1.0, 40.0)
+  params_in['death_rate'] = (7.0, 0.1, 20.0)
+  params_in['alpha_0'] = (1.0, 0.01, 4.0)
+  params_in['ox_consumption'] = (5.0, 1.0, 20.0)
   params_in['ox_source'] = (3.0, 0.5, 20.0)
-  params_in['beta_0'] = (0.5, 0.01, 2.0)
+  params_in['beta_0'] = (1.0, 0.01, 2.0)
   params_in['ox_inv'] = (0.7, 0.2, 1.0)
   #params_in['ox_inv'] = (true_params['ox_inv'], 0.3, 1.0)
   #params_in['invasive_thres'] = (true_params['invasive_thres'], 0.001, 0.2)

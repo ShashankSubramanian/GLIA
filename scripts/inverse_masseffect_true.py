@@ -3,7 +3,6 @@ import params as par
 import subprocess
 import random
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/utils/')
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/helpers/')
 from utils.file_io import readNetCDF, createNetCDF
 import numpy as np
 ###############
@@ -22,21 +21,17 @@ init_rho                = random.uniform(5,10)
 init_k                  = random.uniform(0.005,0.05)
 init_gamma              = random.uniform(1E4,1E5)
 
-for i in range(8, 9):
+for i in range(1, 5):
   r = {}
   p = {}
   syn = i
   prefix='/scratch1/07544/ghafouri/results/'
   p['n'] = 160                                                                                   # grid resolution in each dimension
-  p['output_dir']     = os.path.join(prefix, 'syn_results/me_inv_160/case%d/inv/'%syn);                      # results path
+  p['output_dir']     = os.path.join(prefix, 'syn_results/true_p_true_m/me_inv_160/case%d/inv/'%syn);                      # results path
   r['log_dir']     = p['output_dir']                      # results path
   #p['d0_path']        = os.path.join('/scratch1/07544/ghafouri/results/', 'syndata/case%d/160/case%d_c0Recon_transported_tc=en.nc'%(syn,syn))
-  p['d0_path']        = os.path.join(prefix, 'syn_results/me_inv/case%d/reg/case%d/case%d_c0Recon_transported_nx160.nc'%(syn,syn,syn))
-  cmd = 'python '+os.path.join(scripts_path,'helpers/convert_to_netcdf.py')+' -i '+p['d0_path'].replace('_nx160.nc', '.nii.gz')
-  os.system(cmd)
-  cmd = 'python '+os.path.join(scripts_path,'helpers/resize_image.py')+' -i '+p['d0_path'].replace('_nx160.nc', '.nc')+' -ord 1 -n 160'
-  os.system(cmd)
-  #p['d0_path']        = os.path.join(prefix, 'syndata/case%d/C1_me/c_t0_nx160.nc'%(syn))
+  #p['d0_path']        = os.path.join(prefix, 'syn_results/me_inv/case%d/reg/case%d/case%d_c0Recon_transported_nx160.nc'%(syn,syn,syn))
+  p['d0_path']        = os.path.join(prefix, 'syndata/case%d/C1_me/c_t0_nx160.nc'%(syn))
   d0 = readNetCDF(p['d0_path'])
   d0 /= np.amax(d0)
   createNetCDF(p['d0_path'], d0.shape, d0)

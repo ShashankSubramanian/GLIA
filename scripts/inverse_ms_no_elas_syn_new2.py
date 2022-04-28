@@ -16,8 +16,8 @@ for i in range(1,5):
   scratch = os.getenv('SCRATCH')
   pat_dir = os.path.join(scratch, 'results/syndata/'+syn+'/C1_me/') 
   #pat_fwd_dir = os.path.join(scratch, 'results/syn_results/me_inv_160/'+syn+'/fwd_me/') 
-  pat_fwd_dir = os.path.join(scratch, 'results/syn_results/true_p_true_m/me_inv_160/'+syn+'/fwd_me/') 
-  res_dir = os.path.join(scratch, 'results/syn_results/true_p_true_m/ms_inv_160/'+syn+'/')
+  pat_fwd_dir = os.path.join(scratch, 'results/syn_results/me_inv_160/'+syn+'/fwd_me/') 
+  res_dir = os.path.join(scratch, 'results/syn_results/ms_inv_160/'+syn+'_4/')
   #res_dir = os.path.join(scratch, 'results/syn_results/tmp/'+'')
 
   v_dir = pat_fwd_dir
@@ -34,7 +34,7 @@ for i in range(1,5):
 
   params_in = {}
   params_in['k'] = (0.4, 0.01, 0.8)
-  params_in['rho'] = (14.0, 1.0, 30.0)
+  params_in['rho'] = (14.0, 1.0, 20.0)
   #params_in['rho'] = (true_params['rho'], 4.0, 20.0)
   params_in['gamma'] = (0, 0, 1.3E5)
   #params_in['ox_hypoxia'] = (0.5, 0.3, 0.7)
@@ -132,7 +132,7 @@ for i in range(1,5):
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_32.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_64.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_32_obs.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
-    cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
+    cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs_new2.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'test.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     f.write(cmd)
      

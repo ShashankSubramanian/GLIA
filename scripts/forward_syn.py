@@ -14,14 +14,14 @@ code_dir = scripts_path + '/../'
 ############### === define parameters
 p['n'] = 160                           # grid resolution in each dimension
 
-for i in range(1,5):
+for i in range(5,9):
   r = {}
   p = {}
   p['n'] = 160                           # grid resolution in each dimension
   syn = i
   scratch = os.getenv('SCRATCH')
-  #p['output_dir'] = os.path.join(scratch, 'results/syn_results/me_inv_160/case%d/fwd_me/'%syn);                          # results path
-  p['output_dir'] = os.path.join(scratch, 'results/syn_results/true_p_true_m/me_inv_160/case%d/fwd_me/'%syn);                          # results path
+  p['output_dir'] = os.path.join(scratch, 'results/syn_results/me_inv_160/case%d/fwd_me/'%syn);                          # results path
+  #p['output_dir'] = os.path.join(scratch, 'results/syn_results/true_p_true_m/me_inv_160/case%d/fwd_me/'%syn);                          # results path
   p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
   p['a_seg_path'] = os.path.join(scratch, 'results', 'syndata', 'case%d'%syn, 'C1_me', 'seg_t0_nx160.nc')
   p['mri_path'] = "" #os.path.join(code_dir, 'testdata/atlas_t1.nc')
@@ -30,9 +30,10 @@ for i in range(1,5):
   p['verbosity'] = 1                    # various levels of output density
   p['syn_flag'] = 0                     # create synthetic data
   #p['d0_path'] = os.path.join(code_dir, 'syndata/case%d/160/c0_true_syn_nx160.nc'%syn)
-  p['d0_path'] = os.path.join(scratch, 'results', 'syn_results', 'true_p_true_m/me_inv_160/case%d'%syn, 'inv', 'c0_input.nc') 
+  #p['d0_path'] = os.path.join(scratch, 'results', 'syn_results', 'true_p_true_m/me_inv_160/case%d'%syn, 'inv', 'c0_input.nc') 
+  p['d0_path'] = os.path.join(scratch, 'results', 'syn_results', 'me_inv_160/case%d'%syn, 'inv', 'c0_input.nc') 
   p['user_cms'] = [(137,169,96,1)]      # location of tumor seed (can be multiple; [(x1,y1,z1,activation1),(x2,y2,z2,activation2)])
-  recon_file = os.path.join(scratch, 'results', 'syn_results', 'true_p_true_m/me_inv_160/case%d'%syn, 'inv', 'reconstruction_info.dat')
+  recon_file = os.path.join(scratch, 'results', 'syn_results', 'me_inv_160/case%d'%syn, 'inv', 'reconstruction_info.dat')
   with open(recon_file, 'r') as f:
     lines = f.readlines()
     if len(lines) > 1:

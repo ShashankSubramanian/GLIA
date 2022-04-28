@@ -362,6 +362,39 @@ if __name__=='__main__':
         if dist < min_dist:
           atlas_rep_id = i
           min_dist = dist
+      ''' 
+      ### find most representative atlas as nearest to the median
+      min_gam = np.amin(gam_arr)
+      min_rho = np.amin(rho_arr)
+      min_kappa = np.amin(kappa_arr)
+      min_param = np.array([min_gam, min_rho, min_kappa])
+      min_dist_best = 1E3
+      scale_vector = np.array([1E-5,1E-1,1E1]) # rescale to similar vals
+      min_param *= scale_vector
+      atlas_best_id = 0
+      for i in range(0,len(gam_arr)):
+        vector_param = np.array([gam_arr[i], rho_arr[i], kappa_arr[i]])
+        vector_param *= scale_vector
+        diff = vector_param - min_param
+        dist = LA.norm(diff)
+        if dist < min_dist_best:
+          atlas_best_id = i
+          min_dist_best = dist
+      '''
+    
+    row += "\nMedian representative atlas id = " + at_list[atlas_rep_id] + "\n"
+    row_csv += "\nMedian representative atlas id = " + at_list[atlas_rep_id] + "\n"
+    '''
+    row += "\nBest representative atlas id = " + at_list[atlas_rep_id] + "\n"
+    row_csv += "\nBest representative atlas id = " + at_list[atlas_rep_id] + "\n"
+    '''
+    statfile.write(row)
+    statfile.close()
+    statfile_csv.write(row_csv)
+    statfile_csv.close()
+    global_stats += row_means
+  global_f.write(global_stats)
+
 
     row += "\nMedian representative atlas id = " + at_list[atlas_rep_id] + "\n"
     row_csv += "\nMedian representative atlas id = " + at_list[atlas_rep_id] + "\n"

@@ -11,7 +11,7 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 
-for i in range(1,5):
+for i in range(5,9):
 
   #if i <= 2: continue
   #if i != 1: continue
@@ -26,10 +26,10 @@ for i in range(1,5):
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case%d/fwd_256/'%case);            # results path
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case%d/fwd_256_tc/'%case);            # results path
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case%d/fwd_256_tc=en/'%case);            # results path
-  p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd/'%case);            # results path
+  #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd/'%case);            # results path
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd_rec/'%case);            # results path
-  #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd_rec/'%case);            # results path
-  #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd/'%case);            # results path
+  #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd_rec2/'%case);            # results path
+  p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd/'%case);            # results path
     
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case1/fwd/');            # results path
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case2/fwd/');            # results path
@@ -41,22 +41,21 @@ for i in range(1,5):
   p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
   #p['a_seg_path'] = os.path.join(code_dir, 'results/ic1/seg_t[0].nii.gz')
   #p['a_seg_path'] = os.path.join(code_dir, 'syndata/160/seg_rec_final.nc')
-  if case == 1:
+  if case == 1 or case == 5:
     p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50052_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50052_seg_aff2jakob_ants_160.nc'
   # case 2
-  if case == 2:
+  if case == 2 or case == 6:
     p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50441_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50463_seg_aff2jakob_ants_160.nc'
   # case 3
-  if case ==3:
+  if case ==3 or case == 7:
     p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50463_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50463_seg_aff2jakob_ants_160.nc'
   # case 4
-  if case == 4:
+  if case == 4 or case == 8:
     p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50698_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50698_seg_aff2jakob_ants_160.nc'
-
 
    
   p['a_gm_path'] = ""
@@ -77,7 +76,8 @@ for i in range(1,5):
   #p['d0_path'] = "" 
   #p['d0_path'] = "/scratch1/07544/ghafouri/results/syn_results/C1/til_inv/case%d/inversion/nx256/obs-1.0/c0_rec.nc"%case
   #p['d0_path'] = "/scratch1/07544/ghafouri/results/syn_results/me_inv/case%d/reg/case%d/case%d_c0Recon_transported.nc"%(case,case,case)
-  p['d0_path'] = "" 
+  #p['d0_path'] = "/scratch1/07544/ghafouri/results/syn_results/me_inv/case%d/reg/case%d/case%d_c0Recon_transported_normalized.nc"%(case,case,case)
+  #p['d0_path'] = "" 
   #p['d0_path'] = os.path.join(code_dir, 'results/ic1/c_t[0].nii.gz')
 
   #p['mri_path'] = os.path.join(code_dir, 'data/51566_t1_aff2jakob.nc')
@@ -87,7 +87,7 @@ for i in range(1,5):
   p['verbosity'] = 3                    # various levels of output density
   p['syn_flag'] = 1                     # create synthetic data
   #p['user_cms'] = [(129,78,154,0.5),(129,78,150,0.5),(129,74,155,0.5),(129,79,152,0.3),(129,76,154,0.3),(129,77,152,0.2),(129,75,152,0.1),(129,73,153,0.1)]
-  if case == 1:
+  if case == 1 or case == 5:
     #p['user_cms'] = [(129,83,156,1.0),(132,82,158,0.6),(128,89,154,0.4)]
     #p['user_cms'] = [(129,83,156,1.0),(132,82,158,0.6)]
     p['user_cms'] = [(129,83,156,1.0)]
@@ -109,14 +109,20 @@ for i in range(1,5):
   ####### tumor params for synthetic data
   p['invasive_thres_data'] = 0.001
   #if case == 1:
-  p['rho_data'] = 14.0
   p['k_data'] = 0.03
-  #p['gamma_data'] = 7E4
-  p['gamma_data'] = 0
-  p['ox_hypoxia_data'] = 0.6
+  p['gamma_data'] = 7E4
+  #p['gamma_data'] = 0
   p['death_rate_data'] = 5.0
   p['alpha_0_data'] = 0.4
-  p['ox_consumption_data'] = 20.0
+  if case == 5 or case == 6 or case == 7 or case == 8:
+    p['rho_data'] = 13.0
+    p['ox_consumption_data'] = 8.0
+    p['ox_hypoxia_data'] = 0.5
+  else:
+    p['rho_data'] = 14.0
+    p['ox_consumption_data'] = 20.0
+    p['ox_hypoxia_data'] = 0.6
+
   p['ox_source_data'] = 10.0
   p['beta_0_data'] = 1.2
   p['sigma_b_data'] = 0.9
@@ -173,7 +179,7 @@ for i in range(1,5):
     p['prediction'] = 0
 
   '''
-
+  p['smoothing_factor_data_t0'] = 0
 
   #p['sigma_factor'] = 3
   #p['sigma_spacing'] = 2

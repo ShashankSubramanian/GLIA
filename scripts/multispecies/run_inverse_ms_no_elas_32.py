@@ -55,7 +55,7 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
   opts = cma.CMAOptions()
   #opts.set('tolfunc',1e-2) 
   #opts.set('popsize', 12)
-  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 1e-3})
+  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':32, 'tolfun': 1e-3})
   
   while not es.stop():
     solutions = es.ask()
@@ -111,7 +111,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
-       
+    
       res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
       if not os.path.exists(res_forward_dir):
         os.mkdir(res_forward_dir)
@@ -123,14 +123,10 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       str_disp = "Forward params (%d) : "%j
       
       for (k, param) in enumerate(inv_params):
-        if param == "invasive_thres":
-          x[k] = 10**(x[k]);
         forward_params[param] = x[k]
         str_disp += param + " = " + str(x[k]) + ", "
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
-          if param == "invasive_thres":
-            init_vec[k] = 10**(init_vec[k]);
           forward_params[param] = init_vec[k]
       print(str_disp)
       '''

@@ -12,14 +12,14 @@ from scripts.utils.file_io import readNetCDF, createNetCDF
 
 #res_path = os.path.join(code_dir, 'syndata','160', 'ed_inv')
 
-for i in range(1,2):
+for i in range(1,5):
 
   syn = 'case%d'%i
   prefix = '/scratch1/07544/ghafouri/results/'
-  data_path = os.path.join(prefix, 'syndata', syn, 'C1')
-  res_path = os.path.join(prefix, 'syndata', syn, 'C1_fwd_rec')
-  #data_path = os.path.join(prefix, 'syndata', syn, 'C1_me')
-  #res_path = os.path.join(prefix, 'syndata', syn, 'C1_me_fwd_rec')
+  #data_path = os.path.join(prefix, 'syndata', syn, 'C1')
+  #res_path = os.path.join(prefix, 'syndata', syn, 'C1_fwd_rec')
+  data_path = os.path.join(prefix, 'syndata', syn, 'C1_me')
+  res_path = os.path.join(prefix, 'syndata', syn, 'C1_me_fwd_rec2')
   reffile = os.path.join(prefix, 'syndata', syn, '256', 'template.nii.gz')
   
 
