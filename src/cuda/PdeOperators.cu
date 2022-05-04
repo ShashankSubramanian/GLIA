@@ -167,6 +167,9 @@ __global__ void updateReacAndDiffCoefficients (ScalarType *rho_ptr, ScalarType *
 	}
 }
 
+
+
+
 void logisticReactionCuda (ScalarType *c_t_ptr, ScalarType *rho_ptr, ScalarType *c_ptr, ScalarType dt, int64_t sz, int linearized) {
 	int n_th = N_THREADS;
 
@@ -232,3 +235,5 @@ void updateReacAndDiffCoefficientsCuda (ScalarType *rho_ptr, ScalarType *k_ptr, 
 	cudaDeviceSynchronize ();
 	cudaCheckKernelError ();
 }
+
+

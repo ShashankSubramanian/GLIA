@@ -381,11 +381,18 @@ PetscErrorCode Tumor::clipTumor() {
     clipVectorCuda(p_ptr, params_->grid_->nl_);
     clipVectorCuda(i_ptr, params_->grid_->nl_);
     clipVectorCuda(n_ptr, params_->grid_->nl_);
+    clipSpeciesAboveCuda(n_ptr, p_ptr, i_ptr, params_->grid_->nl_); 
 #else
     for (int i = 0; i < params_->grid_->nl_; i++) {
       p_ptr[i] = (p_ptr[i] <= 0.) ? 0. : p_ptr[i];
       i_ptr[i] = (i_ptr[i] <= 0.) ? 0. : i_ptr[i];
       n_ptr[i] = (n_ptr[i] <= 0.) ? 0. : n_ptr[i];
+      c_ptr = n_ptr + p_ptr + i_ptr;
+      if (c_ptr > 1.) {
+        n_ptr[i] = n_ptr[i] / c_ptr;
+        p_ptr[i] = p_ptr[i] / c_ptr;
+        i_ptr[i] = i_ptr[i] / c_ptr;
+      }
     }
 #endif
 

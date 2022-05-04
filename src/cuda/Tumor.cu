@@ -54,6 +54,21 @@ __global__ void getTCRecon(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
   }
 }
 
+__global__ void clipSpeciesAbove (ScalarType *n_ptr, ScalarType *p_ptr, ScalarType *i_ptr, int64_t sz){
+
+
+  int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+  if (i < sz) {
+    ScalarType c_ptr = n_ptr[i] + p_ptr[i] + i_ptr[i];
+    if (c_ptr > 1.) {
+      n_ptr[i] = n_ptr[i] / c_ptr;
+      p_ptr[i] = p_ptr[i] / c_ptr;
+      i_ptr[i] = i_ptr[i] / c_ptr;
+    }
+  }
+}
+
+
 void nonlinearForceScalingCuda (ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType *fy_ptr, ScalarType *fz_ptr, int64_t sz) {
 	int n_th = N_THREADS;
 
@@ -89,3 +104,22 @@ void getHealthyBrainCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz) {
 	cudaDeviceSynchronize ();
 	cudaCheckKernelError ();
 }
+
+
+void clipSpeciesAboveCuda (ScalarType *n_ptr, ScalarType *p_ptr, ScalarType *i_ptr, int64_t sz){
+
+
+  int n_th = N_THREADS;
+  clipSpeciesAbove <<< (sz + n_th - 1) / n_th, n_th >>> (n_ptr, p_ptr, i_ptr, sz);
+
+  cudaDeviceSynchronize ();
+  cudaCheckKernelError ();
+
+}
+
+
+
+
+
+
+
