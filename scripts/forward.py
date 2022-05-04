@@ -14,7 +14,7 @@ code_dir = scripts_path + '/../'
 ############### === define parameters
 p['n'] = 160                           # grid resolution in each dimension
 
-for i in range(1,5):
+for i in range(1,9):
   r = {}
   p = {}
   p['n'] = 160                           # grid resolution in each dimension

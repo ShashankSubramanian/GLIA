@@ -15,7 +15,7 @@ from helpers import copy_til
 
 args = ensemble.Args()
 
-for i in range(8,9):
+for i in range(1,9):
 
   syn = 'case%d'%i
 

@@ -22,7 +22,7 @@ for i in os.listdir(inv_pat_dir):
     list_pats.append(i)
 '''
 
-for i in range(1,9):
+for i in range(5,9):
   list_pats.append('case'+str(i))
 
 for pat in list_pats:

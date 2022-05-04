@@ -11,7 +11,7 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 
-for i in range(5,9):
+for i in range(1,9):
 
   #if i <= 2: continue
   #if i != 1: continue

@@ -22,7 +22,7 @@ init_rho                = random.uniform(5,10)
 init_k                  = random.uniform(0.005,0.05)
 init_gamma              = random.uniform(1E4,1E5)
 
-for i in range(8, 9):
+for i in range(1, 9):
   r = {}
   p = {}
   syn = i

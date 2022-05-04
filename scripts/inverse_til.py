@@ -17,13 +17,13 @@ input = {}
 #input['extra_modules'] = "module load petsc/3.11"
 
 ### == compute system
-input['system']              = 'longhorn'
+input['system']              = 'frontera'
 ### == define lambda for observation operator (for devs)
 input['obs_lambda']          = 1
 ### == define segmentation labels
 input['segmentation_labels'] = "0=bg,1=nec,4=en,2=ed,8=csf,7=vt,5=gm,6=wm"
 ### == submit the jobs
-input['submit']              = False
+input['submit']              = True
 ### == flag will use gpus
 input['gpu_flag']            = True
 ### == if using gpus; specify how many gpus per compute node to use

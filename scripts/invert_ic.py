@@ -37,7 +37,7 @@ input['patients_per_job']    = 1
 input['path_to_all_patients'] = '/scratch1/07544/ghafouri/results/syndata/'
 ### == custom list of patients (can be a single patient); keep empty to simply walk through all patients
 #input['patient_list']        = ['case5', 'case7', 'case8']
-input['patient_list']        = ['case8']
+input['patient_list']        = ['case1', 'case2', 'case3', 'case4', 'case5', 'case6', 'case7', 'case8']
 ### == path to all the jobs and results
 #input['job_path']            = "/scratch1/07544/ghafouri/results/syn_results/C1/til_inv/"
 input['job_path']            = "/scratch1/07544/ghafouri/results/syn_results/C1_me/til_inv/"

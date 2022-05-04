@@ -3,7 +3,7 @@ import params as par
 import subprocess
 
 ###############
-submit_job = False;
+submit_job = True;
 use_gpu = True;
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -13,29 +13,34 @@ code_dir = scripts_path + '/../'
 
 
 
-pat_list = ['case1', 'case2', 'case3', 'case4']
+pat_list = ['case1_bias2', 'case2_bias2', 'case3_bias2', 'case4_bias2']
 pat_dir = '/scratch1/07544/ghafouri/results/syndata'
 #res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/case1/'
 res_dir = '/scratch1/07544/ghafouri/results/syn_results/ms_inv_160/'
 fwd_me_dir = '/scratch1/07544/ghafouri/results/syn_results/me_inv_160/'
 
-for tmp in range(1,2):
+for tmp in range(1,7):
   
-  pat = 'case'+str(tmp)
+  pat = 'case'+str(tmp)+'_bias2'
   r = {}
   p = {}
   p['n'] = 160                           # grid resolution in each dimension
  
-  p['output_dir'] = os.path.join(res_dir, pat+'', 'fwd_ms/');            # results path
+  #p['output_dir'] = os.path.join(res_dir, pat+'', 'fwd_ms/');            # results path
+  p['output_dir'] = os.path.join(res_dir, pat, 'fwd_ms/');            # results path
   
   p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
-  p['a_seg_path'] = os.path.join(pat_dir, pat, 'C1_me', 'seg_t0_nx160.nc')
+  #p['a_seg_path'] = os.path.join(pat_dir, pat, 'C1_me', 'seg_t0_nx160.nc')
+  p['a_seg_path'] = os.path.join(pat_dir, pat.replace('_bias2', ''), 'C1_me', 'seg_t0_nx160.nc')
   p['a_gm_path'] = ""
   p['a_wm_path'] = ""
   p['a_csf_path'] = ""
   p['a_vt_path'] = ""
   p['d1_path'] = ""
-  p['d0_path'] = os.path.join(fwd_me_dir, pat, 'fwd_me', 'c0_true_syn.nc')
+  #p['d0_path'] = os.path.join(fwd_me_dir, pat, 'fwd_me', 'c0_true_syn.nc')
+  p['d0_path'] = os.path.join(fwd_me_dir, pat.replace('_bias2', ''), 'fwd_me', 'c0_true_syn.nc')
+  #p['velocity_prefix'] = os.path.join(fwd_me_dir, pat, 'fwd_me/')
+  p['velocity_prefix'] = os.path.join(fwd_me_dir, pat.replace('_bias2', ''), 'fwd_me/')
   p['mri_path'] = ""
   p['solver'] = 'multi_species'               # modes: sparse_til; nonsparse_til, reaction_diffusion, mass_effec, multi_species, forward, test
   p['model'] = 5                        # 1: reaction-diffuion; 2: alzh, 3: full objective, 4: mass-effect, 5: multi-species
@@ -70,7 +75,6 @@ for tmp in range(1,2):
   
   p['smoothing_factor_data_t0'] = 0
   p['given_velocities'] = 1
-  p['velocity_prefix'] = os.path.join(fwd_me_dir, pat, 'fwd_me/')
   #p['sigma_factor'] = 3
   #p['sigma_spacing'] = 2
   p['write_output'] = 1

@@ -20,9 +20,10 @@ if __name__ == '__main__':
   parser.add_argument ('-results_path', type=str, help = 'path to tumor inversion results');
   args = parser.parse_args();
   list_inv_params = ['k', 'rho', 'ox_hypoxia','death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0', 'ox_inv', 'invasive_thres']
-
-  lb = [0.01, 1.0, 0.1, 0.1, 0.01, 1.0, 0.5, 0.01, 0.2, -5]
-  ub = [0.8, 30.0, 0.7, 20.0, 4.0, 20.0, 20.0, 2.0, 1.0, -0.5]
+  
+  lb = [0.0001, 1.0, 0.1, 0.1, 0.01, 0.1, 0.1, 0.01, 0.2, -5]
+  ub = [0.3, 30.0 ,0.9 ,30.0 ,10.0 ,30.0 ,30.0 ,6.0 ,1.0 ,-0.5]
+  #ub = [0.8, 17.0, 0.7, 20.0, 4.0, 20.0, 20.0, 2.0, 1.0, -0.5]
 
   
   log_file=os.path.join(args.results_path, 'log.txt')

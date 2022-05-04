@@ -13,7 +13,9 @@ code_dir = scripts_path + '/../'
 
 
 
-pat_list = ['case1', 'case2', 'case3', 'case4']
+pat_list = []
+for i in range(1,9):
+  pat_list.append('case'+str(i))
 pat_dir = '/scratch1/07544/ghafouri/results/syndata'
 #res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/case1/'
 res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/'
@@ -21,12 +23,12 @@ fwd_me_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/me_inv_
 
 for pat in pat_list:
 
-
+  pat_mod = pat + '/bias2'
   r = {}
   p = {}
   p['n'] = 160                           # grid resolution in each dimension
  
-  p['output_dir'] = os.path.join(res_dir, pat, 'fwd_ms/');            # results path
+  p['output_dir'] = os.path.join(res_dir, pat_mod, 'fwd_ms/');            # results path
   
   p['atlas_labels'] = "[wm=6,gm=5,vt=7,csf=8]"                                           # example (brats): '[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]'
   p['a_seg_path'] = os.path.join(pat_dir, pat, 'C1_me', 'seg_t0_nx160.nc')
@@ -42,10 +44,10 @@ for pat in pat_list:
   p['verbosity'] = 3                    # various levels of output density
   p['syn_flag'] = 0                     # create synthetic data
 
-  cmd = 'python multispecies/extract_params.py -results_path '+os.path.join(res_dir, pat)
-  print(cmd)
-  os.system(cmd) 
-  recon_file=os.path.join(res_dir, pat, 'recon_info.dat')
+  #cmd = 'python multispecies/extract_params.py -results_path '+os.path.join(res_dir, pat)
+  #print(cmd)
+  #os.system(cmd) 
+  recon_file=os.path.join(res_dir, pat_mod, 'recon_info.dat')
 
   with open(recon_file, 'r') as f:
     lines = f.readlines()
