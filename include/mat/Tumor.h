@@ -71,4 +71,5 @@ void nonlinearForceScalingCuda(ScalarType *c_ptr, ScalarType *fx_ptr, ScalarType
 void computeTumorSegmentationCuda(ScalarType *bg_ptr, ScalarType *gm_ptr, ScalarType *wm_ptr, ScalarType *csf_ptr, ScalarType *glm_ptr, ScalarType *c_ptr, ScalarType *seg_ptr, int64_t sz);
 void getTCReconCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz);
 void getHealthyBrainCuda(ScalarType *seg_ptr, ScalarType *x_ptr, int64_t sz);
+void clipSpeciesAboveCuda(ScalarType *n_ptr, ScalarType *p_ptr, ScalarType *i_ptr, int64_t sz);
 #endif
