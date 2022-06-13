@@ -12,7 +12,7 @@ from masseffect import run_registration as ensemble
 from masseffect import run_multiple_patients as batch_ensemble
 from helpers import copy_til
 
-
+code_dir = os.path.dirname(os.path.realpath(__file__))+'/../'
 args = ensemble.Args()
 
 for i in range(1,9):
@@ -20,21 +20,21 @@ for i in range(1,9):
   syn = 'case%d'%i
 
   ### path to patients [requires affine to jakob; directory structure is args.patient_dir/{patient_ID}/aff2jakob/{data}]
-  args.patient_dir = '/scratch1/07544/ghafouri/results/syndata/'+syn+'/C1_me/'
+  args.patient_dir = '/scratch/07544/ghafouri/results/syndata/'+syn+'/C1_me/'
   ### path to atlases [adni]
-  args.atlas_dir   = "/scratch1/07544/ghafouri/results/syndata/"+syn+"/C1_me/"
+  args.atlas_dir   = "/scratch/07544/ghafouri/results/syndata/"+syn+"/C1_me/"
   ### path to TIL results; results directory from inverse_til.py script; assumes a directory structure
-  args.til_dir     = "/scratch1/07544/ghafouri/results/syn_results/C1_me/til_inv/"+syn+"/"
+  args.til_dir     = "/scratch/07544/ghafouri/results/syn_results/C1_me/til_inv/"+syn+"/"
   ### path to tumor solver code
-  args.code_dir    = "/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/"
+  args.code_dir    = code_dir
   ### path to registration solver code binaries
-  args.claire_dir  = "/work2/07544/ghafouri/frontera/gits/claire/bin/"
+  args.claire_dir  = "/home/07544/ghafouri/gits/claire/bin/"
   ### path to results [solver will make this]
-  args.results_dir = "/scratch1/07544/ghafouri/results/syn_results/me_inv/"+syn+"/"
+  args.results_dir = "/scratch/07544/ghafouri/results/syn_results/me_inv/"+syn+"/"
   if not os.path.exists(args.results_dir):
-    os.mkdir(args.results_dir)
+    os.makedirs(args.results_dir)
   ### compute system [TACC systems are: maverick2, frontera, stampede2, longhorn]; others [rebels]
-  args.compute_sys = "frontera"
+  args.compute_sys = "longhorn"
 
 
 
@@ -53,8 +53,8 @@ for i in range(1,9):
 
   ### copy til locations
   #copy_til.copy_inv_til(args)
-
-
+  
+  
   cmd = 'python multispecies/run_registration.py '
   cmd += '-p '+args.patient_dir+' '
   cmd += '-a '+args.patient_dir+' '
@@ -65,7 +65,7 @@ for i in range(1,9):
   cmd += '-r '+str(1)+' '
   cmd += '-til '+args.til_dir+ ' '
   cmd += '-rc '+args.claire_dir+' '
-  cmd += '-csys'+'frontera'+' '
+  cmd += '-csys'+'longhorn'+' '
   cmd += '-pat_seg '+'seg_t1.nii.gz'+' '
   cmd += '-at_seg '+'seg_t0.nii.gz'+' '
   cmd += '-pat '+syn+' '

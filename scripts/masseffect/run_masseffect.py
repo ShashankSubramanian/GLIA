@@ -141,7 +141,7 @@ def write_tuinv(invdir, atlist, bash_file, idx, ngpu, run_params):
     f.write("results_dir_" + str(i) + "=" + invdir + atlist[ngpu*idx + i] + "\n")
   cmd = par.runcmd(run_params)
   flag = 0 if run_params['compute_sys'] == 'cbica' else 1
-  f.write("source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n")
+  f.write("source /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n")
   for i in range(0,n_local):
     f.write("CUDA_VISIBLE_DEVICES=" + str(i) + " " + cmd + "${bin_path} -config ${results_dir_" + str(i) + "}/solver_config.txt > ${results_dir_" + str(i) + "}/solver_log.txt 2>&1 " + "&"*flag + "\n")
   f.write("\n")
@@ -246,7 +246,7 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
   ### create reference(atlas) labels
  
   with open(bash_file, "a") as f:
-    f.write("\n\nsource /work2/07544/ghafouri/frontera/gits/claire/deps/env_source.sh\n\n")
+    f.write("\n\nsource /home/07544/ghafouri/gits/claire/deps/env_source.sh\n\n")
  
   for i in range(0, n_local):
     at = at_list[ngpu*idx+i]
@@ -279,7 +279,7 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
 def convert_and_move(n, bash_file, scripts_path, at_list, reg, pat, tu, idx, ngpu):
   n_local = ngpu if len(at_list) >= ngpu*idx + ngpu else len(at_list) % ngpu
   with open(bash_file, "a") as f:
-    f.write("conda activate mriseg\n\n")
+    f.write("conda activate gen\n\n")
     for i in range(0, n_local):
       ### convert transported c0 to netcdf and mv it
       at = at_list[ngpu*idx+i]

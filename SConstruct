@@ -199,9 +199,13 @@ else:
 #        uniqueCheckLib(conf, "accfft_utils_gpu")
 # MPI
 MPI_DIR = checkset_var("MPI_DIR", "")
+MPI_LIB = checkset_var("MPI_LIB", "")
+MPI_INC = checkset_var("MPI_INC", "")
 
-env.Append(CPPPATH = [os.path.join( MPI_DIR, "intel64/include")])
-env.Append(LIBPATH = [os.path.join( MPI_DIR, "intel64/lib")])
+#env.Append(CPPPATH = [os.path.join( MPI_DIR, "intel64/include")])
+#env.Append(LIBPATH = [os.path.join( MPI_DIR, "intel64/lib")])
+env.Append(CPPPATH = [os.path.join( MPI_INC, "")])
+env.Append(LIBPATH = [os.path.join( MPI_LIB, "")])
 
 # ====== NIFTI ======
 if env["niftiio"] == True:

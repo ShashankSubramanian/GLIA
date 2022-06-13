@@ -29,7 +29,8 @@ for i in range(1,9):
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd/'%case);            # results path
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd_rec/'%case);            # results path
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd_rec2/'%case);            # results path
-  p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd/'%case);            # results path
+  p['output_dir'] = os.path.join('/scratch/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd/'%case);            # results path
+  #p['output_dir'] = os.path.join('/scratch/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd_vel/'%case);            # results path
     
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case1/fwd/');            # results path
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case2/fwd/');            # results path
@@ -42,19 +43,19 @@ for i in range(1,9):
   #p['a_seg_path'] = os.path.join(code_dir, 'results/ic1/seg_t[0].nii.gz')
   #p['a_seg_path'] = os.path.join(code_dir, 'syndata/160/seg_rec_final.nc')
   if case == 1 or case == 5:
-    p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50052_seg_aff2jakob_ants.nc'
+    p['a_seg_path'] = '/scratch/07544/ghafouri/data/adni-nc/256/50052_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50052_seg_aff2jakob_ants_160.nc'
   # case 2
   if case == 2 or case == 6:
-    p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50441_seg_aff2jakob_ants.nc'
+    p['a_seg_path'] = '/scratch/07544/ghafouri/data/adni-nc/256/50441_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50463_seg_aff2jakob_ants_160.nc'
   # case 3
   if case ==3 or case == 7:
-    p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50463_seg_aff2jakob_ants.nc'
+    p['a_seg_path'] = '/scratch/07544/ghafouri/data/adni-nc/256/50463_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50463_seg_aff2jakob_ants_160.nc'
   # case 4
   if case == 4 or case == 8:
-    p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/256/50698_seg_aff2jakob_ants.nc'
+    p['a_seg_path'] = '/scratch/07544/ghafouri/data/adni-nc/256/50698_seg_aff2jakob_ants.nc'
   #p['a_seg_path'] = '/scratch1/07544/ghafouri/data/adni-nc/160/50698_seg_aff2jakob_ants_160.nc'
 
    
@@ -187,17 +188,22 @@ for i in range(1,9):
   p['k_gm_wm'] = 0.2                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
   p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
   p['ratio_i0_c0'] = 0.0
+  p['write_all_velocities'] = 1
 
-  p['nt_data'] = 100
-  p['dt_data'] = 0.01
+  p['nt_data'] = 80
+  p['dt_data'] = 0.0125
   p['time_history_off'] = 1             # 1: do not allocate time history (only works with forward solver or FD inversion)
 
   ############### === define run configuration if job submit is needed; else run from results folder directly
   r['code_path'] = code_dir;
-  r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+  r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
   r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['wtime_h'] = 2
+  cmd = "source ~/.bashrc\n\n"
+  #cmd += "conda activate gen\n\n"
+  cmd += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
+  r['extra_modules'] = cmd
   ###############=== write config to write_path and submit job
 
   par.submit(p, r, submit_job, use_gpu);

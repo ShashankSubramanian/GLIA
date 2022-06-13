@@ -120,6 +120,7 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
         //                    death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
         i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + al_ptr[i] * p_temp - bet_ptr[i] * i_temp - 
                             death_ratio * death_rate * h_ptr[i] * i_temp);
+        //i_ptr[i] += dt * (al_ptr[i] * p_temp - bet_ptr[i] * i_temp - death_ratio * death_rate * h_ptr[i] * i_temp);
         if (i_ptr[i] < 0.0) i_ptr[i] = 0.0;
         if (i_ptr[i] > 1.0) i_ptr[i] = 1.0;
 

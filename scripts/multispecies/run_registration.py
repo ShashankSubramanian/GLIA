@@ -32,7 +32,9 @@ def write_reg(reg, pat, data_dir, atlas_dir, at_list, claire_dir, bash_file, idx
     create_patient_labels(os.path.join(data_dir, patient_seg), reg, pat)
   ### create reference(atlas) labels
   with open(bash_file, "a") as f:
-    f.write("\n\nsource /work2/07544/ghafouri/frontera/gits/claire/deps/env_source.sh\n\n")
+    #f.write("\n\nsource /work2/07544/ghafouri/frontera/gits/claire/deps/env_source.sh\n\n")
+    f.write("\n\nsource /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n")
+    f.write("\n\nsource /home/07544/ghafouri/gits/claire/deps/env_source.sh\n\n")
   for i in range(0, n_local):
     at = at_list[ngpu*idx+i]
     if not os.path.exists(reg + at + "/" + at + "_vt.nii.gz"):
@@ -103,7 +105,7 @@ if __name__=='__main__':
   args = parser.parse_args();
   
   r = {}
-  r['compute_sys'] = 'frontera' 
+  r['compute_sys'] = 'longhorn' 
   r['log_dir'] = args.results_dir
   patient_dir = args.patient_dir
   atlas_dir = args.atlas_dir

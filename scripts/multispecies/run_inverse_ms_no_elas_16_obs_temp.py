@@ -18,7 +18,7 @@ import cma
 
 
 
-def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn, sigma, v_dir, n, temp_seg):
+def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn, sigma, v_dir, n, temp_seg, bias):
  
   #list_vars = ['rho', 'k', 'gamma', 'ox_hypoxia', 'death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0', 'sigma_b', 'ox_inv', 'invasive_thres']
   '''
@@ -50,7 +50,7 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
   cma_ub = np.array(cma_ub)
 
   cma_init = (cma_init - cma_lb)/(cma_ub - cma_lb) 
-  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars, v_dir, n, temp_seg)
+  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars, v_dir, n, temp_seg, bias)
 
   opts = cma.CMAOptions()
   #opts.set('tolfunc',1e-2) 
@@ -68,7 +68,7 @@ def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_p
 
 
 
-def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars, v_dir, n, temp_seg):
+def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars, v_dir, n, temp_seg, bias):
  
   print("Testing ")
   
@@ -98,7 +98,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
 
 
   dat_vt_true = dat_vt_true.astype(np.float32)
-  dat_en_true = dat_ed_true.astype(np.float32)
+  dat_en_true = dat_en_true.astype(np.float32)
   dat_nec_true = dat_nec_true.astype(np.float32)
   dat_ed_true = dat_ed_true.astype(np.float32)
 
@@ -198,7 +198,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
       seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
       c_rec_path = os.path.join(res_forward_dir, 'c_rec_final.nc')
-  
+
       dat_en_rec = readNetCDF(en_rec_path)
       dat_ed_rec = readNetCDF(ed_rec_path)
       dat_nec_rec = readNetCDF(nec_rec_path)
@@ -217,15 +217,30 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
 
       # Observation operator for n
 
-      dat_nec_rec[dat_nec_true == 0] = 0.0
+      #dat_nec_rec[dat_nec_true == 0] = 0.0
       tmp = (dat_nec_rec < 0.01)
       dat_nec_rec[tmp] = 0.0
 
-      dat_en_rec[dat_en_rec < 0.01] = 0.0
+      tmp = (dat_en_rec < 0.01)
+      dat_en_rec[tmp] = 0.0
 
+      pen_vec = dat_en_rec.copy()
+
+      pen_vec[dat_nec_true == 1] = 0.0
+      pen_vec[dat_en_true == 1] = 0.0
+      pen_vec[dat_ed_true == 1] = 0.0
+      tmp = (pen_vec < 0.01)
+      pen_vec[tmp] = 0.0
+
+      #dat_en_rec[dat_en_true != 1] = 0.0
 
       tmp = (dat_ed_rec < 0.01)
       dat_ed_rec[tmp] = 0.0
+
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_en.nc'), dat_en_rec.shape, dat_en_rec)
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_nec.nc'), dat_nec_rec.shape, dat_nec_rec)
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_ed.nc'), dat_ed_rec.shape, dat_ed_rec)
+      #createNetCDF(os.path.join(res_forward_dir, 'obs_vt.nc'), dat_vt_rec.shape, dat_vt_rec)
 
 
       diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
@@ -233,10 +248,14 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
       diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
       diff_tc =  w_tc * np.linalg.norm((dat_tc_true - dat_c_rec).flatten())**2
-      J = diff_en + diff_nec + diff_ed + diff_vt + diff_tc
-      
-      J_vec[i * num_devices + j] = J 
-      out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : %.4f + %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, diff_tc, J)
+      bias_term = bias * np.linalg.norm(pen_vec.flatten())**2
+
+      #J = diff_en + diff_nec + diff_ed + diff_vt
+      J = diff_en + diff_nec + diff_ed + diff_vt + bias_term
+
+      J_vec[i * num_devices + j] = J
+      out = "Objective function (En + Nec + Ed + Misfit[VT] + bias_term = J) : %.4f + %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, bias_term, J)
+
       print(out)
       
       os.remove(en_rec_path)
@@ -268,6 +287,8 @@ if __name__ == "__main__":
   r_args.add_argument('-vel', '--vel_dir', type=str, help = 'list of initial guess', required = True)
   r_args.add_argument('-n', '--resolution', type=int, help = 'resolution', required = True)
   r_args.add_argument('-at', '--atlas_seg', type=str, help = 'atlas_seg', required = True)
+  r_args.add_argument('-b', '--bias', type=float, help = 'atlas_seg', required = True)
+
   args = parser.parse_args();
 
   pat_dir = args.patient_dir
@@ -284,8 +305,8 @@ if __name__ == "__main__":
   n = args.resolution
   v_dir = args.vel_dir
   temp_seg = args.atlas_seg
-  print(sigma)
-  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, True, sigma, v_dir, n, temp_seg) 
+  bias = args.bias
+  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, True, sigma, v_dir, n, temp_seg, bias) 
    
   
 

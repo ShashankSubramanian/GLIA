@@ -9,7 +9,7 @@ sys.path.append(os.path.join(code_dir, 'scripts', 'multispecies'))
 from run_inverse_ms_no_elas import run_multispecies_inversion as run
 
 
-for i in range(1,9):
+for i in range(1,2):
 
   syn = 'case%d'%i
   resolution = 160
@@ -20,7 +20,7 @@ for i in range(1,9):
   res_dir = os.path.join(scratch, 'results/syn_results/ms_inv_160/'+syn+'/')
   #res_dir = os.path.join(scratch, 'results/syn_results/tmp/'+'')
 
-  v_dir = pat_fwd_dir
+  v_dir = os.path.join(res_dir, 'fwd_ms/')
 
 
   if not os.path.exists(res_dir):
@@ -31,25 +31,45 @@ for i in range(1,9):
 
   true_params['gamma'] = 0.0
 
-
+  
   params_in = {}
-  params_in['k'] = (0.4, 0.01, 0.8)
-  params_in['rho'] = (10.0, 1.0, 17.0)
-  #params_in['rho'] = (true_params['rho'], 4.0, 20.0)
   params_in['gamma'] = (0, 0, 1.3E5)
+  recon_file = os.path.join(res_dir, 'recon_info.dat')
+  if os.path.exists(recon_file):
+    with open(recon_file, 'r') as f:
+      lines = f.readlines()
+      l = lines[1].split(" ")
+      params_in['k'] = (float(l[0]), 0.01, 0.8)
+      params_in['rho'] = (float(l[1]), 1.0, 17.0)
+      params_in['ox_hypoxia'] = (float(l[2]), 0.1, 0.7)
+      params_in['death_rate'] = (float(l[3]), 0.1, 30.0)
+      params_in['alpha_0'] = (float(l[4]), 0.01, 6.0)
+      params_in['ox_consumption'] = (float(l[5]), 1.0, 20.0)
+      params_in['ox_source'] = (float(l[6]), 0.5, 20.0)
+      params_in['beta_0'] = (float(l[7]), 0.01, 6.0)
+      params_in['ox_inv'] = (float(l[8]), 0.2, 1.0)
+      
+  else:
+    params_in['k'] = (0.4, 0.01, 0.8)
+    params_in['rho'] = (10.0, 1.0, 17.0)
+    params_in['ox_hypoxia'] = (0.5, 0.1, 0.7)
+    params_in['death_rate'] = (7.0, 0.1, 30.0)
+    params_in['alpha_0'] = (1.0, 0.01, 6.0)
+    params_in['ox_consumption'] = (5.0, 1.0, 20.0)
+    params_in['ox_source'] = (3.0, 0.5, 20.0)
+    params_in['beta_0'] = (1.0, 0.01, 6.0)
+    params_in['ox_inv'] = (0.7, 0.2, 1.0)
+
+
+
+
+  #params_in['rho'] = (true_params['rho'], 4.0, 20.0)
   #params_in['ox_hypoxia'] = (0.5, 0.3, 0.7)
   #params_in['ox_hypoxia'] = (true_params['ox_hypoxia'], 0.3, 1.0)
-  params_in['ox_hypoxia'] = (0.5, 0.1, 0.7)
-  params_in['death_rate'] = (7.0, 0.1, 30.0)
-  params_in['alpha_0'] = (1.0, 0.01, 6.0)
-  params_in['ox_consumption'] = (5.0, 1.0, 20.0)
-  params_in['ox_source'] = (3.0, 0.5, 20.0)
-  params_in['beta_0'] = (1.0, 0.01, 6.0)
-  params_in['ox_inv'] = (0.7, 0.2, 1.0)
   #params_in['ox_inv'] = (true_params['ox_inv'], 0.3, 1.0)
   #params_in['invasive_thres'] = (true_params['invasive_thres'], 0.001, 0.2)
   #params_in['invasive_thres'] = (0.005, 5e-5, 0.02)
-  params_in['invasive_thres'] = (-2, -5, -0.5)
+  params_in['invasive_thres'] = (-3, -3.001, -2.999)
   params_in['given_velocities'] = 1
   '''
 
@@ -78,7 +98,7 @@ for i in range(1,9):
 
 
 
-  sigma = 0.4
+  sigma = 0.2
 
 
 
@@ -116,23 +136,27 @@ for i in range(1,9):
     job_header = "#!/bin/bash\n\n"
     job_header += "#SBATCH -J tuinv\n"
     job_header += "#SBATCH -o "+os.path.join(res_dir, 'log.txt')+"\n"
-    job_header += "#SBATCH -p rtx\n"
+    job_header += "#SBATCH -e "+os.path.join(res_dir, 'err.txt')+"\n"
+    job_header += "#SBATCH -p v100\n"
     job_header += "#SBATCH -N 1 \n"
     job_header += "#SBATCH -n 1 \n"
     job_header += "#SBATCH -t 48:00:00\n\n"
     
     f.write(job_header)
     f.write("source ~/.bashrc\n\n")
-    f.write("source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n")
+    f.write("source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n")
     
-    f.write("conda activate mriseg\n\n")
+    f.write("conda activate gen\n\n")
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" \n" 
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_32.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_64.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_32_obs.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
-    cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
+    #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
+    cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs_bias6.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" -b "+str(1e-4)+" \n"
+    #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_opt.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" -b "+str(1e-4)+" \n"
+    #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_opt2.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" -b "+str(1e-4)+" \n"
     #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'test.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
     f.write(cmd)
      

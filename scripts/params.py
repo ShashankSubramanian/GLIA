@@ -66,6 +66,22 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['rho_ub'] = 15                    # upper bound rho
     p['gamma_lb'] = 0                   # lower bound gamma
     p['gamma_ub'] = 15E4                # upper bound gamma
+    p['ox_hypoxia_lb'] = 0.1
+    p['ox_hypoxia_ub'] = 0.9
+    p['death_rate_lb'] = 0.1
+    p['death_rate_ub'] = 14.0
+    p['alpha_0_lb'] = 0.01
+    p['alpha_0_ub'] = 3.0
+    p['beta_0_lb'] = 0.01
+    p['beta_0_ub'] = 3.0
+    p['ox_consumption_lb'] = 0.1
+    p['ox_consumption_ub'] = 30.0
+    p['ox_source_lb'] = 0.1
+    p['ox_source_ub'] = 20.0
+    p['ox_inv_lb'] = 0.2
+    p['ox_inv_ub'] = 1.0
+    p['invasive_thres_lb'] = 1e-6
+    p['invasive_thres_ub'] = 0.7
     p['lbfgs_vectors'] = 10             # number of vectors for lbfgs update
     p['lbfgs_scale_type'] = "diagonal"  # initial hessian approximation
     p['lbfgs_scale_hist'] = 5           # used vecs for initial hessian approx
@@ -80,6 +96,14 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['init_rho'] = 8                   # initial guess rho (reaction in wm)
     p['init_k'] = 1E-2                  # initial guess kappa (diffusivity in wm)
     p['init_gamma'] = 12E4              # initial guess (forcing factor for mass effect)
+    p['init_ox_h'] = 0.6                # initial guess (hypoxic thres)
+    p['init_alpha_0'] = 1.0             # initial guess (p to i)
+    p['init_beta_0'] = 0.02             # initial guess (i to p)
+    p['init_death_rate'] = 1.0          # initial guess (death rate)
+    p['init_ox_conumption'] = 3.0       # initial guess (oxygen consumption)
+    p['init_ox_source'] = 10.0          # initial guess (oxygen source)
+    p['init_ox_inv'] = 0.7              # initial guess (invasive oxygen)
+    p['init_invasive_thres'] = 0.01     # initial guess (invasive thres for edema)
     p['nt_inv'] = 40                    # number time steps
     p['dt_inv'] = 0.025                 # time step size
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
@@ -231,6 +255,21 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("rho_ub=" + str(p['rho_ub']) + "\n");
         f.write("gamma_lb=" + str(p['gamma_lb']) + "\n");
         f.write("gamma_ub=" + str(p['gamma_ub']) + "\n");
+        f.write("ox_hypoxia_lb=" + str(p['ox_hypoxia_lb']) + "\n");
+        f.write("ox_hypoxia_ub=" + str(p['ox_hypoxia_ub']) + "\n");
+        f.write("death_rate_lb=" + str(p['death_rate_lb']) + "\n");
+        f.write("death_rate_ub=" + str(p['death_rate_ub']) + "\n");
+        f.write("alpha_0_lb=" + str(p['alpha_0_lb']) + "\n");
+        f.write("alpha_0_ub=" + str(p['alpha_0_ub']) + "\n");
+        f.write("beta_0_lb=" + str(p['beta_0_lb']) + "\n");
+        f.write("beta_0_ub=" + str(p['beta_0_ub']) + "\n");
+        f.write("ox_consumption_lb=" + str(p['ox_consumption_lb']) + "\n");
+        f.write("ox_consumption_ub=" + str(p['ox_consumption_ub']) + "\n");
+        f.write("ox_source_lb=" + str(p['ox_source_lb']) + "\n");
+        f.write("ox_source_ub=" + str(p['ox_source_ub']) + "\n");
+        f.write("ox_inv_lb=" + str(p['ox_inv_ub']) + "\n");
+        f.write("invasive_thres_lb=" + str(p['invasive_thres_lb']) + "\n");
+        f.write("invasive_thres_ub=" + str(p['invasive_thres_ub']) + "\n");
         f.write("lbfgs_vectors=" + str(p['lbfgs_vectors']) + "\n");
         f.write("lbfgs_scale_type=" + str(p['lbfgs_scale_type']) + "\n");
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
@@ -247,6 +286,14 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("init_rho=" + str(p['init_rho']) + "\n");
         f.write("init_k=" + str(p['init_k']) + "\n");
         f.write("init_gamma=" + str(p['init_gamma']) + "\n");
+        f.write("init_ox_h=" + str(p['init_ox_h']) + "\n");
+        f.write("init_alpha_0=" + str(p['init_alpha_0']) + "\n");
+        f.write("init_beta_0=" + str(p['init_beta_0']) + "\n");
+        f.write("init_death_rate=" + str(p['init_death_rate']) + "\n");
+        f.write("init_ox_conumption=" + str(p['init_ox_conumption']) + "\n");
+        f.write("init_ox_source=" + str(p['init_ox_source']) + "\n");
+        f.write("init_ox_inv=" + str(p['init_ox_inv']) + "\n");
+        f.write("init_invasive_thres=" + str(p['init_invasive_thres']) + "\n");
         f.write("nt_inv=" + str(p['nt_inv']) + "\n");
         f.write("dt_inv=" + str(p['dt_inv']) + "\n");
         f.write("k_gm_wm=" + str(p['k_gm_wm']) + "\n");
@@ -470,11 +517,13 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
       job_header += "#SBATCH -n " + str(run_params['mpi_tasks']) + "\n"
       job_header += "#SBATCH -t "+str(run_params['wtime_h'])+":"+str(run_params['wtime_m'])+":00\n\n"
-      job_header += "source ~/.bashrc\n"
+      #job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
+      job_header += "source ~/.bashrc\n\n"
+      job_header += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
       
-      job_header += "conda activate mriseg\n\n"
-      job_header += "source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n"
+      #job_header += "conda activate mriseg\n\n"
+      #job_header += "source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n"
       if 'extra_modules' in run_params:
         job_header += str(run_params['extra_modules']) + "\n"
     else:

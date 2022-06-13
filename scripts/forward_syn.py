@@ -14,7 +14,7 @@ code_dir = scripts_path + '/../'
 ############### === define parameters
 p['n'] = 160                           # grid resolution in each dimension
 
-for i in range(5,9):
+for i in range(1,9):
   r = {}
   p = {}
   p['n'] = 160                           # grid resolution in each dimension
@@ -54,9 +54,12 @@ for i in range(5,9):
 
   ############### === define run configuration if job submit is needed; else run from results folder directly
   r['code_path'] = code_dir;
-  r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+  r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
   r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
+  r['queue'] = 'v100'
+  r['wtime_h'] = 1
+  r['extra_modules'] = '\n\nsource /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n'
   p['write_all_velocities'] = 1
   ###############=== write config to write_path and submit job
   par.submit(p, r, submit_job, use_gpu);

@@ -3,7 +3,7 @@ import params as par
 import subprocess
 
 ###############
-submit_job = True;
+submit_job = False;
 use_gpu = True;
 ###############
 scripts_path = os.path.dirname(os.path.realpath(__file__))
@@ -14,21 +14,21 @@ code_dir = scripts_path + '/../'
 
 
 pat_list = ['case1_bias4']
-pat_dir = '/scratch1/07544/ghafouri/results/syndata'
+pat_dir = '/scratch/07544/ghafouri/results/syndata'
 #res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/case1/'
 #res_dir = '/scratch1/07544/ghafouri/results/syn_results/ms_inv_160/'
 #fwd_me_dir = '/scratch1/07544/ghafouri/results/syn_results/me_inv_160/'
-res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/'
-fwd_me_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/me_inv_160/'
+res_dir = '/scratch/07544/ghafouri/results/syn_results/ms_inv_160/'
+fwd_me_dir = '/scratch/07544/ghafouri/results/syn_results/me_inv_160/'
 
-for tmp in range(1,2):
+for tmp in range(1,5):
   
-  pat = 'case'+str(tmp)
+  pat = 'case'+str(tmp)+''
   true_pat = 'case'+str(tmp)
 
-  for l in range(5):
+  for l in range(1):
     
-    bias = 'bias'+str(l)+'-2'
+    bias = 'bias'+str(l)+''
     r = {}
     p = {}
     p['n'] = 160                           # grid resolution in each dimension
@@ -58,6 +58,8 @@ for tmp in range(1,2):
     #print(cmd)
     #os.system(cmd) 
     recon_file=os.path.join(res_dir, pat, bias, 'recon_info.dat')
+    
+    #res_gamma = [3.04642659e-05, , 0.02447855, ,1.58258411e-07]    
 
     with open(recon_file, 'r') as f:
       lines = f.readlines()
@@ -73,12 +75,12 @@ for tmp in range(1,2):
         p['ox_source_data'] = l[6]
         p['beta_0_data'] = l[7]
         p['ox_inv_data'] = l[8]
-        #p['invasive_thres_data'] = l[9]
-        p['invasive_thres_data'] = str(10**float(l[9]))
+        p['invasive_thres_data'] = 0.001
+        #p['invasive_thres_data'] = str(10**float(l[9]))
       ####### tumor params for synthetic data
       #if case == 1:
       #p['gamma_data'] = 7E4
-      p['gamma_data'] = 0
+      p['gamma_data'] = 
     p['prediction'] = 0
     
     p['smoothing_factor_data_t0'] = 0
@@ -96,13 +98,17 @@ for tmp in range(1,2):
 
     ############### === define run configuration if job submit is needed; else run from results folder directly
     r['code_path'] = code_dir;
-    r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+    r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
     r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
     r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
     r['wtime_h'] = 2
-    r['queue'] = 'rtx-dev'
+    r['queue'] = 'v100'
+    cmd = "source ~/.bashrc\n\n"
+    #cmd += "conda activate gen\n\n"
+    cmd += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
+    r['extra_modules'] = cmd
     ###############=== write config to write_path and submit job
-
+    
     par.submit(p, r, submit_job, use_gpu);
 
 

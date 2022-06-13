@@ -14,16 +14,16 @@ code_dir = scripts_path + '/../'
 
 
 pat_list = []
-for i in range(1,9):
+for i in range(1,2):
   pat_list.append('case'+str(i))
-pat_dir = '/scratch1/07544/ghafouri/results/syndata'
+pat_dir = '/scratch/07544/ghafouri/results/syndata'
 #res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/case1/'
-res_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/'
-fwd_me_dir = '/scratch1/07544/ghafouri/results/syn_results/true_p_true_m/me_inv_160/'
+res_dir = '/scratch/07544/ghafouri/results/syn_results/true_p_true_m/ms_inv_160/'
+fwd_me_dir = '/scratch/07544/ghafouri/results/syn_results/true_p_true_m/me_inv_160/'
 
 for pat in pat_list:
 
-  pat_mod = pat + '/bias2'
+  pat_mod = pat+'/bias1'
   r = {}
   p = {}
   p['n'] = 160                           # grid resolution in each dimension
@@ -63,16 +63,23 @@ for pat in pat_list:
       p['ox_source_data'] = l[6]
       p['beta_0_data'] = l[7]
       p['ox_inv_data'] = l[8]
-      p['invasive_thres_data'] = l[9]
+      p['invasive_thres_data'] = 0.001
     ####### tumor params for synthetic data
     #if case == 1:
     #p['gamma_data'] = 7E4
-    p['gamma_data'] = 0
+  
+  recon_file_gamma = os.path.join(res_dir, pat_mod, 'recon_info_gamma.dat')
+  with open(recon_file_gamma, 'r') as f:
+    lines = f.readlines()
+    l = lines[1].split(" ")[0]
+    p['gamma_data'] = float(l) 
+
   p['prediction'] = 0
   
   p['smoothing_factor_data_t0'] = 0
-  p['given_velocities'] = 1
-  p['velocity_prefix'] = os.path.join(fwd_me_dir, pat, 'fwd_me/')
+  p['given_velocities'] = 0
+  p['write_all_velocities'] = 1
+  #p['velocity_prefix'] = os.path.join(fwd_me_dir, pat, 'fwd_me/')
   #p['sigma_factor'] = 3
   #p['sigma_spacing'] = 2
   p['write_output'] = 1
@@ -86,11 +93,10 @@ for pat in pat_list:
 
   ############### === define run configuration if job submit is needed; else run from results folder directly
   r['code_path'] = code_dir;
-  r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+  r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
   r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['wtime_h'] = 2
-  r['queue'] = 'rtx'
   ###############=== write config to write_path and submit job
 
   par.submit(p, r, submit_job, use_gpu);

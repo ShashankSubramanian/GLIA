@@ -4,7 +4,7 @@ import subprocess
 import random
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/utils/')
 from utils.file_io import readNetCDF, createNetCDF
-import numpy as np
+#import numpy as np
 ###############
 r = {}
 p = {}
@@ -25,7 +25,7 @@ for i in range(1, 9):
   r = {}
   p = {}
   syn = i
-  prefix='/scratch1/07544/ghafouri/results/'
+  prefix='/scratch/07544/ghafouri/results'
   p['n'] = 160                                                                                   # grid resolution in each dimension
   p['output_dir']     = os.path.join(prefix, 'syn_results/true_p_true_m/me_inv_160/case%d/inv/'%syn);                      # results path
   r['log_dir']     = p['output_dir']                      # results path
@@ -33,8 +33,8 @@ for i in range(1, 9):
   #p['d0_path']        = os.path.join(prefix, 'syn_results/me_inv/case%d/reg/case%d/case%d_c0Recon_transported_nx160.nc'%(syn,syn,syn))
   p['d0_path']        = os.path.join(prefix, 'syndata/case%d/C1_me/c_t0_nx160.nc'%(syn))
   d0 = readNetCDF(p['d0_path'])
-  d0 /= np.amax(d0)
-  createNetCDF(p['d0_path'], d0.shape, d0)
+  #d0 /= np.amax(d0)
+  #createNetCDF(p['d0_path'], d0.shape, d0)
   p['d1_path']        = os.path.join(prefix, 'syndata/case%d/C1_me/tc_nx160.nc'%syn)
   p['atlas_labels']   = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"                                   
   p['a_seg_path']     = os.path.join(prefix, 'syndata/case%d/C1_me/seg_t0_nx160.nc'%syn)
@@ -74,7 +74,7 @@ for i in range(1, 9):
 
   ############### === define run configuration
   r['code_path']      = code_dir;
-  r['compute_sys']    = 'frontera'                # TACC systems are: maverick2, frontera, stampede2, longhorn; UPENN system : cbica
-
+  r['compute_sys']    = 'longhorn'                # TACC systems are: maverick2, frontera, stampede2, longhorn; UPENN system : cbica
+  r['extra_modules'] = '\nsource /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n'
   ###############=== write config to write_path and submit job
   par.submit(p, r, submit_job, use_gpu);

@@ -17,7 +17,7 @@ input = {}
 #input['extra_modules'] = "module load petsc/3.11"
 
 ### == compute system
-input['system']              = 'frontera'
+input['system']              = 'longhorn'
 ### == define lambda for observation operator (for devs)
 input['obs_lambda']          = 1
 ### == define segmentation labels
@@ -31,13 +31,16 @@ input['num_gpus_per_node']   = 4  ### this will run num_gpus_per_node patients p
 ### == how many patient blocks in a job (will run num_gpus_per_node*patients_per_job in total in a job)
 input['patients_per_job']    = 1
 ### == path to all patients (assumes a brats directory structure)
-input['path_to_all_patients'] = '/scratch1/07544/ghafouri/results/syndata/brats_dir/'
+input['path_to_all_patients'] = '/scratch/07544/ghafouri/results/syndata/brats_dir/'
 ### == custom list of patients (can be a single patient); keep empty to simply walk through all patients
 input['patient_list']        = []
 ### == path to all the jobs and results
-input['job_path']            = "/scratch1/07544/ghafouri/results/syn_results/C1_me/til_inv/"
+input['job_path']            = "/scratch/07544/ghafouri/results/syn_results/C1_me/til_inv/"
 
-
+cmd = "source ~/.bashrc\n\n"
+cmd += "conda activate gen\n\n"
+cmd += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
+input['extra_modules'] = cmd
 
 # =======================================================================
 #                        END INPUT

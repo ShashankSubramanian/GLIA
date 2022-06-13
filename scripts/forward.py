@@ -53,9 +53,13 @@ for i in range(1,9):
 
   ############### === define run configuration if job submit is needed; else run from results folder directly
   r['code_path'] = code_dir;
-  r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+  r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
   r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
+  cmd = "source ~/.bashrc\n\n"
+  #cmd += "conda activate gen\n\n"
+  cmd += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
+  r['extra_modules'] = cmd
   p['write_all_velocities'] = 1
   ###############=== write config to write_path and submit job
   par.submit(p, r, submit_job, use_gpu);

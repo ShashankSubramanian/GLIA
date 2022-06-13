@@ -57,8 +57,10 @@ def create_seg_ms(res_dir):
   tmp = tmp0 * tmp1 * tmp2
   seg_ms[tmp] = 2
 
+  tc = (seg == 1)
 
   createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final.nc'), seg_ms.shape, seg_ms)
+  createNetCDF(os.path.join(res_dir, 'tc.nc'), tc.shape, tc)
   
   
 

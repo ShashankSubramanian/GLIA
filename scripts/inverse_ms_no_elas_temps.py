@@ -12,7 +12,7 @@ from run_inverse_ms_no_elas import run_multispecies_inversion as run
 
 
 pat_list = []
-for i in range(1,9):
+for i in range(1,2):
   pat_list.append('case'+str(i))
 
 scratch = os.getenv('SCRATCH')
@@ -23,7 +23,7 @@ res_path = os.path.join(scratch, 'results/syn_results/inv_p_temp_m')
 at_dir = os.path.join(scratch, 'data/adni-nc')
 
 
-
+bias = 1e-4
 
 for pat in pat_list:
   
@@ -70,7 +70,7 @@ for pat in pat_list:
     #params_in['ox_inv'] = (true_params['ox_inv'], 0.3, 1.0)
     #params_in['invasive_thres'] = (true_params['invasive_thres'], 0.001, 0.2)
     #params_in['invasive_thres'] = (0.005, 5e-5, 0.02)
-    params_in['invasive_thres'] = (-2, -5, -0.5)
+    params_in['invasive_thres'] = (-3, -3.001, -2.999)
     params_in['given_velocities'] = 1
 
 
@@ -103,23 +103,25 @@ for pat in pat_list:
       job_header = "#!/bin/bash\n\n"
       job_header += "#SBATCH -J tuinv\n"
       job_header += "#SBATCH -o "+os.path.join(res_dir, 'log.txt')+"\n"
-      job_header += "#SBATCH -p rtx\n"
+      job_header += "#SBATCH -e "+os.path.join(res_dir, 'err.txt')+"\n"
+      job_header += "#SBATCH -p v100\n"
       job_header += "#SBATCH -N 1 \n"
       job_header += "#SBATCH -n 1 \n"
-      job_header += "#SBATCH -t 48:00:00\n\n"
+      job_header += "#SBATCH -t 10:00:00\n\n"
       
       f.write(job_header)
       f.write("source ~/.bashrc\n\n")
-      f.write("source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n")
+      f.write("conda activate gen\n\n")
+      f.write("source /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n")
       
-      f.write("conda activate mriseg\n\n")
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" \n" 
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" \n"
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_32.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_64.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_32_obs.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
-      cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs_temp.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" -at "+temp_seg+" \n"
+      #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs_temp.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" -at "+temp_seg+" \n"
+      cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms_no_elas_16_obs_temp.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" -at "+temp_seg+" -b "+str(bias)+" \n"
       #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'test.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" -vel "+v_dir+" -n "+str(resolution)+" \n"
       f.write(cmd)
        

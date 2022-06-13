@@ -179,8 +179,10 @@ PetscErrorCode Tumor::computeEdema() {
     ScalarType max = 0; 
     if (n_ptr[i] > max) max = n_ptr[i];
     if (p_ptr[i] > max) max = p_ptr[i];
-    if (params_->tu_->invasive_thres_ > max) max = params_->tu_->invasive_thres_;
-    ed_ptr[i] = (i_ptr[i] > max && seg_ptr[i] != 7 && seg_ptr[i] != 8 && seg_ptr[i] != 0) ? 1.0 : 0.0;
+    if (i_ptr[i] > max) max = i_ptr[i];
+    //if (params_->tu_->invasive_thres_ > max) max = params_->tu_->invasive_thres_;
+    
+    ed_ptr[i] = (i_ptr[i] == max && i_ptr[i] > params_->tu_->invasive_thres_ && seg_ptr[i] != 7 && seg_ptr[i] != 8 && seg_ptr[i] != 0) ? (1.0 - n_ptr[i] - p_ptr[i] - i_ptr[i]) : 0.0;
    
   }
   //ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_thres_ && i_ptr[i] > p_ptr[i] && i_ptr[i] > n_ptr[i] ) ? 1.0 : 0.0;

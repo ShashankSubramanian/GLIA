@@ -540,7 +540,25 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       s.str("");
       s.clear();
     }
-    
+   
+  if (params_->tu_->write_all_velocities_) {
+    s << "vel_x_t[" << i << "].nc";
+    ierr = dataOut(tumor_->velocity_->x_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+
+    s << "vel_y_t[" << i << "].nc";
+    ierr = dataOut(tumor_->velocity_->y_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+
+    s << "vel_z_t[" << i << "].nc";
+    ierr = dataOut(tumor_->velocity_->z_, params_, s.str().c_str());
+    s.str(std::string());
+    s.clear();
+
+  }
+ 
     // Normalize species s.t. sum = 1
     // make sure work_[12] is not used 
     /*

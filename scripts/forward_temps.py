@@ -13,8 +13,8 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 p['n'] = 160                           # grid resolution in each dimension
-inv_pat_dir = "/scratch1/07544/ghafouri/results/syn_results/inv_p_temp_m/"
-atlas_dir = "/scratch1/07544/ghafouri/data/adni-nc/"
+inv_pat_dir = "/scratch/07544/ghafouri/results/syn_results/inv_p_temp_m/"
+atlas_dir = "/scratch/07544/ghafouri/data/adni-nc/"
 list_pats=[]
 '''
 for i in os.listdir(inv_pat_dir):
@@ -22,7 +22,7 @@ for i in os.listdir(inv_pat_dir):
     list_pats.append(i)
 '''
 
-for i in range(5,9):
+for i in range(1,2):
   list_pats.append('case'+str(i))
 
 for pat in list_pats:
@@ -71,9 +71,13 @@ for pat in list_pats:
 
     ############### === define run configuration if job submit is needed; else run from results folder directly
     r['code_path'] = code_dir;
-    r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+    r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
     r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
     r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
+    cmd = "source ~/.bashrc\n\n"
+    #cmd += "conda activate gen\n\n"
+    cmd += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
+    r['extra_modules'] = cmd
     p['write_all_velocities'] = 1
     ###############=== write config to write_path and submit job
     par.submit(p, r, submit_job, use_gpu);

@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRATCHDIR=/scratch1/07544/ghafouri
+SCRATCHDIR=/scratch/07544/ghafouri
 PAT_DIR=${SCRATCHDIR}/results/syndata/brats_dir/
 AT_DIR=$SCRATCHDIR/data/adni-nc/
 CODEDIR=/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/
