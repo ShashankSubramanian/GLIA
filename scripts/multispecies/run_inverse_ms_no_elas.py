@@ -188,6 +188,7 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
       vt_csf = np.zeros(seg_rec.shape)
       vt_csf[seg_rec == 7] = 1
       vt_csf[seg_rec == 8] = 1
+      vt_csf[seg_rec == 0] = 1
         
       if np.amax(dat_i_rec) < x[-1]:
         J_vec[i * num_devices + j] = 10.0
