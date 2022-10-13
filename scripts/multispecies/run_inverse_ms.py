@@ -102,20 +102,7 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       for (k, param) in enumerate(list_vars):
         if param not in inv_params:
           forward_params[param] = init_vec[k]
-      '''
-      forward_params['rho'] = x[0]
-      forward_params['k'] = x[1] 
-      forward_params['gamma'] = x[2] 
-      forward_params['ox_hypoxia'] = x[3] 
-      forward_params['death_rate'] = x[4] 
-      forward_params['alpha_0'] = x[5] 
-      forward_params['ox_consumption'] = x[6] 
-      forward_params['ox_source'] = x[7] 
-      forward_params['beta_0'] = x[8] 
-      forward_params['sigma_b'] = x[9] 
-      forward_params['ox_inv'] = x[10] 
-      forward_params['invasive_thres'] = x[11] 
-      '''
+      
       create_tusolver_config(pat_dir, res_forward_dir, forward_params)
       config_path = os.path.join(res_forward_dir, 'solver_config.txt') 
       tmp = i * num_devices + j 
@@ -135,22 +122,22 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
         break
       res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
       en_rec_path = os.path.join(res_forward_dir, 'en_rec_final.nc')
-      ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
       nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
+      i_rec_path = os.path.join(res_forward_dir, 'i_rec_final.nc')
+      wm_rec_path = os.path.join(res_forward_dir, 'wm_rec_final.nc')
+      gm_rec_path = os.path.join(res_forward_dir, 'gm_rec_final.nc')
         
       dat_en_rec = readNetCDF(en_rec_path)
-      dat_ed_rec = readNetCDF(ed_rec_path)
       dat_nec_rec = readNetCDF(nec_rec_path)
-  
-      px_en = np.sum((dat_en_true>0))
-      px_nec = np.sum((dat_nec_true>0))
-      px_ed = np.sum((dat_ed_true>0))
- 
-      tot = px_en + px_nec + px_ed
-      
-      w_en = tot/px_en
-      w_nec = tot/px_nec
-      w_ed = tot/px_ed
+      dat_i_rec = readNetCDF(i_rec_path)
+      dat_wm_rec = readNetCDF(wm_rec_path)
+      dat_gm_rec = readNetCDF(gm_rec_path)
+     
+      Op, On, Ol = obs_operator(dat_en_rec, dat_nec_rec, dat_i_rec, dat_wm_rec, dat_gm_rec, solutions[i * num_devices + j][-1], 
+        
+      w_en = 1
+      w_nec = 1
+      w_ed = 1
 
       diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
       diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
@@ -172,6 +159,25 @@ def excmd(cmd, skip=False):
   #print(cmd)
   if not skip:
     os.system(cmd)
+
+
+def obs_operator(p_vec, n_vec, i_vec, wm_vec, gm_vec, i_th, s_gen, s_ed):
+  c_vec = p_vec + n_vec + i_vec
+  
+  Oc = HS(c_vec, wm_vec, s_gen) * HS(c_vec, gm_vec, s_gen)
+  Op = HS(p_vec, n_vec, s_gen) * HS(p_vec, i_vec, s_gen) * Oc
+  On = HS(n_vec, p_vec, s_gen) * HS(n_vec, i_vec, s_gen) * Oc
+  Ol = HS(i_vec, i_th, s_ed) * (1 - Op - On)
+
+  return Op, On, Ol
+
+def HS(vec_0, vec_1, n):
+  
+  out = 1 / (1 + np.exp(-n*(vec_0 - vec_1)))
+  
+  return out
+
+
 
 
 
