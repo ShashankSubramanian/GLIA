@@ -30,7 +30,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeReactionRate(Vec m) {
   //computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_);
   computeReactionRateCuda(m_ptr, ox_ptr, rho_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_, params_->tu_->ox_inv_);
 #else
-  for (int i = 0; i < params_->grid_->nl_; i++) m_ptr[i] = rho_ptr[i] * (1 / (1 + std::exp(-100 * (ox_ptr[i] - params_->tu_->ox_hypoxia_))));
+  for (int i = 0; i < params_->grid_->nl_; i++) m_ptr[i] = rho_ptr[i] * (1 / (1 + std::exp(-params_->tu_->HS_shape_factor_ * (ox_ptr[i] - params_->tu_->ox_hypoxia_))));
 #endif
 
   ierr = vecRestoreArray(m, &m_ptr); CHKERRQ(ierr);
@@ -61,14 +61,14 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeTransition(Vec alpha, Vec beta) 
 
 #ifdef CUDA
   //computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, thres, params_->grid_->nl_);
-  computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, params_->tu_->sigma_b_, params_->grid_->nl_);
+  computeTransitionCuda(alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, params_->tu_->alpha_0_, params_->tu_->beta_0_, params_->tu_->ox_inv_, params_->tu_->sigma_b_, params_->grid_->nl_, params_->tu_->HS_shape_factor_);
 #else
   for (int i = 0; i < params_->grid_->nl_; i++) {
     //alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
     //beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
-    alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
+    alpha_ptr[i] = params_->tu_->alpha_0_ * (1 / (1 + std::exp(-params_->tu_->HS_shape_factor_ * (ox_ptr[i] - params_->tu_->ox_inv_))));
     //beta_ptr[i] = params_->tu_->beta_0_ * ox_ptr[i];
-    beta_ptr[i] = params_->tu_->beta_0_ * (1 / (1 + std::exp(-100 * (ox_ptr[i] - params_->tu_->ox_inv_))));
+    beta_ptr[i] = params_->tu_->beta_0_ * (1 / (1 + std::exp(-params_->tu_->HS_shape_factor_ * (ox_ptr[i] - params_->tu_->ox_inv_))));
   }
 #endif
 
@@ -97,9 +97,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeThesholder(Vec h) {
   ierr = vecGetArray(tumor_->species_["oxygen"], &ox_ptr); CHKERRQ(ierr);
 
 #ifdef CUDA
-  computeThesholderCuda(h_ptr, ox_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_);
+  computeThesholderCuda(h_ptr, ox_ptr, params_->tu_->ox_hypoxia_, params_->grid_->nl_, params_->tu_->HS_shape_factor_);
 #else
-  for (int i = 0; i < params_->grid_->nl_; i++) h_ptr[i] = (1 / (1 + std::exp(100 * (ox_ptr[i] - params_->tu_->ox_hypoxia_))));
+  for (int i = 0; i < params_->grid_->nl_; i++) h_ptr[i] = (1 / (1 + std::exp(-params_->tu_->HS_shape_factor_ * (ox_ptr[i] - params_->tu_->ox_hypoxia_))));
 #endif
 
   ierr = vecRestoreArray(h, &h_ptr); CHKERRQ(ierr);
@@ -145,19 +145,24 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources(Vec p, Vec i, Vec n, Vec
 #ifdef CUDA
   computeSourcesCuda(p_ptr, i_ptr, n_ptr, m_ptr, al_ptr, bet_ptr, h_ptr, gm_ptr, wm_ptr, ox_ptr, di_ptr, dt, params_->tu_->death_rate_, params_->tu_->ox_source_, params_->tu_->ox_consumption_, params_->grid_->nl_);
 #else
-  ScalarType p_temp, i_temp, frac_1, frac_2;
+  ScalarType p_temp, i_temp, c_temp, frac_1, frac_2;
   ScalarType ox_heal = 1;
   ScalarType reac_ratio = 1;
   ScalarType death_ratio = 1;
   for (int i = 0; i < params_->grid_->nl_; i++) {
+   
     p_temp = p_ptr[i];
     i_temp = i_ptr[i];
-    p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - params_->tu_->death_rate_ * h_ptr[i] * p_ptr[i]);
-    i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - death_ratio * params_->tu_->death_rate_ * h_ptr[i] * i_ptr[i]);
-    n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
+    n_temp = n_ptr[i];
+    c_temp = n_temp + p_temp + i_temp;
+
+    p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - c_temp) - al_ptr[i] * p_ptr[i] * (1 - i_temp) + bet_ptr[i] * i_ptr[i] * (1 - p_temp) - params_->tu_->death_rate_ * h_ptr[i] * p_ptr[i] * (1 - n_temp));
+    i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - c_temp) + al_ptr[i] * p_temp * (1 - i_temp) - bet_ptr[i] * i_ptr[i] * (1 - p_temp) - death_ratio * params_->tu_->death_rate_ * h_ptr[i] * i_ptr[i] * (1 - n_temp));
+    n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp * (1 - n_temp) + death_ratio * i_temp * (1 - n_temp) + ));
     //n_ptr[i] += dt * (h_ptr[i] * params_->tu_->death_rate_ * (p_temp + death_ratio * i_temp));
-    ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-    //ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (1 - n_ptr[i]));
+    //    ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp * ox_ptr[i] + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
+    //        //ox_ptr[i] += dt * (-params_->tu_->ox_consumption_ * p_temp + params_->tu_->ox_source_ * (ox_heal - ox_ptr[i]) * (1 - n_ptr[i]));     
+
     ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
 
     // conserve healthy cells
@@ -172,8 +177,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::computeSources(Vec p, Vec i, Vec n, Vec
     frac_2 = (std::isnan(frac_2)) ? 0. : frac_2;
     //gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]) + h_ptr[i] * params_->tu_->death_rate_ * gm_ptr[i]);
     //wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]) + h_ptr[i] * params_->tu_->death_rate_ * wm_ptr[i]);
-    gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]));
-    wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i]));
+    gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - c_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - c_temp) + di_ptr[i]) );
+    wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - c_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - c_temp) + di_ptr[i]) );
+  
   }
 #endif
 
@@ -281,7 +287,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   // smooth i_t to keep aliasing to a minimum
   // ierr = spec_ops_->weierstrassSmoother (tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], params_, sigma_smooth);     CHKERRQ (ierr);
 
-  ierr = tumor_->clipTumor(); CHKERRQ(ierr);
+  //ierr = tumor_->clipTumor(); CHKERRQ(ierr);
 
   // no healthy cells where tumor is maximum
   ierr = VecWAXPY(tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["infiltrative"]); CHKERRQ(ierr);
@@ -317,6 +323,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
   bool write_output_and_break = false;
 
   ScalarType max_cfl = 8;
+  ScalarType max, min;
 
   for (int i = 0; i <= nt; i++) {
     s << "Time step = " << i;
@@ -324,7 +331,6 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     s.str("");
     s.clear();
     // compute CFL
-    ierr = tumor_->computeEdema(); CHKERRQ(ierr);
     ierr = tumor_->computeSegmentation(); CHKERRQ(ierr);
     ierr = tumor_->velocity_->computeMagnitude(magnitude_);
     ierr = VecMax(magnitude_, NULL, &vel_max); CHKERRQ(ierr);
@@ -341,8 +347,9 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       s.clear();
       write_output_and_break = true;
     }
-    
-    if ((params_->tu_->write_output_ && i % 50 == 0) || write_output_and_break) {
+    /* 
+    if ((params_->tu_->write_output_) || write_output_and_break) {
+      ierr = tumor_->computeEdema(); CHKERRQ(ierr);
       ss << "velocity_t[" << i << "].nc";
       dataOut(magnitude_, params_, ss.str().c_str());
       ss.str(std::string());
@@ -428,7 +435,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
         ss.clear();
       }
     }
-    
+    */
     if (write_output_and_break) break;
     // ------------------------------------------------ advection  ------------------------------------------------
 
@@ -454,7 +461,7 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
       ierr = adv_solver_->solve(tumor_->species_["necrotic"], tumor_->velocity_, dt); CHKERRQ(ierr);
     }
 
-    // All solves complete except elasticity: clip values to ensure positivity
+    // All solves complete except elasticity: clip values to ensure positivity and c <= 1
     // clip healthy tissues
     ierr = tumor_->mat_prop_->clipHealthyTissues(); CHKERRQ(ierr);
     // clip tumor : single-precision advection seems to have issues if this is not clipped.
@@ -473,11 +480,43 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     //ierr = diff_solver_->solve (tumor_->species_["oxygen"], dt);               diff_ksp_itr_state_ += diff_solver_->ksp_itr_;   CHKERRQ (ierr);
 
     // ------------------------------------------------ explicit source terms for all equations (includes reaction source)  ------------------------------------------------
+ 
     ierr = computeSources(tumor_->species_["proliferative"], tumor_->species_["infiltrative"], tumor_->species_["necrotic"], tumor_->species_["oxygen"], dt); CHKERRQ(ierr);
+    //ierr = tumor_->clipTumor(); CHKERRQ(ierr);
 
     // set tumor core as c_t_
     ierr = VecWAXPY(tumor_->c_t_, 1., tumor_->species_["proliferative"], tumor_->species_["necrotic"]); CHKERRQ(ierr);
     ierr = VecAXPY(tumor_->c_t_, 1., tumor_->species_["infiltrative"]); CHKERRQ(ierr);
+
+    ierr = VecMax(tumor_->species_["proliferative"], NULL, &max); CHKERRQ(ierr);
+    ierr = VecMin(tumor_->species_["proliferative"], NULL, &min); CHKERRQ(ierr);
+    s << " p[" << i << "] max and min : " << max << " " << min;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+
+    ierr = VecMax(tumor_->species_["infiltrative"], NULL, &max); CHKERRQ(ierr);
+    ierr = VecMin(tumor_->species_["infiltrative"], NULL, &min); CHKERRQ(ierr);
+    s << " i[" << i << "] max and min : " << max << " " << min;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+
+    ierr = VecMax(tumor_->species_["necrotic"], NULL, &max); CHKERRQ(ierr);
+    ierr = VecMin(tumor_->species_["necrotic"], NULL, &min); CHKERRQ(ierr);
+    s << " n[" << i << "] max and min : " << max << " " << min;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+
+    ierr = VecMax(tumor_->c_t_, NULL, &max); CHKERRQ(ierr);
+    ierr = VecMin(tumor_->c_t_, NULL, &min); CHKERRQ(ierr);
+    s << " c[" << i << "] max and min : " << max << " " << min;
+    ierr = tuMSGstd(s.str()); CHKERRQ(ierr);
+    s.str("");
+    s.clear();
+
+
 
     if (params_->tu_->forcing_factor_ > 0) {
       // ------------------------------------------------ elasticity update ------------------------------------------------
@@ -558,31 +597,10 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
     s.clear();
 
   }
- 
-    // Normalize species s.t. sum = 1
-    // make sure work_[12] is not used 
-    /*
-    ierr = VecCopy(tumor_->mat_prop_->bg_, tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->wm_); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->gm_); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->csf_); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->mat_prop_->vt_); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["proliferative"]); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["infiltrative"]); CHKERRQ(ierr);
-    ierr = VecAXPY(tumor_->work_[12], 1.0, tumor_->species_["necrotic"]); CHKERRQ(ierr);
 
-    ierr = VecPointwiseDivide(tumor_->mat_prop_->bg_, tumor_->mat_prop_->bg_,  tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->mat_prop_->wm_, tumor_->mat_prop_->wm_,  tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->mat_prop_->gm_, tumor_->mat_prop_->gm_,  tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->mat_prop_->csf_, tumor_->mat_prop_->csf_,  tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->mat_prop_->vt_, tumor_->mat_prop_->vt_,  tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->species_["proliferative"], tumor_->species_["proliferative"], tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->species_["infiltrative"], tumor_->species_["infiltrative"], tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->species_["necrotic"], tumor_->species_["necrotic"], tumor_->work_[12]); CHKERRQ(ierr);
-    ierr = VecPointwiseDivide(tumor_->c_t_, tumor_->c_t_, tumor_->work_[12]); CHKERRQ(ierr);
-    */
 
   }
+  ierr = tumor_->computeEdema(); CHKERRQ(ierr);
 
 
   if (params_->tu_->verbosity_ >= 3) {

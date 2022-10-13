@@ -1,81 +1,79 @@
 
 import os, subprocess,sys
 import numpy as np
+import params as par
 
 scripts_path = os.path.dirname(os.path.realpath(__file__))
 code_dir = scripts_path + '/../'
 
 sys.path.append(os.path.join(code_dir, 'scripts', 'multispecies'))
-from run_inverse_ms import run_multispecies_inversion as run
+
+r = {}
+
+params = {}
+r['code_path'] = code_dir
+r['compute_sys'] = 'longhorn'
+r['extra_modules'] = '\nsource /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n'
+r['extra_modules'] = '\nconda activate gen\n'
+
+params['pat_dir'] = "/scratch/07544/ghafouri/results/syndata/case2/C1_me_test_vel/"
+params['output_dir'] = "/scratch/07544/ghafouri/results/syn_results/case2_5/"
+params['a_seg_path'] = '/scratch/07544/ghafouri/data/adni-nc/160/50052_seg_aff2jakob_ants_160.nc'
+params['d0_path'] = '/scratch/07544/ghafouri/results/syndata/case2/C1_me_test_vel/c0_true_syn.nc'
+params['Q_neg'] = '/work/07544/ghafouri/longhorn/gits/gliomas_serial/U_Big_obs2.npy' 
+
+params['beta_p'] = 5e-3
+
+params['n'] = 160 
+params['sigma_cma'] = 0.4 
+params['popsize'] = 8
+params['tolfunrel'] = 1e-8
+params['tolfun'] = 1e-3
+params['solver'] = 'multi_species'
+params['model'] = 6
+
+params['rho_lb'] = 5.0 
+params['rho_ub'] = 25.0
+
+params['k_lb'] = 0.001
+params['k_ub'] = 0.1
+
+params['alpha_0_lb'] = 0.1 
+params['alpha_0_ub'] = 10.0
+
+params['beta_0_lb'] = 0.1
+params['beta_0_ub'] = 15.0
+
+params['death_rate_lb'] = 1.0
+params['death_rate_ub'] = 20.0
+
+params['ox_source_lb'] = 1.0
+params['ox_source_ub'] = 8.0
+
+params['ox_consumption_lb'] = 1.0
+params['ox_consumption_ub'] = 20.0
+
+params['ox_hypoxia_lb'] = 0.001
+params['ox_hypoxia_ub'] = 0.8
+
+params['ox_inv_lb'] = 0.2
+params['ox_inv_ub'] = 1.0
+
+params['invasive_thres_lb'] = 0.001
+params['invasive_thres_ub'] = 0.3
 
 
-pat_dir = '/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/syndata/160/' 
-res_dir = '/work2/07544/ghafouri/frontera/gits/GLIA_CMA_Py/results/res_syndata_160_14_rho/'
+params['gamma'] = 0
+params['k'] = (params['k_lb'] + params['k_ub']) /2
+params['rho'] = (params['rho_lb'] + params['rho_ub']) / 2
+params['beta_0'] = (params['beta_0_lb'] + params['beta_0_ub']) /2
+params['alpha_0'] = (params['alpha_0_lb'] + params['alpha_0_ub']) /2
+params['death_rate'] = (params['death_rate_lb'] + params['death_rate_ub']) /2
+params['ox_source'] = (params['ox_source_lb'] + params['ox_source_ub']) /2
+params['ox_consumption'] = (params['ox_consumption_lb'] + params['ox_consumption_ub']) /2
+params['ox_hypoxia'] = (params['ox_hypoxia_lb'] + params['ox_hypoxia_ub']) /2
+params['ox_inv'] = (params['ox_inv_lb'] + params['ox_inv_ub']) /2
+params['invasive_thres'] = (params['invasive_thres_lb'] + params['invasive_thres_ub']) /2
 
-
-if not os.path.exists(res_dir):
-  os.mkdir(res_dir)
-
-
-params_in = {}
-
-params_in['rho'] = (7.0, 4.0, 9.0)
-params_in['k'] = (0.01, 0.005, 0.2)
-params_in['gamma'] = (1E5, 3E4, 1.2E5)
-params_in['ox_hypoxia'] = (0.5, 0.3, 0.7)
-params_in['death_rate'] = (0.2, 0.1, 1.0)
-params_in['alpha_0'] = (0.05, 0.01, 1.0)
-params_in['ox_consumption'] = (6.0, 1.0, 20.0)
-params_in['ox_source'] = (40.0, 0.0, 75.0)
-params_in['beta_0'] = (0.06, 0.01, 0.1)
-params_in['sigma_b'] = (0.9, 0.5, 1.0)
-params_in['ox_inv'] = (0.7, 0.65, 1.0)
-params_in['invasive_thres'] = (0.01, 0.001, 0.1)
-
-sigma = 0.3
-
-list_params = ['k', 'rho', 'gamma', 'ox_hypoxia', 'death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0', 'sigma_b', 'ox_inv', 'invasive_thres']
-#list_inv_params = ['k', 'death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0']
-#list_inv_params = ['k', 'rho', 'gamma', 'death_rate', 'alpha_0', 'ox_consumption', 'beta_0']
-#list_inv_params = ['k', 'rho', 'death_rate', 'alpha_0', 'ox_consumption', 'beta_0']
-list_inv_params = ['rho', 'death_rate', 'alpha_0', 'ox_consumption', 'beta_0']
-
-init_vec = [] 
-lb_vec = []
-ub_vec = []
-
-
-for i in range(len(list_params)):
-  init_vec.append(str(params_in[list_params[i]][0]))
-  lb_vec.append(str(params_in[list_params[i]][1]))
-  ub_vec.append(str(params_in[list_params[i]][2]))
-
-
-str_inits = ' '.join(init_vec)
-str_lbs = ' '.join(lb_vec)
-str_ubs = ' '.join(ub_vec)
-str_inv_params = ' '.join(list_inv_params)
-str_params = ' '.join(list_params)
-
-
-job_name = os.path.join(res_dir, 'job.sh')
-
-with open(job_name, 'w') as f:
-  job_header = "#!/bin/bash\n\n"
-  job_header += "#SBATCH -J tuinv\n"
-  job_header += "#SBATCH -o "+os.path.join(res_dir, 'log.txt')+"\n"
-  job_header += "#SBATCH -p rtx\n"
-  job_header += "#SBATCH -N 1 \n"
-  job_header += "#SBATCH -n 1 \n"
-  job_header += "#SBATCH -t 48:00:00\n\n"
-  
-  f.write(job_header)
-  f.write("source ~/.bashrc\n\n")
-  f.write("source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n")
-  
-  f.write("conda activate mriseg\n\n")
-  #cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" \n" 
-  cmd = "python -u "+os.path.join(code_dir, 'scripts', 'multispecies', 'run_inverse_ms5.py')+" -p "+os.path.join(pat_dir)+" -r "+os.path.join(res_dir)+" -lb "+str_lbs+" -ub "+str_ubs+ " -i "+str_inits+" -inv "+str_inv_params+" -total "+str_params+" -sigma "+str(sigma)+" \n"
-  f.write(cmd)
-   
-  
+r['wtime_h'] = 16
+par.submit(params, r, True, True)

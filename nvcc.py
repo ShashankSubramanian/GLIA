@@ -25,7 +25,7 @@ def add_common_nvcc_variables(env):
   """
 
   # "NVCC common command line"
-  if not env.has_key('_NVCCCOMCOM'):
+  if '_NVCCCOMCOM' not in env.keys():
     # prepend -Xcompiler before each flag
 
     # these flags are common to both static and shared compilations
@@ -79,10 +79,10 @@ def generate(env):
   # CUDA files here, such as .gpu, etc.
 
   # XXX intelligently detect location of nvcc here
-  exe_path = '/usr/local/cuda/bin'
+  exe_path = '/usr/local/cuda-10.2/bin/'
 
   # XXX intelligently detect location of cuda libraries here
-  lib_path = '/usr/local/cuda/lib'
+  lib_path = '/usr/local/cuda-10.2/lib64/'
 
   env.PrependENVPath('PATH', exe_path)
 

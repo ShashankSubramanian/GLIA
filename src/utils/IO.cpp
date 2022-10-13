@@ -115,6 +115,7 @@ void setParameter(std::string name, std::string value, std::shared_ptr<Parameter
   if (name == "k_gm_wm") {p->tu_->k_gm_wm_ratio_ = std::stod(value); return;}
   if (name == "r_gm_wm") {p->tu_->r_gm_wm_ratio_ = std::stod(value); return;}
   if (name == "r_gm_wm") {p->tu_->r_gm_wm_ratio_ = std::stod(value); return;}
+  if (name == "HS_shape_factor") {p->tu_->HS_shape_factor_ = std::stod(value); return;}
   // ### data
   if (name == "smoothing_factor") {p->tu_->smoothing_factor_ = std::stod(value); return;}
   if (name == "smoothing_factor_data") {p->tu_->smoothing_factor_data_ = std::stod(value); return;}

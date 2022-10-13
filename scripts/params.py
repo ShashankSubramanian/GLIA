@@ -109,6 +109,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm'] = 0.0                  # rho ratio gm/wm (if zero, rho=0 in gm)
     p['ratio_i0_c0'] = 0.05
+    p['HS_shape_factor'] = 16
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
@@ -161,6 +162,9 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
                                         # 2: No-brain sinusoidal coefficients
                                         # 3: brain multifocal synthetic tumor with nearby ground truths
                                         # 4: brain multifocal synthetic tumor with far away ground truths
+    
+    ## MS inversion params
+    
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### paths
     p['output_dir'] = r['code_path'] + '/results/';
@@ -275,6 +279,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         f.write("lbfgs_scale_hist=" + str(p['lbfgs_scale_hist']) + "\n");
         f.write("ls_max_func_evals=" + str(p['ls_max_func_evals']) + "\n");
         f.write("ratio_i0_c0=" + str(p['ratio_i0_c0']) + "\n");
+        f.write("HS_shape_factor=" + str(p['HS_shape_factor']) + "\n");
         f.write("\n");
         f.write("### forward solver" + "\n");
         f.write("accuracy_order=" + str(p['accuracy_order']) + "\n");
@@ -421,6 +426,132 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
 
     return run_str
 
+
+
+def write_config_ms(set_params, run, use_gpu = False, gpu_device_id = 0):
+    """ 'set_params' is a dictionary which can be populated
+         with user values for compulsory tumor parameters.
+         'run' is a dictionary containig compute system and
+         job information.
+    """
+
+    #############################################################################
+    #############################################################################
+    #### Tumoer Solver Parameters  ###
+    #### ------------------------- ###
+
+    p = {}
+    r = {}
+
+    r['code_path'] = os.getcwd()
+
+    for key, value in run.items():
+        r[key] = value;
+
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
+    # any changes to the defaults defined below, are to be defined in the dicts  #
+    # 'set_params', and 'run', which are passed to this routine. Do not modify   #
+    # the defaults                                                               #
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
+
+
+    ### grid
+    p['n'] = 256                        # grid resolution in each dimension
+    # ------------------------------ DO NOT TOUCH ------------------------------ #
+    ### optimizer
+    p['beta_p'] = 1E-4                  # regularization parameter
+    p['patient_dir'] = ""
+    p['results_dir'] = ""
+    p['k_lb'] = 0.0001              # lower bound kappa
+    p['k_ub'] = 1.0                 # upper bound kappa
+    p['rho_lb'] = 0                     # lower bound rho
+    p['rho_ub'] = 15                    # upper bound rho
+    p['gamma_lb'] = 0                   # lower bound gamma
+    p['gamma_ub'] = 15E4                # upper bound gamma
+    p['ox_hypoxia_lb'] = 0.1
+    p['ox_hypoxia_ub'] = 0.9
+    p['death_rate_lb'] = 0.1
+    p['death_rate_ub'] = 14.0
+    p['alpha_0_lb'] = 0.01
+    p['alpha_0_ub'] = 3.0
+    p['beta_0_lb'] = 0.01
+    p['beta_0_ub'] = 3.0
+    p['ox_consumption_lb'] = 0.1
+    p['ox_consumption_ub'] = 30.0
+    p['ox_source_lb'] = 0.1
+    p['ox_source_ub'] = 20.0
+    p['ox_inv_lb'] = 0.2
+    p['ox_inv_ub'] = 1.0
+     
+    p['invasive_thres_lb'] = 1e-6
+    p['invasive_thres_ub'] = 0.7
+    p['rho'] = 8                   # initial guess rho (reaction in wm)
+    p['k'] = 1E-2                  # initial guess kappa (diffusivity in wm)
+    p['gamma'] = 12E4              # initial guess (forcing factor for mass effect)
+    p['ox_h'] = 0.6                # initial guess (hypoxic thres)
+    p['alpha_0'] = 1.0             # initial guess (p to i)
+    p['beta_0'] = 0.02             # initial guess (i to p)
+    p['death_rate'] = 1.0          # initial guess (death rate)
+    p['ox_consumption'] = 3.0       # initial guess (oxygen consumption)
+    p['ox_source'] = 10.0          # initial guess (oxygen source)
+    p['ox_inv'] = 0.7              # initial guess (invasive oxygen)
+    p['ox_hypoxia'] = 0.7              # initial guess (invasive oxygen)
+    p['invasive_thres'] = 0.01     # initial guess (invasive thres for edema)
+    p['nt_inv'] = 40                    # number time steps
+    p['dt_inv'] = 0.025                 # time step size
+    p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
+    p['sigma_cm'] = 0.4
+
+    p['vel_dir'] = ""
+    p['given_velocities'] = 1
+    p['hess_path'] = ""
+    p['a_seg_path'] = ""
+    p['d0_path'] = ""
+    p['Q_neg'] = "" 
+    p['sigma_cma'] = 0.4
+    p['popsize'] = 16
+    p['tolfunrel'] = 1e-6
+    p['tolfun'] = 1e-6
+    p['solver'] = 'multi_species'
+    p['model'] = 5
+    p['output_dir'] = ""
+    p['pat_dir'] = ""
+     
+    for key, value in set_params.items():
+        if key in p:
+            p[key] = value;
+            #print(" Setting {} = {}".format(key, value))
+        else:
+            print(" Error: key {} not supported.".format(key))
+#    for key, value in p.items():
+#        if key not in set_params:
+#            print(" Using default {} = {}".format(key, value))
+    # create dir
+    os.makedirs(p['output_dir'], exist_ok=True)
+     
+     
+    with open(os.path.join(p['output_dir'], "ms_solver_config.txt"), "w") as f:
+        f.write("[DEFAULT]\n");
+        for k, v in p.items():      
+          f.write(k + " = " + str(v) + "\n");
+         
+    run_str = 'python -u ' + r['code_path'] + "/scripts/multispecies/run_inverse_ms_no_elas.py "
+    run_str += " -config " + p['output_dir'] + "/ms_solver_config.txt"
+#    for key, value in p.items():
+#        run_str += " -" + str(key) + " " + str(value) + " ";
+
+    return run_str
+    
+     
+
+
+
+
+
+
+
+
+
 #### temp
 def runcmd(r):
   ibman = ""
@@ -513,6 +644,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       ### sbatch job scripts for tacc/local
       job_header += "#SBATCH -J tuinv\n"
       job_header += "#SBATCH -o " + run_params['log_dir'] + "/" + run_params['log_name'] + "\n"
+      job_header += "#SBATCH -e " + run_params['log_dir'] + "/" + 'err.txt' + "\n"
       job_header += "#SBATCH -p " + str(run_params['queue']) + "\n"
       job_header += "#SBATCH -N " + str(run_params['nodes']) + "\n"
       job_header += "#SBATCH -n " + str(run_params['mpi_tasks']) + "\n"
@@ -520,7 +652,7 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
       #job_header += "source ~/.bashrc\n"
       job_header += "export OMP_NUM_THREADS=1\n\n"
       job_header += "source ~/.bashrc\n\n"
-      job_header += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
+      #job_header += "source /work2/07544/ghafouri/longhorn/gits/claire_glia.sh\n\n"
       
       #job_header += "conda activate mriseg\n\n"
       #job_header += "source /work2/07544/ghafouri/frontera/gits/env_glia.sh\n\n"
@@ -566,7 +698,11 @@ def submit(tu_params, run_params, submit_job = True, use_gpu = False):
     job_file = open(fname, 'w+')
 
     job_header = write_jobscript_header(tu_params, run_params, use_gpu)
-    run_str = write_config(tu_params, run_params, use_gpu)
+    if tu_params['solver'] == 'multi_species' and tu_params['model'] == 6:
+      run_str = write_config_ms(tu_params, run_params, use_gpu)
+    else:
+      run_str = write_config(tu_params, run_params, use_gpu)
+      
 
     job_file.write(job_header)
     job_file.write(run_str)

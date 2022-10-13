@@ -171,8 +171,9 @@ public:
   , k_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   , r_gm_wm_ratio_ (0.0 / 5.0)            // gm to wm reaction coeff ratio
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
-  //, invasive_threshold_ (0.001)           // invasive threshold for edema
-  , i0_c0_ratio_ (0.0)           // invasive threshold for edema
+  //, invasive_threshold_ (0.001)         // invasive threshold for edema
+  , i0_c0_ratio_ (0.0)                    // i0 c0 ratio
+  , HS_shape_factor_ (16)                 // shape factor for heaviside function in ms model
   , E_csf_ (100)                          // Young's modulus of CSF
   , E_healthy_ (2100)                     // Young's modulus of wm and gm
   , E_tumor_ (8000)                       // Young's modulus of tumor
@@ -292,7 +293,7 @@ public:
   ScalarType r_gm_wm_ratio_;
   ScalarType r_glm_wm_ratio_;
   ScalarType i0_c0_ratio_;
-
+  ScalarType HS_shape_factor_;
   // mass effect
   ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
   ScalarType nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;

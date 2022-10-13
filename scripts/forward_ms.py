@@ -11,7 +11,7 @@ code_dir = scripts_path + '/../'
 
 ############### === define parameters
 
-for i in range(1,9):
+for i in range(1,2):
 
   #if i <= 2: continue
   #if i != 1: continue
@@ -29,7 +29,8 @@ for i in range(1,9):
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd/'%case);            # results path
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_fwd_rec/'%case);            # results path
   #p['output_dir'] = os.path.join('/scratch1/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd_rec2/'%case);            # results path
-  p['output_dir'] = os.path.join('/scratch/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd/'%case);            # results path
+  #p['output_dir'] = os.path.join('/scratch/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd/'%case);            # results path
+  p['output_dir'] = os.path.join('/scratch/07544/ghafouri/results', 'syndata/case%d/C1_me_test2/'%case);            # results path
   #p['output_dir'] = os.path.join('/scratch/07544/ghafouri/results', 'syndata/case%d/C1_me_fwd_vel/'%case);            # results path
     
   #p['output_dir'] = os.path.join(code_dir, 'syndata/case1/fwd/');            # results path
@@ -108,78 +109,31 @@ for i in range(1,9):
     p['user_cms'] = [(129,126,161,1.0)]
 
   ####### tumor params for synthetic data
-  p['invasive_thres_data'] = 0.001
+  p['invasive_thres_data'] = 0.005
   #if case == 1:
   p['k_data'] = 0.03
   p['gamma_data'] = 7E4
-  #p['gamma_data'] = 0
-  p['death_rate_data'] = 5.0
-  p['alpha_0_data'] = 0.4
+  #p['gamma_data'] = 0.0
+  p['death_rate_data'] = 10.0
+  p['alpha_0_data'] = 2.0
   if case == 5 or case == 6 or case == 7 or case == 8:
-    p['rho_data'] = 13.0
+    p['rho_data'] = 12.0
     p['ox_consumption_data'] = 8.0
     p['ox_hypoxia_data'] = 0.5
   else:
     p['rho_data'] = 14.0
-    p['ox_consumption_data'] = 20.0
-    p['ox_hypoxia_data'] = 0.6
-
-  p['ox_source_data'] = 10.0
-  p['beta_0_data'] = 1.2
-  p['sigma_b_data'] = 0.9
-  p['ox_inv_data'] = 0.8
-  p['prediction'] = 0
-  '''
-  if case == 2:
-
-    p['rho_data'] = 14.0
-    p['k_data'] = 0.07
-    p['gamma_data'] = 9E4
-    #p['gamma_data'] = 0
-    p['ox_hypoxia_data'] = 0.5
-    p['death_rate_data'] = 10.0
-    p['alpha_0_data'] = 0.3
-    p['ox_consumption_data'] = 20.0
-    p['ox_source_data'] = 5.0
-    p['beta_0_data'] = 0.4
-    p['sigma_b_data'] = 0.9
-    p['ox_inv_data'] = 0.8
-    #p['invasive_thres_data'] = 0.01
-    p['prediction'] = 0
-
-  if case == 3:
-    p['rho_data'] = 15.0
-    p['k_data'] = 0.05
-    #p['gamma_data'] = 8.5E4
-    p['gamma_data'] = 0
+    p['ox_consumption_data'] = 2.0
     p['ox_hypoxia_data'] = 0.4
-    p['death_rate_data'] = 22.0
-    p['alpha_0_data'] = 0.3
-    p['ox_consumption_data'] = 30.0
-    p['ox_source_data'] = 5.0
-    p['beta_0_data'] = 1.0
-    p['sigma_b_data'] = 0.9
-    p['ox_inv_data'] = 0.6
-    #p['invasive_thres_data'] = 0.01
-    p['prediction'] = 0
 
-  if case == 4:
-    p['rho_data'] = 13.0
-    p['k_data'] = 0.03
-    p['gamma_data'] = 1.0E5
-    #p['gamma_data'] = 0
-    p['ox_hypoxia_data'] = 0.3
-    p['death_rate_data'] = 21.0
-    p['alpha_0_data'] = 0.02
-    p['ox_consumption_data'] = 25.0
-    p['ox_source_data'] = 10.0
-    p['beta_0_data'] = 0.9
-    p['sigma_b_data'] = 0.9
-    p['ox_inv_data'] = 0.7
-    #p['invasive_thres_data'] = 0.01
-    p['prediction'] = 0
+  # upper bound for rho : 14
+  # upper bound for gamma_0 :   
 
-  '''
+  p['ox_source_data'] = 3.0
+  p['beta_0_data'] = 1.0
+  #p['sigma_b_data'] = 0.9
+  p['ox_inv_data'] = 0.6
+  p['prediction'] = 0
+  
   p['smoothing_factor_data_t0'] = 0
 
   #p['sigma_factor'] = 3
@@ -188,7 +142,7 @@ for i in range(1,9):
   p['k_gm_wm'] = 0.2                      # kappa ratio gm/wm (if zero, kappa=0 in gm)
   p['r_gm_wm'] = 0                      # rho ratio gm/wm (if zero, rho=0 in gm)
   p['ratio_i0_c0'] = 0.0
-  p['write_all_velocities'] = 1
+  p['write_all_velocities'] = 0
 
   p['nt_data'] = 80
   p['dt_data'] = 0.0125

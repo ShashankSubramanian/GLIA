@@ -17,6 +17,8 @@ def create_seg_ms(res_dir):
   i_path = os.path.join(res_dir, 'i_rec_final.nc')  
   config_path = os.path.join(res_dir, 'solver_config.txt')
   seg_path = os.path.join(res_dir, 'seg_rec_final.nc')
+  wm_path = os.path.join(res_dir, 'wm_rec_final.nc')
+  gm_path = os.path.join(res_dir, 'gm_rec_final.nc')
   
   with open(config_path, 'r') as f:
     lines = f.readlines()
@@ -28,7 +30,10 @@ def create_seg_ms(res_dir):
   nec = readNetCDF(nec_path)
   infl = readNetCDF(i_path)
   seg = readNetCDF(seg_path)
-  
+  wm = readNetCDF(wm_path)
+  gm = readNetCDF(gm_path)
+ 
+  ed = np.array((infl > i_th)) * (1 - en - nec - infl) 
   total = np.maximum(infl, nec)
   total = np.maximum(total, en)
   
@@ -43,20 +48,22 @@ def create_seg_ms(res_dir):
   tmp1 = np.array((seg == 1))
   tmp = tmp0 * tmp1
   seg_ms[tmp] = 4
-  
-  tmp0 = np.array((total == infl))
-  tmp1 = np.array((infl > i_th))
+ 
+   
+  tmp1 = np.array((total == infl))
   tmp2 = np.array((seg != 7))
-  tmp = tmp0 * tmp1 * tmp2
+  tmp3 = np.array((seg != 8))
+  tmp4 = np.array((infl > i_th))
+  tmp = tmp1 * tmp2 * tmp3 * tmp4 
   seg_ms[tmp] = 2
  
-
+  '''
   tmp0 = np.array((seg != 1))
   tmp1 = np.array((infl > i_th))
   tmp2 = np.array((seg != 7))
   tmp = tmp0 * tmp1 * tmp2
   seg_ms[tmp] = 2
-
+  '''
   tc = (seg == 1)
 
   createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final.nc'), seg_ms.shape, seg_ms)

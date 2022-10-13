@@ -9,6 +9,7 @@ code_dir = scripts_path + '/../../'
 sys.path.append(os.path.join(code_dir, 'scripts', 'utils'))
 
 from file_io import readNetCDF, createNetCDF
+import configparser
 
 import numpy as np
 
@@ -18,75 +19,59 @@ import cma
 
 
 
-def run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, is_syn, sigma, v_dir, n):
+def run_multispecies_inversion(params):
  
-  #list_vars = ['rho', 'k', 'gamma', 'ox_hypoxia', 'death_rate', 'alpha_0', 'ox_consumption', 'ox_source', 'beta_0', 'sigma_b', 'ox_inv', 'invasive_thres']
-  '''
-  lb_vec = []
-  ub_vec = []
-  init_vec = []
-  for i in range(len(list_vars)):
-    lb_vec.append(lb_params[list_vars[i]])
-    ub_vec.append(ub_params[list_vars[i]])
-    init_vec.append(init_params[list_vars[i]])
-  
-  '''
-  
   
   cma_init = []
   cma_lb = []
   cma_ub = []
-  for (i, param) in enumerate(list_vars):
-    if param in inv_params:
-      cma_lb.append(lb_vec[i])
-      cma_ub.append(ub_vec[i])
-      cma_init.append(init_vec[i])
+  
+  list_vars = ['k', 'rho', 'beta_0', 'alpha_0', 'death_rate', 'ox_source', 'ox_consumption', 'ox_hypoxia', 'ox_inv', 'invasive_thres'] 
+
+  for p in list_vars:
+    cma_init.append(params[p])
+    cma_lb.append(params[p+'_lb'])
+    cma_ub.append(params[p+'_ub'])
+     
       
-      
-  print(sigma)
-  print(v_dir) 
   cma_init = np.array(cma_init)
   cma_lb = np.array(cma_lb)
   cma_ub = np.array(cma_ub)
 
   cma_init = (cma_init - cma_lb)/(cma_ub - cma_lb) 
-  fun = lambda x : create_cma_output(x, pat_dir, res_dir, cma_lb, cma_ub, init_vec, inv_params, list_vars, v_dir, n)
+  fun = lambda x : create_cma_output(x, cma_lb, cma_ub, cma_init, list_vars, params)
 
   opts = cma.CMAOptions()
   #opts.set('tolfunc',1e-2) 
   #opts.set('popsize', 12)
-  es = cma.CMAEvolutionStrategy(cma_init, sigma, {'bounds': [0, 1], 'popsize':16, 'tolfun': 1e-3})
+  es = cma.CMAEvolutionStrategy(cma_init, params['sigma_cma'], {'bounds': [0, 1], 'popsize':params['popsize'], 'tolfun': params['tolfun'], 'tolfunrel':params['tolfunrel'], 'seed' : np.nan})
   
   while not es.stop():
     solutions = es.ask()
     es.tell(solutions, fun(solutions))
     es.disp()
-  
-  res = es.result()
+ 
+  res = es.result_pretty()
   print(res)
 
+  out = res.xbest
+  out_inv = out * (cma_ub - cma_lb) + cma_lb
+  print("before noremalize ", out_inv)
 
-
-
-def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv_params, list_vars, v_dir, n):
+  
+def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
  
   print("Testing ")
   
-  if n == 256:
-    #en_t1 = os.path.join(pat_dir, 'en_t1.nc')
-    #ed_t1 = os.path.join(pat_dir, 'ed_t1.nc')
-    #nec_t1 = os.path.join(pat_dir, 'nec_t1.nc')
-    seg_t1 = os.path.join(pat_dir, 'seg_all_t1.nc')
-  else:
-    #en_t1 = os.path.join(pat_dir, 'en_t1_nx%d.nc'%n)
-    #ed_t1 = os.path.join(pat_dir, 'ed_t1_nx%d.nc'%n)
-    #nec_t1 = os.path.join(pat_dir, 'nec_t1_nx%d.nc'%n)
-    seg_t1 = os.path.join(pat_dir, 'seg_all_t1_nx%d.nc'%n)
+  seg_t1 = os.path.join(params['pat_dir'], 'seg_ms_rec_final.nc')
   
   dat_seg_true = readNetCDF(seg_t1)
+
   dat_en_true = dat_seg_true.copy()
   dat_ed_true = dat_seg_true.copy()
   dat_nec_true =  dat_seg_true.copy()
+  dat_wm_true = dat_seg_true.copy()
+  dat_gm_true = dat_seg_true.copy()
 
   dat_en_true[dat_en_true != 4] = 0  
   dat_en_true[dat_en_true == 4] = 1
@@ -101,10 +86,14 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
   dat_vt_true[dat_vt_true != 7] = 0
   dat_vt_true[dat_vt_true == 7] = 1
   
+   
   num_devices = 4
   num_eval = int(len(solutions))
   J_vec = np.zeros(num_eval)
   num_batch = int(np.ceil(num_eval / num_devices))
+
+  num_var = len(list_vars)
+  
 
   for i in range(num_batch):
     cmd = ''
@@ -112,26 +101,20 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       if i * num_devices + j >= num_eval:
         break
        
-      res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
+      res_forward_dir = os.path.join(params['output_dir'], 'forward_%d'%j)
       if not os.path.exists(res_forward_dir):
         os.mkdir(res_forward_dir)
       
       x = solutions[i * num_devices + j]
       x = x * (ub_vec - lb_vec) + lb_vec;
-       
+
       forward_params = {}
       str_disp = "Forward params (%d) : "%j
       
-      for (k, param) in enumerate(inv_params):
-        if param == "invasive_thres":
-          x[k] = 10**(x[k]);
-        forward_params[param] = x[k]
-        str_disp += param + " = " + str(x[k]) + ", "
-      for (k, param) in enumerate(list_vars):
-        if param not in inv_params:
-          if param == "invasive_thres":
-            init_vec[k] = 10**(init_vec[k]);
-          forward_params[param] = init_vec[k]
+      for (k, p) in enumerate(list_vars):
+        forward_params[p] = x[k]
+        str_disp += p + " = " + str(x[k]) + ", "
+      forward_params['gamma'] = 0  
       print(str_disp)
       '''
       forward_params['rho'] = x[0]
@@ -149,12 +132,13 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
       '''
        
       if forward_params['ox_inv'] < forward_params['ox_hypoxia']:
-        J_vec[i * num_devices + j] = 8.0
+        J_vec[i * num_devices + j] = 10.0
         continue  
+      
 
 
-
-      create_tusolver_config(pat_dir, res_forward_dir, forward_params, True, v_dir, n)
+      create_tusolver_config(params['pat_dir'], res_forward_dir, forward_params, True, params['d0_path'], params['a_seg_path'], params['n'])
+      
       config_path = os.path.join(res_forward_dir, 'solver_config.txt') 
       tmp = i * num_devices + j 
       log_path = os.path.join(res_forward_dir, 'solver_log_%d.txt'%tmp) 
@@ -168,15 +152,13 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
     excmd(cmd)
     #subprocess.Popen(['wait'])
     #os.wait()
-    px_en = np.linalg.norm((dat_en_true).flatten())**2
-    px_nec = np.linalg.norm((dat_nec_true).flatten())**2
-    px_ed = np.linalg.norm((dat_ed_true).flatten())**2 
-    px_vt = np.linalg.norm((dat_vt_true).flatten())**2  
 
-    w_en = 1/px_en
-    w_nec = 1/px_nec
-    w_ed = 1/px_ed
-    w_vt = 1/px_vt
+    
+
+    w_en = 0.5
+    w_nec = 0.5
+    w_ed = 0.5
+    w_vt = 0.5
     for j in range(num_devices):
       if i * num_devices + j >= num_eval:
         break
@@ -184,34 +166,67 @@ def create_cma_output(solutions, pat_dir, res_dir, lb_vec, ub_vec, init_vec, inv
         out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : = %.4f "%(J_vec[i * num_devices + j])
         print(out)
         continue
-      res_forward_dir = os.path.join(res_dir, 'forward_%d'%j)
-      en_rec_path = os.path.join(res_forward_dir, 'en_rec_final.nc')
-      ed_rec_path = os.path.join(res_forward_dir, 'ed_rec_final.nc')
-      nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
-      seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
-        
-      dat_en_rec = readNetCDF(en_rec_path)
-      dat_ed_rec = readNetCDF(ed_rec_path)
-      dat_nec_rec = readNetCDF(nec_rec_path)
-      dat_seg_rec = readNetCDF(seg_rec_path)
-      dat_vt_rec = dat_seg_rec.copy()
-      dat_vt_rec[dat_vt_rec != 7] = 0 
-      dat_vt_rec[dat_vt_rec == 7] = 1 
- 
+      x = solutions[i * num_devices + j]
+      x = x * (ub_vec - lb_vec) + lb_vec;
 
-      diff_en = w_en * np.linalg.norm((dat_en_true - dat_en_rec).flatten())**2
-      diff_nec = w_nec * np.linalg.norm((dat_nec_true - dat_nec_rec).flatten())**2
-      diff_ed = w_ed * np.linalg.norm((dat_ed_true - dat_ed_rec).flatten())**2
-      diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2
-      J = diff_en + diff_nec + diff_ed + diff_vt
+      res_forward_dir = os.path.join(params['output_dir'], 'forward_%d'%j)
+      en_rec_path = os.path.join(res_forward_dir, 'en_rec_final.nc')
+      nec_rec_path = os.path.join(res_forward_dir, 'nec_rec_final.nc')
+      i_rec_path = os.path.join(res_forward_dir, 'i_rec_final.nc')
+      wm_rec_path = os.path.join(res_forward_dir, 'wm_rec_final.nc')
+      gm_rec_path = os.path.join(res_forward_dir, 'gm_rec_final.nc')
+      seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
+     
+      
+   
+      dat_en_rec = readNetCDF(en_rec_path)
+      dat_nec_rec = readNetCDF(nec_rec_path)
+      dat_i_rec = readNetCDF(i_rec_path)
+      dat_wm_rec = readNetCDF(wm_rec_path)
+      dat_gm_rec = readNetCDF(gm_rec_path)
+      seg_rec = readNetCDF(seg_rec_path)
+      vt_csf = np.zeros(seg_rec.shape)
+      vt_csf[seg_rec == 7] = 1
+      vt_csf[seg_rec == 8] = 1
+        
+      if np.amax(dat_i_rec) < x[-1]:
+        J_vec[i * num_devices + j] = 10.0
+        continue 
+
+
+     
+      Op, On, Ol = obs_operator(dat_en_rec, dat_nec_rec, dat_i_rec, dat_wm_rec, dat_gm_rec, vt_csf, x[-1], params['HS_seg'], params['HS_ed'])
+ 
+      dx = 2 * np.pi / params['n']       
+      '''
+      fname = os.path.join(res_forward, 'Ol.nc')
+      createNetCDF(fname, Ol.shape, Ol)
+      fname = os.path.join(res_forward, 'On.nc')
+      createNetCDF(fname, Ol.shape, Op)
+      fname = os.path.join(res_forward, 'Op.nc')
+      createNetCDF(fname, Ol.shape, Op)
+
+      ''' 
+
+      diff_en = w_en * np.linalg.norm((dat_en_true - Op).flatten())**2 * dx**3
+      diff_nec = w_nec * np.linalg.norm((dat_nec_true - On).flatten())**2 * dx**3
+      diff_ed = w_ed * np.linalg.norm((dat_ed_true - Ol).flatten())**2 * dx**3
+      #diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2 * dx**3
+      
+      Q_neg = np.load(params['q_neg'])[:, :6]
+      bias = params['beta_p'] * 0.5 * np.linalg.norm(Q_neg.T * x)
+      
+      #J = diff_en + diff_nec + diff_ed + diff_vt + bias 
+      J = diff_en + diff_nec + diff_ed + bias 
       
       J_vec[i * num_devices + j] = J 
-      out = "Objective function (En + Nec + Ed + Misfit[VT] = J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, J)
+      #out = "Objective function (En + Nec + Ed + + Bias = J) : %.4f + %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, bias, J)
+      out = "Objective function (En + Nec + Ed + + Bias = J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, bias, J)
       print(out)
       
-      os.remove(en_rec_path)
-      os.remove(ed_rec_path)
-      os.remove(nec_rec_path)
+      #os.remove(en_rec_path)
+      #os.remove(nec_rec_path)
+      #os.remove(i_rec_path)
       
   return J_vec
 
@@ -223,37 +238,60 @@ def excmd(cmd, skip=False):
     os.system(cmd)
 
 
+def read_config(config_path):
+  
+  config = configparser.ConfigParser()
+  config.read(config_path)
+  params = dict(config['DEFAULT'].items())
+  
+  for k,v in params.items():
+    if isfloat(v):
+      params[k] = float(v)
+  return params 
+
+
+def isfloat(x):
+   
+  try :
+    a = float(x)
+  except (TypeError, ValueError):
+    return False
+  else:
+    return True
+
+def obs_operator(p_vec, n_vec, i_vec, wm_vec, gm_vec, vt_csf, i_th, s_gen, s_ed):
+  
+  c_vec = p_vec + n_vec + i_vec 
+  
+  Oc = HS(c_vec, wm_vec, s_gen) * HS(c_vec, gm_vec, s_gen) * HS(c_vec, vt_csf, s_gen)
+  On = HS(n_vec, p_vec, s_gen) * HS(n_vec, i_vec, s_gen) * Oc
+  Op = HS(p_vec, n_vec, s_gen) * HS(p_vec, i_vec, s_gen) * Oc
+  Ol = HS(i_vec, i_th, s_ed) * (1 - Op - On - vt_csf) 
+  Ol[Ol < 0] = 0  
+
+  return Op, On, Ol
+
+def HS(vec_0, vec_1, n):
+
+    out = (1 / (1 + np.exp(-(n)*(vec_0 - vec_1))))
+
+    return out
+ 
+
+
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Multi spcies inversion', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
-  r_args.add_argument('-p', '--patient_dir', type = str, help = 'path to the patient data', required = True)
-  r_args.add_argument('-r', '--result_dir', type = str, help = 'path to the results dir', required = True)
-  r_args.add_argument('-lb', '--lb_bounds', nargs="+", type=float, help = 'list of lower bounds', required = True)
-  r_args.add_argument('-ub', '--ub_bounds', nargs="+", type=float, help = 'list of upper bounds', required = True)
-  r_args.add_argument('-i', '--init_vals', nargs="+", type=float, help = 'list of initial guess', required = True)
-  r_args.add_argument('-inv', '--inv_params', nargs="+", type=str, help = 'list of initial guess', required = True)
-  r_args.add_argument('-total', '--total_params', nargs="+", type=str, help = 'list of initial guess', required = True)
-  r_args.add_argument('-sigma', '--sigma_cma', type=float, help = 'list of initial guess', required = True)
-  r_args.add_argument('-vel', '--vel_dir', type=str, help = 'list of initial guess', required = True)
-  r_args.add_argument('-n', '--resolution', type=int, help = 'resolution', required = True)
+  r_args.add_argument('-config', '--ms_solver_config', type = str, help = 'path to the patient data', required = True)
   args = parser.parse_args();
 
-  pat_dir = args.patient_dir
-  res_dir = args.result_dir
-  if not os.path.exists(res_dir):
-    os.mkdir(res_dir)
+  config_path = args.ms_solver_config
 
-  lb_vec = args.lb_bounds
-  ub_vec = args.ub_bounds
-  init_vec = args.init_vals
-  inv_params = args.inv_params 
-  list_vars = args.total_params
-  sigma = args.sigma_cma
-  n = args.resolution
-  v_dir = args.vel_dir
-  print(sigma) 
-  run_multispecies_inversion(pat_dir, res_dir, init_vec, lb_vec, ub_vec, inv_params, list_vars, True, sigma, v_dir, n) 
+  params = read_config(config_path)
+  params['HS_seg'] = 128
+  params['HS_ed'] = 128
+  run_multispecies_inversion(params) 
    
   
 

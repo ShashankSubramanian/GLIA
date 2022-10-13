@@ -181,9 +181,9 @@ PetscErrorCode Tumor::computeEdema() {
     if (p_ptr[i] > max) max = p_ptr[i];
     if (i_ptr[i] > max) max = i_ptr[i];
     //if (params_->tu_->invasive_thres_ > max) max = params_->tu_->invasive_thres_;
-    
-    ed_ptr[i] = (i_ptr[i] == max && i_ptr[i] > params_->tu_->invasive_thres_ && seg_ptr[i] != 7 && seg_ptr[i] != 8 && seg_ptr[i] != 0) ? (1.0 - n_ptr[i] - p_ptr[i] - i_ptr[i]) : 0.0;
-   
+     
+    //ed_ptr[i] = (i_ptr[i] == max && i_ptr[i] > params_->tu_->invasive_thres_ && seg_ptr[i] != 7 && seg_ptr[i] != 8 && seg_ptr[i] != 0) ? (1.0 - n_ptr[i] - p_ptr[i] - i_ptr[i]) : 0.0;
+    ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_thres_) ? (1.0 - n_ptr[i] - p_ptr[i]) : 0.0;
   }
   //ed_ptr[i] = (i_ptr[i] > params_->tu_->invasive_thres_ && i_ptr[i] > p_ptr[i] && i_ptr[i] > n_ptr[i] ) ? 1.0 : 0.0;
 
@@ -371,6 +371,8 @@ PetscErrorCode Tumor::clipTumor() {
   PetscErrorCode ierr = 0;
 
   ScalarType *c_ptr;
+  ScalarType c_ms;
+
   ierr = vecGetArray(c_t_, &c_ptr); CHKERRQ(ierr);
 
   if (params_->tu_->model_ == 5) {
@@ -378,26 +380,29 @@ PetscErrorCode Tumor::clipTumor() {
     ierr = vecGetArray(species_["proliferative"], &p_ptr); CHKERRQ(ierr);
     ierr = vecGetArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
     ierr = vecGetArray(species_["necrotic"], &n_ptr); CHKERRQ(ierr);
-
 #ifdef CUDA
     clipVectorCuda(p_ptr, params_->grid_->nl_);
     clipVectorCuda(i_ptr, params_->grid_->nl_);
     clipVectorCuda(n_ptr, params_->grid_->nl_);
-    clipSpeciesAboveCuda(n_ptr, p_ptr, i_ptr, params_->grid_->nl_); 
+    //clipSpeciesAboveCuda(n_ptr, p_ptr, i_ptr, params_->grid_->nl_); 
 #else
     for (int i = 0; i < params_->grid_->nl_; i++) {
       p_ptr[i] = (p_ptr[i] <= 0.) ? 0. : p_ptr[i];
       i_ptr[i] = (i_ptr[i] <= 0.) ? 0. : i_ptr[i];
       n_ptr[i] = (n_ptr[i] <= 0.) ? 0. : n_ptr[i];
-      c_ptr = n_ptr + p_ptr + i_ptr;
-      if (c_ptr > 1.) {
-        n_ptr[i] = n_ptr[i] / c_ptr;
-        p_ptr[i] = p_ptr[i] / c_ptr;
-        i_ptr[i] = i_ptr[i] / c_ptr;
+      p_ptr[i] = (p_ptr[i] > 1.) ? 1. : p_ptr[i];
+      i_ptr[i] = (i_ptr[i] > 1.) ? 1. : i_ptr[i];
+      n_ptr[i] = (n_ptr[i] > 1.) ? 1. : n_ptr[i];
+      c_ms = n_ptr[i] + p_ptr[i] + i_ptr[i];
+      /*
+      if (c_ms > 1.) {
+        n_ptr[i] = n_ptr[i] / c_ms;
+        p_ptr[i] = p_ptr[i] / c_ms;
+        i_ptr[i] = i_ptr[i] / c_ms;
       }
+      */
     }
 #endif
-
     ierr = vecRestoreArray(species_["proliferative"], &p_ptr); CHKERRQ(ierr);
     ierr = vecRestoreArray(species_["infiltrative"], &i_ptr); CHKERRQ(ierr);
     ierr = vecRestoreArray(species_["necrotic"], &n_ptr); CHKERRQ(ierr);
@@ -405,7 +410,7 @@ PetscErrorCode Tumor::clipTumor() {
   } else {
 #ifdef CUDA
     clipVectorCuda(c_ptr, params_->grid_->nl_);
-    clipVectorAboveCuda(c_ptr, params_->grid_->nl_);
+    //clipVectorAboveCuda(c_ptr, params_->grid_->nl_);
 #else
     for (int i = 0; i < params_->grid_->nl_; i++) {
       c_ptr[i] = (c_ptr[i] <= 0.) ? 0. : c_ptr[i];

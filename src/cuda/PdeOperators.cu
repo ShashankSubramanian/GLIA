@@ -72,7 +72,7 @@ __global__ void computeReactionRate (ScalarType *m_ptr, ScalarType *ox_ptr, Scal
 }
 
 
-__global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType sigma_b, int64_t sz) {
+__global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType sigma_b, int64_t sz, ScalarType HS_shape_factor_) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
@@ -82,18 +82,18 @@ __global__ void computeTransition (ScalarType *alpha_ptr, ScalarType *beta_ptr, 
   //      beta_ptr[i] = beta_0 * ox_ptr[i];
   //alpha_ptr[i] = alpha_0 * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
   //beta_ptr[i] = beta_0 * ox_ptr[i] * (1 / (1 + exp(100 * (i_ptr[i] + p_ptr[i] - sigma_b))));
-  alpha_ptr[i] = alpha_0 * (1 / (1 + exp(100 * (ox_ptr[i] - ox_inv))));
+  alpha_ptr[i] = alpha_0 * (1 / (1 + exp(-HS_shape_factor_ * (ox_inv - ox_ptr[i]))));
   //beta_ptr[i] = beta_0 * ox_ptr[i] ;
-  beta_ptr[i] = beta_0 * (1 / (1 + exp(100 * (ox_inv - ox_ptr[i])))) ;
+  beta_ptr[i] = beta_0 * (1 / (1 + exp(-HS_shape_factor_ * (ox_ptr[i] - ox_inv)))) ;
 	}
 }
 
-__global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
+__global__ void computeThesholder (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz, ScalarType HS_shape_factor_) {
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
 		// h_ptr[i] = 0.5 * (1 + tanh (500 * (ox_hypoxia - ox_ptr[i])));
-		h_ptr[i] = (1 / (1 + exp(100 * (ox_ptr[i] - ox_hypoxia))));
+		h_ptr[i] = (1 / (1 + exp(-HS_shape_factor_ * (ox_hypoxia - ox_ptr[i]))));
 	}
 }
 
@@ -101,36 +101,40 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
 	int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if (i < sz) {
-		ScalarType p_temp, i_temp, frac_1, frac_2;
+		ScalarType p_temp, i_temp, n_temp, c_temp, ox_temp, wm_temp, gm_temp, frac_1, frac_2;
 	    ScalarType ox_heal = 1;
 	    ScalarType reac_ratio = 1;
 	    ScalarType death_ratio = 1;		
 
 
-	    p_temp = p_ptr[i]; i_temp = i_ptr[i];
-
+	    p_temp = p_ptr[i]; i_temp = i_ptr[i]; n_temp = n_ptr[i]; ox_temp = ox_ptr[i]; wm_temp = wm_ptr[i]; gm_temp = gm_ptr[i];
+      c_temp = i_temp + p_temp + n_temp;
+        if (c_temp > 1.0) c_temp = 1.0;  
         //p_ptr[i] += dt * (m_ptr[i] * p_ptr[i] * (1. - p_ptr[i]) - al_ptr[i] * p_ptr[i] + bet_ptr[i] * i_ptr[i] - 
         //                    death_rate * h_ptr[i] * p_ptr[i]);
-        p_ptr[i] += dt * (m_ptr[i] * p_temp * (1. - p_temp) - al_ptr[i] * p_temp + bet_ptr[i] * i_temp - 
-                            death_rate * h_ptr[i] * p_temp);
-        if (p_ptr[i] < 0.0) p_ptr[i] = 0.0;
+        //p_ptr[i] += dt * (m_ptr[i] * p_temp * (1. - p_temp) - al_ptr[i] * p_temp + bet_ptr[i] * i_temp - 
+        //                    death_rate * h_ptr[i] * p_temp);
+        p_ptr[i] += dt * (m_ptr[i] * p_temp * (1. - c_temp) - al_ptr[i] * p_temp * (1. - i_temp) + bet_ptr[i] * i_temp * (1. - p_temp)  - death_rate * h_ptr[i] * p_temp * (1. - n_temp));       
+ 
+        if (p_ptr[i] < 1e-6) p_ptr[i] = 0.0;
         if (p_ptr[i] > 1.0) p_ptr[i] = 1.0;
 
         //i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_ptr[i] * (1. - i_ptr[i]) + al_ptr[i] * p_temp - bet_ptr[i] * i_ptr[i] - 
         //                    death_ratio * death_rate * h_ptr[i] * i_ptr[i]);
-        i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + al_ptr[i] * p_temp - bet_ptr[i] * i_temp - 
-                            death_ratio * death_rate * h_ptr[i] * i_temp);
+        //i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + al_ptr[i] * p_temp - bet_ptr[i] * i_temp - 
+        //                    death_ratio * death_rate * h_ptr[i] * i_temp);
+        i_ptr[i] += dt * (reac_ratio * m_ptr[i] * i_temp * (1. - c_temp) + al_ptr[i] * p_temp * (1. - i_temp)
+- bet_ptr[i] * i_temp * (1. - p_temp) - death_ratio * death_rate * h_ptr[i] * i_temp * (1. - n_temp));
         //i_ptr[i] += dt * (al_ptr[i] * p_temp - bet_ptr[i] * i_temp - death_ratio * death_rate * h_ptr[i] * i_temp);
-        if (i_ptr[i] < 0.0) i_ptr[i] = 0.0;
+        if (i_ptr[i] < 1e-6) i_ptr[i] = 0.0;
         if (i_ptr[i] > 1.0) i_ptr[i] = 1.0;
-
-        n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_temp + death_ratio * i_temp + gm_ptr[i] + wm_ptr[i]));
-        if (n_ptr[i] < 0.0) n_ptr[i] = 0.0;
+        
+        n_ptr[i] += dt * (h_ptr[i] * death_rate * (p_temp * (1. - n_temp) + death_ratio * i_temp * (1. - n_temp)));
+        if (n_ptr[i] < 1e-6) n_ptr[i] = 0.0;
         if (n_ptr[i] > 1.0) n_ptr[i] = 1.0;
 
-        ox_ptr[i] += dt * (-ox_consumption * p_temp + ox_source * (ox_heal - ox_ptr[i]) * (gm_ptr[i] + wm_ptr[i]));
-        ox_ptr[i] = (ox_ptr[i] <= 0.) ? 0. : ox_ptr[i];
-        if (ox_ptr[i] < 0.0) ox_ptr[i] = 0.0;
+        ox_ptr[i] += dt * (-ox_consumption * p_temp * ox_temp + ox_source * (ox_heal - ox_temp) * (gm_temp + wm_temp));
+        if (ox_ptr[i] < 1e-6) ox_ptr[i] = 0.0;
         if (ox_ptr[i] > 1.0) ox_ptr[i] = 1.0;
 
         // conserve healthy cells
@@ -141,15 +145,12 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
         }
         frac_1 = (isnan(frac_1)) ? 0. : frac_1;
         frac_2 = (isnan(frac_2)) ? 0. : frac_2;
-        gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i])
-                         + h_ptr[i] * death_rate * gm_ptr[i]); 
-
-        if (gm_ptr[i] < 0.0) gm_ptr[i] = 0.0;
+        
+        gm_ptr[i] += -dt * (frac_1 * (m_ptr[i] * p_temp * (1. - c_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - c_temp) + di_ptr[i]) );
+        if (gm_ptr[i] < 1e-6) gm_ptr[i] = 0.0;
         if (gm_ptr[i] > 1.0) gm_ptr[i] = 1.0;
-
-        wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - p_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - i_temp) + di_ptr[i])
-                         + h_ptr[i] * death_rate * wm_ptr[i]);
-        if (wm_ptr[i] < 0.0) wm_ptr[i] = 0.0;
+        wm_ptr[i] += -dt * (frac_2 * (m_ptr[i] * p_temp * (1. - c_temp) + reac_ratio * m_ptr[i] * i_temp * (1. - c_temp) + di_ptr[i]));
+        if (wm_ptr[i] < 1e-6) wm_ptr[i] = 0.0;
         if (wm_ptr[i] > 1.0) wm_ptr[i] = 1.0;
         
 	}
@@ -201,19 +202,19 @@ void computeReactionRateCuda (ScalarType *m_ptr, ScalarType *ox_ptr, ScalarType 
 	cudaCheckKernelError ();
 }
 
-void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType sigma_b, int64_t sz) {
+void computeTransitionCuda (ScalarType *alpha_ptr, ScalarType *beta_ptr, ScalarType *ox_ptr, ScalarType *p_ptr, ScalarType *i_ptr, ScalarType alpha_0, ScalarType beta_0, ScalarType ox_inv, ScalarType sigma_b, int64_t sz, ScalarType HS_shape_factor_) {
 	int n_th = N_THREADS;
 
-	computeTransition <<< (sz + n_th - 1) / n_th, n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, sigma_b, sz);
+	computeTransition <<< (sz + n_th - 1) / n_th, n_th >>> (alpha_ptr, beta_ptr, ox_ptr, p_ptr, i_ptr, alpha_0, beta_0, ox_inv, sigma_b, sz, HS_shape_factor_);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
 }
 
-void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz) {
+void computeThesholderCuda (ScalarType *h_ptr, ScalarType *ox_ptr, ScalarType ox_hypoxia, int64_t sz, ScalarType HS_shape_factor_) {
 	int n_th = N_THREADS;
 
-	computeThesholder <<< (sz + n_th - 1) / n_th, n_th >>> (h_ptr, ox_ptr, ox_hypoxia, sz);
+	computeThesholder <<< (sz + n_th - 1) / n_th, n_th >>> (h_ptr, ox_ptr, ox_hypoxia, sz, HS_shape_factor_);
 
 	cudaDeviceSynchronize();
 	cudaCheckKernelError ();
