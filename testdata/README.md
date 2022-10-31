@@ -6,4 +6,4 @@ for testing the inversion and forward scripts
   * scripts/inverse_masseffect.py
 
 For example clinical images in medical imaging resolutions (256x256x256)
-use data from: https://drive.google.com/drive/folders/1QtC6R8b_sQoB0BGUumoz9NqWtfKXndre?usp=sharing
+use data from: https://drive.google.com/drive/folders/1v7-eCmPg6ZMHJf2BmB8dtuiPD1Az0Zwj?usp=sharing
