@@ -122,13 +122,13 @@ for i in range(1,2):
     p['ox_hypoxia_data'] = 0.5
   else:
     p['rho_data'] = 14.0
-    p['ox_consumption_data'] = 2.0
+    p['ox_consumption_data'] = 12.0
     p['ox_hypoxia_data'] = 0.4
 
   # upper bound for rho : 14
   # upper bound for gamma_0 :   
 
-  p['ox_source_data'] = 3.0
+  p['ox_source_data'] = 4.0
   p['beta_0_data'] = 1.0
   #p['sigma_b_data'] = 0.9
   p['ox_inv_data'] = 0.6

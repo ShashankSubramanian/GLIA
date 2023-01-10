@@ -32,17 +32,42 @@ def create_seg_ms(res_dir):
         i_th = float(l.split('invasive_thres_data=')[-1])
 
 
+ 
   
+  vt = readNetCDF(vt_path)
+   
+  #noise_i = np.random.normal(loc=1.0, scale=noise_std, size=vt.shape)
+  noise_i = 1.0
+  noise_p = np.random.normal(loc=1.0, scale=noise_std, size=vt.shape)
+  noise_n = np.random.normal(loc=1.0, scale=noise_std, size=vt.shape)
+
   
-  en = readNetCDF(en_path)
-  nec = readNetCDF(nec_path)
+  en = readNetCDF(en_path) 
+  nec = readNetCDF(nec_path) 
   infl = readNetCDF(i_path)
+
+  en_true = en.copy()
+  nec_true = nec.copy()
+  infl_true = infl.copy()
+
+  en *= noise_p
+  nec *= noise_n
+  infl *= noise_i
+  
+  noise_avg = np.linalg.norm((en_true - en).flatten()) / np.linalg.norm(en_true.flatten())
+  noise_avg += np.linalg.norm((nec_true - nec).flatten()) / np.linalg.norm(nec_true.flatten())
+  noise_avg += np.linalg.norm((infl_true - infl).flatten()) / np.linalg.norm(infl_true.flatten())
+  noise_avg /= 3
+
+  
   seg = readNetCDF(seg_path)
   wm = readNetCDF(wm_path)
   gm = readNetCDF(gm_path)
   bg = readNetCDF(bg_path)
   csf = readNetCDF(csf_path)
-  vt = readNetCDF(vt_path)
+
+
+
   
   f = bg + csf + vt 
 
@@ -72,12 +97,10 @@ def create_seg_ms(res_dir):
   seg_ms[On == 1] = 1
   seg_ms[Ol == 1] = 2
 
-  seg_ic = seg_ms.copy()
-  seg_ic[seg_ic == 4] = 2
-  
-  createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final.nc'), seg_ms.shape, seg_ms)
-  createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final_ic.nc'), seg_ms.shape, seg_ic)
-  
+  createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final_%.2f_noise.nc'%noise_avg), seg_ms.shape, seg_ms)
+  createNetCDF(os.path.join(res_dir, 'i_rec_final_%.2f_noise.nc'%noise_avg), seg_ms.shape, infl)
+  createNetCDF(os.path.join(res_dir, 'p_rec_final_%.2f_noise.nc'%noise_avg), seg_ms.shape, en)
+  createNetCDF(os.path.join(res_dir, 'n_rec_final_%.2f_noise.nc'%noise_avg), seg_ms.shape, nec)
   
   
 
@@ -86,8 +109,9 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='convert netcdf to nifti', formatter_class= argparse.ArgumentDefaultsHelpFormatter)
   r_args = parser.add_argument_group('required arguments')
   r_args.add_argument('-i', '--res_dir', type = str, help = 'path to the results', required = True)
+  r_args.add_argument('-n', '--noise_std', type = float, help = 'path to the results', required = True)
   args = parser.parse_args();
 
   res_dir = args.res_dir
-  
+  noise_std = args.noise_std
   create_seg_ms(res_dir)

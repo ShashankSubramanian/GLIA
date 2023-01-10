@@ -66,7 +66,7 @@ def create_tusolver_config(pat_dir, res_dir, forward_params, is_syn, d0_path, a_
   p['nt_data'] = 80
   p['dt_data'] = 0.0125
   p['k_gm_wm'] = 0.2
-  p['HS_shape_factor'] = 16
+  p['HS_shape_factor'] = 32
   p['r_gm_wm'] = 0
   p['ratio_i0_c0'] = 0.0
   p['time_history_off'] = 1
@@ -80,7 +80,7 @@ def create_tusolver_config(pat_dir, res_dir, forward_params, is_syn, d0_path, a_
     
 
   r['code_path'] = code_dir;
-  r['compute_sys'] = 'longhorn'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
+  r['compute_sys'] = 'frontera'         # TACC systems are: maverick2, frontera, stampede2, longhorn; cbica for upenn system
   r['mpi_tasks'] = 1                    # mpi tasks (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['nodes'] = 1                        # number of nodes  (other job params like waittime are defaulted from params.py; overwrite here if needed)
   r['wtime_h'] = 2

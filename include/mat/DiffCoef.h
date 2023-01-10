@@ -54,6 +54,7 @@ class DiffCoef {
   PetscErrorCode smooth(std::shared_ptr<Parameters> params);
   PetscErrorCode applyK(Vec x, Vec y, Vec z);
   PetscErrorCode applyD(Vec dc, Vec c);
+  PetscErrorCode applyD(Vec dc, Vec c, std::shared_ptr<Parameters> params);
   PetscErrorCode applyDWithSecondaryCoeffs(Vec dc, Vec c);
   /** @brief computes x = k_bar (grad c)^T grad \alpha, where k_bar = dK/dm */
   PetscErrorCode compute_dKdm_gradc_gradp(Vec x1, Vec x2, Vec x3, Vec x4, Vec c, Vec p, fft_plan *plan);

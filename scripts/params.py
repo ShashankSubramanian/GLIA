@@ -109,7 +109,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm'] = 0.0                  # rho ratio gm/wm (if zero, rho=0 in gm)
     p['ratio_i0_c0'] = 0.05
-    p['HS_shape_factor'] = 16
+    p['HS_shape_factor'] = 32
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
@@ -516,7 +516,10 @@ def write_config_ms(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['model'] = 5
     p['output_dir'] = ""
     p['pat_dir'] = ""
-     
+    p['d1_path'] = ""
+    
+    p['log_dir'] = ""
+    p['extra_modules'] = "" 
     for key, value in set_params.items():
         if key in p:
             p[key] = value;

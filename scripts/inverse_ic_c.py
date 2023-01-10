@@ -19,10 +19,10 @@ init_rho                = random.uniform(5,10)
 init_k                  = random.uniform(0.005,0.05)
 init_gamma              = random.uniform(1E4,1E5)
 
-syn = 4
+syn = 1
 
 p['n'] = 160                                                                                   # grid resolution in each dimension
-p['output_dir']     = os.path.join(code_dir, 'results/syn_results/case%d_me_inv/'%syn);                      # results path
+p['output_dir']     = os.path.join(code_dir, 'results/syn_results/case%d_ic_inv/'%syn);                      # results path
 p['d0_path']        = os.path.join(code_dir, 'syndata/case%d/160/c0_true_syn_nx160.nc'%syn)
 p['d1_path']        = os.path.join(code_dir, 'syndata/case%d/160/tc_t1.nc'%syn)
 p['atlas_labels']   = "[wm=6,gm=5,vt=7,csf=8,ed=2,nec=1,en=4]"                                   

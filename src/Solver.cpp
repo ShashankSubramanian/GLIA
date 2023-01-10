@@ -890,7 +890,7 @@ PetscErrorCode MultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators>
   ierr = tuMSGwarn(" SolverIntraface initialize"); CHKERRQ(ierr);
   ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
    
-  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  //ierr = resetOperators(p_rec_); CHKERRQ(ierr);
   ierr = tuMSGwarn(" Reset done"); CHKERRQ(ierr);
   // ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
   // ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
@@ -1000,11 +1000,11 @@ PetscErrorCode MultiSpeciesSolver::run() {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
   */
-
+  
   if (!has_dt0_) {
     ierr = tumor_->phi_->apply(tumor_->c_0_, p_rec_); CHKERRQ(ierr);
   }
-
+  
   ierr = tuMSGwarn(" Beginning Multi Species Forward Solve."); CHKERRQ(ierr);
   ierr = createSynthetic(); CHKERRQ(ierr);
   PetscFunctionReturn(ierr);
@@ -1017,7 +1017,6 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
   PetscFunctionBegin;
 
   ierr = tuMSGwarn(" Finalizing Multi Species Forward Solve."); CHKERRQ(ierr);
-  //ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   std::stringstream ss;
   if (params_->tu_->write_output_) {
@@ -1089,6 +1088,7 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
     ss.str(std::string());
     ss.clear();
   } 
+  ierr = SolverInterface::finalize(); CHKERRQ(ierr);
 
   PetscFunctionReturn(ierr);
 }

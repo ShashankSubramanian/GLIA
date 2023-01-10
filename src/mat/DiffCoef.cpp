@@ -260,6 +260,47 @@ PetscErrorCode DiffCoef::applyD(Vec dc, Vec c) {
 
   ierr = spec_ops_->computeGradient(temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
   ierr = applyK(temp_[4], temp_[5], temp_[6]);
+  /*
+  if (params->tu_->model_ == 5){
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params->grid_->n_[0];
+    ierr = spec_ops_->weierstrassSmoother(temp_[1], temp_[1], params, sigma_smooth); CHKERRQ(ierr);
+    ierr = spec_ops_->weierstrassSmoother(temp_[2], temp_[2], params, sigma_smooth); CHKERRQ(ierr);
+    ierr = spec_ops_->weierstrassSmoother(temp_[3], temp_[3], params, sigma_smooth); CHKERRQ(ierr);
+  }
+  */
+  ierr = spec_ops_->computeDivergence(dc, temp_[1], temp_[2], temp_[3], t.data());
+
+  self_exec_time += MPI_Wtime();
+  // accumulateTimers (t, t, self_exec_time);
+  t[5] = self_exec_time;
+  e.addTimings(t);
+  e.stop();
+  PetscFunctionReturn(ierr);
+}
+
+
+PetscErrorCode DiffCoef::applyD(Vec dc, Vec c, std::shared_ptr<Parameters> params) {
+  PetscFunctionBegin;
+  PetscErrorCode ierr = 0;
+  Event e("tumor-diff-coeff-apply-D");
+  std::array<double, 7> t = {0};
+  double self_exec_time = -MPI_Wtime();
+
+  std::bitset<3> XYZ;
+  XYZ[0] = 1;
+  XYZ[1] = 1;
+  XYZ[2] = 1;
+
+  ierr = spec_ops_->computeGradient(temp_[4], temp_[5], temp_[6], c, &XYZ, t.data());
+  ierr = applyK(temp_[4], temp_[5], temp_[6]);
+  
+  if (params->tu_->model_ == 5){
+    ScalarType sigma_smooth = 1.0 * 2.0 * M_PI / params->grid_->n_[0];
+    ierr = spec_ops_->weierstrassSmoother(temp_[1], temp_[1], params, sigma_smooth); CHKERRQ(ierr);
+    ierr = spec_ops_->weierstrassSmoother(temp_[2], temp_[2], params, sigma_smooth); CHKERRQ(ierr);
+    ierr = spec_ops_->weierstrassSmoother(temp_[3], temp_[3], params, sigma_smooth); CHKERRQ(ierr);
+  }
+  
   ierr = spec_ops_->computeDivergence(dc, temp_[1], temp_[2], temp_[3], t.data());
 
   self_exec_time += MPI_Wtime();

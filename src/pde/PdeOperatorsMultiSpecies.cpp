@@ -472,7 +472,8 @@ PetscErrorCode PdeOperatorsMultiSpecies::solveState(int linearized) {
 
     // compute Di to be used for healthy cell evolution equations: make sure work[11] is not used till sources are computed
     ierr = VecCopy(tumor_->species_["infiltrative"], tumor_->work_[11]); CHKERRQ(ierr);
-    ierr = tumor_->k_->applyD(tumor_->work_[11], tumor_->work_[11]); CHKERRQ(ierr);
+    //ierr = tumor_->k_->applyD(tumor_->work_[11], tumor_->work_[11]); CHKERRQ(ierr);
+    ierr = tumor_->k_->applyD(tumor_->work_[11], tumor_->work_[11], params_); CHKERRQ(ierr);
 
     // ------------------------------------------------ diffusion  ------------------------------------------------
     ierr = diff_solver_->solve(tumor_->species_["infiltrative"], dt);

@@ -5,7 +5,6 @@ import nibabel as nib
 import scipy as sc
 from scipy.ndimage import gaussian_filter
 from netCDF4 import Dataset
-import cv2
 import skimage
 from scipy.ndimage import gaussian_filter
 from scipy import ndimage
@@ -38,7 +37,7 @@ if __name__=='__main__':
     createNetCDF(outfile, args.n * np.ones(3), np.transpose(img))
   else:
     outfile = infile.replace(".nii.gz", "_" + str(n) + ".nc")
-    if n is not 256:
+    if n != 256:
       img_rsz = resizeImage(img, [n,n,n], interp_order=1)
     else:
       img_rsz = img

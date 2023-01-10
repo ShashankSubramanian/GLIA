@@ -5,7 +5,6 @@ import nibabel as nib
 import scipy as sc
 from scipy.ndimage import gaussian_filter
 from netCDF4 import Dataset
-import cv2
 import skimage
 from scipy.ndimage import gaussian_filter
 from scipy import ndimage

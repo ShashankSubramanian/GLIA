@@ -153,6 +153,16 @@ __global__ void computeSources (ScalarType *p_ptr, ScalarType *i_ptr, ScalarType
         if (wm_ptr[i] < 1e-6) wm_ptr[i] = 0.0;
         if (wm_ptr[i] > 1.0) wm_ptr[i] = 1.0;
         
+        // make sure c <= 1.0
+        if (i_ptr[i] + p_ptr[i] + n_ptr[i] > 1.0){
+          ScalarType total = i_ptr[i] + p_ptr[i] + n_ptr[i] + gm_ptr[i] + wm_ptr[i];
+          i_ptr[i] = i_ptr[i] / total;
+          p_ptr[i] = p_ptr[i] / total;
+          n_ptr[i] = n_ptr[i] / total;
+          gm_ptr[i] = gm_ptr[i] / total;
+          wm_ptr[i] = wm_ptr[i] / total;
+        }
+      
 	}
 }
 

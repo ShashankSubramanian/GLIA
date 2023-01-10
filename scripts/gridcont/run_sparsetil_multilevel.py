@@ -284,8 +284,11 @@ def sparsetil_gridcont(input, job_path, job_idx, use_gpu = False):
         else:
             cmd_concomp += ' -labels ' + input['segmentation_labels'] + ' '
         cmd_concomp += "  -sigma " + str(sigma_fac[ii]) + " ";
+        
+        if 'multispecies' in input and input['multispecies']:
+          cmd_concomp += " -multispecies 1 ";
+        
         cmd_concomp +=  " -select_gaussians  \n" if (gaussian_mode == 'C0_RANKED' and level > 64) else " \n";
-
         # extract reconstructed rho and k
         if level > 64:
             cmd_extractrhok =  "\n\n# extract reconstructed rho, k from logfile, and modify config";

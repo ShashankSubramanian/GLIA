@@ -234,7 +234,11 @@ PetscErrorCode DiffusionSolver::solve(Vec c, ScalarType dt) {
   }
   ScalarType alph = 1.0 / 2.0 * ctx->dt_;
   ierr = VecCopy(c, rhs_); CHKERRQ(ierr);
-  ierr = ctx->k_->applyD(ctx->temp_, rhs_);
+  if (ctx->params_->tu_->model_ == 5){
+    ierr = ctx->k_->applyD(ctx->temp_, rhs_, ctx->params_);
+  } else{
+    ierr = ctx->k_->applyD(ctx->temp_, rhs_);
+  }
   ierr = VecAXPY(rhs_, alph, ctx->temp_); CHKERRQ(ierr);
 
   // KSP solve
