@@ -109,7 +109,7 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['k_gm_wm'] = 0.0                  # kappa ratio gm/wm (if zero, kappa=0 in gm)
     p['r_gm_wm'] = 0.0                  # rho ratio gm/wm (if zero, rho=0 in gm)
     p['ratio_i0_c0'] = 0.05
-    p['HS_shape_factor'] = 16
+    p['HS_shape_factor'] = 32
     # ------------------------------ DO NOT TOUCH ------------------------------ #
     ### data
     p['smoothing_factor'] = 1           # kernel width for smoothing of data and material properties
@@ -413,13 +413,15 @@ def write_config(set_params, run, use_gpu = False, gpu_device_id = 0):
         if r['mpi_tasks'] < 24:
             ppn = r['mpi_tasks'];
         cmd = cmd + "aprun -n " + str(r['mpi_tasks']) + " -N " + str(ppn) + " ";
-    elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn']:
+    elif r['compute_sys'] in ['stampede2', 'frontera', 'maverick2', 'longhorn', 'lonestar']:
         cmd = cmd + "ibrun " + ibman;
     elif r['compute_sys'] == 'cbica':
         cmd = cmd + "\n mpirun --mca btl vader,self -np $NSLOTS ";
     else:
         cmd = cmd + "mpirun ";
     run_str = cmd + r['code_path'] + "/build/last/tusolver "
+    if r['compute_sys'] == 'lonestar':
+        run_str += "-use_gpu_aware_mpi 0 "
     run_str += " -config " + p['output_dir'] + "/solver_config.txt"
 #    for key, value in p.items():
 #        run_str += " -" + str(key) + " " + str(value) + " ";
@@ -516,7 +518,10 @@ def write_config_ms(set_params, run, use_gpu = False, gpu_device_id = 0):
     p['model'] = 5
     p['output_dir'] = ""
     p['pat_dir'] = ""
-     
+    p['d1_path'] = ""
+    
+    p['log_dir'] = ""
+    p['extra_modules'] = "" 
     for key, value in set_params.items():
         if key in p:
             p[key] = value;
@@ -597,6 +602,8 @@ def write_jobscript_header(tu_params, run_params, use_gpu = False):
             run_params['queue'] = 'gtx'
         elif run_params['compute_sys'] == 'frontera':
             run_params['queue'] = 'rtx'
+        elif run_params['compute_sys'] == 'lonestar':
+            run_params['queue'] = 'gpu-a100'
         else:
             run_params['queue'] = 'normal'
     if 'nodes' not in run_params:

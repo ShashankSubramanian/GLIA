@@ -206,6 +206,7 @@ PetscErrorCode MEOptimizer::solve() {
     ierr = setTaoOptions(); CHKERRQ(ierr);
   }
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ (ierr);
+  //ierr = TaoSetInitial (tao_, xrec_); CHKERRQ (ierr);
 
   if (ctx_->x_old != nullptr) {
     ierr = VecDestroy(&ctx_->x_old); CHKERRQ(ierr);
@@ -232,7 +233,8 @@ PetscErrorCode MEOptimizer::solve() {
   MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
   /* === get solution === */
-  Vec sol; ierr = TaoGetSolutionVector (tao_, &sol); CHKERRQ(ierr);
+  //Vec sol; ierr = TaoGetSolutionVector (tao_, &sol); CHKERRQ(ierr);
+  Vec sol; ierr = TaoGetSolution(tao_, &sol); CHKERRQ(ierr);
   ierr = VecCopy (sol, xrec_); CHKERRQ(ierr);
 
   /* === get termination info === */

@@ -10,6 +10,7 @@
 #include <cuda_runtime_api.h>
 #include "cublas_v2.h"
 #include "cufft.h"
+#include "petscdevice.h"
 
 #include <thrust/system_error.h>
 #include <thrust/device_ptr.h>

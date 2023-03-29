@@ -10,6 +10,8 @@ import math
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../utils/')
 import file_io as fio
 import image_tools as imgtools
+import nibabel.processing
+
 ###
 ### ------------------------------------------------------------------------ ###
 def resample(fname, ndim, order):

@@ -289,7 +289,8 @@
 #else
     // single GPU
 		// use cuda routines
-		#include "petsccuda.h"
+		//#include "petsccuda.h"
+		#include "petscvec.h"
 		#include <cuda.h>
 		#include <cuda_runtime.h>
 		#include "UtilsCuda.h"

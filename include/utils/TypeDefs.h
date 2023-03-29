@@ -38,7 +38,8 @@ typedef float Complexf[2];
 #include <cuda_runtime_api.h>
 #include <cublas_v2.h>
 #include <cuda.h>
-#include <petsccuda.h>
+//#include <petsccuda.h>
+#include <petscvec.h>
 
 #ifdef SINGLE
 #define MPIType MPI_FLOAT

@@ -244,15 +244,19 @@ PetscErrorCode Optimizer::setTaoOptions() {
   #endif
 
   // parse options user has set
-  ierr = TaoSetFromOptions (tao_); CHKERRQ(ierr);
+  //ierr = TaoSetFromOptions (tao_); CHKERRQ(ierr);
   ierr = TaoSetInitialVector (tao_, xrec_); CHKERRQ(ierr); // TODO(K) I've changed this from tumor->p_ to xrec_
+  //ierr = TaoSetInitial (tao_, xrec_); CHKERRQ(ierr); // TODO(K) I've changed this from tumor->p_ to xrec_
   // overloaded function; specialized solvers define their variable bounds
   ierr = setVariableBounds(); CHKERRQ(ierr);
   ierr = TaoSetMaximumIterations (tao_, ctx_->params_->opt_->newton_maxit_); CHKERRQ(ierr);
 
   ierr = TaoSetObjectiveRoutine (tao_, evaluateObjectiveFunction, (void*) ctx_.get()); CHKERRQ(ierr);
+  //ierr = TaoSetObjective (tao_, evaluateObjectiveFunction, (void*) ctx_.get()); CHKERRQ(ierr);
   ierr = TaoSetGradientRoutine (tao_, evaluateGradient, (void*) ctx_.get()); CHKERRQ(ierr);
+  //ierr = TaoSetGradient (tao_, evaluateGradient, (void*) ctx_.get()); CHKERRQ(ierr);
   ierr = TaoSetObjectiveAndGradientRoutine (tao_, evaluateObjectiveFunctionAndGradient, (void*) ctx_.get()); CHKERRQ(ierr);
+  //ierr = TaoSetObjectiveAndGradient (tao_, evaluateObjectiveFunctionAndGradient, (void*) ctx_.get()); CHKERRQ(ierr);
   ierr = TaoSetMonitor (tao_, optimizationMonitor, (void *) ctx_.get(), NULL); CHKERRQ(ierr);
   ierr = TaoSetConvergenceTest (tao_, checkConvergenceGrad, (void*) ctx_.get()); CHKERRQ(ierr);
   // ierr = TaoSetConvergenceTest(tao, checkConvergenceGradObj, ctx_); CHKERRQ(ierr);

@@ -9,6 +9,7 @@ code_dir = scripts_path + '/../../'
 sys.path.append(os.path.join(code_dir, 'scripts', 'utils'))
 
 from file_io import readNetCDF, createNetCDF
+from image_tools import smoothBinaryMap
 import configparser
 
 import numpy as np
@@ -63,7 +64,7 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
  
   print("Testing ")
   
-  seg_t1 = os.path.join(params['pat_dir'], 'seg_ms_rec_final.nc')
+  seg_t1 = params['d1_path']
   
   dat_seg_true = readNetCDF(seg_t1)
 
@@ -86,8 +87,12 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
   dat_vt_true[dat_vt_true != 7] = 0
   dat_vt_true[dat_vt_true == 7] = 1
   
-   
-  num_devices = 4
+  dat_en_true = smoothBinaryMap(dat_en_true, 1)  
+  dat_ed_true = smoothBinaryMap(dat_ed_true, 1)  
+  dat_nec_true = smoothBinaryMap(dat_nec_true, 1)  
+
+ 
+  num_devices = 3
   num_eval = int(len(solutions))
   J_vec = np.zeros(num_eval)
   num_batch = int(np.ceil(num_eval / num_devices))
@@ -145,7 +150,7 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
       tusolver_path = os.path.join(code_dir, 'build', 'last', 'tusolver')
       #print(solutions[i * num_devices + j])
        
-      cmd += 'CUDA_VISIBLE_DEVICES=%d ibrun '%j+tusolver_path+' -config '+config_path+' > '+log_path+' &\n\n'
+      cmd += 'CUDA_VISIBLE_DEVICES=%d ibrun '%j+tusolver_path+' -use_gpu_aware_mpi 0 -config '+config_path+' > '+log_path+' &\n\n'
       cmd += '\n\n'
     
     cmd += "wait\n\n"
@@ -176,7 +181,9 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
       wm_rec_path = os.path.join(res_forward_dir, 'wm_rec_final.nc')
       gm_rec_path = os.path.join(res_forward_dir, 'gm_rec_final.nc')
       seg_rec_path = os.path.join(res_forward_dir, 'seg_rec_final.nc')
-     
+      bg_rec_path = os.path.join(res_forward_dir, 'bg.nc') 
+      vt_rec_path = os.path.join(res_forward_dir, 'vt_rec_final.nc') 
+      csf_rec_path = os.path.join(res_forward_dir, 'csf_rec_final.nc') 
       
    
       dat_en_rec = readNetCDF(en_rec_path)
@@ -185,10 +192,7 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
       dat_wm_rec = readNetCDF(wm_rec_path)
       dat_gm_rec = readNetCDF(gm_rec_path)
       seg_rec = readNetCDF(seg_rec_path)
-      vt_csf = np.zeros(seg_rec.shape)
-      vt_csf[seg_rec == 7] = 1
-      vt_csf[seg_rec == 8] = 1
-      vt_csf[seg_rec == 0] = 1
+      vt_csf = readNetCDF(bg_rec_path) + readNetCDF(vt_rec_path) + readNetCDF(csf_rec_path)
         
       if np.amax(dat_i_rec) < x[-1]:
         J_vec[i * num_devices + j] = 10.0
@@ -197,15 +201,27 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
 
      
       Op, On, Ol = obs_operator(dat_en_rec, dat_nec_rec, dat_i_rec, dat_wm_rec, dat_gm_rec, vt_csf, x[-1], params['HS_seg'], params['HS_ed'])
+
+      Op = smoothBinaryMap(Op, 1) 
+      On = smoothBinaryMap(On, 1) 
+      Ol = smoothBinaryMap(Ol, 1) 
  
       dx = 2 * np.pi / params['n']       
       '''
-      fname = os.path.join(res_forward, 'Ol.nc')
+      fname = os.path.join(res_forward_dir, 'Ol.nc')
       createNetCDF(fname, Ol.shape, Ol)
-      fname = os.path.join(res_forward, 'On.nc')
+      fname = os.path.join(res_forward_dir, 'On.nc')
+      createNetCDF(fname, Ol.shape, On)
+      fname = os.path.join(res_forward_dir, 'Op.nc')
       createNetCDF(fname, Ol.shape, Op)
-      fname = os.path.join(res_forward, 'Op.nc')
-      createNetCDF(fname, Ol.shape, Op)
+
+       
+      fname = os.path.join(res_forward_dir, 'dat_ed_true.nc')
+      createNetCDF(fname, Ol.shape, dat_ed_true)
+      fname = os.path.join(res_forward_dir, 'dat_p_true.nc')
+      createNetCDF(fname, Ol.shape, dat_en_true)
+      fname = os.path.join(res_forward_dir, 'dat_n_true.nc')
+      createNetCDF(fname, Ol.shape, dat_nec_true)
 
       ''' 
 
@@ -214,7 +230,7 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
       diff_ed = w_ed * np.linalg.norm((dat_ed_true - Ol).flatten())**2 * dx**3
       #diff_vt =  w_vt * np.linalg.norm((dat_vt_true - dat_vt_rec).flatten())**2 * dx**3
       
-      Q_neg = np.load(params['q_neg'])[:, :6]
+      Q_neg = np.load(params['q_neg'])
       bias = params['beta_p'] * 0.5 * np.linalg.norm(Q_neg.T * x)
       
       #J = diff_en + diff_nec + diff_ed + diff_vt + bias 
@@ -224,11 +240,11 @@ def create_cma_output(solutions, lb_vec, ub_vec, init_vec, list_vars, params):
       #out = "Objective function (En + Nec + Ed + + Bias = J) : %.4f + %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, diff_vt, bias, J)
       out = "Objective function (En + Nec + Ed + + Bias = J) : %.4f + %.4f + %.4f + %.4f = %.4f "%(diff_en, diff_nec, diff_ed, bias, J)
       print(out)
-      
-      #os.remove(en_rec_path)
-      #os.remove(nec_rec_path)
-      #os.remove(i_rec_path)
-      
+      ''' 
+      os.remove(en_rec_path)
+      os.remove(nec_rec_path)
+      os.remove(i_rec_path)
+      '''
   return J_vec
 
 
@@ -263,13 +279,31 @@ def isfloat(x):
 def obs_operator(p_vec, n_vec, i_vec, wm_vec, gm_vec, vt_csf, i_th, s_gen, s_ed):
   
   c_vec = p_vec + n_vec + i_vec 
+ 
+  Oc = np.ones(c_vec.shape)
+  Oc[c_vec < wm_vec] = 0.0
+  Oc[c_vec < gm_vec] = 0.0
+  Oc[c_vec < vt_csf] = 0.0
   
+  Op = Oc.copy()
+  Op[p_vec < n_vec] = 0.0 
+  Op[p_vec < i_vec] = 0.0 
+
+  On = Oc.copy()
+  On[n_vec < p_vec] = 0.0 
+  On[n_vec < i_vec] = 0.0 
+
+  Ol = 1 - Op - On
+  Ol[c_vec < vt_csf] = 0.0
+  Ol[i_vec < i_th] = 0.0
+
+
+  '''
   Oc = HS(c_vec, wm_vec, s_gen) * HS(c_vec, gm_vec, s_gen) * HS(c_vec, vt_csf, s_gen)
   On = HS(n_vec, p_vec, s_gen) * HS(n_vec, i_vec, s_gen) * Oc
   Op = HS(p_vec, n_vec, s_gen) * HS(p_vec, i_vec, s_gen) * Oc
-  Ol = HS(i_vec, i_th, s_ed) * (1 - Op - On - vt_csf) 
-  Ol[Ol < 0] = 0  
-
+  Ol = HS(i_vec, i_th, s_ed) * (1 - Op - On) * HS(c_vec, vt_csf, s_gen)
+  '''
   return Op, On, Ol
 
 def HS(vec_0, vec_1, n):
@@ -290,8 +324,8 @@ if __name__ == "__main__":
   config_path = args.ms_solver_config
 
   params = read_config(config_path)
-  params['HS_seg'] = 128
-  params['HS_ed'] = 128
+  params['HS_seg'] = 1024
+  params['HS_ed'] = 1024
   run_multispecies_inversion(params) 
    
   

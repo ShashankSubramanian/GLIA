@@ -102,10 +102,14 @@ PetscErrorCode SpectralOperators::computeGradient(Vec grad_x, Vec grad_y, Vec gr
   PetscErrorCode ierr = 0;
   ScalarType *grad_x_ptr, *grad_y_ptr, *grad_z_ptr, *x_ptr;
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(grad_x, &grad_x_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(grad_y, &grad_y_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(grad_z, &grad_z_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(x, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(grad_x, &grad_x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(grad_y, &grad_y_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(grad_z, &grad_z_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(x, &x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(grad_x, &grad_x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(grad_y, &grad_y_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(grad_z, &grad_z_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(x, &x_ptr); CHKERRQ(ierr);
 
   if (fft_mode_ == ACCFFT) {
     TU_assert(false, "ACCFFT is switched off for CUDA (only single GPU support)");
@@ -156,10 +160,14 @@ PetscErrorCode SpectralOperators::computeGradient(Vec grad_x, Vec grad_y, Vec gr
     }
   }
 
-  ierr = VecCUDARestoreArrayReadWrite(grad_x, &grad_x_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(grad_y, &grad_y_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(grad_z, &grad_z_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(x, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(grad_x, &grad_x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(grad_y, &grad_y_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(grad_z, &grad_z_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(x, &x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(grad_x, &grad_x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(grad_y, &grad_y_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(grad_z, &grad_z_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(x, &x_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(grad_x, &grad_x_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(grad_y, &grad_y_ptr); CHKERRQ(ierr);
@@ -181,10 +189,10 @@ PetscErrorCode SpectralOperators::computeDivergence(Vec div, Vec dx, Vec dy, Vec
   PetscErrorCode ierr = 0;
   ScalarType *div_ptr, *dx_ptr, *dy_ptr, *dz_ptr;
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(div, &div_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(dx, &dx_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(dy, &dy_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(dz, &dz_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(div, &div_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(dx, &dx_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(dy, &dy_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(dz, &dz_ptr); CHKERRQ(ierr);
 
   if (fft_mode_ == ACCFFT) {
     TU_assert(false, "ACCFFT is switched off for CUDA (only single GPU support)");
@@ -240,10 +248,14 @@ PetscErrorCode SpectralOperators::computeDivergence(Vec div, Vec dx, Vec dy, Vec
     cudaDeviceSynchronize();
   }
 
-  ierr = VecCUDARestoreArrayReadWrite(div, &div_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(dx, &dx_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(dy, &dy_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(dz, &dz_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(div, &div_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(dx, &dx_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(dy, &dy_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(dz, &dz_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(div, &div_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(dx, &dx_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(dy, &dy_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(dz, &dz_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(div, &div_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(dx, &dx_ptr); CHKERRQ(ierr);

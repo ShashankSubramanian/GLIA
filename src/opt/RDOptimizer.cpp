@@ -233,7 +233,8 @@ PetscErrorCode RDOptimizer::solve() {
 
   /* === get solution === */
   Vec sol; PetscReal xdiff;
-  ierr = TaoGetSolutionVector(tao_, &sol); CHKERRQ(ierr);
+  //ierr = TaoGetSolutionVector(tao_, &sol); CHKERRQ(ierr);
+  ierr = TaoGetSolution(tao_, &sol); CHKERRQ(ierr);
   ierr = VecCopy(sol, xrec_); CHKERRQ(ierr);
 
   /* === get solution status === */

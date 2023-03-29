@@ -187,7 +187,8 @@ PetscErrorCode TILOptimizer::solve() {
   MPI_Reduce(&self_exec_time_tuninv, &invtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
   /* === get solution === */
-  Vec sol; ierr = TaoGetSolutionVector (tao_, &sol); CHKERRQ(ierr);
+  //Vec sol; ierr = TaoGetSolutionVector (tao_, &sol); CHKERRQ(ierr);
+  Vec sol; ierr = TaoGetSolution(tao_, &sol); CHKERRQ(ierr);
   ierr = VecCopy (sol, xrec_); CHKERRQ(ierr);
 
   /* === get termination info === */

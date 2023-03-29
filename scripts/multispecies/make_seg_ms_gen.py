@@ -20,11 +20,19 @@ def create_seg_ms(res_dir):
   wm_path = os.path.join(res_dir, 'wm_rec_final.nc')
   gm_path = os.path.join(res_dir, 'gm_rec_final.nc')
   
+  bg_path = os.path.join(res_dir, 'bg.nc') 
+  csf_path = os.path.join(res_dir, 'csf_rec_final.nc') 
+  vt_path = os.path.join(res_dir, 'vt_rec_final.nc')
+
+
   with open(config_path, 'r') as f:
     lines = f.readlines()
     for l in lines: 
       if 'invasive_thres_data=' in l:
         i_th = float(l.split('invasive_thres_data=')[-1])
+
+
+  
   
   en = readNetCDF(en_path)
   nec = readNetCDF(nec_path)
@@ -32,42 +40,44 @@ def create_seg_ms(res_dir):
   seg = readNetCDF(seg_path)
   wm = readNetCDF(wm_path)
   gm = readNetCDF(gm_path)
- 
-  ed = np.array((infl > i_th)) * (1 - en - nec - infl) 
-  total = np.maximum(infl, nec)
-  total = np.maximum(total, en)
+  bg = readNetCDF(bg_path)
+  csf = readNetCDF(csf_path)
+  vt = readNetCDF(vt_path)
+  
+  f = bg + csf + vt 
+
+  c = en + nec + infl
+
+  Oc = np.ones(c.shape)
+  Oc[c < wm] = 0.0
+  Oc[c < gm] = 0.0
+  Oc[c < f] = 0.0
+
+  Op = Oc.copy()
+  Op[en < nec] = 0.0
+  Op[en < infl] = 0.0
+  
+  On = Oc.copy()
+  On[nec < en] = 0.0
+  On[nec < infl] = 0.0
+
+  Ol = 1 - Op - On
+  Ol[c < f] = 0.0
+  Ol[infl < i_th] = 0.0
+  
   
   seg_ms = seg.copy()
 
-  tmp0 = np.array((total == nec))
-  tmp1 = np.array((seg == 1))
-  tmp = tmp0 * tmp1
-  seg_ms[tmp] = 1
+  seg_ms[Op == 1] = 4
+  seg_ms[On == 1] = 1
+  seg_ms[Ol == 1] = 2
 
-  tmp0 = np.array((total == en))
-  tmp1 = np.array((seg == 1))
-  tmp = tmp0 * tmp1
-  seg_ms[tmp] = 4
- 
-   
-  tmp1 = np.array((total == infl))
-  tmp2 = np.array((seg != 7))
-  tmp3 = np.array((seg != 8))
-  tmp4 = np.array((infl > i_th))
-  tmp = tmp1 * tmp2 * tmp3 * tmp4 
-  seg_ms[tmp] = 2
- 
-  '''
-  tmp0 = np.array((seg != 1))
-  tmp1 = np.array((infl > i_th))
-  tmp2 = np.array((seg != 7))
-  tmp = tmp0 * tmp1 * tmp2
-  seg_ms[tmp] = 2
-  '''
-  tc = (seg == 1)
-
+  seg_ic = seg_ms.copy()
+  seg_ic[seg_ic == 4] = 2
+  
   createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final.nc'), seg_ms.shape, seg_ms)
-  createNetCDF(os.path.join(res_dir, 'tc.nc'), tc.shape, tc)
+  createNetCDF(os.path.join(res_dir, 'seg_ms_rec_final_ic.nc'), seg_ms.shape, seg_ic)
+  
   
   
 

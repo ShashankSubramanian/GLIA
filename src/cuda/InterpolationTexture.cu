@@ -44,7 +44,7 @@ following papers:
 #include <stdio.h>
 #include "petsc.h"
 #include "petscconf.h"
-#include "petsccuda.h"
+//#include "petsccuda.h"
 #include "cuda.h"
 #include "cuda_runtime.h"
 #include "interp_poly_kernel.cu"

@@ -93,6 +93,7 @@ buildpath = os.path.join(env["builddir"], "") # Ensures to have a trailing slash
 print
 env.Append(LIBPATH = [('#' + buildpath)])
 env.Append(CCFLAGS= ['-std=c++11'])
+#env.Append(CCFLAGS= ['-std=c++11'])
 #env.Append(CCFLAGS= ['-Wall', '-std=c++11'])
 
 WARN='-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror -Wno-unused'
@@ -225,16 +226,23 @@ if env["niftiio"] == True:
 else:
     PNETCDF_DIR = checkset_var("PNETCDF_DIR", "")
     env.Append(CPPPATH = [os.path.join( PNETCDF_DIR, "include")])
+    env.Append(CPPPATH = [os.path.join( PNETCDF_DIR, "lib")])
     env.Append(LIBPATH = [os.path.join( PNETCDF_DIR, "lib")])
     uniqueCheckLib(conf, "pnetcdf")
 
 # ====== PETSc ========
 PETSC_DIR = checkset_var("PETSC_DIR", "")
-PETSC_ARCH = checkset_var("PETSC_ARCH", "")
-env.Append(CPPPATH = [os.path.join( PETSC_DIR, "include"),
-                      os.path.join( PETSC_DIR, PETSC_ARCH, "include")])
-env.Append(LIBPATH = [os.path.join( PETSC_DIR, "lib"),
-                      os.path.join( PETSC_DIR, PETSC_ARCH, "lib")])
+PETSC_INC = checkset_var("PETSC_INC", "")
+PETSC_LIB = checkset_var("PETSC_LIB", "")
+#PETSC_ARCH = checkset_var("PETSC_ARCH", "")
+env.Append(CPPPATH = [os.path.join( PETSC_INC), os.path.join(PETSC_DIR, 'milan-a100/include')
+                      ])
+#env.Append(CPPPATH = [os.path.join( PETSC_INC),
+#                      ])
+env.Append(LIBPATH = [os.path.join( PETSC_LIB), os.path.join(PETSC_DIR, 'milan-a100/lib')
+                      ])
+#env.Append(LIBPATH = [os.path.join( PETSC_LIB)
+#                      ])
 
 if env["platform"] == "hazelhen":
   # do nothing

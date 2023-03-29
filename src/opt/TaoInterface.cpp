@@ -253,7 +253,8 @@ PetscErrorCode optimizationMonitor (Tao tao, void *ptr) {
   // step length / trust region radius of iteratore and termination reason
   Vec tao_x, tao_grad;
   ierr = TaoGetSolutionStatus (tao, &its, &J, &gnorm, &cnorm, &step, &flag); CHKERRQ(ierr);
-  ierr = TaoGetSolutionVector(tao, &tao_x); CHKERRQ(ierr);
+  //ierr = TaoGetSolutionVector(tao, &tao_x); CHKERRQ(ierr);
+  ierr = TaoGetSolution(tao, &tao_x); CHKERRQ(ierr);
   // get gradient vector norm for bqnls since gnorm is a different residual in this algorithm
   ierr = TaoGetGradientVector(tao, &tao_grad); CHKERRQ(ierr);
   ierr = VecNorm (tao_grad, NORM_2, &gnorm); CHKERRQ (ierr);
@@ -387,7 +388,8 @@ PetscErrorCode checkConvergenceGrad (Tao tao, void *ptr) {
   TaoLineSearchConvergedReason ls_flag;
   nl = ctx->params_->grid_->nl_;
   ng = ctx->params_->grid_->ng_;
-  ierr = TaoGetSolutionVector(tao, &x); CHKERRQ(ierr);
+  //ierr = TaoGetSolutionVector(tao, &x); CHKERRQ(ierr);
+  ierr = TaoGetSolution(tao, &x); CHKERRQ(ierr);
   ierr = TaoGetLineSearch(tao, &ls); CHKERRQ (ierr);
   ierr = VecDuplicate(ctx->tumor_->p_, &g); CHKERRQ(ierr);
   ierr = TaoLineSearchGetSolution(ls, x, &J, g, &step, &ls_flag); CHKERRQ (ierr);
@@ -559,7 +561,8 @@ PetscErrorCode checkConvergenceGradObj (Tao tao, void *ptr) {
   // get line-search status
   nl = ctx->params_->grid_->nl_;
   ng = ctx->params_->grid_->ng_;
-  ierr = TaoGetSolutionVector(tao, &x); CHKERRQ(ierr);
+  //ierr = TaoGetSolutionVector(tao, &x); CHKERRQ(ierr);
+  ierr = TaoGetSolution(tao, &x); CHKERRQ(ierr);
   ierr = TaoGetLineSearch(tao, &ls); CHKERRQ (ierr);
   ierr = VecDuplicate (x, &g); CHKERRQ (ierr);
   ierr = TaoLineSearchGetSolution(ls, x, &jx, g, &step, &ls_flag); CHKERRQ (ierr);

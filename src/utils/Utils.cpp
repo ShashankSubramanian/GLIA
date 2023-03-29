@@ -54,9 +54,14 @@ PetscErrorCode VecField::getComponentArrays(ScalarType *&x_ptr, ScalarType *&y_p
   PetscErrorCode ierr = 0;
 
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(x_, &x_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(y_, &y_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(z_, &z_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(x_, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(y_, &y_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(z_, &z_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(x_, &x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(y_, &y_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(z_, &z_ptr); CHKERRQ(ierr);
+
+
 #else
   ierr = VecGetArray(x_, &x_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(y_, &y_ptr); CHKERRQ(ierr);
@@ -71,7 +76,8 @@ PetscErrorCode vecGetArray(Vec x, ScalarType **x_ptr) {
   PetscErrorCode ierr = 0;
 
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(x, x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(x, x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(x, x_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(x, x_ptr); CHKERRQ(ierr);
 #endif
@@ -84,7 +90,8 @@ PetscErrorCode vecRestoreArray(Vec x, ScalarType **x_ptr) {
   PetscErrorCode ierr = 0;
 
 #ifdef CUDA
-  ierr = VecCUDARestoreArrayReadWrite(x, x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(x, x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(x, x_ptr); CHKERRQ(ierr);
 #else
   ierr = VecRestoreArray(x, x_ptr); CHKERRQ(ierr);
 #endif
@@ -97,9 +104,12 @@ PetscErrorCode VecField::restoreComponentArrays(ScalarType *&x_ptr, ScalarType *
   PetscErrorCode ierr = 0;
 
 #ifdef CUDA
-  ierr = VecCUDARestoreArrayReadWrite(x_, &x_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(y_, &y_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(z_, &z_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(x_, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(y_, &y_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(z_, &z_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(x_, &x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(y_, &y_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(z_, &z_ptr); CHKERRQ(ierr);
 #else
   ierr = VecRestoreArray(x_, &x_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(y_, &y_ptr); CHKERRQ(ierr);
@@ -119,9 +129,11 @@ PetscErrorCode VecField::computeMagnitude(Vec magnitude) {
   ierr = VecGetLocalSize(x_, &sz); CHKERRQ(ierr);
 
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(magnitude, &mag_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(magnitude, &mag_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(magnitude, &mag_ptr); CHKERRQ(ierr);
   computeMagnitudeCuda(mag_ptr, x_ptr, y_ptr, z_ptr, sz);
-  ierr = VecCUDARestoreArrayReadWrite(magnitude, &mag_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(magnitude, &mag_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(magnitude, &mag_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(magnitude, &mag_ptr); CHKERRQ(ierr);
   for (int i = 0; i < sz; i++) {
@@ -145,11 +157,13 @@ PetscErrorCode VecField::setIndividualComponents(Vec x_in) {
   ierr = getComponentArrays(x_ptr, y_ptr, z_ptr);
 
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(x_in, &in_ptr); CHKERRQ(ierr);
   cudaMemcpy(x_ptr, in_ptr, sizeof(ScalarType) * local_size / 3, cudaMemcpyDeviceToDevice);
   cudaMemcpy(y_ptr, &in_ptr[local_size / 3], sizeof(ScalarType) * local_size / 3, cudaMemcpyDeviceToDevice);
   cudaMemcpy(z_ptr, &in_ptr[2 * local_size / 3], sizeof(ScalarType) * local_size / 3, cudaMemcpyDeviceToDevice);
-  ierr = VecCUDARestoreArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(x_in, &in_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(x_in, &in_ptr); CHKERRQ(ierr);
   for (int i = 0; i < local_size / 3; i++) {
@@ -175,11 +189,13 @@ PetscErrorCode VecField::getIndividualComponents(Vec x_in) {
   ierr = getComponentArrays(x_ptr, y_ptr, z_ptr);
 
 #ifdef CUDA
-  ierr = VecCUDAGetArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(x_in, &in_ptr); CHKERRQ(ierr);
   cudaMemcpy(in_ptr, x_ptr, sizeof(ScalarType) * local_size / 3, cudaMemcpyDeviceToDevice);
   cudaMemcpy(&in_ptr[local_size / 3], y_ptr, sizeof(ScalarType) * local_size / 3, cudaMemcpyDeviceToDevice);
   cudaMemcpy(&in_ptr[2 * local_size / 3], z_ptr, sizeof(ScalarType) * local_size / 3, cudaMemcpyDeviceToDevice);
-  ierr = VecCUDARestoreArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(x_in, &in_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(x_in, &in_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(x_in, &in_ptr); CHKERRQ(ierr);
   for (int i = 0; i < local_size / 3; i++) {

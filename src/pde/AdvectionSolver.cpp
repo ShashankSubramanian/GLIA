@@ -344,13 +344,19 @@ PetscErrorCode SemiLagrangianSolver::setCoords(std::shared_ptr<VecField> coords)
 
 #ifdef CUDA
   ScalarType *x_ptr, *y_ptr, *z_ptr;
-  ierr = VecCUDAGetArrayReadWrite(coords->x_, &x_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(coords->y_, &y_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(coords->z_, &z_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(coords->x_, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(coords->y_, &y_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(coords->z_, &z_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(coords->x_, &x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(coords->y_, &y_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(coords->z_, &z_ptr); CHKERRQ(ierr);
   setCoordsCuda(x_ptr, y_ptr, z_ptr, params->grid_->isize_);
-  ierr = VecCUDARestoreArrayReadWrite(coords->x_, &x_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(coords->y_, &y_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(coords->z_, &z_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(coords->x_, &x_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(coords->y_, &y_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(coords->z_, &z_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(coords->x_, &x_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(coords->y_, &y_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(coords->z_, &z_ptr); CHKERRQ(ierr);
 #else
   TU_assert(false, "Not implemented for CPUs.")
 #endif
@@ -380,9 +386,12 @@ PetscErrorCode SemiLagrangianSolver::interpolate(Vec output, Vec input) {
   ierr = VecRestoreArray(input, &in_ptr); CHKERRQ(ierr);
   ierr = VecRestoreArray(output, &out_ptr); CHKERRQ(ierr);
 #elif CUDA
-  ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(input, &in_ptr); CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(output, &out_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(input, &in_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(output, &out_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(input, &in_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(output, &out_ptr); CHKERRQ(ierr);
 #ifdef SINGLE
   gpuInterp3D(in_ptr, &query_ptr[0], &query_ptr[params->grid_->nl_], &query_ptr[2 * params->grid_->nl_], out_ptr, temp_interpol1_, temp_interpol2_, params->grid_->n_, m_texture_, params->tu_->interpolation_order_,
               (float *)t.data());
@@ -393,9 +402,12 @@ PetscErrorCode SemiLagrangianSolver::interpolate(Vec output, Vec input) {
               (float *)t.data());
   copyFloatToDoubleCuda(out_ptr, temp_1_, params->grid_->nl_);
 #endif
-  ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(input, &in_ptr); CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(output, &out_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(input, &in_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(output, &out_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(input, &in_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(output, &out_ptr); CHKERRQ(ierr);
 #else
   ierr = VecGetArray(input, &in_ptr); CHKERRQ(ierr);
   ierr = VecGetArray(output, &out_ptr); CHKERRQ(ierr);
@@ -425,7 +437,8 @@ PetscErrorCode SemiLagrangianSolver::interpolate(std::shared_ptr<VecField> outpu
 
 #if defined(CUDA) && !defined(MPICUDA)
   ScalarType *ix_ptr, *iy_ptr, *iz_ptr, *ox_ptr, *oy_ptr, *oz_ptr, *query_ptr;
-  ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(query_points_, &query_ptr); CHKERRQ(ierr);
   ierr = input->getComponentArrays(ix_ptr, iy_ptr, iz_ptr); CHKERRQ(ierr);
   ierr = output->getComponentArrays(ox_ptr, oy_ptr, oz_ptr); CHKERRQ(ierr);
 #ifdef SINGLE
@@ -441,7 +454,8 @@ PetscErrorCode SemiLagrangianSolver::interpolate(std::shared_ptr<VecField> outpu
   copyFloatToDoubleCuda(oy_ptr, temp_2_, params->grid_->nl_);
   copyFloatToDoubleCuda(oz_ptr, temp_3_, params->grid_->nl_);
 #endif
-  ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(query_points_, &query_ptr); CHKERRQ(ierr);
   ierr = input->restoreComponentArrays(ix_ptr, iy_ptr, iz_ptr); CHKERRQ(ierr);
   ierr = output->restoreComponentArrays(ox_ptr, oy_ptr, oz_ptr); CHKERRQ(ierr);
 #else
@@ -497,10 +511,12 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories() {
   ierr = work_field_->getIndividualComponents(query_points_); CHKERRQ(ierr);
 // multi-GPU
 #elif defined(MPICUDA)
-  ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(query_points_, &query_ptr); CHKERRQ(ierr);
   ierr = velocity->getComponentArrays(vx_ptr, vy_ptr, vz_ptr);
   computeEulerPointsCuda(query_ptr, vx_ptr, vy_ptr, vz_ptr, dt, params->grid_->isize_);
-  ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(query_points_, &query_ptr); CHKERRQ(ierr);
   ierr = velocity->restoreComponentArrays(vx_ptr, vy_ptr, vz_ptr);
 // only CPU (MPI)
 #else
@@ -561,9 +577,11 @@ PetscErrorCode SemiLagrangianSolver::computeTrajectories() {
 #elif defined(MPICUDA)
   ierr = velocity->getComponentArrays(vx_ptr, vy_ptr, vz_ptr);
   ierr = work_field_->getComponentArrays(wx_ptr, wy_ptr, wz_ptr);
-  ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDAGetArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(query_points_, &query_ptr); CHKERRQ(ierr);
   computeSecondOrderEulerPointsCuda(query_ptr, vx_ptr, vy_ptr, vz_ptr, wx_ptr, wy_ptr, wz_ptr, dt, params->grid_->isize_);
-  ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  //ierr = VecCUDARestoreArrayReadWrite(query_points_, &query_ptr); CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(query_points_, &query_ptr); CHKERRQ(ierr);
   ierr = velocity->restoreComponentArrays(vx_ptr, vy_ptr, vz_ptr);
   ierr = work_field_->restoreComponentArrays(wx_ptr, wy_ptr, wz_ptr);
 #else

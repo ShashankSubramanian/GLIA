@@ -27,6 +27,6 @@ if __name__ == '__main__':
     '--with-x=0',
     'COPTFLAGS="-O3"',
     'CXXOPTFLAGS="-O3"',
-    'CUDAFLAGS="-arch=sm_70"'
+    'CUDAFLAGS="-arch=sm_80"'
   ]
   configure.petsc_configure(configure_options)

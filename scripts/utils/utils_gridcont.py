@@ -13,7 +13,7 @@ from netCDF4 import Dataset
 import heapq
 import glob
 
-import networkx as nx
+#import networkx as nx
 import scipy
 from scipy.spatial import distance
 from scipy.sparse import csr_matrix
@@ -255,17 +255,20 @@ def compute_concomp(data, level):
     xcm_data_sorted    = {}
 
     total_mass = 0
-    labeled, ncomponents = scipy.ndimage.measurements.label(img, structure);
+    labeled, ncomponents = scipy.ndimage.label(img, structure);
     print("[] computing connected components of TC data:" + bcolors.OKBLUE + " {} components found".format(ncomponents),
     bcolors.ENDC)
     for i in range(ncomponents):
         comps[i] = (labeled == i+1)
-        a, b = scipy.ndimage.measurements._stats(comps[i])
+        #a, b = scipy.ndimage.measurements._stats(comps[i])
+        b = scipy.ndimage.measurements.sum_labels(comps[i])
         total_mass += b
     for i in range(ncomponents):
-        count[i], sums[i]  = scipy.ndimage.measurements._stats(comps[i])
+        #count[i], sums[i]  = scipy.ndimage.measurements._stats(comps[i])
+        sums[i]  = scipy.ndimage.measurements.sum_labels(comps[i])
+        #count[i] = scipy.ndimage.measurements(comps[i])
         relmass[i] = sums[i]/float(total_mass);
-        xcm_data_px[i] = scipy.ndimage.measurements.center_of_mass(comps[i])
+        xcm_data_px[i] = scipy.ndimage.center_of_mass(comps[i])
         xcm_data[i] = tuple([2 * math.pi * xcm_data_px[i][0] / float(level), 2 * math.pi * xcm_data_px[i][1] / float(level), 2 * math.pi * xcm_data_px[i][2] / float(level)]);
 
     # sort components according to their size
@@ -448,6 +451,175 @@ def compute_connected_components(args, labels=None, obs_th=-1):
             phi_cm_selection_file.write(" %1.8f, %1.8f, %1.8f, %d\n" % (cm[2]*hx, cm[1]*hx, cm[0]*hx, cm[3]+1));
         phi_cm_selection_file.write("];")
 
+
+
+def compute_connected_components_ms(args, labels=None, obs_th=-1):
+    """ Computes connecte components of tumor data and writes file with component data.
+    """
+    res_path  = os.path.join(args.input_path);
+    init_path = os.path.join(args.input_path, '../init');
+    level = int(res_path.split("nx")[-1].split("/")[0]);
+
+    data_not_from_seg = labels==None
+
+    if data_not_from_seg:
+        fname = "data"
+    else:        
+        fname = "patient_seg"
+    ref_img = None
+    success = True
+    try:
+        ext = ".nc"
+        data = np.swapaxes(fio.readNetCDF(os.path.join(init_path, fname + ext)), 0, 2)
+        dims = data.shape
+    except Exception as c:
+        success = False
+    if not success:
+        try:
+            ext = ".nii.gz"
+            ref_img = nib.load(os.path.join(init_path, fname + ext))
+            data = ref_img.get_fdata()
+            dims = data.shape;
+        except Exception as c:
+            print(c)
+            return
+    if labels is not None:
+        if 'tc' in labels:
+            tc = (data==labels['tc']).astype(float)
+        else:
+            en = (data==labels['en']).astype(float)
+            nec = (data==labels['nec']).astype(float)
+            tc = np.logical_or(en, nec).astype(float)
+        data = tc
+    # observation operator:
+    if obs_th > 0:
+        m = np.amax(data.flatten())
+        th = obs_th * m
+        print(" .. applying rel. obs-threshold: th = {}x{} = max, resulting in new threshold of: {} ".format(obs_th, m, th))
+        data = np.where(data > th, data, 0)
+    if ext == ".nc":
+        fio.createNetCDF(os.path.join(args.output_path,'target_data_nx'+str(level)+'.nc'), np.shape(data), np.swapaxes(data,0,2));
+    else:
+        fio.writeNII(data, os.path.join(args.output_path,'target_data_nx'+str(level)+'.nii.gz'), affine=ref_img.affine, ref_image=ref_img);
+
+    if data_not_from_seg:
+        data = (data>0).astype(float)
+    # compute connected components
+    labeled, comps_data, ncomps_data, xcm_data_px, xcm_data, relmass = compute_concomp(data, level);
+
+    # write labels
+    fname = os.path.join(args.output_path, 'data_comps_nx'+str(level))
+    if ref_img is not None:
+        fio.writeNII(labeled, fname + ".nii.gz", affine=ref_img.affine, ref_image=ref_img);
+    else:
+        fio.createNetCDF(fname + ".nc", np.shape(labeled), np.swapaxes(labeled,0,2));
+
+    # write to file
+    concomp_file = open(os.path.join(res_path,'dcomp.dat'),'w');
+    concomp_file.write("#components:\n")
+    concomp_file.write(str(ncomps_data) + "\n")
+    concomp_file.write("center of mass:\n")
+    for i in range(ncomps_data):
+         concomp_file.write(str(xcm_data[i][2]) + ',' + str(xcm_data[i][1]) + ',' + str(xcm_data[i][0]) + "\n" )
+    concomp_file.write("relative mass:\n")
+    for i in range(ncomps_data):
+        concomp_file.write(str(relmass[i]) + "\n" )
+    concomp_file.close();
+
+    hx = 2*math.pi/float(level);
+    phi_cm_data_file = open(os.path.join(res_path,'phi-cm-data.txt'),'w');
+    p_cm_data_file = open(os.path.join(res_path,'p-cm-data.txt'),'w');
+    phi_cm_data_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (args.sigma * hx, 2*hx));
+    phi_cm_data_file.write(" centers = [\n")
+    p_cm_data_file.write("p = [\n")
+    for i in range(ncomps_data):
+        phi_cm_data_file.write(" %1.8f, %1.8f, %1.8f\n" % (xcm_data[i][2], xcm_data[i][1], xcm_data[i][0]));
+        p_cm_data_file.write(" %1.8f\n" % 0.);
+    phi_cm_data_file.write("];")
+    p_cm_data_file.write("];")
+
+    # compute Gaussian support based on c(0) intensity ranking, with minimum 10 Gaussians per component
+    if args.select_gaussians:
+        np_shared = 200;
+        hx = 2*math.pi/float(level);
+        data_c0 = fio.readNetCDF(os.path.join(init_path, "support_data.nc"));
+        pat_seg = fio.readNetCDF(os.path.join(init_path, "patient_seg.nc"))
+        # Enforce the rec IC in nec
+        data_c0[pat_seg != 1] = 0
+        #### 
+        data_c0 = np.swapaxes(data_c0,0,2);
+        dims = data_c0.shape;
+        dtype = [('x', np.int), ('y', np.int), ('z', np.int), ('value', np.float)]
+        feasible = np.zeros_like(data_c0);
+        dc0_centers = np.zeros((int(dims[0]/2), int(dims[1]/2), int(dims[2]/2)), dtype=dtype);
+        print("Compute Gaussian support based on c(0) intensity ranking.")
+        print(" max{c(0)}: %1.2e, min{c(0)}: %1.2e" % (np.amax(data_c0.flatten()), np.amin(data_c0.flatten())) );
+
+        d0_centers_comps = {}
+        np_comp = {}
+        CENTERS = []
+        for i in range(ncomps_data):
+            d0_centers_comps[i] = np.zeros((int(dims[0]/2), int(dims[1]/2), int(dims[2]/2)), dtype=dtype);
+            np_comp[i] = int(relmass[i] * np_shared);
+
+        for x in range(0,dims[0],2):
+            for y in range(0,dims[1],2):
+                for z in range(0,dims[2],2):
+                    dc0_centers[int(x/2),int(y/2),int(z/2)]['x'] = x;
+                    dc0_centers[int(x/2),int(y/2),int(z/2)]['y'] = y;
+                    dc0_centers[int(x/2),int(y/2),int(z/2)]['z'] = z;
+                    dc0_centers[int(x/2),int(y/2),int(z/2)]['value'] = data_c0[x,y,z];
+                    feasible[x,y,z] = 1;
+                    for i in range(ncomps_data):
+                        if labeled[x,y,z] == i+1:
+                            d0_centers_comps[i][int(x/2),int(y/2),int(z/2)]['x'] = x;
+                            d0_centers_comps[i][int(x/2),int(y/2),int(z/2)]['y'] = y;
+                            d0_centers_comps[i][int(x/2),int(y/2),int(z/2)]['z'] = z;
+                            d0_centers_comps[i][int(x/2),int(y/2),int(z/2)]['value'] = data_c0[x,y,z];
+        heap     = {}
+        failures = []
+        for i in range(ncomps_data):
+            heap[i] = [];
+            centers = [];
+            for x in range(d0_centers_comps[i].shape[0]):
+                for y in range(d0_centers_comps[i].shape[1]):
+                    for z in range(d0_centers_comps[i].shape[2]):
+                        heapq.heappush(heap[i], (- d0_centers_comps[i][x][y][z]['value'], d0_centers_comps[i][x][y][z]['x'], d0_centers_comps[i][x][y][z]['y'], d0_centers_comps[i][x][y][z]['z'], i))
+            print("\nselecting Gaussians for component #%d: selecting 10 + %d Gaussians according to c(0) ranking." % (i, np_comp[i]));
+            for k in range(10+np_comp[i]):
+                if len(heap[i]) == 0:
+                    print(bcolors.WARNING + "Warning: Heap empty. Selected %d of desired %d Gaussians in component %d" % (k, 10+np_comp[i], i) + bcolors.ENDC);
+                    break;
+                elem = heapq.heappop(heap[i]);
+                if abs(elem[0]) == 0:
+                    print(bcolors.WARNING + "Warning: Heap element zero. Selected %d of desired %d Gaussians in component %d" % (k, 10+np_comp[i], i) + bcolors.ENDC);
+                    break;
+                if feasible[elem[1], elem[2], elem[3]]:
+                    centers.append(tuple([elem[1], elem[2], elem[3], elem[4]]))
+                    feasible[elem[1], elem[2], elem[3]] = 0;
+                else:
+                    print(bcolors.FAIL + "Error: attempting to select a Gaussian with center already selected." + bcolors.ENDC);
+                    failures.append(tuple([elem[1], elem[2], elem[3]]));
+            print("selected centers of component #%d:\n" % i, centers);
+            CENTERS.extend(centers);
+        if (len(failures) > 0):
+            ax.scatter(*zip(*failures), c='magenta', marker='s');
+            print(bcolors.WARNING + "Processing level %d done. Gaussian selection finished with errors." % level + bcolors.ENDC);
+        else:
+            print(bcolors.OKGREEN + "Processing level %d done. No errors occured." % level + bcolors.ENDC);
+
+        # write gaussian centers to file phi-selection.txt
+        phi_cm_selection_file = open(os.path.join(init_path,'phi-support-c0.txt'),'w');
+        phi_cm_selection_file.write(" sigma = %1.8f, spacing = %1.8f\n" % (args.sigma * hx, 2*hx));
+        phi_cm_selection_file.write(" centers = [\n")
+        for cm in CENTERS:
+            phi_cm_selection_file.write(" %1.8f, %1.8f, %1.8f, %d\n" % (cm[2]*hx, cm[1]*hx, cm[0]*hx, cm[3]+1));
+        phi_cm_selection_file.write("];")
+
+###
+### ------------------------------------------------------------------------ ###
+
+
 ###
 ### ------------------------------------------------------------------------ ###
 if __name__=='__main__':
@@ -482,6 +654,8 @@ if __name__=='__main__':
     # read log and extract
     parser.add_argument ('-update_config', action='store_true', help = 'extracts rho and k from logfile of previous level, and updates config');
 
+    parser.add_argument ("-multispecies", type=bool, default=False, help = 'enforce c0 in nec')
+
     args = parser.parse_args();
 
     labels = {}
@@ -503,8 +677,11 @@ if __name__=='__main__':
         resample(args.input_path, args.fname, args.ndim);
 
     if args.concomp_data:
-        compute_connected_components(args, labels_rev, obs_th=args.obs_th)
-
+        if args.multispecies:
+          compute_connected_components_ms(args, labels_rev, obs_th=args.obs_th)
+        else:
+          compute_connected_components(args, labels_rev, obs_th=args.obs_th)
+       
     if args.compute_observation_mask:
         print("[] computing observation mask OBS = TC + lambda*(1-WT) using lambda=", args.obs_lambda)
         compute_observation_mask(args.input_path, args.fname, args.obs_lambda, labels_rev, args.ndim, args.suffix, args.ref_image)

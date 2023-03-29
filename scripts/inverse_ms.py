@@ -12,7 +12,7 @@ r = {}
 
 params = {}
 r['code_path'] = code_dir
-r['compute_sys'] = 'longhorn'
+r['compute_sys'] = 'lonestar'
 r['extra_modules'] = '\nsource /work/07544/ghafouri/longhorn/gits/claire_glia.sh\n'
 r['extra_modules'] = '\nconda activate gen\n'
 
