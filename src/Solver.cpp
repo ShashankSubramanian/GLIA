@@ -1092,3 +1092,176 @@ PetscErrorCode MultiSpeciesSolver::finalize() {
 
   PetscFunctionReturn(ierr);
 }
+
+/* #### ------------------------------------------------------------------- #### */
+/* #### ========            InverseMultiSpeciesSolver              ======== #### */
+/* #### ------------------------------------------------------------------- #### */
+
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###
+PetscErrorCode InverseMultiSpeciesSolver::initialize(std::shared_ptr<SpectralOperators> spec_ops, std::shared_ptr<Parameters> params, std::shared_ptr<ApplicationSettings> app_settings) {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin; 
+  std::stringstream ss;
+
+  ierr = tuMSGwarn("Initializing Inverse MultiSpecies Inversion. "); CHKERRQ(ierr);
+  
+  ierr = SolverInterface::initialize(spec_ops, params, app_settings); CHKERRQ(ierr);
+
+  // Need to modify the data smoothing in synthetic or real cases  
+
+  ierr = readPatient(); CHKERRQ(ierr);
+  ierr = setupData(); CHKERRQ(ierr);
+  
+
+  // if TIL is given as parametrization Phi(p): set c(0), no phi apply in RD inversion
+  if(!has_dt0_){
+    // set gaussians from p_rec_ read and then apply phi
+    // TODO: complete this part
+  }
+ 
+  if (p_rec_ != nullptr) {
+    ierr = VecDestroy(&p_rec_); CHKERRQ(ierr);
+    p_rec_ = nullptr;
+  } 
+  
+  int n_g = (params_->opt_->invert_mass_effect_) ? 1 : 0;
+  // TODO: need to define get_nms()
+  n_inv_ = n_g + params_->get_nms(); 
+  
+  ierr = VecCreateSeq(PETSC_COMM_SELF, n_inv_, &p_rec_); CHKERRQ(ierr);
+  ierr = setupVec(p_rec_, SEQ); CHKERRQ(ierr);
+  ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  
+  ss << " .. creating p_vec of size " << n_inv_ << ", where ng = " << n_g << " and nms = " << params_->get_nms();
+  
+  ierr = tuMSGstd(ss.str()); CHKERRQ(ierr); ss.str(""); ss.clear();
+  // reset p vec in tumor and pde_operators
+  ierr = resetOperators(p_rec_); CHKERRQ(ierr);
+  
+  // === create optimizer
+  // TODO: implement the MSOptmizer
+  optimizer_ = std:make_shared<MSOptimizer>();
+  ierr = optimizer_->initialize(derivative_operators_, pde_operators_, params_, tumor_); CHKERRQ(ierr);
+
+  // set patient material properties
+  ierr = tumor_->rho_->setVaues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  
+  if (!warmstart_p_) {
+    ierr = VecSet(p_rec_, 0); CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(ierr);
+}
+
+PetscErrorCode InverseMultiSpeciesSolver::run() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+  
+  ierr = tuMSGwarn(" Beginning MultiSpecies Inversion. "); CHKERRQ(ierr);
+  
+  // == set initial guess
+  
+  int nms = params_->get_nms();
+  ScalarType *x_ptr; 
+  ierr = VecGetArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+  
+  std:random_device rd; 
+  std:mt19937 eng(rd());
+  std::uniform_real_distribution<> dist1(0.001, 0.2); 
+  std::uniform_real_distribution<> dist2(5.0, 25); 
+  std::uniform_real_distribution<> dist3(0.1, 15.0); 
+  std::uniform_real_distribution<> dist4(0.1, 10.0); 
+  std::uniform_real_distribution<> dist5(1.0, 20.0); 
+  std::uniform_real_distribution<> dist6(1.0, 8.0); 
+  std::uniform_real_distribution<> dist7(1.0, 20.0); 
+  std::uniform_real_distribution<> dist8(0.001, 0.8); 
+  std::uniform_real_distribution<> dist9(0.2, 1.0); 
+  std::uniform_real_distribution<> dist10(0.001, 0.3); 
+  x_ptr[0] = params_->tu_->k_;
+  x_ptr[1] = params_->tu_->rho_
+  x_ptr[2] = params_->tu_->beta_0_;
+  x_ptr[3] = params_->tu_->alpha_0_;
+  x_ptr[4] = params_->tu_->death_rate_;
+  x_ptr[5] = params_->tu_->ox_source_;
+  x_ptr[6] = params_->tu_->ox_consumption_;
+  x_ptr[7] = params_->tu_->ox_hypoxia_;
+  x_ptr[8] = params_->tu_->ox_inv_;
+  x_ptr[9] = params_->tu_->thres_edema_;
+  if (params_->opt_->invert_mass_effect_) {
+    x_ptr[10] = params_->tu_->forcing_factor_;
+  } else {
+    params_->tu_->forcing_factor_ = 0;
+  }
+
+  ierr = VecRestoreArray(p_rec_, &x_ptr); CHKERRQ(ierr);
+  
+  optimizer_->setData(data_);
+  ierr = optimizer_->setInitialGuess(p_rec); CHKERRQ(ierr);
+  ierr = optimizer_->Solve(); CHKERRQ(ierr);
+  ierr = VecCopy(optmizer_->getSolution(), p_rec_); CHKERRQ(ierr);
+
+  ierr = tuMSGstd(" Done with the optimization !"); CHKERRQ(ierr);
+  
+  // Reset mat-props and diffusion and reaction operators, tumor IC does not change
+  ierr = tumor_->mat_prop_->resetValues(); CHKERRQ(ierr);
+  ierr = tumor_->rho_->setValues(params_->tu_->rho_, params_->tu_->r_gm_wm_ratio_, params_->tu_->r_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->k_->setValues(params_->tu_->k_, params_->tu_->k_gm_wm_ratio_, params_->tu_->k_glm_wm_ratio_, tumor_->mat_prop_, params_);
+  ierr = tumor_->velocity_->set(0.);
+  
+  PetscFunctionReturn(ierr);
+
+}
+
+
+ 
+// ### ______________________________________________________________________ ___
+// ### ////////////////////////////////////////////////////////////////////// ###   
+PetscErrorCode InverseMultiSpeciesSolver::finalize() {
+  PetscErrorCode ierr = 0;
+  PetscFunctionBegin;
+
+  std::stringstream ss;
+  int procid, nprocs;
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &procid);
+
+  ierr = tuMSGwarn(" Finalizing MultiSpecies Inversion. "); CHKERRQ(ierr);
+
+  // === compute errors
+  
+  ScalarType *c0_ptr;
+  if (params_->write_output_) {
+    ierr = dataOut(tumor_->c_0_, params_, "c0_rec" + params_->tu_->ext_); CHKERRQ(ierr);
+  }
+
+  // transport mri
+  params_->tu_->transport_mri_ = !app_settings_->path_->mri_.empty();
+  if (params_->tu_->transport_mri_) {
+    if (mri_ == nullptr) {
+
+      ierr = VecDuplicate(tmp_, &mri_); CHKERRQ(ierr);
+      ierr = dataIn(mri_, params_, app_settings_->path_->mri_); CHKERRQ(ierr);
+      if (tumor_->mat_prop_->mri_ == nullptr) {
+        tumor_->mat_prop_->mri_ = mri_;
+      }
+    }
+  }
+
+  if (procid == 0) {
+    if (params_->tu_->verbosity_ >= 1) {
+      ss << " ----------- RECONST VEC ---------------";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("")
+      
+    }
+   
+
+
+  }
+
+
+
+
+}
+

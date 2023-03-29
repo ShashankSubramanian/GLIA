@@ -266,3 +266,60 @@ void computeIndicatorFunctionCuda(ScalarType *i_ptr, ScalarType *x_ptr, ScalarTy
     cudaDeviceSynchronize();
     cudaCheckKernelError();
 }
+
+__global__ void smoothHeavisideFunction(ScalarType *x_ptr, ScalarType *y_ptr, ScalarType shapeFactor int64_t sz) {
+  
+  int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+  if (i < sz) {
+    y_ptr[i] = 1 / (1 + std::exp(- shapeFactor * x_ptr[i]))
+  }
+  
+}
+
+void smoothHeavisideFunctionCuda(ScalarType *x_ptr, ScalarType *y_ptr, ScalarType shapeFactor, int64_t sz) {
+  int n_th = N_THREADS; 
+  
+  smoothHeavisideFunction <<< (sz + n_th - 1) / n_th, n_th >>> (x_ptr, y_ptr, shapeFactor, sz); 
+
+  cudaDeviceSynchronize(); 
+  cudaCheckKernelError();
+  
+}
+
+__global__ void multispeciesObsOperator (ScalarType *p_ptr, ScalarType *n_ptr, ScalarType *i_ptr, ScalarType *w_ptr, ScalarType *g_ptr, ScalarType *f_ptr, ScalarType *Oc_ptr, ScalarType *Op_ptr, ScalarType *On_ptr, ScalarType *Ol_ptr, ScalarType shapeFactorEdema, ScalarType shapeFactor, ScalarType thresEdema, int64_t sz} {
+
+  int64_t i = threadIdx.x + blockDim.x * blockIdx.x;
+
+  if (i < sz) {
+    ScalarType c = p_ptr[i] + n_ptr[i] + i_ptr[i];
+    
+    Oc_ptr[i] = (1/(1+std::exp(-shapeFactor * (c - w_ptr[i])))) * 
+                (1/(1+std::exp(-shapeFactor * (c - g_ptr[i])))) * 
+                (1/(1+std::exp(-shapeFactor * (c - f_ptr[i]))));
+    
+    Op_ptr[i] = (1/(1+std::exp(-shapeFactor * (p_ptr[i] - n_ptr[i])))) * 
+                (1/(1+std::exp(-shapeFactor * (p_ptr[i] - i_ptr[i])))) * 
+                Oc_ptr[i];
+    
+    On_ptr[i] = (1/(1+std::exp(-shapeFactor * (n_ptr[i] - p_ptr[i])))) *
+                (1/(1+std::exp(-shapeFactor * (n_ptr[i] - i_ptr[i])))) *
+                Oc_ptr[i];
+    
+    Ol_ptr[i] = (1 - Op_ptr[i] - On_ptr[i]) * (1/(1 + std::exp(-shapeFactorEdema * (i_ptr[i] - thresEdema))))
+
+  } 
+}
+
+
+void multispeciesObsOperatorsCuda (ScalarType *p_ptr, ScalarType *n_ptr, ScalarType *i_ptr, ScalarType *w_ptr, ScalarType *g_ptr, ScalarType *f_ptr, ScalarType *Oc_ptr, ScalarType *Op_ptr, ScalarType *On_ptr, ScalarType *Ol_ptr, ScalarType shapeFactorEdema, ScalarType shapeFactor, ScalarType thresEdema, int64_t sz) {
+
+  int n_th = N_THREADS;
+  
+  multispeciesObsOperators <<< (sz + n_th - 1) / n_th, n_th >>> (p_ptr, n_ptr, i_ptr, w_ptr, g_ptr, f_ptr, Oc_ptr, Op_ptr, On_ptr, Ol_ptr, shapeFactorEdema, shapeFactor, thresEdema, sz); 
+
+  cudaDeviceSynchronize();
+  cudaCheckKernelError();
+
+}
+
+

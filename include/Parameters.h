@@ -173,7 +173,8 @@ public:
   , r_glm_wm_ratio_ (0.0)                 // glm to wm diffusion coeff ratio
   //, invasive_threshold_ (0.001)         // invasive threshold for edema
   , i0_c0_ratio_ (0.0)                    // i0 c0 ratio
-  , HS_shape_factor_ (16)                 // shape factor for heaviside function in ms model
+  , hs_shape_factor_ (32)                 // shape factor for heaviside function in ms model
+  , hs_shape_factor_edema_ (256)          // shape factor for heaviside function in ms model
   , E_csf_ (100)                          // Young's modulus of CSF
   , E_healthy_ (2100)                     // Young's modulus of wm and gm
   , E_tumor_ (8000)                       // Young's modulus of tumor
@@ -195,7 +196,7 @@ public:
   , ox_inv_ (0.8)                         // invasive oxygen conc
   , death_rate_ (4)                       // death rate
   , ox_hypoxia_ (0.6)                     // hypoxia threshold
-  , invasive_thres_ (0.01)                // invasive thres for edema
+  , thres_edema_ (0.01)                // invasive thres for edema
   , new_changes_ (false)                // invasive thres for edema
   , sparsity_level_ (5)                   // Level of sparsity for L1 solves
   , thresh_component_weight_ (1E-3)       // components with weight smaller than this threshold are not considered in sparsity computation
@@ -293,7 +294,8 @@ public:
   ScalarType r_gm_wm_ratio_;
   ScalarType r_glm_wm_ratio_;
   ScalarType i0_c0_ratio_;
-  ScalarType HS_shape_factor_;
+  ScalarType hs_shape_factor_;
+  ScalarType hs_shape_factor_edema_;
   // mass effect
   ScalarType E_csf_, E_healthy_, E_tumor_, E_bg_;
   ScalarType nu_csf_, nu_healthy_, nu_tumor_, nu_bg_;
@@ -305,7 +307,7 @@ public:
   int num_species_;
   ScalarType ox_source_, ox_consumption_;
   ScalarType alpha_0_, beta_0_, ox_inv_, death_rate_, ox_hypoxia_, sigma_b_;
-  ScalarType invasive_thres_;
+  ScalarType thres_edema_;
   bool new_changes_;
 
   // initial condition (inversion)
@@ -568,7 +570,7 @@ public:
     ox_source_(55),
     beta_0_(0.02),
     ox_inv_(0.7),
-    invasive_thres_(0.02),
+    thres_edema_(0.02),
     new_changes_(false),
     dt_(0.01),
     nt_(100),
@@ -589,7 +591,7 @@ public:
   ScalarType ox_consumption_;
   ScalarType ox_source_;
   ScalarType beta_0_;
-  ScalarType invasive_thres_;
+  ScalarType thres_edema_;
   bool new_changes_;
   ScalarType ox_inv_;
   ScalarType dt_;
