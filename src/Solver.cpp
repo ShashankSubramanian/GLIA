@@ -1252,13 +1252,97 @@ PetscErrorCode InverseMultiSpeciesSolver::finalize() {
     if (params_->tu_->verbosity_ >= 1) {
       ss << " ----------- RECONST VEC ---------------";
       ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
-      ss.str("")
-      
+      ss.str("");
+      ss.clear();
+      ierr = VecView(p_rec_, PETSC_VIEWER_STDOUT_SELF); CHKERRQ(ierr);
+      ss << " ----------------------------------------";
+      ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+      ss.str("");
+      ss.clear(); 
     }
-   
+  }
+  
+  ierr = pde_operators_->solveState(0); CHKERRQ(ierr);
+  ierr = VecCopy(tumor_->c_t_, tmp_); CHKERRQ(ierr);
+  
+  ScalarType mag_norm, mm; 
+
+  if (params_->tu_->write_output_) {
+ 
+    // TODO: Need to write a segmentation compute for multispecies in tumor.cpp
+    ierr = tumor_->computeSegmentationMultiSpecies(); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "c_rec_final";
+    ierr = dataOut(tumor_->c_t_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "vt_rec_final";
+    ierr = dataOut(tumor_->mat_prop_->vt_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "csf_rec_final";
+    ierr = dataOut(tumor_->mat_prop_->csf_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "wm_rec_final";
+    ierr = dataOut(tumor_->mat_prop_->wm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "gm_rec_final";
+    ierr = dataOut(tumor_->mat_prop_->gm_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    Vec mag = nullptr;
+    ierr = pde_operators_->getModelSpecificVector(&mag);
+    ierr = tumor_->displacement_->computeMagnitude(mag);
+    ss << "displacement_rec_final";
+    ierr = dataOut(mag, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ScalarType mag_norm, mm;
+    ierr = VecNorm(mag, NORM_2, &mag_norm); CHKERRQ(ierr);
+    ierr = VecMax(mag, NULL, &mm); CHKERRQ(ierr);
+    ss << " Norm of displacement: " << mag_norm << "; max of displacement: " << mm;
+    ierr = tuMSGstd(ss.str()); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    if (tumor_->mat_prop_->mri_ != nullptr) {
+      ss << "mri_rec_final";
+      ierr = dataOut(tumor_->mat_prop_->mri_, params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+      ss.str(std::string());
+      ss.clear();
+    }
+  }
+
+  if (params_->tu_->write_multispec_output_) {
+
+    ss << "nec_rec_final";
+    ierr = dataOut(tumor_->species_["necrotic"], params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "en_rec_final";
+    ierr = dataOut(tumor_->species_["proliferative"], params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "ed_rec_final";
+    ierr = dataOut(tumor_->species_["edema"], params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+    ss << "i_rec_final";
+    ierr = dataOut(tumor_->species_["infiltrative"], params_, ss.str() + params_->tu_->ext_); CHKERRQ(ierr);
+    ss.str(std::string());
+    ss.clear();
+  }
+
+  PetscFunctionReturn(ierr);
+}
+
 
 
   }
+
+
 
 
 
