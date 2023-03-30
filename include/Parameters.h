@@ -494,6 +494,9 @@ class Parameters {
     inline int get_nk() {return (opt_->diffusivity_inversion_ || opt_->reaction_inversion_) ? tu_->nk_ : 0;} // TODO is this correct always? I think yes bc we never invert for rho and not for k
     inline int get_nr() {return opt_->reaction_inversion_ ? tu_->nr_ : 0;}
 
+    // Need to generalize this part for arbitrary parameters
+    inline int get_nms() { return 10;}    
+
     virtual ~Parameters() {}
 
     // parameter structs
